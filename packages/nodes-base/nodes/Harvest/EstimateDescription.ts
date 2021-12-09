@@ -6,7 +6,7 @@ const resource = [
 	'estimate',
 ];
 
-export const estimateOperations: INodeProperties[] = [
+export const estimateOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const estimateOperations: INodeProperties[] = [
 		description: 'The operation to perform.',
 	},
 
-];
+] as INodeProperties[];
 
-export const estimateFields: INodeProperties[] = [
+export const estimateFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                estimate:getAll                             */
@@ -402,4 +402,4 @@ export const estimateFields: INodeProperties[] = [
 		],
 	},
 
-];
+] as INodeProperties[];

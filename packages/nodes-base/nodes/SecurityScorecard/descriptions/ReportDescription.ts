@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const reportOperations: INodeProperties[] = [
+export const reportOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const reportOperations: INodeProperties[] = [
 		],
 		default: 'getAll',
 	},
-];
+] as INodeProperties[];
 
-export const reportFields: INodeProperties[] = [
+export const reportFields = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -217,7 +217,6 @@ export const reportFields: INodeProperties[] = [
 		displayName: 'Date',
 		name: 'date',
 		type: 'dateTime',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -381,4 +380,4 @@ export const reportFields: INodeProperties[] = [
 		},
 		description: 'Name of the binary property to which to write the data of the read file.',
 	},
-];
+] as INodeProperties[];

@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const payoutOperations: INodeProperties[] = [
+export const payoutOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const payoutOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const payoutFields: INodeProperties[] = [
+export const payoutFields = [
 
 /* -------------------------------------------------------------------------- */
 /*                                payout:create                               */
@@ -216,7 +216,6 @@ export const payoutFields: INodeProperties[] = [
 		displayName: 'Items',
 		name: 'itemsJson',
 		type: 'json',
-		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -284,7 +283,6 @@ export const payoutFields: INodeProperties[] = [
 		displayName: 'Payout Batch Id',
 		name: 'payoutBatchId',
 		type: 'string',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -340,10 +338,10 @@ export const payoutFields: INodeProperties[] = [
 		description: 'If all results should be returned or only up to a given limit.',
 	},
 
-];
+] as INodeProperties[];
 
 
-export const payoutItemOperations: INodeProperties[] = [
+export const payoutItemOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -370,9 +368,9 @@ export const payoutItemOperations: INodeProperties[] = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const payoutItemFields: INodeProperties[] = [
+export const payoutItemFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 payoutItem:get                                 */
@@ -418,4 +416,4 @@ export const payoutItemFields: INodeProperties[] = [
 		},
 		description: 'The ID of the payout item to cancel.',
 	},
-];
+] as INodeProperties[];

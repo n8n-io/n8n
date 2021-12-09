@@ -7,7 +7,7 @@ import {
 	petitionAdditionalFieldsOptions,
 } from './SharedFields';
 
-export const petitionOperations: INodeProperties[] = [
+export const petitionOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -40,9 +40,9 @@ export const petitionOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const petitionFields: INodeProperties[] = [
+export const petitionFields = [
 	// ----------------------------------------
 	//             petition: create
 	// ----------------------------------------
@@ -210,4 +210,4 @@ export const petitionFields: INodeProperties[] = [
 		},
 		options: petitionAdditionalFieldsOptions,
 	},
-];
+] as INodeProperties[];

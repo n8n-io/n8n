@@ -1,8 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
-
-export const customerAdditionalFieldsOptions: INodeProperties[] = [
+export const customerAdditionalFieldsOptions = [
 	{
 		displayName: 'Active',
 		name: 'Active',

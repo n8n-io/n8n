@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const sessionOperations: INodeProperties[] = [
+export const sessionOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -31,9 +31,9 @@ export const sessionOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const sessionFields: INodeProperties[] = [
+export const sessionFields = [
 	// ----------------------------------
 	//         session: getAll
 	// ----------------------------------
@@ -223,4 +223,4 @@ export const sessionFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];

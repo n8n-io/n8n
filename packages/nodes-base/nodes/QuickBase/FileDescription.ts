@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const fileOperations: INodeProperties[] = [
+export const fileOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const fileOperations: INodeProperties[] = [
 		default: 'download',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const fileFields: INodeProperties[] = [
+export const fileFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                file:download                               */
 	/* -------------------------------------------------------------------------- */
@@ -129,4 +129,4 @@ export const fileFields: INodeProperties[] = [
 		description: 'Object property name which holds binary data.',
 		required: true,
 	},
-];
+] as INodeProperties[];

@@ -6,7 +6,7 @@ export const resource = [
 	'timeEntry',
 ];
 
-export const timeEntryOperations: INodeProperties[] = [
+export const timeEntryOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -66,9 +66,9 @@ export const timeEntryOperations: INodeProperties[] = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const timeEntryFields: INodeProperties[] = [
+export const timeEntryFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                timeEntry:getAll                            */
 	/* -------------------------------------------------------------------------- */
@@ -551,4 +551,4 @@ export const timeEntryFields: INodeProperties[] = [
 
 
 
-];
+] as INodeProperties[];

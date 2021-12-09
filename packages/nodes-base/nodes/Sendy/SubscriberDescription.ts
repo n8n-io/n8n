@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const subscriberOperations: INodeProperties[] = [
+export const subscriberOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const subscriberOperations: INodeProperties[] = [
 		default: 'add',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const subscriberFields: INodeProperties[] = [
+export const subscriberFields = [
 
 /* -------------------------------------------------------------------------- */
 /*                                subscriber:add                              */
@@ -284,4 +284,4 @@ export const subscriberFields: INodeProperties[] = [
 		default: '',
 		description: `The list id you want to subscribe a user to. This encrypted & hashed id can be found under View all lists section named ID.`,
 	},
-];
+] as INodeProperties[];

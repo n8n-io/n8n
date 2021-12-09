@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const goalKeyResultOperations: INodeProperties[] = [
+export const goalKeyResultOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const goalKeyResultOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const goalKeyResultFields: INodeProperties[] = [
+export const goalKeyResultFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                goalKeyResult:create                        */
@@ -288,4 +288,4 @@ export const goalKeyResultFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

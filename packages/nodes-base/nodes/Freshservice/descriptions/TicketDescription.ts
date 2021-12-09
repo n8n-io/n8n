@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const ticketOperations: INodeProperties[] = [
+export const ticketOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const ticketOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
-export const ticketFields: INodeProperties[] = [
+export const ticketFields = [
 	// ----------------------------------------
 	//              ticket: create
 	// ----------------------------------------
@@ -199,7 +199,9 @@ export const ticketFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the department to which this ticket belongs. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getDepartments',
+					loadOptionsMethod: [
+						'getDepartments',
+					],
 				},
 			},
 			{
@@ -209,7 +211,9 @@ export const ticketFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the group to which the ticket has been assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgentGroups',
+					loadOptionsMethod: [
+						'getAgentGroups',
+					],
 				},
 			},
 			{
@@ -246,7 +250,9 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: 'getRequesters',
+					loadOptionsMethod: [
+						'getRequesters',
+					],
 				},
 			},
 		],
@@ -363,7 +369,9 @@ export const ticketFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the agent to whom the tickets have been assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 			},
 			{
@@ -373,7 +381,9 @@ export const ticketFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the group to which the tickets have been assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgentGroups',
+					loadOptionsMethod: [
+						'getAgentGroups',
+					],
 				},
 			},
 			{
@@ -506,7 +516,9 @@ export const ticketFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the department to which this ticket has been assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getDepartments',
+					loadOptionsMethod: [
+						'getDepartments',
+					],
 				},
 			},
 			{
@@ -530,7 +542,9 @@ export const ticketFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the group to which the ticket has been assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgentGroups',
+					loadOptionsMethod: [
+						'getAgentGroups',
+					],
 				},
 			},
 			{
@@ -623,4 +637,4 @@ export const ticketFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

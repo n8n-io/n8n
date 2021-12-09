@@ -7,7 +7,7 @@ import {
 	getSearchFilters,
 } from './GenericFunctions';
 
-export const customerOperations: INodeProperties[] = [
+export const customerOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -49,9 +49,9 @@ export const customerOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const customerFields: INodeProperties[] = [
+export const customerFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                   customer:create                          */
@@ -310,4 +310,4 @@ export const customerFields: INodeProperties[] = [
 		'getSystemAttributes',
 		'getSystemAttributes',
 	),
-];
+] as INodeProperties[];

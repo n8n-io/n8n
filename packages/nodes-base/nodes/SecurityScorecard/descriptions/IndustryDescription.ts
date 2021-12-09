@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const industryOperations: INodeProperties[] = [
+export const industryOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -31,14 +31,13 @@ export const industryOperations: INodeProperties[] = [
 		],
 		default: 'getFactor',
 	},
-];
+] as INodeProperties[];
 
-export const industryFields: INodeProperties[] = [
+export const industryFields = [
 	{
 		displayName: 'Industry',
 		name: 'industry',
 		type: 'options',
-		default: 'food',
 		options: [
 			{
 				name: 'Food',
@@ -171,4 +170,4 @@ export const industryFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const registrantOperations: INodeProperties[] = [
+export const registrantOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const registrantOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const registrantFields: INodeProperties[] = [
+export const registrantFields = [
 	// ----------------------------------
 	//         registrant: create
 	// ----------------------------------
@@ -472,4 +472,4 @@ export const registrantFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];

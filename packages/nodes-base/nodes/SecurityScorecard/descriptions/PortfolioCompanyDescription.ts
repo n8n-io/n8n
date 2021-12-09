@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const portfolioCompanyOperations: INodeProperties[] = [
+export const portfolioCompanyOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const portfolioCompanyOperations: INodeProperties[] = [
 		],
 		default: 'add',
 	},
-];
+] as INodeProperties[];
 
-export const portfolioCompanyFields: INodeProperties[] = [
+export const portfolioCompanyFields = [
 	{
 		displayName: 'Portfolio ID',
 		name: 'portfolioId',
@@ -184,5 +184,5 @@ export const portfolioCompanyFields: INodeProperties[] = [
 		description: 'Company\'s domain name',
 	},
 
-];
+] as INodeProperties[];
 

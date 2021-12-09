@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const messageOperations: INodeProperties[] = [
+export const messageOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const messageOperations: INodeProperties[] = [
 		default: 'sendPrivate',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const messageFields: INodeProperties[] = [
+export const messageFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                message:sendPrivate                         */
@@ -125,9 +125,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'topic',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'stream',
-			],
+			loadOptionsDependsOn: 'stream',
 			loadOptionsMethod: 'getTopics',
 		},
 		required: true,
@@ -306,4 +304,4 @@ export const messageFields: INodeProperties[] = [
 		},
 		description: 'Name of the binary property to which to write the data of the read file.',
 	},
-];
+] as INodeProperties[];

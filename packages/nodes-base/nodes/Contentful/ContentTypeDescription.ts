@@ -8,7 +8,7 @@ export const resource = {
 	value: 'contentType',
 } as INodePropertyOptions;
 
-export const operations: INodeProperties[] = [
+export const operations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const operations: INodeProperties[] = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const fields: INodeProperties[] = [
+export const fields = [
 	{
 		displayName: 'Environment ID',
 		name: 'environmentId',
@@ -92,4 +92,4 @@ export const fields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

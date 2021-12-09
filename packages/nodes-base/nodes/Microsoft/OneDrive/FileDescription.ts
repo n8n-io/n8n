@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const fileOperations: INodeProperties[] = [
+export const fileOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -54,9 +54,9 @@ export const fileOperations: INodeProperties[] = [
 		default: 'upload',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const fileFields: INodeProperties[] = [
+export const fileFields = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 file:copy                                  */
@@ -459,4 +459,4 @@ export const fileFields: INodeProperties[] = [
 		placeholder: '',
 		description: 'Name of the binary property which contains the data for the file.',
 	},
-];
+] as INodeProperties[];

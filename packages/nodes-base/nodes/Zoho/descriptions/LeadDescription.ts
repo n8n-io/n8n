@@ -9,7 +9,7 @@ import {
 	makeGetAllFields,
 } from './SharedFields';
 
-export const leadOperations: INodeProperties[] = [
+export const leadOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -61,9 +61,9 @@ export const leadOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const leadFields: INodeProperties[] = [
+export const leadFields = [
 	// ----------------------------------------
 	//             lead: create
 	// ----------------------------------------
@@ -691,4 +691,4 @@ export const leadFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

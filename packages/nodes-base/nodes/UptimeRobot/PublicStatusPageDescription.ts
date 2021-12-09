@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const publicStatusPageOperations: INodeProperties[] = [
+export const publicStatusPageOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const publicStatusPageOperations: INodeProperties[] = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const publicStatusPageFields: INodeProperties[] = [
+export const publicStatusPageFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                            publicStatusPage:create                         */
 	/* -------------------------------------------------------------------------- */
@@ -335,4 +335,4 @@ export const publicStatusPageFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

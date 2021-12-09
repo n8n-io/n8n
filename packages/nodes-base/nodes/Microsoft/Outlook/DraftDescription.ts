@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const draftOperations: INodeProperties[] = [
+export const draftOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const draftOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const draftFields: INodeProperties[] = [
+export const draftFields = [
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
@@ -301,4 +301,4 @@ export const draftFields: INodeProperties[] = [
 
 
 
-];
+] as INodeProperties[];

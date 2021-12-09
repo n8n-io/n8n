@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const stockOnHandOperations: INodeProperties[] = [
+export const stockOnHandOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const stockOnHandOperations: INodeProperties[] = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const stockOnHandFields: INodeProperties[] = [
+export const stockOnHandFields = [
 
 	/* ------------------------------------------------------------------------- */
 	/*                                stockOnHand:get                            */
@@ -164,4 +164,4 @@ export const stockOnHandFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

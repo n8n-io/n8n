@@ -6,7 +6,7 @@ import {
 	employeeAdditionalFieldsOptions,
 } from './EmployeeAdditionalFieldsOptions';
 
-export const employeeOperations: INodeProperties[] = [
+export const employeeOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const employeeOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const employeeFields: INodeProperties[] = [
+export const employeeFields = [
 	// ----------------------------------
 	//         employee: create
 	// ----------------------------------
@@ -233,4 +233,4 @@ export const employeeFields: INodeProperties[] = [
 		},
 		options: employeeAdditionalFieldsOptions,
 	},
-];
+] as INodeProperties[];

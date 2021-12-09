@@ -1,13 +1,9 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
-
-import {
 	Operation,
 	Resource,
 } from '../types';
 
-export const languageOptions: INodeProperties['options'] = [
+export const languageOptions = [
 	{
 		name: 'Danish',
 		value: 'da',
@@ -72,9 +68,9 @@ export const languageOptions: INodeProperties['options'] = [
 		name: 'Welsh',
 		value: 'cy',
 	},
-];
+] as const;
 
-const postalAddressesFields: INodeProperties[] = [
+const postalAddressesFields = [
 	{
 		displayName: 'Primary',
 		name: 'primary',
@@ -154,7 +150,7 @@ const postalAddressesFields: INodeProperties[] = [
 	},
 ];
 
-export const eventAdditionalFieldsOptions: INodeProperties['options'] = [
+export const eventAdditionalFieldsOptions = [
 	{
 		displayName: 'Browser URL',
 		name: 'browser_url',
@@ -225,7 +221,7 @@ export const eventAdditionalFieldsOptions: INodeProperties['options'] = [
 	},
 ];
 
-export const personAdditionalFieldsOptions: INodeProperties['options'] = [
+export const personAdditionalFieldsOptions = [
 	{
 		displayName: 'Family Name',
 		name: 'family_name',
@@ -323,7 +319,7 @@ export const personAdditionalFieldsOptions: INodeProperties['options'] = [
 	},
 ];
 
-export const petitionAdditionalFieldsOptions: INodeProperties[] = [
+export const petitionAdditionalFieldsOptions = [
 	{
 		displayName: 'Browser URL',
 		name: 'browser_url',
@@ -361,7 +357,7 @@ export const petitionAdditionalFieldsOptions: INodeProperties[] = [
 	},
 ];
 
-export const makeSimpleField = (resource: Resource, operation: Operation): INodeProperties => ({
+export const makeSimpleField = (resource: Resource, operation: Operation) => ({
 	displayName: 'Simple',
 	name: 'simple',
 	type: 'boolean',

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const boardGroupOperations: INodeProperties[] = [
+export const boardGroupOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const boardGroupOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const boardGroupFields: INodeProperties[] = [
+export const boardGroupFields = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 boardGroup:create                          */
@@ -148,4 +148,4 @@ export const boardGroupFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];

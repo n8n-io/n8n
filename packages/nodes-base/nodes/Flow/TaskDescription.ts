@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const taskOpeations: INodeProperties[] = [
+export const taskOpeations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const taskOpeations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const taskFields: INodeProperties[] = [
+export const taskFields = [
 
 /* -------------------------------------------------------------------------- */
 /*                                task:create                                */
@@ -48,7 +48,6 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'string',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -66,7 +65,6 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -235,7 +233,6 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'string',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -253,7 +250,6 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -423,7 +419,6 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -668,4 +663,4 @@ export const taskFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

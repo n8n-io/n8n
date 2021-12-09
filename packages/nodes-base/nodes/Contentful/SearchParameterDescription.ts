@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const fields: INodeProperties[] = [
+export const fields = [
 	{
 		displayName: 'Search Parameters',
 		name: 'search_parameters',
@@ -34,4 +34,4 @@ export const fields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

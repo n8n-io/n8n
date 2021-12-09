@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const changeOperations: INodeProperties[] = [
+export const changeOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const changeOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
-export const changeFields: INodeProperties[] = [
+export const changeFields = [
 	// ----------------------------------------
 	//              change: create
 	// ----------------------------------------
@@ -57,7 +57,9 @@ export const changeFields: INodeProperties[] = [
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsMethod: 'getRequesters',
+			loadOptionsMethod: [
+				'getRequesters',
+			],
 		},
 		displayOptions: {
 			show: {
@@ -145,7 +147,9 @@ export const changeFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the agent to whom the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 			},
 			{
@@ -179,7 +183,9 @@ export const changeFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the department requesting the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getDepartments',
+					loadOptionsMethod: [
+						'getDepartments',
+					],
 				},
 			},
 			{
@@ -196,7 +202,9 @@ export const changeFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the agent group to which the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgentGroups',
+					loadOptionsMethod: [
+						'getAgentGroups',
+					],
 				},
 			},
 			{
@@ -510,7 +518,9 @@ export const changeFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the agent to whom the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 			},
 			{
@@ -544,7 +554,9 @@ export const changeFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the department requesting the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getDepartments',
+					loadOptionsMethod: [
+						'getDepartments',
+					],
 				},
 			},
 			{
@@ -561,7 +573,9 @@ export const changeFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the agent group to which the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgentGroups',
+					loadOptionsMethod: [
+						'getAgentGroups',
+					],
 				},
 			},
 			{
@@ -616,7 +630,9 @@ export const changeFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the requester of the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getRequesters',
+					loadOptionsMethod: [
+						'getRequesters',
+					],
 				},
 			},
 			{
@@ -683,4 +699,4 @@ export const changeFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

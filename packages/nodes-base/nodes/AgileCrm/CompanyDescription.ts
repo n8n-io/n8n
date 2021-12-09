@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const companyOperations: INodeProperties[] = [
+export const companyOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const companyOperations: INodeProperties[] = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const companyFields: INodeProperties[] = [
+export const companyFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  company:get                               */
 	/* -------------------------------------------------------------------------- */
@@ -520,7 +520,6 @@ export const companyFields: INodeProperties[] = [
 				name: 'websiteOptions',
 				type: 'fixedCollection',
 				description: 'Companies websites.',
-				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -599,7 +598,6 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
-				default: {},
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -817,7 +815,6 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
-				default: {},
 				description: 'Companys websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -897,7 +894,6 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
-				default: {},
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -936,4 +932,4 @@ export const companyFields: INodeProperties[] = [
 		],
 	},
 
-];
+] as INodeProperties[];

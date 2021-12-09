@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const salesActivityOperations: INodeProperties[] = [
+export const salesActivityOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const salesActivityOperations: INodeProperties[] = [
 		],
 		default: 'get',
 	},
-];
+] as INodeProperties[];
 
-export const salesActivityFields: INodeProperties[] = [
+export const salesActivityFields = [
 	// ----------------------------------------
 	//          salesActivity: create
 	// ----------------------------------------
@@ -403,7 +403,6 @@ export const salesActivityFields: INodeProperties[] = [
 				name: 'end_date',
 				description: 'Timestamp that denotes the start of the sales activity',
 				type: 'dateTime',
-				default: '',
 			},
 			{
 				displayName: 'Latitude',
@@ -468,7 +467,6 @@ export const salesActivityFields: INodeProperties[] = [
 				name: 'from_date',
 				description: 'Timestamp that denotes the start of the sales activity',
 				type: 'dateTime',
-				default: '',
 			},
 			{
 				displayName: 'Target ID',
@@ -507,4 +505,4 @@ export const salesActivityFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

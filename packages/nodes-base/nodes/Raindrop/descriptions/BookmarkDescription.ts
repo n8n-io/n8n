@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const bookmarkOperations: INodeProperties[] = [
+export const bookmarkOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const bookmarkOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const bookmarkFields: INodeProperties[] = [
+export const bookmarkFields = [
 	// ----------------------------------
 	//       bookmark: create
 	// ----------------------------------
@@ -317,4 +317,4 @@ export const bookmarkFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

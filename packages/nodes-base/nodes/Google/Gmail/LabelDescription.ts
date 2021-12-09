@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const labelOperations: INodeProperties[] = [
+export const labelOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const labelOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const labelFields: INodeProperties[] = [
+export const labelFields = [
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -184,4 +184,4 @@ export const labelFields: INodeProperties[] = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-];
+] as INodeProperties[];

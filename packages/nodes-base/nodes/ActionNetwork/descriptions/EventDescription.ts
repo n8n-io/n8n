@@ -7,7 +7,7 @@ import {
 	makeSimpleField,
 } from './SharedFields';
 
-export const eventOperations: INodeProperties[] = [
+export const eventOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -36,9 +36,9 @@ export const eventOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const eventFields: INodeProperties[] = [
+export const eventFields = [
 	// ----------------------------------------
 	//              event: create
 	// ----------------------------------------
@@ -165,4 +165,4 @@ export const eventFields: INodeProperties[] = [
 		},
 	},
 	makeSimpleField('event', 'getAll'),
-];
+] as INodeProperties[];

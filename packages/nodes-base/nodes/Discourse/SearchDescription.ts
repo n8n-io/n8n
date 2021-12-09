@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const searchOperations: INodeProperties[] = [
+export const searchOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -25,7 +25,7 @@ export const searchOperations: INodeProperties[] = [
 		],
 		default: 'query',
 	},
-];
+] as INodeProperties[];
 
 export const searchFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */

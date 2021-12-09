@@ -10,7 +10,7 @@ import {
 	activeCampaignDefaultGetAllProperties,
 } from './GenericFunctions';
 
-export const dealOperations: INodeProperties[] = [
+export const dealOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -63,9 +63,9 @@ export const dealOperations: INodeProperties[] = [
 		description: 'The operation to perform.',
 	},
 
-];
+] as INodeProperties[];
 
-export const dealFields: INodeProperties[] = [
+export const dealFields = [
 	// ----------------------------------
 	//         deal:create
 	// ----------------------------------
@@ -494,4 +494,4 @@ export const dealFields: INodeProperties[] = [
 		description: 'The content of the deal note',
 	},
 
-];
+] as INodeProperties[];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const announcementOperations: INodeProperties[] = [
+export const announcementOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const announcementOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
-export const announcementFields: INodeProperties[] = [
+export const announcementFields = [
 	// ----------------------------------------
 	//           announcement: create
 	// ----------------------------------------
@@ -164,7 +164,9 @@ export const announcementFields: INodeProperties[] = [
 				default: [],
 				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getDepartments',
+					loadOptionsMethod: [
+						'getDepartments',
+					],
 				},
 			},
 			{
@@ -331,7 +333,9 @@ export const announcementFields: INodeProperties[] = [
 				default: [],
 				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getDepartments',
+					loadOptionsMethod: [
+						'getDepartments',
+					],
 				},
 			},
 			{
@@ -362,4 +366,4 @@ export const announcementFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

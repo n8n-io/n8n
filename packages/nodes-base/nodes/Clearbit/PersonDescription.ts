@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const personOperations: INodeProperties[] = [
+export const personOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -22,9 +22,9 @@ export const personOperations: INodeProperties[] = [
 		default: 'enrich',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const personFields: INodeProperties[] = [
+export const personFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 person:enrich                                 */
@@ -129,4 +129,4 @@ export const personFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

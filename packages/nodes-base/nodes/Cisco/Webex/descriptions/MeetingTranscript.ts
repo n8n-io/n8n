@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const meetingTranscriptOperations: INodeProperties[] = [
+export const meetingTranscriptOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 		default: 'download',
 		description: 'Operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const meetingTranscriptFields: INodeProperties[] = [
+export const meetingTranscriptFields = [
 	// ----------------------------------------
 	//             meetingTranscript: download
 	// ----------------------------------------
@@ -193,4 +193,4 @@ export const meetingTranscriptFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

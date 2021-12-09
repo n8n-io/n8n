@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const formOperations: INodeProperties[] = [
+export const formOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const formOperations: INodeProperties[] = [
 		default: 'getFields',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const formFields: INodeProperties[] = [
+export const formFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                form:submit                                 */
@@ -323,4 +323,4 @@ export const formFields: INodeProperties[] = [
 		default: '',
 		description: 'The ID of the form',
 	},
-];
+] as INodeProperties[];

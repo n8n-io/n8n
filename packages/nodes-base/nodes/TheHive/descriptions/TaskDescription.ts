@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const taskOperations: INodeProperties[] = [
+export const taskOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -23,9 +23,9 @@ export const taskOperations: INodeProperties[] = [
 			loadOptionsMethod: 'loadTaskOptions',
 		},
 	},
-];
+] as INodeProperties[];
 
-export const taskFields: INodeProperties[] = [
+export const taskFields = [
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -465,4 +465,4 @@ export const taskFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

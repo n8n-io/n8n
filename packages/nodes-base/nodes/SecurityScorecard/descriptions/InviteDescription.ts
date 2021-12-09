@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const inviteOperations: INodeProperties[] = [
+export const inviteOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const inviteOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
-export const inviteFields: INodeProperties[] = [
+export const inviteFields = [
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -175,4 +175,4 @@ export const inviteFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

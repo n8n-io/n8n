@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const roomMemberOperations: INodeProperties[] = [
+export const roomMemberOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,10 +24,10 @@ export const roomMemberOperations: INodeProperties[] = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
 
-export const roomMemberFields: INodeProperties[] = [
+export const roomMemberFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                             roomMember:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -142,4 +142,4 @@ export const roomMemberFields: INodeProperties[] = [
 	},
 
 
-];
+] as INodeProperties[];

@@ -6,7 +6,7 @@ const resource = [
 	'task',
 ];
 
-export const taskOperations: INodeProperties[] = [
+export const taskOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const taskOperations: INodeProperties[] = [
 		description: 'The operation to perform.',
 	},
 
-];
+] as INodeProperties[];
 
-export const taskFields: INodeProperties[] = [
+export const taskFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                task:getAll                                 */
@@ -312,4 +312,4 @@ export const taskFields: INodeProperties[] = [
 	},
 
 
-];
+] as INodeProperties[];

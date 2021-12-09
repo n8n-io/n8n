@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const checklistOperations: INodeProperties[] = [
+export const checklistOperations = [
 	// ----------------------------------
 	//         checklist
 	// ----------------------------------
@@ -43,9 +43,9 @@ export const checklistOperations: INodeProperties[] = [
 		description: 'The operation to perform.',
 	},
 
-];
+] as INodeProperties[];
 
-export const checklistFields: INodeProperties[] = [
+export const checklistFields = [
 	// ----------------------------------
 	//         checklist:create
 	// ----------------------------------
@@ -471,4 +471,4 @@ export const checklistFields: INodeProperties[] = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-];
+] as INodeProperties[];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const documentOperations: INodeProperties[] = [
+export const documentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const documentOperations: INodeProperties[] = [
 		default: 'upload',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const documentFields: INodeProperties[] = [
+export const documentFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                document:upload                             */
@@ -112,4 +112,4 @@ export const documentFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const emailOperations: INodeProperties[] = [
+export const emailOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const emailOperations: INodeProperties[] = [
 		default: 'send',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const emailFields: INodeProperties[] = [
+export const emailFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                email:send                                  */
@@ -57,7 +57,6 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'To Email',
 		name: 'toEmail',
 		type: 'string',
-		default: '',
 		required: true,
 		placeholder: 'info@example.com',
 		description: 'Email address of the recipient. Multiple ones can be separated by comma.',
@@ -292,7 +291,6 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'To Email',
 		name: 'toEmail',
 		type: 'string',
-		default: '',
 		required: true,
 		placeholder: 'info@example.com',
 		description: 'Email address of the recipient. Multiple ones can be separated by comma.',
@@ -445,4 +443,4 @@ export const emailFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const teamOperations: INodeProperties[] = [
+export const teamOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const teamOperations: INodeProperties[] = [
 		default: 'get',
 		description: 'The operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const teamFields: INodeProperties[] = [
+export const teamFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                team:getAll                                 */
 	/* -------------------------------------------------------------------------- */
@@ -361,4 +361,4 @@ export const teamFields: INodeProperties[] = [
 		required: true,
 		description: 'The slug of the team to delete.',
 	},
-];
+] as INodeProperties[];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const operationFields: INodeProperties[] = [
+export const operationFields = [
 	// ----------------------------------
 	//         Shared
 	// ----------------------------------
@@ -380,4 +380,4 @@ export const operationFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

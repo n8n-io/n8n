@@ -924,7 +924,7 @@ export async function executeWorkflow(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sendMessageToUI(source: string, messages: any[]) {
+export function sendMessageToUI(source: string, message: any) {
 	if (this.sessionId === undefined) {
 		return;
 	}
@@ -936,7 +936,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 			'sendConsoleMessage',
 			{
 				source: `Node: "${source}"`,
-				messages,
+				message,
 			},
 			this.sessionId,
 		);

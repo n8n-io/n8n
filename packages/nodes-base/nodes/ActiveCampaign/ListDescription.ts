@@ -6,7 +6,7 @@ import {
 	activeCampaignDefaultGetAllProperties,
 } from './GenericFunctions';
 
-export const listOperations: INodeProperties[] = [
+export const listOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -28,11 +28,11 @@ export const listOperations: INodeProperties[] = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const listFields: INodeProperties[] = [
+export const listFields = [
 	// ----------------------------------
 	//         list:getAll
 	// ----------------------------------
 	...activeCampaignDefaultGetAllProperties('list', 'getAll'),
-];
+] as INodeProperties[];

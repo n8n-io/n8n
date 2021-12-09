@@ -6,7 +6,7 @@ import {
 	makeSimpleField,
 } from './SharedFields';
 
-export const tagOperations: INodeProperties[] = [
+export const tagOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const tagOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const tagFields: INodeProperties[] = [
+export const tagFields = [
 	// ----------------------------------------
 	//               tag: create
 	// ----------------------------------------
@@ -128,4 +128,4 @@ export const tagFields: INodeProperties[] = [
 		},
 	},
 	makeSimpleField('tag', 'getAll'),
-];
+] as INodeProperties[];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const issueCommentOperations: INodeProperties[] = [
+export const issueCommentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const issueCommentOperations: INodeProperties[] = [
 		default: 'add',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const issueCommentFields: INodeProperties[] = [
+export const issueCommentFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                issueComment:add                            */
@@ -89,7 +89,6 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Comment',
 		name: 'comment',
 		type: 'string',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -109,7 +108,6 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Document Format (JSON)',
 		name: 'commentJson',
 		type: 'json',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -183,7 +181,6 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Comment ID',
 		name: 'commentId',
 		type: 'string',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -350,7 +347,6 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Comment ID',
 		name: 'commentId',
 		type: 'string',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -390,7 +386,6 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Comment ID',
 		name: 'commentId',
 		type: 'string',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -424,7 +419,6 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Comment',
 		name: 'comment',
 		type: 'string',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -444,7 +438,6 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Document Format (JSON)',
 		name: 'commentJson',
 		type: 'json',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -492,4 +485,4 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

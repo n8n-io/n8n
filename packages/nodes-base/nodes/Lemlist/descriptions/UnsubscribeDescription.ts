@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const unsubscribeOperations: INodeProperties[] = [
+export const unsubscribeOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -31,9 +31,9 @@ export const unsubscribeOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const unsubscribeFields: INodeProperties[] = [
+export const unsubscribeFields = [
 	// ----------------------------------
 	//        unsubscribe: add
 	// ----------------------------------
@@ -120,4 +120,4 @@ export const unsubscribeFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];

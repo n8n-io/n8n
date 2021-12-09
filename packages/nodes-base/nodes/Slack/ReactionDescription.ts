@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const reactionOperations: INodeProperties[] = [
+export const reactionOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -32,9 +32,9 @@ export const reactionOperations: INodeProperties[] = [
 		default: 'add',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const reactionFields: INodeProperties[] = [
+export const reactionFields = [
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -98,4 +98,4 @@ export const reactionFields: INodeProperties[] = [
 		},
 		description: `Timestamp of the message.`,
 	},
-];
+] as INodeProperties[];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const collectionOperations: INodeProperties[] = [
+export const collectionOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const collectionOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const collectionFields: INodeProperties[] = [
+export const collectionFields = [
 	// ----------------------------------
 	//       collection: shared
 	// ----------------------------------
@@ -144,7 +144,7 @@ export const collectionFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
 export interface CollectionUpdateFields {
 	groups: string[];

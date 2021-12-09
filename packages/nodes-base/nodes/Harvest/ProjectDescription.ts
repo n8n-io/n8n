@@ -6,7 +6,7 @@ const resource = [
 	'project',
 ];
 
-export const projectOperations: INodeProperties[] = [
+export const projectOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const projectOperations: INodeProperties[] = [
 		description: 'The operation to perform.',
 	},
 
-];
+] as INodeProperties[];
 
-export const projectFields: INodeProperties[] = [
+export const projectFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                projects:getAll                             */
@@ -590,4 +590,4 @@ export const projectFields: INodeProperties[] = [
 		],
 	},
 
-];
+] as INodeProperties[];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const addFields: INodeProperties[] = [
+export const addFields = [
 	{
 		displayName: 'Paths to Add',
 		name: 'pathsToAdd',
@@ -19,4 +19,4 @@ export const addFields: INodeProperties[] = [
 		description: 'Comma separated list of paths (absolute or relative to Repository Path) of files or folders to add.',
 		required: true,
 	},
-];
+] as INodeProperties[];

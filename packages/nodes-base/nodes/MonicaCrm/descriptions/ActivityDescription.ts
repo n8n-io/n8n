@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const activityOperations: INodeProperties[] = [
+export const activityOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const activityOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
-export const activityFields: INodeProperties[] = [
+export const activityFields = [
 	// ----------------------------------------
 	//             activity: create
 	// ----------------------------------------
@@ -321,4 +321,4 @@ export const activityFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

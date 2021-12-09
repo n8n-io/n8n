@@ -1,8 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
-
-export const paymentAdditionalFieldsOptions: INodeProperties[] = [
+export const paymentAdditionalFieldsOptions = [
 	{
 		displayName: 'Transaction Date',
 		name: 'TxnDate',

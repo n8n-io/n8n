@@ -1,8 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
-
-export const billAdditionalFieldsOptions: INodeProperties[] = [
+export const billAdditionalFieldsOptions = [
 	{
 		displayName: 'Accounts Payable Account',
 		name: 'APAccountRef',

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const folderOperations: INodeProperties[] = [
+export const folderOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -49,9 +49,9 @@ export const folderOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const folderFields: INodeProperties[] = [
+export const folderFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 folder:create                              */
@@ -860,4 +860,4 @@ export const folderFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

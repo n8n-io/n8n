@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const worksheetOperations: INodeProperties[] = [
+export const worksheetOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const worksheetOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const worksheetFields: INodeProperties[] = [
+export const worksheetFields = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 worksheet:getAll                           */
@@ -300,4 +300,4 @@ export const worksheetFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

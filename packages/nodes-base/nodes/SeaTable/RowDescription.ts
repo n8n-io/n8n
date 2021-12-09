@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const rowOperations: INodeProperties[] = [
+export const rowOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const rowOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation being performed',
 	},
-];
+] as INodeProperties[];
 
-export const rowFields: INodeProperties[] = [
+export const rowFields = [
 	// ----------------------------------
 	//             shared
 	// ----------------------------------
@@ -345,4 +345,4 @@ export const rowFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

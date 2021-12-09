@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const customerSourceOperations: INodeProperties[] = [
+export const customerSourceOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -23,9 +23,9 @@ export const customerSourceOperations: INodeProperties[] = [
 		default: 'getAll',
 		description: 'Operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const customerSourceFields: INodeProperties[] = [
+export const customerSourceFields = [
 	// ----------------------------------------
 	//        customerSource: getAll
 	// ----------------------------------------
@@ -70,4 +70,4 @@ export const customerSourceFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];

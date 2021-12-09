@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const quoteOperations: INodeProperties[] = [
+export const quoteOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const quoteOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const quoteFields: INodeProperties[] = [
+export const quoteFields = [
 	// ----------------------------------
 	//         quote: create
 	// ----------------------------------
@@ -178,4 +178,4 @@ export const quoteFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];

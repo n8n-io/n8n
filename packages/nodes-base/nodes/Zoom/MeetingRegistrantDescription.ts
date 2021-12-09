@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const meetingRegistrantOperations: INodeProperties[] = [
+export const meetingRegistrantOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const meetingRegistrantFields: INodeProperties[] = [
+export const meetingRegistrantFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 meetingRegistrant:create                   */
 	/* -------------------------------------------------------------------------- */
@@ -440,4 +440,4 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		],
 	},
 
-];
+] as INodeProperties[];

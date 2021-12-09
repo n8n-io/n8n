@@ -7,7 +7,6 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeProperties,
 	INodePropertyOptions,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -446,12 +445,12 @@ export function populateFields(
 
 export const toOptions = (option: string) => ({ name: option, value: option });
 
-export const toDisplayName = ({ name, value }: Option): INodePropertyOptions => {
+export const toDisplayName = ({ name, value }: Option) => {
 	return { name: splitPascalCase(name), value };
 };
 
 export const splitPascalCase = (word: string) => {
-	return word.match(/($[a-z])|[A-Z][^A-Z]+/g)!.join(' ');
+	return word.match(/($[a-z])|[A-Z][^A-Z]+/g)?.join(' ');
 };
 
 export function adjustTransactionDates(

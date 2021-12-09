@@ -6,7 +6,7 @@ import {
 	TLP,
 } from '../interfaces/AlertInterface';
 
-export const caseOperations: INodeProperties[] = [
+export const caseOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const caseOperations: INodeProperties[] = [
 			loadOptionsMethod: 'loadCaseOptions',
 		},
 	},
-];
+] as INodeProperties[];
 
-export const caseFields: INodeProperties[] = [
+export const caseFields = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -929,4 +929,4 @@ export const caseFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

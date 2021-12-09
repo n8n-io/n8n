@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const attachmentOperations: INodeProperties[] = [
+export const attachmentOperations = [
 	// ----------------------------------
 	//         attachment
 	// ----------------------------------
@@ -43,9 +43,9 @@ export const attachmentOperations: INodeProperties[] = [
 		description: 'The operation to perform.',
 	},
 
-];
+] as INodeProperties[];
 
-export const attachmentFields: INodeProperties[] = [
+export const attachmentFields = [
 
 	// ----------------------------------
 	//         attachment:create
@@ -275,4 +275,4 @@ export const attachmentFields: INodeProperties[] = [
 		],
 	},
 
-];
+] as INodeProperties[];

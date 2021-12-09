@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const documentOperations: INodeProperties[] = [
+export const documentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -54,9 +54,9 @@ export const documentOperations: INodeProperties[] = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const documentFields: INodeProperties[] = [
+export const documentFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                document:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -742,4 +742,4 @@ export const documentFields: INodeProperties[] = [
 		default: true,
 		description: 'Return a simplified version of the response instead of the raw data.',
 	},
-];
+] as INodeProperties[];

@@ -6,7 +6,7 @@ import {
 	invoiceAdditionalFieldsOptions
 } from './InvoiceAdditionalFieldsOptions';
 
-export const invoiceOperations: INodeProperties[] = [
+export const invoiceOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -51,9 +51,9 @@ export const invoiceOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const invoiceFields: INodeProperties[] = [
+export const invoiceFields = [
 	// ----------------------------------
 	//         invoice: create
 	// ----------------------------------
@@ -448,4 +448,4 @@ export const invoiceFields: INodeProperties[] = [
 		// filter out fields that cannot be updated
 		options: invoiceAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'Balance'),
 	},
-];
+] as INodeProperties[];

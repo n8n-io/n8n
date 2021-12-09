@@ -6,7 +6,7 @@ import {
 	billAdditionalFieldsOptions,
 } from './BillAdditionalFieldsOptions';
 
-export const billOperations: INodeProperties[] = [
+export const billOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const billOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const billFields: INodeProperties[] = [
+export const billFields = [
 	// ----------------------------------
 	//         bill: create
 	// ----------------------------------
@@ -327,4 +327,4 @@ export const billFields: INodeProperties[] = [
 		// filter out fields that cannot be updated
 		options: billAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'Balance'),
 	},
-];
+] as INodeProperties[];

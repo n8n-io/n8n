@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const userOpeations: INodeProperties[] = [
+export const userOpeations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const userOpeations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const userFields: INodeProperties[] = [
+export const userFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:delete                                */
@@ -566,4 +566,4 @@ export const userFields: INodeProperties[] = [
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
-];
+] as INodeProperties[];

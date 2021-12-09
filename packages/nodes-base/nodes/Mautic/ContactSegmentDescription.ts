@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactSegmentOperations: INodeProperties[] = [
+export const contactSegmentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const contactSegmentOperations: INodeProperties[] = [
 		default: 'add',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const contactSegmentFields: INodeProperties[] = [
+export const contactSegmentFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                               contactSegment:add                           */
@@ -79,4 +79,4 @@ export const contactSegmentFields: INodeProperties[] = [
 		description: 'Segment ID',
 
 	},
-];
+] as INodeProperties[];

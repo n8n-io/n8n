@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const agentGroupOperations: INodeProperties[] = [
+export const agentGroupOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const agentGroupOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
-export const agentGroupFields: INodeProperties[] = [
+export const agentGroupFields = [
 	// ----------------------------------------
 	//            agentGroup: create
 	// ----------------------------------------
@@ -95,7 +95,9 @@ export const agentGroupFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 				description: 'ID of the user to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
@@ -106,7 +108,9 @@ export const agentGroupFields: INodeProperties[] = [
 				default: [],
 				description: 'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 			},
 			{
@@ -116,7 +120,9 @@ export const agentGroupFields: INodeProperties[] = [
 				default: [],
 				description: 'Comma-separated agent IDs who are observers of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 			},
 			{
@@ -302,7 +308,9 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the agent to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 			},
 			{
@@ -312,7 +320,9 @@ export const agentGroupFields: INodeProperties[] = [
 				default: [],
 				description: 'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 			},
 			{
@@ -328,7 +338,9 @@ export const agentGroupFields: INodeProperties[] = [
 				default: [],
 				description: 'Comma-separated agent user IDs who are observers of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 			},
 			{
@@ -374,4 +386,4 @@ export const agentGroupFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

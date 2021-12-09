@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const urlOperations: INodeProperties[] = [
+export const urlOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const urlOperations: INodeProperties[] = [
 		default: 'shorten',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const urlFields: INodeProperties[] = [
+export const urlFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                url:shorten                                 */
@@ -134,4 +134,4 @@ export const urlFields: INodeProperties[] = [
 		default: '',
 		description: 'The short URL for which to get stats.',
 	},
-];
+] as INodeProperties[];

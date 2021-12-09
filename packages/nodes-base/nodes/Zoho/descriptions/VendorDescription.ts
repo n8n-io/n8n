@@ -9,7 +9,7 @@ import {
 	makeGetAllFields,
 } from './SharedFields';
 
-export const vendorOperations: INodeProperties[] = [
+export const vendorOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -56,9 +56,9 @@ export const vendorOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const vendorFields: INodeProperties[] = [
+export const vendorFields = [
 	// ----------------------------------------
 	//            vendor: create
 	// ----------------------------------------
@@ -298,4 +298,4 @@ export const vendorFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

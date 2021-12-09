@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const coorganizerOperations: INodeProperties[] = [
+export const coorganizerOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const coorganizerOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const coorganizerFields: INodeProperties[] = [
+export const coorganizerFields = [
 	// ----------------------------------
 	//         coorganizer: create
 	// ----------------------------------
@@ -84,7 +84,6 @@ export const coorganizerFields: INodeProperties[] = [
 		displayName: 'Organizer Key',
 		name: 'organizerKey',
 		type: 'string',
-		default: '',
 		description: 'The co-organizer\'s organizer key for the webinar.',
 		displayOptions: {
 			show: {
@@ -323,4 +322,4 @@ export const coorganizerFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];

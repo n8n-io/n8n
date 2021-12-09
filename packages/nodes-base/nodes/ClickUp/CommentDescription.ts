@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const commentOperations: INodeProperties[] = [
+export const commentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const commentOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const commentFields: INodeProperties[] = [
+export const commentFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                comment:create                              */
@@ -292,4 +292,4 @@ export const commentFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

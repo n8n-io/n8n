@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const releaseOperations: INodeProperties[] = [
+export const releaseOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const releaseOperations: INodeProperties[] = [
 		default: 'get',
 		description: 'The operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const releaseFields: INodeProperties[] = [
+export const releaseFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                release:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -672,4 +672,4 @@ export const releaseFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

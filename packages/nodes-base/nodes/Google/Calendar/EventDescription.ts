@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const eventOperations: INodeProperties[] = [
+export const eventOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const eventOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const eventFields: INodeProperties[] = [
+export const eventFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 event:getAll                               */
 	/* -------------------------------------------------------------------------- */
@@ -700,14 +700,14 @@ export const eventFields: INodeProperties[] = [
 				description: `Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves.`,
 			},
 			{
-				displayName: 'Start Time',
+				displayName: 'End Time',
 				name: 'timeMax',
 				type: 'dateTime',
 				default: '',
 				description: `Upper bound (exclusive) for an event's start time to filter by`,
 			},
 			{
-				displayName: 'End Time',
+				displayName: 'Start Time',
 				name: 'timeMin',
 				type: 'dateTime',
 				default: '',
@@ -1086,4 +1086,4 @@ export const eventFields: INodeProperties[] = [
 		],
 		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`,
 	},
-];
+] as INodeProperties[];

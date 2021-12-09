@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const maintenanceWindowOperations: INodeProperties[] = [
+export const maintenanceWindowOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -45,9 +45,9 @@ export const maintenanceWindowOperations: INodeProperties[] = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const maintenanceWindowFields: INodeProperties[] = [
+export const maintenanceWindowFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                maintenanceWindow:create                    */
 	/* -------------------------------------------------------------------------- */
@@ -465,4 +465,4 @@ export const maintenanceWindowFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

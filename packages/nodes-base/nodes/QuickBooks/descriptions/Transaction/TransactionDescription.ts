@@ -16,7 +16,7 @@ import {
 	TRANSACTION_TYPES,
 } from './constants';
 
-export const transactionOperations: INodeProperties[] = [
+export const transactionOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const transactionOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const transactionFields: INodeProperties[] = [
+export const transactionFields = [
 	// ----------------------------------
 	//       transaction: getReport
 	// ----------------------------------
@@ -395,4 +395,4 @@ export const transactionFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

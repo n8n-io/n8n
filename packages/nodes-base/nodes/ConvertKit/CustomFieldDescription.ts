@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const customFieldOperations: INodeProperties[] = [
+export const customFieldOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const customFieldOperations: INodeProperties[] = [
 		default: 'update',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const customFieldFields: INodeProperties[] = [
+export const customFieldFields = [
 	{
 		displayName: 'Field ID',
 		name: 'id',
@@ -121,4 +121,4 @@ export const customFieldFields: INodeProperties[] = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-];
+] as INodeProperties[];

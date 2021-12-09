@@ -6,7 +6,7 @@ import {
 	vendorAdditionalFieldsOptions,
 } from './VendorAdditionalFieldsOptions';
 
-export const vendorOperations: INodeProperties[] = [
+export const vendorOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const vendorOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const vendorFields: INodeProperties[] = [
+export const vendorFields = [
 	// ----------------------------------
 	//         vendor: create
 	// ----------------------------------
@@ -219,4 +219,4 @@ export const vendorFields: INodeProperties[] = [
 		},
 		options: vendorAdditionalFieldsOptions,
 	},
-];
+] as INodeProperties[];

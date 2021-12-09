@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const messageOperations: INodeProperties[] = [
+export const messageOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const messageOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const messageFields: INodeProperties[] = [
+export const messageFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                              message:create                                */
@@ -145,7 +145,6 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Fallback Text',
 		name: 'fallbackText',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -263,4 +262,4 @@ export const messageFields: INodeProperties[] = [
 	},
 
 
-];
+] as INodeProperties[];

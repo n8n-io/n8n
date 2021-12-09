@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const entryOperations: INodeProperties[] = [
+export const entryOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const entryOperations: INodeProperties[] = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const entryFields: INodeProperties[] = [
+export const entryFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                entry:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -345,4 +345,4 @@ export const entryFields: INodeProperties[] = [
 		placeholder: 'id,name,description',
 		description: 'Comma separated list of the properties which should used as columns for the new rows.',
 	},
-];
+] as INodeProperties[];

@@ -6,7 +6,7 @@ const resource = [
 	'user',
 ];
 
-export const userOperations: INodeProperties[] = [
+export const userOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -53,9 +53,9 @@ export const userOperations: INodeProperties[] = [
 		description: 'The operation to perform.',
 	},
 
-];
+] as INodeProperties[];
 
-export const userFields: INodeProperties[] = [
+export const userFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                user:getAll                                 */
@@ -501,4 +501,4 @@ export const userFields: INodeProperties[] = [
 		],
 	},
 
-];
+] as INodeProperties[];

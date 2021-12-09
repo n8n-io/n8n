@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const draftMessageSharedFields: INodeProperties[] = [
+export const draftMessageSharedFields = [
 
 	// Get & Get All operations
 	{
@@ -213,4 +213,4 @@ export const draftMessageSharedFields: INodeProperties[] = [
 		],
 	},
 
-];
+] as INodeProperties[];

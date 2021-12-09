@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const smsOperations: INodeProperties[] = [
+export const smsOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -22,9 +22,9 @@ export const smsOperations: INodeProperties[] = [
 		default: 'send',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const smsFields: INodeProperties[] = [
+export const smsFields = [
 
 /* -------------------------------------------------------------------------- */
 /*                                sms:send                                    */
@@ -85,4 +85,4 @@ export const smsFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const agentOperations: INodeProperties[] = [
+export const agentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const agentOperations: INodeProperties[] = [
 		default: 'launch',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const agentFields: INodeProperties[] = [
+export const agentFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 agent:delete                               */
@@ -448,4 +448,4 @@ export const agentFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

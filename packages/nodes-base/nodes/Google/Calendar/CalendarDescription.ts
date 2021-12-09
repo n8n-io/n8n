@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const calendarOperations: INodeProperties[] = [
+export const calendarOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const calendarOperations: INodeProperties[] = [
 		default: 'availability',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const calendarFields: INodeProperties[] = [
+export const calendarFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 calendar:availability                               */
 	/* -------------------------------------------------------------------------- */
@@ -138,4 +138,4 @@ export const calendarFields: INodeProperties[] = [
 	},
 
 
-];
+] as INodeProperties[];

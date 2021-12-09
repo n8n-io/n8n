@@ -6,7 +6,7 @@ import {
 	activeCampaignDefaultGetAllProperties,
 } from './GenericFunctions';
 
-export const connectionOperations: INodeProperties[] = [
+export const connectionOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -49,9 +49,9 @@ export const connectionOperations: INodeProperties[] = [
 		description: 'The operation to perform.',
 	},
 
-];
+] as INodeProperties[];
 
-export const connectionFields: INodeProperties[] = [
+export const connectionFields = [
 	// ----------------------------------
 	//         connection:create
 	// ----------------------------------
@@ -286,4 +286,4 @@ export const connectionFields: INodeProperties[] = [
 	// ----------------------------------
 	...activeCampaignDefaultGetAllProperties('connection', 'getAll'),
 
-];
+] as INodeProperties[];

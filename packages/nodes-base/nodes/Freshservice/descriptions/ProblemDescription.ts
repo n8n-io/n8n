@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const problemOperations: INodeProperties[] = [
+export const problemOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const problemOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
-export const problemFields: INodeProperties[] = [
+export const problemFields = [
 	// ----------------------------------------
 	//             problem: create
 	// ----------------------------------------
@@ -74,7 +74,9 @@ export const problemFields: INodeProperties[] = [
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsMethod: 'getRequesters',
+			loadOptionsMethod: [
+				'getRequesters',
+			],
 		},
 		displayOptions: {
 			show: {
@@ -128,7 +130,9 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the agent to whom the problem is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 			},
 			{
@@ -138,7 +142,9 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the department initiating the problem. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getDepartments',
+					loadOptionsMethod: [
+						'getDepartments',
+					],
 				},
 			},
 			{
@@ -155,7 +161,9 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the agent group to which the problem is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgentGroups',
+					loadOptionsMethod: [
+						'getAgentGroups',
+					],
 				},
 			},
 			{
@@ -358,7 +366,9 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the agent to whom the problem is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgents',
+					loadOptionsMethod: [
+						'getAgents',
+					],
 				},
 			},
 			{
@@ -368,7 +378,9 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the department initiating the problem. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getDepartments',
+					loadOptionsMethod: [
+						'getDepartments',
+					],
 				},
 			},
 			{
@@ -392,7 +404,9 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the agent group to which the problem is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getAgentGroups',
+					loadOptionsMethod: [
+						'getAgentGroups',
+					],
 				},
 			},
 			{
@@ -446,7 +460,9 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 				description: 'ID of the initiator of the problem. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: 'getRequesters',
+					loadOptionsMethod: [
+						'getRequesters',
+					],
 				},
 			},
 			{
@@ -477,4 +493,4 @@ export const problemFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

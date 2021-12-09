@@ -6,7 +6,7 @@ import {
 	getAccountFields,
 } from '../GenericFunctions';
 
-export const accountOperations: INodeProperties[] = [
+export const accountOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const accountOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const accountFields: INodeProperties[] = [
+export const accountFields = [
 	// ----------------------------------------
 	//             account:create
 	// ----------------------------------------
@@ -271,4 +271,4 @@ export const accountFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const journalEntryOperations: INodeProperties[] = [
+export const journalEntryOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const journalEntryOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
-export const journalEntryFields: INodeProperties[] = [
+export const journalEntryFields = [
 	// ----------------------------------------
 	//           journalEntry: create
 	// ----------------------------------------
@@ -234,4 +234,4 @@ export const journalEntryFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

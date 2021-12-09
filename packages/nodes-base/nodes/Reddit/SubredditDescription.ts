@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const subredditOperations: INodeProperties[] = [
+export const subredditOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const subredditOperations: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];
 
-export const subredditFields: INodeProperties[] = [
+export const subredditFields = [
 	// ----------------------------------
 	//         subreddit: get
 	// ----------------------------------
@@ -159,4 +159,4 @@ export const subredditFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];

@@ -6,7 +6,7 @@ import {
 	getSearchFilters,
 } from './GenericFunctions';
 
-export const orderOperations: INodeProperties[] = [
+export const orderOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const orderOperations: INodeProperties[] = [
 		default: 'cancel',
 		description: 'The operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const orderFields: INodeProperties[] = [
+export const orderFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                   order:cancel			                  */
@@ -120,4 +120,4 @@ export const orderFields: INodeProperties[] = [
 		'getOrderAttributes',
 	),
 
-];
+] as INodeProperties[];

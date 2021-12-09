@@ -1,10 +1,7 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
 import { capitalizeInitial } from '../GenericFunctions';
 import { CamelCaseResource } from '../types';
 
-export const billingAddress: INodeProperties = {
+export const billingAddress = {
 	displayName: 'Billing Address',
 	name: 'Billing_Address',
 	type: 'fixedCollection',
@@ -50,7 +47,7 @@ export const billingAddress: INodeProperties = {
 	],
 };
 
-export const shippingAddress: INodeProperties = {
+export const shippingAddress = {
 	displayName: 'Shipping Address',
 	name: 'Shipping_Address',
 	type: 'fixedCollection',
@@ -96,7 +93,7 @@ export const shippingAddress: INodeProperties = {
 	],
 };
 
-export const mailingAddress: INodeProperties = {
+export const mailingAddress = {
 	displayName: 'Mailing Address',
 	name: 'Mailing_Address',
 	type: 'fixedCollection',
@@ -142,7 +139,7 @@ export const mailingAddress: INodeProperties = {
 	],
 };
 
-export const otherAddress: INodeProperties = {
+export const otherAddress = {
 	displayName: 'Other Address',
 	name: 'Other_Address',
 	type: 'fixedCollection',
@@ -182,7 +179,7 @@ export const otherAddress: INodeProperties = {
 	],
 };
 
-export const address: INodeProperties = {
+export const address = {
 	displayName: 'Address',
 	name: 'Address',
 	type: 'fixedCollection',
@@ -248,7 +245,7 @@ export const address: INodeProperties = {
 // 	},
 // },
 
-export const productDetailsOptions: INodeProperties[] = [
+export const productDetailsOptions = [
 	{
 		displayName: 'List Price',
 		name: 'list_price',
@@ -314,7 +311,7 @@ export const productDetailsOptions: INodeProperties[] = [
 	},
 ];
 
-export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[] => {
+export const makeGetAllFields = (resource: CamelCaseResource) => {
 	const loadOptionsMethod = `get${capitalizeInitial(resource)}Fields`;
 
 	return [
@@ -446,7 +443,7 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 	];
 };
 
-export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource): INodeProperties => {
+export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource) => {
 	const loadOptionsMethod = `getCustom${capitalizeInitial(resource)}Fields`;
 
 	return {

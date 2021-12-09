@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 import { text } from 'express';
 
-export const userProfileOperations: INodeProperties[] = [
+export const userProfileOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -30,9 +30,9 @@ export const userProfileOperations: INodeProperties[] = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const userProfileFields: INodeProperties[] = [
+export const userProfileFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                userProfile:update                          */
@@ -181,4 +181,4 @@ export const userProfileFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

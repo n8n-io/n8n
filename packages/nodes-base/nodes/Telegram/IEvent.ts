@@ -1,17 +1,13 @@
-
-interface EventBody {
-	photo?: [
-		{
-			file_id: string,
-		},
-	];
-	document?: {
-		file_id: string;
-	};
-}
-
 export interface IEvent {
-	message?: EventBody;
-	channel_post?: EventBody;
+	message?: {
+		photo?: [
+			{
+				file_id: string,
+			},
+		],
+		document?: {
+			file_id: string;
+		},
+	};
 	download_link?: string;
 }

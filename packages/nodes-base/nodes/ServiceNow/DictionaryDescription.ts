@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const dictionaryOperations: INodeProperties[] = [
+export const dictionaryOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -22,9 +22,9 @@ export const dictionaryOperations: INodeProperties[] = [
 		],
 		default: 'getAll',
 	},
-];
+] as INodeProperties[];
 
-export const dictionaryFields: INodeProperties[] = [
+export const dictionaryFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                dictionary:getAll                           */
@@ -134,4 +134,4 @@ export const dictionaryFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

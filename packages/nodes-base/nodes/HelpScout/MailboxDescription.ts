@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const mailboxOperations: INodeProperties[] = [
+export const mailboxOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const mailboxOperations: INodeProperties[] = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const mailboxFields: INodeProperties[] = [
+export const mailboxFields = [
 
 /* -------------------------------------------------------------------------- */
 /*                                mailbox:get                                 */
@@ -94,4 +94,4 @@ export const mailboxFields: INodeProperties[] = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-];
+] as INodeProperties[];

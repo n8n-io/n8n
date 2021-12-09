@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const commitFields: INodeProperties[] = [
+export const commitFields = [
 	{
 		displayName: 'Message',
 		name: 'message',
@@ -41,4 +41,4 @@ export const commitFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

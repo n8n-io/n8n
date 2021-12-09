@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const templateOperations: INodeProperties[] = [
+export const templateOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const templateOperations: INodeProperties[] = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const templateFields: INodeProperties[] = [
+export const templateFields = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 template:get                               */
@@ -54,4 +54,4 @@ export const templateFields: INodeProperties[] = [
 		},
 		description: 'Unique identifier for the template.',
 	},
-];
+] as INodeProperties[];

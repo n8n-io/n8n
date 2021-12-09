@@ -7,7 +7,7 @@ import {
 	customerUpdateFields,
 } from './shared';
 
-export const customerOperations: INodeProperties[] = [
+export const customerOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -48,9 +48,9 @@ export const customerOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
-export const customerFields: INodeProperties[] = [
+export const customerFields = [
 	// ----------------------------------------
 	//             customer: create
 	// ----------------------------------------
@@ -251,4 +251,4 @@ export const customerFields: INodeProperties[] = [
 		},
 	},
 	customerUpdateFields,
-];
+] as INodeProperties[];

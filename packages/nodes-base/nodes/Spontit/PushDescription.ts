@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const pushOperations: INodeProperties[] = [
+export const pushOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const pushOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const pushFields: INodeProperties[] = [
+export const pushFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                push:create                                 */
 	/* -------------------------------------------------------------------------- */
@@ -152,4 +152,4 @@ export const pushFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

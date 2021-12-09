@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const summaryOperations: INodeProperties[] = [
+export const summaryOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const summaryOperations: INodeProperties[] = [
 		default: 'getSleep',
 		description: 'Operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const summaryFields: INodeProperties[] = [
+export const summaryFields = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -102,4 +102,4 @@ export const summaryFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

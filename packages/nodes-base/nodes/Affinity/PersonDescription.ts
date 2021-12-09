@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const personOperations: INodeProperties[] = [
+export const personOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const personOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const personFields: INodeProperties[] = [
+export const personFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                person:create                               */
@@ -369,4 +369,4 @@ export const personFields: INodeProperties[] = [
 		},
 		description: 'Unique identifier for the person.',
 	},
-];
+] as INodeProperties[];

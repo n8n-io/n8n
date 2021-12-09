@@ -4,7 +4,7 @@ import {
 
 import * as placeholders from './placeholders';
 
-export const indexOperations: INodeProperties[] = [
+export const indexOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const indexOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const indexFields: INodeProperties[] = [
+export const indexFields = [
 	// ----------------------------------------
 	//              index: create
 	// ----------------------------------------
@@ -319,4 +319,4 @@ export const indexFields: INodeProperties[] = [
 			},
 		},
 	},
-];
+] as INodeProperties[];

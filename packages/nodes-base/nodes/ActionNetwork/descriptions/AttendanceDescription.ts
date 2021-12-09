@@ -6,7 +6,7 @@ import {
 	makeSimpleField,
 } from './SharedFields';
 
-export const attendanceOperations: INodeProperties[] = [
+export const attendanceOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const attendanceOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-];
+] as INodeProperties[];
 
-export const attendanceFields: INodeProperties[] = [
+export const attendanceFields = [
 	// ----------------------------------------
 	//            attendance: create
 	// ----------------------------------------
@@ -182,4 +182,4 @@ export const attendanceFields: INodeProperties[] = [
 		},
 	},
 	makeSimpleField('attendance', 'getAll'),
-];
+] as INodeProperties[];

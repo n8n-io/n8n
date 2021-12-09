@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const userActivityOperations: INodeProperties[] = [
+export const userActivityOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const userActivityOperations: INodeProperties[] = [
 		default: 'search',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const userActivityFields: INodeProperties[] = [
+export const userActivityFields = [
 	{
 		displayName: 'View ID',
 		name: 'viewId',
@@ -157,4 +157,4 @@ export const userActivityFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

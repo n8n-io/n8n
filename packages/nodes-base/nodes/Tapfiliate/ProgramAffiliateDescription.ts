@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const programAffiliateOperations: INodeProperties[] = [
+export const programAffiliateOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const programAffiliateOperations: INodeProperties[] = [
 		default: 'add',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const programAffiliateFields: INodeProperties[] = [
+export const programAffiliateFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 programAffiliate:add                       */
 	/* -------------------------------------------------------------------------- */
@@ -75,7 +75,6 @@ export const programAffiliateFields: INodeProperties[] = [
 		displayName: 'Affiliate ID',
 		name: 'affiliateId',
 		type: 'string',
-		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -150,7 +149,6 @@ export const programAffiliateFields: INodeProperties[] = [
 		displayName: 'Affiliate ID',
 		name: 'affiliateId',
 		type: 'string',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -191,7 +189,6 @@ export const programAffiliateFields: INodeProperties[] = [
 		displayName: 'Affiliate ID',
 		name: 'affiliateId',
 		type: 'string',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -234,7 +231,6 @@ export const programAffiliateFields: INodeProperties[] = [
 		name: 'affiliateId',
 		type: 'string',
 		required: true,
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -360,4 +356,4 @@ export const programAffiliateFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

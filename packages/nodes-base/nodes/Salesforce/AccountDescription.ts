@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const accountOperations: INodeProperties[] = [
+export const accountOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -59,9 +59,9 @@ export const accountOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const accountFields: INodeProperties[] = [
+export const accountFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                account:create                              */
@@ -270,7 +270,7 @@ export const accountFields: INodeProperties[] = [
 			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
-				type: 'number',
+				type: 'integer',
 				default: '',
 				description: 'Number of employees',
 			},
@@ -304,7 +304,6 @@ export const accountFields: INodeProperties[] = [
 				displayName: 'SicDesc',
 				name: 'sicDesc',
 				type: 'string',
-				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -578,7 +577,7 @@ export const accountFields: INodeProperties[] = [
 			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
-				type: 'number',
+				type: 'integer',
 				default: '',
 				description: 'Number of employees',
 			},
@@ -593,7 +592,6 @@ export const accountFields: INodeProperties[] = [
 				displayName: 'SicDesc',
 				name: 'sicDesc',
 				type: 'string',
-				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -907,4 +905,4 @@ export const accountFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

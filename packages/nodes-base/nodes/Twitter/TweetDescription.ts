@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const tweetOperations: INodeProperties[] = [
+export const tweetOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const tweetOperations: INodeProperties[] = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const tweetFields: INodeProperties[] = [
+export const tweetFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                tweet:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -477,4 +477,4 @@ export const tweetFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];
