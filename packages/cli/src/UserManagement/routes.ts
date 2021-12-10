@@ -8,8 +8,8 @@ import { isEmailSetup } from './UserManagementHelper';
 
 import { authenticationRoutes } from './auth/routes';
 
-export function addRoutes(): void {
-	authenticationRoutes.apply(this);
+export async function addRoutes(): void {
+	await authenticationRoutes.apply(this);
 
 	// ----------------------------------------
 	// Create instance owner

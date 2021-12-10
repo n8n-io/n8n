@@ -1,17 +1,12 @@
 // @ts-nocheck
 
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { ExtractJwt, JwtFromRequestFunction, Strategy } from 'passport-jwt';
 import * as jwt from 'jsonwebtoken';
 
 import { Db } from '../..';
 import config = require('../../../config');
 
-const options = {
-	jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-	secretOrKey: 'abc', //config.get('jwt_key'),
-};
-
-export function useJwt(passport) {
+export async function useJwt(passport, options: JwtOptions): Promise<void> {
 	// The JWT payload is passed into the verify callback
 	passport.use(
 		new Strategy(options, async function (jwt_payload, done) {
@@ -31,7 +26,7 @@ export function useJwt(passport) {
 	);
 }
 
-export function issueJWT(user) {
+export function issueJWT(user, options: JwtOptions) {
 	const { id, email } = user;
 	const expiresIn = 14 * 86400000; // 14 days
 
@@ -50,3 +45,8 @@ export function issueJWT(user) {
 		validTill: Date.now() + expiresIn,
 	};
 }
+
+declare type JwtOptions = {
+	secretOrKey: string;
+	jwtFromRequest: JwtFromRequestFunction;
+};

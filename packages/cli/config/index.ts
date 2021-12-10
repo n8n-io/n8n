@@ -547,6 +547,12 @@ const config = convict({
 			default: false,
 			env: 'N8N_USER_MANAGEMENT_ENABLED',
 		},
+		jwtSecret: {
+			doc: 'Set a specific JWT secret (optional - n8n can generate one)',
+			format: String,
+			default: '',
+			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
+		},
 		emails: {
 			mode: {
 				doc: 'How to send emails',
