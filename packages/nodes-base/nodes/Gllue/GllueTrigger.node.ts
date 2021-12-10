@@ -10,17 +10,6 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-/*
-import {
-	autofriendApiRequest,
-} from './GenericFunctions';
-
-import {
-	snakeCase,
-} from 'change-case';
-*/
-
-
 export class GllueTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gllue Trigger',
@@ -29,7 +18,7 @@ export class GllueTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["event"]}}',
-		description: 'Handle Autofriend 123 a new version events via webhooks',
+		description: 'Handle Gllue events via webhooks',
 		defaults: {
 			name: 'Gllue Trigger',
 			color: '#6ad7b9',
@@ -47,7 +36,7 @@ export class GllueTrigger implements INodeType {
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
-				path: 'webhook',
+				path: 'gllue',
 			},
 		],
 		properties: [{
@@ -58,41 +47,37 @@ export class GllueTrigger implements INodeType {
 			default: '',
 			options: [
 				{
-					name: 'Contact Added',
-					value: 'contactAdded',
-				},
-				{
-					name: 'Contact Added To List',
-					value: 'contactAddedToList',
-				},
-				{
-					name: 'Contact Entered Segment',
-					value: 'contactEnteredSegment',
-				},
-				{
-					name: 'Contact Left Segment',
-					value: 'contactLeftSegment',
-				},
-				{
-					name: 'Contact Removed From List',
-					value: 'contactRemovedFromList',
-				},
-				{
-					name: 'Contact Unsubscribed',
-					value: 'contactUnsubscribed',
-				},
-				{
-					name: 'Contact Updated',
-					value: 'contactUpdated',
+					name: 'Candidate Added/Updated',
+					value: 'candidateAddedOrUpdated',
 				},
 			],
 		},
 		],
 	};
 
+	// @ts-ignore
+	webhookMethods = {
+		default: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+			async create(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+			async delete(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+		},
+	};
+
+
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const req = this.getRequestObject();
 		return {
-			workflowData: [],
+			workflowData: [
+				this.helpers.returnJsonArray(req.body),
+			],
 		};
+
 	}
 }
