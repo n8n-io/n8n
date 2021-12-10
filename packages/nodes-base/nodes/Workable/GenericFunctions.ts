@@ -29,7 +29,6 @@ export async function workableApiRequest(this: IHookFunctions | IExecuteFunction
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
-	console.log(options);
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
