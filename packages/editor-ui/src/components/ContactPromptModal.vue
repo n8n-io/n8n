@@ -68,7 +68,7 @@ export default mixins(workflowHelpers).extend({
 				return this.promptsData.message;
 			}
 
-			return 'Your experience with n8n can help us improve - for you and our entire community.';
+			return 'Your experience with n8n can help us improve — for you and our entire community.';
 		},
 		isEmailValid(): boolean {
 			return VALID_EMAIL_REGEX.test(String(this.email).toLowerCase());
