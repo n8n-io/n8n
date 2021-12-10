@@ -1,21 +1,24 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import { IBinaryData } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
 
 import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 
 const PREFIX_METAFILE = 'binarymeta-';
-const PREFIX_FILE_ID = 'filesystem-';
 
 export class BinaryDataFileSystem implements IBinaryDataManager {
-	private storagePath = '';
+	private storagePath: string;
 
-	private binaryDataTTL = 60;
+	private binaryDataTTL: number;
 
-	async init(config: IBinaryDataConfig, startPurger = false): Promise<void> {
+	fileIdPrefix: string;
+
+	constructor(config: IBinaryDataConfig) {
 		this.storagePath = config.localStoragePath;
 		this.binaryDataTTL = config.binaryDataTTL;
+		this.fileIdPrefix = config.mode;
+	}
+
+	async init(startPurger = false): Promise<void> {
 		if (startPurger) {
 			setInterval(async () => {
 				// get all files and delete data
@@ -32,11 +35,8 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 			.then(() => {});
 	}
 
-	async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer): Promise<IBinaryData> {
-		const retBinaryData = binaryData;
-		retBinaryData.id = this.generateFileName();
-
-		return this.saveToLocalStorage(binaryBuffer, retBinaryData.id).then(() => retBinaryData);
+	async storeBinaryData(binaryBuffer: Buffer, binaryDataId: string): Promise<void> {
+		return this.saveToLocalStorage(binaryBuffer, binaryDataId);
 	}
 
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
@@ -75,19 +75,18 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		return Promise.all(proms);
 	}
 
-	async duplicateBinaryDataByIdentifier(identifier: string): Promise<string> {
-		const newIdentifier = this.generateFileName();
-		return fs
-			.copyFile(path.join(this.storagePath, identifier), path.join(this.storagePath, newIdentifier))
-			.then(async () => Promise.resolve(newIdentifier));
+	async duplicateBinaryDataByIdentifier(
+		binaryDataId: string,
+		newBinaryDataId: string,
+	): Promise<void> {
+		return fs.copyFile(
+			path.join(this.storagePath, binaryDataId),
+			path.join(this.storagePath, newBinaryDataId),
+		);
 	}
 
 	private getBinaryDataMetaPath() {
 		return path.join(this.storagePath, 'meta');
-	}
-
-	private generateFileName(): string {
-		return PREFIX_FILE_ID + uuid();
 	}
 
 	private async deleteMarkedFilesByMetaFile(metaFilename: string): Promise<unknown> {

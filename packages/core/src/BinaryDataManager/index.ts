@@ -1,4 +1,5 @@
 import { parse } from 'flatted';
+import { v4 as uuid } from 'uuid';
 import {
 	IBinaryData,
 	INodeExecutionData,
@@ -14,18 +15,30 @@ import { BinaryDataFileSystem } from './FileSystem';
 export class BinaryDataManager {
 	private static instance: BinaryDataManager;
 
-	private manager?: IBinaryDataManager;
+	private managers: {
+		[key: string]: IBinaryDataManager;
+	};
+
+	private binaryDataMode: string;
+
+	private availableModes: string[];
+
+	constructor(config: IBinaryDataConfig) {
+		this.binaryDataMode = config.mode;
+		this.availableModes = config.availableModes.split(',');
+		this.managers = {};
+	}
 
 	static async init(config: IBinaryDataConfig, mainManager = false): Promise<void> {
 		if (BinaryDataManager.instance) {
 			throw new Error('Binary Data Manager already initialized');
 		}
 
-		BinaryDataManager.instance = new BinaryDataManager();
+		BinaryDataManager.instance = new BinaryDataManager(config);
 
-		if (config.mode === 'filesystem') {
-			BinaryDataManager.instance.manager = new BinaryDataFileSystem();
-			await BinaryDataManager.instance.manager.init(config, mainManager);
+		if (BinaryDataManager.instance.availableModes.includes('filesystem')) {
+			BinaryDataManager.instance.managers.filesystem = new BinaryDataFileSystem(config);
+			await BinaryDataManager.instance.managers.filesystem.init(mainManager);
 		}
 
 		return undefined;
@@ -40,21 +53,24 @@ export class BinaryDataManager {
 	}
 
 	async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer): Promise<IBinaryData> {
-		if (this.manager) {
-			return this.manager.storeBinaryData(binaryData, binaryBuffer);
+		const retBinaryData = binaryData;
+
+		if (this.managers[this.binaryDataMode]) {
+			const binaryDataId = this.generateFileName();
+			return this.managers[this.binaryDataMode]
+				.storeBinaryData(binaryBuffer, binaryDataId)
+				.then(() => {
+					retBinaryData.id = binaryDataId;
+					return retBinaryData;
+				});
 		}
 
-		const retBinaryData = binaryData;
 		retBinaryData.data = binaryBuffer.toString(BINARY_ENCODING);
 		return binaryData;
 	}
 
 	async retrieveBinaryData(binaryData: IBinaryData): Promise<Buffer> {
-		if (this.manager) {
-			if (!binaryData.id) {
-				throw new Error('Binary data is missing identifier');
-			}
-
+		if (binaryData.id) {
 			return this.retrieveBinaryDataByIdentifier(binaryData.id);
 		}
 
@@ -62,25 +78,25 @@ export class BinaryDataManager {
 	}
 
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
-		if (this.manager) {
-			return this.manager.retrieveBinaryDataByIdentifier(identifier);
+		const binaryMode = this.getBinaryModeFromFileId(identifier);
+		if (this.managers[binaryMode]) {
+			return this.managers[binaryMode].retrieveBinaryDataByIdentifier(identifier);
 		}
 
-		throw new Error('Binary data storage mode is set to default');
+		throw new Error('Storage mode used to store binary data not available');
 	}
 
 	async findAndMarkDataForDeletionFromFullRunData(fullRunData: IRun): Promise<void> {
-		const identifiers = this.findBinaryDataFromRunData(fullRunData.data.resultData.runData);
-		return this.markDataForDeletion(identifiers);
-	}
+		if (this.managers[this.binaryDataMode]) {
+			const identifiers = this.findBinaryDataFromRunData(fullRunData.data.resultData.runData);
+			return this.markDataForDeletion(identifiers);
+		}
 
-	findAndMarkDataForDeletion(fullExecutionDataList: IExecutionFlattedDb[]): void {
-		const identifiers = this.findBinaryData(fullExecutionDataList);
-		void this.markDataForDeletion(identifiers);
+		return Promise.resolve();
 	}
 
 	async findAndDeleteBinaryData(fullExecutionDataList: IExecutionFlattedDb[]): Promise<unknown> {
-		if (this.manager) {
+		if (this.availableModes.length > 0) {
 			const allIdentifiers: string[] = [];
 
 			fullExecutionDataList.forEach((fullExecutionData) => {
@@ -90,34 +106,58 @@ export class BinaryDataManager {
 			});
 
 			return Promise.all(
-				allIdentifiers.map(async (identifier) =>
-					this.manager?.deleteBinaryDataByIdentifier(identifier),
-				),
+				allIdentifiers.map(async (identifier) => this.deleteBinaryDataByIdentifier(identifier)),
 			);
 		}
 
 		return Promise.resolve();
 	}
 
+	private async deleteBinaryDataByIdentifier(identifier: string): Promise<void> {
+		const binaryMode = this.getBinaryModeFromFileId(identifier);
+		if (this.managers[binaryMode]) {
+			return this.managers[binaryMode].deleteBinaryDataByIdentifier(identifier);
+		}
+
+		return Promise.resolve();
+	}
+
+	private generateFileName(): string {
+		if (this.managers[this.binaryDataMode]) {
+			return `${this.managers[this.binaryDataMode].fileIdPrefix}:${uuid()}`;
+		}
+
+		return uuid();
+	}
+
+	private getBinaryModeFromFileId(fileId: string): string {
+		return fileId.split(':')[0];
+	}
+
 	private async duplicateBinaryDataInExecData(
 		executionData: INodeExecutionData,
 	): Promise<INodeExecutionData> {
-		if (this.manager && executionData.binary) {
+		const binaryManager = this.managers[this.binaryDataMode];
+
+		if (executionData.binary) {
 			const binaryDataKeys = Object.keys(executionData.binary);
 			const bdPromises = binaryDataKeys.map(async (key: string) => {
 				if (!executionData.binary) {
 					return { key, newId: undefined };
 				}
 
-				const identifier = executionData.binary[key].id;
-				if (!identifier) {
+				const binaryDataId = executionData.binary[key].id;
+				if (!binaryDataId) {
 					return { key, newId: undefined };
 				}
 
-				return this.manager?.duplicateBinaryDataByIdentifier(identifier).then((newId) => ({
-					newId,
-					key,
-				}));
+				const newBinaryDataId = this.generateFileName();
+				return binaryManager
+					?.duplicateBinaryDataByIdentifier(binaryDataId, newBinaryDataId)
+					.then(() => ({
+						newId: newBinaryDataId,
+						key,
+					}));
 			});
 
 			return Promise.all(bdPromises).then((b) => {
@@ -137,7 +177,7 @@ export class BinaryDataManager {
 	async duplicateBinaryData(
 		inputData: Array<INodeExecutionData[] | null> | unknown,
 	): Promise<INodeExecutionData[][]> {
-		if (inputData && this.manager) {
+		if (inputData && this.managers[this.binaryDataMode]) {
 			const returnInputData = (inputData as INodeExecutionData[][]).map(
 				async (executionDataArray) => {
 					if (executionDataArray) {
@@ -163,21 +203,11 @@ export class BinaryDataManager {
 	}
 
 	private async markDataForDeletion(identifiers: string[]): Promise<void> {
-		if (this.manager) {
-			return this.manager.markDataForDeletion(identifiers);
+		if (this.managers[this.binaryDataMode]) {
+			return this.managers[this.binaryDataMode].markDataForDeletion(identifiers);
 		}
 
 		return Promise.resolve();
-	}
-
-	private findBinaryData(fullExecutionDataList: IExecutionFlattedDb[]): string[] {
-		const allIdentifiers: string[] = [];
-		fullExecutionDataList.forEach((fullExecutionData) => {
-			const { runData } = (parse(fullExecutionData.data) as IRunExecutionData).resultData;
-			allIdentifiers.push(...this.findBinaryDataFromRunData(runData));
-		});
-
-		return allIdentifiers;
 	}
 
 	private findBinaryDataFromRunData(runData: IRunData): string[] {
