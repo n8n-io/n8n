@@ -11,7 +11,7 @@ export default Vue.extend({
 	props: {
 		label: {
 			type: String,
-		}
+		},
 	},
 });
 </script>
@@ -29,20 +29,20 @@ export default Vue.extend({
 
 	@media (max-width: $--breakpoint-xs) {
 		width: 20px;
-	  height: 20px;
+		height: 20px;
 	}
 
 	&:hover {
 		.text {
-			color: var(--color-primary)!important;
+			color: var(--color-primary) !important;
 		}
 	}
 }
 
 .text {
-  font-size: var(--font-size-s);
-  font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-s);
+	font-weight: var(--font-weight-bold);
 	line-height: var(--font-line-height-loose);
-  color: var(--color-background-dark);
+	color: var(--color-background-dark);
 }
 </style>

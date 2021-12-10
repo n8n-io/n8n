@@ -18,7 +18,10 @@
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
-							<n8n-square-button :label="(value - 1).toString()" @click="selectSurveyValue((value - 1).toString())" />
+							<n8n-square-button
+								:label="(value - 1).toString()"
+								@click="selectSurveyValue((value - 1).toString())"
+							/>
 						</div>
 					</div>
 					<div :class="$style.text">
@@ -27,10 +30,7 @@
 					</div>
 				</div>
 				<div v-else :class="$style.email">
-					<div
-						:class="$style.input"
-						@keyup.enter="send"
-					>
+					<div :class="$style.input" @keyup.enter="send">
 						<n8n-input
 							v-model="form.email"
 							placeholder="Your email address"
@@ -118,41 +118,44 @@ export default mixins(workflowHelpers).extend({
 		selectSurveyValue(value: string) {
 			this.form.value = value;
 			this.showButtons = false;
-			this.$store.dispatch('settings/submitValueSurvey', { value: this.form.value }).then((response: IN8nPromptResponse) => {
-				if (response.updated) {
-					this.$telemetry.track('User responded value survey score', {
-						instance_id: this.$store.getters.instanceId,
-						nps: this.form.value,
-					});
-				}
-			});
-
+			this.$store
+				.dispatch('settings/submitValueSurvey', { value: this.form.value })
+				.then((response: IN8nPromptResponse) => {
+					if (response.updated) {
+						this.$telemetry.track('User responded value survey score', {
+							instance_id: this.$store.getters.instanceId,
+							nps: this.form.value,
+						});
+					}
+				});
 		},
 		send(): void {
 			if (this.isEmailValid) {
-				this.$store.dispatch('settings/submitValueSurvey', {
-					email: this.form.email,
-					value: this.form.value,
-				}).then((response: IN8nPromptResponse) => {
-					if (response.updated) {
-						this.$telemetry.track('User responded value survey email', {
-							instance_id: this.$store.getters.instanceId,
-							email: this.form.email,
-						});
-						this.$showMessage({
-							title: 'Thanks for your feedback',
-							message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
-							type: 'success',
-							duration: 15000,
-						});
-					}
-					setTimeout(() => {
-						this.form.value = '';
-						this.form.email = '';
-						this.showButtons = true;
-					}, 1000);
-					this.$store.commit('ui/closeTopModal');
-				});
+				this.$store
+					.dispatch('settings/submitValueSurvey', {
+						email: this.form.email,
+						value: this.form.value,
+					})
+					.then((response: IN8nPromptResponse) => {
+						if (response.updated) {
+							this.$telemetry.track('User responded value survey email', {
+								instance_id: this.$store.getters.instanceId,
+								email: this.form.email,
+							});
+							this.$showMessage({
+								title: 'Thanks for your feedback',
+								message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
+								type: 'success',
+								duration: 15000,
+							});
+						}
+						setTimeout(() => {
+							this.form.value = '';
+							this.form.email = '';
+							this.showButtons = true;
+						}, 1000);
+						this.$store.commit('ui/closeTopModal');
+					});
 			}
 		},
 	},
@@ -232,7 +235,7 @@ export default mixins(workflowHelpers).extend({
 <style lang="scss">
 .value-survey {
 	height: 120px;
-  top: auto;
+	top: auto;
 
 	@media (max-width: $--breakpoint-xs) {
 		height: 180px;
@@ -242,7 +245,7 @@ export default mixins(workflowHelpers).extend({
 		background: var(--color-background-dark);
 
 		@media (max-width: $--breakpoint-xs) {
-			height: 180px!important;
+			height: 180px !important;
 		}
 
 		&__header {
