@@ -34,6 +34,7 @@
 						<n8n-input
 							v-model="form.email"
 							placeholder="Your email address"
+							size="medium"
 							@input="onInputChange"
 						/>
 						<div :class="$style.button">
@@ -194,11 +195,6 @@ export default mixins(workflowHelpers).extend({
 		.input {
 			display: flex;
 			align-items: center;
-
-			input {
-				width: 290px;
-				height: 36px;
-			}
 
 			.button {
 				margin-left: 10px;
