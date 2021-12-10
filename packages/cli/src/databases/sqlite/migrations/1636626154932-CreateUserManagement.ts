@@ -35,6 +35,16 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 			INSERT INTO role (name, scope)
 			VALUES ("member", "global");
 		`);
+
+		await queryRunner.query(`
+			INSERT INTO role (name, scope)
+			VALUES ("owner", "workflow");
+		`);
+
+		await queryRunner.query(`
+			INSERT INTO role (name, scope)
+			VALUES ("owner", "credential");
+		`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {

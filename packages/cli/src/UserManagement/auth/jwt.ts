@@ -16,10 +16,13 @@ export function useJwt(passport) {
 	passport.use(
 		new Strategy(options, async function (jwt_payload, done) {
 			// We will assign the `sub` property on the JWT to the database ID of user
-			const user = await Db.collections.User.findOne({
-				id: jwt_payload.id,
-				email: jwt_payload.email,
-			});
+			const user = await Db.collections.User.findOne(
+				{
+					id: jwt_payload.id,
+					email: jwt_payload.email,
+				},
+				{ relations: ['globalRole'] },
+			);
 			if (!user) {
 				return done(null, false, { message: 'User not found' });
 			}
