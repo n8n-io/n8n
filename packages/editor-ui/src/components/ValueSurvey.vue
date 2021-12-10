@@ -141,6 +141,10 @@ export default mixins(workflowHelpers).extend({
 							duration: 15000,
 						});
 					}
+					setTimeout(() => {
+						this.form.value = '';
+						this.showButtons = true;
+					}, 1000);
 					this.$store.commit('ui/closeTopModal');
 				});
 			}

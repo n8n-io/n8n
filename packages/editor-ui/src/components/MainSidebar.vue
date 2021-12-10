@@ -425,10 +425,8 @@ export default mixins(
 
 					saveAs(blob, workflowName + '.json');
 				} else if (key === 'workflow-save') {
-					const saved = await this.saveCurrentWorkflow(undefined);
-					if (saved) {
-						this.$store.dispatch('settings/fetchPromptsData');
-					}
+					const saved = await this.saveCurrentWorkflow();
+					if (saved) this.$store.dispatch('settings/fetchPromptsData');
 				} else if (key === 'workflow-duplicate') {
 					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
 				} else if (key === 'help-about') {
