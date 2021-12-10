@@ -193,6 +193,7 @@ export default mixins(workflowHelpers).extend({
 	.email {
 		.input {
 			display: flex;
+			align-items: center;
 
 			input {
 				width: 290px;
