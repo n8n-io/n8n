@@ -2896,7 +2896,14 @@ export async function start(): Promise<void> {
 			deploymentType: config.get('deployment.type'),
 		};
 
-		void InternalHooksManager.getInstance().onServerStarted(diagnosticInfo);
+		void Db.collections
+			.Workflow!.findOne({
+				select: ['createdAt'],
+				order: { createdAt: 'ASC' },
+			})
+			.then(async (workflow) =>
+				InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
+			);
 	});
 }
 
