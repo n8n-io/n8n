@@ -45,6 +45,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 			coding_skill: answers.codingSkill,
 			work_area: answers.workArea,
 			other_work_area: answers.otherWorkArea,
+			company_industry: answers.companyIndustry,
+			other_company_industry: answers.otherCompanyIndustry,
 		});
 	}
 

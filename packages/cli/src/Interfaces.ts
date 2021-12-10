@@ -406,10 +406,12 @@ export interface IN8nUISettings {
 }
 
 export interface IPersonalizationSurveyAnswers {
-	companySize: string | null;
 	codingSkill: string | null;
-	workArea: string | null;
+	companyIndustry: string[];
+	companySize: string | null;
+	otherCompanyIndustry: string | null;
 	otherWorkArea: string | null;
+	workArea: string[] | string | null;
 }
 
 export interface IPersonalizationSurvey {
