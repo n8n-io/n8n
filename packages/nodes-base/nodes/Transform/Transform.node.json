@@ -19,16 +19,17 @@
 		"decode",
 		"encode",
 		"html",
+		"json",
 		"lowercase",
-		"map",
 		"replace",
 		"reverse",
 		"search",
-		"strip",
 		"split",
-		"trim",
-		"uppercase",
+		"strip",
 		"titlecase",
+		"trim",
+		"truncate",
+		"uppercase",
 		"url"
 	]
 }

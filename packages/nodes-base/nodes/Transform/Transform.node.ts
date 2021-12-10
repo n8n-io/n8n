@@ -71,6 +71,11 @@ export class Transform implements INodeType {
 						value: 'trim',
 					},
 					{
+						name: 'Truncate',
+						description: 'Truncate a string to a given length',
+						value: 'truncate',
+					},
+					{
 						name: 'Replace',
 						description: 'Search and replace a value in a string',
 						value: 'replace',
@@ -226,6 +231,26 @@ export class Transform implements INodeType {
 				description: 'Treate the search and replace string as regular expressions',
 			},
 			// ----------------------------------
+			// Truncate
+			// ----------------------------------
+			{
+				displayName: 'Max Length',
+				name: 'maxLength',
+				displayOptions: {
+					show: {
+						action: [
+							'truncate',
+						],
+					},
+				},
+				type: 'number',
+				default: 24,
+				typeOptions: {
+					minValue: 1,
+				},
+				description: 'The length to truncate the string to',
+			},
+			// ----------------------------------
 			// Split
 			// ----------------------------------
 			{
@@ -298,6 +323,9 @@ export class Transform implements INodeType {
 						},
 						type: 'number',
 						default: -1,
+						typeOptions: {
+							minValue: -1,
+						},
 						description: 'The length to truncate results to',
 					},
 				],
@@ -398,6 +426,9 @@ export class Transform implements INodeType {
 					} else {
 						newValue = value.trim();
 					}
+				} else if (action === 'truncate') {
+					const maxLength = this.getNodeParameter('maxLength', i) as number;
+					newValue = value.substring(0, maxLength);
 				} else if (action === 'replace') {
 					const search = this.getNodeParameter('search', i) as string;
 					const replace = this.getNodeParameter('replace', i) as string;
