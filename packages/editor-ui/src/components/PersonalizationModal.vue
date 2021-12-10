@@ -10,7 +10,6 @@
 		:closeOnPressEscape="false"
 		width="460px"
 		@enter="save"
-		@input="onInput"
 	>
 		<template v-slot:content>
 			<div v-if="submitted" :class="$style.submittedContainer">
@@ -19,7 +18,7 @@
 			</div>
 			<div :class="$style.container" v-else>
 				<n8n-input-label label="How are your coding skills?">
-					<n8n-select :value="values[CODING_SKILL_KEY]" placeholder="Select..." @change="(value) => onInput(CODING_SKILL_KEY, value)">
+					<n8n-select :value="values[CODING_SKILL_KEY]" placeholder="Select..." @change="(value) => values[CODING_SKILL_KEY] = value">
 						<n8n-option
 							label="0. Never coded"
 							value="0"
@@ -48,7 +47,7 @@
 				</n8n-input-label>
 
 				<n8n-input-label label="Which areas do you mainly work in?">
-					<n8n-select :value="values[WORK_AREA_KEY]" multiple placeholder="Select..." @change="(value) => onInput(WORK_AREA_KEY, value)">
+					<n8n-select :value="values[WORK_AREA_KEY]" multiple placeholder="Select..." @change="(value) => onMultiInput(WORK_AREA_KEY, value)">
 						<n8n-option :value="FINANCE_WORK_AREA" label="Finance" />
 						<n8n-option :value="HR_WORK_AREA" label="HR" />
 						<n8n-option :value="IT_ENGINEERING_WORK_AREA" label="IT / Engineering" />
@@ -68,12 +67,12 @@
 					v-if="otherWorkAreaFieldVisible"
 					:value="values[OTHER_WORK_AREA_KEY]"
 					placeholder="Specify your work area"
-					@input="(value) => onInput(OTHER_WORK_AREA_KEY, value)"
+					@input="(value) => values[OTHER_WORK_AREA_KEY] = value"
 				/>
 
 				<section v-if="showAllIndustryQuestions">
 					<n8n-input-label label="Which industries is your company in?">
-					<n8n-select :value="values[COMPANY_INDUSTRY_KEY]" multiple placeholder="Select..." @change="(value) => onInput(COMPANY_INDUSTRY_KEY, value)">
+					<n8n-select :value="values[COMPANY_INDUSTRY_KEY]" multiple placeholder="Select..." @change="(value) => onMultiInput(COMPANY_INDUSTRY_KEY, value)">
 						<n8n-option :value="E_COMMERCE_INDUSTRY" label="eCommerce" />
 						<n8n-option :value="AUTOMATION_CONSULTING_INDUSTRY" label="Automation consulting" />
 						<n8n-option :value="SYSTEM_INTEGRATION_INDUSTRY" label="Systems integration" />
@@ -90,12 +89,12 @@
 					v-if="otherCompanyIndustryFieldVisible"
 					:value="values[OTHER_COMPANY_INDUSTRY_KEY]"
 					placeholder="Specify your company's industry"
-					@input="(value) => onInput(OTHER_COMPANY_INDUSTRY_KEY, value)"
+					@input="(value) => values[OTHER_COMPANY_INDUSTRY_KEY] = value"
 				/>
 
 
 				<n8n-input-label label="How big is your company?">
-					<n8n-select :value="values[COMPANY_SIZE_KEY]" placeholder="Select..." @change="(value) => onInput(COMPANY_SIZE_KEY, value)">
+					<n8n-select :value="values[COMPANY_SIZE_KEY]" placeholder="Select..." @change="(value) => values[COMPANY_SIZE_KEY] = value">
 						<n8n-option
 							label="Less than 20 people"
 							:value="COMPANY_SIZE_20_OR_LESS"
@@ -196,11 +195,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 			showAllIndustryQuestions: true,
 			modalBus: new Vue(),
 			values: {
-				[WORK_AREA_KEY]: null,
+				[WORK_AREA_KEY]: [],
 				[COMPANY_SIZE_KEY]: null,
 				[CODING_SKILL_KEY]: null,
 				[OTHER_WORK_AREA_KEY]: null,
-				[COMPANY_INDUSTRY_KEY]: null,
+				[COMPANY_INDUSTRY_KEY]: [],
 				[OTHER_COMPANY_INDUSTRY_KEY]: null,
 			} as IPersonalizationSurveyAnswers,
 			FINANCE_WORK_AREA,
@@ -249,28 +248,19 @@ export default mixins(showMessage, workflowHelpers).extend({
 		closeDialog() {
 			this.modalBus.$emit('close');
 		},
-		onInput(name: IPersonalizationSurveyKeys, value: string) {
-			if (name === WORK_AREA_KEY && value.includes(OTHER_WORK_AREA_OPTION)) {
-				this.otherWorkAreaFieldVisible = true;
+		onMultiInput(name: IPersonalizationSurveyKeys, value: string[]) {
+			if (name === WORK_AREA_KEY) {
+				this.otherWorkAreaFieldVisible = value.includes(OTHER_WORK_AREA_OPTION);
+				this.showAllIndustryQuestions = !value.includes(NOT_APPLICABLE_WORK_AREA);
+				this.values[OTHER_WORK_AREA_KEY] = value.includes(OTHER_WORK_AREA_OPTION) ? this.values[OTHER_WORK_AREA_KEY] : null;
+				this.values[WORK_AREA_KEY] = value;
 			}
-			else if (name === WORK_AREA_KEY && value.includes(NOT_APPLICABLE_WORK_AREA)) {
-				this.showAllIndustryQuestions = false;
-			}
-			else if (name === WORK_AREA_KEY) {
-				this.otherWorkAreaFieldVisible = false;
-				this.showAllIndustryQuestions = true;
-				this.values[OTHER_WORK_AREA_KEY] = null;
-			}
-
-			if (name === COMPANY_INDUSTRY_KEY && value.includes(OTHER_INDUSTRY_OPTION)) {
-				this.otherCompanyIndustryFieldVisible = true;
-			}
-			else if (name === COMPANY_INDUSTRY_KEY) {
-				this.otherCompanyIndustryFieldVisible = false;
-				this.values[OTHER_COMPANY_INDUSTRY_KEY] = null;
+			if (name === COMPANY_INDUSTRY_KEY) {
+				this.otherCompanyIndustryFieldVisible = value.includes(OTHER_INDUSTRY_OPTION);
+				this.values[OTHER_COMPANY_INDUSTRY_KEY] = value.includes(OTHER_INDUSTRY_OPTION) ? this.values[OTHER_COMPANY_INDUSTRY_KEY] : null;
+				this.values[COMPANY_INDUSTRY_KEY] = value;
 			}
 
-			this.values[name] = value;
 		},
 		async save(): Promise<void> {
 			this.$data.isSaving = true;
