@@ -20,7 +20,6 @@ export async function figmaApiRequest(this: IHookFunctions | IExecuteFunctions |
 	let options: OptionsWithUri = {
 		headers: { 'X-FIGMA-TOKEN': credentials.accessToken },
 		method,
-		//qs,
 		body,
 		uri: uri || `https://api.figma.com${resource}`,
 		json: true,
@@ -29,7 +28,6 @@ export async function figmaApiRequest(this: IHookFunctions | IExecuteFunctions |
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
-	console.log(options);
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
