@@ -1,5 +1,5 @@
 import { parse } from 'flatted';
-import { v4 as uuid } from 'uuid';
+// import { v4 as uuid } from 'uuid';
 import {
 	IBinaryData,
 	INodeExecutionData,
@@ -56,13 +56,10 @@ export class BinaryDataManager {
 		const retBinaryData = binaryData;
 
 		if (this.managers[this.binaryDataMode]) {
-			const binaryDataId = this.generateFileName();
-			return this.managers[this.binaryDataMode]
-				.storeBinaryData(binaryBuffer, binaryDataId)
-				.then(() => {
-					retBinaryData.id = binaryDataId;
-					return retBinaryData;
-				});
+			return this.managers[this.binaryDataMode].storeBinaryData(binaryBuffer).then((filename) => {
+				retBinaryData.id = this.generateBinaryId(filename);
+				return retBinaryData;
+			});
 		}
 
 		retBinaryData.data = binaryBuffer.toString(BINARY_ENCODING);
@@ -78,9 +75,9 @@ export class BinaryDataManager {
 	}
 
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
-		const binaryMode = this.getBinaryModeFromFileId(identifier);
-		if (this.managers[binaryMode]) {
-			return this.managers[binaryMode].retrieveBinaryDataByIdentifier(identifier);
+		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		if (this.managers[mode]) {
+			return this.managers[mode].retrieveBinaryDataByIdentifier(id);
 		}
 
 		throw new Error('Storage mode used to store binary data not available');
@@ -114,24 +111,21 @@ export class BinaryDataManager {
 	}
 
 	private async deleteBinaryDataByIdentifier(identifier: string): Promise<void> {
-		const binaryMode = this.getBinaryModeFromFileId(identifier);
-		if (this.managers[binaryMode]) {
-			return this.managers[binaryMode].deleteBinaryDataByIdentifier(identifier);
+		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		if (this.managers[mode]) {
+			return this.managers[mode].deleteBinaryDataByIdentifier(id);
 		}
 
 		return Promise.resolve();
 	}
 
-	private generateFileName(): string {
-		if (this.managers[this.binaryDataMode]) {
-			return `${this.managers[this.binaryDataMode].fileIdPrefix}:${uuid()}`;
-		}
-
-		return uuid();
+	private generateBinaryId(filename: string) {
+		return `${this.binaryDataMode}:${filename}`;
 	}
 
-	private getBinaryModeFromFileId(fileId: string): string {
-		return fileId.split(':')[0];
+	private splitBinaryModeFileId(fileId: string): { mode: string; id: string } {
+		const [mode, id] = fileId.split(':');
+		return { mode, id };
 	}
 
 	private async duplicateBinaryDataInExecData(
@@ -151,11 +145,10 @@ export class BinaryDataManager {
 					return { key, newId: undefined };
 				}
 
-				const newBinaryDataId = this.generateFileName();
 				return binaryManager
-					?.duplicateBinaryDataByIdentifier(binaryDataId, newBinaryDataId)
-					.then(() => ({
-						newId: newBinaryDataId,
+					?.duplicateBinaryDataByIdentifier(this.splitBinaryModeFileId(binaryDataId).id)
+					.then((filename) => ({
+						newId: this.generateBinaryId(filename),
 						key,
 					}));
 			});
@@ -204,7 +197,9 @@ export class BinaryDataManager {
 
 	private async markDataForDeletion(identifiers: string[]): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].markDataForDeletion(identifiers);
+			return this.managers[this.binaryDataMode].markDataForDeletion(
+				identifiers.map((id) => this.splitBinaryModeFileId(id).id),
+			);
 		}
 
 		return Promise.resolve();

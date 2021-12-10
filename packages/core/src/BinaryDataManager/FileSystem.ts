@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
+import { v4 as uuid } from 'uuid';
 
 import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 
@@ -10,12 +11,9 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 
 	private binaryDataTTL: number;
 
-	fileIdPrefix: string;
-
 	constructor(config: IBinaryDataConfig) {
 		this.storagePath = config.localStoragePath;
 		this.binaryDataTTL = config.binaryDataTTL;
-		this.fileIdPrefix = config.mode;
 	}
 
 	async init(startPurger = false): Promise<void> {
@@ -35,8 +33,9 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 			.then(() => {});
 	}
 
-	async storeBinaryData(binaryBuffer: Buffer, binaryDataId: string): Promise<void> {
-		return this.saveToLocalStorage(binaryBuffer, binaryDataId);
+	async storeBinaryData(binaryBuffer: Buffer): Promise<string> {
+		const binaryDataId = this.generateFileName();
+		return this.saveToLocalStorage(binaryBuffer, binaryDataId).then(() => binaryDataId);
 	}
 
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
@@ -75,14 +74,19 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		return Promise.all(proms);
 	}
 
-	async duplicateBinaryDataByIdentifier(
-		binaryDataId: string,
-		newBinaryDataId: string,
-	): Promise<void> {
-		return fs.copyFile(
-			path.join(this.storagePath, binaryDataId),
-			path.join(this.storagePath, newBinaryDataId),
-		);
+	async duplicateBinaryDataByIdentifier(binaryDataId: string): Promise<string> {
+		const newBinaryDataId = this.generateFileName();
+
+		return fs
+			.copyFile(
+				path.join(this.storagePath, binaryDataId),
+				path.join(this.storagePath, newBinaryDataId),
+			)
+			.then(() => newBinaryDataId);
+	}
+
+	private generateFileName(): string {
+		return uuid();
 	}
 
 	private getBinaryDataMetaPath() {
