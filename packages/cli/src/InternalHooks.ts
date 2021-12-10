@@ -49,9 +49,11 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onWorkflowCreated(workflow: IWorkflowBase): Promise<void> {
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow);
 		return this.telemetry.track('User created workflow', {
 			workflow_id: workflow.id,
-			node_graph: TelemetryHelpers.generateNodesGraph(workflow).nodeGraph,
+			node_graph: nodeGraph,
+			node_graph_string: JSON.stringify(nodeGraph),
 		});
 	}
 
@@ -62,13 +64,13 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onWorkflowSaved(workflow: IWorkflowBase): Promise<void> {
-		const nodesGraph = TelemetryHelpers.generateNodesGraph(workflow).nodeGraph;
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow);
 
 		return this.telemetry.track('User saved workflow', {
 			workflow_id: workflow.id,
-			node_graph: nodesGraph,
-			node_graph_string: JSON.stringify(nodesGraph),
-			vesrion_cli: this.versionCli,
+			node_graph: nodeGraph,
+			node_graph_string: JSON.stringify(nodeGraph),
+			version_cli: this.versionCli,
 		});
 	}
 
@@ -76,7 +78,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		const properties: IDataObject = {
 			workflow_id: workflow.id,
 			is_manual: false,
-			vesrion_cli: this.versionCli,
+			version_cli: this.versionCli,
 		};
 
 		if (runData !== undefined) {
