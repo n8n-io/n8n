@@ -52,6 +52,12 @@ export class TributechOAuth2Api implements ICredentialType {
 			default: 'header',
 		},
 		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'hidden',
+			default: '',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

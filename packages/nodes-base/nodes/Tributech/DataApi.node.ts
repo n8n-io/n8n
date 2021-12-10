@@ -75,7 +75,7 @@ export class DataApi implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		function handleValueGet(this: IExecuteFunctions, operation: string, i: number) {
+		async function handleValueGet(this: IExecuteFunctions, operation: string, i: number) {
 			const valueMetadataId = this.getNodeParameter('valueMetadataId', i);
 			const qs: IDataObject = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -93,7 +93,7 @@ export class DataApi implements INodeType {
 			}
 		}
 
-		function handleValuePost(this: IExecuteFunctions, operation: string, i: number) {
+		async function handleValuePost(this: IExecuteFunctions, operation: string, i: number) {
 			const body: IDataObject[] = (this.getNodeParameter('values', i) as IDataObject)?.value as IDataObject[];
 
 			switch (operation) {
@@ -107,7 +107,7 @@ export class DataApi implements INodeType {
 			}
 		}
 
-		function handleStatus(this: IExecuteFunctions, operation: string, i: number) {
+		async function handleStatus(this: IExecuteFunctions, operation: string, i: number) {
 			const requestId = this.getNodeParameter('requestId', i);
 
 			if (operation === 'getStreamStatus') {
@@ -123,7 +123,7 @@ export class DataApi implements INodeType {
 			}
 		}
 
-		function handleProofLocation(this: IExecuteFunctions, operation: string, i: number) {
+		async function handleProofLocation(this: IExecuteFunctions, operation: string, i: number) {
 			if (operation === 'getProofLocations') {
 				const valueMetadataId = this.getNodeParameter('valueMetadataId', i);
 				const qs: IDataObject = this.getNodeParameter('additionalFields', i) as IDataObject;

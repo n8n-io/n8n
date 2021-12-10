@@ -67,7 +67,7 @@ export class TrustApi implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		function handleProofs(this: IExecuteFunctions, operation: string, i: number) {
+		async function handleProofs(this: IExecuteFunctions, operation: string, i: number) {
 			if (operation === 'saveProofs') {
 				const proofs = (this.getNodeParameter('proofs', i) as IDataObject)?.keys as IDataObject[];
 				const body: IDataObject[] = proofs.map(p => ({
@@ -144,7 +144,7 @@ export class TrustApi implements INodeType {
 			}
 		}
 
-		function handleValues(this: IExecuteFunctions, operation: string, i: number) {
+		async function handleValues(this: IExecuteFunctions, operation: string, i: number) {
 			const qs = {} as IDataObject;
 			const query: IDataObject = {
 				precision: this.getNodeParameter('precision', i) as string,

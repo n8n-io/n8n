@@ -12,7 +12,6 @@ import {
 	OptionsWithUri,
 } from 'request';
 
-
 async function executeApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,

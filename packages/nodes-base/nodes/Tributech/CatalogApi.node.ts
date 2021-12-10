@@ -76,7 +76,7 @@ export class CatalogApi implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		function handleModelEntities(this: IExecuteFunctions, operation: string, i: number) {
+		async function handleModelEntities(this: IExecuteFunctions, operation: string, i: number) {
 			if (operation === 'getEntity') {
 				const dtmi = this.getNodeParameter('dtmi', i);
 				const endpoint = `/manage/entity/${dtmi}`;
@@ -101,7 +101,7 @@ export class CatalogApi implements INodeType {
 			}
 		}
 
-		function handleDTDLModels(this: IExecuteFunctions, operation: string, i: number) {
+		async function handleDTDLModels(this: IExecuteFunctions, operation: string, i: number) {
 			if (operation === 'getExpandedModels') {
 				const qs: IDataObject = {
 					size: this.getNodeParameter('size', i),
@@ -132,7 +132,7 @@ export class CatalogApi implements INodeType {
 			}
 		}
 
-		function handleValidation(this: IExecuteFunctions, operation: string, i: number) {
+		async function handleValidation(this: IExecuteFunctions, operation: string, i: number) {
 			if (operation === 'getSchema') {
 				const dtmi = this.getNodeParameter('dtmi', i);
 				const endpoint = `/validate/schema/${dtmi}`;
