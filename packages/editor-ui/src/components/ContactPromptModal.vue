@@ -20,7 +20,7 @@
 			</div>
 			<div :class="$style.disclaimer">
 				<n8n-text size="small" color="text-base"
-					>David from our product team will get in touch personally.</n8n-text
+					>David from our product team will get in touch personally</n8n-text
 				>
 			</div>
 		</template>
