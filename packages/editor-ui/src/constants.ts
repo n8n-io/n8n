@@ -37,7 +37,7 @@ export const BREAKPOINT_XL = 1920;
 
 
 // templates
-export const TEMPLATES_BASE_URL = `https://api-staging.n8n.io/`;
+export const TEMPLATES_BASE_URL = `https://api.n8n.io/`;
 
 // node types
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
