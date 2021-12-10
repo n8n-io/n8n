@@ -17,7 +17,7 @@
 			<section :class="$style.content">
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons">
-						<div v-for="value in 11" :key="value - 1" :class="$style.wrapper">
+						<div v-for="value in 11" :key="value - 1" :class="$style.container">
 							<n8n-square-button :label="(value - 1).toString()" :bold="true" @click="selectSurveyValue((value - 1).toString())" />
 						</div>
 					</div>
@@ -167,48 +167,46 @@ export default mixins(workflowHelpers).extend({
 .content {
 	display: flex;
 	justify-content: center;
+}
 
-	.wrapper {
-		display: flex;
-		flex-direction: column;
+.wrapper {
+	display: flex;
+	flex-direction: column;
+}
 
-		.buttons {
-			display: flex;
+.buttons {
+	display: flex;
+}
 
-			.wrapper {
-				margin: 0 8px;
+.container {
+	margin: 0 8px;
 
-				&:first-child {
-					margin-left: 0;
-				}
-
-				&:last-child {
-					margin-right: 0;
-				}
-			}
-		}
-
-		.text {
-			margin-top: 8px;
-			display: flex;
-			justify-content: space-between;
-		}
+	&:first-child {
+		margin-left: 0;
 	}
 
-	.email {
-		.input {
-			display: flex;
-			align-items: center;
-
-			.button {
-				margin-left: 10px;
-			}
-		}
-
-		.disclaimer {
-			margin-top: var(--spacing-4xs);
-		}
+	&:last-child {
+		margin-right: 0;
 	}
+}
+
+.text {
+	margin-top: 8px;
+	display: flex;
+	justify-content: space-between;
+}
+
+.input {
+	display: flex;
+	align-items: center;
+}
+
+.button {
+	margin-left: 10px;
+}
+
+.disclaimer {
+	margin-top: var(--spacing-4xs);
 }
 </style>
 
