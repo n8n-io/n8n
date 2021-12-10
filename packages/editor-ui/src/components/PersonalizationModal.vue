@@ -10,7 +10,6 @@
 		:closeOnPressEscape="false"
 		width="460px"
 		@enter="save"
-		@input="onInput"
 	>
 		<template v-slot:content>
 			<div v-if="submitted" :class="$style.submittedContainer">
