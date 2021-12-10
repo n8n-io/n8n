@@ -141,10 +141,8 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		onSaveButtonClick () {
-			const saved = this.saveCurrentWorkflow(undefined);
-			if (saved) {
-				this.$store.dispatch('settings/fetchPromptsData');
-			}
+			this.saveCurrentWorkflow(undefined);
+			this.$store.dispatch('settings/fetchPromptsData');
 		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;
