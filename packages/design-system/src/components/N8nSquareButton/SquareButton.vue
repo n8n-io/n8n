@@ -20,17 +20,12 @@ export default Vue.extend({
 .button {
 	width: 28px;
 	height: 29px;
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 	border: var(--color-background-xlight);
 	cursor: pointer;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-
-	@media (max-width: $--breakpoint-xs) {
-		width: 20px;
-		height: 20px;
-	}
 
 	&:hover {
 		.text {

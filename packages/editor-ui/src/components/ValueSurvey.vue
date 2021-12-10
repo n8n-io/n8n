@@ -67,8 +67,18 @@ const DEFAULT_FEEDBACK_TITLE = `Thanks for your feedback! We'd love to understan
 
 export default mixins(workflowHelpers).extend({
 	name: 'ValueSurvey',
+	props: ['isActive'],
 	components: {
 		ModalDrawer,
+	},
+	watch: {
+		isActive(isActive) {
+			if (isActive) {
+				this.$telemetry.track('User shown value survey', {
+					instance_id: this.$store.getters.instanceId,
+				});
+			}
+		},
 	},
 	computed: {
 		getTitle(): string {
@@ -115,54 +125,53 @@ export default mixins(workflowHelpers).extend({
 		onInputChange(value: string) {
 			this.form.email = value;
 		},
-		selectSurveyValue(value: string) {
+		async selectSurveyValue(value: string) {
 			this.form.value = value;
 			this.showButtons = false;
-			this.$store
-				.dispatch('settings/submitValueSurvey', { value: this.form.value })
-				.then((response: IN8nPromptResponse) => {
-					if (response.updated) {
-						this.$telemetry.track('User responded value survey score', {
-							instance_id: this.$store.getters.instanceId,
-							nps: this.form.value,
-						});
-					}
+
+			const response: IN8nPromptResponse = await this.$store.dispatch(
+				'settings/submitValueSurvey',
+				{ value: this.form.value },
+			);
+
+			if (response.updated) {
+				this.$telemetry.track('User responded value survey score', {
+					instance_id: this.$store.getters.instanceId,
+					nps: this.form.value,
 				});
-		},
-		send(): void {
-			if (this.isEmailValid) {
-				this.$store
-					.dispatch('settings/submitValueSurvey', {
-						email: this.form.email,
-						value: this.form.value,
-					})
-					.then((response: IN8nPromptResponse) => {
-						if (response.updated) {
-							this.$telemetry.track('User responded value survey email', {
-								instance_id: this.$store.getters.instanceId,
-								email: this.form.email,
-							});
-							this.$showMessage({
-								title: 'Thanks for your feedback',
-								message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
-								type: 'success',
-								duration: 15000,
-							});
-						}
-						setTimeout(() => {
-							this.form.value = '';
-							this.form.email = '';
-							this.showButtons = true;
-						}, 1000);
-						this.$store.commit('ui/closeTopModal');
-					});
 			}
 		},
-	},
-	mounted() {
-		this.$telemetry.track('User shown value survey', {
-			instance_id: this.$store.getters.instanceId,
-		});
+		async send() {
+			if (this.isEmailValid) {
+				const response: IN8nPromptResponse = await this.$store.dispatch(
+					'settings/submitValueSurvey',
+					{
+						email: this.form.email,
+						value: this.form.value,
+					},
+				);
+
+				if (response.updated) {
+					this.$telemetry.track('User responded value survey email', {
+						instance_id: this.$store.getters.instanceId,
+						email: this.form.email,
+					});
+					this.$showMessage({
+						title: 'Thanks for your feedback',
+						message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
+						type: 'success',
+						duration: 15000,
+					});
+				}
+
+				setTimeout(() => {
+					this.form.value = '';
+					this.form.email = '';
+					this.showButtons = true;
+				}, 1000);
+				this.$store.commit('ui/closeTopModal');
+			}
+		},
 	},
 });
 </script>
@@ -183,7 +192,7 @@ export default mixins(workflowHelpers).extend({
 	justify-content: center;
 
 	@media (max-width: $--breakpoint-xs) {
-		margin-top: 50px;
+		margin-top: 20px;
 	}
 }
 
@@ -238,14 +247,14 @@ export default mixins(workflowHelpers).extend({
 	top: auto;
 
 	@media (max-width: $--breakpoint-xs) {
-		height: 180px;
+		height: 140px;
 	}
 
 	.el-drawer {
 		background: var(--color-background-dark);
 
 		@media (max-width: $--breakpoint-xs) {
-			height: 180px !important;
+			height: 140px !important;
 		}
 
 		&__header {

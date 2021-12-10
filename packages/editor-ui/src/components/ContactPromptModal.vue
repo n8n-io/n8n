@@ -82,24 +82,25 @@ export default mixins(workflowHelpers).extend({
 			});
 			this.$store.commit('ui/closeTopModal');
 		},
-		send(): void {
+		async send() {
 			if (this.isEmailValid) {
-				this.$store
-					.dispatch('settings/submitContactInfo', this.email)
-					.then((response: IN8nPromptResponse) => {
-						if (response.updated) {
-							this.$telemetry.track('User closed email modal', {
-								instance_id: this.$store.getters.instanceId,
-								email: this.email,
-							});
-							this.$showMessage({
-								title: 'Thanks!',
-								message: "It's people like you that help make n8n better",
-								type: 'success',
-							});
-						}
+				const response: IN8nPromptResponse = await this.$store.dispatch(
+					'settings/submitContactInfo',
+					this.email,
+				);
+
+				if (response.updated) {
+					this.$telemetry.track('User closed email modal', {
+						instance_id: this.$store.getters.instanceId,
+						email: this.email,
 					});
-				this.closeDialog();
+					this.$showMessage({
+						title: 'Thanks!',
+						message: "It's people like you that help make n8n better",
+						type: 'success',
+					});
+				}
+				this.$store.commit('ui/closeTopModal');
 			}
 		},
 	},

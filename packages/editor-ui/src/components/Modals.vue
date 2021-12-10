@@ -48,7 +48,9 @@
 		</ModalRoot>
 
 		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keepAlive="true">
-			<ValueSurvey />
+			<template v-slot:default="{ active }">
+				<ValueSurvey :isActive="active"/>
+			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_OPEN_MODAL_KEY">
