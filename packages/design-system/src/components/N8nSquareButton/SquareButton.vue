@@ -27,6 +27,11 @@ export default Vue.extend({
 	align-items: center;
 	justify-content: center;
 
+	@media (max-width: $--breakpoint-xs) {
+		width: 20px;
+	  height: 20px;
+	}
+
 	&:hover {
 		.text {
 			color: var(--color-primary)!important;

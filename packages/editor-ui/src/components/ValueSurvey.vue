@@ -62,7 +62,8 @@ import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 const DEFAULT_TITLE = `How likely are you to recommend n8n to a friend or colleague?`;
-const SECOND_QUESTION_TITLE = `Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?`;
+const GREAT_FEEDBACK_TITLE = `Great to hear! Can we reach out to see how we can make n8n even better for you?`;
+const DEFAULT_FEEDBACK_TITLE = `Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?`;
 
 export default mixins(workflowHelpers).extend({
 	name: 'ValueSurvey',
@@ -72,7 +73,11 @@ export default mixins(workflowHelpers).extend({
 	computed: {
 		getTitle(): string {
 			if (this.form.value !== '') {
-				return SECOND_QUESTION_TITLE;
+				if (Number(this.form.value) > 7) {
+					return GREAT_FEEDBACK_TITLE;
+				} else {
+					return DEFAULT_FEEDBACK_TITLE;
+				}
 			} else {
 				return DEFAULT_TITLE;
 			}
@@ -143,6 +148,7 @@ export default mixins(workflowHelpers).extend({
 					}
 					setTimeout(() => {
 						this.form.value = '';
+						this.form.email = '';
 						this.showButtons = true;
 					}, 1000);
 					this.$store.commit('ui/closeTopModal');
@@ -162,11 +168,20 @@ export default mixins(workflowHelpers).extend({
 .title {
 	height: 16px;
 	text-align: center;
+
+	@media (max-width: $--breakpoint-xs) {
+		margin-top: 10px;
+		padding: 0 15px;
+	}
 }
 
 .content {
 	display: flex;
 	justify-content: center;
+
+	@media (max-width: $--breakpoint-xs) {
+		margin-top: 50px;
+	}
 }
 
 .wrapper {
@@ -180,6 +195,10 @@ export default mixins(workflowHelpers).extend({
 
 .container {
 	margin: 0 8px;
+
+	@media (max-width: $--breakpoint-xs) {
+		margin: 0 4px;
+	}
 
 	&:first-child {
 		margin-left: 0;
@@ -215,8 +234,16 @@ export default mixins(workflowHelpers).extend({
 	height: 120px;
   top: auto;
 
+	@media (max-width: $--breakpoint-xs) {
+		height: 180px;
+	}
+
 	.el-drawer {
 		background: var(--color-background-dark);
+
+		@media (max-width: $--breakpoint-xs) {
+			height: 180px!important;
+		}
 
 		&__header {
 			height: 50px;
@@ -227,6 +254,11 @@ export default mixins(workflowHelpers).extend({
 				top: 12px;
 				right: 16px;
 				position: absolute;
+
+				@media (max-width: $--breakpoint-xs) {
+					top: 2px;
+					right: 2px;
+				}
 			}
 
 			.el-dialog__close {
