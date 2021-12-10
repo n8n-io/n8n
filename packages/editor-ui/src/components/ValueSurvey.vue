@@ -18,7 +18,7 @@
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
-							<n8n-square-button :label="(value - 1).toString()" :bold="true" @click="selectSurveyValue((value - 1).toString())" />
+							<n8n-square-button :label="(value - 1).toString()" @click="selectSurveyValue((value - 1).toString())" />
 						</div>
 					</div>
 					<div :class="$style.text">

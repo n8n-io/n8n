@@ -5,25 +5,8 @@ export default {
 	title: 'Atoms/SquareButton',
 	component: N8nSquareButton,
 	argTypes: {
-		bold: {
-			control: {
-				type: 'boolean',
-			},
-		},
-		color: {
-			control: {
-				type: 'select',
-				options: ['primary', 'background-dark', 'text-dark', 'text-base', 'text-light', 'text-xlight'],
-			},
-		},
 		label: {
 			control: 'text',
-		},
-		size: {
-			control: {
-				type: 'select',
-				options: ['mini', 'small', 'medium', 'large', 'xlarge'],
-			},
 		},
 	},
 };
