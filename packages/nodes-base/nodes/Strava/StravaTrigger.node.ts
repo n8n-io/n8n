@@ -117,8 +117,7 @@ export class StravaTrigger implements INodeType {
 						name: 'deleteIfExist',
 						type: 'boolean',
 						default: false,
-						description: `Strava allows just one subscription at all times. If you want to delete the current subscription to make<br>
-						room for a new subcription with the current parameters, set this parameter to true. Keep in mind this is a destructive operation.`,
+						description: `Strava allows just one subscription at all times. If you want to delete the current subscription to make room for a new subcription with the current parameters, set this parameter to true. Keep in mind this is a destructive operation.`,
 					},
 				],
 			},

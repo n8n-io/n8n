@@ -677,7 +677,7 @@ export interface INodeProperties {
 }
 export interface INodePropertyOptions {
 	name: string;
-	value: string | number;
+	value: string | number | boolean;
 	description?: string;
 }
 
@@ -804,6 +804,7 @@ export interface INodeTypeBaseDescription {
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number;
 	defaults: INodeParameters;
+	eventTriggerDescription?: string;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];

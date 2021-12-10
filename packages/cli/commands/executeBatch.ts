@@ -28,6 +28,7 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
 	InternalHooksManager,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
@@ -305,7 +306,8 @@ export class ExecuteBatch extends Command {
 		await externalHooks.init();
 
 		const instanceId = await UserSettings.getInstanceId();
-		InternalHooksManager.init(instanceId);
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli);
 
 		// Add the found types to an instance other parts of the application can use
 		const nodeTypes = NodeTypes();
@@ -854,7 +856,8 @@ export class ExecuteBatch extends Command {
 					}
 				}
 			} catch (e) {
-				executionResult.error = 'Workflow failed to execute.';
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+				executionResult.error = `Workflow failed to execute: ${e.message}`;
 				executionResult.executionStatus = 'error';
 			}
 			clearTimeout(timeoutTimer);

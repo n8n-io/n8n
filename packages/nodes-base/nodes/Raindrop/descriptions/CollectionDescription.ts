@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const collectionOperations = [
+export const collectionOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const collectionOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const collectionFields = [
+export const collectionFields: INodeProperties[] = [
 	// ----------------------------------
 	//       collection: create
 	// ----------------------------------
@@ -106,7 +106,7 @@ export const collectionFields = [
 				name: 'sort',
 				type: 'number',
 				default: 1,
-				description: 'Descending sort order of this collection. The number is the position of the collection<br>among all the collections with the same parent ID.',
+				description: 'Descending sort order of this collection. The number is the position of the collection among all the collections with the same parent ID.',
 			},
 			{
 				displayName: 'View',
@@ -298,7 +298,7 @@ export const collectionFields = [
 				type: 'string',
 				default: 'data',
 				placeholder: '',
-				description: 'Name of the binary property containing the data<br>for the image to upload as a cover.',
+				description: 'Name of the binary property containing the data for the image to upload as a cover.',
 			},
 			{
 				displayName: 'Public',
@@ -319,7 +319,7 @@ export const collectionFields = [
 				name: 'sort',
 				type: 'number',
 				default: 1,
-				description: 'Descending sort order of this collection. The number is the position of the collection<br>among all the collections with the same parent ID.',
+				description: 'Descending sort order of this collection. The number is the position of the collection among all the collections with the same parent ID.',
 			},
 			{
 				displayName: 'Title',
@@ -355,4 +355,4 @@ export const collectionFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

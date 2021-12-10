@@ -452,7 +452,10 @@ export class ApiTemplateIo implements INodeType {
 					try {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						let options: IDataObject = {};
+						if (download) {
+							options = this.getNodeParameter('options', i) as IDataObject;
+						}
 
 						const qs = {
 							template_id: this.getNodeParameter('imageTemplateId', i),

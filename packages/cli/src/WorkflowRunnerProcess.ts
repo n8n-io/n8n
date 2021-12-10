@@ -37,6 +37,7 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
@@ -143,7 +144,8 @@ export class WorkflowRunnerProcess {
 		await externalHooks.init();
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
-		InternalHooksManager.init(instanceId);
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli);
 
 		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 		await BinaryDataManager.init(binaryDataConfig);

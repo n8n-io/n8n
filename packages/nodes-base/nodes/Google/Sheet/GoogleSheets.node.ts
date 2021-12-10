@@ -179,7 +179,7 @@ export class GoogleSheets implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The ID of the Google Spreadsheet.<br />Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
+				description: 'The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
 			},
 			{
 				displayName: 'Range',
@@ -201,7 +201,7 @@ export class GoogleSheets implements INodeType {
 				},
 				default: 'A:F',
 				required: true,
-				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.<br />If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
+				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
 			},
 
 			// ----------------------------------
@@ -452,7 +452,7 @@ export class GoogleSheets implements INodeType {
 					},
 				},
 				default: 0,
-				description: 'Index of the row which contains the keys. Starts at 0.<br />The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+				description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
 
 
@@ -782,7 +782,12 @@ export class GoogleSheets implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'en_US',
-						description: 'The locale of the spreadsheet in one of the following formats:<br /><ul><li>en (639-1)</li><li>fil (639-2 if no 639-1 format exists)</li><li>en_US (combination of ISO language an country)</li><ul>',
+						description: `The locale of the spreadsheet in one of the following formats:
+						<ul>
+							<li>en (639-1)</li>
+							<li>fil (639-2 if no 639-1 format exists)</li>
+							<li>en_US (combination of ISO language an country)</li>
+						<ul>`,
 					},
 					{
 						displayName: 'Recalculation Interval',

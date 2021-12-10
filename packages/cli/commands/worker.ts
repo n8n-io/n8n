@@ -271,13 +271,13 @@ export class Worker extends Command {
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
 
+				const versions = await GenericHelpers.getVersions();
 				const instanceId = await UserSettings.getInstanceId();
-				InternalHooksManager.init(instanceId);
 
 				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 				await BinaryDataManager.init(binaryDataConfig);
 
-				const versions = await GenericHelpers.getVersions();
+				InternalHooksManager.init(instanceId, versions.cli);
 
 				console.info('\nn8n worker is now ready');
 				console.info(` * Version: ${versions.cli}`);

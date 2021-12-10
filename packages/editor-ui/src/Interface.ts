@@ -66,11 +66,22 @@ declare module 'jsplumb' {
 	}
 
 	interface Endpoint {
+		endpoint: any; // tslint:disable-line:no-any
+		elementId: string;
 		__meta?: {
 			nodeName: string,
+			nodeId: string,
 			index: number,
+			totalEndpoints: number;
 		};
+		getUuid(): string;
 		getOverlay(name: string): any; // tslint:disable-line:no-any
+		repaint(params?: object): void;
+	}
+
+	interface N8nPlusEndpoint extends Endpoint {
+		setSuccessOutput(message: string): void;
+		clearSuccessOutput(): void;
 	}
 
 	interface Overlay {
@@ -103,6 +114,7 @@ export interface IEndpointOptions {
 	parameters?: any; // tslint:disable-line:no-any
 	uuid?: string;
 	enabled?: boolean;
+	cssClass?: string;
 }
 
 export interface IUpdateInformation {
@@ -450,7 +462,7 @@ export interface IPushDataTestWebhook {
 
 export interface IPushDataConsoleMessage {
 	source: string;
-	message: string;
+	messages: string[];
 }
 
 export interface IVersionNotificationSettings {
@@ -459,10 +471,15 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export type IPersonalizationSurveyKeys = 'companySize' | 'codingSkill' | 'workArea' | 'otherWorkArea';
+export type IPersonalizationSurveyKeys = 'codingSkill' | 'companyIndustry' | 'companySize' | 'otherCompanyIndustry' | 'otherWorkArea' | 'workArea';
 
 export type IPersonalizationSurveyAnswers = {
-	[key in IPersonalizationSurveyKeys]: string | null
+	codingSkill: string | null;
+	companyIndustry: string[];
+	companySize: string | null;
+	otherCompanyIndustry: string | null;
+	otherWorkArea: string | null;
+	workArea: string[] | string | null;
 };
 
 export interface IPersonalizationSurvey {
@@ -701,4 +718,3 @@ export interface IBounds {
 	maxX: number;
 	maxY: number;
 }
-

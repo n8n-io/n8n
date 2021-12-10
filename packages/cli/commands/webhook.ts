@@ -149,7 +149,8 @@ export class Webhook extends Command {
 				await startDbInitPromise;
 
 				const instanceId = await UserSettings.getInstanceId();
-				InternalHooksManager.init(instanceId);
+				const { cli } = await GenericHelpers.getVersions();
+				InternalHooksManager.init(instanceId, cli);
 
 				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 				await BinaryDataManager.init(binaryDataConfig);

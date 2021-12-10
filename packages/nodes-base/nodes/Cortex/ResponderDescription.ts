@@ -6,7 +6,7 @@ import {
 	TLP,
 } from './AnalyzerInterface';
 
-export const respondersOperations = [
+export const respondersOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,7 +29,7 @@ export const respondersOperations = [
 		],
 		default: 'execute',
 	},
-] as INodeProperties[];
+];
 
 export const responderFields: INodeProperties[] = [
 	{
