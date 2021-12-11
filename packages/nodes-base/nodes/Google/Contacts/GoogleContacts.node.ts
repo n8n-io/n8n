@@ -317,7 +317,8 @@ export class GoogleContacts implements INodeType {
 								{},
 								qs,
 							);
-							responseData = responseData.connections || responseData.results.map((result: IDataObject) => result.person);
+
+							responseData = responseData.connections || responseData.results?.map((result: IDataObject) => result.person) || [];
 						}
 
 						if (!rawData) {
