@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.149.0",
+  "version": "0.150.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -299,7 +299,7 @@
       "dist/credentials/WiseApi.credentials.js",
       "dist/credentials/WooCommerceApi.credentials.js",
       "dist/credentials/WordpressApi.credentials.js",
-      "dist/credentials/WorkableApi.credentials.js",    
+      "dist/credentials/WorkableApi.credentials.js",
       "dist/credentials/WufooApi.credentials.js",
       "dist/credentials/XeroOAuth2Api.credentials.js",
       "dist/credentials/YourlsApi.credentials.js",
