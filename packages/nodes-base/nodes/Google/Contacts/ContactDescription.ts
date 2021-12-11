@@ -902,7 +902,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `Weather or not to use a query to search the results`,
+		description: `Whether or not to use a query to filter the results`,
 	},
 	{
 		displayName: 'Query',
