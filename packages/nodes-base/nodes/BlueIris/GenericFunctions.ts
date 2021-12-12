@@ -12,7 +12,7 @@ import {
 import { INode, NodeOperationError } from 'n8n-workflow';
 import { createHash } from 'crypto';
 
-export async function performOperation(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, apiUrl: string): Promise<any> {
+export async function performOperation(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, apiUrl: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('blueIrisApi');
 	if (!credentials) {
 		throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
@@ -40,7 +40,7 @@ export async function performOperation(this: IHookFunctions | IExecuteFunctions 
 	return responseData;
 }
 
-function checkResponseErrors(node: INode, responseData: any) {
+function checkResponseErrors(node: INode, responseData: any) { // tslint:disable-line:no-any
 	if (responseData.result !== 'success') {
 		throw new NodeOperationError(node, `Received the following error from BlueIris API: ${responseData.data.reason}`);
 	}
