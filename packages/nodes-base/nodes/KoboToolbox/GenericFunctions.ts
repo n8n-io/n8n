@@ -8,12 +8,12 @@ import {
 	IHookFunctions,
 	IHttpRequestOptions,
 	IWebhookFunctions,
+	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import * as _ from 'lodash';
 
 export async function koboToolboxApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	// console.log('koboToolboxApiRequest');
 	const credentials = await this.getCredentials('koboToolboxApi') as IDataObject;
 
 	const options: IHttpRequestOptions = {
@@ -30,10 +30,10 @@ export async function koboToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 	if (options.url && !/^http(s)?:/.test(options.url)) {
 		options.url = credentials.URL + options.url;
 	}
-	// console.dir(options);
 
+	Logger.debug('KoboToolboxApiRequest', options);
 	const response = await this.helpers.httpRequest(options);
-	// console.dir(response);
+	Logger.debug('KoboToolboxApiResponse', response);
 	return response;
 }
 
@@ -104,12 +104,12 @@ const formatValue = (value: any, format: string): any => { //tslint:disable-line
 export function formatSubmission(submission: IDataObject, selectMasks: string[] = [], numberMasks: string[] = []): IDataObject {
 	// Create a shallow copy of the submission
 	const response = {} as IDataObject;
-	// console.log('formatSubmission');
-	// console.dir(response);
+	Logger.debug('KoboToolboxFormatSubmission', submission);
+
 
 	for (const key of Object.keys(submission)) {
 		let value = _.clone(submission[key]);
-		// console.log(`Formatting ${key} : ${value}`);
+		Logger.debug(`Formatting ${key} : ${value}`);
 		// Sanitize key names: split by group, trim _
 		const sanitizedKey = key.split('/').map(k => _.trim(k,' _')).join('.');
 		const leafKey = sanitizedKey.split('.').pop() || '';
@@ -123,7 +123,7 @@ export function formatSubmission(submission: IDataObject, selectMasks: string[] 
 
 		value = formatValue(value, format);
 
-		// console.log(`Reformatting to ${sanitizedKey} : ${value}`);
+		Logger.debug(`Formatted to ${sanitizedKey} : ${value}`);
 		_.set(response, sanitizedKey, value);
 	}
 
@@ -135,6 +135,6 @@ export function formatSubmission(submission: IDataObject, selectMasks: string[] 
 		};
 	}
 
-	// console.dir(response);
+	Logger.debug('KoboToolboxFormatSubmission', response);
 	return response;
 }

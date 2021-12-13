@@ -9,6 +9,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	LoggerProxy as Logger,
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
@@ -114,7 +115,7 @@ export class KoboToolbox implements INodeType {
 						},
 						json: true,
 					});
-					// console.dir(response);
+					Logger.debug('KoboToolboxTestCredentials', response);
 
 					if(response.hash) {
 						return {
@@ -339,7 +340,6 @@ export class KoboToolbox implements INodeType {
 					if(formatOptions.reformat) {
 						submission = formatSubmission(submission, parseStringList(formatOptions.select_mask as string), parseStringList(formatOptions.number_mask as string));
 					}
-					// console.dir(submission);
 
 					// Initialize return object with the original submission JSON content
 					const newItem: INodeExecutionData = {
@@ -357,11 +357,11 @@ export class KoboToolbox implements INodeType {
 							// look for the question name linked to this attachment
 							const filename = attachment.filename;
 							let relatedQuestion = '';
-							// console.log(`Found attachment ${filename}`);
+							Logger.debug(`Found attachment ${filename}`);
 							Object.keys(submission).forEach(question => {
 								if(filename.endsWith('/' + submission[question])) {
 									relatedQuestion = question;
-									// console.log(`Found attachment for form question: ${relatedQuestion}`);
+									Logger.debug(`Found attachment for form question: ${relatedQuestion}`);
 								}
 							});
 
@@ -370,7 +370,7 @@ export class KoboToolbox implements INodeType {
 								url: attachment[attachmentOptions.version as string] || attachment.download_url,
 								encoding: 'arraybuffer',
 							});
-							// console.log(`Downloaded attachment ${filename}`);
+							Logger.debug(`Downloaded attachment ${filename}`);
 							const binaryName = attachmentOptions.filename === 'filename' ? filename : relatedQuestion;
 							newItem.binary![binaryName] = await this.helpers.prepareBinaryData(Buffer.from(binaryData));
 						}

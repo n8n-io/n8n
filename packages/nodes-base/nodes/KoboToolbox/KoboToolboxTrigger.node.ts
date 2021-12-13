@@ -5,6 +5,7 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
+	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import {
@@ -110,7 +111,7 @@ export class KoboToolboxTrigger implements INodeType {
 						email_notification: true,
 					},
 				});
-				// console.dir(response);
+				Logger.debug('KoboToolboxTriggerCreate', response);
 
 				if (response.uid) {
 					webhookData.webhookId = response.uid;
@@ -142,7 +143,7 @@ export class KoboToolboxTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const formatOptions = this.getNodeParameter('formatOptions') as IDataObject;
 
-		// console.dir(req.body);
+		Logger.debug('KoboToolboxTriggerReceived', req.body);
 
 		const response = formatOptions.reformat
 			? formatSubmission(req.body, parseStringList(formatOptions.select_mask as string), parseStringList(formatOptions.number_mask as string))
