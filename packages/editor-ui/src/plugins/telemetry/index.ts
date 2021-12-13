@@ -66,6 +66,12 @@ class Telemetry {
 		}
 	}
 
+	page(category?: string, name?: string | undefined | null) {
+		if (this.telemetry)	{
+			this.telemetry.page(category, name);
+		}
+	}
+
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
 		if (this.telemetry) {
 			properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
