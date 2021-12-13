@@ -153,17 +153,6 @@ export class Start extends Command {
 				LoggerProxy.init(logger);
 				logger.info('Initializing n8n process');
 
-				logger.info(
-					'\n' +
-						'****************************************************\n' +
-						'*                                                  *\n' +
-						'*   n8n now sends selected, anonymous telemetry.   *\n' +
-						'*      For more details (and how to opt out):      *\n' +
-						'*   https://docs.n8n.io/reference/telemetry.html   *\n' +
-						'*                                                  *\n' +
-						'****************************************************\n',
-				);
-
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error: Error) => {
 					logger.error(`There was an error initializing DB: "${error.message}"`);
@@ -313,7 +302,8 @@ export class Start extends Command {
 				}
 
 				const instanceId = await UserSettings.getInstanceId();
-				InternalHooksManager.init(instanceId);
+				const { cli } = await GenericHelpers.getVersions();
+				InternalHooksManager.init(instanceId, cli);
 
 				await Server.start();
 

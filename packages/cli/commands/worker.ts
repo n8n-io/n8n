@@ -271,10 +271,10 @@ export class Worker extends Command {
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
 
-				const instanceId = await UserSettings.getInstanceId();
-				InternalHooksManager.init(instanceId);
-
 				const versions = await GenericHelpers.getVersions();
+				const instanceId = await UserSettings.getInstanceId();
+
+				InternalHooksManager.init(instanceId, versions.cli);
 
 				console.info('\nn8n worker is now ready');
 				console.info(` * Version: ${versions.cli}`);
