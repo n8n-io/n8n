@@ -1,19 +1,22 @@
 import {  ActionContext, Module } from 'vuex';
 import {
+	IN8nPrompts,
 	IN8nUISettings,
+	IN8nValueSurveyData,
 	IPersonalizationSurveyAnswers,
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getSettings, submitPersonalizationSurvey } from '../api/settings';
+import { getPromptsData, getSettings, submitValueSurvey, submitPersonalizationSurvey, submitContactInfo } from '../api/settings';
 import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
-import { PERSONALIZATION_MODAL_KEY } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, PERSONALIZATION_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
 	state: {
 		settings: {} as IN8nUISettings,
+		promptsData: {} as IN8nPrompts,
 	},
 	getters: {
 		personalizedNodeTypes(state: ISettingsState): string[] {
@@ -23,6 +26,9 @@ const module: Module<ISettingsState, IRootState> = {
 			}
 
 			return getPersonalizedNodeTypes(answers);
+		},
+		getPromptsData(state: ISettingsState) {
+			return state.promptsData;
 		},
 	},
 	mutations: {
@@ -34,6 +40,9 @@ const module: Module<ISettingsState, IRootState> = {
 				answers,
 				shouldShow: false,
 			});
+		},
+		setPromptsData(state: ISettingsState, promptsData: IN8nPrompts) {
+			Vue.set(state, 'promptsData', promptsData);
 		},
 	},
 	actions: {
@@ -70,6 +79,40 @@ const module: Module<ISettingsState, IRootState> = {
 			await submitPersonalizationSurvey(context.rootGetters.getRestApiContext, results);
 
 			context.commit('setPersonalizationAnswers', results);
+		},
+		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
+			if (!context.rootGetters.isTelemetryEnabled) {
+				return;
+			}
+
+			try {
+				const promptsData: IN8nPrompts = await getPromptsData(context.state.settings.instanceId);
+
+				if (promptsData && promptsData.showContactPrompt) {
+					context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
+				} else if (promptsData && promptsData.showValueSurvey) {
+					context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
+				}
+
+				context.commit('setPromptsData', promptsData);
+			} catch (e) {
+				return e;
+			}
+
+		},
+		async submitContactInfo(context: ActionContext<ISettingsState, IRootState>, email: string) {
+			try {
+				return await submitContactInfo(context.state.settings.instanceId, email);
+			} catch (e) {
+				return e;
+			}
+		},
+		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IN8nValueSurveyData) {
+			try {
+				return await submitValueSurvey(context.state.settings.instanceId, params);
+			} catch (e) {
+				return e;
+			}
 		},
 	},
 };

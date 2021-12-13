@@ -483,12 +483,32 @@ export interface IVersionNotificationSettings {
 export type IPersonalizationSurveyKeys = 'codingSkill' | 'companyIndustry' | 'companySize' | 'otherCompanyIndustry' | 'otherWorkArea' | 'workArea';
 
 export type IPersonalizationSurveyAnswers = {
-	[key in IPersonalizationSurveyKeys]: string | null
+	codingSkill: string | null;
+	companyIndustry: string[];
+	companySize: string | null;
+	otherCompanyIndustry: string | null;
+	otherWorkArea: string | null;
+	workArea: string[] | string | null;
 };
 
 export interface IPersonalizationSurvey {
 	answers?: IPersonalizationSurveyAnswers;
 	shouldShow: boolean;
+}
+
+export interface IN8nPrompts {
+	message: string;
+	title: string;
+	showContactPrompt: boolean;
+	showValueSurvey: boolean;
+}
+
+export interface IN8nValueSurveyData {
+	[key: string]: string;
+}
+
+export interface IN8nPromptResponse {
+	updated: boolean;
 }
 
 export interface IN8nUISettings {
@@ -698,6 +718,7 @@ export interface IUiState {
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
+	promptsData: IN8nPrompts;
 }
 
 export interface IVersionsState {

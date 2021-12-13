@@ -424,6 +424,10 @@ export default mixins(
 
 				return uniqueName;
 			},
+			async onSaveKeyboardShortcut () {
+				const saved = await this.saveCurrentWorkflow();
+				if (saved) this.$store.dispatch('settings/fetchPromptsData');
+			},
 			openNodeCreator (source: string) {
 				this.createNodeActive = true;
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
@@ -755,7 +759,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('saveCurrentWorkflow', 1000, undefined, true);
+					this.callDebounced('onSaveKeyboardShortcut', 1000);
 				} else if (e.key === 'Enter') {
 					// Activate the last selected node
 					const lastSelectedNode = this.lastSelectedNode;
@@ -954,15 +958,22 @@ export default mixins(
 			},
 
 			cutSelectedNodes () {
-				this.copySelectedNodes();
+				this.copySelectedNodes(true);
 				this.deleteSelectedNodes();
 			},
 
-			copySelectedNodes () {
+			copySelectedNodes (isCut: boolean) {
 				this.getSelectedNodesToSave().then((data) => {
 					const nodeData = JSON.stringify(data, null, 2);
 					this.copyToClipboard(nodeData);
 					if (data.nodes.length > 0) {
+						if(!isCut){
+							this.$showMessage({
+								title: 'Copied!',
+								message: '',
+								type: 'success',
+							});
+						}
 						this.$telemetry.track('User copied nodes', {
 							node_types: data.nodes.map((node) => node.type),
 							workflow_id: this.$store.getters.workflowId,
@@ -2732,6 +2743,7 @@ export default mixins(
 			});
 
 			this.$externalHooks().run('nodeView.mount');
+			this.$telemetry.page('Editor', this.$route.name);
 		},
 
 		destroyed () {
