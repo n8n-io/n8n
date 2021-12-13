@@ -1037,6 +1037,7 @@ export class Spotify implements INodeType {
 
 						endpoint = '/browse/new-releases';
 						requestMethod = 'GET';
+						propertyName = 'albums.items';
 
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
