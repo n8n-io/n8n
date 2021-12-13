@@ -51,7 +51,7 @@
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
-    "riot-tmpl": "^3.0.8",
+    "riot-tmpl": "git+https://github.com/n8n-io/tmpl.git#support-anonymous-and-arrow-callbacks",
     "xml2js": "^0.4.23"
   },
   "jest": {
