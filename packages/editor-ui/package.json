@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.119.0",
+  "version": "0.120.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@fontsource/open-sans": "^4.5.0",
-    "n8n-design-system": "~0.8.0",
+    "n8n-design-system": "~0.9.0",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
     "vue-fragment": "^1.5.2",
