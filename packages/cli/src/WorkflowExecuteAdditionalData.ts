@@ -843,6 +843,8 @@ export async function executeWorkflow(
 			workflowData,
 			{ parentProcessMode: additionalData.hooks!.mode },
 		);
+		additionalDataIntegrated.executionId = executionId;
+
 		// Make sure we pass on the original executeWorkflow function we received
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process

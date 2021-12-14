@@ -278,10 +278,10 @@ export interface IExecutionResponse extends IExecutionBase {
 
 export interface IBinaryDataManager {
 	init(startPurger: boolean): Promise<void>;
-	storeBinaryData(binaryBuffer: Buffer): Promise<string>;
+	storeBinaryData(binaryBuffer: Buffer, prefix: string): Promise<string>;
 	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
 	markDataForDeletion(identifiers: string[]): Promise<void>;
 	deleteMarkedFiles(): Promise<unknown>;
 	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;
-	duplicateBinaryDataByIdentifier(binaryDataId: string): Promise<string>;
+	duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string>;
 }

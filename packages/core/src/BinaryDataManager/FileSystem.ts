@@ -33,8 +33,8 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 			.then(() => {});
 	}
 
-	async storeBinaryData(binaryBuffer: Buffer): Promise<string> {
-		const binaryDataId = this.generateFileName();
+	async storeBinaryData(binaryBuffer: Buffer, prefix: string): Promise<string> {
+		const binaryDataId = this.generateFileName(prefix);
 		return this.saveToLocalStorage(binaryBuffer, binaryDataId).then(() => binaryDataId);
 	}
 
@@ -74,8 +74,8 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		return Promise.all(proms);
 	}
 
-	async duplicateBinaryDataByIdentifier(binaryDataId: string): Promise<string> {
-		const newBinaryDataId = this.generateFileName();
+	async duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string> {
+		const newBinaryDataId = this.generateFileName(prefix);
 
 		return fs
 			.copyFile(
@@ -85,8 +85,8 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 			.then(() => newBinaryDataId);
 	}
 
-	private generateFileName(): string {
-		return uuid();
+	private generateFileName(prefix: string): string {
+		return `${prefix}_${uuid()}`;
 	}
 
 	private getBinaryDataMetaPath() {

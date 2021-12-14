@@ -52,14 +52,20 @@ export class BinaryDataManager {
 		return BinaryDataManager.instance;
 	}
 
-	async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer): Promise<IBinaryData> {
+	async storeBinaryData(
+		binaryData: IBinaryData,
+		binaryBuffer: Buffer,
+		executionId: string,
+	): Promise<IBinaryData> {
 		const retBinaryData = binaryData;
 
 		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].storeBinaryData(binaryBuffer).then((filename) => {
-				retBinaryData.id = this.generateBinaryId(filename);
-				return retBinaryData;
-			});
+			return this.managers[this.binaryDataMode]
+				.storeBinaryData(binaryBuffer, executionId)
+				.then((filename) => {
+					retBinaryData.id = this.generateBinaryId(filename);
+					return retBinaryData;
+				});
 		}
 
 		retBinaryData.data = binaryBuffer.toString(BINARY_ENCODING);
@@ -130,6 +136,7 @@ export class BinaryDataManager {
 
 	private async duplicateBinaryDataInExecData(
 		executionData: INodeExecutionData,
+		executionId: string,
 	): Promise<INodeExecutionData> {
 		const binaryManager = this.managers[this.binaryDataMode];
 
@@ -146,7 +153,10 @@ export class BinaryDataManager {
 				}
 
 				return binaryManager
-					?.duplicateBinaryDataByIdentifier(this.splitBinaryModeFileId(binaryDataId).id)
+					?.duplicateBinaryDataByIdentifier(
+						this.splitBinaryModeFileId(binaryDataId).id,
+						executionId,
+					)
 					.then((filename) => ({
 						newId: this.generateBinaryId(filename),
 						key,
@@ -169,6 +179,7 @@ export class BinaryDataManager {
 
 	async duplicateBinaryData(
 		inputData: Array<INodeExecutionData[] | null> | unknown,
+		executionId: string,
 	): Promise<INodeExecutionData[][]> {
 		if (inputData && this.managers[this.binaryDataMode]) {
 			const returnInputData = (inputData as INodeExecutionData[][]).map(
@@ -177,7 +188,7 @@ export class BinaryDataManager {
 						return Promise.all(
 							executionDataArray.map((executionData) => {
 								if (executionData.binary) {
-									return this.duplicateBinaryDataInExecData(executionData);
+									return this.duplicateBinaryDataInExecData(executionData, executionId);
 								}
 
 								return executionData;
