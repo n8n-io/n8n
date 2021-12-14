@@ -21,10 +21,9 @@ export const contactGetAllDescription: ContactProperties = [
 		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'string',
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,15 +37,6 @@ export const contactGetAllDescription: ContactProperties = [
 				],
 			},
 		},
-		default: {},
-		options: [
-			{
-				displayName: 'Page',
-				name: 'page',
-				type: 'number',
-				default: 1,
-				description: 'Returns provided page of results, each page contains 25 results',
-			},
-		],
+		default: '25',
 	},
 ];

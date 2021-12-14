@@ -14,17 +14,12 @@ import {
 
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const limit = this.getNodeParameter('limit', index) as IDataObject;
 
-	let qs = {} as IDataObject;
+	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
 	const endpoint = 'contacts';
 	const body = {} as IDataObject;
-
-	if (additionalFields) {
-		qs = additionalFields;
-	}
-
 
 	let responseData;
 	if (returnAll) {
@@ -32,6 +27,6 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		return this.helpers.returnJsonArray(responseData);
 	} else {
 		responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-		return this.helpers.returnJsonArray(responseData.contacts);
+		return this.helpers.returnJsonArray((responseData.contacts).splice(0,limit));
 	}
 }

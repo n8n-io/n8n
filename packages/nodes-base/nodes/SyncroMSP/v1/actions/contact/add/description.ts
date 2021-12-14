@@ -2,15 +2,15 @@ import {
 	ContactProperties,
 } from '../../Interfaces';
 
+import {
+	addressFixedCollection
+} from '../../../methods/sharedFields';
+
 export const contactAddDescription: ContactProperties = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
-		options: [],
+		type: 'string',
 		displayOptions: {
 			show: {
 				resource: [
@@ -72,18 +72,7 @@ export const contactAddDescription: ContactProperties = [
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'Address',
-				name: 'address',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'City',
-				name: 'city',
-				type: 'string',
-				default: '',
-			},
+			addressFixedCollection,
 			{
 				displayName: 'Notes',
 				name: 'notes',
@@ -93,18 +82,6 @@ export const contactAddDescription: ContactProperties = [
 			{
 				displayName: 'Phone',
 				name: 'phone',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'ZIP',
-				name: 'zip',
 				type: 'string',
 				default: '',
 			},

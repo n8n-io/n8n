@@ -33,20 +33,18 @@ export async function addCustomer(this: IExecuteFunctions, index: number): Promi
 
 	body = {
 		...addressData,
+		business_name : businessName,
+		email,
+		firstname,
 		get_sms : getSms,
 		invoice_cc_email : invoiceCcEmail,
+		lastname,
 		no_email : noEmail,
 		notes,
 		notification_email : notificationEmail,
 		phone,
 		referred_by : referredBy,
 	};
-
-
-	body.firstname=firstname;
-	body.lastname=lastname;
-	body.email=email;
-	body.business_name=businessName;
 
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);

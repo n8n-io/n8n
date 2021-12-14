@@ -2,6 +2,10 @@ import {
 	ContactProperties,
 } from '../../Interfaces';
 
+import {
+	addressFixedCollection
+} from '../../../methods/sharedFields';
+
 export const contactUpdateDescription: ContactProperties = [
 	{
 		displayName: 'Contact ID',
@@ -20,7 +24,7 @@ export const contactUpdateDescription: ContactProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Update Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -36,15 +40,10 @@ export const contactUpdateDescription: ContactProperties = [
 		},
 		default: {},
 		options: [
+			addressFixedCollection,
 			{
-				displayName: 'Address',
-				name: 'address',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'City',
-				name: 'city',
+				displayName: 'Customer ID',
+				name: 'customerId',
 				type: 'string',
 				default: '',
 			},
@@ -69,18 +68,6 @@ export const contactUpdateDescription: ContactProperties = [
 			{
 				displayName: 'Phone',
 				name: 'phone',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'ZIP',
-				name: 'zip',
 				type: 'string',
 				default: '',
 			},
