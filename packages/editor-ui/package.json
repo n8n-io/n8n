@@ -30,7 +30,7 @@
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
     "vue-fragment": "^1.5.2",
-    "vue2-boring-avatars": "^0.3.4"
+    "vue2-boring-avatars": "^0.3.6"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
