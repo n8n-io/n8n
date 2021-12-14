@@ -149,7 +149,8 @@ export class Webhook extends Command {
 				await startDbInitPromise;
 
 				const instanceId = await UserSettings.getInstanceId();
-				InternalHooksManager.init(instanceId);
+				const { cli } = await GenericHelpers.getVersions();
+				InternalHooksManager.init(instanceId, cli);
 
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const pipelineOperations = [
+export const pipelineOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const pipelineOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const pipelineFields = [
+export const pipelineFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                               pipeline:shared                              */
@@ -222,4 +222,4 @@ export const pipelineFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

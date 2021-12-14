@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const directMessageOperations = [
+export const directMessageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const directMessageOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const directMessageFields = [
+export const directMessageFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                directMessage:create                        */
 	/* -------------------------------------------------------------------------- */
@@ -95,4 +95,4 @@ export const directMessageFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

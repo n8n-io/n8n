@@ -11,7 +11,7 @@ import {
 	phoneNumbersFixedCollection,
 } from '../utils/sharedFields';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -48,9 +48,9 @@ export const companyOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             company: create
 	// ----------------------------------------
@@ -286,4 +286,4 @@ export const companyFields = [
 			phoneNumbersFixedCollection,
 		],
 	},
-] as INodeProperties[];
+];
