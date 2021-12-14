@@ -16,19 +16,20 @@ export async function addAlert(this: IExecuteFunctions, index: number): Promise<
 	const customerId = this.getNodeParameter('customerId',index) as IDataObject;
 	const assetId = this.getNodeParameter('assetId',index) as IDataObject;
 	const description = this.getNodeParameter('description', index) as IDataObject;
-	const resolved = this.getNodeParameter('resolved', index) as IDataObject;
-	const status = this.getNodeParameter('status', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const endpoint = 'rmm_alerts';
-	const body = {} as IDataObject;
+	let body = {} as IDataObject;
+
+	if (additionalFields) {
+		body = additionalFields;
+	}
 
 	body.customer_id = customerId;
 	body.asset_id = assetId;
 	body.description = description;
-	body.resolved = resolved;
-	body.status = status;
 
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);

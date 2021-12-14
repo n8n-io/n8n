@@ -22,11 +22,7 @@ export const rmmAddDescription: RmmProperties = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
-		options: [],
+		type: 'string',
 		displayOptions: {
 			show: {
 				resource: [
@@ -56,9 +52,10 @@ export const rmmAddDescription: RmmProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Resolved',
-		name: 'resolved',
-		type: 'boolean',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [
@@ -69,36 +66,34 @@ export const rmmAddDescription: RmmProperties = [
 				],
 			},
 		},
-		default: false,
-	},
-	{
-		displayName: 'Status',
-		name: 'status',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'rmm',
+		default: {},
+		options: [
+			{
+				displayName: 'Resolved',
+				name: 'resolved',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options : [
+					{
+						name: 'Active',
+						value: 'active',
+					},
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Resolved',
+						value: 'resolved',
+					},
 				],
-				operation: [
-					'add',
-				],
-			},
-		},
-		options : [
-			{
-				name: 'Active',
-				value: 'active',
-			},
-			{
-				name: 'All',
-				value: 'all',
-			},
-			{
-				name: 'Resolved',
-				value: 'resolved',
+				default: 'active',
 			},
 		],
-		default: '',
 	},
 ];

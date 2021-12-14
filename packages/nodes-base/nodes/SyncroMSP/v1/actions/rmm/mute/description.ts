@@ -4,6 +4,23 @@ import {
 
 export const rmmMuteDescription: RmmProperties = [
 	{
+		displayName: 'RMM Alert ID',
+		name: 'id',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'rmm',
+				],
+				operation: [
+					'mute',
+				],
+			},
+		},
+		default: '',
+		description: 'Delete alert by ID',
+	},
+	{
 		displayName: 'Mute Period',
 		name: 'muteFor',
 		type: 'options',
@@ -49,22 +66,5 @@ export const rmmMuteDescription: RmmProperties = [
 		],
 		default: '',
 		description: 'Length of time to mute alert for',
-	},
-	{
-		displayName: 'RMM Alert ID',
-		name: 'id',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'mute',
-				],
-			},
-		},
-		default: '',
-		description: 'Delete alert by ID',
 	},
 ];

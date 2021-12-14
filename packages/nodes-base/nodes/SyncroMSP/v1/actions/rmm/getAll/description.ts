@@ -4,6 +4,23 @@ import {
 
 export const rmmGetAllDescription: RmmProperties = [
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'rmm',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit',
+	},
+	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
@@ -24,57 +41,10 @@ export const rmmGetAllDescription: RmmProperties = [
 		description: 'Limit the number of rows returned',
 	},
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit',
-	},
-	{
-		displayName: 'Status',
-		name: 'status',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options : [
-			{
-				name: 'Active',
-				value: 'active',
-			},
-			{
-				name: 'All',
-				value: 'all',
-			},
-			{
-				name: 'Resolved',
-				value: 'resolved',
-			},
-		],
-		default: 'active',
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Filters',
+		name: 'additionalFilters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
 				resource: [
@@ -88,20 +58,25 @@ export const rmmGetAllDescription: RmmProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Page',
-				name: 'page',
-				type: 'number',
-				displayOptions: {
-					show: {
-						'/returnAll': [
-							false,
-						],
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options : [
+					{
+						name: 'Active',
+						value: 'active',
 					},
-				},
-				default: 1,
-				description: 'Returns provided page of results, each page contains 25 results',
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Resolved',
+						value: 'resolved',
+					},
+				],
+				default: 'all',
 			},
-
 		],
 	},
 ];
