@@ -301,8 +301,12 @@ export class KoboToolbox implements INodeType {
 					//          Hook: logs
 					// ----------------------------------
 					const id = this.getNodeParameter('id', i) as string;
+					const status = this.getNodeParameter('status', i) as string;
 					({results: responseData} = await koboToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${asset_uid}/hooks/${id}/logs/`,
+						qs: {
+							...(status !== '' && {status}),
+						},
 					}));
 				}
 

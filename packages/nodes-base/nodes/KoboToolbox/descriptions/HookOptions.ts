@@ -42,4 +42,39 @@ export const hookOptions = [
 		default: '',
 		description:'Hook log id (starts with hl, e.g. hlSbGKaUKzTVNoWEVMYbLHe)',
 	},
+	{
+		displayName: 'Status',
+		name: 'status',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'hook',
+				],
+				operation: [
+					'logs',
+				],
+			},
+		},
+		default: '',
+		options: [
+			{
+				name: 'Any',
+				value: '',
+			},
+			{
+				name: 'Failed',
+				value: '0',
+			},
+			{
+				name: 'Pending',
+				value: '1',
+			},
+			{
+				name: 'Success',
+				value: '2',
+			},
+		],
+		description:'Hook status to filter for (0=failed, 1=pending, 2=success)',
+	},
 ] as INodeProperties[];
