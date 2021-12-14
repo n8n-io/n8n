@@ -3,7 +3,9 @@
 		:direction="direction"
 		:visible="visible"
 		:size="width"
-		:before-close="close"
+		:before-close="beforeClose"
+		:modal="modal"
+		:wrapperClosable="wrapperClosable"
 		>
 		<template v-slot:title>
 			<slot name="header" />
@@ -23,14 +25,25 @@ export default Vue.extend({
 		name: {
 			type: String,
 		},
+		beforeClose: {
+			type: Function,
+		},
 		eventBus: {
 			type: Vue,
 		},
 		direction: {
 			type: String,
 		},
+		modal: {
+			type: Boolean,
+			default: true,
+		},
 		width: {
 			type: String,
+		},
+		wrapperClosable: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	mounted() {

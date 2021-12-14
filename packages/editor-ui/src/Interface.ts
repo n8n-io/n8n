@@ -487,6 +487,21 @@ export interface IPersonalizationSurvey {
 	shouldShow: boolean;
 }
 
+export interface IN8nPrompts {
+	message: string;
+	title: string;
+	showContactPrompt: boolean;
+	showValueSurvey: boolean;
+}
+
+export interface IN8nValueSurveyData {
+	[key: string]: string;
+}
+
+export interface IN8nPromptResponse {
+	updated: boolean;
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -691,6 +706,7 @@ export interface IUiState {
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
+	promptsData: IN8nPrompts;
 }
 
 export interface IVersionsState {

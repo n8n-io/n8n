@@ -83,7 +83,10 @@ export const serviceFields: INodeProperties[] = [
 	{
 		displayName: 'Domain',
 		name: 'domain',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDomains',
+		},
 		default: '',
 		required: true,
 		displayOptions: {
@@ -100,7 +103,13 @@ export const serviceFields: INodeProperties[] = [
 	{
 		displayName: 'Service',
 		name: 'service',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'domain',
+			],
+			loadOptionsMethod: 'getDomainServices',
+		},
 		default: '',
 		required: true,
 		displayOptions: {
