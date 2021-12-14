@@ -13,8 +13,8 @@ import {
 
 
 export async function addAlert(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const customerId = this.getNodeParameter('customerId',index) as IDataObject;
-	const assetId = this.getNodeParameter('assetId',index) as IDataObject;
+	const customerId = this.getNodeParameter('customerId', index) as IDataObject;
+	const assetId = this.getNodeParameter('assetId', index) as IDataObject;
 	const description = this.getNodeParameter('description', index) as IDataObject;
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 

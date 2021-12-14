@@ -15,7 +15,7 @@ import {
 export async function updateCustomer(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('id', index) as IDataObject;
 	const { address, businessName, email, firstName, getSms, invoiceCcEmail,
-		lastName, noEmail, notes, notificationEmail, phone, referredBy} = this.getNodeParameter('additionalFields', index) as IDataObject;
+		lastName, noEmail, notes, notificationEmail, phone, referredBy } = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
@@ -23,24 +23,24 @@ export async function updateCustomer(this: IExecuteFunctions, index: number): Pr
 	let body = {} as IDataObject;
 	let addressData = address as IDataObject;
 
-	if ( addressData ) {
+	if (addressData) {
 		addressData = addressData['addressFields'] as IDataObject;
 		addressData.address_2 = addressData.address2;
 	}
 
 	body = {
 		...addressData,
-		business_name : businessName,
+		business_name: businessName,
 		email,
-		first_name : firstName,
-		get_sms : getSms,
-		invoice_cc_email : invoiceCcEmail,
-		last_name : lastName,
-		no_email : noEmail,
+		first_name: firstName,
+		get_sms: getSms,
+		invoice_cc_email: invoiceCcEmail,
+		last_name: lastName,
+		no_email: noEmail,
 		notes,
-		notification_email : notificationEmail,
+		notification_email: notificationEmail,
 		phone,
-		referred_by : referredBy,
+		referred_by: referredBy,
 	};
 
 	let responseData;

@@ -61,7 +61,7 @@ export const rmmGetAllDescription: RmmProperties = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				options : [
+				options: [
 					{
 						name: 'Active',
 						value: 'active',

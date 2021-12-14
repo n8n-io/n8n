@@ -68,7 +68,7 @@ export const ticketAddDescription: TicketProperties = [
 				displayName: 'Problem Type',
 				name: 'problemType',
 				type: 'options',
-				options : [
+				options: [
 					{
 						name: 'Remote Support',
 						value: 'Remote Support',
@@ -96,7 +96,7 @@ export const ticketAddDescription: TicketProperties = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				options : [
+				options: [
 					{
 						name: 'New',
 						value: 'New',

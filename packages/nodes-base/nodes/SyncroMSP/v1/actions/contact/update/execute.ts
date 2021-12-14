@@ -22,15 +22,15 @@ export async function updateContact(this: IExecuteFunctions, index: number): Pro
 	let body = {} as IDataObject;
 	let addressData = address as IDataObject;
 
-	if( addressData ) {
+	if (addressData) {
 		addressData = addressData['addressFields'] as IDataObject;
 		addressData.address1 = addressData.address;
 	}
 
 	body = {
 		...addressData,
-		contact_id : id,
-		customer_id : customerId,
+		contact_id: id,
+		customer_id: customerId,
 		email,
 		name,
 		notes,

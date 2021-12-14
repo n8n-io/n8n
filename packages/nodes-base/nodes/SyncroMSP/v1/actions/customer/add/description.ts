@@ -119,8 +119,8 @@ export const customerAddDescription: CustomerProperties = [
 				type: 'string',
 				default: '',
 				displayOptions: {
-					show : {
-						noEmail : [
+					show: {
+						noEmail: [
 							false,
 						],
 					},

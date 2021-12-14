@@ -13,7 +13,7 @@ import {
 
 
 export async function addContact(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const id = this.getNodeParameter('customerId',index) as IDataObject;
+	const id = this.getNodeParameter('customerId', index) as IDataObject;
 	const name = this.getNodeParameter('name', index) as IDataObject;
 	const email = this.getNodeParameter('email', index) as IDataObject;
 	const { address, notes, phone } = this.getNodeParameter('additionalFields', index) as IDataObject;
@@ -24,14 +24,14 @@ export async function addContact(this: IExecuteFunctions, index: number): Promis
 	let body = {} as IDataObject;
 	let addressData = address as IDataObject;
 
-	if( addressData ) {
+	if (addressData) {
 		addressData = addressData['addressFields'] as IDataObject;
 		addressData.address1 = addressData.address;
 	}
 
 	body = {
 		...addressData,
-		customer_id : id,
+		customer_id: id,
 		email,
 		name,
 		notes,

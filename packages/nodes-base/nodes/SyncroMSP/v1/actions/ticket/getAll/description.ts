@@ -69,7 +69,7 @@ export const ticketGetAllDescription: TicketProperties = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				options : [
+				options: [
 					{
 						name: 'New',
 						value: 'New',

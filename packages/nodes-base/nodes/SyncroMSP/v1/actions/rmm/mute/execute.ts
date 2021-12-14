@@ -14,14 +14,14 @@ import {
 
 export async function muteAlert(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('id', index) as string;
-	const mute = this.getNodeParameter('muteFor',index) as string;
+	const mute = this.getNodeParameter('muteFor', index) as string;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const endpoint = `rmm_alerts/${id}/mute`;
 	const body = {} as IDataObject;
 
-	body.id =id;
+	body.id = id;
 	body.mute_for = mute;
 
 	let responseData;

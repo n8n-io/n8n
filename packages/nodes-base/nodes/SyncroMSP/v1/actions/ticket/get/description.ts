@@ -12,7 +12,7 @@ export const ticketGetDescription: TicketProperties = [
 				resource: [
 					'ticket',
 				],
-				operation:[
+				operation: [
 					'get',
 				],
 			},

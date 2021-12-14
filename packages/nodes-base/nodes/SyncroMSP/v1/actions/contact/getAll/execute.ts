@@ -27,6 +27,6 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		return this.helpers.returnJsonArray(responseData);
 	} else {
 		responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-		return this.helpers.returnJsonArray((responseData.contacts).splice(0,limit));
+		return this.helpers.returnJsonArray((responseData.contacts).splice(0, limit));
 	}
 }
