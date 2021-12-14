@@ -24,17 +24,14 @@ export async function download(this: IExecuteFunctions, index: number): Promise<
 	const endPoint = `employees/${id}/files/${fileId}/`;
 
 	//response
-	const response = await apiRequest.call(this, requestMethod, endPoint, body);
+	const response = await apiRequest.call(this, requestMethod, endPoint, body, {} as IDataObject, 'arraybuffer');
 	const mimeType = response.headers['content-type'];
 	const fileName = response.headers['content-disposition'];
-
-	//buffer
-	const buffer = Buffer.from(response.body);
 
 	const responseData = {
 		json: {file: fileName},
 		binary: {
-			[output]: await this.helpers.prepareBinaryData(buffer as unknown as Buffer, fileName, mimeType),
+			[output]: await this.helpers.prepareBinaryData(response.body as unknown as Buffer, fileName, mimeType),
 		},
 	};
 

@@ -20,6 +20,7 @@ export async function apiRequest(
 	endPoint: string,
 	body: string[] | IDataObject = {},
 	query: IDataObject = {},
+	encoding: 'json' | 'arraybuffer' = 'json',
 ) {
 	const credentials = await this.getCredentials('bambooHRApi');
 
@@ -48,6 +49,7 @@ export async function apiRequest(
 		},
 		returnFullResponse: true,
 		json: true,
+		encoding: encoding
 	};
 
 	try {
