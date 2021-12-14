@@ -62,7 +62,7 @@ export const scrapeAdditionalFields: INodeProperties = {
 			},
 			default: '',
 			placeholder: '{ "title" : "h1", "subtitle" : "#subtitle" }',
-			description: 'Rules to extract data using CSS selectors. <a href="https://www.scrapingbee.com/documentation/#json_css">Learn more</a>.',
+			description: 'Rules to extract data using CSS selectors. <a href="https://www.scrapingbee.com/documentation/data-extraction/">Learn more</a>.',
 		},
 		{
 			displayName: 'Device Type',

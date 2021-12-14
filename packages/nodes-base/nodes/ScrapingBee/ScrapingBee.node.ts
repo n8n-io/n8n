@@ -23,7 +23,8 @@ import {
 } from './descriptions';
 
 import {
-	ScrapingBeeAdditionalOptions,
+	ScrapingBeeScrapeAdditionalOptions,
+	ScrapingBeeScreenshotAdditionalOptions,
 } from './types';
 
 import {
@@ -69,7 +70,6 @@ export class ScrapingBee implements INodeType {
 					},
 				],
 				default: 'scrape',
-				description: 'Resource to consume',
 			},
 			{
 				displayName: 'Target URL',
@@ -135,60 +135,83 @@ export class ScrapingBee implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const operation = this.getNodeParameter('operation', 0) as 'scrape' | 'screenshot';
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
+
+		// https://www.scrapingbee.com/documentation/
 
 		for (let i = 0; i < items.length; i++) {
 
 			try {
-				const qs: IDataObject & { url: string } = {
-					url: this.getNodeParameter('url', i) as string,
-				};
 
-				if (qs.url.includes('google.com')) {
-					qs.custom_google = true;
+				if (operation === 'scrape') {
+
+					const qs: IDataObject & { url: string } = {
+						url: this.getNodeParameter('url', i) as string,
+					};
+
+					if (qs.url.includes('google.com')) {
+						qs.custom_google = true;
+					}
+
+					const {
+						method = 'get',
+						block_targets,
+						extract_rules,
+						headers: rawHeaders,
+						...rest
+					} = this.getNodeParameter('additionalFields', i) as ScrapingBeeScrapeAdditionalOptions;
+
+					if (Object.keys(rest).length) {
+						Object.assign(qs, rest);
+					}
+
+					if (block_targets?.length) {
+						block_targets.forEach(target => {
+							qs[target] = true;
+						});
+					}
+
+					if (extract_rules) {
+						qs.extract_rules = JSON.stringify(JSON.parse(decodeURI(extract_rules)));
+					}
+
+					let headers = {};
+					if (rawHeaders?.headerValues.length) {
+						qs.forward_headers = true;
+						headers = rawHeaders.headerValues.reduce<Record<string, string>>((acc, cur) => {
+							acc[`Spb-${cur.key}`] = cur.value;
+							return acc;
+						}, {});
+					}
+
+					responseData = await scrapingBeeApiRequest.call(this, method, headers, qs);
+
+					Array.isArray(responseData)
+						? returnData.push(...responseData)
+						: returnData.push(responseData);
+
+				} else if (operation === 'screenshot') {
+
+					const qs: IDataObject & { url: string } = {
+						url: this.getNodeParameter('url', i) as string,
+					};
+
+					if (qs.url.includes('google.com')) {
+						qs.custom_google = true;
+					}
+
+					const { screenshot_size } = this.getNodeParameter('additionalFields', i) as ScrapingBeeScreenshotAdditionalOptions;
+
+					if (screenshot_size) {
+						qs.screenshot = true;
+						qs[screenshot_size] = true;
+					}
+
+					responseData = await handleBinaryData.call(this, items, i, 'get', {}, qs);
+
 				}
-
-				const {
-					method = 'get',
-					block_targets,
-					extract_rules,
-					headers: rawHeaders,
-					screenshot_size,
-					...rest
-				} = this.getNodeParameter('additionalFields', i) as ScrapingBeeAdditionalOptions;
-
-				if (Object.keys(rest).length) {
-					Object.assign(qs, rest);
-				}
-
-				if (block_targets?.length) {
-					block_targets.forEach(target => {
-						qs[target] = true;
-					});
-				}
-
-				if (extract_rules) {
-					qs.extract_rules = JSON.stringify(JSON.parse(decodeURI(extract_rules)));
-				}
-
-				let headers = {};
-				if (rawHeaders?.headerValues.length) {
-					qs.forward_headers = true;
-					headers = rawHeaders.headerValues.reduce<Record<string, string>>((acc, cur) => {
-						acc[`Spb-${cur.key}`] = cur.value;
-						return acc;
-					}, {});
-				}
-
-				if (screenshot_size) {
-					qs.screenshot = true;
-					qs[screenshot_size] = true;
-				}
-
-				responseData = screenshot_size
-					? await handleBinaryData.call(this, items, i, method, headers, qs)
-					: await scrapingBeeApiRequest.call(this, method, headers, qs);
 
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -198,12 +221,13 @@ export class ScrapingBee implements INodeType {
 				}
 				throw error;
 			}
+		}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+		if (operation === 'screenshot') {
+			return this.prepareOutputData(responseData);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
+
 	}
 }

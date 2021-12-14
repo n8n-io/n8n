@@ -1,4 +1,4 @@
-export type ScrapingBeeAdditionalOptions = Partial<{
+export type ScrapingBeeScrapeAdditionalOptions = Partial<{
   method: 'get' | 'post';
   block_targets: Array<'block_ads' | 'block_resources'>;
   cookies: string;
@@ -14,10 +14,13 @@ export type ScrapingBeeAdditionalOptions = Partial<{
   premium_proxy: boolean;
   render_js: boolean;
   return_page_source: boolean;
-  screenshot_size: 'screenshot_full_page' | 'screenshot';
   transparent_status_code: boolean;
   wait: number;
   wait_for: number;
   window_height: number;
   window_width: number;
+}>;
+
+export type ScrapingBeeScreenshotAdditionalOptions = Partial<{
+  screenshot_size: 'screenshot_full_page' | 'screenshot';
 }>;

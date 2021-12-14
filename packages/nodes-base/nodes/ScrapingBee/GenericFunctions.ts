@@ -9,7 +9,6 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
-	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
