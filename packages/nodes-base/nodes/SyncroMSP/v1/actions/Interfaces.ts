@@ -13,15 +13,15 @@ type SyncroMspMap = {
 
 export type SyncroMsp = AllEntities<SyncroMspMap>;
 
-export type SyncroMspMapCustomer = Entity<SyncroMspMap, 'customer'>;
-export type SyncroMspMapTicket = Entity<SyncroMspMap, 'ticket'>;
 export type SyncroMspMapContact = Entity<SyncroMspMap, 'contact'>;
+export type SyncroMspMapCustomer = Entity<SyncroMspMap, 'customer'>;
 export type SyncroMspMapRmm = Entity<SyncroMspMap, 'rmm'>;
+export type SyncroMspMapTicket = Entity<SyncroMspMap, 'ticket'>;
 
-export type CustomerProperties = PropertiesOf<SyncroMspMapCustomer>;
-export type TicketProperties = PropertiesOf<SyncroMspMapTicket>;
 export type ContactProperties = PropertiesOf<SyncroMspMapContact>;
+export type CustomerProperties = PropertiesOf<SyncroMspMapCustomer>;
 export type RmmProperties = PropertiesOf<SyncroMspMapRmm>;
+export type TicketProperties = PropertiesOf<SyncroMspMapTicket>;
 
 export interface IAttachment {
 	fields: {

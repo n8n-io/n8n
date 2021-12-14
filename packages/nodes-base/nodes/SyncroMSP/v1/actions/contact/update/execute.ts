@@ -27,7 +27,6 @@ export async function updateContact(this: IExecuteFunctions, index: number): Pro
 
 	if(body.address){
 		body.address1=body.address;
-		delete body.address;
 	}
 
 	let responseData;
