@@ -1,7 +1,6 @@
 <template>
 	<div id="side-menu">
 		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
-		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
@@ -190,7 +189,6 @@ export default mixins(
 				aboutDialogVisible: false,
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
-				executionsListDialogVisible: false,
 				stopExecutionInProgress: false,
 			};
 		},
@@ -302,9 +300,6 @@ export default mixins(
 			},
 			closeAboutDialog () {
 				this.aboutDialogVisible = false;
-			},
-			closeExecutionsListOpenDialog () {
-				this.executionsListDialogVisible = false;
 			},
 			openTagManager() {
 				this.$store.dispatch('ui/openModal', TAGS_MANAGER_MODAL_KEY);

@@ -209,9 +209,6 @@ export default mixins(
 	showMessage,
 ).extend({
 	name: 'ExecutionsList',
-	props: [
-		'dialogVisible',
-	],
 	components: {
 		ExecutionTime,
 		WorkflowActivator,
@@ -242,6 +239,18 @@ export default mixins(
 			workflows: [] as IWorkflowShortResponse[],
 			EXECUTIONS_MODAL_KEY,
 		};
+	},
+	async mounted() {
+		Vue.set(this, 'selectedItems', {});
+		this.filter.workflowId = 'ALL';
+		this.checkAll = false;
+
+		await this.loadWorkflows();
+		await this.refreshData();
+		this.handleAutoRefreshToggle();
+
+		this.$externalHooks().run('executionsList.openDialog');
+		this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
 	},
 	computed: {
 		statuses () {
@@ -321,13 +330,6 @@ export default mixins(
 				filter.finished = this.filter.status === 'success';
 			}
 			return filter;
-		},
-	},
-	watch: {
-		dialogVisible (newValue, oldValue) {
-			if (newValue) {
-				this.openDialog();
-			}
 		},
 	},
 	methods: {
@@ -620,18 +622,6 @@ export default mixins(
 					this.$locale.baseText('executionsList.showError.loadWorkflows.message') + ':',
 				);
 			}
-		},
-		async openDialog () {
-			Vue.set(this, 'selectedItems', {});
-			this.filter.workflowId = 'ALL';
-			this.checkAll = false;
-
-			await this.loadWorkflows();
-			await this.refreshData();
-			this.handleAutoRefreshToggle();
-
-			this.$externalHooks().run('executionsList.openDialog');
-			this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
