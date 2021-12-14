@@ -24,14 +24,14 @@ export async function addCustomer(this: IExecuteFunctions, index: number): Promi
 	const requestMethod = 'POST';
 	const endpoint = 'customers';
 	let body = {} as IDataObject;
-	let addressData = address as IDataObject
+	let addressData = address as IDataObject;
 
-	if( addressData ){
+	if( addressData ) {
 		addressData = addressData['addressFields'] as IDataObject;
 		addressData.address_2 = addressData.address2;
-	};
+	}
 
-	body={
+	body = {
 		...addressData,
 		get_sms : getSms,
 		invoice_cc_email : invoiceCcEmail,

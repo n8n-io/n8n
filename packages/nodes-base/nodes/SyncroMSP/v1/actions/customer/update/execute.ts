@@ -21,14 +21,14 @@ export async function updateCustomer(this: IExecuteFunctions, index: number): Pr
 	const requestMethod = 'PUT';
 	const endpoint = `customers/${id}`;
 	let body = {} as IDataObject;
-	let addressData = address as IDataObject
+	let addressData = address as IDataObject;
 
-	if( addressData ){
+	if ( addressData ) {
 		addressData = addressData['addressFields'] as IDataObject;
 		addressData.address_2 = addressData.address2;
-	};
+	}
 
-	body={
+	body = {
 		...addressData,
 		business_name : businessName,
 		email,

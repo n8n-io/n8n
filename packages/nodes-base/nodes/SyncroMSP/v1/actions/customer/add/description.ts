@@ -4,7 +4,7 @@ import {
 
 import {
 	addressFixedCollection
-} from '../../../methods/sharedFields'
+} from '../../../methods/sharedFields';
 
 export const customerAddDescription: CustomerProperties = [
 	{
@@ -121,9 +121,9 @@ export const customerAddDescription: CustomerProperties = [
 				displayOptions: {
 					show : {
 						noEmail : [
-							false
+							false,
 						],
-					}
+					},
 				},
 			},
 			{

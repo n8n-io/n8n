@@ -23,11 +23,11 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 
 	if (additionalFilters) {
 		qs = additionalFilters;
-		if ( qs.businessName ){
-			qs.business_name = qs.businessName
+		if ( qs.businessName ) {
+			qs.business_name = qs.businessName;
 		}
-		if ( qs.includeDisabled ){
-			qs.include_disabled = qs.includeDisabled
+		if ( qs.includeDisabled ) {
+			qs.include_disabled = qs.includeDisabled;
 		}
 	}
 
