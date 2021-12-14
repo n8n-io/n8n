@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { set } from 'lodash';
-import jsonata from 'jsonata';
+import * as jsonata from 'jsonata';
 
 export class JSONata implements INodeType {
 	description: INodeTypeDescription = {
