@@ -364,6 +364,7 @@
       "dist/nodes/Cockpit/Cockpit.node.js",
       "dist/nodes/Coda/Coda.node.js",
       "dist/nodes/CoinGecko/CoinGecko.node.js",
+      "dist/nodes/CombineSplitInBatches/CombineSplitInBatches.node.js",
       "dist/nodes/Compression/Compression.node.js",
       "dist/nodes/Contentful/Contentful.node.js",
       "dist/nodes/ConvertKit/ConvertKit.node.js",
