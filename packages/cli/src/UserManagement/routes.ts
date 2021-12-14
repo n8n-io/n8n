@@ -1,4 +1,6 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable import/no-cycle */
 
 import * as express from 'express';
 import { Db, GenericHelpers, ResponseHelper } from '..';
@@ -8,7 +10,10 @@ import { isEmailSetup } from './UserManagementHelper';
 
 import { authenticationRoutes } from './auth/routes';
 
-export async function addRoutes(): void {
+export async function addRoutes(this: {
+	app: express.Application;
+	restEndpoint: string;
+}): Promise<void> {
 	await authenticationRoutes.apply(this);
 
 	// ----------------------------------------

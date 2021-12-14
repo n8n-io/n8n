@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 import { addRoutes } from './routes';
 
-export const UMRouter = { addRoutes };
+export const userManagementRouter = { addRoutes };

@@ -1,5 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable import/no-cycle */
-// @ts-nocheck
 
 import * as express from 'express';
 import * as passport from 'passport';
@@ -7,7 +11,6 @@ import { ExtractJwt } from 'passport-jwt';
 import { UserSettings } from 'n8n-core';
 import { createHash } from 'crypto';
 import { Db, ResponseHelper } from '../..';
-import { User } from '../databases/entities/User';
 import { issueJWT, useJwt } from './jwt';
 import config = require('../../../config');
 
@@ -28,7 +31,10 @@ async function generateJwtToken(): Promise<string> {
 	return createHash('md5').update(baseKey).digest('hex');
 }
 
-export async function authenticationRoutes(): void {
+export async function authenticationRoutes(this: {
+	app: express.Application;
+	restEndpoint: string;
+}): Promise<void> {
 	const options = {
 		jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
 		secretOrKey: (config.get('userManagement.jwtSecret') as string) || (await generateJwtToken()),
@@ -55,12 +61,35 @@ export async function authenticationRoutes(): void {
 	// login a user
 	// ----------------------------------------
 
-	this.app.get(
+	this.app.post(
 		`/${this.restEndpoint}/login`,
 		ResponseHelper.send(async (req: express.Request, res: express.Response) => {
-			const user = await Db.collections.User!.findOne({ firstName: 'Ben' });
+			if (!req.body.email) {
+				throw new Error('Email is required to log in');
+			}
 
-			return issueJWT(user, options);
+			if (!req.body.password) {
+				throw new Error('Password is required to log in');
+			}
+
+			let user;
+			try {
+				user = await Db.collections.User!.findOne({
+					email: req.body.email as string | undefined,
+					password: req.body.password as string | undefined,
+				});
+			} catch (error) {
+				throw new Error('Unable to access database.');
+			}
+			if (!user) {
+				const error = new Error('User not found');
+				// @ts-ignore
+				error.httpStatusCode = 404;
+				throw error;
+			}
+
+			const userData = await issueJWT(user, options);
+			return userData;
 		}),
 	);
 }

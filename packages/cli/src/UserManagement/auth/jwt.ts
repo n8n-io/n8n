@@ -1,17 +1,20 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable import/no-cycle */
 
-import { ExtractJwt, JwtFromRequestFunction, Strategy } from 'passport-jwt';
+import { Strategy } from 'passport-jwt';
 import * as jwt from 'jsonwebtoken';
 
+import { PassportStatic } from 'passport';
 import { Db } from '../..';
-import config = require('../../../config');
+import { JwtOptions, JwtToken } from '../Interfaces';
+import { User } from '../../databases/entities/User';
 
-export async function useJwt(passport, options: JwtOptions): Promise<void> {
+export async function useJwt(passport: PassportStatic, options: JwtOptions): Promise<void> {
 	// The JWT payload is passed into the verify callback
 	passport.use(
 		new Strategy(options, async function (jwt_payload, done) {
 			// We will assign the `sub` property on the JWT to the database ID of user
-			const user = await Db.collections.User.findOne(
+			const user = await Db.collections.User!.findOne(
 				{
 					id: jwt_payload.id,
 					email: jwt_payload.email,
@@ -26,7 +29,7 @@ export async function useJwt(passport, options: JwtOptions): Promise<void> {
 	);
 }
 
-export function issueJWT(user, options: JwtOptions) {
+export async function issueJWT(user: User, options: JwtOptions): Promise<JwtToken> {
 	const { id, email } = user;
 	const expiresIn = 14 * 86400000; // 14 days
 
@@ -40,13 +43,8 @@ export function issueJWT(user, options: JwtOptions) {
 	});
 
 	return {
-		token: 'Bearer ' + signedToken,
+		token: `Bearer ${signedToken}`,
 		expiresIn,
 		validTill: Date.now() + expiresIn,
 	};
 }
-
-declare type JwtOptions = {
-	secretOrKey: string;
-	jwtFromRequest: JwtFromRequestFunction;
-};
