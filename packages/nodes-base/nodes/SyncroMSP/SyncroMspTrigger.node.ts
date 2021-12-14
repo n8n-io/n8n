@@ -48,57 +48,57 @@ export class SyncroMspTrigger implements INodeType {
 					{
 						name: 'All',
 						value: 'All',
-						description: 'Any time any event is triggered (Wildcard Event).',
+						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 					{
 						name: 'Create Contact',
 						value: 'createContact',
-						description: 'Triggers on creation of a new contact.',
+						description: 'Triggers on creation of a new contact',
 					},
 					{
 						name: 'Create Customer',
 						value: 'createCustomer',
-						description: 'Triggers on creation of a new customer.',
+						description: 'Triggers on creation of a new customer',
 					},
 					{
 						name: 'Create Ticket',
 						value: 'createTicket',
-						description: 'Triggers on creation of a new ticket.',
+						description: 'Triggers on creation of a new ticket',
 					},
 					{
 						name: 'Ticket Customer Reply',
 						value: 'resolveTicket',
-						description: 'Triggers when ticket status is marked as customer-reply.',
+						description: 'Triggers when ticket status is marked as customer-reply',
 					},
 					{
 						name: 'Ticket In-Progress',
 						value: 'inProgressTicket',
-						description: 'Triggers when ticket status is marked as in-progress.',
+						description: 'Triggers when ticket status is marked as in-progress',
 					},
 					{
 						name: 'Ticket Resolved',
 						value: 'resolveTicket',
-						description: 'Triggers when ticket status is marked as resolved.',
+						description: 'Triggers when ticket status is marked as resolved',
 					},
 					{
 						name: 'Ticket Scheduled',
 						value: 'scheduledTicket',
-						description: 'Triggers when ticket status is marked as scheduled.',
+						description: 'Triggers when ticket status is marked as scheduled',
 					},
 					{
 						name: 'Ticket Waiting for Customer',
 						value: 'waitingForCustomerTicket',
-						description: 'Triggers when ticket status is marked as waiting-for-customer.',
+						description: 'Triggers when ticket status is marked as waiting-for-customer',
 					},
 					{
 						name: 'Ticket Waiting for Parts',
 						value: 'waitingForPartsTicket',
-						description: 'Triggers when ticket status is marked as waiting-for-parts.',
+						description: 'Triggers when ticket status is marked as waiting-for-parts',
 					},
 				],
 				required: true,
 				default: [],
-				description: 'The events to listen to.',
+				description: 'The events to listen to',
 			},
 		],
 	};
@@ -123,10 +123,10 @@ export class SyncroMspTrigger implements INodeType {
 		};
 		const event = (bodyData.text as string).split('\n')[0];
 		const attribute = bodyData['attributes'] as IDataObject;
-		attribute.event=mapToEvents[event];
+		attribute.event = mapToEvents[event];
 
 		const returnData: IDataObject[] = [];
-		if(events && (events.includes(mapToEvents[event] as string) || events.includes('All'))){
+		if (events && (events.includes(mapToEvents[event] as string) || events.includes('All'))) {
 			returnData.push(attribute);
 			return {
 				workflowData: [
