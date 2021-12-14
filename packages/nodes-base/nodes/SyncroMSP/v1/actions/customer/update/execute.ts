@@ -14,19 +14,23 @@ import {
 
 export async function updateCustomer(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('id', index) as IDataObject;
-	const { address, businessName, city, email, firstName, getSms, invoiceCcEmail,
-		lastName, noEmail, notes, notificationEmail, phone,
-		referredBy, state, zip} = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const { address, businessName, email, firstName, getSms, invoiceCcEmail,
+		lastName, noEmail, notes, notificationEmail, phone, referredBy} = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
 	const endpoint = `customers/${id}`;
 	let body = {} as IDataObject;
+	let addressData = address as IDataObject
+
+	if( addressData ){
+		addressData = addressData['addressFields'] as IDataObject;
+		addressData.address_2 = addressData.address2;
+	};
 
 	body={
-		address,
+		...addressData,
 		business_name : businessName,
-		city,
 		email,
 		first_name : firstName,
 		get_sms : getSms,
@@ -37,8 +41,6 @@ export async function updateCustomer(this: IExecuteFunctions, index: number): Pr
 		notification_email : notificationEmail,
 		phone,
 		referred_by : referredBy,
-		state,
-		zip,
 	};
 
 	let responseData;

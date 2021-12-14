@@ -2,6 +2,10 @@ import {
 	CustomerProperties,
 } from '../../Interfaces';
 
+import {
+	addressFixedCollection
+} from '../../../methods/sharedFields'
+
 export const customerAddDescription: CustomerProperties = [
 	{
 		displayName: 'Business Name',
@@ -84,18 +88,7 @@ export const customerAddDescription: CustomerProperties = [
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'Address',
-				name: 'address',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'City',
-				name: 'city',
-				type: 'string',
-				default: '',
-			},
+			addressFixedCollection,
 			{
 				displayName: 'Get SMS',
 				name: 'getSms',
@@ -125,6 +118,13 @@ export const customerAddDescription: CustomerProperties = [
 				name: 'notificationEmail',
 				type: 'string',
 				default: '',
+				displayOptions: {
+					show : {
+						noEmail : [
+							false
+						],
+					}
+				},
 			},
 			{
 				displayName: 'Phone',
@@ -137,18 +137,7 @@ export const customerAddDescription: CustomerProperties = [
 				name: 'referredBy',
 				type: 'string',
 				default: '',
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'ZIP',
-				name: 'zip',
-				type: 'string',
-				default: '',
+				description: 'Source from which customer is referred to the platform like Linkedin, Google, Customer name etc.',
 			},
 		],
 	},

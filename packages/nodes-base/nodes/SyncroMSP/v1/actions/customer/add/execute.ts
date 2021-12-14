@@ -1,3 +1,4 @@
+import { add } from 'lodash';
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -17,16 +18,21 @@ export async function addCustomer(this: IExecuteFunctions, index: number): Promi
 	const lastname = this.getNodeParameter('lastname', index) as IDataObject;
 	const email = this.getNodeParameter('email', index) as IDataObject;
 	const businessName = this.getNodeParameter('businessName', index) as IDataObject;
-	const { address, city, getSms, invoiceCcEmail, noEmail, notes, notificationEmail, phone, referredBy, state, zip} = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const { address , getSms, invoiceCcEmail, noEmail, notes, notificationEmail, phone, referredBy} = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const endpoint = 'customers';
 	let body = {} as IDataObject;
+	let addressData = address as IDataObject
+
+	if( addressData ){
+		addressData = addressData['addressFields'] as IDataObject;
+		addressData.address_2 = addressData.address2;
+	};
 
 	body={
-		address,
-		city,
+		...addressData,
 		get_sms : getSms,
 		invoice_cc_email : invoiceCcEmail,
 		no_email : noEmail,
@@ -34,8 +40,6 @@ export async function addCustomer(this: IExecuteFunctions, index: number): Promi
 		notification_email : notificationEmail,
 		phone,
 		referred_by : referredBy,
-		state,
-		zip,
 	};
 
 

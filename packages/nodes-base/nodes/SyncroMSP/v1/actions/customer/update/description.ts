@@ -2,6 +2,10 @@ import {
 	CustomerProperties,
 } from '../../Interfaces';
 
+import {
+	addressFixedCollection
+} from '../../../methods/sharedFields'
+
 export const customerUpdateDescription: CustomerProperties = [
 	{
 		displayName: 'Customer ID',
@@ -20,7 +24,7 @@ export const customerUpdateDescription: CustomerProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Update Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -36,21 +40,10 @@ export const customerUpdateDescription: CustomerProperties = [
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'Address',
-				name: 'address',
-				type: 'string',
-				default: '',
-			},
+			addressFixedCollection,
 			{
 				displayName: 'Business Name',
 				name: 'businessName',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'City',
-				name: 'city',
 				type: 'string',
 				default: '',
 			},
@@ -101,6 +94,13 @@ export const customerUpdateDescription: CustomerProperties = [
 				name: 'notificationEmail',
 				type: 'string',
 				default: '',
+				displayOptions: {
+					show : {
+						noEmail : [
+							false
+						],
+					}
+				},
 			},
 			{
 				displayName: 'Phone',
@@ -113,18 +113,7 @@ export const customerUpdateDescription: CustomerProperties = [
 				name: 'referredBy',
 				type: 'string',
 				default: '',
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'ZIP',
-				name: 'zip',
-				type: 'string',
-				default: '',
+				description: 'Source from which customer is referred to the platform like Linkedin, Google, Customer name etc.',
 			},
 		],
 	},

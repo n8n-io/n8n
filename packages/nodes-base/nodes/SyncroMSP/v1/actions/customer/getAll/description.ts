@@ -4,6 +4,23 @@ import {
 
 export const customerGetAllDescription: CustomerProperties = [
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit',
+	},
+	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
@@ -24,27 +41,10 @@ export const customerGetAllDescription: CustomerProperties = [
 		description: 'Limit the number of rows returned',
 	},
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit',
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Filters',
+		name: 'additionalFilters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
 				resource: [
@@ -58,18 +58,34 @@ export const customerGetAllDescription: CustomerProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Page',
-				name: 'page',
-				type: 'number',
-				displayOptions: {
-					show: {
-						'/returnAll': [
-							false,
-						],
-					},
-				},
-				default: 1,
-				description: 'Returns provided page of results, each page contains 25 results',
+				displayName: 'Business Name',
+				name: 'businessName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'First Name',
+				name: 'firstname',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Include Disabled',
+				name: 'includeDisabled',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastname',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Search Query',
@@ -78,6 +94,14 @@ export const customerGetAllDescription: CustomerProperties = [
 				default: '',
 				placeholder: 'John Doe',
 				description: 'Search query, it can be anything related to customer data like name etc.',
+			},
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'string',
+				default: '',
+				placeholder: 'firstname ASC',
+				description: 'customer field to order by, eg: "firstname ASC", "city DESC" etc.',
 			},
 		],
 	},
