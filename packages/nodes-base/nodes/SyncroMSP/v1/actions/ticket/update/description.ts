@@ -20,7 +20,7 @@ export const ticketUpdateDescription: TicketProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Update Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -45,11 +45,7 @@ export const ticketUpdateDescription: TicketProperties = [
 			{
 				displayName: 'Customer ID',
 				name: 'customerId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getCustomers',
-				},
-				options: [],
+				type: 'string',
 				default: '',
 			},
 			{
@@ -61,24 +57,70 @@ export const ticketUpdateDescription: TicketProperties = [
 			{
 				displayName: 'Problem Type',
 				name: 'problemType',
-				type: 'string',
+				type: 'options',
+				options : [
+					{
+						name: 'Remote Support',
+						value: 'Remote Support',
+					},
+					{
+						name: 'Contract Work',
+						value: 'Contract Work',
+					},
+					{
+						name: 'Network Project',
+						value: 'Network Project',
+					},
+					{
+						name: 'Regular Maintenance',
+						value: 'Regular Maintenance',
+					},
+					{
+						name: 'Other',
+						value: 'Other',
+					},
+				],
 				default: '',
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
-				type: 'string',
-				default: '',
+				type: 'options',
+				options : [
+					{
+						name: 'New',
+						value: 'New',
+					},
+					{
+						name: 'In Progress',
+						value: 'In Progress',
+					},
+					{
+						name: 'Resolved',
+						value: 'Resolved',
+					},
+					{
+						name: 'Waiting for Parts',
+						value: 'Waiting for Parts',
+					},
+					{
+						name: 'Waiting on Customer',
+						value: 'Waiting on Customer',
+					},
+					{
+						name: 'Scheduled',
+						value: 'Scheduled',
+					},
+					{
+						name: 'Customer Reply',
+						value: 'Customer Reply',
+					},
+				],
+				default: 'New',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Ticket Type',
-				name: 'ticketType',
 				type: 'string',
 				default: '',
 			},

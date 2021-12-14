@@ -14,18 +14,18 @@ import {
 
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFilters = this.getNodeParameter('additionalFilters', index) as IDataObject;
 
 	let qs = {} as IDataObject;
 	const requestMethod = 'GET';
 	const endpoint = 'tickets';
 	const body = {} as IDataObject;
 
-	if (additionalFields) {
-		qs = additionalFields;
+	if (additionalFilters) {
+		qs = additionalFilters;
 	}
 
-	if (returnAll === false) {
+	if (returnAll === false ) {
 		qs.per_page = this.getNodeParameter('limit', index) as number;
 	}
 

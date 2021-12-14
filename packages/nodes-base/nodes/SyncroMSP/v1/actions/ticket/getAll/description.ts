@@ -4,6 +4,23 @@ import {
 
 export const ticketGetAllDescription: TicketProperties = [
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit',
+	},
+	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
@@ -24,27 +41,10 @@ export const ticketGetAllDescription: TicketProperties = [
 		description: 'Limit the number of rows returned',
 	},
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit',
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Filters',
+		name: 'additionalFilters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
 				resource: [
@@ -58,26 +58,48 @@ export const ticketGetAllDescription: TicketProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Page',
-				name: 'page',
-				type: 'number',
-				displayOptions: {
-					show: {
-						'/returnAll': [
-							false,
-						],
-					},
-				},
-				default: 1,
-				description: 'Returns provided page of results, each page contains 25 results',
-			},
-			{
 				displayName: 'Search Query',
 				name: 'query',
 				type: 'string',
 				default: '',
 				placeholder: 'John Doe',
 				description: 'Search query, it can be anything related to ticket data like user etc.',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options : [
+					{
+						name: 'New',
+						value: 'New',
+					},
+					{
+						name: 'In Progress',
+						value: 'In Progress',
+					},
+					{
+						name: 'Resolved',
+						value: 'Resolved',
+					},
+					{
+						name: 'Waiting for Parts',
+						value: 'Waiting for Parts',
+					},
+					{
+						name: 'Waiting on Customer',
+						value: 'Waiting on Customer',
+					},
+					{
+						name: 'Scheduled',
+						value: 'Scheduled',
+					},
+					{
+						name: 'Customer Reply',
+						value: 'Customer Reply',
+					},
+				],
+				default: 'New',
 			},
 		],
 	},
