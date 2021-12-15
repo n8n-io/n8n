@@ -28,8 +28,8 @@ export class PayPalApi implements ICredentialType {
 			default: 'live',
 			options: [
 				{
-					name: 'Sanbox',
-					value: 'sanbox',
+					name: 'Sandbox',
+					value: 'sandbox',
 				},
 				{
 					name: 'Live',
