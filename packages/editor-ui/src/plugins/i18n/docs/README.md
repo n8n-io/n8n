@@ -213,14 +213,14 @@ export class Github implements INodeType {
 Header text is used wherever the node's display name and description are needed:
 
 <p align="center">
-    <img src="header1.png" width="400">
-    <img src="header2.png" width="200">
-    <img src="header3.png" width="400">
+    <img src="img/header1.png" width="400">
+    <img src="img/header2.png" width="200">
+    <img src="img/header3.png" width="400">
 </p>
 
 <p align="center">
-    <img src="header4.png" width="400">
-    <img src="header5.png" width="500">
+    <img src="img/header4.png" width="400">
+    <img src="img/header5.png" width="500">
 </p>
 
 #### `credentialsModal` section
@@ -322,7 +322,7 @@ The object for each node credential parameter allows for the keys `displayName`,
 ```
 
 <p align="center">
-    <img src="cred.png">
+    <img src="img/cred.png">
 </p>
 
 #### `nodeView` section
@@ -393,7 +393,7 @@ Allowed keys: `displayName`, `description`, and `placeholder`.
 ```
 
 <p align="center">
-    <img src="node1.png" width="400">
+    <img src="img/node1.png" width="400">
 </p>
 
 #### `options` parameter
@@ -446,7 +446,7 @@ Allowed subkeys: `options.{optionName}.displayName` and `options.{optionName}.de
 ```
 
 <p align="center">
-    <img src="node2.png" width="400">
+    <img src="img/node2.png" width="400">
 </p>
 
 #### `collection` and `fixedCollection` parameters
@@ -523,7 +523,7 @@ To reduce nesting and to share translations, a parameter inside a collection's o
 ```
 
 <p align="center">
-    <img src="node4.png" width="400">
+    <img src="img/node4.png" width="400">
 </p>
 
 > **Note**: In case of deep nesting, i.e. a child of a child of a `collection` and `fixedCollection` parameter, the deeply nested child in principle should be translatable at the same level of nesting as the `collection` and `fixedCollection` parameter, but this has not been fully tested for this first release.
