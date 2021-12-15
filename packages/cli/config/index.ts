@@ -541,11 +541,11 @@ const config = convict({
 	},
 
 	userManagement: {
-		enabled: {
-			doc: 'Whether user management is enabled.',
+		disabled: {
+			doc: 'Disable user management and hide it completely.',
 			format: Boolean,
 			default: false,
-			env: 'N8N_USER_MANAGEMENT_ENABLED',
+			env: 'N8N_USER_MANAGEMENT_DISABLED',
 		},
 		jwtSecret: {
 			doc: 'Set a specific JWT secret (optional - n8n can generate one)',
@@ -555,7 +555,7 @@ const config = convict({
 		},
 		emails: {
 			mode: {
-				doc: 'How to send emails',
+				doc: 'How to send emails. Possible values: smtp or empty (default)',
 				format: String,
 				default: '', // possible values: 'smtp' | ''
 				env: 'N8N_UM_EMAIL_MODE',
@@ -602,13 +602,13 @@ const config = convict({
 			},
 			templates: {
 				invite: {
-					doc: 'HTML template for inviting new people (use full path)',
+					doc: 'Overrides default HTML template for inviting new people (use full path)',
 					format: String,
 					default: '',
 					env: 'N8N_UM_EMAIL_TEMPLATES_INVITE',
 				},
 				passwordReset: {
-					doc: 'HTML template for resetting password (use full path)',
+					doc: 'Overrides default HTML template for resetting password (use full path)',
 					format: String,
 					default: '',
 					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',

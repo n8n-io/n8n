@@ -1,4 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 
 export class CreateUserManagement1636626154932 implements MigrationInterface {
 	name = 'CreateUserManagement1636626154932';
@@ -11,7 +12,7 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`CREATE TABLE "user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(254) NOT NULL, "firstName" varchar(32), "lastName" varchar(32), "password" varchar, "resetPasswordToken" varchar, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer NOT NULL, CONSTRAINT "FK_f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+			`CREATE TABLE "user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(254), "firstName" varchar(32), "lastName" varchar(32), "password" varchar, "resetPasswordToken" varchar, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer NOT NULL, CONSTRAINT "FK_f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
 		);
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "IDX_e12875dfb3b1d92d7d7c5377e2" ON "user" ("email") `,
@@ -31,6 +32,8 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 			VALUES ("owner", "global");
 		`);
 
+		const insertedOwnerRole = await queryRunner.query('SELECT last_insert_rowid() as insertId');
+
 		await queryRunner.query(`
 			INSERT INTO role (name, scope)
 			VALUES ("member", "global");
@@ -44,6 +47,11 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		await queryRunner.query(`
 			INSERT INTO role (name, scope)
 			VALUES ("owner", "credential");
+		`);
+
+		await queryRunner.query(`
+			INSERT INTO user(id, firstName, lastName, createdAt, updatedAt, globalRoleId) values
+			('${uuidv4()}', 'default', 'default', DateTime('now'), DateTime('now'), ${insertedOwnerRole[0].insertId})
 		`);
 	}
 

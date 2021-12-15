@@ -21,11 +21,7 @@ const sqliteMigrations = [
 	UniqueWorkflowNames1620821879465,
 	AddWaitColumn1621707690587,
 	UpdateWorkflowCredentials1630330987096,
+	CreateUserManagement1636626154932,
 ];
-
-if (config.get('userManagement.enabled')) {
-	const userMgmtMigrations = [CreateUserManagement1636626154932];
-	sqliteMigrations.push(...userMgmtMigrations);
-}
 
 export { sqliteMigrations };

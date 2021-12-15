@@ -249,7 +249,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
 
-		this.isUserManagementEnabled = config.get('userManagement.enabled');
+		this.isUserManagementEnabled = !config.get('userManagement.disabled');
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 

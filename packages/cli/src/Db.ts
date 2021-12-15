@@ -148,12 +148,10 @@ export async function init(): Promise<IDatabaseCollections> {
 	collections.Webhook = getRepository(entities.WebhookEntity);
 	collections.Tag = getRepository(entities.TagEntity);
 
-	if (config.get('userManagement.enabled')) {
-		collections.Role = getRepository(entities.Role);
-		collections.User = getRepository(entities.User);
-		collections.SharedCredentials = getRepository(entities.SharedCredentials);
-		collections.SharedWorkflow = getRepository(entities.SharedWorkflow);
-	}
+	collections.Role = getRepository(entities.Role);
+	collections.User = getRepository(entities.User);
+	collections.SharedCredentials = getRepository(entities.SharedCredentials);
+	collections.SharedWorkflow = getRepository(entities.SharedWorkflow);
 
 	return collections;
 }
