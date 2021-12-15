@@ -1,41 +1,92 @@
 import {
-    IExecuteFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
-    IDataObject,
-    INodeExecutionData,
-    INodeType,
-    INodeTypeDescription,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-    OptionsWithUri,
+	OptionsWithUri,
 } from 'request';
 
 export class Gllue implements INodeType {
-    description: INodeTypeDescription = {
-        displayName: 'Gllue',
-        name: 'gllue',
-        icon: 'file:gllue.svg',
-        group: ['transform'],
-        version: 1,
-        description: 'Consume Gllue API',
-        defaults: {
-            name: 'Gllue',
-            color: '#1A82e2',
-        },
-        inputs: ['main'],
-        outputs: ['main'],
-        credentials: [
-        ],
-        properties: [
-            // Node properties which the user gets displayed and
-            // can change on the node.
-        ],
-    };
+	description: INodeTypeDescription = {
+		displayName: 'Gllue',
+		name: 'gllue',
+		icon: 'file:gllue.svg',
+		group: ['transform'],
+		version: 1,
+		description: 'Consume Gllue API',
+		defaults: {
+			name: 'Gllue',
+			color: '#1A82e2',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [],
+		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Client',
+						value: 'client',
+					},
+				],
+				default: 'client',
+				required: true,
+				description: 'Resource to consume',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'contact',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'list',
+						value: 'list',
+						description: 'List contacts',
+					},
+				],
+				default: 'list',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Keyword',
+				name: 'keyword',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'list',
+						],
+						resource: [
+							'client',
+						],
+					},
+				},
+				default: '',
+				description: 'keyword to search clients',
+			},
 
-    async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-        return [[]];
-    }
+		],
+	};
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return [[]];
+	}
 }
