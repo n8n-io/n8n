@@ -47,7 +47,7 @@ export async function updateCustomer(this: IExecuteFunctions, index: number): Pr
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	if (!responseData.customer) {
-		throw new NodeApiError(this.getNode(), responseData, { httpCode: '404', message: "customer not found" });
+		throw new NodeApiError(this.getNode(), responseData, { httpCode: '404', message: 'Customer ID not found' });
 	}
 	return this.helpers.returnJsonArray(responseData.customer);
 }
