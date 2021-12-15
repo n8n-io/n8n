@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="$i.credText().topParameterDisplayName(parameter)"
-		:tooltipText="$i.credText().topParameterDescription(parameter)"
+		:label="$locale.credText().topParameterDisplayName(parameter)"
+		:tooltipText="$locale.credText().topParameterDescription(parameter)"
 		:required="parameter.required"
 		:showTooltip="focused"
 	>
@@ -21,7 +21,7 @@
 			inputSize="large"
 		/>
 		<div class="errors" v-if="showRequiredErrors">
-			{{ $i.baseText('parameterInputExpanded.thisFieldIsRequired') }} <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $i.baseText('parameterInputExpanded.openDocs') }}</a>
+			{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }} <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $locale.baseText('parameterInputExpanded.openDocs') }}</a>
 		</div>
 	</n8n-input-label>
 </template>

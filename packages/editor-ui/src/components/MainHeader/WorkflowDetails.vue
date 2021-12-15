@@ -33,7 +33,7 @@
 				@blur="onTagsBlur"
 				@update="onTagsUpdate"
 				@esc="onTagsEditEsc"
-				:placeholder="$i.baseText('workflowDetails.chooseOrCreateATag')"
+				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 				ref="dropdown"
 				class="tags-edit"
 			/>
@@ -46,7 +46,7 @@
 				class="add-tag clickable"
 				@click="onTagsEditEnable"
 			>
-				+ {{ $i.baseText('workflowDetails.addTag') }}
+				+ {{ $locale.baseText('workflowDetails.addTag') }}
 			</span>
 		</div>
 		<TagsContainer
@@ -62,7 +62,7 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<span>{{ $i.baseText('workflowDetails.active') + ':' }}</span>
+					<span>{{ $locale.baseText('workflowDetails.active') + ':' }}</span>
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
 				</span>
 				<SaveButton
@@ -197,8 +197,8 @@ export default mixins(workflowHelpers).extend({
 			const newName = name.trim();
 			if (!newName) {
 				this.$showMessage({
-					title: this.$i.baseText('workflowDetails.showMessage.title'),
-					message: this.$i.baseText('workflowDetails.showMessage.message'),
+					title: this.$locale.baseText('workflowDetails.showMessage.title'),
+					message: this.$locale.baseText('workflowDetails.showMessage.message'),
 					type: "error",
 				});
 

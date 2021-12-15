@@ -3,9 +3,9 @@
 		<el-col class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
-				<div class="headline">{{ $i.baseText('noTagsView.readyToOrganizeYourWorkflows') }}</div>
+				<div class="headline">{{ $locale.baseText('noTagsView.readyToOrganizeYourWorkflows') }}</div>
 				<div class="description">
-					{{ $i.baseText('noTagsView.withWorkflowTagsYouReFree') }}
+					{{ $locale.baseText('noTagsView.withWorkflowTagsYouReFree') }}
 				</div>
 			</div>
 			<n8n-button label="Create a tag" size="large" @click="$emit('enableCreate')" />

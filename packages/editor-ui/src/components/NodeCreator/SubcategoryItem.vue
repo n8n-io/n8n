@@ -2,10 +2,10 @@
 	<div :class="$style.subcategory">
 		<div :class="$style.details">
 			<div :class="$style.title">
-				{{ $i.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
+				{{ $locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
 			</div>
 			<div v-if="item.properties.description" :class="$style.description">
-				{{ $i.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryDescription}`) }}
+				{{ $locale.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryDescription}`) }}
 			</div>
 		</div>
 		<div :class="$style.action">

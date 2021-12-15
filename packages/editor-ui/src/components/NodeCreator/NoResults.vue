@@ -5,30 +5,30 @@
 		</div>
 		<div class="title">
 			<div>
-				{{ $i.baseText('nodeCreator.noResults.weDidntMakeThatYet') }}
+				{{ $locale.baseText('nodeCreator.noResults.weDidntMakeThatYet') }}
 			</div>
 			<div class="action">
-				{{ $i.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-				<a @click="selectHttpRequest">{{ $i.baseText('nodeCreator.noResults.httpRequest') }}</a> or
-				<a @click="selectWebhook">{{ $i.baseText('nodeCreator.noResults.webhook') }}</a> {{ $i.baseText('nodeCreator.noResults.node') }}
+				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+				<a @click="selectHttpRequest">{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}</a> or
+				<a @click="selectWebhook">{{ $locale.baseText('nodeCreator.noResults.webhook') }}</a> {{ $locale.baseText('nodeCreator.noResults.node') }}
 			</div>
 		</div>
 
 		<div class="request">
 			<div>
-				{{ $i.baseText('nodeCreator.noResults.wantUsToMakeItFaster') }}
+				{{ $locale.baseText('nodeCreator.noResults.wantUsToMakeItFaster') }}
 			</div>
 			<div>
 				<a
 					:href="REQUEST_NODE_FORM_URL"
 					target="_blank"
 				>
-					<span>{{ $i.baseText('nodeCreator.noResults.requestTheNode') }}</span>&nbsp;
+					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span>&nbsp;
 					<span>
 						<font-awesome-icon
 							class="external"
 							icon="external-link-alt"
-							:title="$i.baseText('nodeCreator.noResults.requestTheNode')"
+							:title="$locale.baseText('nodeCreator.noResults.requestTheNode')"
 						/>
 					</span>
 				</a>
