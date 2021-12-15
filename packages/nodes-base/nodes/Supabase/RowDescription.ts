@@ -43,7 +43,6 @@ export const rowOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -71,7 +70,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of the row',
+		description: 'The name of the table',
 	},
 	...getFilters(['row'], ['update']),
 	{
@@ -183,6 +182,7 @@ export const rowFields: INodeProperties[] = [
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [

@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -31,7 +32,7 @@ export class Supabase implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Supabase API',
+		description: 'Add, get, delete and update data in a table',
 		defaults: {
 			name: 'Supabase',
 			color: '#ea5929',
@@ -189,6 +190,11 @@ export class Supabase implements INodeType {
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
+						
+						if (!keys.length) {
+							throw new NodeOperationError(this.getNode(), 'At least one filter must be defined');
+						}
+
 						if (matchType === 'allFilters') {
 							const data = keys.reduce((obj, value) => Object.assign(obj, { [`${value.keyName}`]: `${value.condition}.${value.keyValue}` }), {});
 							Object.assign(qs, data);
@@ -203,7 +209,7 @@ export class Supabase implements INodeType {
 						const filterString = this.getNodeParameter('filterString', i) as string;
 						endpoint = `${endpoint}?${encodeURI(filterString)}`;
 					}
-
+	
 					const rows = await superbaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 					returnData.push(...rows);
 				}

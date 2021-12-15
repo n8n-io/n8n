@@ -11,7 +11,9 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, INodeProperties, NodeApiError,
+	IDataObject,
+	INodeProperties,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function superbaseApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -175,7 +177,7 @@ export function getFilters(
 			type: 'options',
 			options: [
 				{
-					name: 'Any filter',
+					name: 'Any Filter',
 					value: 'anyFilter',
 				},
 				{
@@ -218,7 +220,7 @@ export function getFilters(
 					name: 'conditions',
 					values: [
 						{
-							displayName: 'Key Name',
+							displayName: 'Field Name',
 							name: 'keyName',
 							type: 'string',
 							default: '',
@@ -237,11 +239,11 @@ export function getFilters(
 									value: 'gt',
 								},
 								{
-									name: 'Greater Than Equal',
+									name: 'Greater Than or Equal',
 									value: 'gte',
 								},
 								{
-									name: 'Less than',
+									name: 'Less Than',
 									value: 'lt',
 								},
 								{
@@ -249,8 +251,8 @@ export function getFilters(
 									value: 'lte',
 								},
 								{
-									name: 'Not Equal',
-									value: '<>',
+									name: 'Not Equals',
+									value: 'neq',
 								},
 								{
 									name: 'LIKE operator',
@@ -275,7 +277,7 @@ export function getFilters(
 							default: '',
 						},
 						{
-							displayName: 'Key Value',
+							displayName: 'Field Value',
 							name: 'keyValue',
 							type: 'string',
 							default: '',
