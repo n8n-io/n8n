@@ -23,7 +23,7 @@ export class RenameKeys implements INodeType {
 		name: 'renameKeys',
 		icon: 'fa:edit',
 		group: ['transform'],
-		version: 1,
+		version: 1.1,
 		description: 'Renames keys',
 		defaults: {
 			name: 'Rename Keys',
@@ -86,6 +86,7 @@ export class RenameKeys implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		let item: INodeExecutionData;
+		let newItem: INodeExecutionData;
 		let keepOnlyRenamed: boolean;
 		let renameKeys: IRenameKey[];
 		let value: any; // tslint:disable-line:no-any
@@ -94,7 +95,7 @@ export class RenameKeys implements INodeType {
 			renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];
 			item = items[itemIndex];
 			
-			const newItem: INodeExecutionData = {
+			newItem = {
 				json: {},
 			};
 			
