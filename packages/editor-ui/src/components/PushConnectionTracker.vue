@@ -3,10 +3,10 @@
 		<div class="push-connection-lost primary-color" v-if="!pushConnectionActive">
 			<n8n-tooltip placement="bottom-end" >
 				<div slot="content">
-					{{ $i.baseText('pushConnectionTracker.cannotConnectToServer') }}
+					{{ $locale.baseText('pushConnectionTracker.cannotConnectToServer') }}
 				</div>
 				<span>
-					<font-awesome-icon icon="exclamation-triangle" />&nbsp; {{ $i.baseText('pushConnectionTracker.connectionLost') }}
+					<font-awesome-icon icon="exclamation-triangle" />&nbsp; {{ $locale.baseText('pushConnectionTracker.connectionLost') }}
 				</span>
 			</n8n-tooltip>
 		</div>

@@ -16,7 +16,7 @@
 
 			<div v-else-if="parameter.type === 'notice'" class="parameter-item parameter-notice">
 				<n8n-text size="small">
-					<span v-html="$i.nodeText().topParameterDisplayName(parameter)"></span>
+					<span v-html="$locale.nodeText().topParameterDisplayName(parameter)"></span>
 				</n8n-text>
 			</div>
 
@@ -24,17 +24,17 @@
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<div class="delete-option clickable" :title="$i.baseText('parameterInputList.delete')" v-if="hideDelete !== true && !isReadOnly">
+				<div class="delete-option clickable" :title="$locale.baseText('parameterInputList.delete')" v-if="hideDelete !== true && !isReadOnly">
 					<font-awesome-icon
 						icon="trash"
 						class="reset-icon clickable"
-						:title="$i.baseText('parameterInputList.parameterOptions')"
+						:title="$locale.baseText('parameterInputList.parameterOptions')"
 						@click="deleteOption(parameter.name)"
 					/>
 				</div>
 				<n8n-input-label
-					:label="$i.nodeText().topParameterDisplayName(parameter)"
-					:tooltipText="$i.nodeText().topParameterDescription(parameter)"
+					:label="$locale.nodeText().topParameterDisplayName(parameter)"
+					:tooltipText="$locale.nodeText().topParameterDescription(parameter)"
 					size="small"
 					:underline="true"
 					:labelHoverableOnly="true"
@@ -59,11 +59,11 @@
 			</div>
 
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
-				<div class="delete-option clickable" :title="$i.baseText('parameterInputList.delete')" v-if="hideDelete !== true && !isReadOnly">
+				<div class="delete-option clickable" :title="$locale.baseText('parameterInputList.delete')" v-if="hideDelete !== true && !isReadOnly">
 					<font-awesome-icon
 						icon="trash"
 						class="reset-icon clickable"
-						:title="$i.baseText('parameterInputList.deleteParameter')"
+						:title="$locale.baseText('parameterInputList.deleteParameter')"
 						@click="deleteOption(parameter.name)"
 					/>
 				</div>

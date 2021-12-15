@@ -4,26 +4,26 @@
 		<div :class="$style.header">
 			<div>
 				<div :class="$style.name">
-					{{ `${$i.baseText('versionCard.version')} ${version.name}` }}
+					{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
 				</div>
 				<WarningTooltip v-if="version.hasSecurityIssue">
 					<template>
-						{{ $i.baseText('versionCard.thisVersionHasASecurityIssue') }}
+						{{ $locale.baseText('versionCard.thisVersionHasASecurityIssue') }}
 					</template>
 				</WarningTooltip>
 				<Badge
 					v-if="version.hasSecurityFix"
-					:text="$i.baseText('versionCard.securityUpdate')"
+					:text="$locale.baseText('versionCard.securityUpdate')"
 					type="danger"
 				/>
 				<Badge
 					v-if="version.hasBreakingChange"
-					:text="$i.baseText('versionCard.breakingChanges')"
+					:text="$locale.baseText('versionCard.breakingChanges')"
 					type="warning"
 				/>
 			</div>
 			<div :class="$style['release-date']">
-				{{ $i.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
+				{{ $locale.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
 			</div>
 		</div>
 		<div :class="$style.divider" v-if="version.description || (version.nodes && version.nodes.length)"></div>
@@ -60,7 +60,7 @@ export default Vue.extend({
 	props: ['version'],
 	// @ts-ignore
 	nodeName (node: IVersionNode): string {
-		return node !== null ? node.displayName : this.$i.baseText('versionCard.unknown');
+		return node !== null ? node.displayName : this.$locale.baseText('versionCard.unknown');
 	},
 });
 </script>

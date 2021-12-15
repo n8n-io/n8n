@@ -3,7 +3,7 @@
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="save"
-		:title="$i.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
+		:title="$locale.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
 		:center="true"
 		minWidth="420px"
 		maxWidth="420px"
@@ -13,7 +13,7 @@
 				<n8n-input
 					v-model="name"
 					ref="nameInput"
-					:placeholder="$i.baseText('duplicateWorkflowDialog.enterWorkflowName')"
+					:placeholder="$locale.baseText('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<TagsDropdown
@@ -23,15 +23,15 @@
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
 					@update="onTagsUpdate"
-					:placeholder="$i.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
+					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
 					ref="dropdown"
 				/>
 			</div>
 		</template>
 		<template v-slot:footer="{ close }">
 			<div :class="$style.footer">
-				<n8n-button @click="save" :loading="isSaving" :label="$i.baseText('duplicateWorkflowDialog.save')" float="right" />
-				<n8n-button type="outline" @click="close" :disabled="isSaving" :label="$i.baseText('duplicateWorkflowDialog.cancel')" float="right" />
+				<n8n-button @click="save" :loading="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.save')" float="right" />
+				<n8n-button type="outline" @click="close" :disabled="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.cancel')" float="right" />
 			</div>
 		</template>
 	</Modal>
@@ -101,8 +101,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			const name = this.name.trim();
 			if (!name) {
 				this.$showMessage({
-					title: this.$i.baseText('duplicateWorkflowDialog.showMessage.title'),
-					message: this.$i.baseText('duplicateWorkflowDialog.showMessage.message'),
+					title: this.$locale.baseText('duplicateWorkflowDialog.showMessage.title'),
+					message: this.$locale.baseText('duplicateWorkflowDialog.showMessage.message'),
 					type: "error",
 				});
 

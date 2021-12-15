@@ -5,7 +5,7 @@
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
 				<a v-if="nodeType" :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info">
 					<n8n-tooltip class="clickable" placement="top" >
-						<div slot="content" v-html="`<strong>${$i.baseText('nodeSettings.nodeDescription')}:</strong><br />` + nodeTypeDescription + `<br /><br /><strong>${$i.baseText('nodeSettings.clickOnTheQuestionMarkIcon')}</strong>`"></div>
+						<div slot="content" v-html="`<strong>${$locale.baseText('nodeSettings.nodeDescription')}:</strong><br />` + nodeTypeDescription + `<br /><br /><strong>${$locale.baseText('nodeSettings.clickOnTheQuestionMarkIcon')}</strong>`"></div>
 						<font-awesome-icon icon="question-circle" />
 					</n8n-tooltip>
 				</a>
@@ -14,7 +14,7 @@
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
 			<n8n-text>
 				{{
-					$i.baseText(
+					$locale.baseText(
 						'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
 						{ interpolate: { nodeType: node.type } },
 					)
@@ -23,17 +23,17 @@
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch @tab-click="handleTabClick">
-				<el-tab-pane :label="$i.baseText('nodeSettings.parameters')">
+				<el-tab-pane :label="$locale.baseText('nodeSettings.parameters')">
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 					<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 						<n8n-text>
-						{{ $i.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 						</n8n-text>
 					</div>
 				</el-tab-pane>
-				<el-tab-pane :label="$i.baseText('nodeSettings.settings')">
+				<el-tab-pane :label="$locale.baseText('nodeSettings.settings')">
 					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 				</el-tab-pane>
@@ -97,9 +97,9 @@ export default mixins(
 			},
 			nodeTypeName(): string {
 				if (this.nodeType) {
-					const shortNodeType = this.$i.shortNodeType(this.nodeType.name);
+					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
 
-					return this.$i.headerText({
+					return this.$locale.headerText({
 						key: `headers.${shortNodeType}.displayName`,
 						fallback: this.nodeType.name,
 					});
@@ -109,14 +109,14 @@ export default mixins(
 			},
 			nodeTypeDescription (): string {
 				if (this.nodeType && this.nodeType.description) {
-					const shortNodeType = this.$i.shortNodeType(this.nodeType.name);
+					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
 
-					return this.$i.headerText({
+					return this.$locale.headerText({
 						key: `headers.${shortNodeType}.description`,
 						fallback: this.nodeType.description,
 					});
 				} else {
-					return this.$i.baseText('nodeSettings.noDescriptionFound');
+					return this.$locale.baseText('nodeSettings.noDescriptionFound');
 				}
 			},
 			headerStyle (): object {
@@ -171,7 +171,7 @@ export default mixins(
 
 				nodeSettings: [
 					{
-						displayName: this.$i.baseText('nodeSettings.notes.displayName'),
+						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -179,50 +179,50 @@ export default mixins(
 						},
 						default: '',
 						noDataExpression: true,
-						description: this.$i.baseText('nodeSettings.notes.description'),
+						description: this.$locale.baseText('nodeSettings.notes.description'),
 					},
 					{
-						displayName: this.$i.baseText('nodeSettings.notesInFlow.displayName'),
+						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
 						name: 'notesInFlow',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: this.$i.baseText('nodeSettings.notesInFlow.description'),
+						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
 					},
 					{
-						displayName: this.$i.baseText('nodeSettings.color.displayName'),
+						displayName: this.$locale.baseText('nodeSettings.color.displayName'),
 						name: 'color',
 						type: 'color',
 						default: '#ff0000',
 						noDataExpression: true,
-						description: this.$i.baseText('nodeSettings.color.description'),
+						description: this.$locale.baseText('nodeSettings.color.description'),
 					},
 					{
-						displayName: this.$i.baseText('nodeSettings.alwaysOutputData.displayName'),
+						displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
 						name: 'alwaysOutputData',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: this.$i.baseText('nodeSettings.alwaysOutputData.description'),
+						description: this.$locale.baseText('nodeSettings.alwaysOutputData.description'),
 					},
 					{
-						displayName: this.$i.baseText('nodeSettings.executeOnce.displayName'),
+						displayName: this.$locale.baseText('nodeSettings.executeOnce.displayName'),
 						name: 'executeOnce',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: this.$i.baseText('nodeSettings.executeOnce.description'),
+						description: this.$locale.baseText('nodeSettings.executeOnce.description'),
 					},
 					{
-						displayName: this.$i.baseText('nodeSettings.retryOnFail.displayName'),
+						displayName: this.$locale.baseText('nodeSettings.retryOnFail.displayName'),
 						name: 'retryOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: this.$i.baseText('nodeSettings.retryOnFail.description'),
+						description: this.$locale.baseText('nodeSettings.retryOnFail.description'),
 					},
 					{
-						displayName: this.$i.baseText('nodeSettings.maxTries.displayName'),
+						displayName: this.$locale.baseText('nodeSettings.maxTries.displayName'),
 						name: 'maxTries',
 						type: 'number',
 						typeOptions: {
@@ -238,10 +238,10 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: this.$i.baseText('nodeSettings.maxTries.description'),
+						description: this.$locale.baseText('nodeSettings.maxTries.description'),
 					},
 					{
-						displayName: this.$i.baseText('nodeSettings.waitBetweenTries.displayName'),
+						displayName: this.$locale.baseText('nodeSettings.waitBetweenTries.displayName'),
 						name: 'waitBetweenTries',
 						type: 'number',
 						typeOptions: {
@@ -257,15 +257,15 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: this.$i.baseText('nodeSettings.waitBetweenTries.description'),
+						description: this.$locale.baseText('nodeSettings.waitBetweenTries.description'),
 					},
 					{
-						displayName: this.$i.baseText('nodeSettings.continueOnFail.displayName'),
+						displayName: this.$locale.baseText('nodeSettings.continueOnFail.displayName'),
 						name: 'continueOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: this.$i.baseText('nodeSettings.continueOnFail.description'),
+						description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
 					},
 				] as INodeProperties[],
 

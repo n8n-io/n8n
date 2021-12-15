@@ -2,32 +2,32 @@
 	<Modal
 		:name="CREDENTIAL_LIST_MODAL_KEY"
 		width="80%"
-		:title="$i.baseText('credentialsList.credentials')"
+		:title="$locale.baseText('credentialsList.credentials')"
 	>
 		<template v-slot:content>
-			<n8n-heading tag="h3" size="small" color="text-light">{{ $i.baseText('credentialsList.yourSavedCredentials') + ':' }}</n8n-heading>
+			<n8n-heading tag="h3" size="small" color="text-light">{{ $locale.baseText('credentialsList.yourSavedCredentials') + ':' }}</n8n-heading>
 			<div class="new-credentials-button">
 				<n8n-button
-					:title="$i.baseText('credentialsList.createNewCredential')"
+					:title="$locale.baseText('credentialsList.createNewCredential')"
 					icon="plus"
-					:label="$i.baseText('credentialsList.addNew')"
+					:label="$locale.baseText('credentialsList.addNew')"
 					size="large"
 					@click="createCredential()"
 				/>
 			</div>
 
 			<el-table :data="credentialsToDisplay" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential">
-				<el-table-column property="name" :label="$i.baseText('credentialsList.name')" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="type" :label="$i.baseText('credentialsList.type')" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="createdAt" :label="$i.baseText('credentialsList.created')" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="updatedAt" :label="$i.baseText('credentialsList.updated')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="name" :label="$locale.baseText('credentialsList.name')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="type" :label="$locale.baseText('credentialsList.type')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="createdAt" :label="$locale.baseText('credentialsList.created')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="updatedAt" :label="$locale.baseText('credentialsList.updated')" class-name="clickable" sortable></el-table-column>
 				<el-table-column
-					:label="$i.baseText('credentialsList.operations')"
+					:label="$locale.baseText('credentialsList.operations')"
 					width="120">
 					<template slot-scope="scope">
 						<div class="cred-operations">
-							<n8n-icon-button :title="$i.baseText('credentialsList.editCredential')" @click.stop="editCredential(scope.row)" size="small" icon="pen" />
-							<n8n-icon-button :title="$i.baseText('credentialsList.deleteCredential')" @click.stop="deleteCredential(scope.row)" size="small" icon="trash" />
+							<n8n-icon-button :title="$locale.baseText('credentialsList.editCredential')" @click.stop="editCredential(scope.row)" size="small" icon="pen" />
+							<n8n-icon-button :title="$locale.baseText('credentialsList.deleteCredential')" @click.stop="deleteCredential(scope.row)" size="small" icon="trash" />
 						</div>
 					</template>
 				</el-table-column>
@@ -104,14 +104,14 @@ export default mixins(
 
 		async deleteCredential (credential: ICredentialsResponse) {
 			const deleteConfirmed = await this.confirmMessage(
-				this.$i.baseText(
+				this.$locale.baseText(
 					'credentialsList.confirmMessage.message',
 					{ interpolate: { credentialName: credential.name }},
 				),
-				this.$i.baseText('credentialsList.confirmMessage.headline'),
+				this.$locale.baseText('credentialsList.confirmMessage.headline'),
 				null,
-				this.$i.baseText('credentialsList.confirmMessage.confirmButtonText'),
-				this.$i.baseText('credentialsList.confirmMessage.cancelButtonText'),
+				this.$locale.baseText('credentialsList.confirmMessage.confirmButtonText'),
+				this.$locale.baseText('credentialsList.confirmMessage.cancelButtonText'),
 			);
 
 			if (deleteConfirmed === false) {
@@ -123,8 +123,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i.baseText('credentialsList.showError.deleteCredential.title'),
-					this.$i.baseText('credentialsList.showError.deleteCredential.message'),
+					this.$locale.baseText('credentialsList.showError.deleteCredential.title'),
+					this.$locale.baseText('credentialsList.showError.deleteCredential.message'),
 				);
 
 				return;
@@ -134,8 +134,8 @@ export default mixins(
 			this.updateNodesCredentialsIssues();
 
 			this.$showMessage({
-				title: this.$i.baseText('credentialsList.showMessage.title'),
-				message: this.$i.baseText(
+				title: this.$locale.baseText('credentialsList.showMessage.title'),
+				message: this.$locale.baseText(
 					'credentialsList.showMessage.message',
 					{ interpolate: { credentialName: credential.name }},
 				),

@@ -1,10 +1,10 @@
 <template>
 	<span>
-		<el-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" :title="$i.baseText('about.aboutN8n')" :before-close="closeDialog">
+		<el-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" :title="$locale.baseText('about.aboutN8n')" :before-close="closeDialog">
 			<div>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						{{ $i.baseText('about.n8nVersion') }}
+						{{ $locale.baseText('about.n8nVersion') }}
 					</el-col>
 					<el-col :span="16">
 						{{ versionCli }}
@@ -12,7 +12,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						{{ $i.baseText('about.sourceCode') }}
+						{{ $locale.baseText('about.sourceCode') }}
 					</el-col>
 					<el-col :span="16">
 						<a href="https://github.com/n8n-io/n8n" target="_blank">https://github.com/n8n-io/n8n</a>
@@ -20,17 +20,17 @@
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						{{ $i.baseText('about.license') }}
+						{{ $locale.baseText('about.license') }}
 					</el-col>
 					<el-col :span="16">
 						<a href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">
-							{{ $i.baseText('about.apacheWithCommons20Clause') }}
+							{{ $locale.baseText('about.apacheWithCommons20Clause') }}
 						</a>
 					</el-col>
 				</el-row>
 
 				<div class="action-buttons">
-					<n8n-button @click="closeDialog" :label="$i.baseText('about.close')" />
+					<n8n-button @click="closeDialog" :label="$locale.baseText('about.close')" />
 				</div>
 			</div>
 		</el-dialog>

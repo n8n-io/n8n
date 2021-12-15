@@ -1,14 +1,14 @@
 <template>
 	<div v-if="dialogVisible" @keydown.stop>
-		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" :title="$i.baseText('expressionEdit.editExpression')" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" :title="$locale.baseText('expressionEdit.editExpression')" :before-close="closeDialog">
 			<el-row>
 				<el-col :span="8">
 					<div class="header-side-menu">
 						<div class="headline">
-							{{ $i.baseText('expressionEdit.editExpression') }}
+							{{ $locale.baseText('expressionEdit.editExpression') }}
 						</div>
 						<div class="sub-headline">
-							{{ $i.baseText('expressionEdit.variableSelector') }}
+							{{ $locale.baseText('expressionEdit.variableSelector') }}
 						</div>
 					</div>
 
@@ -19,7 +19,7 @@
 				<el-col :span="16" class="right-side">
 					<div class="expression-editor-wrapper">
 						<div class="editor-description">
-							{{ $i.baseText('expressionEdit.expression') }}
+							{{ $locale.baseText('expressionEdit.expression') }}
 						</div>
 						<div class="expression-editor">
 							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
@@ -28,7 +28,7 @@
 
 					<div class="expression-result-wrapper">
 						<div class="editor-description">
-							{{ $i.baseText('expressionEdit.result') }}
+							{{ $locale.baseText('expressionEdit.result') }}
 						</div>
 						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
 					</div>
