@@ -1,8 +1,8 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog :visible="dialogVisible" append-to-body :close-on-click-modal="false" width="80%" :title="`${$i.baseText('codeEdit.edit')} ${$i.nodeText().topParameterDisplayName(parameter)}`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body :close-on-click-modal="false" width="80%" :title="`${$locale.baseText('codeEdit.edit')} ${$locale.nodeText().topParameterDisplayName(parameter)}`" :before-close="closeDialog">
 			<div class="ignore-key-press">
-				<n8n-input-label :label="$i.nodeText().topParameterDisplayName(parameter)">
+				<n8n-input-label :label="$locale.nodeText().topParameterDisplayName(parameter)">
 					<div :class="$style.editor" @keydown.stop>
 						<prism-editor :lineNumbers="true" :code="value" :readonly="isReadOnly" @change="valueChanged" language="js"></prism-editor>
 					</div>

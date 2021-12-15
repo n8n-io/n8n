@@ -56,7 +56,7 @@ export default Vue.extend({
 		},
 		rows(): ITagRow[] {
 			const getUsage = (count: number | undefined) => count && count > 0
-				? this.$i.baseText(
+				? this.$locale.baseText(
 					count > 1 ?
 						'tagsView.inUse.plural' : 'tagsView.inUse.singular',
 					{
@@ -65,7 +65,7 @@ export default Vue.extend({
 						},
 					},
 				)
-				: this.$i.baseText('tagsView.notBeingUsed');
+				: this.$locale.baseText('tagsView.notBeingUsed');
 
 			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
 			const tagRows = (this.$props.tags || [])

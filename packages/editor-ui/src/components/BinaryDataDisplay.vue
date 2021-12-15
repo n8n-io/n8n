@@ -4,18 +4,18 @@
 			@click.stop="closeWindow"
 			size="small"
 			class="binary-data-window-back"
-			:title="$i.baseText('binaryDataDisplay.backToOverviewPage')"
+			:title="$locale.baseText('binaryDataDisplay.backToOverviewPage')"
 			icon="arrow-left"
-			:label="$i.baseText('binaryDataDisplay.backToList')"
+			:label="$locale.baseText('binaryDataDisplay.backToList')"
 		/>
 
 		<div class="binary-data-window-wrapper">
 			<div v-if="!binaryData">
-				{{ $i.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
+				{{ $locale.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
 			</div>
 			<video v-else-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
 				<source :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" :type="binaryData.mimeType">
-				{{ $i.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
 			<embed v-else :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" class="binary-data" :class="embedClass"/>
 		</div>

@@ -3,7 +3,7 @@
 		<el-row>
 			<el-col :span="8" :class="$style.accessLabel">
 				<n8n-text :compact="true" :bold="true">
-					{{ $i.baseText('credentialEdit.credentialInfo.allowUseBy') }}
+					{{ $locale.baseText('credentialEdit.credentialInfo.allowUseBy') }}
 				</n8n-text>
 			</el-col>
 			<el-col :span="16">
@@ -13,7 +13,7 @@
 					:class="$style.valueLabel"
 				>
 					<el-checkbox
-						:label="$i.headerText({
+						:label="$locale.headerText({
 							key: `headers.${shortNodeType(node)}.displayName`,
 							fallback: node.displayName,
 						})"
@@ -26,7 +26,7 @@
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
 				<n8n-text :compact="true" :bold="true">
-					{{ $i.baseText('credentialEdit.credentialInfo.created') }}
+					{{ $locale.baseText('credentialEdit.credentialInfo.created') }}
 				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
@@ -36,7 +36,7 @@
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
 				<n8n-text :compact="true" :bold="true">
-					{{ $i.baseText('credentialEdit.credentialInfo.lastModified') }}
+					{{ $locale.baseText('credentialEdit.credentialInfo.lastModified') }}
 				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
@@ -46,7 +46,7 @@
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
 				<n8n-text :compact="true" :bold="true">
-					{{ $i.baseText('credentialEdit.credentialInfo.id') }}
+					{{ $locale.baseText('credentialEdit.credentialInfo.id') }}
 				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
@@ -76,7 +76,7 @@ export default Vue.extend({
 			});
 		},
 		shortNodeType(nodeType: INodeTypeDescription) {
-			return this.$i.shortNodeType(nodeType.name);
+			return this.$locale.shortNodeType(nodeType.name);
 		},
 	},
 });

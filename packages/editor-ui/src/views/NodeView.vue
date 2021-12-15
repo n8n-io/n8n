@@ -34,7 +34,7 @@
 			</div>
 		</div>
 		<DataDisplay @valueChanged="valueChanged"/>
-		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" :title="$i.baseText('nodeView.addNode')" @click="() => openNodeCreator('add_node_button')">
+		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" :title="$locale.baseText('nodeView.addNode')" @click="() => openNodeCreator('add_node_button')">
 			<n8n-icon-button size="xlarge" icon="plus" />
 		</div>
 		<node-creator
@@ -43,22 +43,22 @@
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
 		<div :class="{ 'zoom-menu': true, expanded: !sidebarMenuCollapsed }">
-			<button @click="zoomToFit" class="button-white" :title="$i.baseText('nodeView.zoomToFit')">
+			<button @click="zoomToFit" class="button-white" :title="$locale.baseText('nodeView.zoomToFit')">
 				<font-awesome-icon icon="expand"/>
 			</button>
-			<button @click="zoomIn()" class="button-white" :title="$i.baseText('nodeView.zoomIn')">
+			<button @click="zoomIn()" class="button-white" :title="$locale.baseText('nodeView.zoomIn')">
 				<font-awesome-icon icon="search-plus"/>
 			</button>
-			<button @click="zoomOut()" class="button-white" :title="$i.baseText('nodeView.zoomOut')">
+			<button @click="zoomOut()" class="button-white" :title="$locale.baseText('nodeView.zoomOut')">
 				<font-awesome-icon icon="search-minus"/>
 			</button>
 			<button
 				v-if="nodeViewScale !== 1"
 				@click="resetZoom()"
 				class="button-white"
-				:title="$i.baseText('nodeView.resetZoom')"
+				:title="$locale.baseText('nodeView.resetZoom')"
 				>
-				<font-awesome-icon icon="undo" :title="$i.baseText('nodeView.resetZoom')"/>
+				<font-awesome-icon icon="undo" :title="$locale.baseText('nodeView.resetZoom')"/>
 			</button>
 		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
@@ -68,7 +68,7 @@
 				:label="runButtonText"
 				size="large"
 				icon="play-circle"
-				:title="$i.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
+				:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
 				:type="workflowRunning ? 'light' : 'primary'"
 			/>
 
@@ -79,8 +79,8 @@
 				class="stop-execution"
 				type="light"
 				:title="stopExecutionInProgress
-					? $i.baseText('nodeView.stoppingCurrentExecution')
-					: $i.baseText('nodeView.stopCurrentExecution')
+					? $locale.baseText('nodeView.stoppingCurrentExecution')
+					: $locale.baseText('nodeView.stopCurrentExecution')
 				"
 				:loading="stopExecutionInProgress"
 				@click.stop="stopExecution()"
@@ -91,14 +91,14 @@
 				class="stop-execution"
 				icon="stop"
 				size="large"
-				:title="$i.baseText('nodeView.stopWaitingForWebhookCall')"
+				:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
 				type="light"
 				@click.stop="stopWaitingForWebhook()"
 			/>
 
 			<n8n-icon-button
 				v-if="!isReadOnly && workflowExecution && !workflowRunning"
-				:title="$i.baseText('nodeView.deletesTheCurrentExecutionData')"
+				:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
 				icon="trash"
 				size="large"
 				@click.stop="clearExecutionData()"
@@ -243,11 +243,11 @@ export default mixins(
 			const result = this.$store.getters.getStateIsDirty;
 			if(result) {
 				const importConfirm = await this.confirmMessage(
-					this.$i.baseText('nodeView.confirmMessage.beforeRouteLeave.message'),
-					this.$i.baseText('nodeView.confirmMessage.beforeRouteLeave.headline'),
+					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.message'),
+					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.headline'),
 					'warning',
-					this.$i.baseText('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText'),
-					this.$i.baseText('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText'),
+					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText'),
+					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText'),
 				);
 				if (importConfirm === false) {
 					next(false);
@@ -285,14 +285,14 @@ export default mixins(
 			},
 			runButtonText (): string {
 				if (this.workflowRunning === false) {
-					return this.$i.baseText('nodeView.runButtonText.executeWorkflow');
+					return this.$locale.baseText('nodeView.runButtonText.executeWorkflow');
 				}
 
 				if (this.executionWaitingForWebhook === true) {
-					return this.$i.baseText('nodeView.runButtonText.waitingForTriggerEvent');
+					return this.$locale.baseText('nodeView.runButtonText.waitingForTriggerEvent');
 				}
 
-				return this.$i.baseText('nodeView.runButtonText.executingWorkflow');
+				return this.$locale.baseText('nodeView.runButtonText.executingWorkflow');
 			},
 			workflowStyle (): object {
 				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
@@ -355,8 +355,8 @@ export default mixins(
 				this.updateNodesExecutionIssues();
 			},
 			translateName(type: string, originalName: string) {
-				return this.$i.headerText({
-					key: `headers.${this.$i.shortNodeType(type)}.displayName`,
+				return this.$locale.headerText({
+					key: `headers.${this.$locale.shortNodeType(type)}.displayName`,
 					fallback: originalName,
 				});
 			},
@@ -442,8 +442,8 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$i.baseText('nodeView.showError.openExecution.title'),
-						this.$i.baseText('nodeView.showError.openExecution.message') + ':',
+						this.$locale.baseText('nodeView.showError.openExecution.title'),
+						this.$locale.baseText('nodeView.showError.openExecution.message') + ':',
 					);
 					return;
 				}
@@ -503,15 +503,15 @@ export default mixins(
 
 				if ((data as IExecutionsSummary).waitTill) {
 					this.$showMessage({
-						title: this.$i.baseText('nodeView.thisExecutionHasntFinishedYet'),
-						message: `<a onclick="window.location.reload(false);">${this.$i.baseText('nodeView.refresh')}</a> ${this.$i.baseText('nodeView.toSeeTheLatestStatus')}.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">${this.$i.baseText('nodeView.moreInfo')}</a>`,
+						title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
+						message: `<a onclick="window.location.reload(false);">${this.$locale.baseText('nodeView.refresh')}</a> ${this.$locale.baseText('nodeView.toSeeTheLatestStatus')}.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText('nodeView.moreInfo')}</a>`,
 						type: 'warning',
 						duration: 0,
 					});
 				}
 			},
 			async openWorkflowTemplate (templateId: string) {
-				this.setLoadingText(this.$i.baseText('nodeView.loadingTemplate'));
+				this.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
 				this.resetWorkspace();
 
 				let data: IWorkflowTemplate | undefined;
@@ -521,7 +521,7 @@ export default mixins(
 
 					if (!data) {
 						throw new Error(
-							this.$i.baseText(
+							this.$locale.baseText(
 								'nodeView.workflowTemplateWithIdCouldNotBeFound',
 								{ interpolate: { templateId } },
 							),
@@ -530,11 +530,11 @@ export default mixins(
 
 					data.workflow.nodes.forEach((node) => {
 						if (!this.$store.getters.nodeType(node.type)) {
-							throw new Error(`The ${this.$i.shortNodeType(node.type)} node is not supported`);
+							throw new Error(`The ${this.$locale.shortNodeType(node.type)} node is not supported`);
 						}
 					});
 				} catch (error) {
-					this.$showError(error, this.$i.baseText('nodeView.couldntImportWorkflow'));
+					this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
 					this.$router.push({ name: 'NodeViewNew' });
 					return;
 				}
@@ -577,15 +577,15 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$i.baseText('nodeView.showError.openWorkflow.title'),
-						this.$i.baseText('nodeView.showError.openWorkflow.message') + ':',
+						this.$locale.baseText('nodeView.showError.openWorkflow.title'),
+						this.$locale.baseText('nodeView.showError.openWorkflow.message') + ':',
 					);
 					return;
 				}
 
 				if (data === undefined) {
 					throw new Error(
-						this.$i.baseText(
+						this.$locale.baseText(
 							'nodeView.workflowWithIdCouldNotBeFound',
 							{ interpolate: { workflowId } },
 						),
@@ -746,8 +746,8 @@ export default mixins(
 					}
 
 					this.$showMessage({
-						title: this.$i.baseText('nodeView.showMessage.keyDown.title'),
-						message: this.$i.baseText('nodeView.showMessage.keyDown.message'),
+						title: this.$locale.baseText('nodeView.showMessage.keyDown.title'),
+						message: this.$locale.baseText('nodeView.showMessage.keyDown.message'),
 						type: 'success',
 					});
 				} else if ((e.key === 's') && (this.isCtrlKeyPressed(e) === true)) {
@@ -1044,8 +1044,8 @@ export default mixins(
 					this.stopExecutionInProgress = true;
 					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
-						title: this.$i.baseText('nodeView.showMessage.stopExecutionTry.title'),
-						message: this.$i.baseText(
+						title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
+						message: this.$locale.baseText(
 							'nodeView.showMessage.stopExecutionTry.message',
 							{ interpolate: { executionId } },
 						),
@@ -1073,15 +1073,15 @@ export default mixins(
 						this.$store.commit('setWorkflowExecutionData', executedData);
 						this.$store.commit('removeActiveAction', 'workflowRunning');
 						this.$showMessage({
-							title: this.$i.baseText('nodeView.showMessage.stopExecutionCatch.title'),
-							message: this.$i.baseText('nodeView.showMessage.stopExecutionCatch.message'),
+							title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.title'),
+							message: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.message'),
 							type: 'success',
 						});
 					} else {
 						this.$showError(
 							error,
-							this.$i.baseText('nodeView.showError.stopExecution.title'),
-							this.$i.baseText('nodeView.showError.stopExecution.message') + ':',
+							this.$locale.baseText('nodeView.showError.stopExecution.title'),
+							this.$locale.baseText('nodeView.showError.stopExecution.message') + ':',
 						);
 					}
 				}
@@ -1094,15 +1094,15 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$i.baseText('nodeView.showError.stopWaitingForWebhook.title'),
-						this.$i.baseText('nodeView.showError.stopWaitingForWebhook.message') + ':',
+						this.$locale.baseText('nodeView.showError.stopWaitingForWebhook.title'),
+						this.$locale.baseText('nodeView.showError.stopWaitingForWebhook.message') + ':',
 					);
 					return;
 				}
 
 				this.$showMessage({
-					title: this.$i.baseText('nodeView.showMessage.stopWaitingForWebhook.title'),
-					message: this.$i.baseText('nodeView.showMessage.stopWaitingForWebhook.message'),
+					title: this.$locale.baseText('nodeView.showMessage.stopWaitingForWebhook.title'),
+					message: this.$locale.baseText('nodeView.showMessage.stopWaitingForWebhook.message'),
 					type: 'success',
 				});
 			},
@@ -1122,14 +1122,14 @@ export default mixins(
 					}
 
 					const importConfirm = await this.confirmMessage(
-						this.$i.baseText(
+						this.$locale.baseText(
 							'nodeView.confirmMessage.receivedCopyPasteData.message',
 							{ interpolate: { plainTextData } },
 						),
-						this.$i.baseText('nodeView.confirmMessage.receivedCopyPasteData.headline'),
+						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.headline'),
 						'warning',
-						this.$i.baseText('nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText'),
-						this.$i.baseText('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
+						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText'),
+						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
 					);
 
 					if (importConfirm === false) {
@@ -1174,8 +1174,8 @@ export default mixins(
 					this.stopLoading();
 					this.$showError(
 						error,
-						this.$i.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
-						this.$i.baseText('nodeView.showError.getWorkflowDataFromUrl.message') + ':',
+						this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
+						this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.message') + ':',
 					);
 					return;
 				}
@@ -1216,8 +1216,8 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$i.baseText('nodeView.showError.importWorkflowData.title'),
-						this.$i.baseText('nodeView.showError.importWorkflowData.message') + ':',
+						this.$locale.baseText('nodeView.showError.importWorkflowData.title'),
+						this.$locale.baseText('nodeView.showError.importWorkflowData.message') + ':',
 					);
 				}
 			},
@@ -1260,8 +1260,8 @@ export default mixins(
 			showMaxNodeTypeError (nodeTypeData: INodeTypeDescription) {
 				const maxNodes = nodeTypeData.maxNodes;
 				this.$showMessage({
-					title: this.$i.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
-					message: this.$i.baseText(
+					title: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
+					message: this.$locale.baseText(
 						maxNodes === 1
 							? 'nodeView.showMessage.showMaxNodeTypeError.message.singular'
 							: 'nodeView.showMessage.showMaxNodeTypeError.message.plural',
@@ -1281,8 +1281,8 @@ export default mixins(
 
 				if (nodeTypeData === null) {
 					this.$showMessage({
-						title: this.$i.baseText('nodeView.showMessage.addNodeButton.title'),
-						message: this.$i.baseText(
+						title: this.$locale.baseText('nodeView.showMessage.addNodeButton.title'),
+						message: this.$locale.baseText(
 							'nodeView.showMessage.addNodeButton.message',
 							{ interpolate: { nodeTypeName } },
 						),
@@ -1802,11 +1802,11 @@ export default mixins(
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
 						const importConfirm = await this.confirmMessage(
-							this.$i.baseText('nodeView.confirmMessage.initView.message'),
-							this.$i.baseText('nodeView.confirmMessage.initView.headline'),
+							this.$locale.baseText('nodeView.confirmMessage.initView.message'),
+							this.$locale.baseText('nodeView.confirmMessage.initView.headline'),
 							'warning',
-							this.$i.baseText('nodeView.confirmMessage.initView.confirmButtonText'),
-							this.$i.baseText('nodeView.confirmMessage.initView.cancelButtonText'),
+							this.$locale.baseText('nodeView.confirmMessage.initView.confirmButtonText'),
+							this.$locale.baseText('nodeView.confirmMessage.initView.cancelButtonText'),
 						);
 						if (importConfirm === false) {
 							return Promise.resolve();
@@ -1845,12 +1845,12 @@ export default mixins(
 
 				window.addEventListener("beforeunload",  (e) => {
 					if(this.$store.getters.getStateIsDirty === true) {
-						const confirmationMessage = this.$i.baseText('nodeView.itLooksLikeYouHaveBeenEditingSomething');
+						const confirmationMessage = this.$locale.baseText('nodeView.itLooksLikeYouHaveBeenEditingSomething');
 						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
 						return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
 					} else {
 						this.startLoading(
-							this.$i.baseText('nodeView.redirecting'),
+							this.$locale.baseText('nodeView.redirecting'),
 						);
 
 						return;
@@ -2204,13 +2204,13 @@ export default mixins(
 			async renameNodePrompt (currentName: string) {
 				try {
 					const promptResponsePromise = this.$prompt(
-						this.$i.baseText('nodeView.prompt.newName') + ':',
-						this.$i.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
+						this.$locale.baseText('nodeView.prompt.newName') + ':',
+						this.$locale.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
 						{
 							customClass: 'rename-prompt',
-							confirmButtonText: this.$i.baseText('nodeView.prompt.rename'),
-							cancelButtonText: this.$i.baseText('nodeView.prompt.cancel'),
-							inputErrorMessage: this.$i.baseText('nodeView.prompt.invalidName'),
+							confirmButtonText: this.$locale.baseText('nodeView.prompt.rename'),
+							cancelButtonText: this.$locale.baseText('nodeView.prompt.cancel'),
+							inputErrorMessage: this.$locale.baseText('nodeView.prompt.invalidName'),
 							inputValue: currentName,
 						},
 					);
@@ -2348,7 +2348,7 @@ export default mixins(
 						try {
 							nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, true, false);
 						} catch (e) {
-							console.error(this.$i.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') + `: "${node.name}"`); // eslint-disable-line no-console
+							console.error(this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') + `: "${node.name}"`); // eslint-disable-line no-console
 							console.error(e); // eslint-disable-line no-console
 						}
 						node.parameters = nodeParameters !== null ? nodeParameters : {};
@@ -2424,7 +2424,7 @@ export default mixins(
 				if (!data.nodes) {
 					// No nodes to add
 					throw new Error(
-						this.$i.baseText('nodeView.noNodesGivenToAdd'),
+						this.$locale.baseText('nodeView.noNodesGivenToAdd'),
 					);
 				}
 
@@ -2718,8 +2718,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i.baseText('nodeView.showError.mounted1.title'),
-					this.$i.baseText('nodeView.showError.mounted1.message') + ':',
+					this.$locale.baseText('nodeView.showError.mounted1.title'),
+					this.$locale.baseText('nodeView.showError.mounted1.message') + ':',
 				);
 				return;
 			}
@@ -2731,8 +2731,8 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$i.baseText('nodeView.showError.mounted2.title'),
-						this.$i.baseText('nodeView.showError.mounted2.message') + ':',
+						this.$locale.baseText('nodeView.showError.mounted2.title'),
+						this.$locale.baseText('nodeView.showError.mounted2.message') + ':',
 					);
 				}
 				this.stopLoading();

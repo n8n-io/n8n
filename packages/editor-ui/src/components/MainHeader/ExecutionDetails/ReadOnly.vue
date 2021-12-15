@@ -1,11 +1,11 @@
 <template>
 	<n8n-tooltip class="primary-color" placement="bottom-end" >
 		<div slot="content">
-			<span v-html="$i.baseText('executionDetails.readOnly.youreViewingTheLogOf')"></span>
+			<span v-html="$locale.baseText('executionDetails.readOnly.youreViewingTheLogOf')"></span>
 		</div>
 		<div>
 			<font-awesome-icon icon="exclamation-triangle" />
-			<span v-html="$i.baseText('executionDetails.readOnly.readOnly')"></span>
+			<span v-html="$locale.baseText('executionDetails.readOnly.readOnly')"></span>
 		</div>
 	</n8n-tooltip>
 </template>
