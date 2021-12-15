@@ -509,7 +509,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 									this.workflowData,
 									fullRunData,
 									this.mode,
-									undefined,
+									this.executionId,
 									this.retryOf,
 								);
 							}
@@ -585,7 +585,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							this.workflowData,
 							fullRunData,
 							this.mode,
-							undefined,
+							this.executionId,
 							this.retryOf,
 						);
 					}
@@ -635,7 +635,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							this.workflowData,
 							fullRunData,
 							this.mode,
-							undefined,
+							this.executionId,
 							this.retryOf,
 						);
 					}
@@ -676,7 +676,13 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						});
 					}
 				} catch (error) {
-					executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+					executeErrorWorkflow(
+						this.workflowData,
+						fullRunData,
+						this.mode,
+						this.executionId,
+						this.retryOf,
+					);
 				}
 			},
 		],

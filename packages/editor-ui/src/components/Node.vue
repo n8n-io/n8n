@@ -128,6 +128,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return `Waiting for you to create an event in ${this.nodeType && this.nodeType.displayName.replace(/Trigger/, "")}`;
 			}
 		},
+		isPollingTypeNode (): boolean {
+			return !!(this.nodeType && this.nodeType.polling);
+		},
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
 		},
@@ -266,7 +269,16 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
 		},
 		shouldShowTriggerTooltip () : boolean {
-			return !!this.node && this.workflowRunning && this.workflowDataItems === 0 && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.dragging;
+			return !!this.node &&
+				this.isTriggerNode &&
+				!this.isPollingTypeNode &&
+				!this.isNodeDisabled &&
+				this.workflowRunning &&
+				this.workflowDataItems === 0  &&
+				this.isSingleActiveTriggerNode &&
+				!this.isTriggerNodeTooltipEmpty &&
+				!this.hasIssues &&
+				!this.dragging;
 		},
  	},
 	watch: {
@@ -478,7 +490,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			top: -25px;
 			left: -10px;
 			width: 120px;
-			height: 24px;
+			height: 26px;
 			font-size: 0.9em;
 			text-align: left;
 			z-index: 10;
