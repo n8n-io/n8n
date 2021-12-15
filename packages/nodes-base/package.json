@@ -418,6 +418,7 @@
       "dist/nodes/Github/GithubTrigger.node.js",
       "dist/nodes/Gitlab/Gitlab.node.js",
       "dist/nodes/Gitlab/GitlabTrigger.node.js",
+      "dist/nodes/Gllue/Gllue.node.js",
       "dist/nodes/Google/Analytics/GoogleAnalytics.node.js",
       "dist/nodes/Google/BigQuery/GoogleBigQuery.node.js",
       "dist/nodes/Google/Books/GoogleBooks.node.js",
