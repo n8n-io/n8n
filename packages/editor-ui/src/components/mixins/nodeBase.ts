@@ -179,7 +179,7 @@ export const nodeBase = mixins(
 							hover: false,
 							showOutputLabel: nodeTypeData.outputs.length === 1,
 							size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
-							hoverMessage: this.$i.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
+							hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 						},
 						endpointHoverStyle: {
 							fill: getStyleTokenValue('--color-primary'),

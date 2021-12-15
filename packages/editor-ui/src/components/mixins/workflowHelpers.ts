@@ -478,8 +478,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: this.$i.baseText('workflowHelpers.showMessage.title'),
-						message: this.$i.baseText('workflowHelpers.showMessage.message') + `: "${e.message}"`,
+						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
+						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `: "${e.message}"`,
 						type: 'error',
 					});
 
@@ -552,8 +552,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: this.$i.baseText('workflowHelpers.showMessage.title'),
-						message: this.$i.baseText('workflowHelpers.showMessage.message') + `: "${e.message}"`,
+						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
+						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `: "${e.message}"`,
 						type: 'error',
 					});
 

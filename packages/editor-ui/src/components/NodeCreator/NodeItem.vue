@@ -4,7 +4,7 @@
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name">
-					{{ $i.headerText({
+					{{ $locale.headerText({
 							key: `headers.${shortNodeType}.displayName`,
 							fallback: nodeType.displayName,
 						})
@@ -15,7 +15,7 @@
 				</span>
 			</div>
 			<div :class="$style.description">
-				{{ $i.headerText({
+				{{ $locale.headerText({
 						key: `headers.${shortNodeType}.description`,
 						fallback: nodeType.description,
 					})
@@ -46,7 +46,7 @@ export default Vue.extend({
 	],
 	computed: {
 		shortNodeType() {
-			return this.$i.shortNodeType(this.nodeType.name);
+			return this.$locale.shortNodeType(this.nodeType.name);
 		},
 	},
 	// @ts-ignore

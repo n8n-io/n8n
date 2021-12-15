@@ -5,7 +5,7 @@
 				<font-awesome-icon class="back-arrow" icon="arrow-left" />
 			</div>
 			<span>
-				{{ $i.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
+				{{ $locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
 			</span>
 		</div>
 

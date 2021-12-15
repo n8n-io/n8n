@@ -1,7 +1,7 @@
 <template>
 	<div class="container">
 		<span class="title">
-			{{ $i.baseText('executionDetails.executionId') + ':' }}
+			{{ $locale.baseText('executionDetails.executionId') + ':' }}
 			<span>
 				<strong>{{ executionId }}</strong
 				>&nbsp;
@@ -9,23 +9,23 @@
 					icon="check"
 					class="execution-icon success"
 					v-if="executionFinished"
-					:title="$i.baseText('executionDetails.executionWasSuccessful')"
+					:title="$locale.baseText('executionDetails.executionWasSuccessful')"
 				/>
 				<font-awesome-icon
 					icon="clock"
 					class="execution-icon warning"
 					v-else-if="executionWaiting"
-					:title="$i.baseText('executionDetails.executionWaiting')"
+					:title="$locale.baseText('executionDetails.executionWaiting')"
 				/>
 				<font-awesome-icon
 					icon="times"
 					class="execution-icon error"
 					v-else
-					:title="$i.baseText('executionDetails.executionFailed')"
+					:title="$locale.baseText('executionDetails.executionFailed')"
 				/>
 			</span>
-			{{ $i.baseText('executionDetails.of') }}
-			<span class="primary-color clickable" :title="$i.baseText('executionDetails.openWorkflow')">
+			{{ $locale.baseText('executionDetails.of') }}
+			<span class="primary-color clickable" :title="$locale.baseText('executionDetails.openWorkflow')">
 				<WorkflowNameShort :name="workflowName">
 					<template v-slot="{ shortenedName }">
 						<span @click="openWorkflow(workflowExecution.workflowId)">
@@ -34,7 +34,7 @@
 					</template>
 				</WorkflowNameShort>
 			</span>
-			{{ $i.baseText('executionDetails.workflow') }}
+			{{ $locale.baseText('executionDetails.workflow') }}
 		</span>
 		<ReadOnly class="read-only" />
 	</div>

@@ -15,11 +15,11 @@ const NODE_VIEW_KEY = 'nodeView';
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
 	const i18n = new I18nClass(store);
 
-	Object.defineProperty(vue, '$i', {
+	Object.defineProperty(vue, '$locale', {
 		get() { return i18n; },
 	});
 
-	Object.defineProperty(vue.prototype, '$i', {
+	Object.defineProperty(vue.prototype, '$locale', {
 		get() { return i18n; },
 	});
 }

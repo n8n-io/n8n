@@ -5,7 +5,7 @@
 		</div>
 		<div class="text">
 			<input
-				:placeholder="$i.baseText('nodeCreator.searchBar.searchNodes')"
+				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
 				ref="input"
 				:value="value"
 				@input="onInput"
