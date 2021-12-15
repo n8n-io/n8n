@@ -445,4 +445,11 @@ export const emailFields: INodeProperties[] = [
 			},
 		],
 	},
+    {
+      displayName: 'Variables (JSON)',
+      name: 'variables',
+      type: 'json',
+      default: '',
+      description: "Template variables in JSON"
+    }
 ];

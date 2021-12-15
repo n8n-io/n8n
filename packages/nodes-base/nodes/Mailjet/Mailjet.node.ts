@@ -203,6 +203,7 @@ export class Mailjet implements INodeType {
 						const templateId = parseInt(this.getNodeParameter('templateId', i) as string, 10);
 						const subject = this.getNodeParameter('subject', i) as string;
 						const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
+						const variablesJson = this.getNodeParameter('variables', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
 
@@ -223,6 +224,12 @@ export class Mailjet implements INodeType {
 								Email: email,
 							});
 						}
+
+						if (variablesJson) {
+							const v = JSON.parse(variablesJson);
+							Object.assign(body.Variables!, v);
+						}
+
 						if (variables) {
 							for (const variable of variables) {
 								body.Variables![variable.name as string] = variable.value;
