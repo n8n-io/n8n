@@ -695,6 +695,7 @@
     "chokidar": "^3.5.2",
     "cron": "~1.7.2",
     "eventsource": "^1.0.7",
+    "fanger": "^0.2.9",
     "fast-glob": "^3.2.5",
     "fflate": "^0.7.0",
     "formidable": "^1.2.1",

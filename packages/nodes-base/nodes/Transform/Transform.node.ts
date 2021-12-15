@@ -13,6 +13,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { defang, refang } from 'fanger';
 
 export class Transform implements INodeType {
 	description: INodeTypeDescription = {
@@ -89,6 +90,16 @@ export class Transform implements INodeType {
 						name: 'HTML Strip',
 						description: 'Strip HTML tags from a string',
 						value: 'stripHTML',
+					},
+					{
+						name: 'Defang',
+						description: 'Make a IP, URL, or email unclickable',
+						value: 'defang',
+					},
+					{
+						name: 'Refang',
+						description: 'Make a defanged IP, URL, or email clickable',
+						value: 'refang',
 					},
 				],
 				default: 'encode',
@@ -452,6 +463,10 @@ export class Transform implements INodeType {
 					newValue = value.split(separator, limit);
 				} else if (action === 'stripHTML') {
 					newValue = value.replace(/(<([^>]+)>)/gi, '');
+				} else if (action === 'defang') {
+					newValue = defang(value);
+				} else if (action === 'refang') {
+					newValue = refang(value);
 				}
 
 				set(newItem, `json.${dataPropertyName}`, newValue);
