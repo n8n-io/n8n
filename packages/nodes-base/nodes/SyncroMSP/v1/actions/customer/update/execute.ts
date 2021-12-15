@@ -5,6 +5,7 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -45,6 +46,8 @@ export async function updateCustomer(this: IExecuteFunctions, index: number): Pr
 
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-
+	if (!responseData.customer) {
+		throw new NodeApiError(this.getNode(), responseData, { httpCode: '404', message: "customer not found" });
+	}
 	return this.helpers.returnJsonArray(responseData.customer);
 }
