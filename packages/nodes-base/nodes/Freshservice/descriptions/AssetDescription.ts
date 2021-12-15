@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const assetOperations = [
+export const assetOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const assetOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const assetFields = [
+export const assetFields: INodeProperties[] = [
 	// ----------------------------------------
 	//              asset: create
 	// ----------------------------------------
@@ -74,9 +74,7 @@ export const assetFields = [
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsMethod: [
-				'getAssetTypes',
-			],
+			loadOptionsMethod: 'getAssetTypes',
 		},
 		displayOptions: {
 			show: {
@@ -248,9 +246,7 @@ export const assetFields = [
 				default: '',
 				description: 'ID of the agent by whom the asset is managed. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
+					loadOptionsMethod: 'getAgents',
 				},
 			},
 			{
@@ -267,9 +263,7 @@ export const assetFields = [
 				default: '',
 				description: 'ID of the asset type to filter by. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAssetTypes',
-					],
+					loadOptionsMethod: 'getAssetTypes',
 				},
 			},
 			{
@@ -279,9 +273,7 @@ export const assetFields = [
 				default: '',
 				description: 'ID of the department to which the asset belongs. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
+					loadOptionsMethod: 'getDepartments',
 				},
 			},
 			{
@@ -291,9 +283,7 @@ export const assetFields = [
 				default: '',
 				description: 'ID of the location to filter by. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getLocations',
-					],
+					loadOptionsMethod: 'getLocations',
 				},
 			},
 			{
@@ -375,4 +365,4 @@ export const assetFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

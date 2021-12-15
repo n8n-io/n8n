@@ -648,6 +648,10 @@ export const store = new Vuex.Store({
 			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		},
 
+		isTelemetryEnabled: (state) => {
+			return state.telemetry && state.telemetry.enabled;
+		},
+
 		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
 			return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
 		},
@@ -738,6 +742,11 @@ export const store = new Vuex.Store({
 			return state.activeWorkflows;
 		},
 
+		workflowTriggerNodes: (state, getters) => {
+			return state.workflow.nodes.filter(node => {
+				return getters.nodeType(node.type).group.includes('trigger');
+			});
+		},
 		// Node-Index
 		getNodeIndex: (state) => (nodeName: string): number => {
 			return state.nodeIndex.indexOf(nodeName);
@@ -857,7 +866,7 @@ export const store = new Vuex.Store({
 			return state.workflowExecutionData;
 		},
 		getWorkflowRunData: (state): IRunData | null => {
-			if (state.workflowExecutionData === null) {
+			if (!state.workflowExecutionData || !state.workflowExecutionData.data || !state.workflowExecutionData.data.resultData) {
 				return null;
 			}
 

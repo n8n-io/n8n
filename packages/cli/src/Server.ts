@@ -1579,7 +1579,7 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse[]> => {
 					const findQuery = {} as FindManyOptions;
 					if (req.query.filter) {
-						findQuery.where = JSON.parse(req.query.filter as string);
+						findQuery.where = JSON.parse(req.query.filter as string) as IDataObject;
 						if (findQuery.where.id !== undefined) {
 							// No idea if multiple where parameters make db search
 							// slower but to be sure that that is not the case we
@@ -2896,7 +2896,23 @@ export async function start(): Promise<void> {
 			deploymentType: config.get('deployment.type'),
 		};
 
-		void InternalHooksManager.getInstance().onServerStarted(diagnosticInfo);
+		void Db.collections
+			.Workflow!.findOne({
+				select: ['createdAt'],
+				order: { createdAt: 'ASC' },
+			})
+			.then(async (workflow) =>
+				InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
+			);
+	});
+
+	server.on('error', (error: Error & { code: string }) => {
+		if (error.code === 'EADDRINUSE') {
+			console.log(
+				`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
+			);
+			process.exit(1);
+		}
 	});
 }
 

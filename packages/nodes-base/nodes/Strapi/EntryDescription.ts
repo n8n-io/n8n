@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const entryOperations = [
+export const entryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const entryOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const entryFields = [
+export const entryFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                entry:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -273,9 +273,7 @@ export const entryFields = [
 				},
 				default: '',
 				placeholder: 'name:asc',
-				description: `Name of the fields to sort the data by. By default will be sorted ascendingly.<br>
-				To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon.
-				For example: name:asc`,
+				description: `Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>`,
 			},
 			{
 				displayName: 'Where (JSON)',
@@ -347,4 +345,4 @@ export const entryFields = [
 		placeholder: 'id,name,description',
 		description: 'Comma separated list of the properties which should used as columns for the new rows.',
 	},
-] as INodeProperties[];
+];

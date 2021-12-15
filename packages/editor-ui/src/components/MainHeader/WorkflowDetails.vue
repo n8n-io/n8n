@@ -140,8 +140,9 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	methods: {
-		onSaveButtonClick () {
-			this.saveCurrentWorkflow(undefined);
+		async onSaveButtonClick () {
+			const saved = await this.saveCurrentWorkflow();
+			if (saved) this.$store.dispatch('settings/fetchPromptsData');
 		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;
@@ -172,7 +173,7 @@ export default mixins(workflowHelpers).extend({
 
 			const saved = await this.saveCurrentWorkflow({ tags });
 			this.$telemetry.track('User edited workflow tags', { workflow_id: this.currentWorkflowId as string, new_tag_count: tags.length });
-			
+
 			this.$data.tagsSaving = false;
 			if (saved) {
 				this.$data.isTagsEditEnabled = false;
