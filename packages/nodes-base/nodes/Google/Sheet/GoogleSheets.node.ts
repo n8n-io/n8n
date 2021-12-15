@@ -30,9 +30,9 @@ import {
 	hexToRgb,
 } from './GenericFunctions';
 
-interface GroupResult{
-	dimension:IDataObject;
-	items:IDataObject[];
+interface GroupResult {
+	dimension: IDataObject;
+	items: IDataObject[];
 }
 
 export class GoogleSheets implements INodeType {
@@ -1094,7 +1094,7 @@ export class GoogleSheets implements INodeType {
 							message: 'Could not generate a token from your private key.',
 						};
 					}
-				} catch(err) {
+				} catch (err) {
 					return {
 						status: 'Error',
 						message: `Private key validation failed: ${err.message}`,
@@ -1131,7 +1131,7 @@ export class GoogleSheets implements INodeType {
 			const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
 			const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-			const isObjectValueEqual= (a:IDataObject, b:IDataObject):boolean=>  {
+			const isObjectValueEqual = (a: IDataObject, b: IDataObject): boolean => {
 				const aProps = Object.getOwnPropertyNames(a);
 				const bProps = Object.getOwnPropertyNames(b);
 
@@ -1148,6 +1148,14 @@ export class GoogleSheets implements INodeType {
 				return true;
 			};
 
+			const getColumnNameByIndex = (index: number): string => {
+				const quotient = Math.floor((index) / 26);
+				if (quotient > 0) {
+					return getColumnNameByIndex(quotient - 1) + String.fromCharCode((index % 26) + 65);
+				} else {
+					return String.fromCharCode((index % 26) + 65);
+				}
+			};
 			const groupBy = (xs: IDataObject[], keys: string[]): GroupResult[] => {
 				const result: GroupResult[] = [];
 				xs.forEach(x => {
@@ -1208,9 +1216,15 @@ export class GoogleSheets implements INodeType {
 						groups = groupBy(items.map(item => item.json), dimensions);
 					}
 					const sheetTitleArr: string[] = [];
-					propertyBinding.split(',').forEach(binding => {
-						const kv = binding.split(':');
-						const range = kv[0].trim(), prop = kv[1].trim();
+					propertyBinding.split(',').forEach((binding,bindingIndex) => {
+						let range: string, prop: string;
+						if (binding.indexOf(':') !== -1) {
+							const kv = binding.split(':');
+							range = kv[0].trim(), prop = kv[1].trim();
+						}else{
+							range=`${getColumnNameByIndex(bindingIndex)}1`;
+							prop=binding;
+						}
 						if (groups) {
 							groups.forEach(group => {
 								const groupName = getGroupName(group.dimension);
@@ -1611,7 +1625,7 @@ export class GoogleSheets implements INodeType {
 							for (const sheet of sheets) {
 								const properties = sheet.propertiesUi as IDataObject;
 								if (properties) {
-									data.push({ properties });
+									data.push({properties});
 								}
 							}
 							body.sheets = data;
@@ -1625,7 +1639,7 @@ export class GoogleSheets implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({error: error.message});
 							continue;
 						}
 						throw error;
