@@ -1229,6 +1229,12 @@ export class GoogleSheets implements INodeType {
 							});
 						}
 					});
+					//clear
+					if (existedSheetTitles && existedSheetTitles.length) {
+						existedSheetTitles.forEach(async sheetTitle => {
+							await sheet.clearData(encodeURIComponent(`${sheetTitle}`));
+						});
+					}
 					if (sheetTitleArr && sheetTitleArr.length) {
 						const titleArr = Array.from(new Set(sheetTitleArr)).filter(title => !existedSheetTitles!.includes(title));
 						const sheets = await createSheet(titleArr);
