@@ -2406,20 +2406,24 @@ class App {
 						Object.assign(filters, deleteData.filters);
 					}
 
-					const execs = await Db.collections.Execution!.find(filters);
+					const execs = await Db.collections.Execution!.find({ ...filters, select: ['id'] });
+
+					await Promise.all(
+						execs.map((item) =>
+							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(item.id.toString()),
+						),
+					);
 
 					await Db.collections.Execution!.delete(filters);
-					await BinaryDataManager.getInstance().findAndDeleteBinaryData(execs);
 				} else if (deleteData.ids !== undefined) {
-					const execs = await Db.collections
-						.Execution!.createQueryBuilder('execution')
-						.select(['execution.id', 'execution.data'])
-						.where('execution.id IN (:...ids)', { ids: deleteData.ids })
-						.getMany();
+					await Promise.all(
+						deleteData.ids.map((id) =>
+							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id),
+						),
+					);
 
 					// Deletes all executions with the given ids
 					await Db.collections.Execution!.delete(deleteData.ids);
-					await BinaryDataManager.getInstance().findAndDeleteBinaryData(execs);
 				} else {
 					throw new Error('Required body-data "ids" or "deleteBefore" is missing!');
 				}

@@ -1,15 +1,6 @@
-import { parse } from 'flatted';
-// import { v4 as uuid } from 'uuid';
-import {
-	IBinaryData,
-	INodeExecutionData,
-	IRun,
-	IRunData,
-	IRunExecutionData,
-	ITaskData,
-} from 'n8n-workflow';
+import { IBinaryData, INodeExecutionData, IRun, IRunData, ITaskData } from 'n8n-workflow';
 import { BINARY_ENCODING } from '../Constants';
-import { IBinaryDataConfig, IBinaryDataManager, IExecutionFlattedDb } from '../Interfaces';
+import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 import { BinaryDataFileSystem } from './FileSystem';
 
 export class BinaryDataManager {
@@ -98,28 +89,9 @@ export class BinaryDataManager {
 		return Promise.resolve();
 	}
 
-	async findAndDeleteBinaryData(fullExecutionDataList: IExecutionFlattedDb[]): Promise<unknown> {
-		if (this.availableModes.length > 0) {
-			const allIdentifiers: string[] = [];
-
-			fullExecutionDataList.forEach((fullExecutionData) => {
-				const { runData } = (parse(fullExecutionData.data) as IRunExecutionData).resultData;
-
-				allIdentifiers.push(...this.findBinaryDataFromRunData(runData));
-			});
-
-			return Promise.all(
-				allIdentifiers.map(async (identifier) => this.deleteBinaryDataByIdentifier(identifier)),
-			);
-		}
-
-		return Promise.resolve();
-	}
-
-	private async deleteBinaryDataByIdentifier(identifier: string): Promise<void> {
-		const { mode, id } = this.splitBinaryModeFileId(identifier);
-		if (this.managers[mode]) {
-			return this.managers[mode].deleteBinaryDataByIdentifier(id);
+	async deleteBinaryDataByExecutionId(executionId: string): Promise<void> {
+		if (this.managers[this.binaryDataMode]) {
+			return this.managers[this.binaryDataMode].deleteBinaryDataByExecutionId(executionId);
 		}
 
 		return Promise.resolve();

@@ -85,6 +85,18 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 			.then(() => newBinaryDataId);
 	}
 
+	async deleteBinaryDataByExecutionId(executionId: string): Promise<void> {
+		const regex = new RegExp(`${executionId}_*`);
+		return fs
+			.readdir(path.join(this.storagePath))
+			.then((files) => files.filter((filename) => regex.test(filename)))
+			.then((filteredFiles) =>
+				filteredFiles.map(async (file) => fs.rm(path.join(this.storagePath, file))),
+			)
+			.then(async (deletePromises) => Promise.all(deletePromises))
+			.then(async () => Promise.resolve());
+	}
+
 	private generateFileName(prefix: string): string {
 		return `${prefix}_${uuid()}`;
 	}
