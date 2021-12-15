@@ -50,7 +50,7 @@ export class Gllue implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'contact',
+							'client',
 						],
 					},
 				},
@@ -58,7 +58,7 @@ export class Gllue implements INodeType {
 					{
 						name: 'list',
 						value: 'list',
-						description: 'List contacts',
+						description: 'List clients',
 					},
 				],
 				default: 'list',
