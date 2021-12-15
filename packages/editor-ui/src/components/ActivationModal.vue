@@ -64,6 +64,9 @@ export default Vue.extend({
 			const foundTriggers = this.$store.getters.workflowTriggerNodes
 				.filter((node: INodeUi) => {
 					return !node.disabled;
+				})
+				.filter(({ type }: INodeUi) => {
+					return type !== 'n8n-nodes-base.errorTrigger';
 				});
 			// if multiple triggers
 			if (foundTriggers.length > 1) {

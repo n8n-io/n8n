@@ -91,6 +91,10 @@ export default mixins(
 					const foundTriggers = this.$store.getters.workflowTriggerNodes
 						.filter((node: INodeUi) => {
 							return !node.disabled;
+						})
+						// Error Trigger does not behave like other triggers and workflows using it can not be activated
+						.filter(({ type }: INodeUi) => {
+							return type !== 'n8n-nodes-base.errorTrigger';
 						});
 					return foundTriggers.length > 0;
 				},
