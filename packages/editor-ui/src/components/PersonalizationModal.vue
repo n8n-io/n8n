@@ -18,7 +18,7 @@
 			</div>
 			<div :class="$style.container" v-else>
 				<n8n-input-label :label="$i.baseText('personalizationModal.howAreYourCodingSkills')">
-					<n8n-select :value="values[CODING_SKILL_KEY]" :placeholder="$i.baseText('personalizationModal.select')" @change="(value) => onInput(CODING_SKILL_KEY, value)">
+					<n8n-select :value="values[CODING_SKILL_KEY]" :placeholder="$i.baseText('personalizationModal.select')" @change="(value) => values[CODING_SKILL_KEY] = value">
 						<n8n-option
 							:label="baseText('personalizationModal.neverCoded')"
 							value="0"
@@ -46,139 +46,54 @@
 					</n8n-select>
 				</n8n-input-label>
 
-
 				<n8n-input-label :label="$i.baseText('personalizationModal.whichOfTheseAreasDoYouMainlyWorkIn')">
-					<n8n-select :value="values[WORK_AREA_KEY]" :placeholder="$i.baseText('personalizationModal.select')" @change="(value) => onInput(WORK_AREA_KEY, value)">
-						<n8n-option
-							:value="FINANCE_WORK_AREA"
-							:label="$i.baseText('personalizationModal.finance')"
-						/>
-						<n8n-option
-							:value="HR_WORK_AREA"
-							:label="$i.baseText('personalizationModal.hr')"
-						/>
-						<n8n-option
-							:value="IT_ENGINEERING_WORK_AREA"
-							:label="$i.baseText('personalizationModal.itEngineering')"
-						/>
-						<n8n-option
-							:value="LEGAL_WORK_AREA"
-							:label="$i.baseText('personalizationModal.legal')"
-						/>
-						<n8n-option
-							:value="MARKETING_WORK_AREA"
-							:label="$i.baseText('personalizationModal.marketing')"
-						/>
-						<n8n-option
-							:value="OPS_WORK_AREA"
-							:label="$i.baseText('personalizationModal.operations')"
-						/>
-						<n8n-option
-							:value="PRODUCT_WORK_AREA"
-							:label="$i.baseText('personalizationModal.product')"
-						/>
-						<n8n-option
-							:value="SALES_BUSINESSDEV_WORK_AREA"
-							:label="$i.baseText('personalizationModal.salesBizDev')"
-						/>
-						<n8n-option
-							:value="SECURITY_WORK_AREA"
-							:label="$i.baseText('personalizationModal.security')"
-						/>
-						<n8n-option
-							:value="SUPPORT_WORK_AREA"
-							:label="$i.baseText('personalizationModal.support')"
-						/>
-						<n8n-option
-							:value="EXECUTIVE_WORK_AREA"
-							:label="$i.baseText('personalizationModal.executiveTeam')"
-						/>
-						<n8n-option
-							:value="OTHER_WORK_AREA_OPTION"
-							:label="$i.baseText('personalizationModal.otherPleaseSpecify')"
-						/>
-						<n8n-option
-							:value="NOT_APPLICABLE_WORK_AREA"
-							:label="$i.baseText('personalizationModal.imNotUsingN8nForWork')"
-						/>
+					<n8n-select :value="values[WORK_AREA_KEY]" multiple :placeholder="$i.baseText('personalizationModal.select')" @change="(value) => onMultiInput(WORK_AREA_KEY, value)">
+						<n8n-option :value="FINANCE_WORK_AREA" :label="$i.baseText('personalizationModal.finance')" />
+						<n8n-option :value="HR_WORK_AREA" :label="$i.baseText('personalizationModal.hr')" />
+						<n8n-option :value="IT_ENGINEERING_WORK_AREA" :label="$i.baseText('personalizationModal.itEngineering')" />
+						<n8n-option :value="LEGAL_WORK_AREA" :label="$i.baseText('personalizationModal.legal')" />
+						<n8n-option :value="MARKETING_WORK_AREA" :label="$i.baseText('personalizationModal.marketing')" />
+						<n8n-option :value="OPS_WORK_AREA" :label="$i.baseText('personalizationModal.operations')" />
+						<n8n-option :value="PRODUCT_WORK_AREA" :label="$i.baseText('personalizationModal.product')" />
+						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" :label="$i.baseText('personalizationModal.salesBizDev')" />
+						<n8n-option :value="SECURITY_WORK_AREA" :label="$i.baseText('personalizationModal.security')" />
+						<n8n-option :value="SUPPORT_WORK_AREA" :label="$i.baseText('personalizationModal.support')" />
+						<n8n-option :value="EXECUTIVE_WORK_AREA" :label="$i.baseText('personalizationModal.executiveTeam')" />
+						<n8n-option :value="OTHER_WORK_AREA_OPTION" :label="$i.baseText('personalizationModal.otherPleaseSpecify')" />
+						<n8n-option :value="NOT_APPLICABLE_WORK_AREA" :label="$i.baseText('personalizationModal.imNotUsingN8nForWork')" />
 					</n8n-select>
 				</n8n-input-label>
-
 				<n8n-input
 					v-if="otherWorkAreaFieldVisible"
 					:value="values[OTHER_WORK_AREA_KEY]"
 					:placeholder="$i.baseText('personalizationModal.specifyYourWorkArea')"
-					@input="(value) => onInput(OTHER_WORK_AREA_KEY, value)"
+					@input="(value) => values[OTHER_WORK_AREA_KEY] = value"
 				/>
 
 				<section v-if="showAllIndustryQuestions">
 					<n8n-input-label :label="$i.baseText('personalizationModal.whichIndustriesIsYourCompanyIn')">
-					<n8n-select :value="values[COMPANY_INDUSTRY_KEY]" multiple :placeholder="$i.baseText('personalizationModal.select')" @change="(value) => onInput(COMPANY_INDUSTRY_KEY, value)">
-						<n8n-option
-							:value="E_COMMERCE_INDUSTRY"
-							:label="$i.baseText('personalizationModal.eCommerce')"
-						/>
-						<n8n-option
-							:value="AUTOMATION_CONSULTING_INDUSTRY"
-							:label="$i.baseText('personalizationModal.automationConsulting')"
-							/>
-						<n8n-option
-							:value="SYSTEM_INTEGRATION_INDUSTRY"
-							:label="$i.baseText('personalizationModal.systemsIntegration')"
-							/>
-						<n8n-option
-							:value="GOVERNMENT_INDUSTRY"
-							:label="$i.baseText('personalizationModal.government')"
-						/>
-						<n8n-option
-							:value="LEGAL_INDUSTRY"
-							:label="$i.baseText('personalizationModal.legal')"
-						/>
-						<n8n-option
-							:value="HEALTHCARE_INDUSTRY"
-							:label="$i.baseText('personalizationModal.healthcare')"
-						/>
-						<n8n-option
-							:value="FINANCE_INDUSTRY"
-							:label="$i.baseText('personalizationModal.finance')"
-						/>
-						<n8n-option
-							:value="SECURITY_INDUSTRY"
-							:label="$i.baseText('personalizationModal.security')"
-						/>
-						<n8n-option
-							:value="SAAS_INDUSTRY"
-							:label="$i.baseText('personalizationModal.saas')"
-						/>
-						<n8n-option
-							:value="OTHER_INDUSTRY_OPTION"
-							:label="$i.baseText('personalizationModal.otherPleaseSpecify')"
-						/>
-
-				<section v-if="showAllIndustryQuestions">
-					<n8n-input-label label="Which industries is your company in?">
-					<n8n-select :value="values[COMPANY_INDUSTRY_KEY]" multiple placeholder="Select..." @change="(value) => onMultiInput(COMPANY_INDUSTRY_KEY, value)">
-						<n8n-option :value="E_COMMERCE_INDUSTRY" label="eCommerce" />
-						<n8n-option :value="AUTOMATION_CONSULTING_INDUSTRY" label="Automation consulting" />
-						<n8n-option :value="SYSTEM_INTEGRATION_INDUSTRY" label="Systems integration" />
-						<n8n-option :value="GOVERNMENT_INDUSTRY" label="Government" />
-						<n8n-option :value="LEGAL_INDUSTRY" label="Legal" />
-						<n8n-option :value="HEALTHCARE_INDUSTRY" label="Healthcare" />
-						<n8n-option :value="FINANCE_INDUSTRY" label="Finance" />
-						<n8n-option :value="SECURITY_INDUSTRY" label="Security" />
-						<n8n-option :value="SAAS_INDUSTRY" label="SaaS" />
-						<n8n-option :value="OTHER_INDUSTRY_OPTION" label="Other (please specify)" />
+					<n8n-select :value="values[COMPANY_INDUSTRY_KEY]" multiple :placeholder="$i.baseText('personalizationModal.select')" @change="(value) => onMultiInput(COMPANY_INDUSTRY_KEY, value)">
+						<n8n-option :value="E_COMMERCE_INDUSTRY" :label="$i.baseText('personalizationModal.eCommerce')" />
+						<n8n-option :value="AUTOMATION_CONSULTING_INDUSTRY" :label="$i.baseText('personalizationModal.automationConsulting')" />
+						<n8n-option :value="SYSTEM_INTEGRATION_INDUSTRY" :label="$i.baseText('personalizationModal.systemsIntegration')" />
+						<n8n-option :value="GOVERNMENT_INDUSTRY" :label="$i.baseText('personalizationModal.government')" />
+						<n8n-option :value="LEGAL_INDUSTRY" :label="$i.baseText('personalizationModal.legal')" />
+						<n8n-option :value="HEALTHCARE_INDUSTRY" :label="$i.baseText('personalizationModal.healthcare')" />
+						<n8n-option :value="FINANCE_INDUSTRY" :label="$i.baseText('personalizationModal.finance')" />
+						<n8n-option :value="SECURITY_INDUSTRY" :label="$i.baseText('personalizationModal.security')" />
+						<n8n-option :value="SAAS_INDUSTRY" :label="$i.baseText('personalizationModal.saas')" />
+						<n8n-option :value="OTHER_INDUSTRY_OPTION" :label="$i.baseText('personalizationModal.otherPleaseSpecify')" />
 					</n8n-select>
 				</n8n-input-label>
 				<n8n-input
 					v-if="otherCompanyIndustryFieldVisible"
 					:value="values[OTHER_COMPANY_INDUSTRY_KEY]"
 					:placeholder="$i.baseText('personalizationModal.specifyYourCompanysIndustry')"
-					@input="(value) => onInput(OTHER_COMPANY_INDUSTRY_KEY, value)"
+					@input="(value) => values[OTHER_COMPANY_INDUSTRY_KEY] = value"
 				/>
 
 				<n8n-input-label :label="$i.baseText('personalizationModal.howBigIsYourCompany')">
-					<n8n-select :value="values[COMPANY_SIZE_KEY]" :placeholder="$i.baseText('personalizationModal.select')" @change="(value) => onInput(COMPANY_SIZE_KEY, value)">
+					<n8n-select :value="values[COMPANY_SIZE_KEY]" placeholder="Select..." @change="(value) => values[COMPANY_SIZE_KEY] = value">
 						<n8n-option
 							:label="$i.baseText('personalizationModal.lessThan20People')"
 							:value="COMPANY_SIZE_20_OR_LESS"
@@ -358,7 +273,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 				this.submitted = true;
 			} catch (e) {
-				this.$showError(e, this.$i.baseText('personalizationModal.errorWhileSubmittingResults'));
+				this.$showError(e, 'Error while submitting results');
 			}
 
 			this.$data.isSaving = false;
