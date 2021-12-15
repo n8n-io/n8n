@@ -314,7 +314,10 @@ export interface IDiagnosticInfo {
 
 export interface IInternalHooksClass {
 	onN8nStop(): Promise<void>;
-	onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<unknown[]>;
+	onServerStarted(
+		diagnosticInfo: IDiagnosticInfo,
+		firstWorkflowCreatedAt?: Date,
+	): Promise<unknown[]>;
 	onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void>;
 	onWorkflowCreated(workflow: IWorkflowBase): Promise<void>;
 	onWorkflowDeleted(workflowId: string): Promise<void>;
@@ -404,10 +407,12 @@ export interface IN8nUISettings {
 }
 
 export interface IPersonalizationSurveyAnswers {
-	companySize: string | null;
 	codingSkill: string | null;
-	workArea: string | null;
+	companyIndustry: string[];
+	companySize: string | null;
+	otherCompanyIndustry: string | null;
 	otherWorkArea: string | null;
+	workArea: string[] | string | null;
 }
 
 export interface IPersonalizationSurvey {
