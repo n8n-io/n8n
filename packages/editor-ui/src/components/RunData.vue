@@ -98,7 +98,7 @@
 						</h3>
 
 						<div class="text">
-							{{ $baseText(
+							{{ $locale.baseText(
 								'runData.theNodeContains',
 								{
 									interpolate: {
