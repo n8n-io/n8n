@@ -190,14 +190,6 @@ export default mixins(
 						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
 					},
 					{
-						displayName: this.$locale.baseText('nodeSettings.color.displayName'),
-						name: 'color',
-						type: 'color',
-						default: '#ff0000',
-						noDataExpression: true,
-						description: this.$locale.baseText('nodeSettings.color.description'),
-					},
-					{
 						displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
 						name: 'alwaysOutputData',
 						type: 'boolean',
