@@ -934,7 +934,8 @@
 		"showMessage": {
 			"message": "",
 			"title": "Problem saving workflow"
-		}
+		},
+		"chooseOrCreateATag": "Choose or create a tag"
 	},
 	"workflowOpen": {
 		"active": "Active",
