@@ -45,102 +45,6 @@ export async function superbaseApiRequest(this: IExecuteFunctions | IExecuteSing
 	}
 }
 
-// export const getWhereConditions = (
-// 	displayName: string,
-// 	operations: string[],
-// 	placeholder: string,
-// ): INodeProperties[] => {
-// 	return [{
-// 		displayName,
-// 		name: 'keys',
-// 		type: 'fixedCollection',
-// 		placeholder,
-// 		typeOptions: {
-// 			multipleValues: true,
-// 		},
-// 		displayOptions: {
-// 			show: {
-// 				resource: [
-// 					'row',
-// 				],
-// 				operation: operations,
-// 			},
-// 		},
-// 		default: {},
-// 		options: [
-// 			{
-// 				name: 'keys',
-// 				displayName: 'Key',
-// 				values: [
-// 					{
-// 						displayName: 'Key Name',
-// 						name: 'keyName',
-// 						type: 'string',
-// 						default: '',
-// 					},
-// 					{
-// 						displayName: 'Condition',
-// 						name: 'condition',
-// 						type: 'options',
-// 						options: [
-// 							{
-// 								name: 'Equals',
-// 								value: 'eq',
-// 							},
-// 							{
-// 								name: 'Greater Than',
-// 								value: 'gt',
-// 							},
-// 							{
-// 								name: 'Greater Than Equal',
-// 								value: 'gte',
-// 							},
-// 							{
-// 								name: 'Less than',
-// 								value: 'lt',
-// 							},
-// 							{
-// 								name: 'Less Than or Equal',
-// 								value: 'lte',
-// 							},
-// 							{
-// 								name: 'Not Equal',
-// 								value: '<>',
-// 							},
-// 							{
-// 								name: 'LIKE operator',
-// 								value: 'like',
-// 								description: 'use * in place of %',
-// 							},
-// 							{
-// 								name: 'ILIKE operator',
-// 								value: 'ilike',
-// 								description: 'use * in place of %',
-// 							},
-// 							{
-// 								name: 'Is',
-// 								value: 'is',
-// 								description: 'Checking for exact equality (null,true,false,unknown)',
-// 							},
-// 							{
-// 								name: 'Full-Text',
-// 								value: '@@',
-// 							},
-// 						],
-// 						default: '',
-// 					},
-// 					{
-// 						displayName: 'Key Value',
-// 						name: 'keyValue',
-// 						type: 'string',
-// 						default: '',
-// 					},
-// 				],
-// 			},
-// 		],
-// 	}];
-// };
-
 export function getFilters(
 	resources: string[],
 	operations: string[]): INodeProperties[] {
@@ -271,11 +175,42 @@ export function getFilters(
 								},
 								{
 									name: 'Full-Text',
-									value: '@@',
+									value: 'fullText',
 								},
 							],
 							default: '',
 						},
+						{
+							displayName: 'Search Function',
+							name: 'searchFunction',
+							type: 'options',
+							displayOptions: {
+								show: {
+									condition: [
+										'fullText',
+									],
+								},
+							},
+							options: [
+								{
+									name: 'to_tsquery',
+									value: 'fts',
+								},
+								{
+									name: 'plainto_tsquery',
+									value: 'plfts',
+								},
+								{
+									name: 'phraseto_tsquery',
+									value: 'phfts',
+								},
+								{
+									name: 'websearch_to_tsquery',
+									value: 'wfts',
+								},
+							],
+							default: '',
+						},	
 						{
 							displayName: 'Field Value',
 							name: 'keyValue',
@@ -322,3 +257,17 @@ export function getFilters(
 		},
 	];
 }
+
+export const buildQuery = (obj: IDataObject, value: IDataObject) => {
+	if (value.condition === 'fullText') {
+		return Object.assign(obj, { [`${value.keyName}`]: `${value.searchFunction}.${value.keyValue}` });
+	}
+	return Object.assign(obj, { [`${value.keyName}`]: `${value.condition}.${value.keyValue}` });
+};
+
+export const buildOrQuery = (key: IDataObject) => {
+	if (key.condition === 'fullText') {
+		return `${key.keyName}.${key.searchFunction}.${key.keyValue}`;
+	}	
+	return `${key.keyName}.${key.condition}.${key.keyValue}`;
+};

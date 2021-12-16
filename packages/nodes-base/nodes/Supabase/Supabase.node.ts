@@ -11,6 +11,8 @@ import {
 } from 'n8n-workflow';
 
 import {
+	buildOrQuery,
+	buildQuery,
 	superbaseApiRequest,
 } from './GenericFunctions';
 
@@ -111,11 +113,11 @@ export class Supabase implements INodeType {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 						if (matchType === 'allFilters') {
-							const data = keys.reduce((obj, value) => Object.assign(obj, { [`${value.keyName}`]: `${value.condition}.${value.keyValue}` }), {});
+							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
 							Object.assign(qs, data);
 						}
 						if (matchType === 'anyFilter') {
-							const data = keys.map((key) => `${key.keyName}.${key.condition}.${key.keyValue}`);
+							const data = keys.map((key) => buildOrQuery(key));
 							Object.assign(qs, { or: `(${data.join(',')})` });
 						}
 					}
@@ -159,11 +161,11 @@ export class Supabase implements INodeType {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 						if (matchType === 'allFilters') {
-							const data = keys.reduce((obj, value) => Object.assign(obj, { [`${value.keyName}`]: `${value.condition}.${value.keyValue}` }), {});
+							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
 							Object.assign(qs, data);
 						}
 						if (matchType === 'anyFilter') {
-							const data = keys.map((key) => `${key.keyName}.${key.condition}.${key.keyValue}`);
+							const data = keys.map((key) => buildOrQuery(key));
 							Object.assign(qs, { or: `(${data.join(',')})` });
 						}
 					}
@@ -190,17 +192,17 @@ export class Supabase implements INodeType {
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
-						
+
 						if (!keys.length) {
 							throw new NodeOperationError(this.getNode(), 'At least one filter must be defined');
 						}
 
 						if (matchType === 'allFilters') {
-							const data = keys.reduce((obj, value) => Object.assign(obj, { [`${value.keyName}`]: `${value.condition}.${value.keyValue}` }), {});
+							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
 							Object.assign(qs, data);
 						}
 						if (matchType === 'anyFilter') {
-							const data = keys.map((key) => `${key.keyName}.${key.condition}.${key.keyValue}`);
+							const data = keys.map((key) => buildOrQuery(key));
 							Object.assign(qs, { or: `(${data.join(',')})` });
 						}
 					}
@@ -209,7 +211,7 @@ export class Supabase implements INodeType {
 						const filterString = this.getNodeParameter('filterString', i) as string;
 						endpoint = `${endpoint}?${encodeURI(filterString)}`;
 					}
-	
+
 					const rows = await superbaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 					returnData.push(...rows);
 				}
