@@ -578,6 +578,13 @@ export const issueFields: INodeProperties[] = [
 				description: `Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID.`,
 			},
 			{
+				displayName: 'Friendly Field Names',
+				name: 'resolveCustomFields',
+				type: 'boolean',
+				default: false,
+				description: `Return the display value of fields instead of their ID`,
+			},
+			{
 				displayName: 'Properties',
 				name: 'properties',
 				type: 'string',

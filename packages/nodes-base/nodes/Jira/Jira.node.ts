@@ -653,6 +653,9 @@ export class Jira implements INodeType {
 					if (additionalFields.expand) {
 						qs.expand = additionalFields.expand as string;
 					}
+					if (additionalFields.resolveCustomFields) {
+						qs.expand = `${qs.expand || ''},names`;
+					}
 					if (additionalFields.properties) {
 						qs.properties = additionalFields.properties as string;
 					}
@@ -660,6 +663,18 @@ export class Jira implements INodeType {
 						qs.updateHistory = additionalFields.updateHistory as string;
 					}
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
+					if (additionalFields.resolveCustomFields) {
+						const mappedFields: IDataObject = {};
+						for (const field of Object.keys(responseData.fields)) {
+							if (responseData.names[field] in mappedFields) {
+								// Duplicate fields, use original key
+								mappedFields[field] = responseData.fields[field];
+							} else {
+								mappedFields[responseData.names[field] || field] = responseData.fields[field];
+							}
+						}
+						responseData.fields = mappedFields;
+					}
 					returnData.push(responseData);
 				}
 			}
