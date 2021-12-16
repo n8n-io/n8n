@@ -170,6 +170,26 @@ export class EmailReadImap implements INodeType {
 						default: 60,
 						description: 'Sets an interval (in minutes) to force a reconnection.',
 					},
+					{
+						displayName: 'Limit',
+						name: 'limit',
+						type: 'number',
+						default: 0,
+						description: 'How many results to return. Use 0 for unlimited',
+						typeOptions: {
+							minValue: 0,
+						},
+					},
+					{
+						displayName: 'After UID',
+						name: 'startingUID',
+						type: 'number',
+						default: 0,
+						description: 'The UID of the message to start from.',
+						typeOptions: {
+							minValue: 0,
+						},
+					},
 				],
 			},
 		],
@@ -190,6 +210,12 @@ export class EmailReadImap implements INodeType {
 
 		const staticData = this.getWorkflowStaticData('node');
 		Logger.debug('Loaded static data for node "EmailReadImap"', {staticData});
+
+		if (options.startingUID !== undefined) {
+			if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < options.startingUID!) {
+				staticData.lastMessageUid = options.startingUID;
+			}
+		}
 
 		// Returns the email text
 		const getText = async (parts: any[], message: Message, subtype: string) => { // tslint:disable-line:no-any
@@ -260,7 +286,11 @@ export class EmailReadImap implements INodeType {
 				};
 			}
 
-			const results = await connection.search(searchCriteria, fetchOptions);
+			const limit = this.getNodeParameter('options.limit', 0) as number;
+			let results = await connection.search(searchCriteria, fetchOptions);
+			if (limit) {
+				results = results.slice(0, limit);
+			}
 
 			const newEmails: INodeExecutionData[] = [];
 			let newEmail: INodeExecutionData, messageHeader, messageBody;
@@ -399,7 +429,7 @@ export class EmailReadImap implements INodeType {
 							}
 						}
 						if (staticData.lastMessageUid !== undefined) {
-							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+							searchCriteria.push(['UID', `${staticData.lastMessageUid as number + 1}:*`]);
 							/**
 							 * A short explanation about UIDs and how they work
 							 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
