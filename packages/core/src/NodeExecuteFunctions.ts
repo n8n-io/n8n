@@ -71,7 +71,8 @@ import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
-import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
+import axios, { AxiosPromise, AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
+import AxiosDigest from 'axios-digest';
 import { URL, URLSearchParams } from 'url';
 // eslint-disable-next-line import/no-cycle
 import {
@@ -501,8 +502,28 @@ async function proxyRequestToAxios(
 		parsedConfig: axiosConfig,
 	});
 
+	let axiosPromise: AxiosPromise | undefined;
+
+	// @ts-ignore
+	if (configObject.auth?.sendImmediately === false) {
+		// @ts-ignore
+		const requestMethod = (configObject.method?.toLowerCase() ?? 'get') as
+			| 'get'
+			| 'post'
+			| 'patch'
+			| 'delete'
+			| 'head';
+		// @ts-ignore
+		const axiosDigest = new AxiosDigest(configObject.auth.username, configObject.auth.password);
+		delete axiosConfig.auth;
+		// @ts-ignore
+		axiosPromise = axiosDigest[requestMethod](axiosConfig.url!, axiosConfig) as AxiosPromise;
+	} else {
+		axiosPromise = axios(axiosConfig);
+	}
+
 	return new Promise((resolve, reject) => {
-		axios(axiosConfig)
+		axiosPromise!
 			.then((response) => {
 				if (configObject.resolveWithFullResponse === true) {
 					let body = response.data;
