@@ -167,7 +167,7 @@
 		</template>
 		<template v-slot:footer>
 			<div class="action-buttons">
-				<n8n-button label="Save" size="large" float="right" @click="saveSettings" />
+				<n8n-button :label="$locale.baseText('workflowSettings.save')" size="large" float="right" @click="saveSettings" />
 			</div>
 		</template>
 	</Modal>
