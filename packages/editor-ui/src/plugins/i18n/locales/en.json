@@ -467,10 +467,6 @@
 			"displayName": "Always Output Data"
 		},
 		"clickOnTheQuestionMarkIcon": "Click the '?' icon to open this node on n8n.io",
-		"color": {
-			"description": "The color of the node in the flow.",
-			"displayName": "Node Color"
-		},
 		"continueOnFail": {
 			"description": "If active, the workflow continues even if this node's <br />execution fails. When this occurs, the node passes along input data from<br />previous nodes - so your workflow should account for unexpected output data.",
 			"displayName": "Continue On Fail"
