@@ -98,7 +98,7 @@
 						</h3>
 
 						<div class="text">
-							{{ $baseTeext(
+							{{ $baseText(
 								'runData.theNodeContains',
 								{
 									interpolate: {
