@@ -986,25 +986,25 @@
 		"save": "@:reusableBaseText.save",
 		"saveDataErrorExecution": "Save Data Error Execution",
 		"saveDataErrorExecutionOptions": {
-			"defaultSave": "Default - ({defaultValue})",
+			"defaultSave": "Default - {defaultValue}",
 			"doNotSave": "Do not save",
 			"save": "@:reusableBaseText.save"
 		},
 		"saveDataSuccessExecution": "Save Data Success Execution",
 		"saveDataSuccessExecutionOptions": {
-			"defaultSave": "Default - ({defaultValue})",
+			"defaultSave": "Default - {defaultValue}",
 			"doNotSave": "Do not save",
 			"save": "@:reusableBaseText.save"
 		},
 		"saveExecutionProgress": "Save Execution Progress",
 		"saveExecutionProgressOptions": {
-			"defaultSave": "Default - ({defaultValue})",
+			"defaultSave": "Default - {defaultValue}",
 			"no": "No",
 			"yes": "Yes"
 		},
 		"saveManualExecutions": "Save Manual Executions",
 		"saveManualOptions": {
-			"defaultSave": "Default - ({defaultValue})",
+			"defaultSave": "Default - {defaultValue}",
 			"no": "No",
 			"yes": "Yes"
 		},
