@@ -23,7 +23,7 @@ export async function redditApiRequest(
 
 	const resource = this.getNodeParameter('resource', 0) as string;
 
-	const authRequired = ['profile', 'post', 'postComment'].includes(resource);
+	const authRequired = ['profile', 'post', 'postComment', 'user'].includes(resource);
 
 	qs.api_type = 'json';
 

@@ -65,6 +65,10 @@ export const userFields: INodeProperties[] = [
 				value: 'gilded',
 			},
 			{
+				name: 'Saved',
+				value: 'saved',
+			},
+			{
 				name: 'Overview',
 				value: 'overview',
 			},
@@ -103,6 +107,7 @@ export const userFields: INodeProperties[] = [
 					'submitted',
 					'comments',
 					'gilded',
+					'saved',
 				],
 			},
 		},
@@ -130,6 +135,7 @@ export const userFields: INodeProperties[] = [
 					'gilded',
 					'overview',
 					'submitted',
+					'saved',
 				],
 				returnAll: [
 					false,
