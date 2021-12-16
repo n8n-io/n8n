@@ -424,7 +424,7 @@
 			"trigger": "🇩🇪 Trigger"
 		},
 		"noResults": {
-			"dontWorryYouCanProbablyDoItWithThe": "🇩🇪 Don’t worry, you can probably do it with the {httpRequest} or {webhook} node",
+			"dontWorryYouCanProbablyDoItWithThe": "🇩🇪 Don’t worry, you can probably do it with the",
 			"httpRequest": "🇩🇪 HTTP Request",
 			"node": "🇩🇪 node",
 			"requestTheNode": "🇩🇪 Request the node",
