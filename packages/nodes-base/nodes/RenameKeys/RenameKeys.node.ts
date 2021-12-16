@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -31,6 +32,57 @@ export class RenameKeys implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'Regex',
+				name: 'useRegex',
+				type: 'boolean',
+				default: false,
+				description: 'Use regex to match and replace keys',
+			},
+			{
+				displayName: 'Key search',
+				name: 'searchRegex',
+				type: 'string',
+				default: '',
+				placeholder: '',
+				description: 'Regex to match the key name',
+				displayOptions: {
+					show: {
+						useRegex: [
+							true,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Key replace',
+				name: 'replaceRegex',
+				type: 'string',
+				default: '',
+				placeholder: '',
+				description: 'The name the key/s should be renamed to. It\'s possible to use regex captures e.g. $1, $2, ... ',
+				displayOptions: {
+					show: {
+						useRegex: [
+							true,
+						],
+					},
+				},
+			},	
+			{
+				displayName: 'Max Depth',
+				name: 'depth',
+				type: 'number',
+				default: -1,
+				description: 'Maximum depth to replace keys (-1 for unlimited, 0 for top level only)',
+				displayOptions: {
+					show: {
+						useRegex: [
+							true,
+						],
+					},
+				},
+			},
 			{
 				displayName: 'Keys',
 				name: 'keys',
@@ -110,6 +162,43 @@ export class RenameKeys implements INodeType {
 				unset(newItem.json, renameKey.currentKey as string);
 			});
 
+			const useRegex = this.getNodeParameter('useRegex', itemIndex) as boolean;
+
+			if (useRegex) {
+				const maxDepth = this.getNodeParameter('depth', itemIndex, -1) as number;
+				const searchRegex = this.getNodeParameter('searchRegex', itemIndex) as string;
+				const replaceRegex = this.getNodeParameter('replaceRegex', itemIndex) as string;
+				// const uppercase = this.getNodeParameter('uppercase', itemIndex, false) as string;
+				// const lowercase = this.getNodeParameter('lowercase', itemIndex, false) as string;
+				// Replace Object keys up to certain depth
+				const regex = new RegExp(searchRegex);
+				const renameObjectKeys = (obj: IDataObject, depth: number) => {
+					for (const key in obj) {
+						if (Array.isArray(obj)) {
+							// Don't rename array object references
+							if (depth !== 0) {
+								renameObjectKeys(obj[key] as IDataObject, depth - 1);
+							}
+						} else if (obj.hasOwnProperty(key)) {
+							if (typeof obj[key] === 'object' && depth !== 0) {
+								renameObjectKeys(obj[key] as IDataObject, depth - 1);
+							}
+							if (key.match(regex)) {
+								const newKey = key.replace(regex, replaceRegex);
+								// newKey = uppercase ? newKey.toUpperCase() : newKey;
+								// newKey = lowercase ? newKey.toLowerCase() : newKey;
+								if (newKey !== key) {
+									obj[newKey] = obj[key];
+									console.log(`Replacing ${key} with ${newKey}`);
+									delete obj[key];
+								}
+							}
+						}
+					}
+					return obj;
+				};
+				newItem.json = renameObjectKeys(newItem.json, maxDepth);
+			}
 			returnData.push(newItem);
 		}
 
