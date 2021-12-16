@@ -933,7 +933,8 @@
 		"showMessage": {
 			"message": "🇩🇪 Please enter a name, or press 'esc' to go back to the old one.",
 			"title": "🇩🇪 Name missing"
-		}
+		},
+		"chooseOrCreateATag": "🇩🇪 Choose or create a tag"
 	},
 	"workflowHelpers": {
 		"showMessage": {
