@@ -525,6 +525,7 @@
       "dist/nodes/NextCloud/NextCloud.node.js",
       "dist/nodes/NocoDB/NocoDB.node.js",
       "dist/nodes/NoOp/NoOp.node.js",
+      "dist/nodes/Note/Note.node.js",
       "dist/nodes/Notion/Notion.node.js",
       "dist/nodes/Notion/NotionTrigger.node.js",
       "dist/nodes/OneSimpleApi/OneSimpleApi.node.js",

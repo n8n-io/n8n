@@ -84,6 +84,7 @@ import {
 	faTrash,
 	faUndo,
 	faUsers,
+	faStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -169,6 +170,7 @@ library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);
 library.add(faUsers);
+library.add(faStickyNote);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 

@@ -1,0 +1,19 @@
+{
+  "node": "n8n-nodes-base.note",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": [
+    "Core Nodes"
+  ],
+  "alias": [
+    "comment",
+    "container",
+    "organize",
+    "organise"
+  ],
+  "subcategories": {
+    "Core Nodes": [
+      "Helpers"
+    ]
+  }
+}
