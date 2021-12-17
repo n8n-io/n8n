@@ -17,15 +17,15 @@ import {
 import {
 	camelCase,
 	capitalize,
-	trim,
-	trimStart,
-	trimEnd,
 	escapeRegExp,
 	get,
 	kebabCase,
 	set,
 	snakeCase,
 	startCase,
+	trim,
+	trimEnd,
+	trimStart,
 } from 'lodash';
 
 import * as entities from 'entities';
@@ -48,6 +48,24 @@ Object.keys(encodings).forEach(encoding => {
 
 function replaceAll(str: string, substr: string, newSubstr: string) {
 	return str.replace(new RegExp(escapeRegExp(substr), 'g'), newSubstr);
+}
+
+function charsTrimStart(str: string, chars: string) {
+	if(chars === ' ') return str.trimLeft();
+	chars = escapeRegExp(chars);
+	return str.replace(new RegExp('^(' + chars + ')+', 'g'), '');
+}
+
+function charsTrimEnd(str: string, chars: string) {
+	if(chars === ' ') return str.trimRight();
+	chars = escapeRegExp(chars);
+	return str.replace(new RegExp('(' + chars + ')+$', 'g'), '');
+}
+
+function charsTrim(str: string, chars: string) {
+	if(chars === ' ') return str.trim();
+	chars = escapeRegExp(chars);
+	return str.replace(new RegExp('^(' + chars + ')+|(' + chars + ')+$', 'g'), '');
 }
 
 export class TextManipulation implements INodeType {
@@ -391,7 +409,7 @@ export class TextManipulation implements INodeType {
 													{
 														name: 'Trim',
 														value: 'trim',
-														description: 'Removes whitespace from the beginning or/and end.',
+														description: 'Removes characters from the beginning or/and end.',
 													},
 													{
 														name: 'Pad',
@@ -773,17 +791,17 @@ export class TextManipulation implements INodeType {
 													{
 														name: 'Trim Both',
 														value: 'trimBoth',
-														description: 'Removes whitespace from the beginning and end.',
+														description: 'Removes characters from the beginning and end.',
 													},
 													{
 														name: 'Trim Start',
 														value: 'trimStart',
-														description: 'Removes whitespace from the beginning.',
+														description: 'Removes characters from the beginning.',
 													},
 													{
 														name: 'Trim End',
 														value: 'trimEnd',
-														description: 'Removes whitespace from the end.',
+														description: 'Removes characters from the end.',
 													},
 												],
 												default: 'trimBoth',
@@ -802,6 +820,21 @@ export class TextManipulation implements INodeType {
 												default: ' ',
 												required: true,
 												description: 'The string to trim.',
+											},
+											{
+												displayName: 'Trim String as a unit',
+												name: 'trimStringUnit',
+												displayOptions: {
+													show: {
+														action: [
+															'trim',
+														],
+													},
+												},
+												type: 'boolean',
+												default: true,
+												required: true,
+												description: 'Trimming is done with the complete trim string as a unit and not each character individually.',
 											},
 											{
 												displayName: 'Pad',
@@ -1157,13 +1190,13 @@ export class TextManipulation implements INodeType {
 							case 'trim':
 								switch(manipulation.trim) {
 									case 'trimBoth':
-										text = trim(text, manipulation.trimString as string);
+										text = manipulation.trimStringUnit ? charsTrim(text, manipulation.trimString as string) : trim(text, manipulation.trimString as string);
 										break;
 									case 'trimStart':
-										text = trimStart(text, manipulation.trimString as string);
+										text = manipulation.trimStringUnit ? charsTrimStart(text, manipulation.trimString as string) : trimStart(text, manipulation.trimString as string);
 										break;
 									case 'trimEnd':
-										text = trimEnd(text, manipulation.trimString as string);
+										text = manipulation.trimStringUnit ? charsTrimEnd(text, manipulation.trimString as string) : trimEnd(text, manipulation.trimString as string);
 										break;
 									default:
 										throw new Error('trimBoth, trimStart or trimEnd are valid options');
