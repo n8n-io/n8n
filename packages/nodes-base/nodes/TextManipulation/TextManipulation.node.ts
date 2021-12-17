@@ -14,7 +14,15 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { get, set } from 'lodash';
+import {
+	camelCase,
+	capitalize,
+	get,
+	kebabCase,
+	set,
+	snakeCase
+} from 'lodash';
+
 import * as entities from 'entities';
 
 import * as iconv from 'iconv-lite';
@@ -370,6 +378,26 @@ export class TextManipulation implements INodeType {
 														name: 'Lower Case',
 														value: 'lowerCase',
 														description: 'Lower case all characters.',
+													},
+													{
+														name: 'Capitalize',
+														value: 'capitalize',
+														description: 'Capitalize text.',
+													},
+													{
+														name: 'Camel Case',
+														value: 'camelCase',
+														description: 'Converts string to camel case.',
+													},
+													{
+														name: 'Kebab Case',
+														value: 'kebabCase',
+														description: 'Converts string to kebab case.',
+													},
+													{
+														name: 'Snake Case',
+														value: 'snakeCase',
+														description: 'Converts string to snake case.',
 													},
 													{
 														name: 'Replace',
@@ -1066,6 +1094,18 @@ export class TextManipulation implements INodeType {
 									}
 								}
 								break;
+							case 'camelCase':
+								text = camelCase(text);
+								break;
+							case 'capitalize':
+								text = capitalize(text);
+								break;
+							case 'kebabCase':
+								text = kebabCase(text);
+								break;
+							case 'snakeCase':
+								text = snakeCase(text);
+								break;
 							case 'upperCase':
 								if(manipulation.useLocale) text = text.toLocaleUpperCase(manipulation.language as string);
 								else text = text.toUpperCase();
@@ -1150,7 +1190,7 @@ export class TextManipulation implements INodeType {
 								text = text.repeat(manipulation.times as number);
 								break;
 							default:
-								throw new Error('decodeEncode, upperCase, lowerCase, replace, trim, pad, substring or repeat are valid options');
+								throw new Error('decodeEncode, upperCase, lowerCase, capitalize, camelCase, kebabCase, snakeCase, replace, trim, pad, substring or repeat are valid options');
 						}
 					}
 					switch(dataSource.writeOperation) {

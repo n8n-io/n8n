@@ -13,6 +13,10 @@
 		]
 	},
 	"alias": [
+		"Capitalize",
+		"Camel Case",
+		"Kebab Case",
+		"Snake Case",
 		"Concat",
 		"Decode",
 		"Encode",
