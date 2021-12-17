@@ -17,6 +17,10 @@ import {
 import {
 	camelCase,
 	capitalize,
+	trim,
+	trimStart,
+	trimEnd,
+	escapeRegExp,
 	get,
 	kebabCase,
 	set,
@@ -40,6 +44,10 @@ Object.keys(encodings).forEach(encoding => {
 		encodeDecodeOptions.push({ name: encoding, value: encoding });
 	}
 });
+
+function replaceAll(str: string, substr: string, newSubstr: string) {
+	return str.replace(new RegExp(escapeRegExp(substr), 'g'), newSubstr);
+}
 
 export class TextManipulation implements INodeType {
 	description: INodeTypeDescription = {
@@ -943,32 +951,6 @@ export class TextManipulation implements INodeType {
 		],
 	};
 
-	static escapeRegex(str: string) {
-		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
-		return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	}
-	static replaceAll(str: string, substr: string, newSubstr: string) {
-		return str.replace(new RegExp(TextManipulation.escapeRegex(substr), 'g'), newSubstr);
-	}
-	
-	static charsTrimLeft(str: string, chars: string) {
-		if(chars === ' ') return str.trimLeft();
-		chars = TextManipulation.escapeRegex(chars);
-		return str.replace(new RegExp('^(' + chars + ')+', 'g'), '');
-	}
-	
-	static charsTrimRight(str: string, chars: string) {
-		if(chars === ' ') return str.trimRight();
-		chars = TextManipulation.escapeRegex(chars);
-		return str.replace(new RegExp('(' + chars + ')+$', 'g'), '');
-	}
-	
-	static charsTrim(str: string, chars: string) {
-		if(chars === ' ') return str.trim();
-		chars = TextManipulation.escapeRegex(chars);
-		return str.replace(new RegExp('^(' + chars + ')+|(' + chars + ')+$', 'g'), '');
-	}
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const items = this.getInputData();
@@ -1118,7 +1100,7 @@ export class TextManipulation implements INodeType {
 								switch(manipulation.replaceMode) {
 									case 'substring':
 										if(manipulation.replaceAll) {
-											text = TextManipulation.replaceAll(text, manipulation.substring as string, manipulation.value as string);
+											text = replaceAll(text, manipulation.substring as string, manipulation.value as string);
 										} else {
 											text = text.replace(manipulation.substring as string, manipulation.value as string);
 										}
@@ -1141,13 +1123,13 @@ export class TextManipulation implements INodeType {
 							case 'trim':
 								switch(manipulation.trim) {
 									case 'trimBoth':
-										text = TextManipulation.charsTrim(text, manipulation.trimString as string);
+										text = trim(text, manipulation.trimString as string);
 										break;
 									case 'trimStart':
-										text = TextManipulation.charsTrimLeft(text, manipulation.trimString as string);
+										text = trimStart(text, manipulation.trimString as string);
 										break;
 									case 'trimEnd':
-										text = TextManipulation.charsTrimRight(text, manipulation.trimString as string);
+										text = trimEnd(text, manipulation.trimString as string);
 										break;
 									default:
 										throw new Error('trimBoth, trimStart or trimEnd are valid options');
