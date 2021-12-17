@@ -15,6 +15,7 @@ import {
 } from 'n8n-workflow';
 
 import { get, set } from 'lodash';
+import * as entities from 'entities';
 import * as iconv from 'iconv-lite';
 iconv.encodingExists('utf8');
 const bomAware: string[] = [];
@@ -352,6 +353,11 @@ export class TextManipulation implements INodeType {
 														description: 'Decode and Encode string.',
 													},
 													{
+														name: 'Decode/Encode Entities',
+														value: 'decodeEncodeEntities',
+														description: 'Decode and Encode HTML & XML entities.',
+													},
+													{
 														name: 'Upper Case',
 														value: 'upperCase',
 														description: 'Upper case all characters.',
@@ -432,6 +438,37 @@ export class TextManipulation implements INodeType {
 												default: 'utf8',
 											},
 											{
+												displayName: 'Decode with',
+												name: 'decodeWithEntities',
+												displayOptions: {
+													show: {
+														action: [
+															'decodeEncodeEntities',
+														],
+													},
+												},
+												type: 'options',
+												options: [
+													{
+														name: 'nothing',
+														value: 'nothing'
+													},
+													{
+														name: 'url',
+														value: 'url'
+													},
+													{
+														name: 'xml',
+														value: 'xml'
+													},
+													{
+														name: 'html',
+														value: 'html'
+													}
+												],
+												default: 'nothing',
+											},
+											{
 												displayName: 'Strip BOM',
 												name: 'stripBOM',
 												displayOptions: {
@@ -458,6 +495,37 @@ export class TextManipulation implements INodeType {
 												type: 'options',
 												options: encodeDecodeOptions,
 												default: 'utf8',
+											},
+											{
+												displayName: 'Encode with',
+												name: 'encodeWithEntities',
+												displayOptions: {
+													show: {
+														action: [
+															'decodeEncodeEntities',
+														],
+													},
+												},
+												type: 'options',
+												options: [
+													{
+														name: 'nothing',
+														value: 'nothing'
+													},
+													{
+														name: 'url',
+														value: 'url'
+													},
+													{
+														name: 'xml',
+														value: 'xml'
+													},
+													{
+														name: 'html',
+														value: 'html'
+													}
+												],
+												default: 'nothing',
 											},
 											{
 												displayName: 'Add BOM',
@@ -947,21 +1015,7 @@ export class TextManipulation implements INodeType {
 								text = (manipulation.before || '') + text + (manipulation.after || '');
 								break;
 							case 'decodeEncode':
-								if(manipulation.encodeWith == 'url') {
-									if(manipulation.decodeWith != 'url') {
-										text = encodeURI(iconv.decode(
-											Buffer.from(text),
-											manipulation.decodeWith as string,
-											{stripBOM: manipulation.stripBOM as boolean}
-										));
-									}
-								} else if(manipulation.decodeWith == 'url') {
-									text = iconv.encode(
-										decodeURI(text),
-										manipulation.encodeWith as string,
-										{addBOM: manipulation.addBOM as boolean}
-									).toString();
-								} else {
+								if(manipulation.encodeWith != manipulation.decodeWith) {
 									text = iconv.encode(
 										iconv.decode(
 											Buffer.from(text),
@@ -971,6 +1025,37 @@ export class TextManipulation implements INodeType {
 										manipulation.encodeWith as string,
 										{stripBOM: manipulation.stripBOM as boolean}
 									).toString();
+								}
+								break;
+							case 'decodeEncodeEntities':
+								if(manipulation.encodeWithEntities != manipulation.decodeWithEntities) {
+									switch(manipulation.decodeWithEntitie) {
+										case 'url':
+											text = decodeURI(text);
+											break;
+										case 'xml':
+											text = entities.encodeXML(text);
+											break;
+										case 'html':
+											text = entities.encodeHTML(text);
+											break;
+										case 'nothing':
+											break;
+									}
+
+									switch(manipulation.encodeWithEntities) {
+										case 'url':
+											text = encodeURI(text);
+											break;
+										case 'xml':
+											text = entities.encodeXML(text);
+											break;
+										case 'html':
+											text = entities.encodeHTML(text);
+											break;
+										case 'nothing':
+											break;
+									}
 								}
 								break;
 							case 'upperCase':

@@ -698,6 +698,7 @@
     "cheerio": "1.0.0-rc.6",
     "chokidar": "^3.5.2",
     "cron": "~1.7.2",
+    "entities": "^3.0.1",
     "eventsource": "^1.0.7",
     "fast-glob": "^3.2.5",
     "fflate": "^0.7.0",
