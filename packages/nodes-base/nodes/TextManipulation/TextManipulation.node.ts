@@ -397,9 +397,9 @@ export class TextManipulation implements INodeType {
 														description: 'Decode and Encode HTML & XML entities.',
 													},
 													{
-														name: 'Case',
+														name: 'Letter case',
 														value: 'case',
-														description: 'Replace a substring or regex.',
+														description: 'Upper and lowercase letters in a string.',
 													},
 													{
 														name: 'Replace',
