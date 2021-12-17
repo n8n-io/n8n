@@ -144,9 +144,11 @@ export default mixins(
 					}
 
 					this.$externalHooks().run(activationEventName, { workflowId: this.workflowId, active: newActiveState });
+					this.$telemetry.track('User set workflow active status', { workflow_id: this.workflowId, is_active: newActiveState });
 
 					this.$emit('workflowActiveChanged', { id: this.workflowId, active: newActiveState });
 					this.loading = false;
+					this.$store.dispatch('settings/fetchPromptsData');
 				},
 				async displayActivationError () {
 					let errorMessage: string;

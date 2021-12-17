@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const issueOperations = [
+export const issueOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -59,9 +59,9 @@ export const issueOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const issueFields = [
+export const issueFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                issue:create                                */
@@ -70,6 +70,7 @@ export const issueFields = [
 		displayName: 'Project',
 		name: 'project',
 		type: 'options',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -93,6 +94,7 @@ export const issueFields = [
 		displayName: 'Issue Type',
 		name: 'issueType',
 		type: 'options',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -163,6 +165,18 @@ export const issueFields = [
 				type: 'string',
 				default: '',
 				description: 'Description',
+			},
+			{
+				displayName: 'Components',
+				name: 'componentIds',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getProjectComponents',
+					loadOptionsDependsOn: [
+						'project',
+					],
+				},
+				default: [],
 			},
 			{
 				displayName: 'Custom Fields',
@@ -268,7 +282,7 @@ export const issueFields = [
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				description: `Whether the project in which the issue is created is added to the user's<br/>
+				description: `Whether the project in which the issue is created is added to the user's
 				Recently viewed project list, as shown under Projects in Jira.`,
 			},
 		],
@@ -538,52 +552,37 @@ export const issueFields = [
 				name: 'expand',
 				type: 'string',
 				default: '',
-				description: `Use expand to include additional information about the issues in the response.<br/>
-				This parameter accepts a comma-separated list. Expand options include:<br/>
-				renderedFields Returns field values rendered in HTML format.<br/>
-				names Returns the display name of each field.<br/>
-				schema Returns the schema describing a field type.<br/>
-				transitions Returns all possible transitions for the issue.<br/>
-				editmeta Returns information about how each field can be edited.<br/>
-				changelog Returns a list of recent updates to an issue, sorted by date, starting from the most recent.<br/>
-				versionedRepresentations Returns a JSON array for each version of a field's value, with the highest number<br/>
-				representing the most recent version. Note: When included in the request, the fields parameter is ignored.`,
+				description: `<p>Use expand to include additional information about the issues in the response. This parameter accepts a comma-separated list. Expand options include:
+				<ul>
+					<li><code>renderedFields</code> Returns field values rendered in HTML format.</li>
+					<li><code>names</code> Returns the display name of each field.</li>
+					<li><code>schema</code> Returns the schema describing a field type.</li>
+					<li><code>transitions</code> Returns all possible transitions for the issue.</li>
+					<li><code>editmeta</code> Returns information about how each field can be edited.</li>
+					<li><code>changelog</code> Returns a list of recent updates to an issue, sorted by date, starting from the most recent.</li>
+					<li><code>versionedRepresentations</code> Returns a JSON array for each version of a field's value, with the highest number representing the most recent version. Note: When included in the request, the fields parameter is ignored.</li>
+				</ul>`,
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `A list of fields to return for the issue.<br/>
-				This parameter accepts a comma-separated list.<br/>
-				Use it to retrieve a subset of fields. Allowed values:<br/>
-				*all Returns all fields.<br/>
-				*navigable Returns navigable fields.<br/>
-				Any issue field, prefixed with a minus to exclude.<br/>`,
+				description: `A list of fields to return for the issue. This parameter accepts a comma-separated list. Use it to retrieve a subset of fields. Allowed values: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.`,
 			},
 			{
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
 				default: false,
-				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
-				This parameter is useful where fields have been added by a connect app and a field's key<br/>
-				may differ from its ID.`,
+				description: `Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID.`,
 			},
 			{
 				displayName: 'Properties',
 				name: 'properties',
 				type: 'string',
 				default: '',
-				description: `A list of issue properties to return for the issue.<br/>
-				This parameter accepts a comma-separated list. Allowed values:<br/>
-				*all Returns all issue properties.<br/>
-				Any issue property key, prefixed with a minus to exclude.<br/>
-				Examples:<br/>
-				*all Returns all properties.<br/>
-				*all,-prop1 Returns all properties except prop1.<br/>
-				prop1,prop2 Returns prop1 and prop2 properties.<br/>
-				This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.`,
+				description: `A list of issue properties to return for the issue. This parameter accepts a comma-separated list. Allowed values: <code>*all</code> Returns all issue properties. Any issue property key, prefixed with a minus to exclude. Examples: <code>*all</code> Returns all properties. <code>*all</code>,-prop1 Returns all properties except prop1. <code>prop1,prop2</code> Returns prop1 and prop2 properties. This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.`,
 			},
 			{
 				displayName: 'Update History',
@@ -661,7 +660,7 @@ export const issueFields = [
 			{
 				displayName: 'Expand',
 				name: 'expand',
-				type: 'options',
+				type: 'multiOptions',
 				default: '',
 				options: [
 					{
@@ -712,19 +711,14 @@ export const issueFields = [
 				name: 'fields',
 				type: 'string',
 				default: '*navigable',
-				description: `A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include:<br/>
-				*all Returns all fields.<br/>
-				*navigable Returns navigable fields.<br/>
-				Any issue field, prefixed with a minus to exclude.<br/>`,
+				description: `A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.`,
 			},
 			{
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
 				default: false,
-				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
-				This parameter is useful where fields have been added by a connect app and a field's key<br/>
-				may differ from its ID.`,
+				description: `Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID.`,
 			},
 			{
 				displayName: ' JQL',
@@ -1110,10 +1104,7 @@ export const issueFields = [
 				name: 'expand',
 				type: 'string',
 				default: '',
-				description: `Use expand to include additional information about transitions in the response.<br/>
-				 This parameter accepts transitions.fields, which returns information about the fields in the<br/>
-				 transition screen for each transition. Fields hidden from the screen are not returned. Use this<br/>
-				 information to populate the fields and update fields in Transition issue.`,
+				description: `Use expand to include additional information about transitions in the response. This parameter accepts transitions.fields, which returns information about the fields in the transition screen for each transition. Fields hidden from the screen are not returned. Use this information to populate the fields and update fields in Transition issue.`,
 			},
 			{
 				displayName: 'Transition ID',
@@ -1127,9 +1118,9 @@ export const issueFields = [
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
 				default: false,
-				description: `Indicates whether transitions with the condition Hide<br/>
+				description: `Indicates whether transitions with the condition Hide
 				From User Condition are included in the response.`,
 			},
 		],
 	},
-] as INodeProperties[];
+];

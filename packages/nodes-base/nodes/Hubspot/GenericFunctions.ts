@@ -39,12 +39,16 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'developerApi') {
-			const credentials = await this.getCredentials('hubspotDeveloperApi');
+			if (endpoint.includes('webhooks')) {
 
-			options.qs.hapikey = credentials!.apiKey as string;
-			return await this.helpers.request!(options);
+				const credentials = await this.getCredentials('hubspotDeveloperApi');
+				options.qs.hapikey = credentials!.apiKey as string;
+				return await this.helpers.request!(options);
+
+			} else {
+				return await this.helpers.requestOAuth2!.call(this, 'hubspotDeveloperApi', options, { tokenType: 'Bearer', includeCredentialsOnRefreshOnBody: true });
+			}
 		} else {
-			// @ts-ignore
 			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer', includeCredentialsOnRefreshOnBody: true });
 		}
 	} catch (error) {

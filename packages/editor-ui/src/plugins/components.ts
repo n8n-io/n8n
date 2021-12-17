@@ -31,7 +31,6 @@ import Col from 'element-ui/lib/col';
 import Badge from 'element-ui/lib/badge';
 import Card from 'element-ui/lib/card';
 import ColorPicker from 'element-ui/lib/color-picker';
-import Transfer from 'element-ui/lib/transfer';
 import Container from 'element-ui/lib/container';
 import Loading from 'element-ui/lib/loading';
 import MessageBox from 'element-ui/lib/message-box';
@@ -51,10 +50,14 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
+	N8nHeading,
 	N8nMenu,
 	N8nMenuItem,
 	N8nSelect,
 	N8nSpinner,
+	N8nSquareButton,
+	N8nText,
+	N8nTooltip,
 	N8nOption,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
@@ -68,10 +71,14 @@ Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
+Vue.use(N8nHeading);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
+Vue.component('n8n-square-button', N8nSquareButton);
+Vue.component('n8n-text', N8nText);
+Vue.use(N8nTooltip);
 Vue.use(N8nOption);
 
 // element io
@@ -103,7 +110,6 @@ Vue.use(Col);
 Vue.use(Badge);
 Vue.use(Card);
 Vue.use(ColorPicker);
-Vue.use(Transfer);
 Vue.use(Container);
 
 Vue.component(CollapseTransition.name, CollapseTransition);

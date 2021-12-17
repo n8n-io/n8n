@@ -87,7 +87,6 @@ export default Vue.extend({
 	opacity: 1;
 }
 
-.subcategory + .category,
 .node + .category {
 	margin-top: 15px;
 }

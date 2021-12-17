@@ -190,7 +190,7 @@ export class Ssh implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+				description: 'Name of the binary property which contains the data for the file to be uploaded.',
 			},
 			{
 				displayName: 'Target Directory',
@@ -209,9 +209,7 @@ export class Ssh implements INodeType {
 				default: '',
 				required: true,
 				placeholder: '/home/user',
-				description: `The directory to upload the file to. The name of the file does not need to be specified,</br>
-				it's taken from the binary data file name. To override this behavior, set the parameter</br>
-				"File Name" under options.`,
+				description: `The directory to upload the file to. The name of the file does not need to be specified, it's taken from the binary data file name. To override this behavior, set the parameter "File Name" under options.`,
 			},
 			{
 				displayName: 'Path',

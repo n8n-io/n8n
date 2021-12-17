@@ -9,13 +9,25 @@
 		<div id="content">
 			<router-view />
 		</div>
+		<Telemetry />
 	</div>
 </template>
 
 <script lang="ts">
-export default {
+import Vue from 'vue';
+import Telemetry from './components/Telemetry.vue';
+
+export default Vue.extend({
 	name: 'App',
-};
+	components: {
+		Telemetry,
+	},
+	watch: {
+		'$route'(route) {
+			this.$telemetry.page('Editor', route.name);
+		},
+	},
+});
 </script>
 
 <style lang="scss">

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const contactOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create                              */
@@ -1233,10 +1233,10 @@ export const contactFields = [
 				name: 'rawData',
 				type: 'boolean',
 				default: true,
-				description: `By default only the data of the fields get returned. If this<br />
+				description: `By default only the data of the fields get returned. If this
 							  options gets set the RAW response with all data gets returned.`,
 			},
 		],
 	},
 
-] as INodeProperties[];
+];

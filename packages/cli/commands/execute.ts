@@ -11,12 +11,12 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
+	InternalHooksManager,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowHelpers,
 	WorkflowRunner,
 } from '../src';
@@ -124,6 +124,10 @@ export class Execute extends Command {
 		// Load all external hooks
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
+
+		const instanceId = await UserSettings.getInstanceId();
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli);
 
 		// Add the found types to an instance other parts of the application can use
 		const nodeTypes = NodeTypes();

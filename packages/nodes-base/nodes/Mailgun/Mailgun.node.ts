@@ -101,7 +101,7 @@ export class Mailgun implements INodeType {
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties which contain<br />data which should be added to email as attachment.<br />Multiple ones can be comma separated.',
+				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma separated.',
 			},
 		],
 	};

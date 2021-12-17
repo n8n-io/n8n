@@ -12,6 +12,9 @@ class CredentialsOverwritesClass {
 	private resolvedTypes: string[] = [];
 
 	async init(overwriteData?: ICredentialsOverwrite) {
+		// If data gets reinitialized reset the resolved types cache
+		this.resolvedTypes.length = 0;
+
 		if (overwriteData !== undefined) {
 			// If data is already given it can directly be set instead of
 			// loaded from environment
@@ -41,6 +44,7 @@ class CredentialsOverwritesClass {
 
 			if (overwrites && Object.keys(overwrites).length) {
 				this.overwriteData[type] = overwrites;
+				credentialTypeData.__overwrittenProperties = Object.keys(overwrites);
 			}
 		}
 	}

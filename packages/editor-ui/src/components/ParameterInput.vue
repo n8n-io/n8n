@@ -16,7 +16,7 @@
 			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
 			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
-			<div v-if="isEditor === true" class="clickable" @click="displayEditDialog()">
+			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
@@ -515,8 +515,9 @@ export default mixins(
 				const classes = [];
 				const rows = this.getArgument('rows');
 				const isTextarea = this.parameter.type === 'string' && rows !== undefined;
+				const isSwitch = this.parameter.type === 'boolean' && !this.isValueExpression;
 
-				if (!isTextarea) {
+				if (!isTextarea && !isSwitch) {
 					classes.push('parameter-value-container');
 				}
 				if (this.isValueExpression) {
@@ -585,6 +586,21 @@ export default mixins(
 			closeExpressionEditDialog () {
 				this.expressionEditDialogVisible = false;
 			},
+			trackExpressionEditOpen () {
+				if(!this.node) {
+					return;
+				}
+
+				if((this.node.type as string).startsWith('n8n-nodes-base')) {
+					this.$telemetry.track('User opened Expression Editor', {
+						node_type: this.node.type,
+						parameter_name: this.parameter.displayName,
+						parameter_field_type: this.parameter.type,
+						new_expression: !this.isValueExpression,
+						workflow_id: this.$store.getters.workflowId,
+					});
+				}
+			},
 			closeTextEditDialog () {
 				this.textEditDialogVisible = false;
 			},
@@ -612,6 +628,7 @@ export default mixins(
 			openExpressionEdit() {
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
+					this.trackExpressionEditOpen();
 					return;
 				}
 			},
@@ -621,6 +638,7 @@ export default mixins(
 			setFocus () {
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
+					this.trackExpressionEditOpen();
 					return;
 				}
 
@@ -647,6 +665,8 @@ export default mixins(
 						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
 					}
 				});
+
+				this.$emit('focus');
 			},
 			rgbaToHex (value: string): string | null {
 				// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
@@ -700,6 +720,7 @@ export default mixins(
 					}
 
 					this.expressionEditDialogVisible = true;
+					this.trackExpressionEditOpen();
 				} else if (command === 'removeExpression') {
 					this.valueChanged(this.expressionValueComputed !== undefined ? this.expressionValueComputed : null);
 				} else if (command === 'refreshOptions') {
@@ -757,8 +778,12 @@ export default mixins(
 
 <style scoped lang="scss">
 
+.code-edit {
+	font-size: var(--font-size-xs);
+}
+
 .switch-input {
-	margin: 5px 0;
+	margin: 2px 0;
 }
 
 .parameter-value-container {
@@ -786,7 +811,7 @@ export default mixins(
 	text-align: right;
 	float: right;
 	color: #ff8080;
-	font-size: 1.2em;
+	font-size: var(--font-size-s);
 }
 
 ::v-deep .color-input {

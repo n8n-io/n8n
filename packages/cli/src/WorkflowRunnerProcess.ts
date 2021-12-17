@@ -5,11 +5,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { IProcessMessage, WorkflowExecute } from 'n8n-core';
+import { IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
 	IDataObject,
+	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
 	ILogger,
 	INodeExecutionData,
@@ -30,9 +31,11 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
+	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 } from '.';
@@ -40,6 +43,7 @@ import {
 import { getLogger } from './Logger';
 
 import * as config from '../config';
+import { InternalHooksManager } from './InternalHooksManager';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -133,6 +137,10 @@ export class WorkflowRunnerProcess {
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
+		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli);
+
 		// Credentials should now be loaded from database.
 		// We check if any node uses credentials. If it does, then
 		// init database.
@@ -196,6 +204,15 @@ export class WorkflowRunnerProcess {
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
 		additionalData.hooks = this.getProcessForwardHooks();
+
+		additionalData.hooks.hookFunctions.sendResponse = [
+			async (response: IExecuteResponsePromiseData): Promise<void> => {
+				await sendToParentProcess('sendResponse', {
+					response: WebhookHelpers.encodeWebhookResponse(response),
+				});
+			},
+		];
+
 		additionalData.executionId = inputData.executionId;
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,6 +260,7 @@ export class WorkflowRunnerProcess {
 				const { workflow } = executeWorkflowFunctionOutput;
 				result = await workflowExecute.processRunExecutionData(workflow);
 				await externalHooks.run('workflow.postExecute', [result, workflowData]);
+				void InternalHooksManager.getInstance().onWorkflowPostExecute(workflowData, result);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];
 			} catch (e) {
