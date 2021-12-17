@@ -30,8 +30,15 @@ export async function sendinblueApiRequest(this: IExecuteFunctions | IExecuteSin
 	};
 
 	try {
-		//@ts-ignore
-		return await this.helpers.request!(options);
+		try {
+			// @ts-ignore
+			return await this.helpers.request(options);
+		} catch (error) {
+			if (error.error.message.length > 0) {
+				throw new Error(`${error.statusCode} - ${error.error.message}`);
+			}
+			throw error;
+		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

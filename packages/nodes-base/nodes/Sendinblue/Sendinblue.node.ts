@@ -325,13 +325,8 @@ export class Sendinblue implements INodeType {
 			}
 
 			if ('' !== apiCall) {
-				try {
-					const responseData = await sendinblueApiRequest.call(this, method, apiCall, body);
-
-					returnData.push(responseData as IDataObject);
-				} catch (error) {
-					returnData.push(error as IDataObject);
-				}
+				const responseData = await sendinblueApiRequest.call(this, method, apiCall, body);
+				returnData.push(responseData as IDataObject);
 			}
 
 		}
