@@ -22,7 +22,7 @@ export const genericHelpers = mixins(showMessage).extend({
 		displayTimer (msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
 				if (showMs === false) {
-					return `${this.$n(Math.floor(msPassed / 1000), 'decimal')} ${this.$locale.baseText('genericHelpers.sec')}`;
+					return `${this.$locale.number(Math.floor(msPassed / 1000), 'decimal')} ${this.$locale.baseText('genericHelpers.sec')}`;
 				}
 
 				return `${this.$locale.number(msPassed / 1000, 'decimal')} ${this.$locale.baseText('genericHelpers.sec')}`;
