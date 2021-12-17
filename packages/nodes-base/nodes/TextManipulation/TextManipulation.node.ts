@@ -379,6 +379,51 @@ export class TextManipulation implements INodeType {
 														description: 'Decode and Encode HTML & XML entities.',
 													},
 													{
+														name: 'Case',
+														value: 'case',
+														description: 'Replace a substring or regex.',
+													},
+													{
+														name: 'Replace',
+														value: 'replace',
+														description: 'Replace a substring or regex.',
+													},
+													{
+														name: 'Trim',
+														value: 'trim',
+														description: 'Removes whitespace from the beginning or/and end.',
+													},
+													{
+														name: 'Pad',
+														value: 'pad',
+														description: 'Pad the string at the beginning or end.',
+													},
+													{
+														name: 'Substring',
+														value: 'substring',
+														description: 'Get a substring.',
+													},
+													{
+														name: 'Repeat',
+														value: 'repeat',
+														description: 'Repeat the string.',
+													},
+												],
+												default: 'case',
+											},
+											{
+												displayName: 'Case Type',
+												name: 'caseType',
+												displayOptions: {
+													show: {
+														action: [
+															'case',
+														],
+													},
+												},
+												type: 'options',
+												options: [
+													{
 														name: 'Upper Case',
 														value: 'upperCase',
 														description: 'Upper case all characters.',
@@ -412,31 +457,6 @@ export class TextManipulation implements INodeType {
 														name: 'Start Case',
 														value: 'startCase',
 														description: 'Converts string to start case.',
-													},
-													{
-														name: 'Replace',
-														value: 'replace',
-														description: 'Replace a substring or regex.',
-													},
-													{
-														name: 'Trim',
-														value: 'trim',
-														description: 'Removes whitespace from the beginning or/and end.',
-													},
-													{
-														name: 'Pad',
-														value: 'pad',
-														description: 'Pad the string at the beginning or end.',
-													},
-													{
-														name: 'Substring',
-														value: 'substring',
-														description: 'Get a substring.',
-													},
-													{
-														name: 'Repeat',
-														value: 'repeat',
-														description: 'Repeat the string.',
 													},
 												],
 												default: 'lowerCase',
@@ -1082,29 +1102,34 @@ export class TextManipulation implements INodeType {
 									}
 								}
 								break;
-							case 'camelCase':
-								text = camelCase(text);
-								break;
-							case 'capitalize':
-								text = capitalize(text);
-								break;
-							case 'kebabCase':
-								text = kebabCase(text);
-								break;
-							case 'snakeCase':
-								text = snakeCase(text);
-								break;
-							case 'startCase':
-								text = startCase(text);
-								break;
-							case 'upperCase':
-								if(manipulation.useLocale) text = text.toLocaleUpperCase(manipulation.language as string);
-								else text = text.toUpperCase();
-								break;
-							case 'lowerCase':
-								if(manipulation.useLocale) text = text.toLocaleLowerCase(manipulation.language as string);
-								else text = text.toLowerCase();
-								break;
+							case 'case':
+								switch(manipulation.case) {
+									case 'camelCase':
+										text = camelCase(text);
+										break;
+									case 'capitalize':
+										text = capitalize(text);
+										break;
+									case 'kebabCase':
+										text = kebabCase(text);
+										break;
+									case 'snakeCase':
+										text = snakeCase(text);
+										break;
+									case 'startCase':
+										text = startCase(text);
+										break;
+									case 'upperCase':
+										if(manipulation.useLocale) text = text.toLocaleUpperCase(manipulation.language as string);
+										else text = text.toUpperCase();
+										break;
+									case 'lowerCase':
+										if(manipulation.useLocale) text = text.toLocaleLowerCase(manipulation.language as string);
+										else text = text.toLowerCase();
+										break;
+									default:
+										throw new Error('upperCase, lowerCase, capitalize, camelCase, kebabCase or snakeCase are valid options');
+								}
 							case 'replace':
 								switch(manipulation.replaceMode) {
 									case 'substring':
@@ -1181,7 +1206,7 @@ export class TextManipulation implements INodeType {
 								text = text.repeat(manipulation.times as number);
 								break;
 							default:
-								throw new Error('decodeEncode, upperCase, lowerCase, capitalize, camelCase, kebabCase, snakeCase, replace, trim, pad, substring or repeat are valid options');
+								throw new Error('decodeEncode, replace, trim, pad, substring or repeat are valid options');
 						}
 					}
 					switch(dataSource.writeOperation) {
