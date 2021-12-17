@@ -59,6 +59,8 @@ import { stringify } from 'qs';
 import * as clientOAuth1 from 'oauth-1.0a';
 import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
+// @ts-ignore
+import * as digest from 'digest-header';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -484,7 +486,7 @@ async function proxyRequestToAxios(
 
 	let axiosConfig: AxiosRequestConfig = {};
 
-	let configObject: IDataObject;
+	let configObject: any;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
 		axiosConfig.url = uriOrObject;
 	}
@@ -500,6 +502,18 @@ async function proxyRequestToAxios(
 		originalConfig: configObject,
 		parsedConfig: axiosConfig,
 	});
+
+	if (configObject.auth?.sendImmediately === false) {
+		const userpass = `${configObject.auth.username as string}:${
+			configObject.auth.password as string
+		}`;
+		axiosConfig.auth = digest(
+			configObject.method,
+			configObject.uri,
+			configObject.headers['WWW-Authenticate'],
+			userpass,
+		);
+	}
 
 	return new Promise((resolve, reject) => {
 		axios(axiosConfig)
