@@ -128,11 +128,18 @@ export const transactionalEMailOptions = [
 		},
 		options: [
 			{
-				displayName: 'Attachments',
+				displayName: 'Attachments Binary',
 				name: 'attachments',
 				type: 'string',
 				default: '',
 				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma separated.',
+			},
+			{
+				displayName: 'Attachments Property Name',
+				name: 'attachments_list',
+				type: 'string',
+				default: '',
+				description: 'Name of the property which contains an array with attachment data (e.g. [{"url":"https://...", "name":"file.pdf"}])',
 			},
 			{
 				displayName: 'Template ID',

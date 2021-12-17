@@ -108,6 +108,7 @@ export class Sendinblue implements INodeType {
 				let paramsPropertyName: string;
 				const tags = options.tags;
 				const attachmentPropertyString = options.attachments as string;
+				const attachmentListPropertyString = options.attachments_list as string;
 				//const headers = options.headers as INodeParameters;
 
 				if (receivers.to === undefined || !Array.isArray(receivers.to) || receivers.to.length === 0) {
@@ -186,6 +187,23 @@ export class Sendinblue implements INodeType {
 
 					if (attachments.length) {
 						body.attachment = attachments;
+					}
+				}
+
+				if (attachmentListPropertyString) {
+					const attachmentData = item.json[attachmentListPropertyString] as object[];
+					if (attachmentData.length) {
+						for (const attachment of attachmentData) {
+							// @ts-ignore
+							if (!attachment.url) {
+								throw new Error('Parameter "url" not set in attachment property.');
+							}
+							// @ts-ignore
+							if (!attachment.name) {
+								throw new Error('Parameter "name" not set in attachment property.');
+							}
+						}
+						body.attachment = attachmentData;
 					}
 				}
 
