@@ -452,6 +452,16 @@ export class TextManipulation implements INodeType {
 														description: 'Lower case all characters.',
 													},
 													{
+														name: 'Locale Upper Case',
+														value: 'localeUpperCase',
+														description: 'Locale upper case all characters.',
+													},
+													{
+														name: 'Locale Lower Case',
+														value: 'localeLowerCase',
+														description: 'Locale lower case all characters.',
+													},
+													{
 														name: 'Capitalize',
 														value: 'capitalize',
 														description: 'Capitalize text.',
@@ -629,21 +639,6 @@ export class TextManipulation implements INodeType {
 												},
 												type: 'boolean',
 												default: false,
-											},
-											{
-												displayName: 'Use locale',
-												name: 'useLocale',
-												displayOptions: {
-													show: {
-														action: [
-															'lowerCase',
-															'upperCase',
-														],
-													},
-												},
-												type: 'boolean',
-												default: false,
-												description: 'If you want to use the localbase method.',
 											},
 											{
 												displayName: 'Language',
@@ -1161,12 +1156,16 @@ export class TextManipulation implements INodeType {
 										text = startCase(text);
 										break;
 									case 'upperCase':
-										if(manipulation.useLocale) text = text.toLocaleUpperCase(manipulation.language as string);
-										else text = text.toUpperCase();
+										text = text.toUpperCase();
 										break;
 									case 'lowerCase':
-										if(manipulation.useLocale) text = text.toLocaleLowerCase(manipulation.language as string);
-										else text = text.toLowerCase();
+										text = text.toLowerCase();
+										break;
+									case 'localeUpperCase':
+										text = text.toLocaleUpperCase(manipulation.language as string);
+										break;
+									case 'localeLowerCase':
+										text = text.toLocaleLowerCase(manipulation.language as string);
 										break;
 									default:
 										throw new Error('upperCase, lowerCase, capitalize, camelCase, kebabCase or snakeCase are valid options');
