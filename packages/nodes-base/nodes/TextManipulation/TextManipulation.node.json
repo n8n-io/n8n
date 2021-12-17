@@ -14,6 +14,7 @@
 	},
 	"alias": [
 		"Capitalize",
+		"Titlecase",
 		"Camel Case",
 		"Kebab Case",
 		"Snake Case",
@@ -22,12 +23,15 @@
 		"Encode",
 		"Upper Case",
 		"Lower Case",
+		"Locale Upper Case",
+		"Locale Lower Case",
 		"Replace",
 		"Trim",
 		"Pad",
 		"Substring",
 		"Repeat",
-		"Regex"
+		"Regex",
+		"Entities"
 	],
 	"subcategories": {
 		"Core Nodes": [
