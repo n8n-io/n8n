@@ -24,7 +24,8 @@ import {
 	get,
 	kebabCase,
 	set,
-	snakeCase
+	snakeCase,
+	startCase,
 } from 'lodash';
 
 import * as entities from 'entities';
@@ -406,6 +407,11 @@ export class TextManipulation implements INodeType {
 														name: 'Snake Case',
 														value: 'snakeCase',
 														description: 'Converts string to snake case.',
+													},
+													{
+														name: 'Start Case',
+														value: 'startCase',
+														description: 'Converts string to start case.',
 													},
 													{
 														name: 'Replace',
@@ -1087,6 +1093,9 @@ export class TextManipulation implements INodeType {
 								break;
 							case 'snakeCase':
 								text = snakeCase(text);
+								break;
+							case 'startCase':
+								text = startCase(text);
 								break;
 							case 'upperCase':
 								if(manipulation.useLocale) text = text.toLocaleUpperCase(manipulation.language as string);
