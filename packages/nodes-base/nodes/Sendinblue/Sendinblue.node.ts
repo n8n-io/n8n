@@ -121,7 +121,7 @@ export class Sendinblue implements INodeType {
 				}
 
 				if (receivers.bcc !== undefined && Array.isArray(receivers.bcc) && receivers.bcc.length > 0) {
-					body.bcc = receivers.cc;
+					body.bcc = receivers.bcc;
 				}
 
 				templateId = options.templateId as number;
