@@ -1,0 +1,33 @@
+{
+	"node": "n8n-nodes-base.textManipulation",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Core Nodes"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.textManipulation/"
+			}
+		]
+	},
+	"alias": [
+		"Concat",
+		"Decode",
+		"Encode",
+		"Upper Case",
+		"Lower Case",
+		"Replace",
+		"Trim",
+		"Pad",
+		"Substring",
+		"Repeat",
+		"Regex"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Data Transformation"
+		]
+	}
+}
