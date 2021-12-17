@@ -619,10 +619,8 @@ class App {
 		// ----------------------------------------
 		// User Management
 		// ----------------------------------------
-
-		if (this.isUserManagementEnabled) {
-			await userManagementRouter.addRoutes.apply(this);
-		}
+		console.log('will apply um routes');
+		await userManagementRouter.addRoutes.apply(this);
 
 		// ----------------------------------------
 		// Healthcheck

@@ -1,20 +1,65 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable import/no-cycle */
+import cookieParser = require('cookie-parser');
+import { N8nApp } from '../Interfaces';
+import { addAuthenticationMethods } from './auth';
+import * as passport from 'passport';
+import { Strategy } from 'passport-jwt';
+import { NextFunction, Request, Response } from 'express';
+import config = require('../../../config');
+import { Db, GenericHelpers, ResponseHelper } from '../..';
+import { User } from '../../databases/entities/User';
+import { getInstance } from '../email/UserManagementMailer';
+import { isEmailSetup } from '../UserManagementHelper';
 
-import * as express from 'express';
-import { Db, GenericHelpers, ResponseHelper } from '..';
-import { User } from '../databases/entities/User';
-import { getInstance } from './email';
-import { isEmailSetup } from './UserManagementHelper';
+export async function addRoutes(this: N8nApp): Promise<void> {
+	this.app.use(cookieParser());
 
-import { authenticationRoutes } from './auth/routes';
+	const options = {
+		jwtFromRequest: (req: Request) => {
+			return req.cookies?.['n8n-auth'] || null;
+		},
+		secretOrKey: config.get('userManagement.jwtSecret') as string,
+	};
 
-export async function addRoutes(this: {
-	app: express.Application;
-	restEndpoint: string;
-}): Promise<void> {
-	await authenticationRoutes.apply(this);
+	passport.use(
+		new Strategy(options, async function (jwt_payload, done) {
+			// We will assign the `sub` property on the JWT to the database ID of user
+			const user = await Db.collections.User!.findOne(
+				{
+					id: jwt_payload.id,
+					email: jwt_payload.email,
+				},
+				{ relations: ['globalRole'] },
+			);
+			if (!user) {
+				return done(null, false, { message: 'User not found' });
+			}
+			return done(null, user);
+		}),
+	);
+
+	this.app.use(passport.initialize());
+
+	this.app.use((req: Request, res: Response, next: NextFunction) => {
+		// just temp for development
+		if (req.url.includes('login')) {
+			return next();
+		}
+		// get access to this from Server.ts
+		// if (authIgnoreRegex.exec(req.url)) {
+		// 	return next();
+		// }
+		return passport.authenticate('jwt', { session: false })(req, res, next);
+	});
+
+	addAuthenticationMethods.apply(this);
+
+
+
+	// ----------------------------------------
+	// Temporary code below - must be refactored
+	// and moved from here.
+	// ----------------------------------------
+
 
 	// ----------------------------------------
 	// Create instance owner
@@ -22,7 +67,7 @@ export async function addRoutes(this: {
 
 	this.app.post(
 		`/${this.restEndpoint}/owner-setup`,
-		ResponseHelper.send(async (req: express.Request, res: express.Response) => {
+		ResponseHelper.send(async (req: Request, res: Response) => {
 			const role = await Db.collections.Role!.findOne({ name: 'owner', scope: 'global' });
 			const owner = await Db.collections.User!.save({
 				email: 'ben@n8n.io',
@@ -37,7 +82,7 @@ export async function addRoutes(this: {
 
 	this.app.get(
 		`/${this.restEndpoint}/user/:id`,
-		async (req: express.Request, res: express.Response) => {
+		async (req: Request, res: Response) => {
 			const user = await Db.collections.User!.findOne({ id: req.params.id });
 			if (user) {
 				ResponseHelper.sendSuccessResponse(res, user);
@@ -49,7 +94,7 @@ export async function addRoutes(this: {
 
 	this.app.post(
 		`/${this.restEndpoint}/invite`,
-		async (req: express.Request, res: express.Response) => {
+		ResponseHelper.send(async (req: Request, res: Response) => {
 			// TODO UM: validate if current user can invite people.
 
 			if (!isEmailSetup()) {
@@ -115,6 +160,8 @@ export async function addRoutes(this: {
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				ResponseHelper.sendErrorResponse(res, result.error!);
 			}
-		},
+		}),
 	);
+
+
 }

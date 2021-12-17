@@ -31,6 +31,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { createHash } from 'crypto';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -165,6 +166,25 @@ export class Start extends Command {
 
 				// Make sure the settings exist
 				const userSettings = await UserSettings.prepareUserSettings();
+
+				if (!config.get('userManagement.jwtSecret')) {
+					// If we don't have a JWT secret set, generate
+					// one based and save to config.
+					const encryptionKey = await UserSettings.getEncryptionKey();
+					if (!encryptionKey) {
+						throw new Error('Fatal error setting up user management: no encryption key set.');
+					}
+
+					// For a key off every other letter from encryption key
+					// CAREFUL: do not change this or it breaks all existing tokens.
+					let baseKey = '';
+					for (let i = 0; i < encryptionKey.length; i++) {
+						if (i % 2 === 0) {
+							baseKey += encryptionKey[i];
+						}
+					}
+					config.set('userManagement.jwtSecret', createHash('md5').update(baseKey).digest('hex'));
+				}
 
 				// Load all node and credential types
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
