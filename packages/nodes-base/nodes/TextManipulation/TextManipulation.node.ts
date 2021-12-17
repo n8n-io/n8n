@@ -397,8 +397,8 @@ export class TextManipulation implements INodeType {
 														description: 'Decode and Encode HTML & XML entities.',
 													},
 													{
-														name: 'Letter case',
-														value: 'case',
+														name: 'Letter Case',
+														value: 'letterCase',
 														description: 'Upper and lowercase letters in a string.',
 													},
 													{
@@ -427,7 +427,7 @@ export class TextManipulation implements INodeType {
 														description: 'Repeat the string.',
 													},
 												],
-												default: 'case',
+												default: 'letterCase',
 											},
 											{
 												displayName: 'Case Type',
@@ -435,7 +435,7 @@ export class TextManipulation implements INodeType {
 												displayOptions: {
 													show: {
 														action: [
-															'case',
+															'letterCase',
 														],
 													},
 												},
@@ -455,6 +455,11 @@ export class TextManipulation implements INodeType {
 														name: 'Capitalize',
 														value: 'capitalize',
 														description: 'Capitalize text.',
+													},
+													{
+														name: 'Titlecase',
+														value: 'titlecase',
+														description: 'Titlecase text.',
 													},
 													{
 														name: 'Camel Case',
@@ -1135,13 +1140,16 @@ export class TextManipulation implements INodeType {
 									}
 								}
 								break;
-							case 'case':
-								switch(manipulation.case) {
+							case 'letterCase':
+								switch(manipulation.caseType) {
 									case 'camelCase':
 										text = camelCase(text);
 										break;
 									case 'capitalize':
 										text = capitalize(text);
+										break;
+									case 'titlecase':
+										text = text.split(' ').map(capitalize).join(' ');
 										break;
 									case 'kebabCase':
 										text = kebabCase(text);
@@ -1163,6 +1171,7 @@ export class TextManipulation implements INodeType {
 									default:
 										throw new Error('upperCase, lowerCase, capitalize, camelCase, kebabCase or snakeCase are valid options');
 								}
+								break;
 							case 'replace':
 								switch(manipulation.replaceMode) {
 									case 'substring':
@@ -1265,6 +1274,5 @@ export class TextManipulation implements INodeType {
 		}
 
 		return this.prepareOutputData(returnData);
-
 	}
 }
