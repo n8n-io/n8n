@@ -827,7 +827,7 @@ export class TextManipulation implements INodeType {
 												description: 'The string to trim.',
 											},
 											{
-												displayName: 'Trim String as a unit',
+												displayName: 'Trim String as an unit',
 												name: 'trimStringUnit',
 												displayOptions: {
 													show: {
@@ -839,7 +839,7 @@ export class TextManipulation implements INodeType {
 												type: 'boolean',
 												default: true,
 												required: true,
-												description: 'Trimming is done with the complete trim string as a unit and not each character individually.',
+												description: 'Trimming is done with the complete trim string as an unit and not each character individually.',
 											},
 											{
 												displayName: 'Pad',
