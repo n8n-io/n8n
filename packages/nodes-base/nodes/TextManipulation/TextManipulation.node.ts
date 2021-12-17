@@ -5,27 +5,31 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
+	IDataObject,
 	INodeExecutionData,
+	INodeParameters,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	INodeParameters,
-	IDataObject,
-	IBinaryKeyData,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import { get, set } from 'lodash';
 import * as entities from 'entities';
+
 import * as iconv from 'iconv-lite';
 iconv.encodingExists('utf8');
+
+// Create options for bomAware and encoding
 const bomAware: string[] = [];
 const encodeDecodeOptions: INodePropertyOptions[] = [];
-Object.keys((iconv as any).encodings).forEach(encoding => {
-	if(!(encoding.startsWith('_') || typeof (iconv as any).encodings[encoding] == 'string')) { // only encodings without direct alias or internals
-		if((iconv as any).encodings[encoding].bomAware) {
+const encodings = (iconv as any).encodings; // tslint:disable-line:no-any
+Object.keys(encodings).forEach(encoding => {
+	if (!(encoding.startsWith('_') || typeof encodings[encoding] === 'string')) { // only encodings without direct alias or internals
+		if (encodings[encoding].bomAware) {
 			bomAware.push(encoding);
 		}
-		encodeDecodeOptions.push({ name: encoding, value: encoding});
+		encodeDecodeOptions.push({ name: encoding, value: encoding });
 	}
 });
 
@@ -128,7 +132,7 @@ export class TextManipulation implements INodeType {
 														readOperation: [
 															'fromFile',
 														],
-														fileDecodeWith: bomAware
+														fileDecodeWith: bomAware,
 													},
 												},
 												type: 'boolean',
@@ -250,7 +254,7 @@ export class TextManipulation implements INodeType {
 														writeOperation: [
 															'toFile',
 														],
-														fileEncodeWith: bomAware
+														fileEncodeWith: bomAware,
 													},
 												},
 												type: 'boolean',
@@ -451,20 +455,20 @@ export class TextManipulation implements INodeType {
 												options: [
 													{
 														name: 'nothing',
-														value: 'nothing'
+														value: 'nothing',
 													},
 													{
 														name: 'url',
-														value: 'url'
+														value: 'url',
 													},
 													{
 														name: 'xml',
-														value: 'xml'
+														value: 'xml',
 													},
 													{
 														name: 'html',
-														value: 'html'
-													}
+														value: 'html',
+													},
 												],
 												default: 'nothing',
 											},
@@ -476,7 +480,7 @@ export class TextManipulation implements INodeType {
 														action: [
 															'decodeEncode',
 														],
-														decodeWith: bomAware
+														decodeWith: bomAware,
 													},
 												},
 												type: 'boolean',
@@ -510,20 +514,20 @@ export class TextManipulation implements INodeType {
 												options: [
 													{
 														name: 'nothing',
-														value: 'nothing'
+														value: 'nothing',
 													},
 													{
 														name: 'url',
-														value: 'url'
+														value: 'url',
 													},
 													{
 														name: 'xml',
-														value: 'xml'
+														value: 'xml',
 													},
 													{
 														name: 'html',
-														value: 'html'
-													}
+														value: 'html',
+													},
 												],
 												default: 'nothing',
 											},
@@ -535,7 +539,7 @@ export class TextManipulation implements INodeType {
 														action: [
 															'decodeEncode',
 														],
-														encodeWith: bomAware
+														encodeWith: bomAware,
 													},
 												},
 												type: 'boolean',
@@ -609,7 +613,7 @@ export class TextManipulation implements INodeType {
 															'replace',
 														],
 														replaceMode: [
-															'regex'
+															'regex',
 														],
 													},
 												},
@@ -628,7 +632,7 @@ export class TextManipulation implements INodeType {
 															'replace',
 														],
 														replaceMode: [
-															'regex'
+															'regex',
 														],
 													},
 												},
@@ -646,7 +650,7 @@ export class TextManipulation implements INodeType {
 															'replace',
 														],
 														replaceMode: [
-															'substring'
+															'substring',
 														],
 													},
 												},
@@ -665,7 +669,7 @@ export class TextManipulation implements INodeType {
 															'replace',
 														],
 														replaceMode: [
-															'substring'
+															'substring',
 														],
 													},
 												},
@@ -683,7 +687,7 @@ export class TextManipulation implements INodeType {
 															'replace',
 														],
 														replaceMode: [
-															'substring'
+															'substring',
 														],
 													},
 												},
@@ -900,15 +904,15 @@ export class TextManipulation implements INodeType {
 												placeholder: '1',
 												description: 'The number of times the string should be repeated.',
 											},
-										]
-									}
-								]
+										],
+									},
+								],
 							},
-						]
-					}
-				]
+						],
+					},
+				],
 			},
-		]
+		],
 	};
 
 	static escapeRegex(str: string) {
@@ -920,19 +924,19 @@ export class TextManipulation implements INodeType {
 	}
 	
 	static charsTrimLeft(str: string, chars: string) {
-		if(chars == ' ') return str.trimLeft();
+		if(chars === ' ') return str.trimLeft();
 		chars = TextManipulation.escapeRegex(chars);
 		return str.replace(new RegExp('^(' + chars + ')+', 'g'), '');
 	}
 	
 	static charsTrimRight(str: string, chars: string) {
-		if(chars == ' ') return str.trimRight();
+		if(chars === ' ') return str.trimRight();
 		chars = TextManipulation.escapeRegex(chars);
 		return str.replace(new RegExp('(' + chars + ')+$', 'g'), '');
 	}
 	
 	static charsTrim(str: string, chars: string) {
-		if(chars == ' ') return str.trim();
+		if(chars === ' ') return str.trim();
 		chars = TextManipulation.escapeRegex(chars);
 		return str.replace(new RegExp('^(' + chars + ')+|(' + chars + ')+$', 'g'), '');
 	}
@@ -973,13 +977,13 @@ export class TextManipulation implements INodeType {
 									text = iconv.decode(
 										Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING),
 										dataSource.fileDecodeWith as string,
-										{stripBOM: dataSource.fileStripBOM as boolean}
+										{stripBOM: dataSource.fileStripBOM as boolean},
 									);
 								} else {
 									text = iconv.decode(
 										Buffer.from(newItemBinary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING),
 										dataSource.fileDecodeWith as string,
-										{stripBOM: dataSource.fileStripBOM as boolean}
+										{stripBOM: dataSource.fileStripBOM as boolean},
 									);
 								}
 							} else if (item.binary === undefined || item.binary[dataSource.binaryPropertyName as string] === undefined) {
@@ -988,13 +992,13 @@ export class TextManipulation implements INodeType {
 								text = iconv.decode(
 									Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING),
 									dataSource.fileDecodeWith as string,
-									{stripBOM: dataSource.fileStripBOM as boolean}
+									{stripBOM: dataSource.fileStripBOM as boolean},
 								);
 							}
 							break;
 						case 'fromJSON':
 							const value = (dataSource.getManipulatedData && get(newItemJson, dataSource.sourceKey as string)) || get(item.json, dataSource.sourceKey as string);
-							if(typeof value == 'string') {
+							if(typeof value === 'string') {
 								text = value as string;
 							} else if(dataSource.skipNonString) {
 								continue;
@@ -1015,20 +1019,20 @@ export class TextManipulation implements INodeType {
 								text = (manipulation.before || '') + text + (manipulation.after || '');
 								break;
 							case 'decodeEncode':
-								if(manipulation.encodeWith != manipulation.decodeWith) {
+								if(manipulation.encodeWith !== manipulation.decodeWith) {
 									text = iconv.encode(
 										iconv.decode(
 											Buffer.from(text),
 											manipulation.decodeWith as string,
-											{addBOM: manipulation.addBOM as boolean}
+											{addBOM: manipulation.addBOM as boolean},
 										),
 										manipulation.encodeWith as string,
-										{stripBOM: manipulation.stripBOM as boolean}
+										{stripBOM: manipulation.stripBOM as boolean},
 									).toString();
 								}
 								break;
 							case 'decodeEncodeEntities':
-								if(manipulation.encodeWithEntities != manipulation.decodeWithEntities) {
+								if(manipulation.encodeWithEntities !== manipulation.decodeWithEntities) {
 									switch(manipulation.decodeWithEntitie) {
 										case 'url':
 											text = decodeURI(text);
@@ -1041,6 +1045,8 @@ export class TextManipulation implements INodeType {
 											break;
 										case 'nothing':
 											break;
+										default:
+											throw new Error('url, xml, html or nothing are valid options');
 									}
 
 									switch(manipulation.encodeWithEntities) {
@@ -1055,15 +1061,17 @@ export class TextManipulation implements INodeType {
 											break;
 										case 'nothing':
 											break;
+										default:
+											throw new Error('url, xml, html or nothing are valid options');
 									}
 								}
 								break;
 							case 'upperCase':
-								if(manipulation.useLocale) text = (text as any).toLocaleUpperCase(manipulation.language as string);
+								if(manipulation.useLocale) text = text.toLocaleUpperCase(manipulation.language as string);
 								else text = text.toUpperCase();
 								break;
 							case 'lowerCase':
-								if(manipulation.useLocale) text = (text as any).toLocaleLowerCase(manipulation.language as string);
+								if(manipulation.useLocale) text = text.toLocaleLowerCase(manipulation.language as string);
 								else text = text.toLowerCase();
 								break;
 							case 'replace':
@@ -1150,7 +1158,7 @@ export class TextManipulation implements INodeType {
 							newItemBinary![dataSource.destinationBinaryPropertyName as string] = await this.helpers.prepareBinaryData(
 								iconv.encode(text, dataSource.fileEncodeWith as string, {addBOM: dataSource.fileAddBOM as boolean}),
 								dataSource.fileName as string,
-								dataSource.mimeType as string
+								dataSource.mimeType as string,
 							);
 							break;
 						case 'toJSON':
@@ -1163,7 +1171,7 @@ export class TextManipulation implements INodeType {
 			}
 			returnData.push({
 				json: newItemJson,
-				binary: Object.keys(newItemBinary).length === 0 ? undefined : newItemBinary
+				binary: Object.keys(newItemBinary).length === 0 ? undefined : newItemBinary,
 			});
 		}
 
