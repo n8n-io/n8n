@@ -1,14 +1,13 @@
 <template>
 	<div v-if="windowVisible" class="binary-data-window">
-		<el-button
+		<n8n-button
 			@click.stop="closeWindow"
 			size="small"
 			class="binary-data-window-back"
 			title="Back to overview page"
-			icon="el-icon-arrow-left"
-		>
-			Back to list
-		</el-button>
+			icon="arrow-left"
+			label="Back to list"
+		/>
 
 		<div class="binary-data-window-wrapper">
 			<div v-if="!binaryData">
@@ -103,6 +102,7 @@ export default mixins(
 	text-align: center;
 
 	.binary-data-window-wrapper {
+		margin-top: .5em;
 		padding: 0 1em;
 		height: calc(100% - 50px);
 
@@ -110,10 +110,6 @@ export default mixins(
 		.el-col {
 			height: 100%;
 		}
-	}
-
-	.binary-data-window-back {
-		margin: 0 0 0.5em 0;
 	}
 
 	.binary-data {

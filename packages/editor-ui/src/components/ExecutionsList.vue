@@ -3,34 +3,30 @@
 		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
 			<div class="filters">
 				<el-row>
-					<el-col :span="4" class="filter-headline">
+					<el-col :span="2" class="filter-headline">
 						Filters:
 					</el-col>
-					<el-col :span="6">
-						<el-select v-model="filter.workflowId" placeholder="Select Workflow" size="small" filterable @change="handleFilterChanged">
-							<el-option
+					<el-col :span="7">
+						<n8n-select v-model="filter.workflowId" placeholder="Select Workflow" size="medium" filterable @change="handleFilterChanged">
+							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
-					<el-col :span="2">&nbsp;
-					</el-col>
-					<el-col :span="4">
-						<el-select v-model="filter.status" placeholder="Select Status" size="small" filterable @change="handleFilterChanged">
-							<el-option
+					<el-col :span="5" :offset="1">
+						<n8n-select v-model="filter.status" placeholder="Select Status" size="medium" filterable @change="handleFilterChanged">
+							<n8n-option
 								v-for="item in statuses"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
-					<el-col :span="4">&nbsp;
-					</el-col>
-					<el-col :span="4" class="autorefresh">
+					<el-col :span="4" :offset="5" class="autorefresh">
 						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">Auto refresh</el-checkbox>
 					</el-col>
 				</el-row>
@@ -39,7 +35,7 @@
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
 					Selected: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
-					<el-button type="danger" title="Delete Selected" icon="el-icon-delete" size="mini" @click="handleDeleteSelected" circle></el-button>
+					<n8n-icon-button title="Delete Selected" icon="trash" size="mini" @click="handleDeleteSelected" />
 				</span>
 			</div>
 
@@ -47,10 +43,10 @@
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
 					<template slot="header" slot-scope="scope">
-						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">Check all</el-checkbox>
+						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange" label=" "></el-checkbox>
 					</template>
 					<template slot-scope="scope">
-						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" >Check all</el-checkbox>
+						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" label=" "></el-checkbox>
 					</template>
 				</el-table-column>
 				<el-table-column property="startedAt" label="Started At / ID" width="205">
@@ -76,10 +72,10 @@
 						</span>
 					</template>
 				</el-table-column>
-				<el-table-column label="Status" width="120" align="center">
+				<el-table-column label="Status" width="122" align="center">
 					<template slot-scope="scope" align="center">
 
-						<el-tooltip placement="top" effect="light">
+						<n8n-tooltip placement="top" >
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 
 							<span class="status-badge running" v-if="scope.row.waitTill">
@@ -97,13 +93,18 @@
 							<span class="status-badge warning" v-else>
 								Unknown
 							</span>
-						</el-tooltip>
+						</n8n-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
-							<span class="el-dropdown-link">
-								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && scope.row.waitTill === undefined" type="text" size="small" title="Retry execution">
-									<font-awesome-icon icon="redo" />
-								</el-button>
+							<span class="retry-button">
+								<n8n-icon-button
+									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
+									 type="light"
+									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
+									 size="mini"
+									 title="Retry execution"
+									 icon="redo"
+								/>
 							</span>
 							<el-dropdown-menu slot="dropdown">
 								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">Retry with currently saved workflow</el-dropdown-item>
@@ -131,24 +132,20 @@
 				</el-table-column>
 				<el-table-column label="" width="100" align="center">
 					<template slot-scope="scope">
-						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill" class="execution-actions">
-							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" size="mini">
-								<font-awesome-icon icon="stop" />
-							</el-button>
-						</span>
-						<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" class="execution-actions">
-							<el-button circle title="Open Past Execution" @click.stop="displayExecution(scope.row)" size="mini">
-								<font-awesome-icon icon="folder-open" />
-							</el-button>
-						</span>
+						<div class="actions-container">
+							<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
+								<n8n-icon-button icon="stop" size="small" title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
+							</span>
+							<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" >
+								<n8n-icon-button icon="folder-open" size="small" title="Open Past Execution" @click.stop="(e) => displayExecution(scope.row, e)" />
+							</span>
+						</div>
 					</template>
 				</el-table-column>
 			</el-table>
 
 			<div class="load-more" v-if="finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated === true">
-				<el-button title="Load More" @click="loadMore()" size="small" :disabled="isDataLoading">
-					<font-awesome-icon icon="sync" /> Load More
-				</el-button>
+				<n8n-button icon="sync" title="Load More" label="Load More" @click="loadMore()" :loading="isDataLoading" />
 			</div>
 
 		</el-dialog>
@@ -175,6 +172,10 @@ import {
 	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
+
+import {
+	convertToDisplayDate,
+} from './helpers';
 
 import {
 	IDataObject,
@@ -322,7 +323,15 @@ export default mixins(
 			}
 			return false;
 		},
-		displayExecution (execution: IExecutionShortResponse) {
+		convertToDisplayDate,
+		displayExecution (execution: IExecutionShortResponse, e: PointerEvent) {
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({name: 'ExecutionById', params: {id: execution.id}});
+				window.open(route.href, '_blank');
+
+				return;
+			}
+
 			this.$router.push({
 				name: 'ExecutionById',
 				params: { id: execution.id },
@@ -383,7 +392,7 @@ export default mixins(
 
 			this.$showMessage({
 				title: 'Execution deleted',
-				message: 'The executions got deleted!',
+				message: 'The executions were deleted!',
 				type: 'success',
 			});
 
@@ -578,6 +587,7 @@ export default mixins(
 			this.handleAutoRefreshToggle();
 
 			this.$externalHooks().run('executionsList.openDialog');
+			this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
@@ -697,13 +707,7 @@ export default mixins(
 }
 
 .retry-button {
-	color: $--custom-error-text;
-	background-color: $--custom-error-background;
 	margin-left: 5px;
-	&.warning {
-		background-color: $--custom-warning-background;
-		color: $--custom-warning-text;
-	}
 }
 
 .selection-options {
@@ -714,35 +718,33 @@ export default mixins(
 	position: relative;
 	display: inline-block;
 	padding: 0 10px;
-	height: 30px;
-	line-height: 30px;
+	line-height: 22.6px;
 	border-radius: 15px;
 	text-align: center;
-	font-weight: 400;
+	font-size: var(--font-size-s);
 
 	&.error {
-		background-color: $--custom-error-background;
-		color: $--custom-error-text;
-	}
-
-	&.running {
-		background-color: $--custom-running-background;
-		color: $--custom-running-text;
+		background-color: var(--color-danger-tint-1);
+		color: var(--color-danger);
 	}
 
 	&.success {
-		background-color: $--custom-success-background;
-		color: $--custom-success-text;
+		background-color: var(--color-success-tint-1);
+		color: var(--color-success);
 	}
 
-	&.warning {
-		background-color: $--custom-warning-background;
-		color: $--custom-warning-text;
+	&.running, &.warning {
+		background-color: var(--color-warning-tint-2);
+		color: var(--color-warning);
 	}
 }
 
 .workflow-name {
 	font-weight: bold;
+}
+
+.actions-container > * {
+	margin-left: 5px;
 }
 
 </style>

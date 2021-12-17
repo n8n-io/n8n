@@ -1,6 +1,6 @@
 <template>
 	<div v-if="dialogVisible" @keydown.stop>
-		<el-dialog :visible="dialogVisible" custom-class="expression-dialog" append-to-body width="80%" title="Edit Expression" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" title="Edit Expression" :before-close="closeDialog">
 			<el-row>
 				<el-col :span="8">
 					<div class="header-side-menu">
@@ -97,9 +97,7 @@ export default mixins(
 		},
 
 		itemSelected (eventData: IVariableItemSelected) {
-			// User inserted item from Expression Editor variable selector
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
-
 			this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
 		},
 	},
@@ -110,6 +108,10 @@ export default mixins(
 
 			const resolvedExpressionValue = this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue() || undefined;  // tslint:disable-line:no-any
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
+
+			if (!newValue) {
+				this.$telemetry.track('User closed Expression Editor', { empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value, workflow_id: this.$store.getters.workflowId });
+			}
 		},
 	},
 });
@@ -117,6 +119,7 @@ export default mixins(
 
 <style scoped lang="scss">
 .editor-description {
+	line-height: 1.5;
 	font-weight: bold;
 	padding: 0 0 0.5em 0.2em;;
 }
@@ -140,15 +143,19 @@ export default mixins(
 
 	.el-dialog__body {
 		padding: 0;
+		font-size: var(--font-size-s);
 	}
 
 	.right-side {
 		background-color: #f9f9f9;
+		border-top-right-radius: 8px;
+		border-bottom-right-radius: 8px;
 	}
 }
 
 .header-side-menu {
 	padding: 1em 0 0.5em 1.8em;
+	border-top-left-radius: 8px;
 
 	background-color: $--custom-window-sidebar-top;
 	color: #555;
@@ -158,12 +165,14 @@ export default mixins(
 	.headline {
 		font-size: 1.35em;
 		font-weight: 600;
+		line-height: 1.5;
 	}
 
 	.sub-headline {
 		font-weight: 600;
 		font-size: 1.1em;
 		text-align: center;
+		line-height: 1.5;
 		padding-top: 1.5em;
 		color: $--color-primary;
 	}

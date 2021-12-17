@@ -6,7 +6,7 @@ import {
 	estimateAdditionalFieldsOptions,
 } from './EstimateAdditionalFieldsOptions';
 
-export const estimateOperations = [
+export const estimateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const estimateOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const estimateFields = [
+export const estimateFields: INodeProperties[] = [
 	// ----------------------------------
 	//         estimate: create
 	// ----------------------------------
@@ -323,7 +323,7 @@ export const estimateFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting estimates. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
+				description: 'The condition for selecting estimates. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -422,4 +422,4 @@ export const estimateFields = [
 		// filter out fields that cannot be updated
 		options: estimateAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'TotalTax'),
 	},
-] as INodeProperties[];
+];

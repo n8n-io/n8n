@@ -1,70 +1,142 @@
 <template>
 	<div @keydown.stop :class="parameterInputClasses">
 	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
-	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
-		<div v-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
+	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
+
+		<n8n-input
+			v-if="isValueExpression && showExpressionAsTextInput"
+			:size="inputSize"
+			:value="expressionDisplayValue"
+			:disabled="isReadOnly"
+			:title="displayTitle"
+			@keydown.stop
+		/>
+
+		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
 			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
 			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
-			<div v-if="isEditor === true" class="clickable" @click="displayEditDialog()">
+			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
-				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
-			</el-input>
-		</div>
-		<div v-else-if="parameter.type === 'dateTime'">
-			<el-date-picker
+			<n8n-input
+				v-else
 				v-model="tempValue"
 				ref="inputField"
-				type="datetime"
-				size="small"
+				:size="inputSize"
+				:type="getStringInputType"
+				:rows="getArgument('rows')"
 				:value="displayValue"
-				:title="displayTitle"
 				:disabled="isReadOnly"
-				:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
-				:picker-options="dateTimePickerOptions"
+				@input="onTextInputChange"
 				@change="valueChanged"
-				@focus="setFocus"
 				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+				:title="displayTitle"
+				:placeholder="isValueExpression?'':parameter.placeholder"
 			>
-			</el-date-picker>
+				<div slot="suffix" class="expand-input-icon-container">
+					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
+				</div>
+			</n8n-input>
 		</div>
 
-		<div v-else-if="parameter.type === 'number'">
-			<!-- <el-slider :value="value" @input="valueChanged"></el-slider> -->
-			<el-input-number ref="inputField" size="small" :value="displayValue" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="parameter.placeholder"></el-input-number>
+		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
+			<el-color-picker
+				size="small"
+				class="color-picker"
+				:value="displayValue"
+				:disabled="isReadOnly"
+				@focus="setFocus"
+				@blur="onBlur"
+				@change="valueChanged"
+				:title="displayTitle"
+				:show-alpha="getArgument('showAlpha')"
+			/>
+			<n8n-input
+				v-model="tempValue"
+				:size="inputSize"
+				type="text"
+				:value="tempValue"
+				:disabled="isReadOnly"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+				:title="displayTitle"
+			/>
 		</div>
 
-		<el-select
+		<el-date-picker
+			v-else-if="parameter.type === 'dateTime'"
+			v-model="tempValue"
+			ref="inputField"
+			type="datetime"
+			:size="inputSize"
+			:value="displayValue"
+			:title="displayTitle"
+			:disabled="isReadOnly"
+			:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
+			:picker-options="dateTimePickerOptions"
+			@change="valueChanged"
+			@focus="setFocus"
+			@blur="onBlur"
+			@keydown.stop
+		/>
+
+		<n8n-input-number
+			v-else-if="parameter.type === 'number'"
+			ref="inputField" :size="inputSize"
+			:value="displayValue"
+			:controls="false"
+			:max="getArgument('maxValue')"
+			:min="getArgument('minValue')"
+			:precision="getArgument('numberPrecision')"
+			:step="getArgument('numberStepSize')"
+			:disabled="isReadOnly"
+			@change="valueChanged"
+			@input="onTextInputChange"
+			@focus="setFocus"
+			@blur="onBlur"
+			@keydown.stop
+			:title="displayTitle"
+			:placeholder="parameter.placeholder"
+		/>
+
+		<n8n-select
 			v-else-if="parameter.type === 'options'"
 			ref="inputField"
-			size="small"
+			:size="inputSize"
 			filterable
 			:value="displayValue"
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
+			:popper-append-to-body="true"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
+			@blur="onBlur"
 		>
-			<el-option
+			<n8n-option
 				v-for="option in parameterOptions"
 				:value="option.value"
 				:key="option.value"
 				:label="option.name"
 			>
-				<div class="option-headline">{{ option.name }}</div>
-				<div v-if="option.description" class="option-description" v-html="option.description"></div>
-			</el-option>
-		</el-select>
+				<div class="list-option">
+					<div class="option-headline">{{ option.name }}</div>
+					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				</div>
+			</n8n-option>
+		</n8n-select>
 
-		<el-select
+		<n8n-select
 			v-else-if="parameter.type === 'multiOptions'"
 			ref="inputField"
-			size="small"
+			:size="inputSize"
 			filterable
 			multiple
 			:value="displayValue"
@@ -73,24 +145,35 @@
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
+			@blur="onBlur"
 			:title="displayTitle"
 		>
-			<el-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
-				<div class="option-headline">{{ option.name }}</div>
-				<div v-if="option.description" class="option-description" v-html="option.description"></div>
-			</el-option>
-		</el-select>
+			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
+				<div class="list-option">
+					<div class="option-headline">{{ option.name }}</div>
+					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				</div>
+			</n8n-option>
+		</n8n-select>
 
-		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-			<el-color-picker :value="displayValue" :disabled="isReadOnly" @change="valueChanged" size="small" class="color-picker" @focus="setFocus" :title="displayTitle" :show-alpha="getArgument('showAlpha')"></el-color-picker>
-			<el-input v-model="tempValue" size="small" type="text" :value="tempValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></el-input>
-		</div>
-
-		<div v-else-if="parameter.type === 'boolean'">
-			<el-switch ref="inputField" :value="displayValue" @change="valueChanged" active-color="#13ce66" :disabled="isValueExpression || isReadOnly"></el-switch>
-			<div class="expression-info clickable" @click="expressionEditDialogVisible = true">Edit Expression</div>
-		</div>
+		<el-switch
+			v-else-if="parameter.type === 'boolean'"
+			class="switch-input"
+			ref="inputField"
+			active-color="#13ce66"
+			:value="displayValue"
+			:disabled="isReadOnly"
+			@change="valueChanged"
+		/>
 	</div>
+
+	<div class="parameter-issues" v-if="getIssues.length">
+		<n8n-tooltip placement="top" >
+			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
+			<font-awesome-icon icon="exclamation-triangle" />
+		</n8n-tooltip>
+	</div>
+
 	<div class="parameter-options" v-if="displayOptionsComputed">
 			<el-dropdown trigger="click" @command="optionSelected" size="mini">
 				<span class="el-dropdown-link">
@@ -103,15 +186,7 @@
 					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
-
 	</div>
-	<div class="parameter-issues" v-if="getIssues.length">
-		<el-tooltip placement="top" effect="light">
-			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
-			<font-awesome-icon icon="exclamation-triangle" />
-		</el-tooltip>
-	</div>
-
 	</div>
 </template>
 
@@ -135,7 +210,6 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -144,7 +218,6 @@ import mixins from 'vue-typed-mixins';
 
 export default mixins(
 	externalHooks,
-	genericHelpers,
 	nodeHelpers,
 	showMessage,
 	workflowHelpers,
@@ -159,10 +232,14 @@ export default mixins(
 		},
 		props: [
 			'displayOptions', // boolean
+			'inputSize',
+			'isReadOnly',
+			'documentationUrl',
 			'parameter', // NodeProperties
 			'path', // string
 			'value',
-			'isCredential', // boolean
+			'hideIssues', // boolean
+			'errorHighlight',
 		],
 		data () {
 			return {
@@ -221,6 +298,11 @@ export default mixins(
 			},
 		},
 		computed: {
+			showExpressionAsTextInput(): boolean {
+				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
+
+				return types.includes(this.parameter.type);
+			},
 			dependentParametersValues (): string | null {
 				const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn') as string[] | undefined;
 
@@ -295,6 +377,20 @@ export default mixins(
 
 				return returnValue;
 			},
+			expressionDisplayValue (): string {
+				const value = this.displayValue;
+
+				// address type errors for text input
+				if (typeof value === 'number' || typeof value === 'boolean') {
+					return JSON.stringify(value);
+				}
+
+				if (value === null) {
+					return '';
+				}
+
+				return value;
+			},
 			displayOptionsComputed (): boolean {
 				if (this.isReadOnly === true) {
 					return false;
@@ -345,7 +441,7 @@ export default mixins(
 				return 'text';
 			},
 			getIssues (): string[] {
-				if (this.isCredential === true || this.node === null) {
+				if (this.hideIssues === true || this.node === null) {
 					return [];
 				}
 
@@ -417,10 +513,17 @@ export default mixins(
 			},
 			parameterInputClasses () {
 				const classes = [];
+				const rows = this.getArgument('rows');
+				const isTextarea = this.parameter.type === 'string' && rows !== undefined;
+				const isSwitch = this.parameter.type === 'boolean' && !this.isValueExpression;
+
+				if (!isTextarea && !isSwitch) {
+					classes.push('parameter-value-container');
+				}
 				if (this.isValueExpression) {
 					classes.push('expression');
 				}
-				if (this.getIssues.length) {
+				if (this.getIssues.length || this.errorHighlight) {
 					classes.push('has-issues');
 				}
 				return classes;
@@ -469,7 +572,7 @@ export default mixins(
 				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
-					const options = await this.restApi().getNodeParameterOptions(this.node.type, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
+					const options = await this.restApi().getNodeParameterOptions({name: this.node.type, version: this.node.typeVersion}, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -482,6 +585,21 @@ export default mixins(
 			},
 			closeExpressionEditDialog () {
 				this.expressionEditDialogVisible = false;
+			},
+			trackExpressionEditOpen () {
+				if(!this.node) {
+					return;
+				}
+
+				if((this.node.type as string).startsWith('n8n-nodes-base')) {
+					this.$telemetry.track('User opened Expression Editor', {
+						node_type: this.node.type,
+						parameter_name: this.parameter.displayName,
+						parameter_field_type: this.parameter.type,
+						new_expression: !this.isValueExpression,
+						workflow_id: this.$store.getters.workflowId,
+					});
+				}
 			},
 			closeTextEditDialog () {
 				this.textEditDialogVisible = false;
@@ -507,9 +625,20 @@ export default mixins(
 			expressionUpdated (value: string) {
 				this.valueChanged(value);
 			},
+			openExpressionEdit() {
+				if (this.isValueExpression) {
+					this.expressionEditDialogVisible = true;
+					this.trackExpressionEditOpen();
+					return;
+				}
+			},
+			onBlur () {
+				this.$emit('blur');
+			},
 			setFocus () {
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
+					this.trackExpressionEditOpen();
 					return;
 				}
 
@@ -536,6 +665,8 @@ export default mixins(
 						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
 					}
 				});
+
+				this.$emit('focus');
 			},
 			rgbaToHex (value: string): string | null {
 				// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
@@ -546,6 +677,15 @@ export default mixins(
 				}
 				const [r, g, b, a] = valueMatch.splice(1, 4).map(v => Number(v));
 				return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1) + ((1 << 8) + Math.floor((1-a)*255)).toString(16).slice(1);
+			},
+			onTextInputChange (value: string) {
+				const parameterData = {
+					node: this.node !== null ? this.node.name : this.nodeName,
+					name: this.path,
+					value,
+				};
+
+				this.$emit('textInput', parameterData);
 			},
 			valueChanged (value: string | number | boolean | Date | null) {
 				if (value instanceof Date) {
@@ -572,12 +712,19 @@ export default mixins(
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
 				} else if (command === 'addExpression') {
-					this.valueChanged(`=${this.value}`);
+					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+						this.valueChanged(`={{${this.value}}}`);
+					}
+					else {
+						this.valueChanged(`=${this.value}`);
+					}
+
 					this.expressionEditDialogVisible = true;
+					this.trackExpressionEditOpen();
 				} else if (command === 'removeExpression') {
-					this.valueChanged(this.expressionValueComputed || null);
+					this.valueChanged(this.expressionValueComputed !== undefined ? this.expressionValueComputed : null);
 				} else if (command === 'refreshOptions') {
-					this.loadRemoteParameterOptions();	
+					this.loadRemoteParameterOptions();
 				}
 			},
 		},
@@ -631,6 +778,24 @@ export default mixins(
 
 <style scoped lang="scss">
 
+.code-edit {
+	font-size: var(--font-size-xs);
+}
+
+.switch-input {
+	margin: 2px 0;
+}
+
+.parameter-value-container {
+	display: flex;
+	align-items: center;
+}
+
+.parameter-actions {
+	display: inline-flex;
+	align-items: center;
+}
+
 .parameter-input {
 	display: inline-block;
 }
@@ -646,23 +811,16 @@ export default mixins(
 	text-align: right;
 	float: right;
 	color: #ff8080;
-	font-size: 1.2em;
+	font-size: var(--font-size-s);
 }
 
-.color-input {
-	background-color: $--custom-input-background;
-	border-radius: 16px;
-	line-height: 2.2em;
+::v-deep .color-input {
+	display: flex;
 
-	.el-input {
-		width: 90px;
-	}
-	.color-picker {
-		float: left;
-		z-index: 10;
+	.el-color-picker__trigger {
+		border: none;
 	}
 }
-
 </style>
 
 <style lang="scss">
@@ -670,93 +828,51 @@ export default mixins(
 .ql-editor {
 	padding: 6px;
 	line-height: 26px;
+	background-color: #f0f0f0;
 }
 
-.expression-info {
-	display: none;
-}
 .expression {
-	.expression-info {
-		display: inline-block;
-		background-color: #441133;
-		color: #fff;
-		font-size: 0.7em;
-		line-height: 2.5em;
-		padding: 0 0.5em;
-		margin-left: 1em;
-		border-radius: 3px;
+	textarea[disabled], input[disabled] {
+		cursor: pointer !important;
 	}
 
 	.el-switch__core {
 		border: 1px dashed $--custom-expression-text;
 	}
 
-	.el-input > .el-input__inner,
-	.el-select > .el-input__inner,
-	.el-textarea textarea,
-	.el-textarea textarea:active,
-	.el-textarea textarea:focus,
-	.el-textarea textarea:hover,
-	.el-input-number,
-	.color-input {
-		border: 1px dashed $--custom-expression-text;
-		color: $--custom-expression-text;
-		background-color: $--custom-expression-background;
-	}
-
-	.el-input-number input,
-	.color-input .el-input__inner {
-		background-color: $--custom-expression-background;
-	}
-
-	// Overwrite again for number and color inputs to not create
-	// a second border inside of the already existing one
-	.color-input .el-input > .el-input__inner,
-	.el-input-number .el-input > .el-input__inner {
-		border: none;
-		background-color: none;
-	}
+	--input-border-color: #{$--custom-expression-text};
+	--input-border-style: dashed;
+	--input-background-color: #{$--custom-expression-background};
+	--disabled-border: #{$--custom-expression-text};
 }
 
 .has-issues {
-	.el-textarea textarea,
-	.el-textarea textarea:active,
-	.el-textarea textarea:focus,
-	.el-textarea textarea:hover,
-	.el-input-number input,
-	.el-input-number input:active,
-	.el-input-number input:focus,
-	.el-input-number input:hover,
-	.el-input-number [role="button"],
-	.el-input-number [role="button"]:active,
-	.el-input-number [role="button"]:focus,
-	.el-input-number [role="button"]:hover,
-	.el-input input,
-	.el-input input:active,
-	.el-input input:focus,
-	.el-input input:hover {
-		border-width: 1px;
-		border-color: #ff8080;
-		border-style: solid;
-	}
+	--input-border-color: var(--color-danger);
 }
 
 .el-dropdown {
 	color: #999;
 }
 
-.option-headline {
-	font-weight: 600;
-}
-li:not(.selected) .option-description {
-	color: $--custom-font-very-light;
-}
-
-.option-description {
-	font-weight: 400;
+.list-option {
+	max-width: 340px;
+	margin: 6px 0;
 	white-space: normal;
-	max-width: 350px;
-	margin-top: -4px;
+	padding-right: 20px;
+
+	.option-headline {
+		font-weight: var(--font-weight-bold);
+		line-height: var(--font-line-height-regular);
+		overflow-wrap: break-word;
+	}
+
+	.option-description {
+		margin-top: 2px;
+		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight-regular);
+		line-height: var(--font-line-height-xloose);
+		color: $--custom-font-very-light;
+	}
 }
 
 .edit-window-button {
@@ -765,6 +881,24 @@ li:not(.selected) .option-description {
 
 .parameter-input:hover .edit-window-button {
 	display: inline;
+}
+
+.expand-input-icon-container {
+	display: flex;
+	height: 100%;
+	align-items: center;
+}
+
+.errors {
+	margin-top: var(--spacing-2xs);
+	color: var(--color-danger);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-regular);
+
+	a {
+		color: var(--color-danger);
+		text-decoration: underline;
+	}
 }
 
 </style>

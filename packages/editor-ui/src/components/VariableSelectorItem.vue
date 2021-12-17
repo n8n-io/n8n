@@ -123,7 +123,7 @@ export default Vue.extend({
 	font-weight: 600;
 	font-size: 0.8em;
 	white-space: nowrap;
-	overflow-x: hidden;
+	overflow: hidden;
 	text-overflow: ellipsis;
 }
 .headline {

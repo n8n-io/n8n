@@ -6,7 +6,7 @@ import {
 	paymentAdditionalFieldsOptions
 } from './PaymentAdditionalFieldsOptions';
 
-export const paymentOperations = [
+export const paymentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -51,9 +51,9 @@ export const paymentOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const paymentFields = [
+export const paymentFields: INodeProperties[] = [
 	// ----------------------------------
 	//         payment: create
 	// ----------------------------------
@@ -276,7 +276,7 @@ export const paymentFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting payments. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
+				description: 'The condition for selecting payments. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -396,4 +396,4 @@ export const paymentFields = [
 		},
 		options: paymentAdditionalFieldsOptions,
 	},
-] as INodeProperties[];
+];

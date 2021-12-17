@@ -8,6 +8,7 @@ export class Aws implements ICredentialType {
 	name = 'aws';
 	displayName = 'AWS';
 	documentationUrl = 'aws';
+	icon = 'file:AWS.svg';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Region',
@@ -16,7 +17,7 @@ export class Aws implements ICredentialType {
 			default: 'us-east-1',
 		},
 		{
-			displayName: 'Access Key Id',
+			displayName: 'Access Key ID',
 			name: 'accessKeyId',
 			type: 'string',
 			default: '',

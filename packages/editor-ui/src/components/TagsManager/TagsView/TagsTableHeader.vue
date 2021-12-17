@@ -1,7 +1,7 @@
 <template>
 	<el-row class="tags-header">
 		<el-col :span="10">
-			<el-input
+			<n8n-input
 				placeholder="Search tags"
 				:value="search"
 				@input="onSearchChange"
@@ -9,14 +9,11 @@
 				clearable
 				:maxlength="maxLength"
 			>
-				<i slot="prefix" class="el-input__icon el-icon-search"></i>
-			</el-input>
+				<font-awesome-icon slot="prefix" icon="search" />
+			</n8n-input>
 		</el-col>
 		<el-col :span="14">
-			<el-button @click="onAddNew" :disabled="disabled" plain>
-				<font-awesome-icon icon="plus" />
-				<div class="next-icon-text">Add new</div>
-			</el-button>
+			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" label="Add new" size="large" float="right" />
 		</el-col>
 	</el-row>
 </template>
@@ -52,9 +49,5 @@ export default Vue.extend({
 <style lang="scss" scoped>
 .tags-header {
 	margin-bottom: 15px;
-}
-
-.el-button {
-	float: right;
 }
 </style>

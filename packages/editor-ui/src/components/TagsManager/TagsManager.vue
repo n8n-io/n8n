@@ -1,10 +1,11 @@
 <template>
 	<Modal
 		title="Manage tags"
-		:name="modalName"
+		:name="TAGS_MANAGER_MODAL_KEY"
 		:eventBus="modalBus"
 		@enter="onEnter"
-		size="md"
+		minWidth="620px"
+		minHeight="420px"
 	>
 		<template v-slot:content>
 			<el-row>
@@ -24,7 +25,7 @@
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-				<el-button size="small" @click="close">Done</el-button>
+			<n8n-button label="Done" @click="close" float="right" />
 		</template>
 	</Modal>
 </template>
@@ -40,13 +41,13 @@ import { showMessage } from "@/components/mixins/showMessage";
 import TagsView from "@/components/TagsManager/TagsView/TagsView.vue";
 import NoTagsView from "@/components/TagsManager/NoTagsView.vue";
 import Modal from "@/components/Modal.vue";
+import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
 
 export default mixins(showMessage).extend({
 	name: "TagsManager",
 	created() {
 		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
 	},
-	props: ['modalName'],
 	data() {
 		const tagIds = (this.$store.getters['tags/allTags'] as ITag[])
 			.map((tag) => tag.id);
@@ -55,6 +56,7 @@ export default mixins(showMessage).extend({
 			tagIds,
 			isCreating: false,
 			modalBus: new Vue(),
+			TAGS_MANAGER_MODAL_KEY,
 		};
 	},
 	components: {
@@ -183,8 +185,3 @@ export default mixins(showMessage).extend({
 });
 </script>
 
-<style lang="scss" scoped>
-.el-row {
-	min-height: $--tags-manager-min-height;
-}
-</style>

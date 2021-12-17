@@ -1,7 +1,7 @@
 <template>
 	<div @keydown.stop class="variable-selector-wrapper">
 		<div class="input-wrapper">
-			<el-input placeholder="Variable filter..." v-model="variableFilter" ref="inputField" size="small" type="text"></el-input>
+			<n8n-input placeholder="Variable filter..." v-model="variableFilter" ref="inputField" size="small" type="text"></n8n-input>
 		</div>
 
 		<div class="result-wrapper">

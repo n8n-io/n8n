@@ -28,9 +28,7 @@
 				</el-row>
 
 				<div class="action-buttons">
-					<el-button type="success" @click="closeDialog">
-						Close
-					</el-button>
+					<n8n-button @click="closeDialog" label="Close" />
 				</div>
 			</div>
 		</el-dialog>
@@ -69,6 +67,7 @@ export default mixins(
 
 <style scoped lang="scss">
 .n8n-about {
+	font-size: var(--font-size-s);
 	.el-row {
 		padding: 0.25em 0;
 	}

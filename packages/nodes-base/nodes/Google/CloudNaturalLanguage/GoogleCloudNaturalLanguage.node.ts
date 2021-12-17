@@ -125,7 +125,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				name: 'gcsContentUri',
 				type: 'string',
 				default: '',
-				description: 'The Google Cloud Storage URI where the file content is located. This URI must be of the form: gs://bucket_name/object_name.<br/> For more details, see https://cloud.google.com/storage/docs/reference-uris.',
+				description: `The Google Cloud Storage URI where the file content is located. This URI must be of the form: <code>gs://bucket_name/object_name</code>. For more details, see <a href="https://cloud.google.com/storage/docs/reference-uris.">reference</a>.`,
 				required: true,
 				displayOptions: {
 					show: {

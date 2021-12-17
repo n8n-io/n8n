@@ -65,7 +65,7 @@ export class MySql implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -295,12 +295,12 @@ export class MySql implements INodeType {
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const insertIgnore = options.ignore as boolean;
 				const insertPriority = options.priority as string;
-	
+
 				const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''} INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
 				const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
-	
+
 				const queryResult = await connection.query(insertSQL, queryItems);
-	
+
 				returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {

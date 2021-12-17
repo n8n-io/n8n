@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const exchangeRateOperations = [
+export const exchangeRateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -23,9 +23,9 @@ export const exchangeRateOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const exchangeRateFields = [
+export const exchangeRateFields: INodeProperties[] = [
 	// ----------------------------------
 	//         exchangeRate: get
 	// ----------------------------------
@@ -137,4 +137,4 @@ export const exchangeRateFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

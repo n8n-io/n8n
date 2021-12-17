@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const messageOperations = [
+export const messageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -59,9 +59,9 @@ export const messageOperations = [
 		default: 'send',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const messageFields = [
+export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
@@ -269,7 +269,7 @@ export const messageFields = [
 			{
 				displayName: 'From',
 				name: 'from',
-				description: 'The owner of the mailbox which the message is sent.<br>Must correspond to the actual mailbox used.',
+				description: 'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
 				type: 'string',
 				default: '',
 			},
@@ -541,7 +541,7 @@ export const messageFields = [
 			{
 				displayName: 'From',
 				name: 'from',
-				description: 'The owner of the mailbox which the message is sent.<br>Must correspond to the actual mailbox used.',
+				description: 'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
 				type: 'string',
 				default: '',
 			},
@@ -601,7 +601,7 @@ export const messageFields = [
 	{
 		displayName: 'Binary Property',
 		name: 'binaryPropertyName',
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file.',
 		type: 'string',
 		required: true,
 		default: 'data',
@@ -636,4 +636,4 @@ export const messageFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

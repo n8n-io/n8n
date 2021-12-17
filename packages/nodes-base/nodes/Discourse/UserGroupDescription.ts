@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const userGroupOperations = [
+export const userGroupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -30,7 +30,7 @@ export const userGroupOperations = [
 		],
 		default: 'add',
 	},
-] as INodeProperties[];
+];
 
 export const userGroupFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const documentOperations = [
+export const documentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const documentOperations = [
 		default: 'create',
 		description: 'Operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const documentFields = [
+export const documentFields: INodeProperties[] = [
 	// ----------------------------------
 	//       document: getAll
 	// ----------------------------------
@@ -143,6 +143,7 @@ export const documentFields = [
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Filter',
 				description: 'Custom Properties',
 				typeOptions: {
@@ -460,4 +461,4 @@ export const documentFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

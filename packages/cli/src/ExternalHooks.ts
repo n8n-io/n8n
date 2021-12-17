@@ -1,23 +1,20 @@
-import {
-	Db,
-	IExternalHooksClass,
-	IExternalHooksFileData,
-	IExternalHooksFunctions,
-} from './';
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable import/no-dynamic-require */
+/* eslint-disable no-restricted-syntax */
+// eslint-disable-next-line import/no-cycle
+import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '.';
 
 import * as config from '../config';
 
-
 class ExternalHooksClass implements IExternalHooksClass {
-
 	externalHooks: {
-		[key: string]: Array<() => {}>
+		[key: string]: Array<() => {}>;
 	} = {};
+
 	initDidRun = false;
 
-
 	async init(): Promise<void> {
-		if (this.initDidRun === true) {
+		if (this.initDidRun) {
 			return;
 		}
 
@@ -25,7 +22,6 @@ class ExternalHooksClass implements IExternalHooksClass {
 
 		this.initDidRun = true;
 	}
-
 
 	async reload(externalHooks?: IExternalHooksFileData) {
 		this.externalHooks = {};
@@ -37,7 +33,6 @@ class ExternalHooksClass implements IExternalHooksClass {
 		}
 	}
 
-
 	async loadHooksFiles(reload = false) {
 		const externalHookFiles = config.get('externalHookFiles').split(':');
 
@@ -46,20 +41,21 @@ class ExternalHooksClass implements IExternalHooksClass {
 			hookFilePath = hookFilePath.trim();
 			if (hookFilePath !== '') {
 				try {
-
-					if (reload === true) {
+					if (reload) {
 						delete require.cache[require.resolve(hookFilePath)];
 					}
 
+					// eslint-disable-next-line import/no-dynamic-require
+					// eslint-disable-next-line global-require
 					const hookFile = require(hookFilePath) as IExternalHooksFileData;
 					this.loadHooks(hookFile);
 				} catch (error) {
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					throw new Error(`Problem loading external hook file "${hookFilePath}": ${error.message}`);
 				}
 			}
 		}
 	}
-
 
 	loadHooks(hookFileData: IExternalHooksFileData) {
 		for (const resource of Object.keys(hookFileData)) {
@@ -71,13 +67,17 @@ class ExternalHooksClass implements IExternalHooksClass {
 					this.externalHooks[hookString] = [];
 				}
 
-				this.externalHooks[hookString].push.apply(this.externalHooks[hookString], hookFileData[resource][operation]);
+				// eslint-disable-next-line prefer-spread
+				this.externalHooks[hookString].push.apply(
+					this.externalHooks[hookString],
+					hookFileData[resource][operation],
+				);
 			}
 		}
 	}
 
-
-	async run(hookName: string, hookParameters?: any[]): Promise<void> { // tslint:disable-line:no-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	async run(hookName: string, hookParameters?: any[]): Promise<void> {
 		const externalHookFunctions: IExternalHooksFunctions = {
 			dbCollections: Db.collections,
 		};
@@ -86,22 +86,20 @@ class ExternalHooksClass implements IExternalHooksClass {
 			return;
 		}
 
-		for(const externalHookFunction of this.externalHooks[hookName]) {
+		for (const externalHookFunction of this.externalHooks[hookName]) {
+			// eslint-disable-next-line no-await-in-loop
 			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
 	}
 
-
 	exists(hookName: string): boolean {
 		return !!this.externalHooks[hookName];
 	}
-
 }
-
-
 
 let externalHooksInstance: ExternalHooksClass | undefined;
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export function ExternalHooks(): ExternalHooksClass {
 	if (externalHooksInstance === undefined) {
 		externalHooksInstance = new ExternalHooksClass();

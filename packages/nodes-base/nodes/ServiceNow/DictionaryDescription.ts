@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const dictionaryOperations = [
+export const dictionaryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -22,9 +22,9 @@ export const dictionaryOperations = [
 		],
 		default: 'getAll',
 	},
-] as INodeProperties[];
+];
 
-export const dictionaryFields = [
+export const dictionaryFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                dictionary:getAll                           */
@@ -109,7 +109,7 @@ export const dictionaryFields = [
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">More info</a>',
+				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>',
 			},
 			{
 				displayName: 'Return Values',
@@ -134,4 +134,4 @@ export const dictionaryFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

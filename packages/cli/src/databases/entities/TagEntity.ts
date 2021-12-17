@@ -1,13 +1,38 @@
-import { BeforeUpdate, Column, CreateDateColumn, Entity, Index, ManyToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable import/no-cycle */
+import {
+	BeforeUpdate,
+	Column,
+	CreateDateColumn,
+	Entity,
+	Index,
+	ManyToMany,
+	PrimaryGeneratedColumn,
+	UpdateDateColumn,
+} from 'typeorm';
 import { IsDate, IsOptional, IsString, Length } from 'class-validator';
 
+import config = require('../../../config');
+import { DatabaseType } from '../../index';
 import { ITagDb } from '../../Interfaces';
 import { WorkflowEntity } from './WorkflowEntity';
-import { getTimestampSyntax } from '../utils';
+
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+function getTimestampSyntax() {
+	const dbType = config.get('database.type') as DatabaseType;
+
+	const map: { [key in DatabaseType]: string } = {
+		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
+		postgresdb: 'CURRENT_TIMESTAMP(3)',
+		mysqldb: 'CURRENT_TIMESTAMP(3)',
+		mariadb: 'CURRENT_TIMESTAMP(3)',
+	};
+
+	return map[dbType];
+}
 
 @Entity()
 export class TagEntity implements ITagDb {
-
 	@PrimaryGeneratedColumn()
 	id: number;
 
@@ -22,12 +47,16 @@ export class TagEntity implements ITagDb {
 	@IsDate()
 	createdAt: Date;
 
-	@UpdateDateColumn({ precision: 3, default: () => getTimestampSyntax(), onUpdate: getTimestampSyntax() })
+	@UpdateDateColumn({
+		precision: 3,
+		default: () => getTimestampSyntax(),
+		onUpdate: getTimestampSyntax(),
+	})
 	@IsOptional() // ignored by validation because set at DB level
 	@IsDate()
 	updatedAt: Date;
 
-	@ManyToMany(() => WorkflowEntity, workflow => workflow.tags)
+	@ManyToMany(() => WorkflowEntity, (workflow) => workflow.tags)
 	workflows: WorkflowEntity[];
 
 	@BeforeUpdate()

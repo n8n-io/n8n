@@ -6,7 +6,7 @@ import {
 	invoiceAdditionalFieldsOptions
 } from './InvoiceAdditionalFieldsOptions';
 
-export const invoiceOperations = [
+export const invoiceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -51,9 +51,9 @@ export const invoiceOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const invoiceFields = [
+export const invoiceFields: INodeProperties[] = [
 	// ----------------------------------
 	//         invoice: create
 	// ----------------------------------
@@ -327,7 +327,7 @@ export const invoiceFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting invoices. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
+				description: 'The condition for selecting invoices. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -448,4 +448,4 @@ export const invoiceFields = [
 		// filter out fields that cannot be updated
 		options: invoiceAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'Balance'),
 	},
-] as INodeProperties[];
+];

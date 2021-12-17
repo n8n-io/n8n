@@ -143,6 +143,9 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								typeOptions: {
+									loadOptionsDependsOn: [
+										'contact.propertyChange',
+									],
 									loadOptionsMethod: 'getContactProperties',
 								},
 								displayOptions: {
@@ -160,6 +163,9 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								typeOptions: {
+									loadOptionsDependsOn: [
+										'company.propertyChange',
+									],
 									loadOptionsMethod: 'getCompanyProperties',
 								},
 								displayOptions: {
@@ -177,6 +183,9 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								typeOptions: {
+									loadOptionsDependsOn: [
+										'deal.propertyChange',
+									],
 									loadOptionsMethod: 'getDealProperties',
 								},
 								displayOptions: {
@@ -220,51 +229,48 @@ export class HubspotTrigger implements INodeType {
 			// select them easily
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const field of contactFields) {
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
 					returnData.push({
-						name: capitalCase(field.label),
-						value: field.id,
+						name: propertyName,
+						value: propertyId,
 					});
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
 				return returnData;
 			},
 			// Get all the available companies to display them to user so that he can
 			// select them easily
 			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const field of companyFields) {
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
 					returnData.push({
-						name: capitalCase(field.label),
-						value: field.id,
+						name: propertyName,
+						value: propertyId,
 					});
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
 				return returnData;
 			},
 			// Get all the available deals to display them to user so that he can
 			// select them easily
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const field of dealFields) {
+				const endpoint = '/properties/v2/deals/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
 					returnData.push({
-						name: capitalCase(field.label),
-						value: field.id,
+						name: propertyName,
+						value: propertyId,
 					});
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
 				return returnData;
 			},
 		},
@@ -370,15 +376,11 @@ export class HubspotTrigger implements INodeType {
 			return {};
 		}
 
-		// check signare if client secret is defined
-
-		if (credentials.clientSecret !== '') {
-			const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
-			const signature = createHash('sha256').update(hash).digest('hex');
-			//@ts-ignore
-			if (signature !== headerData['x-hubspot-signature']) {
-				return {};
-			}
+		const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
+		const signature = createHash('sha256').update(hash).digest('hex');
+		//@ts-ignore
+		if (signature !== headerData['x-hubspot-signature']) {
+			return {};
 		}
 
 		for (let i = 0; i < bodyData.length; i++) {
