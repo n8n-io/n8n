@@ -19,6 +19,7 @@ export interface IAdditionalCredentialOptions {
 
 export type IAllExecuteFunctions =
 	| IExecuteFunctions
+	| IExecutePaginationFunctions
 	| IExecuteSingleFunctions
 	| IHookFunctions
 	| ILoadOptionsFunctions
@@ -419,6 +420,32 @@ export interface IN8nHttpFullResponse {
 	statusMessage?: string;
 }
 
+export interface IN8nRequestOperations {
+	pagination?:
+		| IN8nRequestOperationPaginationOffset
+		| ((
+				this: IExecutePaginationFunctions,
+				requestOptions: IRequestOptionsFromParameters,
+		  ) => Promise<IDataObject[]>);
+}
+
+export interface IN8nRequestOperationPaginationBase {
+	type: string;
+	properties: {
+		[key: string]: string | number;
+	};
+}
+
+export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperationPaginationBase {
+	type: 'offset';
+	properties: {
+		limitParameter: string;
+		offsetParameter: string;
+		pageSize: number;
+		rootProperty?: string; // Optional Path to option array
+	};
+}
+
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
 	evaluateExpression(
@@ -507,6 +534,12 @@ export interface IExecuteSingleFunctions {
 	};
 }
 
+export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
+	makeRoutingRequest(
+		this: IAllExecuteFunctions,
+		requestOptions: IRequestOptionsFromParameters,
+	): Promise<IDataObject[]>;
+}
 export interface IExecuteWorkflowInfo {
 	code?: IWorkflowBase;
 	id?: string;
@@ -947,6 +980,8 @@ export interface INodeRequestProperty {
 	property?: string;
 	value?: string;
 	type?: 'body' | 'query';
+	pagination?: boolean | string;
+	maxResults?: number | string;
 	preSend?: (
 		this: IExecuteSingleFunctions,
 		requestOptions: IHttpRequestOptions,
@@ -960,6 +995,8 @@ export interface INodeRequestProperty {
 
 export interface IRequestOptionsFromParameters {
 	options: IHttpRequestOptions;
+	pagination?: boolean | string;
+	maxResults?: number | string;
 	preSend: Array<
 		(
 			this: IExecuteSingleFunctions,
@@ -969,10 +1006,15 @@ export interface IRequestOptionsFromParameters {
 	postReceive: Array<
 		(
 			this: IExecuteSingleFunctions,
-			item: IDataObject,
+			item: IDataObject | IDataObject[],
 		) => Promise<IDataObject | IDataObject[] | null>
 	>;
 }
+
+export type asdf = (
+	this: IExecutePaginationFunctions,
+	requestOptions: IRequestOptionsFromParameters,
+) => Promise<IDataObject[]>;
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number;
@@ -987,6 +1029,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: boolean;
 	requestDefaults?: IHttpRequestOptions;
+	requestOperations?: IN8nRequestOperations;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;
 		activate?: INodeHookDescription[];

@@ -56,6 +56,7 @@ import {
 	IConnection,
 	IDataObject,
 	IExecuteSingleFunctions,
+	IN8nRequestOperations,
 	INodeProperties,
 	INodePropertyCollection,
 	IObservableObject,
@@ -1319,6 +1320,16 @@ export class Workflow {
 						'',
 					);
 					if (tempOptions) {
+						requestData.pagination =
+							tempOptions.pagination !== undefined
+								? tempOptions.pagination
+								: requestData.pagination;
+
+						requestData.maxResults =
+							tempOptions.maxResults !== undefined
+								? tempOptions.maxResults
+								: requestData.maxResults;
+
 						merge(requestData.options, tempOptions.options);
 						requestData.preSend.push(...tempOptions.preSend);
 						requestData.postReceive.push(...tempOptions.postReceive);
@@ -1326,7 +1337,14 @@ export class Workflow {
 				}
 
 				// TODO: Change to handle some requests in parallel (should be configurable)
-				responseData = await this.makeRoutingRequest.call(thisArgs, requestData, credentialType);
+				responseData = await this.makeRoutingRequest(
+					requestData,
+					thisArgs,
+					credentialType,
+					nodeType.description.requestOperations,
+				);
+
+				returnData.push(...responseData);
 			} catch (error) {
 				if (get(node, 'continueOnFail', false)) {
 					returnData.push({ json: {}, error: error.message });
@@ -1334,48 +1352,141 @@ export class Workflow {
 				}
 				throw error;
 			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push(
-					...(responseData as IDataObject[]).map((item) => {
-						return { json: item };
-					}),
-				);
-			} else {
-				returnData.push({ json: responseData as IDataObject });
-			}
 		}
 
 		return [returnData];
 	}
 
-	async makeRoutingRequest(
+	// TODO: Fix name
+	async __makeRoutingRequest(
 		this: IExecuteSingleFunctions,
 		requestData: IRequestOptionsFromParameters,
 		credentialType?: string,
 		credentialsDecrypted?: ICredentialsDecrypted,
-	) {
-		let responseData;
-		for (const preSendMethod of requestData.preSend) {
-			requestData.options = await preSendMethod.call(this, requestData.options);
-		}
+	): Promise<IDataObject[]> {
+		let responseData: IDataObject | IDataObject[] | null;
 
 		if (credentialType) {
-			responseData = await this.helpers.requestWithAuthentication.call(
+			responseData = (await this.helpers.requestWithAuthentication.call(
 				this,
 				credentialType,
 				requestData.options,
 				{ credentialsDecrypted },
-			);
+			)) as IDataObject;
 		} else {
-			responseData = await this.helpers.httpRequest(requestData.options);
+			responseData = (await this.helpers.httpRequest(requestData.options)) as IDataObject;
 		}
 
 		for (const postReceiveMethod of requestData.postReceive) {
-			responseData = await postReceiveMethod.call(this, responseData as IDataObject);
+			if (responseData !== null) {
+				responseData = await postReceiveMethod.call(this, responseData);
+			}
 		}
 
-		return responseData;
+		if (responseData === null) {
+			return [];
+		}
+		if (Array.isArray(responseData)) {
+			return responseData;
+		}
+
+		return [responseData];
+	}
+
+	async makeRoutingRequest(
+		requestData: IRequestOptionsFromParameters,
+		executeSingleFunctions: IExecuteSingleFunctions,
+		credentialType?: string,
+		requestOperations?: IN8nRequestOperations,
+		credentialsDecrypted?: ICredentialsDecrypted,
+	): Promise<INodeExecutionData[]> {
+		let responseData: IDataObject[];
+		for (const preSendMethod of requestData.preSend) {
+			requestData.options = await preSendMethod.call(executeSingleFunctions, requestData.options);
+		}
+
+		const executePaginationFunctions = {
+			...executeSingleFunctions,
+			makeRoutingRequest: async (requestOptions: IRequestOptionsFromParameters) => {
+				return this.__makeRoutingRequest.call(
+					executeSingleFunctions,
+					requestOptions,
+					credentialType,
+					credentialsDecrypted,
+				);
+			},
+		};
+
+		if (requestData.pagination && requestOperations?.pagination) {
+			// No pagination
+
+			if (typeof requestOperations.pagination === 'function') {
+				// Pagination via function
+				responseData = await requestOperations.pagination.call(
+					executePaginationFunctions,
+					requestData,
+				);
+			} else {
+				// Pagination via JSON properties
+				const { properties } = requestOperations.pagination;
+				responseData = [];
+				if (!requestData.options.qs) {
+					requestData.options.qs = {};
+				}
+
+				// Different predefined pagination types
+				if (requestOperations.pagination.type === 'offset') {
+					requestData.options.qs[properties.limitParameter] = properties.pageSize;
+					requestData.options.qs[properties.offsetParameter] = 0;
+					let tempResponseData: IDataObject[];
+					do {
+						if (requestData?.maxResults) {
+							// Only request as many results as needed
+							const resultsMissing = (requestData?.maxResults as number) - responseData.length;
+							if (resultsMissing < 1) {
+								break;
+							}
+							requestData.options.qs[properties.limitParameter] = Math.min(
+								properties.pageSize,
+								resultsMissing,
+							);
+						}
+
+						tempResponseData = await this.__makeRoutingRequest.call(
+							executeSingleFunctions,
+							requestData,
+							credentialType,
+							credentialsDecrypted,
+						);
+						requestData.options.qs[properties.offsetParameter] =
+							(requestData.options.qs[properties.offsetParameter] as number) + properties.pageSize;
+
+						if (properties.rootProperty) {
+							tempResponseData = get(
+								tempResponseData[0],
+								properties.rootProperty,
+								[],
+							) as IDataObject[];
+						}
+
+						responseData.push(...tempResponseData);
+					} while (tempResponseData.length && tempResponseData.length === properties.pageSize);
+				}
+			}
+		} else {
+			// No pagination
+			responseData = await this.__makeRoutingRequest.call(
+				executeSingleFunctions,
+				requestData,
+				credentialType,
+				credentialsDecrypted,
+			);
+		}
+
+		// Return as INodeExecutionData[]
+		return responseData.map((item) => {
+			return { json: item };
+		});
 	}
 
 	getRequestOptionsFromParameters(
@@ -1462,6 +1573,50 @@ export class Workflow {
 				}
 			}
 
+			if (nodeProperties.requestProperty.pagination !== undefined) {
+				let paginationValue = nodeProperties.requestProperty.pagination;
+				if (typeof paginationValue === 'string' && paginationValue.charAt(0) === '=') {
+					// If the propertyName is an expression resolve it
+					const value = this.getNodeParameter(basePath + nodeProperties.name, itemIndex) as string;
+
+					paginationValue = workflow.expression.getParameterValue(
+						paginationValue,
+						runExecutionData || null,
+						runIndex || 0,
+						itemIndex || 0,
+						node.name,
+						connectionInputData,
+						mode,
+						{ ...additionalKeys, $value: value },
+						true,
+					) as string;
+				}
+
+				returnData.pagination = !!paginationValue;
+			}
+
+			if (nodeProperties.requestProperty.maxResults !== undefined) {
+				let maxResultsValue = nodeProperties.requestProperty.maxResults;
+				if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
+					// If the propertyName is an expression resolve it
+					const value = this.getNodeParameter(basePath + nodeProperties.name, itemIndex) as number;
+
+					maxResultsValue = workflow.expression.getParameterValue(
+						maxResultsValue,
+						runExecutionData || null,
+						runIndex || 0,
+						itemIndex || 0,
+						node.name,
+						connectionInputData,
+						mode,
+						{ ...additionalKeys, $value: value },
+						true,
+					) as number;
+				}
+
+				returnData.maxResults = maxResultsValue;
+			}
+
 			if (nodeProperties.requestProperty.preSend) {
 				returnData.preSend.push(nodeProperties.requestProperty.preSend);
 			}
@@ -1504,6 +1659,8 @@ export class Workflow {
 						`${basePath}${nodeProperties.name}`,
 					);
 					if (tempOptions) {
+						returnData.pagination = returnData.pagination || tempOptions.pagination;
+						returnData.maxResults = returnData.maxResults || tempOptions.maxResults;
 						merge(returnData.options, tempOptions.options);
 						returnData.preSend.push(...tempOptions.preSend);
 						returnData.postReceive.push(...tempOptions.postReceive);
@@ -1546,6 +1703,8 @@ export class Workflow {
 							{ $index: i, $self: value[i] },
 						);
 						if (tempOptions) {
+							returnData.pagination = returnData.pagination || tempOptions.pagination;
+							returnData.maxResults = returnData.maxResults || tempOptions.maxResults;
 							merge(returnData.options, tempOptions.options);
 							returnData.preSend.push(...tempOptions.preSend);
 							returnData.postReceive.push(...tempOptions.postReceive);

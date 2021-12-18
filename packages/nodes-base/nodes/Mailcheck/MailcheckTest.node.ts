@@ -1,10 +1,14 @@
 import {
 	IDataObject,
+	IExecutePaginationFunctions,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptionsFromParameters,
 } from 'n8n-workflow';
+
+import { get } from 'lodash';
 
 export class MailcheckTest implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,6 +49,53 @@ export class MailcheckTest implements INodeType {
 		requestDefaults: {
 			baseURL: 'http://localhost:5678',
 			url: '',
+		},
+		// TODO: Think about proper name
+		requestOperations: {
+			// Different types: https://nordicapis.com/everything-you-need-to-know-about-api-pagination/
+			async pagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<IDataObject[]> {
+				if (!requestData.options.qs) {
+					requestData.options.qs = {};
+				}
+				const pageSize = 10;
+				requestData.options.qs.limit = pageSize;
+				requestData.options.qs.offset = 0;
+				let tempResponseData: IDataObject[];
+				let responseData: IDataObject[] = [];
+
+				do {
+					if (requestData?.maxResults) {
+						// Only request as many results as needed
+						const resultsMissing = (requestData?.maxResults as number) - responseData.length;
+						if (resultsMissing < 1) {
+							break;
+						}
+						requestData.options.qs.limit = Math.min(pageSize, resultsMissing);
+					}
+
+					tempResponseData = await this.makeRoutingRequest(requestData);
+					requestData.options.qs.offset = requestData.options.qs.offset + pageSize;
+
+					tempResponseData = get(
+						tempResponseData[0],
+						'data',
+						[],
+					) as IDataObject[];
+
+					responseData.push(...tempResponseData);
+				} while (tempResponseData.length && tempResponseData.length === pageSize);
+
+				return responseData;
+			},
+			// pagination: {
+			// 	type: 'offset',
+			// 	properties: {
+			// 		limitParameter: 'limit',
+			// 		offsetParameter: 'offset',
+			// 		pageSize: 10,
+			// 		rootProperty: 'data',
+			// 	},
+			// }
 		},
 		properties: [
 			{
@@ -115,6 +166,81 @@ export class MailcheckTest implements INodeType {
 				},
 				default: '',
 				description: 'Email address to check.',
+			},
+			{
+				displayName: 'Pagination',
+				name: 'pagination',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+						operation: [
+							'check',
+						],
+					},
+				},
+				requestProperty: {
+					pagination: '={{$value}}', // Activate pagination depending on value of current parameter
+				},
+				default: false,
+				description: 'To test pagination.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+						operation: [
+							'check',
+						],
+						pagination: [
+							true
+						],
+					},
+				},
+				default: false,
+				request: {
+					method: 'GET',
+					// url: 'webhook/pagination-offset',
+					url: 'webhook/pagination-offset-sub',
+				},
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+						operation: [
+							'check',
+						],
+						pagination: [
+							true
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 10,
+				requestProperty: {
+					maxResults: '={{$value}}', // Set maxResults to the value of current parameter
+				},
+				description: 'How many results to return.',
 			},
 			{
 				displayName: 'Email',
