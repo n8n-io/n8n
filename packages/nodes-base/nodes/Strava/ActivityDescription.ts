@@ -47,6 +47,11 @@ export const activityOperations: INodeProperties[] = [
 				description: 'Get all activity laps',
 			},
 			{
+				name: 'Get Streams',
+				value: 'getStreams',
+				description: 'Get activity streams',
+			},
+			{
 				name: 'Get Zones',
 				value: 'getZones',
 				description: 'Get all activity zones',
@@ -316,6 +321,7 @@ export const activityFields: INodeProperties[] = [
 					'getLaps',
 					'getKudos',
 					'getZones',
+					'getStreams',
 				],
 			},
 		},
@@ -368,6 +374,24 @@ export const activityFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Keys',
+		name: 'keys',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'activity',
+				],
+				operation: [
+					'getStreams',
+				],
+			},
+		},
+		default: 'time,distance',
+		description: 'Desired stream types (comma separated). Possible stream sets: time, distance, latlng, altitude, velocity_smooth, heartrate, cadence, watts, temp, moving, grade_smooth.',
 	},
 
 	/* -------------------------------------------------------------------------- */
