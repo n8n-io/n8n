@@ -587,6 +587,33 @@ export class TextManipulation implements INodeType {
 												default: 'nothing',
 											},
 											{
+												displayName: 'Decode Mode',
+												name: 'entitiesDecodeMode',
+												displayOptions: {
+													show: {
+														action: [
+															'decodeEncodeEntities',
+														],
+														decodeWithEntities: [
+															'xml',
+															'html',
+														]
+													},
+												},
+												type: 'options',
+												options: [
+													{
+														name: 'Legacy',
+														value: 'legacy',
+													},
+													{
+														name: 'Strict',
+														value: 'strict',
+													}
+												],
+												default: 'legacy',
+											},
+											{
 												displayName: 'Strip BOM',
 												name: 'stripBOM',
 												displayOptions: {
@@ -644,6 +671,37 @@ export class TextManipulation implements INodeType {
 													},
 												],
 												default: 'nothing',
+											},
+											{
+												displayName: 'Encode Mode',
+												name: 'entitiesEncodeMode',
+												displayOptions: {
+													show: {
+														action: [
+															'decodeEncodeEntities',
+														],
+														encodeWithEntities: [
+															'xml',
+															'html',
+														]
+													},
+												},
+												type: 'options',
+												options: [
+													{
+														name: 'Extensive',
+														value: 'extensive',
+													},
+													{
+														name: 'UTF8',
+														value: 'utf8',
+													},
+													{
+														name: 'NonAscii',
+														value: 'nonAscii',
+													}
+												],
+												default: 'extensive',
 											},
 											{
 												displayName: 'Add BOM',
@@ -1107,10 +1165,28 @@ export class TextManipulation implements INodeType {
 											text = decodeURI(text);
 											break;
 										case 'xml':
-											text = entities.encodeXML(text);
+											switch(manipulation.entitiesDecodeMode) {
+												case 'legacy':
+													text = entities.decodeXML(text);
+													break;
+												case 'strict':
+													text = entities.decodeXMLStrict(text);
+													break;
+												default:
+													throw new Error('legacy or strict are valid options');
+											}
 											break;
 										case 'html':
-											text = entities.encodeHTML(text);
+											switch(manipulation.entitiesDecodeMode) {
+												case 'legacy':
+													text = entities.decodeHTML(text);
+													break;
+												case 'strict':
+													text = entities.decodeHTMLStrict(text);
+													break;
+												default:
+													throw new Error('legacy or strict are valid options');
+											}
 											break;
 										case 'nothing':
 											break;
@@ -1123,10 +1199,34 @@ export class TextManipulation implements INodeType {
 											text = encodeURI(text);
 											break;
 										case 'xml':
-											text = entities.encodeXML(text);
+											switch(manipulation.entitiesEncodeMode) {
+												case 'extensive':
+													text = entities.encodeXML(text);
+													break;
+												case 'utf8':
+													text = entities.escapeUTF8(text);
+													break;
+												case 'nonAscii':
+													text = entities.encodeXML(text);
+													break;
+												default:
+													throw new Error('extensive, utf8 or nonAscii are valid options');
+											}
 											break;
 										case 'html':
-											text = entities.encodeHTML(text);
+											switch(manipulation.entitiesEncodeMode) {
+												case 'extensive':
+													text = entities.encodeHTML(text);
+													break;
+												case 'utf8':
+													text = entities.escapeUTF8(text);
+													break;
+												case 'nonAscii':
+													text = entities.encodeNonAsciiHTML(text);
+													break;
+												default:
+													throw new Error('extensive, utf8 or nonAscii are valid options');
+											}
 											break;
 										case 'nothing':
 											break;
