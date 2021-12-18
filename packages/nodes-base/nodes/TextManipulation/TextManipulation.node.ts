@@ -495,6 +495,25 @@ export class TextManipulation implements INodeType {
 												default: 'lowerCase',
 											},
 											{
+												displayName: 'Language',
+												name: 'language',
+												displayOptions: {
+													show: {
+														action: [
+															'letterCase',
+														],
+														caseType: [
+															'localeLowerCase',
+															'localeUpperCase',
+														],
+													},
+												},
+												type: 'string',
+												default: 'en',
+												required: true,
+												description: 'Change the language of the localbase method.',
+											},
+											{
 												displayName: 'Before',
 												name: 'before',
 												displayOptions: {
@@ -639,25 +658,6 @@ export class TextManipulation implements INodeType {
 												},
 												type: 'boolean',
 												default: false,
-											},
-											{
-												displayName: 'Language',
-												name: 'language',
-												displayOptions: {
-													show: {
-														action: [
-															'lowerCase',
-															'upperCase',
-														],
-														useLocale: [
-															true,
-														],
-													},
-												},
-												type: 'string',
-												default: 'en',
-												required: true,
-												description: 'Change the language of the localbase method.',
 											},
 											{
 												displayName: 'Replace Mode',
