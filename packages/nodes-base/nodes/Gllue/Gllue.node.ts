@@ -27,7 +27,13 @@ export class Gllue implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [],
+		credentials: [
+			{
+				name: 'gllueApi',
+				required: true,
+			},
+
+		],
 		properties: [
 			{
 				displayName: 'Resource',
