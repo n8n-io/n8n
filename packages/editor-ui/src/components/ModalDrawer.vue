@@ -3,7 +3,7 @@
 		:direction="direction"
 		:visible="visible"
 		:size="width"
-		:before-close="beforeClose"
+		:before-close="close"
 		:modal="modal"
 		:wrapperClosable="wrapperClosable"
 		>
@@ -81,6 +81,10 @@ export default Vue.extend({
 			}
 		},
 		close() {
+			if (this.beforeClose) {
+				this.beforeClose();
+				return;
+			}
 			this.$store.commit('ui/closeTopModal');
 		},
 	},
