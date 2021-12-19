@@ -99,7 +99,7 @@ class NodeTypesClass implements INodeTypes {
 	async init(nodeTypes: INodeTypeData): Promise<void> {}
 
 	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedTypeNode(data.type));
+		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
 	}
 
 	getByName(nodeType: string): INodeType {
@@ -107,7 +107,7 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
+		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
 	}
 }
 
