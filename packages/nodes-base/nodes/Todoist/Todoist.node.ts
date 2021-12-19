@@ -12,8 +12,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	todoistApiRequest,
 	FormatDueDatetime,
+	todoistApiRequest,
 } from './GenericFunctions';
 
 interface IBodyCreateTask {
@@ -365,7 +365,7 @@ export class Todoist implements INodeType {
 						],
 						operation: [
 							'getAll',
-						], 
+						],
 					},
 				},
 				options: [
