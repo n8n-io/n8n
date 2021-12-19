@@ -24,8 +24,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable import/no-dynamic-require */
+/* eslint-disable no-await-in-loop */
+
 import * as express from 'express';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
 import * as bodyParser from 'body-parser';
@@ -144,6 +148,7 @@ import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
+import { getNodeTranslationPath } from './TranslationHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -280,6 +285,7 @@ class App {
 			personalizationSurvey: {
 				shouldShow: false,
 			},
+			defaultLocale: config.get('defaultLocale'),
 		};
 	}
 
@@ -1151,13 +1157,13 @@ class App {
 
 					if (onlyLatest) {
 						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedTypeNode(nodeData);
+							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
 							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
 							returnData.push(nodeInfo);
 						});
 					} else {
 						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedTypeNodeAll(nodeData);
+							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
 							allNodeTypes.forEach((element) => {
 								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
 								returnData.push(nodeInfo);
@@ -1176,17 +1182,60 @@ class App {
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
 					const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
-					const nodeTypes = NodeTypes();
 
-					const returnData: INodeTypeDescription[] = [];
-					nodeInfos.forEach((nodeInfo) => {
-						const nodeType = nodeTypes.getByNameAndVersion(nodeInfo.name, nodeInfo.version);
-						if (nodeType?.description) {
-							returnData.push(nodeType.description);
+					const { defaultLocale } = this.frontendSettings;
+
+					if (defaultLocale === 'en') {
+						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
+							const { description } = NodeTypes().getByNameAndVersion(name, version);
+							acc.push(description);
+							return acc;
+						}, []);
+					}
+
+					async function populateTranslation(
+						name: string,
+						version: number,
+						nodeTypes: INodeTypeDescription[],
+					) {
+						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
+						const translationPath = await getNodeTranslationPath(sourcePath, defaultLocale);
+
+						try {
+							const translation = await readFile(translationPath, 'utf8');
+							description.translation = JSON.parse(translation);
+						} catch (error) {
+							// ignore - no translation at expected translation path
 						}
-					});
 
-					return returnData;
+						nodeTypes.push(description);
+					}
+
+					const nodeTypes: INodeTypeDescription[] = [];
+
+					const promises = nodeInfos.map(async ({ name, version }) =>
+						populateTranslation(name, version, nodeTypes),
+					);
+
+					await Promise.all(promises);
+
+					return nodeTypes;
+				},
+			),
+		);
+
+		// Returns node information based on node names and versions
+		this.app.get(
+			`/${this.restEndpoint}/node-translation-headers`,
+			ResponseHelper.send(
+				async (req: express.Request, res: express.Response): Promise<object | void> => {
+					const packagesPath = pathJoin(__dirname, '..', '..', '..');
+					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
+					try {
+						return require(headersPath);
+					} catch (error) {
+						res.status(500).send('Failed to find headers file');
+					}
 				},
 			),
 		);
@@ -1584,6 +1633,7 @@ class App {
 							// No idea if multiple where parameters make db search
 							// slower but to be sure that that is not the case we
 							// remove all unnecessary fields in case the id is defined.
+							// @ts-ignore
 							findQuery.where = { id: findQuery.where.id };
 						}
 					}
@@ -2858,6 +2908,12 @@ export async function start(): Promise<void> {
 		const versions = await GenericHelpers.getVersions();
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
+
+		const defaultLocale = config.get('defaultLocale');
+
+		if (defaultLocale !== 'en') {
+			console.log(`Locale: ${defaultLocale}`);
+		}
 
 		await app.externalHooks.run('n8n.ready', [app]);
 		const cpus = os.cpus();

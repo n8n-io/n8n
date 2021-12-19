@@ -403,6 +403,7 @@ export interface IN8nUISettings {
 	instanceId: string;
 	telemetry: ITelemetrySettings;
 	personalizationSurvey: IPersonalizationSurvey;
+	defaultLocale: string;
 }
 
 export interface IPersonalizationSurveyAnswers {
