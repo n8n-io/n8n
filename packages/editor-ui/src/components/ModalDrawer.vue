@@ -11,7 +11,9 @@
 			<slot name="header" />
 		</template>
 		<template>
-			<slot name="content"/>
+			<span @keydown.stop>
+				<slot name="content"/>
+			</span>
 		</template>
 	</el-drawer>
 </template>
