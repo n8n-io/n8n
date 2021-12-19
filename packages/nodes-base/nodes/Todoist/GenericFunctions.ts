@@ -12,6 +12,12 @@ import {
 	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
+export function FormatDueDatetime(ISOString: string): string {
+	// Assuming that the problem with incorrect date format was caused by milliseconds
+	// Replacing the last 5 characters of ISO-formatted string with just Z char
+	return ISOString.replace(new RegExp('.000Z$'), 'Z');
+}
+
 export async function todoistApiRequest(
 	this:
 		| IHookFunctions

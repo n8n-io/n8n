@@ -574,7 +574,8 @@ export default mixins(
 
 				if (e.key === 'd') {
 					this.callDebounced('deactivateSelectedNode', 350);
-				} else if (e.key === 'Delete') {
+
+				} else if (e.key === 'Delete' || e.key === 'Backspace') {
 					e.stopPropagation();
 					e.preventDefault();
 
