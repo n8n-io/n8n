@@ -202,7 +202,8 @@ export class Ypk implements INodeType {
 				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 				const firstName = this.getNodeParameter('first_name', i, '') as string;
 				const lastName = this.getNodeParameter('last_name', i, '') as string;
-				const { id, ...fields } = additionalFields;
+        const id = this.getNodeParameter('id', i, '') as string;
+				const { ...fields } = additionalFields;
 				const { street,additional, zip_code, city, country } = fields;
 				body = { learner: { first_name: firstName,last_name: lastName, address_attributes: { street,additional, zip_code, city, country }, profile_attributes: {}, ...fields } };
 
@@ -242,9 +243,10 @@ export class Ypk implements INodeType {
 				endpoint = 'companies';
 				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 				const name = this.getNodeParameter('name', i, '') as string;
-				const { id, ...fields } = additionalFields;
+				const id = this.getNodeParameter('id', i, '') as string;
+				const { ...fields } = additionalFields;
         const { street, zip_code, city, country } = fields;
-				body = { company: { name, address_attributes: { street, zip_code, city, country }} ...fields };
+				body = { company: { name, address_attributes: { street, zip_code, city, country, }, ...fields }};
 
 				if (operation === 'create') {
 					// get email input
@@ -323,7 +325,8 @@ export class Ypk implements INodeType {
 				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 				const firstName = this.getNodeParameter('first_name', i, '') as string;
 				const lastName = this.getNodeParameter('last_name', i, '') as string;
-				const { id, ...fields } = additionalFields;
+        const id = this.getNodeParameter('id', i, '') as string;
+				const { ...fields } = additionalFields;
 				const { street,additional, zip_code, city, country } = fields;
 				body = { speaker: { first_name: firstName,last_name: lastName, address_attributes: { street,additional, zip_code, city, country }, profile_attributes: {}, ...fields } };
 
@@ -360,7 +363,8 @@ export class Ypk implements INodeType {
 			if (resource === 'training') {
 				endpoint = 'trainings';
 				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-				const { id, ...fields } = additionalFields;
+				const { ...fields } = additionalFields;
+        const id = this.getNodeParameter('id', i, '') as string;
 				body = { training: { ...fields } };
 
 				if (operation === 'create') {
@@ -435,7 +439,8 @@ export class Ypk implements INodeType {
 				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 				const trainingSessionId = this.getNodeParameter('training_session_id', i, '') as string;
 				const speakerId = this.getNodeParameter('speaker_id', i, '') as string;
-				const { id, ...fields } = additionalFields;
+        const id = this.getNodeParameter('id', i, '') as string;
+				const { ...fields } = additionalFields;
 				body = { speakers_training_session: { training_session_id: trainingSessionId, speaker_id: speakerId, ...fields } };
 
 				if (operation === 'create') {
@@ -470,7 +475,8 @@ export class Ypk implements INodeType {
 			if (resource === 'speakersTrainingModule') {
 				endpoint = 'speakers_training_modules';
 				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-				const { id, ...fields } = additionalFields;
+				const id = this.getNodeParameter('id', i, '') as string;
+        const { ...fields } = additionalFields;
 				body = { speakers_training_session: { ...fields } };
 
 				if (operation === 'create') {
