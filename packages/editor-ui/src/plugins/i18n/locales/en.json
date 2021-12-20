@@ -191,6 +191,7 @@
 		"mode": "Mode",
 		"modes": {
 			"error": "error",
+			"integrated": "integrated",
 			"manual": "manual",
 			"retry": "retry",
 			"trigger": "trigger",
