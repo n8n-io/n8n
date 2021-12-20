@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const cardOperations = [
+export const cardOperations: INodeProperties[] = [
 	// ----------------------------------
 	//         card
 	// ----------------------------------
@@ -42,9 +42,9 @@ export const cardOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const cardFields = [
+export const cardFields: INodeProperties[] = [
 	// ----------------------------------
 	//         card:create
 	// ----------------------------------
@@ -243,7 +243,7 @@ export const cardFields = [
 				name: 'fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list:<br />badges, checkItemStates, closed, dateLastActivity, desc,<br />descData, due, email, idBoard, idChecklists, idLabels, idList,<br />idMembers, idShort, idAttachmentCover, manualCoverAttachment<br />, labels, name, pos, shortUrl, url',
+				description: 'Fields to return. Either "all" or a comma-separated list: badges, checkItemStates, closed, dateLastActivity, desc, descData, due, email, idBoard, idChecklists, idLabels, idList, idMembers, idShort, idAttachmentCover, manualCoverAttachment, labels, name, pos, shortUrl, url',
 			},
 			{
 				displayName: 'Board',
@@ -257,7 +257,7 @@ export const cardFields = [
 				name: 'board_fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list:<br />name, desc, descData, closed, idOrganization, pinned, url, prefs',
+				description: 'Fields to return. Either "all" or a comma-separated list: name, desc, descData, closed, idOrganization, pinned, url, prefs',
 			},
 			{
 				displayName: 'Custom Field Items',
@@ -278,7 +278,7 @@ export const cardFields = [
 				name: 'member_fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list:<br />avatarHash, fullName, initials, username',
+				description: 'Fields to return. Either "all" or a comma-separated list: avatarHash, fullName, initials, username',
 			},
 			{
 				displayName: 'Plugin Data',
@@ -428,4 +428,4 @@ export const cardFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

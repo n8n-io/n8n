@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const userOpeations = [
+export const userOpeations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const userOpeations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:delete                                */
@@ -456,7 +456,7 @@ export const userFields = [
 				type: 'boolean',
 				default: false,
 				options: [],
-				description: 'A boolean value, which if true, instructs Intercom to update the users<br />last_request_at value to the current API service time in UTC.',
+				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC.',
 			},
 			{
 				displayName: 'UTM Campaign',
@@ -566,4 +566,4 @@ export const userFields = [
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
-] as INodeProperties[];
+];

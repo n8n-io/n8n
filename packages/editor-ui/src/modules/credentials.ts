@@ -98,7 +98,7 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		getCredentialsByType: (state: ICredentialsState, getters: any) => { // tslint:disable-line:no-any
 			return (credentialType: string): ICredentialsResponse[] => {
-				return getters.allCredentialsByType[credentialType];
+				return getters.allCredentialsByType[credentialType] || [];
 			};
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any

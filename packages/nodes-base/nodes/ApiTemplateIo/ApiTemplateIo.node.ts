@@ -180,7 +180,7 @@ export class ApiTemplateIo implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to<br />write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -452,7 +452,10 @@ export class ApiTemplateIo implements INodeType {
 					try {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						let options: IDataObject = {};
+						if (download) {
+							options = this.getNodeParameter('options', i) as IDataObject;
+						}
 
 						const qs = {
 							template_id: this.getNodeParameter('imageTemplateId', i),
@@ -529,7 +532,10 @@ export class ApiTemplateIo implements INodeType {
 					try {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						let options: IDataObject = {};
+						if (download) {
+							options = this.getNodeParameter('options', i) as IDataObject;
+						}
 
 						const qs = {
 							template_id: this.getNodeParameter('pdfTemplateId', i),

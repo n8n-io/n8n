@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const mailOperations = [
+export const mailOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const mailOperations = [
 		default: 'send',
 		description: 'Operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const mailFields = [
+export const mailFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 mail:send                                 */
 	/* -------------------------------------------------------------------------- */
@@ -272,7 +272,7 @@ export const mailFields = [
 				name: 'bccEmail',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of emails of the recipients<br>of a blind carbon copy of the email.',
+				description: 'Comma-separated list of emails of the recipients of a blind carbon copy of the email.',
 			},
 			{
 				displayName: 'Categories',
@@ -286,7 +286,7 @@ export const mailFields = [
 				name: 'ccEmail',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of emails of the recipients<br>of a carbon copy of the email.',
+				description: 'Comma-separated list of emails of the recipients of a carbon copy of the email.',
 			},
 			{
 				displayName: 'Enable Sandbox',
@@ -343,7 +343,7 @@ export const mailFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
 
 export type SendMailBody = {
 	personalizations: Array<{
