@@ -422,10 +422,10 @@
 			"searchNodes": "Search nodes..."
 		},
 		"subcategoryDescriptions": {
-			"branches": "Branches, core triggers, merge data",
-			"http": "HTTP Requests (API calls), date and time, scrape HTML",
-			"manipulate": "Manipulate data fields, run code",
-			"work": "Work with CSV, XML, text, images etc."
+			"dataTransformation": "Manipulate data fields, run code",
+			"files": "Work with CSV, XML, text, images etc.",
+			"flow": "Branches, core triggers, merge data",
+			"helpers": "HTTP Requests (API calls), date and time, scrape HTML"
 		},
 		"subcategoryNames": {
 			"dataTransformation": "Data Transformation",

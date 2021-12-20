@@ -25,8 +25,8 @@ export default Vue.extend({
 			return camelcase(this.item.properties.subcategory);
 		},
 		subcategoryDescription() {
-			const firstWord = this.item.properties.description.split(' ').shift() || '';
-			return firstWord.toLowerCase().replace(/,/g, '');
+			const subcategory = this.item.key.split('_').pop();
+			return camelcase(subcategory);
 		},
 	},
 });
