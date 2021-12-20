@@ -6,7 +6,7 @@ import cookieParser = require('cookie-parser');
 import * as passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
-import { JwtPayload, N8nApp } from '../Interfaces';
+import { N8nApp, PublicUserData } from '../Interfaces';
 import { addAuthenticationMethods } from './auth';
 import config = require('../../../config');
 import { Db, GenericHelpers, ResponseHelper } from '../..';
@@ -26,7 +26,7 @@ export async function addRoutes(this: N8nApp): Promise<void> {
 	};
 
 	passport.use(
-		new Strategy(options, async function (jwtPayload: JwtPayload, done) {
+		new Strategy(options, async function (jwtPayload: PublicUserData, done) {
 			// We will assign the `sub` property on the JWT to the database ID of user
 			const user = await Db.collections.User!.findOne(
 				{

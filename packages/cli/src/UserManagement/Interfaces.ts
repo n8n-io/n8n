@@ -8,15 +8,6 @@ export interface JwtToken {
 	validTill: number;
 }
 
-export interface JwtPayload {
-	id: string;
-	email: string;
-	firstName?: string;
-	lastName?: string;
-	password?: string;
-	personalizationAnswers?: IDataObject;
-}
-
 export interface JwtOptions {
 	secretOrKey: string;
 	jwtFromRequest: JwtFromRequestFunction;
@@ -24,11 +15,11 @@ export interface JwtOptions {
 
 export interface PublicUserData {
 	id: string;
-	email: string;
-	firstName: string;
-	lastName: string;
-	personalizationAnswers: IDataObject;
-	password: string;
+	email?: string;
+	firstName?: string;
+	lastName?: string;
+	personalizationAnswers?: IDataObject | null;
+	password?: string;
 }
 
 export interface N8nApp {

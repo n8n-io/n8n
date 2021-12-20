@@ -1,5 +1,6 @@
 /* eslint-disable import/no-cycle */
 import { IDataObject } from 'n8n-workflow';
+import { IsNull, Not } from 'typeorm';
 import { Db } from '..';
 import config = require('../../config');
 import { Role } from '../databases/entities/Role';
@@ -22,6 +23,11 @@ export async function saveWorkflowOwnership(
 }
 
 export function isEmailSetup(): boolean {
-	const emailMode = config.get('userManagement.emails.mode');
+	const emailMode = config.get('userManagement.emails.mode') as string;
 	return !!emailMode;
+}
+
+export async function isInstanceOwnerSetup(): Promise<boolean> {
+	const users = await Db.collections.User!.find({ email: Not(IsNull()) });
+	return users.length !== 0;
 }
