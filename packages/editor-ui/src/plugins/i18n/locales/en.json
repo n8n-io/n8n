@@ -193,7 +193,8 @@
 			"error": "error",
 			"manual": "manual",
 			"retry": "retry",
-			"trigger": "trigger"
+			"trigger": "trigger",
+			"webhook": "webhook"
 		},
 		"name": "@:reusableBaseText.name",
 		"openPastExecution": "Open Past Execution",
