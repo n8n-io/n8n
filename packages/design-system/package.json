@@ -31,7 +31,7 @@
     "@fortawesome/vue-fontawesome": "2.x",
     "core-js": "3.x",
     "element-ui": "2.13.x",
-    "vue2-boring-avatars": "^0.3.4"
+    "vue2-boring-avatars": "^0.3.6"
   },
   "devDependencies": {
     "@babel/core": "^7.14.6",
