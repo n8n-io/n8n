@@ -349,11 +349,18 @@ export const speakerFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Search',
-				name: 'search',
+				displayName: 'Search by firstname',
+				name: 'search_by_firstname',
 				type: 'string',
 				default: '',
-				description: 'Search by name',
+				description: 'Search by firstname',
+			},
+			{
+				displayName: 'Search by lastname',
+				name: 'search_by_lastname',
+				type: 'string',
+				default: '',
+				description: 'Search by lastname',
 			},
 		],
 	},
