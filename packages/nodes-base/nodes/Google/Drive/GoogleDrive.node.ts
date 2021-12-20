@@ -401,10 +401,6 @@ export class GoogleDrive implements INodeType {
 												name: 'To CSV',
 												value: 'text/csv',
 											},
-											{
-												name: 'To Plain Text',
-												value: 'text/plain',
-											},
 										],
 										default: 'application/x-vnd.oasis.opendocument.spreadsheet',
 										description: 'Format used to export when downloading Google Spreadsheets files',
@@ -2274,6 +2270,7 @@ export class GoogleDrive implements INodeType {
 							} else {
 								mime = this.getNodeParameter(`${parameterKey}.drawingsToFormat`, i, 'image/jpeg') as string;
 							}
+							console.log(mime);
 							response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}/export`, {}, { mimeType: mime }, undefined, requestOptions);
 						} else {
 							response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { alt: 'media' }, undefined, requestOptions);
