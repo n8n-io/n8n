@@ -77,6 +77,9 @@
 
 						<n8n-tooltip placement="top" >
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
+							<span class="status-badge running" v-if="scope.row.waitTill">
+								{{ $locale.baseText('executionsList.waiting') }}
+							</span>
 							<span class="status-badge running" v-if="scope.row.stoppedAt === undefined">
 								{{ $locale.baseText('executionsList.running') }}
 							</span>
