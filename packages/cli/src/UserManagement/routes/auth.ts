@@ -39,7 +39,7 @@ export function addAuthenticationMethods(this: N8nApp): void {
 			}
 
 			const userData = await issueJWT(user);
-			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, secure: true });
+			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
 			const { id, email, firstName, lastName, personalizationAnswers, password } = user;
 
 			return {
