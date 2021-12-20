@@ -8,6 +8,15 @@ export interface JwtToken {
 	validTill: number;
 }
 
+export interface JwtPayload {
+	id: string;
+	email: string;
+	firstName?: string;
+	lastName?: string;
+	password?: string;
+	personalizationAnswers?: IDataObject;
+}
+
 export interface JwtOptions {
 	secretOrKey: string;
 	jwtFromRequest: JwtFromRequestFunction;

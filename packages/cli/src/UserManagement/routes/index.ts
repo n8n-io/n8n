@@ -1,9 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable import/no-cycle */
 import cookieParser = require('cookie-parser');
-import { N8nApp } from '../Interfaces';
-import { addAuthenticationMethods } from './auth';
 import * as passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
+import { JwtPayload, N8nApp } from '../Interfaces';
+import { addAuthenticationMethods } from './auth';
 import config = require('../../../config');
 import { Db, GenericHelpers, ResponseHelper } from '../..';
 import { User } from '../../databases/entities/User';
@@ -15,18 +19,19 @@ export async function addRoutes(this: N8nApp): Promise<void> {
 
 	const options = {
 		jwtFromRequest: (req: Request) => {
-			return req.cookies?.['n8n-auth'] || null;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			return (req.cookies?.['n8n-auth'] as string | undefined) ?? null;
 		},
 		secretOrKey: config.get('userManagement.jwtSecret') as string,
 	};
 
 	passport.use(
-		new Strategy(options, async function (jwt_payload, done) {
+		new Strategy(options, async function (jwtPayload: JwtPayload, done) {
 			// We will assign the `sub` property on the JWT to the database ID of user
 			const user = await Db.collections.User!.findOne(
 				{
-					id: jwt_payload.id,
-					email: jwt_payload.email,
+					id: jwtPayload.id,
+					email: jwtPayload.email,
 				},
 				{ relations: ['globalRole'] },
 			);
@@ -53,13 +58,10 @@ export async function addRoutes(this: N8nApp): Promise<void> {
 
 	addAuthenticationMethods.apply(this);
 
-
-
 	// ----------------------------------------
 	// Temporary code below - must be refactored
 	// and moved from here.
 	// ----------------------------------------
-
 
 	// ----------------------------------------
 	// Create instance owner
@@ -80,17 +82,14 @@ export async function addRoutes(this: N8nApp): Promise<void> {
 		}),
 	);
 
-	this.app.get(
-		`/${this.restEndpoint}/user/:id`,
-		async (req: Request, res: Response) => {
-			const user = await Db.collections.User!.findOne({ id: req.params.id });
-			if (user) {
-				ResponseHelper.sendSuccessResponse(res, user);
-			}
-			// adjust helper that you can pass statuscode, in this case 404!
-			ResponseHelper.sendErrorResponse(res, new Error('User not found!'));
-		},
-	);
+	this.app.get(`/${this.restEndpoint}/user/:id`, async (req: Request, res: Response) => {
+		const user = await Db.collections.User!.findOne({ id: req.params.id });
+		if (user) {
+			ResponseHelper.sendSuccessResponse(res, user);
+		}
+		// adjust helper that you can pass statuscode, in this case 404!
+		ResponseHelper.sendErrorResponse(res, new Error('User not found!'));
+	});
 
 	this.app.post(
 		`/${this.restEndpoint}/invite`,
@@ -162,6 +161,4 @@ export async function addRoutes(this: N8nApp): Promise<void> {
 			}
 		}),
 	);
-
-
 }
