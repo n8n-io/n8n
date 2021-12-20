@@ -77,6 +77,7 @@ As a convenience, the base text file may contain the special key `reusableBaseTe
 	},
 ```
 
+<!--
 As a convenience, the base text file may also contain the special key `numberFormats` to localize numbers. For more information, refer to Vue i18n's [number localization](https://kazupon.github.io/vue-i18n/guide/number.html#number-localization).
 
 ```json
@@ -87,7 +88,7 @@ As a convenience, the base text file may also contain the special key `numberFor
 		},
 	},
 }
-```
+``` -->
 
 #### Interpolation
 
