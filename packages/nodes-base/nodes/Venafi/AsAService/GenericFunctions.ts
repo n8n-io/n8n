@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -20,19 +20,27 @@ import {
 export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('venafiAsAServiceApi') as IDataObject;
+	
+	const operation = this.getNodeParameter('operation', 0) as string;
 
 	const options: OptionsWithUri = {
 		headers: {
-			'Content-Type': 'application/json',
+			Accept: 'application/json',
+			'content-type': 'application/json',
 			'tppl-api-key': credentials.apiKey,
 		},
 		method,
 		body,
 		qs,
-		//rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		uri: `https://api.venafi.cloud${resource}`,
 		json: true,
 	};
+
+	if (operation === 'download') {
+		delete options!.headers!['Accept'];
+		delete options!.headers!['content-type'];
+		options.json = false;
+	}
 
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -45,17 +53,7 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-
-			let errors = error.response.body.error.errors;
-
-			errors = errors.map((e: IDataObject) => e.message);
-			// Try to return the error prettier
-			throw new Error(
-				`Venafi error response [${error.statusCode}]: ${errors.join('|')}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

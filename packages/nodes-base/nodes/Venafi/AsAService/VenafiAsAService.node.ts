@@ -21,10 +21,10 @@ import {
 	certificateOperations,
 } from './CertificateDescription';
 
-// import {
-// 	policyFields,
-// 	policyOperations,
-// } from './PolicyDescription';
+import {
+	certificateRequestFields,
+	certificateRequestOperations,
+} from './CertificateRequestDescription';
 
 export class VenafiAsAService implements INodeType {
 	description: INodeTypeDescription = {
@@ -58,20 +58,19 @@ export class VenafiAsAService implements INodeType {
 						value: 'certificate',
 					},
 					{
-						name: 'Policy',
-						value: 'policy',
+						name: 'Certificate Request',
+						value: 'certificateRequest',
 					},
 				],
-				default: 'certificate',
+				default: 'certificateRequest',
 				description: 'The resource to operate on.',
 			},
 			...certificateOperations,
 			...certificateFields,
-			// ...policyOperations,
-			// ...policyFields,
+			...certificateRequestOperations,
+			...certificateRequestFields,
 		],
 	};
-
 
 	methods = {
 		loadOptions: {
@@ -100,7 +99,6 @@ export class VenafiAsAService implements INodeType {
 		},
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
@@ -113,25 +111,21 @@ export class VenafiAsAService implements INodeType {
 
 			try {
 
-				if (resource === 'certificate') {
-					//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-POST-Certificates-request.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7CPOST%20Certificates%2FRequest%7C_____0
+				if (resource === 'certificateRequest') {
+					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=%2Fv3%2Fapi-docs%2Fswagger-config&urls.primaryName=outagedetection-service#/%2Fv1/certificaterequests_create
 					if (operation === 'create') {
 						const applicationId = this.getNodeParameter('applicationId', i) as string;
-
 						const certificateIssuingTemplateId = this.getNodeParameter('certificateIssuingTemplateId', i) as string;
-
 						const certificateSigningRequest = this.getNodeParameter('certificateSigningRequest', i) as string;
-
-						//const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const body: IDataObject = {
 							certificateSigningRequest,
 							certificateIssuingTemplateId,
 							applicationId,
-							validityPeriod: 'P7D',
 						};
 
-						//Object.assign(body, additionalFields);
+						Object.assign(body, options);
 
 						responseData = await venafiApiRequest.call(
 							this,
@@ -140,49 +134,85 @@ export class VenafiAsAService implements INodeType {
 							body,
 							qs,
 						);
+
+						responseData = responseData.certificateRequests;
 					}
 
-					//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-DELETE-Certificates-Guid.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____9
-					if (operation === 'delete') {
-						const certificateId = this.getNodeParameter('certificateId', i) as string;
+					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=%2Fv3%2Fapi-docs%2Fswagger-config&urls.primaryName=outagedetection-service#/%2Fv1/certificaterequests_getById
+					if (operation === 'get') {
+						const certificateId = this.getNodeParameter('certificateRequestId', i) as string;
 
 						responseData = await venafiApiRequest.call(
 							this,
-							'DELETE',
-							`/vedsdk/Certificates/${certificateId}`,
+							'GET',
+							`/outagedetection/v1/certificaterequests/${certificateId}`,
 							{},
 							qs,
 						);
 					}
 
-					if (operation === 'download') {
-						const certificateDn = this.getNodeParameter('certificateDn', i) as string;
-						const includePrivateKey = this.getNodeParameter('includePrivateKey', i) as boolean;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=%2Fv3%2Fapi-docs%2Fswagger-config&urls.primaryName=outagedetection-service#/%2Fv1/certificaterequests_getAll
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						const body: IDataObject = {
-							CertificateDN: certificateDn,
-							Format: 'Base64',
-							IncludeChain: true,
-						};
+						if (returnAll) {
 
-						if (includePrivateKey) {
-							const password = this.getNodeParameter('password', i) as string;
-							body.IncludePrivateKey = true,
-								body.Password = password;
+							responseData = await venafiApiRequestAllItems.call(
+								this,
+								'certificateRequests',
+								'GET',
+								`/outagedetection/v1/certificaterequests`,
+								{},
+								qs,
+							);
+
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = await venafiApiRequest.call(
+								this,
+								'GET',
+								`/outagedetection/v1/certificaterequests`,
+								{},
+								qs,
+							);
+
+							responseData = responseData.certificateRequests.splice(0, limit);
 						}
+					}
+				}
 
-						Object.assign(body, additionalFields);
+				if (resource === 'certificate') {
+					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=%2Fv3%2Fapi-docs%2Fswagger-config&urls.primaryName=outagedetection-service#/%2Fv1/certificateretirement_deleteCertificates
+					if (operation === 'delete') {
+						const certificateId = this.getNodeParameter('certificateId', i) as string;
 
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/vedsdk/Certificates/Retrieve`,
-							body,
+							`/outagedetection/v1/certificates/deletion`,
+							{ certificateIds: [certificateId] },
 						);
 
-						const binaryData = await this.helpers.prepareBinaryData(Buffer.from(responseData.CertificateData, 'base64'), responseData.Filename);
+						responseData = responseData.certificates;
+					}
+
+					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=%2Fv3%2Fapi-docs%2Fswagger-config&urls.primaryName=outagedetection-service#/
+					if (operation === 'download') {
+						const certificateId = this.getNodeParameter('certificateId', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						Object.assign(qs, options);
+
+						responseData = await venafiApiRequest.call(
+							this,
+							'GET',
+							`/outagedetection/v1/certificates/${certificateId}/contents`,
+							{},
+							qs,
+						);
+
+						const binaryData = await this.helpers.prepareBinaryData(Buffer.from(responseData));
 
 						responseData = {
 							json: {},
@@ -192,96 +222,84 @@ export class VenafiAsAService implements INodeType {
 						};
 					}
 
-					//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-GET-Certificates-guid.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____10
+					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=%2Fv3%2Fapi-docs%2Fswagger-config&urls.primaryName=outagedetection-service#/%2Fv1/certificates_getById
 					if (operation === 'get') {
 						const certificateId = this.getNodeParameter('certificateId', i) as string;
 
 						responseData = await venafiApiRequest.call(
 							this,
 							'GET',
-							`/vedsdk/Certificates/${certificateId}`,
+							`/outagedetection/v1/certificates/${certificateId}`,
 							{},
 							qs,
 						);
 					}
 
-					//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-GET-Certificates.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____4
+					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=%2Fv3%2Fapi-docs%2Fswagger-config&urls.primaryName=outagedetection-service#/%2Fv1/certificates_getAllAsCsv
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
-
-						if (options.fields) {
-							qs.OptionalFields = (options.fields as string[]).join(',');
-						}
+						Object.assign(qs, filters);
 
 						if (returnAll) {
 
 							responseData = await venafiApiRequestAllItems.call(
 								this,
-								'Certificates',
+								'certificates',
 								'GET',
-								`/vedsdk/Certificates`,
+								`/outagedetection/v1/certificates`,
 								{},
 								qs,
 							);
 
 						} else {
-							qs.Limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
-								`/vedsdk/Certificates`,
+								`/outagedetection/v1/certificates`,
 								{},
 								qs,
 							);
 
-							responseData = responseData.Certificates;
+							responseData = responseData.certificates;
 						}
 					}
 
-					//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-POST-Certificates-renew.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____16
+					//https://docs.venafi.cloud/api/t-cloud-api-renew-cert/
 					if (operation === 'renew') {
-						const certificateDN = this.getNodeParameter('certificateDN', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						/*
+						 TODO
+						 Only ask for Certificate ID and Certificate Signing Request.
+						 Request other information by doing a get HTTP request
+						 */
+
+						const applicationId = this.getNodeParameter('applicationId', i) as string;
+						const certificateIssuingTemplateId = this.getNodeParameter('certificateIssuingTemplateId', i) as string;
+						const certificateSigningRequest = this.getNodeParameter('certificateSigningRequest', i) as string;
+						const existingCertificateId = this.getNodeParameter('existingCertificateId', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const body: IDataObject = {
-							CertificateDN: certificateDN,
+							certificateSigningRequest,
+							certificateIssuingTemplateId,
+							applicationId,
+							existingCertificateId,
 						};
 
-						Object.assign(body, additionalFields);
+						Object.assign(body, options);
 
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/vedsdk/Certificates/Renew`,
-							{},
-							qs,
-						);
-					}
-				}
-
-				if (resource === 'policy') {
-					//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-POST-Certificates-CheckPolicy.htm
-					if (operation === 'get') {
-						const policy = this.getNodeParameter('policyDn', i) as string;
-
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						const body: IDataObject = {
-							PolicyDN: policy,
-						};
-
-						Object.assign(body, additionalFields);
-
-						responseData = await venafiApiRequest.call(
-							this,
-							'POST',
-							`/vedsdk/Certificates/CheckPolicy`,
+							`/outagedetection/v1/certificaterequests`,
 							body,
 							qs,
 						);
+
+						responseData = responseData.certificateRequests;
 					}
 				}
 
