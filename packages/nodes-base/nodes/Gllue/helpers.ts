@@ -10,23 +10,19 @@ export function connectWithComma(left: string, right: string): string {
 }
 
 export function get16TimesLength(input: number): number {
-	const scaleNumber = 16;
-	const Remainder = input % scaleNumber;
-	if (Remainder === 0) {
-		return input;
-	} else {
-		return input - Remainder + scaleNumber;
-	}
+	const padLength = 16;
+	const remainder = input % padLength;
+	return remainder ? input - remainder + padLength : input;
 }
 
 export function padWithSpaceIn16Times(data: string): string {
 	const paddingLength = get16TimesLength(data.length);
-	return data.padEnd(paddingLength, ' ')
+	return data.padEnd(paddingLength, ' ');
 }
 
 export function encryptAES(message: string, aesKey: string): string {
 	const iv = '0000000000000000';
-	let cipher = crypto.createCipheriv('aes-128-cbc', aesKey, iv);
+	const cipher = crypto.createCipheriv('aes-128-cbc', aesKey, iv);
 	cipher.write(message);
 	cipher.end();
 
@@ -34,9 +30,9 @@ export function encryptAES(message: string, aesKey: string): string {
 	return encrypted.toString('base64');
 }
 
-export function generateTokenWithAESKey(timestamp: string, email: string, aes_key: string): string {
+export function generateTokenWithAESKey(timestamp: string, email: string, aesKey: string): string {
 	const data = connectWithComma(timestamp, email);
 	const messageToEncrypt = padWithSpaceIn16Times(data);
-	const encrypted = encryptAES(messageToEncrypt, aes_key);
+	const encrypted = encryptAES(messageToEncrypt, aesKey);
 	return encodeURIComponent(encrypted);
 }

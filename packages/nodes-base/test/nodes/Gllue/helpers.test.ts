@@ -9,10 +9,10 @@ beforeAll(() => {
 
 const TIMESTAMP = '1613622240000';
 const EMAIL = 'flash@cgptalent.com';
-const TIMESTAMP_EMAIL_CONNECTED = `${TIMESTAMP},${EMAIL},`
+const TIMESTAMP_EMAIL_CONNECTED = `${TIMESTAMP},${EMAIL},`;
 const SCALE_SIZE = 16;
 const AES_KEY = 'eqs214hvIHEY7Reg';
-const TOKEN = 'ARP%2B5XryVt0Wo47jlMFwZPUq253azoOR3WODCThFJBU63cRdcOL6WR5wQUCWu1Qr';
+const TOKEN = 'U5yBIIC7ieV934VhmvAeevpNSejoGUbbMHEJXXPSElN91gVC1aiONXWNC%2Frnc1Xn8H0NFdFar%2BNOB%2FkMkv1ZLw%3D%3D';
 
 describe('Private Token Generator', () => {
 	it('should get current date string', () => {
@@ -21,7 +21,7 @@ describe('Private Token Generator', () => {
 	});
 	it('should connect the data with comma', () => {
 		const realData = helpers.connectWithComma(TIMESTAMP, EMAIL);
-		expect(realData).toStrictEqual(`${TIMESTAMP},${EMAIL},`)
+		expect(realData).toStrictEqual(`${TIMESTAMP},${EMAIL},`);
 	});
 	it('should pad string with 16 length with 15', () => {
 		const realData = helpers.get16TimesLength(15);
@@ -48,8 +48,7 @@ describe('Private Token Generator', () => {
 		expect(realData).toEqual('1613622240000,flash@cgptalent.com,              ');
 	});
 	it('should generate token with AES KEY', () => {
-		const realData = helpers.generateTokenWithAESKey(
-			'1477971027294', 'system@gllue.com', AES_KEY);
+		const realData = helpers.generateTokenWithAESKey(TIMESTAMP, EMAIL, AES_KEY);
 		expect(realData).toEqual(TOKEN);
 	});
 });
