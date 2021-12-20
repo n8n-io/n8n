@@ -26,6 +26,5 @@
   },
   "postcss": {},
   "dependencies": {
-    "vue2-boring-avatars": "^0.3.6"
   }
 }
