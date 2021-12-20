@@ -179,7 +179,7 @@ export class Jira implements INodeType {
 				} catch (err) {
 					return {
 						status: 'Error',
-						message: `Connection details not valid; ${err.message}`,
+						message: `Connection details not valid: ${err.message}`,
 					};
 				}
 				return {
@@ -427,6 +427,30 @@ export class Jira implements INodeType {
 				}
 				return returnData;
 			},
+
+			// Get all the components to display them to user so that he can
+			// select them easily
+			async getProjectComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const project = this.getCurrentNodeParameter('project');
+				const { values: components } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/project/${project}/component`, 'GET');
+
+				for (const component of components) {
+					returnData.push({
+						name: component.name,
+						value: component.id,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
 		},
 	};
 
@@ -482,15 +506,24 @@ export class Jira implements INodeType {
 						}
 					}
 					if (additionalFields.reporter) {
-						fields.reporter = {
-							id: additionalFields.reporter as string,
-						};
+						if (jiraVersion === 'server') {
+							fields.reporter = {
+								name: additionalFields.reporter as string,
+							};
+						} else {
+							fields.reporter = {
+								id: additionalFields.reporter as string,
+							};
+						}
 					}
 					if (additionalFields.description) {
 						fields.description = additionalFields.description as string;
 					}
 					if (additionalFields.updateHistory) {
 						qs.updateHistory = additionalFields.updateHistory as boolean;
+					}
+					if (additionalFields.componentIds) {
+						fields.components = (additionalFields.componentIds as string[]).map(id => ({ id }));
 					}
 					if (additionalFields.customFieldsUi) {
 						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
@@ -559,9 +592,15 @@ export class Jira implements INodeType {
 						}
 					}
 					if (updateFields.reporter) {
-						fields.reporter = {
-							id: updateFields.reporter as string,
-						};
+						if (jiraVersion === 'server') {
+							fields.reporter = {
+								name: updateFields.reporter as string,
+							};
+						} else {
+							fields.reporter = {
+								id: updateFields.reporter as string,
+							};
+						}
 					}
 					if (updateFields.description) {
 						fields.description = updateFields.description as string;

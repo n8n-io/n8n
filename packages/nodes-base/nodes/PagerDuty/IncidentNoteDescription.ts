@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const incidentNoteOperations = [
+export const incidentNoteOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const incidentNoteOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const incidentNoteFields = [
+export const incidentNoteFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                incidentNote:create                         */
@@ -155,4 +155,4 @@ export const incidentNoteFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

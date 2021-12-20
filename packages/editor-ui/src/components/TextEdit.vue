@@ -1,14 +1,13 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Edit ${parameter.displayName}`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$locale.baseText('textEdit.edit')} ${$locale.nodeText().topParameterDisplayName(parameter)}`" :before-close="closeDialog">
 
-			<div class="text-editor-wrapper ignore-key-press">
-				<div class="editor-description">
-					{{parameter.displayName}}:
-				</div>
-				<div class="text-editor" @keydown.stop @keydown.esc="closeDialog()">
-					<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="parameter.placeholder" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
-				</div>
+			<div class="ignore-key-press">
+				<n8n-input-label :label="$locale.nodeText().topParameterDisplayName(parameter)">
+					<div @keydown.stop @keydown.esc="closeDialog()">
+						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="$locale.nodeText().placeholder(parameter)" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
+					</div>
+				</n8n-input-label>
 			</div>
 
 		</el-dialog>
@@ -19,7 +18,6 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-
 	name: 'TextEdit',
 	props: [
 		'dialogVisible',
@@ -60,10 +58,3 @@ export default Vue.extend({
 	},
 });
 </script>
-
-<style scoped>
-.editor-description {
-	font-weight: bold;
-	padding: 0 0 0.5em 0.2em;;
-}
-</style>
