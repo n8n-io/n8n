@@ -485,8 +485,14 @@ async function proxyRequestToAxios(
 	}
 
 	let axiosConfig: AxiosRequestConfig = {};
-
-	let configObject: any;
+	type ConfigObject = {
+		method?: string;
+		uri?: string;
+		auth?: { username: string; password: string; sendImmediately: boolean };
+		resolveWithFullResponse?: boolean;
+		simple?: boolean;
+	};
+	let configObject: ConfigObject;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
 		axiosConfig.url = uriOrObject;
 	}
@@ -504,15 +510,14 @@ async function proxyRequestToAxios(
 	});
 
 	if (configObject.auth?.sendImmediately === false) {
-		const userpass = `${configObject.auth.username as string}:${
-			configObject.auth.password as string
-		}`;
-		axiosConfig.auth = digest(
-			configObject.method,
-			configObject.uri,
-			configObject.headers['WWW-Authenticate'],
-			userpass,
-		);
+		const header = await axios(axiosConfig).catch((error) => {
+			if (error.response.status === 401) {
+				return error.response.headers['www-authenticate'];
+			}
+			throw error;
+		});
+		const userpass = `${configObject.auth.username}:${configObject.auth.password}`;
+		axiosConfig.auth = digest(configObject.method, configObject.uri, header, userpass);
 	}
 
 	return new Promise((resolve, reject) => {
