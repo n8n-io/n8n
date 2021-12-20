@@ -191,9 +191,11 @@
 		"mode": "Mode",
 		"modes": {
 			"error": "error",
+			"integrated": "integrated",
 			"manual": "manual",
 			"retry": "retry",
-			"trigger": "trigger"
+			"trigger": "trigger",
+			"webhook": "webhook"
 		},
 		"name": "@:reusableBaseText.name",
 		"openPastExecution": "Open Past Execution",
