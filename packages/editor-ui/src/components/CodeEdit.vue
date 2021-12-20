@@ -14,8 +14,6 @@
 </template>
 
 <script lang="ts">
-// @ts-ignore
-// import PrismEditor from 'vue-prism-editor';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -57,6 +55,16 @@ export default mixins(genericHelpers).extend({
 				readOnly: this.isReadOnly,
 			});
 
+			monaco.editor.defineTheme('myTheme', {
+				base: 'vs',
+				inherit: true,
+				rules: [{ background: 'f5f2f0' }],
+				colors: {
+					'editor.background': '#f5f2f0',
+				},
+			});
+			monaco.editor.setTheme('myTheme');
+
 			this.monacoInstance.onDidChangeModelContent(() => {
 				const model = this.monacoInstance!.getModel();
 
@@ -84,11 +92,17 @@ export default mixins(genericHelpers).extend({
 				}
 			}
 
+			const autoCompleteItems = [
+				`/**\n\`\`\`\nconst items = ${JSON.stringify(autocompleteData, null, 2)}\n\`\`\`\n*/`,
+				`const items = ${JSON.stringify(autocompleteData)}`,
+			];
+
+			if (autocompleteData.length) {
+				autoCompleteItems.push(`const $json = ${JSON.stringify(autocompleteData[0].json)}`);
+			}
+
 			this.monacoLibrary = monaco.languages.typescript.javascriptDefaults.addExtraLib(
-				[
-					`/**\n\`\`\`\nconst items = ${JSON.stringify(autocompleteData, null, 2)}\n\`\`\`\n*/`,
-					`const items = ${JSON.stringify(autocompleteData)}`,
-				].join('\n'),
+				autoCompleteItems.join('\n'),
 			);
 		},
 	},
