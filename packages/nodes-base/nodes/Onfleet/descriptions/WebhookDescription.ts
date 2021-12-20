@@ -10,16 +10,14 @@ export const webhookOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'webhooks',
-				],
+				resource: [ 'webhooks' ],
 			},
 		},
 		options: [
 			{
 				name: 'Add',
 				value: 'create',
-				description: 'Add new Onfleet webhook.',
+				description: 'Add a new Onfleet webhook.',
 			},
 			{
 				name: 'Remove',
@@ -78,28 +76,20 @@ export const webhookFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'webhooks',
-				],
-				operation: [
-					'delete',
-				],
+				resource: [ 'webhooks' ],
+				operation: [ 'delete' ],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the object for lookup.',
+		description: 'The ID of the webhook object for lookup.',
 	},
 	{
 		...urlField,
 		displayOptions: {
 			show: {
-				resource: [
-					'webhooks',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'webhooks' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -108,12 +98,8 @@ export const webhookFields = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [
-					'webhooks',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'webhooks' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -122,12 +108,8 @@ export const webhookFields = [
 		...triggerField,
 		displayOptions: {
 			show: {
-				resource: [
-					'webhooks',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'webhooks' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -140,12 +122,8 @@ export const webhookFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'webhooks',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'webhooks' ],
+				operation: [ 'create' ],
 			},
 		},
 		options: [ thresholdField ],

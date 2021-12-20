@@ -9,21 +9,19 @@ export const taskOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
+				resource: [ 'tasks' ],
 			},
 		},
 		options: [
 			{
-				name: 'Add',
+				name: 'Create',
 				value: 'create',
-				description: 'Add new Onfleet task.',
+				description: 'Create a new Onfleet task.',
 			},
 			{
-				name: 'Add multiple tasks',
+				name: 'Create multiple tasks',
 				value: 'createBatch',
-				description: 'Add new Onfleet tasks.',
+				description: 'Creating multiple tasks in batch.',
 			},
 			{
 				name: 'Clone',
@@ -42,7 +40,7 @@ export const taskOperations = [
 			},
 			{
 				name: 'List',
-				value: 'list',
+				value: 'getAll',
 				description: 'List Onfleet tasks.',
 			},
 			{
@@ -61,6 +59,70 @@ export const taskOperations = [
 	},
 ] as INodeProperties[];
 
+const merchantIdField = {
+	displayName: 'Merchant ID',
+	name: 'merchant',
+	type: 'string',
+	default: '',
+	description: 'The ID of the organization that will be displayed to the recipient of the task.',
+} as INodeProperties;
+
+const executorIdField = {
+	displayName: 'Executor ID',
+	name: 'executor',
+	type: 'string',
+	default: '',
+	description: 'The ID of the organization that will be responsible for fulfilling the task.',
+} as INodeProperties;
+
+const completeAfterField = {
+	displayName: 'CompleteAfter',
+	name: 'completeAfter',
+	type: 'dateTime',
+	default: null,
+	description: 'The earliest time the task should be completed.',
+} as INodeProperties;
+
+const completeBeforeField = {
+	displayName: 'CompleteBefore',
+	name: 'completeBefore',
+	type: 'dateTime',
+	default: null,
+	description: 'The latest time the task should be completed.',
+} as INodeProperties;
+
+const pickupTaskField = {
+	displayName: 'PickupTask',
+	name: 'pickupTask',
+	type: 'boolean',
+	default: false,
+	description: 'Whether the task is a pickup task.',
+} as INodeProperties;
+
+const notesField = {
+	displayName: 'Notes',
+	name: 'notes',
+	type: 'string',
+	default: '',
+	description: 'Notes for the task.',
+} as INodeProperties;
+
+const quantityField = {
+	displayName: 'Quantity',
+	name: 'quantity',
+	type: 'number',
+	default: 0,
+	description: 'The number of units to be dropped off while completing this task, for route optimization purposes.',
+} as INodeProperties;
+
+const serviceTimeField = {
+	displayName: 'Service Time',
+	name: 'serviceTime',
+	type: 'number',
+	default: 0,
+	description: 'The number of minutes to be spent by the worker on arrival at this task\'s destination, for route optimization purposes.',
+} as INodeProperties;
+
 export const taskFields = [
 	{
 		displayName: 'ID',
@@ -68,19 +130,19 @@ export const taskFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
+				resource: [ 'tasks' ],
 			},
 			hide: {
 				operation: [
-					'create', 'createBatch', 'list',
+					'create',
+					'createBatch',
+					'getAll',
 				],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the object for lookup.',
+		description: 'The ID of the task object for lookup.',
 	},
 	{
 		displayName: 'Short ID',
@@ -88,16 +150,12 @@ export const taskFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
-				operation: [
-					'get',
-				],
+				resource: [ 'tasks' ],
+				operation: [ 'get' ],
 			},
 		},
 		required: true,
-		description: 'Whether the short ID is used for lookup.',
+		description: 'Whether the task short ID is used for lookup.',
 	},
 	{
 		displayName: 'From',
@@ -105,12 +163,8 @@ export const taskFields = [
 		type: 'dateTime',
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
-				operation: [
-					'list',
-				],
+				resource: [ 'tasks' ],
+				operation: [ 'getAll' ],
 			},
 		},
 		description: 'The starting time of the range. Tasks created or completed at or after this time will be included.',
@@ -123,12 +177,8 @@ export const taskFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
-				operation: [
-					'complete',
-				],
+				resource: [ 'tasks' ],
+				operation: [ 'complete' ],
 			},
 		},
 		description: 'Whether the task\'s completion was successful.',
@@ -143,12 +193,8 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
-				operation: [
-					'list',
-				],
+				resource: [ 'tasks' ],
+				operation: [ 'getAll' ],
 			},
 		},
 		options: [
@@ -164,10 +210,22 @@ export const taskFields = [
 				name: 'state',
 				type: 'multiOptions',
 				options: [
-					{ value: 0, name: 'Unassigned' },
-					{ value: 1, name: 'Assigned' },
-					{ value: 2, name: 'Active' },
-					{ value: 3, name: 'Completed' },
+					{
+						name: 'Unassigned',
+						value: 0,
+					},
+					{
+						name: 'Assigned',
+						value: 1,
+					},
+					{
+						name: 'Active',
+						value: 2,
+					},
+					{
+						name: 'Completed',
+						value: 3,
+					},
 				],
 				default: null,
 				description: 'The state of the tasks.',
@@ -189,12 +247,8 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
-				operation: [
-					'clone',
-				],
+				resource: [ 'tasks' ],
+				operation: [ 'clone' ],
 			},
 		},
 		options: [
@@ -232,71 +286,19 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
-				operation: [
-					'update',
-				],
+				resource: [ 'tasks' ],
+				operation: [ 'update' ],
 			},
 		},
 		options: [
-			{
-				displayName: 'Merchant ID',
-				name: 'merchant',
-				type: 'string',
-				default: '',
-				description: 'The ID of the organization that will be displayed to the recipient of the task.',
-			},
-			{
-				displayName: 'Executor ID',
-				name: 'executor',
-				type: 'string',
-				default: '',
-				description: 'The ID of the organization that will be responsible for fulfilling the task.',
-			},
-			{
-				displayName: 'CompleteAfter',
-				name: 'completeAfter',
-				type: 'dateTime',
-				default: null,
-				description: 'The earliest time the task should be completed.',
-			},
-			{
-				displayName: 'CompleteBefore',
-				name: 'completeBefore',
-				type: 'dateTime',
-				default: null,
-				description: 'The latest time the task should be completed.',
-			},
-			{
-				displayName: 'PickupTask',
-				name: 'pickupTask',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the task is a pickup task.',
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
-				type: 'string',
-				default: '',
-				description: 'Notes for the task.',
-			},
-			{
-				displayName: 'Quantity',
-				name: 'quantity',
-				type: 'number',
-				default: 0,
-				description: 'The number of units to be dropped off while completing this task, for route optimization purposes.',
-			},
-			{
-				displayName: 'Service Time',
-				name: 'serviceTime',
-				type: 'number',
-				default: 0,
-				description: 'The number of minutes to be spent by the worker on arrival at this task\s destination, for route optimization purposes.',
-			},
+			merchantIdField,
+			executorIdField,
+			completeAfterField,
+			completeBeforeField,
+			pickupTaskField,
+			notesField,
+			quantityField,
+			serviceTimeField,
 		],
 	},
 	{
@@ -307,12 +309,8 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
-				operation: [
-					'complete',
-				],
+				resource: [ 'tasks' ],
+				operation: [ 'complete' ],
 			},
 		},
 		options: [
@@ -321,7 +319,7 @@ export const taskFields = [
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes for the task.',
+				description: 'Completion Notes.',
 			},
 		],
 	},
@@ -333,71 +331,22 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
+				resource: [ 'tasks' ],
 				operation: [
-					'create', 'createBatch',
+					'create',
+					'createBatch',
 				],
 			},
 		},
 		options: [
-			{
-				displayName: 'Merchant ID',
-				name: 'merchant',
-				type: 'string',
-				default: '',
-				description: 'The ID of the organization that will be displayed to the recipient of the task.',
-			},
-			{
-				displayName: 'Executor ID',
-				name: 'executor',
-				type: 'string',
-				default: '',
-				description: 'The ID of the organization that will be responsible for fulfilling the task.',
-			},
-			{
-				displayName: 'CompleteAfter',
-				name: 'completeAfter',
-				type: 'dateTime',
-				default: null,
-				description: 'The earliest time the task should be completed.',
-			},
-			{
-				displayName: 'CompleteBefore',
-				name: 'completeBefore',
-				type: 'dateTime',
-				default: null,
-				description: 'The latest time the task should be completed.',
-			},
-			{
-				displayName: 'PickupTask',
-				name: 'pickupTask',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the task is a pickup task.',
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
-				type: 'string',
-				default: '',
-				description: 'Notes for the task.',
-			},
-			{
-				displayName: 'Quantity',
-				name: 'quantity',
-				type: 'number',
-				default: 0,
-				description: 'The number of units to be dropped off while completing this task, for route optimization purposes.',
-			},
-			{
-				displayName: 'Service Time',
-				name: 'serviceTime',
-				type: 'number',
-				default: 0,
-				description: 'The number of minutes to be spent by the worker on arrival at this task\'s destination, for route optimization purposes.',
-			},
+			merchantIdField,
+			executorIdField,
+			completeAfterField,
+			completeBeforeField,
+			pickupTaskField,
+			notesField,
+			quantityField,
+			serviceTimeField,
 			{
 				displayName: 'Recipient Name Override',
 				name: 'recipientNameOverride',

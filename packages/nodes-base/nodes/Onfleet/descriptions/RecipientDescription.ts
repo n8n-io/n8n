@@ -9,16 +9,14 @@ export const recipientOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipients',
-				],
+				resource: [ 'recipients' ],
 			},
 		},
 		options: [
 			{
 				name: 'Add',
 				value: 'create',
-				description: 'Add new Onfleet recipient.',
+				description: 'Add a new Onfleet recipient.',
 			},
 			{
 				name: 'Get',
@@ -48,14 +46,14 @@ const additionalRecipientFields = [
 		name: 'recipientSkipSMSNotifications',
 		type: 'boolean',
 		default: false,
-		description: 'Whether this recipient has requested to not receive SMS notifications.',
+		description: 'Whether this recipient has requested to skip SMS notifications.',
 	},
 	{
 		displayName: 'Skip recipient phone number validation',
 		name: 'recipientSkipPhoneNumberValidation',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to skip validation of this recipient\'s phone number.',
+		description: 'Whether to skip validation for this recipient\'s phone number.',
 	},
 ];
 
@@ -88,14 +86,14 @@ const additionalRecipientFieldsUpdate = [
 		name: 'skipSMSNotifications',
 		type: 'boolean',
 		default: false,
-		description: 'Whether this recipient has requested to not receive SMS notifications.',
+		description: 'Whether this recipient has requested to skip SMS notifications.',
 	},
 	{
 		displayName: 'Skip recipient phone number validation',
 		name: 'skipPhoneNumberValidation',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to skip validation of this recipient\'s phone number.',
+		description: 'Whether to skip validation for this recipient\'s phone number.',
 	},
 ];
 
@@ -106,20 +104,25 @@ export const recipientFields = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipients',
-				],
-				operation: [
-					'get',
-				],
+				resource: [ 'recipients' ],
+				operation: [ 'get' ],
 			},
 		},
 		options: [
-			{ name: 'ID', value: 'id' },
-			{ name: 'Phone', value: 'phone' },
-			{ name: 'Name', value: 'name' },
+			{
+				name: 'ID',
+				value: 'id',
+			},
+			{
+				name: 'Phone',
+				value: 'phone',
+			},
+			{
+				name: 'Name',
+				value: 'name',
+			},
 		],
-		description: 'Field which is used for looking up.',
+		description: 'The variable that is used for looking up a recipient.',
 		required: true,
 		default: 'id',
 	},
@@ -129,16 +132,14 @@ export const recipientFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipients',
-				],
+				resource: [ 'recipients' ],
 				operation: [ 'get' ],
 				getBy: [ 'id' ],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the object for lookup.',
+		description: 'The ID of the recipient object for lookup.',
 	},
 	{
 		displayName: 'ID',
@@ -146,15 +147,13 @@ export const recipientFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipients',
-				],
+				resource: [ 'recipients' ],
 				operation: [ 'update' ],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the object for lookup.',
+		description: 'The ID of the recipient object for lookup.',
 	},
 	{
 		displayName: 'Name',
@@ -162,20 +161,14 @@ export const recipientFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipients',
-				],
-				operation: [
-					'get',
-				],
-				getBy: [
-					'name',
-				],
+				resource: [ 'recipients' ],
+				operation: [ 'get' ],
+				getBy: [ 'name' ],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The Name for lookup.',
+		description: 'The name of the recipient for lookup.',
 	},
 	{
 		displayName: 'Phone',
@@ -183,20 +176,14 @@ export const recipientFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipients',
-				],
-				operation: [
-					'get',
-				],
-				getBy: [
-					'phone',
-				],
+				resource: [ 'recipients' ],
+				operation: [ 'get' ],
+				getBy: [ 'phone' ],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The Phone for lookup.',
+		description: 'The phone of the recipient for lookup.',
 	},
 	{
 		displayName: 'Recipient',
@@ -204,11 +191,10 @@ export const recipientFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
+				resource: [ 'tasks' ],
 				operation: [
-					'create', 'createBatch',
+					'create',
+					'createBatch',
 				],
 			},
 		},
@@ -219,27 +205,12 @@ export const recipientFields = [
 	{
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
-				operation: [
-					'create', 'createBatch',
-				],
-				recipient: [ true, ],
-			},
-		},
-		...recipientName,
-		required: true,
-	},
-	{
-		displayOptions: {
-			show: {
-				resource: [
-					'recipients',
-				],
+				resource: [ 'tasks' ],
 				operation: [
 					'create',
+					'createBatch',
 				],
+				recipient: [ true ],
 			},
 		},
 		...recipientName,
@@ -248,13 +219,22 @@ export const recipientFields = [
 	{
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
+				resource: [ 'recipients' ],
+				operation: [ 'create' ],
+			},
+		},
+		...recipientName,
+		required: true,
+	},
+	{
+		displayOptions: {
+			show: {
+				resource: [ 'tasks' ],
 				operation: [
-					'create', 'createBatch',
+					'create',
+					'createBatch',
 				],
-				recipient: [ true, ],
+				recipient: [ true ],
 			},
 		},
 		...recipientPhone,
@@ -263,12 +243,8 @@ export const recipientFields = [
 	{
 		displayOptions: {
 			show: {
-				resource: [
-					'recipients',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'recipients' ],
+				operation: ['create' ],
 			},
 		},
 		...recipientPhone,
@@ -282,12 +258,8 @@ export const recipientFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'recipients',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'recipients' ],
+				operation: [ 'create' ],
 			},
 		},
 		options: additionalRecipientFields,
@@ -300,13 +272,12 @@ export const recipientFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'tasks',
-				],
+				resource: [ 'tasks' ],
 				operation: [
-					'create', 'createBatch',
+					'create',
+					'createBatch',
 				],
-				recipient: [ true, ],
+				recipient: [ true ],
 			},
 		},
 		options: additionalRecipientFields,
@@ -319,12 +290,8 @@ export const recipientFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'recipients',
-				],
-				operation: [
-					'update',
-				],
+				resource: [ 'recipients' ],
+				operation: [ 'update' ],
 			},
 		},
 		options: additionalRecipientFieldsUpdate,

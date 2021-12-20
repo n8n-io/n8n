@@ -9,16 +9,14 @@ export const teamOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'teams',
-				],
+				resource: [ 'teams' ],
 			},
 		},
 		options: [
 			{
 				name: 'Add',
 				value: 'create',
-				description: 'Add new Onfleet team.',
+				description: 'Add a new Onfleet team.',
 			},
 			{
 				name: 'Update',
@@ -58,15 +56,15 @@ const workersField = {
 	name: 'workers',
 	type: 'json',
 	default: '[]',
-	description: 'An array of worker IDs.',
+	description: 'An array of workers IDs.',
 } as INodeProperties;
 
 const managersField = {
-	displayName: 'Managers (JSON)',
+	displayName: 'Administrators (JSON)',
 	name: 'managers',
 	type: 'json',
 	default: '[]',
-	description: 'An array of managing administrators IDs.',
+	description: 'An array of managing administrator IDs.',
 } as INodeProperties;
 
 const hubField = {
@@ -92,28 +90,24 @@ export const teamFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'teams',
-				],
+				resource: [ 'teams' ],
 				operation: [
-					'get', 'update', 'delete',
+					'get',
+					'update',
+					'delete',
 				],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the object for lookup.',
+		description: 'The ID of the team object for lookup.',
 	},
 	{
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [
-					'teams',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'teams' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -122,12 +116,8 @@ export const teamFields = [
 		...workersField,
 		displayOptions: {
 			show: {
-				resource: [
-					'teams',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'teams' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -136,12 +126,8 @@ export const teamFields = [
 		...managersField,
 		displayOptions: {
 			show: {
-				resource: [
-					'teams',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'teams' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -154,15 +140,14 @@ export const teamFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'teams',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'teams' ],
+				operation: [ 'create' ],
 			},
 		},
-		options: [ hubField, enableSelfAssignmentField ],
+		options: [
+			hubField,
+			enableSelfAssignmentField,
+		],
 	},
 	{
 		displayName: 'Additional fields',
@@ -172,14 +157,16 @@ export const teamFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'teams',
-				],
-				operation: [
-					'update',
-				],
+				resource: [ 'teams' ],
+				operation: [ 'update' ],
 			},
 		},
-		options: [ nameField, workersField, managersField, hubField, enableSelfAssignmentField ],
+		options: [
+			nameField,
+			workersField,
+			managersField,
+			hubField,
+			enableSelfAssignmentField,
+		],
 	},
 ] as INodeProperties[];

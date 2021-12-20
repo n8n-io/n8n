@@ -24,13 +24,9 @@ import {
 } from './interfaces';
 import { taskFields, taskOperations } from './descriptions/TaskDescription';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
-import {
-	onfleetApiRequest,
-} from './GenericFunctions';
+import { onfleetApiRequest } from './GenericFunctions';
 import { recipientFields, recipientOperations } from './descriptions/RecipientDescription';
 import { organizationFields, organizationOperations } from './descriptions/OrganizationDescription';
 import { adminFields, adminOperations } from './descriptions/AdministratorDescription';
@@ -45,7 +41,7 @@ export class Onfleet implements INodeType {
 			displayName: 'Onfleet',
 			name: 'onfleet',
 			icon: 'file:Onfleet.png',
-			group: ['input'],
+			group: [ 'input' ],
 			version: 1,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Onfleet API',
@@ -53,8 +49,8 @@ export class Onfleet implements INodeType {
 					name: 'Onfleet',
 					color: '#AA81F3',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [ 'main' ],
+			outputs: [ 'main' ],
 			credentials: [
 				{
 					name: 'onfleetApi',
@@ -488,7 +484,7 @@ export class Onfleet implements INodeType {
 			if (optionFields.includeDependencies)  options.includeDependencies = optionFields.includeDependencies as boolean;
 			if (optionFields.overrides)  options.overrides = optionFields.overrides as object;
 			return { options } as OnfleetCloneTask;
-		} else if (operation === 'list') {
+		} else if (operation === 'getAll') {
 			/* -------------------------------------------------------------------------- */
 			/*                          Get fields to list tasks                          */
 			/* -------------------------------------------------------------------------- */
@@ -595,14 +591,14 @@ export class Onfleet implements INodeType {
 			try {
 				if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                                Add new task                                */
+					/*                               Add a new task                               */
 					/* -------------------------------------------------------------------------- */
 					const taskData = Onfleet.getTaskFields.call(this, index, operation);
 					if (!taskData) { continue ;}
 					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, taskData));
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
-					/*                              Get a dingle task                             */
+					/*                              Get a single task                             */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const shortId = this.getNodeParameter('shortId', index) as boolean;
@@ -624,9 +620,9 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'DELETE', encodedApiKey, path));
-				} else if (operation === 'list') {
+				} else if (operation === 'getAll') {
 					/* -------------------------------------------------------------------------- */
-					/*                                 List tasks                                 */
+					/*                                Get all tasks                               */
 					/* -------------------------------------------------------------------------- */
 					const taskData = Onfleet.getTaskFields.call(this, 0, operation) as IDataObject;
 					if (!taskData) return [];
@@ -636,7 +632,7 @@ export class Onfleet implements INodeType {
 					responseData.push(...tasks);
 				} else if (operation === 'complete') {
 					/* -------------------------------------------------------------------------- */
-					/*                          Force to complete a task                          */
+					/*                            Force complete a task                           */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const taskData = Onfleet.getTaskFields.call(this, index, operation);
@@ -829,14 +825,14 @@ export class Onfleet implements INodeType {
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
-				if (operation === 'get') {
+				if (operation === 'getAll') {
 					/* -------------------------------------------------------------------------- */
-					/*                             Get adiministrators                            */
+					/*                             Get administrators                             */
 					/* -------------------------------------------------------------------------- */
 					responseData.push(...await onfleetApiRequest.call(this, 'GET', encodedApiKey, resource));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                                Add new admin                               */
+					/*                               Add a new admin                              */
 					/* -------------------------------------------------------------------------- */
 					const adminData = Onfleet.getAdminFields.call(this, index, operation);
 					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, adminData));
@@ -894,7 +890,7 @@ export class Onfleet implements INodeType {
 					responseData.push(...await onfleetApiRequest.call(this, 'GET', encodedApiKey, resource));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                                 Add new hub                                */
+					/*                                Add a new hub                               */
 					/* -------------------------------------------------------------------------- */
 					const hubData = Onfleet.getHubFields.call(this, index, operation);
 					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, hubData));
@@ -959,7 +955,7 @@ export class Onfleet implements INodeType {
 					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path, {}, workerFilters));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                               Add new worker                               */
+					/*                              Add a new worker                              */
 					/* -------------------------------------------------------------------------- */
 					const workerData = Onfleet.getWorkerFields.call(this, index, operation);
 					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, workerData));
@@ -985,7 +981,7 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}/schedule`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path));
-				} else if (operation === 'getAllLocation') {
+				} else if (operation === 'getAllByLocation') {
 					/* -------------------------------------------------------------------------- */
 					/*                             Get worker location                            */
 					/* -------------------------------------------------------------------------- */
@@ -1099,6 +1095,7 @@ export class Onfleet implements INodeType {
 					/* -------------------------------------------------------------------------- */
 					const containerId = this.getNodeParameter('containerId', index) as string;
 					const containerType = this.getNodeParameter('containerType', index) as string;
+					const considerDependencies = this.getNodeParameter('considerDependencies', index) as boolean;
 
 					const tasks = JSON.parse(this.getNodeParameter('tasks', index) as string) as Array<string|number>;
 					if (operation === 'add') {
@@ -1111,7 +1108,9 @@ export class Onfleet implements INodeType {
 						}
 					}
 					const path = `${resource}/${containerType}/${containerId}`;
-					responseData.push(await onfleetApiRequest.call(this, 'PUT', encodedApiKey, path, { tasks }));
+					responseData.push(
+						await onfleetApiRequest.call(this, 'PUT', encodedApiKey, path, { tasks, considerDependencies }),
+					);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

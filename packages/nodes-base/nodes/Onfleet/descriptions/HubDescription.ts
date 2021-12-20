@@ -9,16 +9,14 @@ export const hubOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'hubs',
-				],
+				resource: [ 'hubs' ],
 			},
 		},
 		options: [
 			{
 				name: 'Add',
 				value: 'create',
-				description: 'Add new Onfleet hub.',
+				description: 'Add a new Onfleet hub.',
 			},
 			{
 				name: 'List hubs',
@@ -58,28 +56,20 @@ export const hubFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'hubs',
-				],
-				operation: [
-					'update',
-				],
+				resource: [ 'hubs' ],
+				operation: [ 'update' ],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the object for lookup.',
+		description: 'The ID of the hub object for lookup.',
 	},
 	{
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [
-					'hubs',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'hubs' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -92,12 +82,8 @@ export const hubFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'hubs',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'hubs' ],
+				operation: [ 'create' ],
 			},
 		},
 		options: [ teamsField ],
@@ -110,14 +96,13 @@ export const hubFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'hubs',
-				],
-				operation: [
-					'update',
-				],
+				resource: [ 'hubs' ],
+				operation: [ 'update' ],
 			},
-		}, 
-		options: [ nameField, teamsField ],
+		},
+		options: [
+			nameField,
+			teamsField,
+		],
 	},
 ] as INodeProperties[];

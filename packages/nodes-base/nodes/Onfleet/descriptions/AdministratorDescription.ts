@@ -9,16 +9,14 @@ export const adminOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'admins',
-				],
+				resource: [ 'admins' ],
 			},
 		},
 		options: [
 			{
 				name: 'Add',
 				value: 'create',
-				description: 'Add new Onfleet admin.',
+				description: 'Add a new Onfleet admin.',
 			},
 			{
 				name: 'Remove',
@@ -27,7 +25,7 @@ export const adminOperations = [
 			},
 			{
 				name: 'List',
-				value: 'get',
+				value: 'getAll',
 				description: 'List all Onfleet admins.',
 			},
 			{
@@ -36,7 +34,7 @@ export const adminOperations = [
 				description: 'Update an Onfleet admin.',
 			},
 		],
-		default: 'get',
+		default: 'getAll',
 	},
 ] as INodeProperties[];
 
@@ -45,7 +43,7 @@ const adminNameField = {
 	name: 'name',
 	type: 'string',
 	default: '',
-	description: 'The administrator\'s complete name.',
+	description: 'The administrator\'s name.',
 } as INodeProperties;
 
 const adminEmailField = {
@@ -79,29 +77,24 @@ export const adminFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'admins',
-				],
+				resource: [ 'admins' ],
 			},
 			hide: {
 				operation: [
-					'create', 'get',
+					'create',
+					'getAll',
 				],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the object for lookup.',
+		description: 'The ID of the admin object for lookup.',
 	},
 	{
 		displayOptions: {
 			show: {
-				resource: [
-					'admins',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'admins' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -110,12 +103,8 @@ export const adminFields = [
 	{
 		displayOptions: {
 			show: {
-				resource: [
-					'admins',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'admins' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -129,12 +118,8 @@ export const adminFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'admins',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'admins' ],
+				operation: [ 'create' ],
 			},
 		},
 		options: [
@@ -150,12 +135,8 @@ export const adminFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'admins',
-				],
-				operation: [
-					'update',
-				],
+				resource: [ 'admins' ],
+				operation: [ 'update' ],
 			},
 		},
 		options: [

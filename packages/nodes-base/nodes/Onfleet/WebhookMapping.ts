@@ -81,4 +81,9 @@ export const webhookMapping: OnfleetWebhooksMapping = {
 		value: 'workerDeleted',
 		key: 16,
 	},
+	SMSRecipientOptOut: {
+		name: 'SMS Recipient Opt Out',
+		value: 'SMSRecipientOptOut',
+		key: 17,
+	},
 };

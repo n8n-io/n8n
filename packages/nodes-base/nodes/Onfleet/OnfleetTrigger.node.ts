@@ -13,9 +13,7 @@ import {
 } from 'n8n-core';
 
 import { eventDisplay } from './descriptions/OnfleetWebhookDescription';
-import {
-	onfleetApiRequest,
-} from './GenericFunctions';
+import { onfleetApiRequest } from './GenericFunctions';
 import { webhookMapping } from './WebhookMapping';
 
 export class OnfleetTrigger implements INodeType {
@@ -23,7 +21,7 @@ export class OnfleetTrigger implements INodeType {
 		displayName: 'Onfleet Trigger',
 		name: 'onfleetTrigger',
 		icon: 'file:Onfleet.png',
-		group: ['trigger'],
+		group: [ 'trigger' ],
 		version: 1,
 		subtitle: '={{$parameter["events"]}}',
 		description: 'Starts the workflow when Onfleet events occur.',
@@ -32,7 +30,7 @@ export class OnfleetTrigger implements INodeType {
 			color: '#AA81F3',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [ 'main' ],
 		credentials: [
 			{
 				name: 'onfleetApi',
@@ -124,7 +122,7 @@ export class OnfleetTrigger implements INodeType {
 				} catch (error) {
 					const { httpCode = '' } = error as { httpCode: string };
 					if (httpCode === '422') {
-						// Webhook exi`sts already
+						// Webhook exists already
 
 						// Get the data of the already registered webhook
 						onfleetApiRequest.call(this, 'GET', encodedApiKey, path)
@@ -133,7 +131,7 @@ export class OnfleetTrigger implements INodeType {
 								webhookData[event] = webhook!.id;
 								return Promise.resolve(true);
 							});
-						throw new NodeOperationError(this.getNode(), 'A webhook with the identical URL probably exists already. Please delete it manually on Onfleet!');
+						throw new NodeOperationError(this.getNode(), 'A webhook with the identical URL probably exists already. Please delete it manually in Onfleet!');
 					}
 
 					throw error;

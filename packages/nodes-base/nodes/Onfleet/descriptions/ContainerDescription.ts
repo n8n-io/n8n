@@ -9,16 +9,14 @@ export const containerOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'containers',
-				],
+				resource: [ 'containers' ],
 			},
 		},
 		options: [
 			{
-				name: 'Insert tasks',
+				name: 'Insert tasks (or append)',
 				value: 'add',
-				description: 'Insert tasks at index.',
+				description: 'Insert tasks at index (or append).',
 			},
 			{
 				name: 'Update tasks',
@@ -40,9 +38,18 @@ const containerTypeField = {
 	name: 'containerType',
 	type: 'options',
 	options: [
-		{ name: 'Organizations', value: 'organizations' },
-		{ name: 'Teams', value: 'teams' },
-		{ name: 'Workers', value: 'workers' },
+		{
+			name: 'Organizations',
+			value: 'organizations',
+		},
+		{
+			name: 'Teams',
+			value: 'teams',
+		},
+		{
+			name: 'Workers',
+			value: 'workers',
+		},
 	],
 	default: '',
 	description: 'Container type.',
@@ -61,9 +68,18 @@ const insertTypeField = {
 	name: 'type',
 	type: 'options',
 	options: [
-		{ name: 'Append', value: -1 },
-		{ name: 'Prepend', value: 0 },
-		{ name: 'At specific index', value: 1 },
+		{
+			name: 'Append',
+			value: -1,
+		},
+		{
+			name: 'Prepend',
+			value: 0,
+		},
+		{
+			name: 'At specific index',
+			value: 1,
+		},
 	],
 	default: '',
 	description: 'The index given indicates the position where the tasks are going to be inserted.',
@@ -85,16 +101,24 @@ const tasksField = {
 	description: 'Array witht the task\'s ID that are going to be used in JSON format.',
 } as INodeProperties;
 
+const considerDependenciesField = {
+	displayName: 'Consider dependencies',
+	name: 'considerDependencies',
+	type: 'boolean',
+	default: false,
+	description: 'Whether to include the target task\'s dependency family (parent and child tasks) in the resulting assignment operation.',
+} as INodeProperties;
+
 export const containerFields = [
 	{
 		...containerTypeField,
 		displayOptions: {
 			show: {
-				resource: [
-					'containers',
-				],
+				resource: [ 'containers' ],
 				operation: [
-					'get', 'add', 'update',
+					'get',
+					'add',
+					'update',
 				],
 			},
 		},
@@ -104,11 +128,11 @@ export const containerFields = [
 		...containerIdField,
 		displayOptions: {
 			show: {
-				resource: [
-					'containers',
-				],
+				resource: [ 'containers' ],
 				operation: [
-					'get', 'add', 'update',
+					'get',
+					'add',
+					'update',
 				],
 			},
 		},
@@ -118,12 +142,8 @@ export const containerFields = [
 		...insertTypeField,
 		displayOptions: {
 			show: {
-				resource: [
-					'containers',
-				],
-				operation: [
-					'add',
-				],
+				resource: [ 'containers' ],
+				operation: [ 'add' ],
 			},
 		},
 		required: true,
@@ -132,15 +152,9 @@ export const containerFields = [
 		...indexField,
 		displayOptions: {
 			show: {
-				resource: [
-					'containers',
-				],
-				operation: [
-					'add',
-				],
-				type: [
-					1,
-				],
+				resource: [ 'containers' ],
+				operation: [ 'add' ],
+				type: [ 1 ],
 			},
 		},
 		required: true,
@@ -149,11 +163,23 @@ export const containerFields = [
 		...tasksField,
 		displayOptions: {
 			show: {
-				resource: [
-					'containers',
-				],
+				resource: [ 'containers' ],
 				operation: [
-					'add', 'update',
+					'add',
+					'update',
+				],
+			},
+		},
+		required: true,
+	},
+	{
+		...considerDependenciesField,
+		displayOptions: {
+			show: {
+				resource: [ 'containers' ],
+				operation: [
+					'add',
+					'update',
 				],
 			},
 		},

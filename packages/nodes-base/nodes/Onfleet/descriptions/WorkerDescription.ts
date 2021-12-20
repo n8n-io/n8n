@@ -9,16 +9,14 @@ export const workerOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
+				resource: [ 'workers' ],
 			},
 		},
 		options: [
 			{
 				name: 'Add',
 				value: 'create',
-				description: 'Create new Onfleet worker.',
+				description: 'Create a new Onfleet worker.',
 			},
 			{
 				name: 'Remove',
@@ -32,7 +30,7 @@ export const workerOperations = [
 			},
 			{
 				name: 'List workers by location',
-				value: 'getAllLocation',
+				value: 'getAllByLocation',
 				description: 'List all Onfleet workers who are currently within a centain target area.',
 			},
 			{
@@ -65,7 +63,7 @@ const nameField = {
 	name: 'name',
 	type: 'string',
 	default: '',
-	description: 'The worker’s complete name.',
+	description: 'The worker\'s name.',
 } as INodeProperties;
 
 const phoneField = {
@@ -73,7 +71,7 @@ const phoneField = {
 	name: 'phone',
 	type: 'string',
 	default: '',
-	description: 'A valid phone number as per the worker’s organization’s country.',
+	description: 'A valid phone number as per the worker\'s organization\'s country.',
 } as INodeProperties;
 
 const capacityField = {
@@ -172,9 +170,18 @@ const statesFilterField = {
 	name: 'states',
 	type: 'multiOptions',
 	options: [
-		{ name: 'Off-duty', value: 0 },
-		{ name: 'Idle (on-duty, no active task)', value: 1 },
-		{ name: 'Active (on-duty, active task)', value: 2 },
+		{
+			name: 'Off-duty',
+			value: 0,
+		},
+		{
+			name: 'Idle (on-duty, no active task)',
+			value: 1,
+		},
+		{
+			name: 'Active (on-duty, active task)',
+			value: 2,
+		},
 	],
 	default: '',
 	description: 'List of worker states.',
@@ -196,7 +203,7 @@ const filterField = {
 	description: 'A comma-separated list of fields to return, if all are not desired. For example, name, location.',
 } as INodeProperties;
 
-const longitudFilterField = {
+const longitudeFilterField = {
 	displayName: 'Longitude',
 	name: 'longitude',
 	type: 'number',
@@ -207,7 +214,7 @@ const longitudFilterField = {
 	description: 'The longitude component of the coordinate pair.',
 } as INodeProperties;
 
-const latitudFilterField = {
+const latitudeFilterField = {
 	displayName: 'Latitude',
 	name: 'latitude',
 	type: 'number',
@@ -218,8 +225,8 @@ const latitudFilterField = {
 	description: 'The latitude component of the coordinate pair.',
 } as INodeProperties;
 
-const radiousFilterField = {
-	displayName: 'Radious',
+const radiusFilterField = {
+	displayName: 'Radius',
 	name: 'radius',
 	type: 'number',
 	typeOptions: {
@@ -269,17 +276,19 @@ export const workerFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
+				resource: [ 'workers' ],
 				operation: [
-					'get', 'getSchedule', 'setSchedule', 'update', 'delete',
+					'get',
+					'getSchedule',
+					'setSchedule',
+					'update',
+					'delete',
 				],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the object for lookup.',
+		description: 'The ID of the worker object for lookup.',
 	},
 	{
 		displayName: 'Analytics',
@@ -287,28 +296,20 @@ export const workerFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'get',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'get' ],
 			},
 		},
 		default: true,
 		required: true,
-		description: 'A more detailed response.',
+		description: 'A more detailed response, includes basic worker duty event, traveled distance (meters) and time analytics.',
 	},
 	{
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -317,12 +318,8 @@ export const workerFields = [
 		...phoneField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
@@ -331,11 +328,10 @@ export const workerFields = [
 		...vehicleField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
+				resource: [ 'workers' ],
 				operation: [
-					'create',  'update',
+					'create',
+					'update',
 				],
 			},
 		},
@@ -345,15 +341,12 @@ export const workerFields = [
 		...vehicleTypeField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
+				resource: [ 'workers' ],
 				operation: [
-					'create',  'update',
+					'create',
+					'update',
 				],
-				vehicle: [
-					true,
-				],
+				vehicle: [ true ],
 			},
 		},
 		required: true,
@@ -362,40 +355,28 @@ export const workerFields = [
 		...teamsField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'create',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'create' ],
 			},
 		},
 		required: true,
 	},
 	{
-		...longitudFilterField,
+		...longitudeFilterField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'getAllLocation',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'getAllByLocation' ],
 			},
 		},
 		required: true,
 	},
 	{
-		...latitudFilterField,
+		...latitudeFilterField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'getAllLocation',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'getAllByLocation' ],
 			},
 		},
 		required: true,
@@ -408,15 +389,11 @@ export const workerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'getAllLocation',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'getAllByLocation' ],
 			},
 		},
-		options: [ radiousFilterField ],
+		options: [ radiusFilterField ],
 	},
 	{
 		displayName: 'Additional vehicle fields',
@@ -426,54 +403,19 @@ export const workerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'create',  'update',
-				],
-				vehicle: [
-					true,
-				],
-			},
-		},
-		options: [ vehicleDescriptionField, vehicleLicensePlateField, vehicleColorField ],
-	},
-	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add fields',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'workers',
-				],
+				resource: [ 'workers' ],
 				operation: [
 					'create',
-				],
-			},
-		},
-		options: [ capacityField, displayNameField ],
-	},
-	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add fields',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
 					'update',
 				],
+				vehicle: [ true ],
 			},
 		},
-		options: [ nameField, capacityField, displayNameField, teamsField ],
+		options: [
+			vehicleDescriptionField,
+			vehicleLicensePlateField,
+			vehicleColorField,
+		],
 	},
 	{
 		displayName: 'Additional fields',
@@ -483,15 +425,14 @@ export const workerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'create' ],
 			},
 		},
-		options: [ filterField, teamsFilterField, statesFilterField, phonesFilterField ],
+		options: [
+			capacityField,
+			displayNameField,
+		],
 	},
 	{
 		displayName: 'Additional fields',
@@ -501,12 +442,46 @@ export const workerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'get',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'update' ],
+			},
+		},
+		options: [
+			nameField,
+			capacityField,
+			displayNameField,
+			teamsField,
+		],
+	},
+	{
+		displayName: 'Additional fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add fields',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [ 'workers' ],
+				operation: [ 'getAll' ],
+			},
+		},
+		options: [
+			filterField,
+			teamsFilterField,
+			statesFilterField,
+			phonesFilterField,
+		],
+	},
+	{
+		displayName: 'Additional fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add fields',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [ 'workers' ],
+				operation: [ 'get' ],
 			},
 		},
 		options: [ filterField ],
@@ -515,12 +490,8 @@ export const workerFields = [
 		...scheduleDateField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'setSchedule',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'setSchedule' ],
 			},
 		},
 		required: true,
@@ -529,12 +500,8 @@ export const workerFields = [
 		...scheduleTimezoneField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'setSchedule',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'setSchedule' ],
 			},
 		},
 		required: true,
@@ -543,12 +510,8 @@ export const workerFields = [
 		...scheduleStartField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'setSchedule',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'setSchedule' ],
 			},
 		},
 		required: true,
@@ -557,12 +520,8 @@ export const workerFields = [
 		...scheduleEndField,
 		displayOptions: {
 			show: {
-				resource: [
-					'workers',
-				],
-				operation: [
-					'setSchedule',
-				],
+				resource: [ 'workers' ],
+				operation: [ 'setSchedule' ],
 			},
 		},
 		required: true,

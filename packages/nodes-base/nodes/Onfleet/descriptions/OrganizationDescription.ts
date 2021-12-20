@@ -9,9 +9,7 @@ export const organizationOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'organizations',
-				],
+				resource: [ 'organizations' ],
 			},
 		},
 		options: [
@@ -38,12 +36,8 @@ export const organizationFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'organizations',
-				],
-				operation: [
-					'getDelegatee',
-				],
+				resource: [ 'organizations' ],
+				operation: [ 'getDelegatee' ],
 			},
 		},
 		default: '',
