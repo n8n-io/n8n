@@ -13,6 +13,8 @@ import {
 	OptionsWithUri,
 } from 'request';
 
+const helpers = require('./helpers');
+
 export class Gllue implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gllue',
@@ -70,29 +72,32 @@ export class Gllue implements INodeType {
 				default: 'list',
 				description: 'The operation to perform.',
 			},
-			{
-				displayName: 'Keyword',
-				name: 'keyword',
-				type: 'string',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'list',
-						],
-						resource: [
-							'client',
-						],
-					},
-				},
-				default: '',
-				description: 'keyword to search clients',
-			},
-
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return [[]];
+		let responseData;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+		const credentials = await this.getCredentials('gllueApi') as IDataObject;
+
+		const timestamp = helpers.getCurrentTimeStamp();
+		const token = helpers.generateTokenWithAESKey(timestamp, credentials.apiUsername, credentials.apiAesKey);
+
+		if (resource === 'client') {
+			if (operation === 'list') {
+				const options: OptionsWithUri = {
+					headers: {
+						'Accept': 'application/json',
+					},
+					method: 'GET',
+					uri: `${credentials.apiHost}/rest/client/simple_list_with_ids?paginate_by=25&ordering=-id&gql=&page=1&fields='id'&private_token=${token}`,
+					json: true,
+				};
+
+				responseData = await this.helpers.request(options);
+			}
+		}
+		return [this.helpers.returnJsonArray(responseData.result.client)];
 	}
 }
