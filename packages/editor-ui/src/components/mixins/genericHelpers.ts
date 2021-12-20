@@ -22,16 +22,17 @@ export const genericHelpers = mixins(showMessage).extend({
 		displayTimer (msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
 				if (showMs === false) {
-					return `${this.$locale.number(Math.floor(msPassed / 1000), 'decimal')} ${this.$locale.baseText('genericHelpers.sec')}`;
+					return `${Math.floor(msPassed / 1000)} ${this.$locale.baseText('genericHelpers.sec')}`;
 				}
 
-				return `${this.$locale.number(msPassed / 1000, 'decimal')} ${this.$locale.baseText('genericHelpers.sec')}`;
+				return `${msPassed / 1000} ${this.$locale.baseText('genericHelpers.sec')}`;
 			}
 
 			const secondsPassed = Math.floor(msPassed / 1000);
 			const minutesPassed = Math.floor(secondsPassed / 60);
+			const secondsLeft = (secondsPassed - (minutesPassed * 60)).toString().padStart(2, '0');
 
-			return `${this.$locale.number(minutesPassed, 'decimal')}:${this.$locale.number(secondsPassed, 'decimal')} ${this.$locale.baseText('genericHelpers.min')}`;
+			return `${minutesPassed}:${secondsLeft} ${this.$locale.baseText('genericHelpers.min')}`;
 		},
 		editAllowedCheck (): boolean {
 			if (this.isReadOnly) {
