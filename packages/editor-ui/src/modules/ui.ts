@@ -1,4 +1,4 @@
-import { CREDENTIAL_EDIT_MODAL_KEY, DUPLICATE_MODAL_KEY, PERSONALIZATION_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, DUPLICATE_MODAL_KEY, PERSONALIZATION_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
@@ -10,6 +10,9 @@ const module: Module<IUiState, IRootState> = {
 	namespaced: true,
 	state: {
 		modals: {
+			[CONTACT_PROMPT_MODAL_KEY]: {
+				open: false,
+			},
 			[CREDENTIAL_EDIT_MODAL_KEY]: {
 				open: false,
 				mode: '',
@@ -31,6 +34,9 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[WORKFLOW_OPEN_MODAL_KEY]: {
+				open: false,
+			},
+			[VALUE_SURVEY_MODAL_KEY]: {
 				open: false,
 			},
 			[VERSIONS_MODAL_KEY]: {

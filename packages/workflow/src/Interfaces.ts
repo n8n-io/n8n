@@ -6,6 +6,7 @@
 import * as express from 'express';
 import * as FormData from 'form-data';
 import { URLSearchParams } from 'url';
+import { IDeferredPromise } from './DeferredPromise';
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
 import { WorkflowOperationError } from './WorkflowErrors';
@@ -208,6 +209,9 @@ export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
 
+// export type IExecuteResponsePromiseData = IDataObject;
+export type IExecuteResponsePromiseData = IDataObject | IN8nHttpFullResponse;
+
 export interface INodeTypeNameVersion {
 	name: string;
 	version: number;
@@ -324,13 +328,13 @@ export interface IHttpRequestOptions {
 	json?: boolean;
 }
 
-export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[];
+export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;
 
 export interface IN8nHttpFullResponse {
 	body: IN8nHttpResponse;
 	headers: IDataObject;
 	statusCode: number;
-	statusMessage: string;
+	statusMessage?: string;
 }
 
 export interface IExecuteFunctions {
@@ -371,7 +375,8 @@ export interface IExecuteFunctions {
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
 	putExecutionToWait(waitTill: Date): Promise<void>;
-	sendMessageToUI(message: any): void;
+	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
+	sendResponse(response: IExecuteResponsePromiseData): void; // tslint:disable-line:no-any
 	helpers: {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
@@ -492,7 +497,10 @@ export interface IPollFunctions {
 }
 
 export interface ITriggerFunctions {
-	emit(data: INodeExecutionData[][]): void;
+	emit(
+		data: INodeExecutionData[][],
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
@@ -668,7 +676,7 @@ export interface INodeProperties {
 }
 export interface INodePropertyOptions {
 	name: string;
-	value: string | number;
+	value: string | number | boolean;
 	description?: string;
 }
 
@@ -795,6 +803,7 @@ export interface INodeTypeBaseDescription {
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number;
 	defaults: INodeParameters;
+	eventTriggerDescription?: string;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];
@@ -809,6 +818,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 		deactivate?: INodeHookDescription[];
 	};
 	webhooks?: IWebhookDescription[];
+	translation?: { [key: string]: object };
 }
 
 export interface INodeHookDescription {
@@ -975,6 +985,7 @@ export interface IWorkflowExecuteHooks {
 	nodeExecuteBefore?: Array<(nodeName: string) => Promise<void>>;
 	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
 	workflowExecuteBefore?: Array<(workflow: Workflow, data: IRunExecutionData) => Promise<void>>;
+	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
 }
 
 export interface IWorkflowExecuteAdditionalData {

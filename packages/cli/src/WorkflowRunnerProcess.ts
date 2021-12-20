@@ -10,6 +10,7 @@ import { IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 import {
 	ExecutionError,
 	IDataObject,
+	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
 	ILogger,
 	INodeExecutionData,
@@ -30,9 +31,11 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
+	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 } from '.';
@@ -135,7 +138,8 @@ export class WorkflowRunnerProcess {
 		await externalHooks.init();
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
-		InternalHooksManager.init(instanceId);
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli);
 
 		// Credentials should now be loaded from database.
 		// We check if any node uses credentials. If it does, then
@@ -200,6 +204,15 @@ export class WorkflowRunnerProcess {
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
 		additionalData.hooks = this.getProcessForwardHooks();
+
+		additionalData.hooks.hookFunctions.sendResponse = [
+			async (response: IExecuteResponsePromiseData): Promise<void> => {
+				await sendToParentProcess('sendResponse', {
+					response: WebhookHelpers.encodeWebhookResponse(response),
+				});
+			},
+		];
+
 		additionalData.executionId = inputData.executionId;
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
