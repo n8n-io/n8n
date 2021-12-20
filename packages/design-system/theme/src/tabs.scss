@@ -5,7 +5,7 @@
 	@include mixins.e(header) {
 		padding: 0;
 		position: relative;
-		margin: 0 0 15px;
+		margin: 0;
 	}
 	@include mixins.e(active-bar) {
 		position: absolute;

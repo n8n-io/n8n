@@ -1,8 +1,8 @@
 <template>
 	<Modal
 		:name="PERSONALIZATION_MODAL_KEY"
-		:title="!submitted? 'Get started' : 'Thanks!'"
-		:subtitle="!submitted? 'These questions help us tailor n8n to you' : ''"
+		:title="!submitted? $locale.baseText('personalizationModal.getStarted') : $locale.baseText('personalizationModal.thanks')"
+		:subtitle="!submitted? $locale.baseText('personalizationModal.theseQuestionsHelpUs') : ''"
 		:centerTitle="true"
 		:showClose="false"
 		:eventBus="modalBus"
@@ -10,101 +10,124 @@
 		:closeOnPressEscape="false"
 		width="460px"
 		@enter="save"
-		@input="onInput"
 	>
 		<template v-slot:content>
 			<div v-if="submitted" :class="$style.submittedContainer">
 				<img :class="$style.demoImage" :src="baseUrl + 'suggestednodes.png'" />
-				<n8n-text>Look out for things marked with a ✨. They are personalized to make n8n more relevant to you.</n8n-text>
+				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
 			</div>
 			<div :class="$style.container" v-else>
-				<n8n-input-label label="Which of these areas do you mainly work in?">
-					<n8n-select :value="values[WORK_AREA_KEY]" placeholder="Select..." @change="(value) => onInput(WORK_AREA_KEY, value)">
-						<n8n-option :value="AUTOMATION_CONSULTING_WORK_AREA" label="Automation consulting" />
-						<n8n-option :value="FINANCE_WORK_AREA" label="Finance" />
-						<n8n-option :value="HR_WORK_AREA" label="HR" />
-						<n8n-option :value="IT_ENGINEERING_WORK_AREA" label="IT / Engineering" />
-						<n8n-option :value="LEGAL_WORK_AREA" label="Legal" />
-						<n8n-option :value="MARKETING_WORK_AREA" label="Marketing / Growth" />
-						<n8n-option :value="OPS_WORK_AREA" label="Operations" />
-						<n8n-option :value="PRODUCT_WORK_AREA" label="Product" />
-						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" label="Sales / Business Development" />
-						<n8n-option :value="SECURITY_WORK_AREA" label="Security" />
-						<n8n-option :value="SUPPORT_WORK_AREA" label="Support" />
-						<n8n-option :value="OTHER_WORK_AREA_OPTION" label="Other (please specify)" />
-					</n8n-select>
-				</n8n-input-label>
-
-				<n8n-input
-					v-if="otherWorkAreaFieldVisible"
-					:value="values[OTHER_WORK_AREA_KEY]"
-					placeholder="Specify your work area"
-					@input="(value) => onInput(OTHER_WORK_AREA_KEY, value)"
-				/>
-
-				<n8n-input-label label="How are your coding skills?">
-					<n8n-select :value="values[CODING_SKILL_KEY]" placeholder="Select..." @change="(value) => onInput(CODING_SKILL_KEY, value)">
+				<n8n-input-label :label="$locale.baseText('personalizationModal.howAreYourCodingSkills')">
+					<n8n-select :value="values[CODING_SKILL_KEY]" :placeholder="$locale.baseText('personalizationModal.select')" @change="(value) => values[CODING_SKILL_KEY] = value">
 						<n8n-option
-							label="0 (Never coded)"
+							:label="baseText('personalizationModal.neverCoded')"
 							value="0"
 						/>
 						<n8n-option
-							label="1"
+							:label="baseText('personalizationModal.iGetStuckTooQuicklyToAchieveMuch')"
 							value="1"
 						/>
 						<n8n-option
-							label="2"
+							:label="baseText('personalizationModal.iCanCodeSomeUsefulThingsBut')"
 							value="2"
 						/>
 						<n8n-option
-							label="3"
+							:label="baseText('personalizationModal.iKnowEnoughToBeDangerousBut')"
 							value="3"
 						/>
 						<n8n-option
-							label="4"
+							:label="baseText('personalizationModal.iCanFigureMostThingsOut')"
 							value="4"
 						/>
 						<n8n-option
-							label="5 (Pro coder)"
+							:label="baseText('personalizationModal.iCanDoAlmostAnythingIWant')"
 							value="5"
 						/>
 					</n8n-select>
 				</n8n-input-label>
 
-				<n8n-input-label label="How big is your company?">
-					<n8n-select :value="values[COMPANY_SIZE_KEY]" placeholder="Select..." @change="(value) => onInput(COMPANY_SIZE_KEY, value)">
+				<n8n-input-label :label="$locale.baseText('personalizationModal.whichOfTheseAreasDoYouMainlyWorkIn')">
+					<n8n-select :value="values[WORK_AREA_KEY]" multiple :placeholder="$locale.baseText('personalizationModal.select')" @change="(value) => onMultiInput(WORK_AREA_KEY, value)">
+						<n8n-option :value="FINANCE_WORK_AREA" :label="$locale.baseText('personalizationModal.finance')" />
+						<n8n-option :value="HR_WORK_AREA" :label="$locale.baseText('personalizationModal.hr')" />
+						<n8n-option :value="IT_ENGINEERING_WORK_AREA" :label="$locale.baseText('personalizationModal.itEngineering')" />
+						<n8n-option :value="LEGAL_WORK_AREA" :label="$locale.baseText('personalizationModal.legal')" />
+						<n8n-option :value="MARKETING_WORK_AREA" :label="$locale.baseText('personalizationModal.marketing')" />
+						<n8n-option :value="OPS_WORK_AREA" :label="$locale.baseText('personalizationModal.operations')" />
+						<n8n-option :value="PRODUCT_WORK_AREA" :label="$locale.baseText('personalizationModal.product')" />
+						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" :label="$locale.baseText('personalizationModal.salesBizDev')" />
+						<n8n-option :value="SECURITY_WORK_AREA" :label="$locale.baseText('personalizationModal.security')" />
+						<n8n-option :value="SUPPORT_WORK_AREA" :label="$locale.baseText('personalizationModal.support')" />
+						<n8n-option :value="EXECUTIVE_WORK_AREA" :label="$locale.baseText('personalizationModal.executiveTeam')" />
+						<n8n-option :value="OTHER_WORK_AREA_OPTION" :label="$locale.baseText('personalizationModal.otherPleaseSpecify')" />
+						<n8n-option :value="NOT_APPLICABLE_WORK_AREA" :label="$locale.baseText('personalizationModal.imNotUsingN8nForWork')" />
+					</n8n-select>
+				</n8n-input-label>
+				<n8n-input
+					v-if="otherWorkAreaFieldVisible"
+					:value="values[OTHER_WORK_AREA_KEY]"
+					:placeholder="$locale.baseText('personalizationModal.specifyYourWorkArea')"
+					@input="(value) => values[OTHER_WORK_AREA_KEY] = value"
+				/>
+
+				<section v-if="showAllIndustryQuestions">
+					<n8n-input-label :label="$locale.baseText('personalizationModal.whichIndustriesIsYourCompanyIn')">
+					<n8n-select :value="values[COMPANY_INDUSTRY_KEY]" multiple :placeholder="$locale.baseText('personalizationModal.select')" @change="(value) => onMultiInput(COMPANY_INDUSTRY_KEY, value)">
+						<n8n-option :value="E_COMMERCE_INDUSTRY" :label="$locale.baseText('personalizationModal.eCommerce')" />
+						<n8n-option :value="AUTOMATION_CONSULTING_INDUSTRY" :label="$locale.baseText('personalizationModal.automationConsulting')" />
+						<n8n-option :value="SYSTEM_INTEGRATION_INDUSTRY" :label="$locale.baseText('personalizationModal.systemsIntegration')" />
+						<n8n-option :value="GOVERNMENT_INDUSTRY" :label="$locale.baseText('personalizationModal.government')" />
+						<n8n-option :value="LEGAL_INDUSTRY" :label="$locale.baseText('personalizationModal.legal')" />
+						<n8n-option :value="HEALTHCARE_INDUSTRY" :label="$locale.baseText('personalizationModal.healthcare')" />
+						<n8n-option :value="FINANCE_INDUSTRY" :label="$locale.baseText('personalizationModal.finance')" />
+						<n8n-option :value="SECURITY_INDUSTRY" :label="$locale.baseText('personalizationModal.security')" />
+						<n8n-option :value="SAAS_INDUSTRY" :label="$locale.baseText('personalizationModal.saas')" />
+						<n8n-option :value="OTHER_INDUSTRY_OPTION" :label="$locale.baseText('personalizationModal.otherPleaseSpecify')" />
+					</n8n-select>
+				</n8n-input-label>
+				<n8n-input
+					v-if="otherCompanyIndustryFieldVisible"
+					:value="values[OTHER_COMPANY_INDUSTRY_KEY]"
+					:placeholder="$locale.baseText('personalizationModal.specifyYourCompanysIndustry')"
+					@input="(value) => values[OTHER_COMPANY_INDUSTRY_KEY] = value"
+				/>
+
+				<n8n-input-label :label="$locale.baseText('personalizationModal.howBigIsYourCompany')">
+					<n8n-select :value="values[COMPANY_SIZE_KEY]" placeholder="Select..." @change="(value) => values[COMPANY_SIZE_KEY] = value">
 						<n8n-option
-							label="Less than 20 people"
+							:label="$locale.baseText('personalizationModal.lessThan20People')"
 							:value="COMPANY_SIZE_20_OR_LESS"
 						/>
 						<n8n-option
-							label="20-99 people"
+							:label="`20-99 ${$locale.baseText('personalizationModal.people')}`"
 							:value="COMPANY_SIZE_20_99"
 						/>
 						<n8n-option
-							label="100-499 people"
+							:label="`100-499 ${$locale.baseText('personalizationModal.people')}`"
 							:value="COMPANY_SIZE_100_499"
 						/>
 						<n8n-option
-							label="500-999 people"
+							:label="`500-999 ${$locale.baseText('personalizationModal.people')}`"
 							:value="COMPANY_SIZE_500_999"
 						/>
 						<n8n-option
-							label="1000+ people"
+							:label="`1000+ ${$locale.baseText('personalizationModal.people')}`"
 							:value="COMPANY_SIZE_1000_OR_MORE"
 						/>
 						<n8n-option
-							label="I'm not using n8n for work"
+							:label="$locale.baseText('personalizationModal.imNotUsingN8nForWork')"
 							:value="COMPANY_SIZE_PERSONAL_USE"
 						/>
 					</n8n-select>
 				</n8n-input-label>
+
+				</section>
 			</div>
 		</template>
 		<template v-slot:footer>
 			<div>
-				<n8n-button v-if="submitted" @click="closeDialog" label="Get started" float="right" />
-				<n8n-button v-else @click="save" :loading="isSaving" label="Continue" float="right" />
+				<n8n-button v-if="submitted" @click="closeDialog" :label="$locale.baseText('personalizationModal.getStarted')" float="right" />
+				<n8n-button v-else @click="save" :loading="isSaving" :label="$locale.baseText('personalizationModal.continue')" float="right" />
 			</div>
 		</template>
 	</Modal>
@@ -114,29 +137,42 @@
 import mixins from "vue-typed-mixins";
 
 import {
-	PERSONALIZATION_MODAL_KEY,
-	AUTOMATION_CONSULTING_WORK_AREA,
-	FINANCE_WORK_AREA,
-	HR_WORK_AREA,
-	IT_ENGINEERING_WORK_AREA,
-	LEGAL_WORK_AREA,
-	MARKETING_WORK_AREA,
-	PRODUCT_WORK_AREA,
-	SALES_BUSINESSDEV_WORK_AREA,
-	SECURITY_WORK_AREA,
-	SUPPORT_WORK_AREA,
-	OPS_WORK_AREA,
-	OTHER_WORK_AREA_OPTION,
+	AUTOMATION_CONSULTING_INDUSTRY,
+	CODING_SKILL_KEY,
+	COMPANY_INDUSTRY_KEY,
+	COMPANY_SIZE_100_499,
+	COMPANY_SIZE_1000_OR_MORE,
 	COMPANY_SIZE_20_OR_LESS,
 	COMPANY_SIZE_20_99,
-	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_500_999,
-	COMPANY_SIZE_1000_OR_MORE,
-	COMPANY_SIZE_PERSONAL_USE,
-	WORK_AREA_KEY,
 	COMPANY_SIZE_KEY,
-	CODING_SKILL_KEY,
+	COMPANY_SIZE_PERSONAL_USE,
+	E_COMMERCE_INDUSTRY,
+	EXECUTIVE_WORK_AREA,
+	FINANCE_INDUSTRY,
+	FINANCE_WORK_AREA,
+	GOVERNMENT_INDUSTRY,
+	HEALTHCARE_INDUSTRY,
+	HR_WORK_AREA,
+	IT_ENGINEERING_WORK_AREA,
+	LEGAL_INDUSTRY,
+	LEGAL_WORK_AREA,
+	MARKETING_WORK_AREA,
+	NOT_APPLICABLE_WORK_AREA,
+	OPS_WORK_AREA,
+	OTHER_COMPANY_INDUSTRY_KEY,
+	OTHER_INDUSTRY_OPTION,
 	OTHER_WORK_AREA_KEY,
+	OTHER_WORK_AREA_OPTION,
+	PERSONALIZATION_MODAL_KEY,
+	PRODUCT_WORK_AREA,
+	SAAS_INDUSTRY,
+	SALES_BUSINESSDEV_WORK_AREA,
+	SECURITY_INDUSTRY,
+	SECURITY_WORK_AREA,
+	SUPPORT_WORK_AREA,
+	SYSTEM_INTEGRATION_INDUSTRY,
+	WORK_AREA_KEY,
 } from "../constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
@@ -154,14 +190,17 @@ export default mixins(showMessage, workflowHelpers).extend({
 			isSaving: false,
 			PERSONALIZATION_MODAL_KEY,
 			otherWorkAreaFieldVisible: false,
+			otherCompanyIndustryFieldVisible: false,
+			showAllIndustryQuestions: true,
 			modalBus: new Vue(),
 			values: {
-				[WORK_AREA_KEY]: null,
+				[WORK_AREA_KEY]: [],
 				[COMPANY_SIZE_KEY]: null,
 				[CODING_SKILL_KEY]: null,
 				[OTHER_WORK_AREA_KEY]: null,
+				[COMPANY_INDUSTRY_KEY]: [],
+				[OTHER_COMPANY_INDUSTRY_KEY]: null,
 			} as IPersonalizationSurveyAnswers,
-			AUTOMATION_CONSULTING_WORK_AREA,
 			FINANCE_WORK_AREA,
 			HR_WORK_AREA,
 			IT_ENGINEERING_WORK_AREA,
@@ -170,19 +209,33 @@ export default mixins(showMessage, workflowHelpers).extend({
 			PRODUCT_WORK_AREA,
 			SALES_BUSINESSDEV_WORK_AREA,
 			SECURITY_WORK_AREA,
+			EXECUTIVE_WORK_AREA,
 			SUPPORT_WORK_AREA,
 			OPS_WORK_AREA,
 			OTHER_WORK_AREA_OPTION,
+			NOT_APPLICABLE_WORK_AREA,
 			COMPANY_SIZE_20_OR_LESS,
 			COMPANY_SIZE_20_99,
 			COMPANY_SIZE_100_499,
 			COMPANY_SIZE_500_999,
 			COMPANY_SIZE_1000_OR_MORE,
 			COMPANY_SIZE_PERSONAL_USE,
+			E_COMMERCE_INDUSTRY,
+			AUTOMATION_CONSULTING_INDUSTRY,
+			SYSTEM_INTEGRATION_INDUSTRY,
+			GOVERNMENT_INDUSTRY,
+			LEGAL_INDUSTRY,
+			HEALTHCARE_INDUSTRY,
+			FINANCE_INDUSTRY,
+			SECURITY_INDUSTRY,
+			SAAS_INDUSTRY,
+			OTHER_INDUSTRY_OPTION,
 			WORK_AREA_KEY,
 			COMPANY_SIZE_KEY,
 			CODING_SKILL_KEY,
+			COMPANY_INDUSTRY_KEY,
 			OTHER_WORK_AREA_KEY,
+			OTHER_COMPANY_INDUSTRY_KEY,
 		};
 	},
 	computed: {
@@ -194,16 +247,19 @@ export default mixins(showMessage, workflowHelpers).extend({
 		closeDialog() {
 			this.modalBus.$emit('close');
 		},
-		onInput(name: IPersonalizationSurveyKeys, value: string) {
-			if (name === WORK_AREA_KEY && value === OTHER_WORK_AREA_OPTION) {
-				this.otherWorkAreaFieldVisible = true;
+		onMultiInput(name: IPersonalizationSurveyKeys, value: string[]) {
+			if (name === WORK_AREA_KEY) {
+				this.otherWorkAreaFieldVisible = value.includes(OTHER_WORK_AREA_OPTION);
+				this.showAllIndustryQuestions = !value.includes(NOT_APPLICABLE_WORK_AREA);
+				this.values[OTHER_WORK_AREA_KEY] = value.includes(OTHER_WORK_AREA_OPTION) ? this.values[OTHER_WORK_AREA_KEY] : null;
+				this.values[WORK_AREA_KEY] = value;
 			}
-			else if (name === WORK_AREA_KEY) {
-				this.otherWorkAreaFieldVisible = false;
-				this.values[OTHER_WORK_AREA_KEY] = null;
+			if (name === COMPANY_INDUSTRY_KEY) {
+				this.otherCompanyIndustryFieldVisible = value.includes(OTHER_INDUSTRY_OPTION);
+				this.values[OTHER_COMPANY_INDUSTRY_KEY] = value.includes(OTHER_INDUSTRY_OPTION) ? this.values[OTHER_COMPANY_INDUSTRY_KEY] : null;
+				this.values[COMPANY_INDUSTRY_KEY] = value;
 			}
 
-			this.values[name] = value;
 		},
 		async save(): Promise<void> {
 			this.$data.isSaving = true;
@@ -228,7 +284,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 <style lang="scss" module>
 .container {
-	> div:not(:last-child) {
+	> div, section > div:not(:last-child) {
 		margin-bottom: var(--spacing-m);
 	}
 }
@@ -245,5 +301,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 	width: 100%;
 	height: 140px;
 }
+
 
 </style>

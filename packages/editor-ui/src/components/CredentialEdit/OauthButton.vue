@@ -4,12 +4,12 @@
 			v-if="isGoogleOAuthType"
 			:src="basePath + 'google-signin-light.png'"
 			:class="$style.googleIcon"
-			alt="Sign in with Google"
+			:alt="$locale.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
 			@click.stop="$emit('click')"
 		/>
 		<n8n-button
 			v-else
-			label="Connect my account"
+			:label="$locale.baseText('credentialEdit.oAuthButton.connectMyAccount')"
 			size="large"
 			@click.stop="$emit('click')"
 		/>
@@ -18,6 +18,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 
 export default Vue.extend({
 	props: {

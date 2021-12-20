@@ -5,27 +5,35 @@
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
 				<a v-if="nodeType" :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info">
 					<n8n-tooltip class="clickable" placement="top" >
-						<div slot="content" v-html="'<strong>Node Description:</strong><br />' + nodeTypeDescription + '<br /><br /><strong>Click the \'?\' icon to open this node on n8n.io </strong>'"></div>
+						<div slot="content" v-html="`<strong>${$locale.baseText('nodeSettings.nodeDescription')}:</strong><br />` + nodeTypeDescription + `<br /><br /><strong>${$locale.baseText('nodeSettings.clickOnTheQuestionMarkIcon')}</strong>`"></div>
 						<font-awesome-icon icon="question-circle" />
 					</n8n-tooltip>
 				</a>
 			</span>
-			<span v-else>No node active</span>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			The node is not valid as its type "{{node.type}}" is unknown.
+			<n8n-text>
+				{{
+					$locale.baseText(
+						'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
+						{ interpolate: { nodeType: node.type } },
+					)
+				}}
+			</n8n-text>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch @tab-click="handleTabClick">
-				<el-tab-pane label="Parameters">
+				<el-tab-pane :label="$locale.baseText('nodeSettings.parameters')">
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-					<div v-if="parametersNoneSetting.length === 0">
-						This node does not have any parameters.
+					<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+						<n8n-text>
+						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						</n8n-text>
 					</div>
 				</el-tab-pane>
-				<el-tab-pane label="Settings">
+				<el-tab-pane :label="$locale.baseText('nodeSettings.settings')">
 					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 				</el-tab-pane>
@@ -87,11 +95,28 @@ export default mixins(
 
 				return null;
 			},
+			nodeTypeName(): string {
+				if (this.nodeType) {
+					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
+
+					return this.$locale.headerText({
+						key: `headers.${shortNodeType}.displayName`,
+						fallback: this.nodeType.name,
+					});
+				}
+
+				return '';
+			},
 			nodeTypeDescription (): string {
 				if (this.nodeType && this.nodeType.description) {
-					return this.nodeType.description;
+					const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
+
+					return this.$locale.headerText({
+						key: `headers.${shortNodeType}.description`,
+						fallback: this.nodeType.description,
+					});
 				} else {
-					return 'No description found';
+					return this.$locale.baseText('nodeSettings.noDescriptionFound');
 				}
 			},
 			headerStyle (): object {
@@ -123,13 +148,6 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			isColorDefaultValue (): boolean {
-				if (this.nodeType === null) {
-					return false;
-				}
-
-				return this.node.color === this.nodeType.defaults.color;
-			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
@@ -153,7 +171,7 @@ export default mixins(
 
 				nodeSettings: [
 					{
-						displayName: 'Notes',
+						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -161,50 +179,42 @@ export default mixins(
 						},
 						default: '',
 						noDataExpression: true,
-						description: 'Optional note to save with the node.',
+						description: this.$locale.baseText('nodeSettings.notes.description'),
 					},
 					{
-						displayName: 'Display note in flow?',
+						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
 						name: 'notesInFlow',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the note above will display in the flow as a subtitle.',
+						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
 					},
 					{
-						displayName: 'Node Color',
-						name: 'color',
-						type: 'color',
-						default: '#ff0000',
-						noDataExpression: true,
-						description: 'The color of the node in the flow.',
-					},
-					{
-						displayName: 'Always Output Data',
+						displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
 						name: 'alwaysOutputData',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the node will return an empty item even if the <br />node returns no data during an initial execution. Be careful setting <br />this on IF-Nodes as it could cause an infinite loop.',
+						description: this.$locale.baseText('nodeSettings.alwaysOutputData.description'),
 					},
 					{
-						displayName: 'Execute Once',
+						displayName: this.$locale.baseText('nodeSettings.executeOnce.displayName'),
 						name: 'executeOnce',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the node executes only once, with data<br /> from the first item it recieves. ',
+						description: this.$locale.baseText('nodeSettings.executeOnce.description'),
 					},
 					{
-						displayName: 'Retry On Fail',
+						displayName: this.$locale.baseText('nodeSettings.retryOnFail.displayName'),
 						name: 'retryOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the node tries to execute a failed attempt <br /> multiple times until it succeeds.',
+						description: this.$locale.baseText('nodeSettings.retryOnFail.description'),
 					},
 					{
-						displayName: 'Max. Tries',
+						displayName: this.$locale.baseText('nodeSettings.maxTries.displayName'),
 						name: 'maxTries',
 						type: 'number',
 						typeOptions: {
@@ -220,10 +230,10 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: 'Number of times Retry On Fail should attempt to execute the node <br />before stopping and returning the execution as failed.',
+						description: this.$locale.baseText('nodeSettings.maxTries.description'),
 					},
 					{
-						displayName: 'Wait Between Tries',
+						displayName: this.$locale.baseText('nodeSettings.waitBetweenTries.displayName'),
 						name: 'waitBetweenTries',
 						type: 'number',
 						typeOptions: {
@@ -239,15 +249,15 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: 'How long to wait between each attempt. Value in ms.',
+						description: this.$locale.baseText('nodeSettings.waitBetweenTries.description'),
 					},
 					{
-						displayName: 'Continue On Fail',
+						displayName: this.$locale.baseText('nodeSettings.continueOnFail.displayName'),
 						name: 'continueOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the workflow continues even if this node\'s <br />execution fails. When this occurs, the node passes along input data from<br />previous nodes - so your workflow should account for unexpected output data.',
+						description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
 					},
 				] as INodeProperties[],
 
@@ -318,7 +328,7 @@ export default mixins(
 				// Update the values on the node
 				this.$store.commit('updateNodeProperties', updateInformation);
 
-				const node = this.$store.getters.nodeByName(updateInformation.name);
+				const node = this.$store.getters.getNodeByName(updateInformation.name);
 
 				// Update the issues
 				this.updateNodeCredentialIssues(node);
@@ -338,7 +348,7 @@ export default mixins(
 				// Save the node name before we commit the change because
 				// we need the old name to rename the node properly
 				const nodeNameBefore = parameterData.node || this.node.name;
-				const node = this.$store.getters.nodeByName(nodeNameBefore);
+				const node = this.$store.getters.getNodeByName(nodeNameBefore);
 				if (parameterData.name === 'name') {
 					// Name of node changed so we have to set also the new node name as active
 
@@ -354,7 +364,10 @@ export default mixins(
 				} else if (parameterData.name.startsWith('parameters.')) {
 					// A node parameter changed
 
-					const nodeType = this.$store.getters.nodeType(node.type);
+					const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+					if (!nodeType) {
+						return;
+					}
 
 					// Get only the parameters which are different to the defaults
 					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
@@ -492,10 +505,6 @@ export default mixins(
 							// Set default value
 							Vue.set(this.nodeValues, nodeSetting.name, nodeSetting.default);
 						}
-						if (nodeSetting.name === 'color') {
-							// For color also apply the default node color to the node settings
-							nodeSetting.default = this.nodeType.defaults.color;
-						}
 					}
 
 					Vue.set(this.nodeValues, 'parameters', JSON.parse(JSON.stringify(this.node.parameters)));
@@ -521,7 +530,10 @@ export default mixins(
 	overflow: hidden;
 	min-width: 350px;
 	max-width: 350px;
-	font-size: var(--font-size-s);
+
+	.no-parameters {
+		margin-top: var(--spacing-xs);
+	}
 
 	.header-side-menu {
 		padding: 1em 0 1em 1.8em;
@@ -547,10 +559,10 @@ export default mixins(
 
 	.node-parameters-wrapper {
 		height: 100%;
-		font-size: .9em;
 
 		.el-tabs__header {
 			background-color: #fff5f2;
+			margin-bottom: 0;
 		}
 
 		.el-tabs {
@@ -561,13 +573,13 @@ export default mixins(
 				padding-bottom: 180px;
 
 				.el-tab-pane {
-					margin: 0 1em;
+					margin: 0 var(--spacing-s);
 				}
 			}
 		}
 
 		.el-tabs__nav {
-			padding-bottom: 1em;
+			padding-bottom: var(--spacing-xs);
 		}
 
 		.add-option {
@@ -619,14 +631,6 @@ export default mixins(
 
 .parameter-wrapper {
 	padding: 0 1em;
-}
-
-.parameter-name {
-	line-height: 1.5;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	align-self: center;
 }
 
 .color-reset-button-wrapper {

@@ -4,7 +4,7 @@
 		append-to-body
 		:close-on-click-modal="false"
 		width="80%"
-		:title="`Edit ${parameter.displayName}`"
+		:title="`${$locale.baseText('codeEdit.edit')} ${$locale.nodeText().topParameterDisplayName(parameter)}`"
 		:before-close="closeDialog"
 	>
 		<div class="text-editor-wrapper ignore-key-press">

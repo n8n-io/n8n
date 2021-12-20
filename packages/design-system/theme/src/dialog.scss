@@ -68,8 +68,6 @@
 	@include mixins.e(body) {
 		padding: var.$dialog-padding-primary;
 		color: var(--color-text-base);
-		font-size: var.$dialog-content-font-size;
-		word-break: break-all;
 	}
 
 	@include mixins.e(footer) {

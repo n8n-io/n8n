@@ -14,14 +14,20 @@
 </template>
 
 <script lang="ts">
+import Vue from 'vue';
 import Telemetry from './components/Telemetry.vue';
 
-export default {
+export default Vue.extend({
 	name: 'App',
 	components: {
 		Telemetry,
 	},
-};
+	watch: {
+		'$route'(route) {
+			this.$telemetry.page('Editor', route.name);
+		},
+	},
+});
 </script>
 
 <style lang="scss">

@@ -509,7 +509,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 									this.workflowData,
 									fullRunData,
 									this.mode,
-									undefined,
+									this.executionId,
 									this.retryOf,
 								);
 							}
@@ -585,7 +585,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							this.workflowData,
 							fullRunData,
 							this.mode,
-							undefined,
+							this.executionId,
 							this.retryOf,
 						);
 					}
@@ -635,7 +635,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							this.workflowData,
 							fullRunData,
 							this.mode,
-							undefined,
+							this.executionId,
 							this.retryOf,
 						);
 					}
@@ -676,7 +676,13 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						});
 					}
 				} catch (error) {
-					executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+					executeErrorWorkflow(
+						this.workflowData,
+						fullRunData,
+						this.mode,
+						this.executionId,
+						this.retryOf,
+					);
 				}
 			},
 		],
@@ -924,7 +930,7 @@ export async function executeWorkflow(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sendMessageToUI(source: string, message: any) {
+export function sendMessageToUI(source: string, messages: any[]) {
 	if (this.sessionId === undefined) {
 		return;
 	}
@@ -936,7 +942,7 @@ export function sendMessageToUI(source: string, message: any) {
 			'sendConsoleMessage',
 			{
 				source: `Node: "${source}"`,
-				message,
+				messages,
 			},
 			this.sessionId,
 		);
