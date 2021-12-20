@@ -58,7 +58,7 @@ export default mixins(genericHelpers).extend({
 				},
 			});
 
-			monaco.editor.defineTheme('myTheme', {
+			monaco.editor.defineTheme('n8nCustomTheme', {
 				base: 'vs',
 				inherit: true,
 				rules: [],
@@ -66,7 +66,7 @@ export default mixins(genericHelpers).extend({
 					'editor.background': '#f5f2f0',
 				},
 			});
-			monaco.editor.setTheme('myTheme');
+			monaco.editor.setTheme('n8nCustomTheme');
 
 			this.monacoInstance.onDidChangeModelContent(() => {
 				const model = this.monacoInstance!.getModel();
