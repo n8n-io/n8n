@@ -239,7 +239,7 @@ export class GoogleDrive implements INodeType {
 			//         file:download
 			// ----------------------------------
 			{
-				displayName: 'File Id',
+				displayName: 'File ID',
 				name: 'fileId',
 				type: 'string',
 				default: '',
@@ -292,108 +292,126 @@ export class GoogleDrive implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Convert Google Docs Files to Format',
-						name: 'docsToFormat',
-						type: 'options',
+						displayName: 'Google File Conversion',
+						name: 'googleFileConversion',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: false,
+						},
+						default: {},
+						placeholder: 'Add Conversion',
 						options: [
 							{
-								name: 'MS Word Document',
-								value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-							},
-							{
-								name: 'PDF',
-								value: 'application/pdf',
-							},
-							{
-								name: 'Open Office Doc',
-								value: 'application/vnd.oasis.opendocument.text',
-							},
-							{
-								name: 'HTML',
-								value: 'text/html',
-							},
-							{
-								name: 'Rich Text',
-								value: 'application/rtf',
+								displayName: 'Conversion',
+								name: 'conversion',
+								values: [
+									{
+										displayName: 'Google Docs',
+										name: 'docsToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To MS Word',
+												value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+											{
+												name: 'To OpenOffice Doc',
+												value: 'application/vnd.oasis.opendocument.text',
+											},
+											{
+												name: 'To HTML',
+												value: 'text/html',
+											},
+											{
+												name: 'To Rich Text',
+												value: 'application/rtf',
+											},
+										],
+										default: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+										description: 'Format used to export when downloading Google Docs files',
+									},
+									{
+										displayName: 'Google Drawings',
+										name: 'drawingsToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To JPEG',
+												value: 'image/jpeg',
+											},
+											{
+												name: 'To PNG',
+												value: 'image/png',
+											},
+											{
+												name: 'To SVG',
+												value: 'image/svg+xml',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+										],
+										default: 'image/jpeg',
+										description: 'Format used to export when downloading Google Drawings files',
+									},
+									{
+										displayName: 'Google Slides',
+										name: 'slidesToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To MS PowerPoint',
+												value: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+											{
+												name: 'To OpenOffice Presentation',
+												value: 'application/vnd.oasis.opendocument.presentation',
+											},
+											{
+												name: 'To Plain Text',
+												value: 'text/plain',
+											},
+										],
+										default: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+										description: 'Format used to export when downloading Google Slides files',
+									},
+									{
+										displayName: 'Google Sheets',
+										name: 'sheetsToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To MS Excel',
+												value: 'application/x-vnd.oasis.opendocument.spreadsheet',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+											{
+												name: 'To CSV',
+												value: 'text/csv',
+											},
+											{
+												name: 'To Plain Text',
+												value: 'text/plain',
+											},
+										],
+										default: 'application/x-vnd.oasis.opendocument.spreadsheet',
+										description: 'Format used to export when downloading Google Spreadsheets files',
+									},
+								],
 							},
 						],
-						default: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-						description: 'Format used to export when downloading Google Docs files',
-					},
-					{
-						displayName: 'Convert Google Drawings Files to Format',
-						name: 'drawingsToFormat',
-						type: 'options',
-						options: [
-							{
-								name: 'JPEG',
-								value: 'image/jpeg',
-							},
-							{
-								name: 'PNG',
-								value: 'image/png',
-							},
-							{
-								name: 'SVG',
-								value: 'image/svg+xml',
-							},
-							{
-								name: 'PDF',
-								value: 'application/pdf',
-							},
-						],
-						default: 'image/jpeg',
-						description: 'Format used to export when downloading Google Drawings files',
-					},
-					{
-						displayName: 'Convert Google Slides Files to Format',
-						name: 'slidesToFormat',
-						type: 'options',
-						options: [
-							{
-								name: 'MS PowerPoint',
-								value: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-							},
-							{
-								name: 'PDF',
-								value: 'application/pdf',
-							},
-							{
-								name: 'Open Office presentation',
-								value: 'application/vnd.oasis.opendocument.presentation',
-							},
-							{
-								name: 'Plain Text',
-								value: 'text/plain',
-							},
-						],
-						default: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-						description: 'Format used to export when downloading Google Slides files',
-					},
-					{
-						displayName: 'Convert Google Spreadsheets Files to Format',
-						name: 'sheetsToFormat',
-						type: 'options',
-						options: [
-							{
-								name: 'MS Excel',
-								value: 'application/x-vnd.oasis.opendocument.spreadsheet',
-							},
-							{
-								name: 'PDF',
-								value: 'application/pdf',
-							},
-							{
-								name: 'CSV',
-								value: 'text/csv',
-							},
-							{
-								name: 'Plain Text',
-								value: 'text/plain',
-							},
-						],
-						default: 'application/x-vnd.oasis.opendocument.spreadsheet',
-						description: 'Format used to export when downloading Google Spreadsheets files',
 					},
 					{
 						displayName: 'File Name',
@@ -2244,16 +2262,17 @@ export class GoogleDrive implements INodeType {
 						let response;
 
 						if (file.mimeType.includes('vnd.google-apps')) {
+							const parameterKey = 'options.googleFileConversion.conversion'
 							const type = file.mimeType.split('.')[2];
 							let mime;
 							if (type === 'document') {
-								mime = this.getNodeParameter('options.docsToFormat', i, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') as string;
+								mime = this.getNodeParameter(`${parameterKey}.docsToFormat`, i, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') as string;
 							} else if (type === 'presentation') {
-								mime = this.getNodeParameter('options.slidesToFormat', i, 'application/vnd.openxmlformats-officedocument.presentationml.presentation') as string;
+								mime = this.getNodeParameter(`${parameterKey}.slidesToFormat`, i, 'application/vnd.openxmlformats-officedocument.presentationml.presentation') as string;
 							} else if (type === 'spreadsheet') {
-								mime = this.getNodeParameter('options.sheetsToFormat', i, 'application/x-vnd.oasis.opendocument.spreadsheet') as string;
+								mime = this.getNodeParameter(`${parameterKey}.sheetsToFormat`, i, 'application/x-vnd.oasis.opendocument.spreadsheet') as string;
 							} else {
-								mime = this.getNodeParameter('options.drawingsToFormat', i, 'image/jpeg') as string;
+								mime = this.getNodeParameter(`${parameterKey}.drawingsToFormat`, i, 'image/jpeg') as string;
 							}
 							response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}/export`, {}, { mimeType: mime }, undefined, requestOptions);
 						} else {
