@@ -53,12 +53,15 @@ export default mixins(genericHelpers).extend({
 				language: 'javascript',
 				tabSize: 2,
 				readOnly: this.isReadOnly,
+				minimap: {
+					enabled: false,
+				},
 			});
 
 			monaco.editor.defineTheme('myTheme', {
 				base: 'vs',
 				inherit: true,
-				rules: [{ background: 'f5f2f0' }],
+				rules: [],
 				colors: {
 					'editor.background': '#f5f2f0',
 				},
