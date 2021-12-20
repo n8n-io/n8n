@@ -74,13 +74,12 @@
 				</el-table-column>
 				<el-table-column :label="$locale.baseText('executionsList.status')" width="122" align="center">
 					<template slot-scope="scope" align="center">
-
 						<n8n-tooltip placement="top" >
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 							<span class="status-badge running" v-if="scope.row.waitTill">
 								{{ $locale.baseText('executionsList.waiting') }}
 							</span>
-							<span class="status-badge running" v-if="scope.row.stoppedAt === undefined">
+							<span class="status-badge running" v-else-if="scope.row.stoppedAt === undefined">
 								{{ $locale.baseText('executionsList.running') }}
 							</span>
 							<span class="status-badge success" v-else-if="scope.row.finished">
