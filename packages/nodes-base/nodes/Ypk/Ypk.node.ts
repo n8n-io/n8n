@@ -21,6 +21,7 @@ import { speakersTrainingSessionFields, speakersTrainingSessionOperations } from
 import { learnersTrainingSessionFields, learnersTrainingSessionOperations } from './LearnersTrainingSession';
 import { speakersTrainingModuleFields, speakersTrainingModuleOperations } from './SpeakersTrainingModule';
 import { contactFields, contactOperations } from './Contact';
+import {companyFields, companyOperations} from './Company';
 
 interface YpkSettingType {
 	id: string;
@@ -62,6 +63,10 @@ export class Ypk implements INodeType {
 						name: 'Contact',
 						value: 'contact',
 					},
+          {
+						name: 'Company',
+						value: 'company',
+					},
 					{
 						name: 'Formateur',
 						value: 'speaker',
@@ -94,6 +99,7 @@ export class Ypk implements INodeType {
 
 			// Operations
 			...contactOperations,
+      ...companyOperations,
 			...learnerOperations,
 			...learnersTrainingSessionOperations,
 			...trainingOperations,
@@ -104,6 +110,7 @@ export class Ypk implements INodeType {
 
 			// Fields
 			...contactFields,
+      ...companyFields,
 			...learnerFields,
 			...learnersTrainingSessionFields,
 			...trainingFields,
@@ -227,6 +234,45 @@ export class Ypk implements INodeType {
 					qs['q[first_name_cont]'] = search_firstname;
 					qs['q[email_cont]'] = search_email;
 					dataKey = 'learners';
+					method = 'GET';
+				}
+			}
+
+      if (resource === 'company') {
+				endpoint = 'companies';
+				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+				const name = this.getNodeParameter('name', i, '') as string;
+				const { id, ...fields } = additionalFields;
+        const { street, zip_code, city, country } = fields;
+				body = { company: { name, address_attributes: { street, zip_code, city, country }} ...fields };
+
+				if (operation === 'create') {
+					// get email input
+					dataKey = 'company';
+					method = 'POST';
+				}
+				if (operation === 'update') {
+					endpoint = `companies/${id}`;
+					dataKey = 'company';
+					method = 'PATCH';
+				}
+				if (operation === 'delete') {
+					endpoint = `companies/${id}`;
+					dataKey = 'company';
+					method = 'DELETE';
+				}
+				if (operation === 'get') {
+					endpoint = `companies/${id}`;
+					dataKey = 'company';
+					method = 'GET';
+				}
+				if (operation === 'getAll') {
+					const { search_lastname, search_email } = this.getNodeParameter('filters', i, {}) as IDataObject;
+
+					endpoint = `companies`;
+					qs['q[last_name_cont]'] = search_lastname;
+					qs['q[email_cont]'] = search_email;
+					dataKey = 'companies';
 					method = 'GET';
 				}
 			}
