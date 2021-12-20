@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -13,7 +13,7 @@ export const userOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve data on all the users in the<br>logged-in user\'s organization.',
+				description: `Retrieve data on all the users in the logged-in user's organization.`,
 			},
 		],
 		displayOptions: {
@@ -24,9 +24,9 @@ export const userOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -68,4 +68,4 @@ export const userFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

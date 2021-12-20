@@ -22,6 +22,7 @@ import {
 	ICredentialsExpressionResolveValues,
 	IDataObject,
 	IExecuteFunctions,
+	IExecuteResponsePromiseData,
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
 	IHttpRequestOptions,
@@ -71,7 +72,7 @@ import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
 import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
-import { URLSearchParams } from 'url';
+import { URL, URLSearchParams } from 'url';
 // eslint-disable-next-line import/no-cycle
 import {
 	BINARY_ENCODING,
@@ -86,6 +87,14 @@ import {
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
 axios.defaults.headers.post = {};
+axios.defaults.headers.put = {};
+axios.defaults.headers.patch = {};
+axios.defaults.paramsSerializer = (params) => {
+	if (params instanceof URLSearchParams) {
+		return params.toString();
+	}
+	return stringify(params, { arrayFormat: 'indices' });
+};
 
 const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
@@ -126,6 +135,28 @@ function searchForHeader(headers: IDataObject, headerName: string) {
 	const headerNames = Object.keys(headers);
 	headerName = headerName.toLowerCase();
 	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
+}
+
+async function generateContentLengthHeader(formData: FormData, headers: IDataObject) {
+	if (!formData || !formData.getLength) {
+		return;
+	}
+	try {
+		const length = await new Promise((res, rej) => {
+			formData.getLength((error: Error | null, length: number) => {
+				if (error) {
+					rej(error);
+					return;
+				}
+				res(length);
+			});
+		});
+		headers = Object.assign(headers, {
+			'content-length': length,
+		});
+	} catch (error) {
+		Logger.error('Unable to calculate form data length', { error });
+	}
 }
 
 async function parseRequestObject(requestObject: IDataObject) {
@@ -192,6 +223,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		delete axiosConfig.headers[contentTypeHeaderKeyName];
 		const headers = axiosConfig.data.getHeaders();
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
+		await generateContentLengthHeader(axiosConfig.data, axiosConfig.headers);
 	} else {
 		// When using the `form` property it means the content should be x-www-form-urlencoded.
 		if (requestObject.form !== undefined && requestObject.body === undefined) {
@@ -228,6 +260,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			// Mix in headers as FormData creates the boundary.
 			const headers = axiosConfig.data.getHeaders();
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
+			await generateContentLengthHeader(axiosConfig.data, axiosConfig.headers);
 		} else if (requestObject.body !== undefined) {
 			// If we have body and possibly form
 			if (requestObject.form !== undefined) {
@@ -338,7 +371,63 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.proxy !== undefined) {
-		axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+		// try our best to parse the url provided.
+		if (typeof requestObject.proxy === 'string') {
+			try {
+				const url = new URL(requestObject.proxy);
+				axiosConfig.proxy = {
+					host: url.hostname,
+					port: parseInt(url.port, 10),
+					protocol: url.protocol,
+				};
+				if (!url.port) {
+					// Sets port to a default if not informed
+					if (url.protocol === 'http') {
+						axiosConfig.proxy.port = 80;
+					} else if (url.protocol === 'https') {
+						axiosConfig.proxy.port = 443;
+					}
+				}
+				if (url.username || url.password) {
+					axiosConfig.proxy.auth = {
+						username: url.username,
+						password: url.password,
+					};
+				}
+			} catch (error) {
+				// Not a valid URL. We will try to simply parse stuff
+				// such as user:pass@host:port without protocol (we'll assume http)
+				if (requestObject.proxy.includes('@')) {
+					const [userpass, hostport] = requestObject.proxy.split('@');
+					const [username, password] = userpass.split(':');
+					const [hostname, port] = hostport.split(':');
+					axiosConfig.proxy = {
+						host: hostname,
+						port: parseInt(port, 10),
+						protocol: 'http',
+						auth: {
+							username,
+							password,
+						},
+					};
+				} else if (requestObject.proxy.includes(':')) {
+					const [hostname, port] = requestObject.proxy.split(':');
+					axiosConfig.proxy = {
+						host: hostname,
+						port: parseInt(port, 10),
+						protocol: 'http',
+					};
+				} else {
+					axiosConfig.proxy = {
+						host: requestObject.proxy,
+						port: 80,
+						protocol: 'http',
+					};
+				}
+			}
+		} else {
+			axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+		}
 	}
 
 	if (requestObject.encoding === null) {
@@ -357,6 +446,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	if (
 		requestObject.json !== false &&
 		axiosConfig.data !== undefined &&
+		axiosConfig.data !== '' &&
 		!(axiosConfig.data instanceof Buffer) &&
 		!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'content-type')
 	) {
@@ -406,6 +496,11 @@ async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
+	Logger.debug('Proxying request to axios', {
+		originalConfig: configObject,
+		parsedConfig: axiosConfig,
+	});
+
 	return new Promise((resolve, reject) => {
 		axios(axiosConfig)
 			.then((response) => {
@@ -438,17 +533,17 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
-				if (configObject.simple === true && error.response) {
-					resolve({
-						body: error.response.data,
-						headers: error.response.headers,
-						statusCode: error.response.status,
-						statusMessage: error.response.statusText,
-					});
-					return;
-				}
 				if (configObject.simple === false && error.response) {
-					resolve(error.response.data);
+					if (configObject.resolveWithFullResponse) {
+						resolve({
+							body: error.response.data,
+							headers: error.response.headers,
+							statusCode: error.response.status,
+							statusMessage: error.response.statusText,
+						});
+					} else {
+						resolve(error.response.data);
+					}
 					return;
 				}
 
@@ -1554,18 +1649,21 @@ export function getExecuteFunctions(
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 			},
-			sendMessageToUI(message: any): void {
+			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
 					return;
 				}
 				try {
 					if (additionalData.sendMessageToUI) {
-						additionalData.sendMessageToUI(node.name, message);
+						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
 				}
+			},
+			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
+				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 			},
 			helpers: {
 				httpRequest,

@@ -10,7 +10,7 @@ import {
 	otherAddress,
 } from './SharedFields';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -57,9 +57,9 @@ export const contactOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             contact: create
 	// ----------------------------------------
@@ -587,4 +587,4 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

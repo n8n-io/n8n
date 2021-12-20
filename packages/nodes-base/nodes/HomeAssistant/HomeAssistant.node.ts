@@ -6,7 +6,9 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeCredentialTestResult,
@@ -52,6 +54,8 @@ import {
 } from './CameraProxyDescription';
 
 import {
+	getHomeAssistantEntities,
+	getHomeAssistantServices,
 	homeAssistantApiRequest,
 } from './GenericFunctions';
 
@@ -169,9 +173,29 @@ export class HomeAssistant implements INodeType {
 					status: 'OK',
 					message: 'Authentication successful!',
 				};
-
 			},
 		},
+
+		loadOptions: {
+			async getAllEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantEntities.call(this);
+			},
+			async getCameraEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantEntities.call(this, 'camera');
+			},
+			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantServices.call(this);
+			},
+			async getDomainServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const currentDomain = this.getCurrentNodeParameter('domain') as string;
+				if (currentDomain) {
+					return await getHomeAssistantServices.call(this, currentDomain);
+				} else {
+					return [];
+				}
+			},
+		},
+
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const affiliateOperations = [
+export const affiliateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const affiliateOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const affiliateFields = [
+export const affiliateFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 affiliate:create                           */
 	/* -------------------------------------------------------------------------- */
@@ -176,7 +176,7 @@ export const affiliateFields = [
 				name: 'companyName',
 				type: 'string',
 				default: '',
-				description: `The affiliate’s company data,`,
+				description: `The affiliate’s company data.`,
 			},
 		],
 	},
@@ -189,6 +189,7 @@ export const affiliateFields = [
 		name: 'affiliateId',
 		required: true,
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -210,6 +211,7 @@ export const affiliateFields = [
 		name: 'affiliateId',
 		type: 'string',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -328,4 +330,4 @@ export const affiliateFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

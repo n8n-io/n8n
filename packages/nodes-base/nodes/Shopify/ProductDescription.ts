@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const productOperations = [
+export const productOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const productOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const productFields = [
+export const productFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                product:create/update                       */
@@ -116,9 +116,7 @@ export const productFields = [
 				name: 'handle',
 				type: 'string',
 				default: '',
-				description: `A unique human-friendly string for the product.<br>
-				Automatically generated from the product\'s title.<br>
-				Used by the Liquid templating language to refer to objects.`,
+				description: `A unique human-friendly string for the product. Automatically generated from the product's title. Used by the Liquid templating language to refer to objects.`,
 			},
 			{
 				displayName: 'Images',
@@ -150,8 +148,7 @@ export const productFields = [
 						name: 'position',
 						type: 'number',
 						default: '',
-						description: `The order of the product image in the list.<br>
-						The first product image is at position 1 and is the "main" image for the product.`,
+						description: `The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.`,
 					},
 					{
 						displayName: 'Product ID',
@@ -175,10 +172,7 @@ export const productFields = [
 						name: 'src',
 						type: 'string',
 						default: '',
-						description: `Specifies the location of the product image.<br>
-						This parameter supports URL filters that you can use to retrieve modified copies of the image.<br>
-						For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png),<br>
-						or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).`,
+						description: `<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>`,
 					},
 					{
 						displayName: 'Width',
@@ -212,8 +206,7 @@ export const productFields = [
 					multipleValues: true,
 				},
 				default: {},
-				description: `The custom product property names like Size, Color, and Material.</br>
-				You can add up to 3 options of up to 255 characters each.`,
+				description: `The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.`,
 				options: [
 					{
 						displayName: 'Option',
@@ -341,9 +334,7 @@ export const productFields = [
 				name: 'handle',
 				type: 'string',
 				default: '',
-				description: `A unique human-friendly string for the product.<br>
-				Automatically generated from the product\'s title.<br>
-				Used by the Liquid templating language to refer to objects.`,
+				description: `A unique human-friendly string for the product. Automatically generated from the product's title. Used by the Liquid templating language to refer to objects.`,
 			},
 			{
 				displayName: 'Images',
@@ -375,8 +366,7 @@ export const productFields = [
 						name: 'position',
 						type: 'number',
 						default: '',
-						description: `The order of the product image in the list.<br>
-						The first product image is at position 1 and is the "main" image for the product.`,
+						description: `The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.`,
 					},
 					{
 						displayName: 'Product ID',
@@ -400,10 +390,7 @@ export const productFields = [
 						name: 'src',
 						type: 'string',
 						default: '',
-						description: `Specifies the location of the product image.<br>
-						This parameter supports URL filters that you can use to retrieve modified copies of the image.<br>
-						For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png),<br>
-						or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).`,
+						description: `<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>`,
 					},
 					{
 						displayName: 'Width',
@@ -437,8 +424,7 @@ export const productFields = [
 					multipleValues: true,
 				},
 				default: {},
-				description: `The custom product property names like Size, Color, and Material.</br>
-				You can add up to 3 options of up to 255 characters each.`,
+				description: `The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.`,
 				options: [
 					{
 						displayName: 'Option',
@@ -796,4 +782,4 @@ export const productFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
