@@ -486,9 +486,7 @@ async function proxyRequestToAxios(
 
 	let axiosConfig: AxiosRequestConfig = {};
 	type ConfigObject = {
-		method?: string;
-		uri?: string;
-		auth?: { username: string; password: string; sendImmediately: boolean };
+		auth?: { sendImmediately: boolean };
 		resolveWithFullResponse?: boolean;
 		simple?: boolean;
 	};
@@ -510,14 +508,16 @@ async function proxyRequestToAxios(
 	});
 
 	if (configObject.auth?.sendImmediately === false) {
+		const { auth } = axiosConfig;
+		delete axiosConfig.auth;
 		const header = await axios(axiosConfig).catch((error) => {
 			if (error.response.status === 401) {
 				return error.response.headers['www-authenticate'];
 			}
 			throw error;
 		});
-		const userpass = `${configObject.auth.username}:${configObject.auth.password}`;
-		axiosConfig.auth = digest(configObject.method, configObject.uri, header, userpass);
+		const userpass = `${auth?.username as string}:${auth?.password as string}`;
+		axiosConfig.auth = digest(axiosConfig.method, axiosConfig.url, header, userpass);
 	}
 
 	return new Promise((resolve, reject) => {
