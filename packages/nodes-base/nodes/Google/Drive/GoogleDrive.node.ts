@@ -2262,7 +2262,7 @@ export class GoogleDrive implements INodeType {
 						let response;
 
 						if (file.mimeType.includes('vnd.google-apps')) {
-							const parameterKey = 'options.googleFileConversion.conversion'
+							const parameterKey = 'options.googleFileConversion.conversion';
 							const type = file.mimeType.split('.')[2];
 							let mime;
 							if (type === 'document') {
