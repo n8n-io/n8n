@@ -49,7 +49,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { v4 as uuidv4} from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 export const workflowHelpers = mixins(
 	externalHooks,
@@ -478,8 +478,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: 'Problem saving workflow',
-						message: `There was a problem saving the workflow: "${e.message}"`,
+						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
+						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `: "${e.message}"`,
 						type: 'error',
 					});
 
@@ -552,8 +552,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: 'Problem saving workflow',
-						message: `There was a problem saving the workflow: "${e.message}"`,
+						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
+						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `: "${e.message}"`,
 						type: 'error',
 					});
 

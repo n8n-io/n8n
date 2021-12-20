@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="parameter.displayName"
-		:tooltipText="parameter.description"
+		:label="$locale.credText().topParameterDisplayName(parameter)"
+		:tooltipText="$locale.credText().topParameterDescription(parameter)"
 		:required="parameter.required"
 		:showTooltip="focused"
 	>
@@ -13,6 +13,7 @@
 			:displayOptions="true"
 			:documentationUrl="documentationUrl"
 			:errorHighlight="showRequiredErrors"
+			:isForCredential="true"
 			@focus="onFocus"
 			@blur="onBlur"
 			@textInput="valueChanged"
@@ -20,7 +21,7 @@
 			inputSize="large"
 		/>
 		<div :class="$style.errors" v-if="showRequiredErrors">
-			This field is required. <n8n-link v-if="documentationUrl" size="small" theme="danger" :to="documentationUrl" :newWindow="true" :underline="true" @click="onDocumentationUrlClick">Open docs</n8n-link>
+			{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }} <n8n-link v-if="documentationUrl" size="small" theme="danger" :to="documentationUrl" :newWindow="true" :underline="true" @click="onDocumentationUrlClick">{{ $locale.baseText('parameterInputExpanded.openDocs') }}</n8n-link>
 		</div>
 	</n8n-input-label>
 </template>

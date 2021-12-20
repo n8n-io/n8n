@@ -18,6 +18,7 @@ import N8nLink from './N8nLink';
 import N8nOption from './N8nOption';
 import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
+import N8nSquareButton from './N8nSquareButton';
 import N8nText from './N8nText';
 import N8nTooltip from './N8nTooltip';
 import N8nUsersList from './N8nUsersList';
@@ -44,6 +45,7 @@ export {
 	N8nOption,
 	N8nSelect,
 	N8nSpinner,
+	N8nSquareButton,
 	N8nText,
 	N8nTooltip,
 	N8nUsersList,

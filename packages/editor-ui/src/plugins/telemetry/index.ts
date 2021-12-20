@@ -34,7 +34,7 @@ interface IUserNodesPanelSession {
 }
 
 class Telemetry {
-	
+
 	private get telemetry() {
 		// @ts-ignore
 		return window.rudderanalytics;
@@ -63,6 +63,12 @@ class Telemetry {
 	track(event: string, properties?: IDataObject) {
 		if (this.telemetry) {
 			this.telemetry.track(event, properties);
+		}
+	}
+
+	page(category?: string, name?: string | undefined | null) {
+		if (this.telemetry)	{
+			this.telemetry.page(category, name);
 		}
 	}
 

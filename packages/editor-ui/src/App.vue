@@ -128,8 +128,9 @@ export default mixins(
 		},
 	},
 	watch: {
-		'$route'() {
+		'$route'(route) {
 			this.authenticate();
+			this.$telemetry.page('Editor', route.name);
 		},
 	},
 });

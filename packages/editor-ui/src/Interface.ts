@@ -163,6 +163,7 @@ export interface IRestApi {
 	getPastExecutions(filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
+	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
 	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
 	getNodeParameterOptions(nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
@@ -178,6 +179,15 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
+}
+
+export interface INodeTranslationHeaders {
+	data: {
+		[key: string]: {
+			displayName: string;
+			description: string;
+		},
+	};
 }
 
 export interface IBinaryDisplayData {
@@ -473,12 +483,32 @@ export interface IVersionNotificationSettings {
 export type IPersonalizationSurveyKeys = 'codingSkill' | 'companyIndustry' | 'companySize' | 'otherCompanyIndustry' | 'otherWorkArea' | 'workArea';
 
 export type IPersonalizationSurveyAnswers = {
-	[key in IPersonalizationSurveyKeys]: string | null
+	codingSkill: string | null;
+	companyIndustry: string[];
+	companySize: string | null;
+	otherCompanyIndustry: string | null;
+	otherWorkArea: string | null;
+	workArea: string[] | string | null;
 };
 
 export interface IPersonalizationSurvey {
 	answers?: IPersonalizationSurveyAnswers;
 	shouldShow: boolean;
+}
+
+export interface IN8nPrompts {
+	message: string;
+	title: string;
+	showContactPrompt: boolean;
+	showValueSurvey: boolean;
+}
+
+export interface IN8nValueSurveyData {
+	[key: string]: string;
+}
+
+export interface IN8nPromptResponse {
+	updated: boolean;
 }
 
 export interface IN8nUISettings {
@@ -507,6 +537,7 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		hasOwner: boolean;
 	};
+	defaultLocale: string;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -621,6 +652,8 @@ export interface IRootState {
 	activeActions: string[];
 	activeNode: string | null;
 	baseUrl: string;
+	credentialTextRenderKeys: { nodeType: string; credentialType: string; } | null;
+	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;
@@ -690,6 +723,7 @@ export interface IUiState {
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
+	promptsData: IN8nPrompts;
 }
 
 export interface IVersionsState {
