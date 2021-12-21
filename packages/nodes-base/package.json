@@ -22,7 +22,8 @@
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "nodelinter": "nodelinter",
     "watch": "tsc --watch",
-    "test": "jest"
+    "test": "jest",
+    "test-watch": "jest --watch"
   },
   "files": [
     "dist"

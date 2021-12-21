@@ -26,19 +26,20 @@ describe('Private Token Generator', () => {
 	it('should pad string with 16 length with 15', () => {
 		const realData = helpers.get16TimesLength(15);
 		expect(realData).toEqual(SCALE_SIZE);
-	})
+	});
 	it('should pad string with 16 length with 16', () => {
 		const realData = helpers.get16TimesLength(SCALE_SIZE);
 		expect(realData).toEqual(SCALE_SIZE);
-	})
+	});
+
 	it('should pad string with 32 length with 17', () => {
 		const realData = helpers.get16TimesLength(17);
 		expect(realData).toEqual(2 * SCALE_SIZE);
-	})
+	});
 	it('should pad string with 48 length with 33', () => {
 		const realData = helpers.get16TimesLength(33);
 		expect(realData).toEqual(3 * SCALE_SIZE);
-	})
+	});
 	it('should pad string with 48 length', () => {
 		const realData = helpers.padWithSpaceIn16Times(TIMESTAMP_EMAIL_CONNECTED);
 		expect(realData.length).toEqual(48);
