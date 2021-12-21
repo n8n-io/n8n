@@ -59,11 +59,10 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		if (!uri) {
 			//do not include the API Key when downloading files, else the request fails
 			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-		} 
+		}
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-
 		return this.helpers.request!(options);
 
 	} catch (error) {
@@ -323,6 +322,14 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 					},
 				};
 			}
+
+			//if the date was left empty, set it to null so it resets the value in notion
+			if (value.date === '' ||
+				(value.dateStart === '' && value.dateEnd === '')) {
+				//@ts-ignore
+				result.date = null;
+			}
+
 			break;
 		case 'files':
 			result = {
@@ -482,7 +489,7 @@ export function simplifyObjects(objects: any, download = false, version = 1) {
 				id,
 				...(version === 2) ? { name: getPropertyTitle(properties) } : {},
 				...(version === 2) ? { url } : {},
-				...(version === 2) ? { ...prepend('property', simplifyProperties(properties)) }  : { ...simplifyProperties(properties) },
+				...(version === 2) ? { ...prepend('property', simplifyProperties(properties)) } : { ...simplifyProperties(properties) },
 			});
 		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
 			results.push({
@@ -911,80 +918,6 @@ export function getSearchFilters(resource: string) {
 			default: '',
 			description: '',
 		},
-		// {
-		// 	displayName: 'Options',
-		// 	name: 'options',
-		// 	type: 'collection',
-		// 	placeholder: 'Add Option',
-		// 	default: {},
-		// 	displayOptions: {
-		// 		show: {
-		// 			resource: [
-		// 				resource,
-		// 			],
-		// 			operation: [
-		// 				'getAll',
-		// 			],
-		// 		},
-		// 	},
-		// 	options: [
-		// 		// {
-		// 		// 	displayName: 'Properties',
-		// 		// 	name: 'properties',
-		// 		// 	type: 'multiOptions',
-		// 		// 	typeOptions: {
-		// 		// 		loadOptionsMethod: attributeFunction,
-		// 		// 	},
-		// 		// 	default: ['*'],
-		// 		// 	description: 'Properties the response will return. By default all properties are returned',
-		// 		// },
-		// 		{
-		// 			displayName: 'Sort',
-		// 			name: 'sort',
-		// 			type: 'fixedCollection',
-		// 			placeholder: 'Add Sort',
-		// 			typeOptions: {
-		// 				multipleValues: true,
-		// 			},
-		// 			default: [],
-		// 			options: [
-		// 				{
-		// 					displayName: 'Sort',
-		// 					name: 'sort',
-		// 					values: [
-		// 						{
-		// 							displayName: 'Direction',
-		// 							name: 'direction',
-		// 							type: 'options',
-		// 							options: [
-		// 								{
-		// 									name: 'Ascending',
-		// 									value: 'ASC',
-		// 								},
-		// 								{
-		// 									name: 'Descending',
-		// 									value: 'DESC',
-		// 								},
-		// 							],
-		// 							default: 'ASC',
-		// 							description: 'The sorting direction',
-		// 						},
-		// 						// {
-		// 						// 	displayName: 'Field',
-		// 						// 	name: 'field',
-		// 						// 	type: 'options',
-		// 						// 	typeOptions: {
-		// 						// 		loadOptionsMethod: sortableAttributeFunction,
-		// 						// 	},
-		// 						// 	default: '',
-		// 						// 	description: `The sorting field`,
-		// 						// },
-		// 					],
-		// 				},
-		// 			],
-		// 		},
-		// 	],
-		// },
 	];
 }
 
