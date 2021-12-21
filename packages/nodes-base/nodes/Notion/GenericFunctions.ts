@@ -288,6 +288,11 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			};
 			break;
 		case 'people':
+			//if expression it's a single value, make it an array
+			if (!Array.isArray(value.peopleValue)) {
+				value.peopleValue = [value.peopleValue]
+			}
+
 			result = {
 				type: 'people', people: value.peopleValue.map((option: string) => ({ id: option })),
 			};
