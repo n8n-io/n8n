@@ -174,8 +174,8 @@ export class Ypk implements INodeType {
 
 			if (resource === 'learnersTrainingSession') {
 				endpoint = 'learners_training_sessions';
-				const id = this.getNodeParameter('id', i) as string;
-				const comment = this.getNodeParameter('comment', i) as string;
+				const id = this.getNodeParameter('id', i, '') as string;
+				const comment = this.getNodeParameter('comment', i, '') as string;
 				body = { learners_training_session: { comment } };
 
 				if (operation === 'update') {
@@ -189,7 +189,7 @@ export class Ypk implements INodeType {
 					method = 'GET';
 				}
 				if (operation === 'getAll') {
-					const trainingSessionId = this.getNodeParameter('training_session_id', i, {}) as IDataObject;
+					const trainingSessionId = this.getNodeParameter('training_session_id', i) as string;
 
 					endpoint = `training_session/${trainingSessionId}/learners_training_sessions`;
 					dataKey = 'learners_training_sessions';
