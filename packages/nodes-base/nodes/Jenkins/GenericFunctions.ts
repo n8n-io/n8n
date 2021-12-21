@@ -10,24 +10,28 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 
-export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, uri: string, qs: IDataObject = {}, headers: IDataObject = {}, body: any = '', option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('JenkinsApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
-	const token = Buffer.from(`${credentials.username}:${credentials.apiKey}`).toString('base64');
-
-	let options: OptionsWithUri = {
-		headers: {
+export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, uri: string, credentials: IDataObject = {}, qs: IDataObject = {}, headers: IDataObject = {}, body: any = '', option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	let generatedHeaders;
+	if (credentials.username && credentials.apiKey) {
+		const token = Buffer.from(`${credentials.username}:${credentials.apiKey}`).toString('base64');
+		generatedHeaders = {
 			'Accept': 'application/json',
 			'Authorization': `Basic ${token}`,
 			...headers,
-		},
+		};
+	} else {
+		generatedHeaders = {
+			'Accept': 'application/json',
+			...headers,
+		};
+	}
+
+	let options: OptionsWithUri = {
+		headers: generatedHeaders,
 		method,
 		uri: `${uri}`,
 		json: true,

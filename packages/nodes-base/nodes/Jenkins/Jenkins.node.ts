@@ -9,7 +9,9 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeCredentialTestResult,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -48,6 +50,14 @@ export class Jenkins implements INodeType {
 				name: 'JenkinsApi',
 				required: true,
 				testedBy: 'buildsGetApiTest',
+				displayOptions: {
+					hide: {
+						operation: [
+							'trigger',
+							'triggerParams',
+						],
+					},
+				},
 			},
 		],
 		properties: [
@@ -92,17 +102,17 @@ export class Jenkins implements INodeType {
 				},
 				options: [
 					{
-						name: 'Trigger a Job',
+						name: 'Trigger',
 						value: 'trigger',
 						description: 'Trigger a specific job',
 					},
 					{
-						name: 'Trigger a Job with Parameters',
+						name: 'Trigger with Parameters',
 						value: 'triggerParams',
 						description: 'Trigger a specific job',
 					},
 					{
-						name: 'Copy a Job',
+						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a specific job',
 					},
@@ -134,7 +144,7 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Name of the jenkins job',
+				description: 'Name of the job',
 			},
 			// --------------------------------------------------------------------------------------------------------
 			//         Trigger a Job
@@ -156,7 +166,26 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Job token',
+				description: 'Job specific token',
+			},
+			{
+				displayName: 'Jenkins URL',
+				name: 'url',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'job',
+						],
+						operation: [
+							'trigger',
+							'triggerParams',
+						],
+					},
+				},
+				required: true,
+				default: '',
+				description: 'URL of an instance',
 			},
 			{
 				displayName: 'Parameters',
@@ -240,6 +269,22 @@ export class Jenkins implements INodeType {
 				default: '',
 				description: 'XML of Jenkins config',
 			},
+			{
+				displayName: 'You can get an XML form existing job by adding "config.xml" to the job\'s URL',
+				name: 'createNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'job',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
 
 			// --------------------------------------------------------------------------------------------------------
 			//         Jenkins operations
@@ -257,38 +302,38 @@ export class Jenkins implements INodeType {
 				},
 				options: [
 					{
-						name: 'Cancel Quiet Down Jenkins',
+						name: 'Cancel Quiet Down',
 						value: 'cancelQuietDown',
 						description: 'Cancel quiet down state',
 					},
 					{
-						name: 'Quiet Down Jenkins',
+						name: 'Quiet Down',
 						value: 'quietDown',
 						description: 'Puts Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown',
 					},
 					{
-						name: 'Restart Jenkins',
+						name: 'Restart',
 						value: 'restart',
 						description: 'Restart Jenkins immediately on environments where it is possible',
 					},
 					{
-						name: 'Safely Restart Jenkins',
+						name: 'Safely Restart',
 						value: 'safeRestart',
 						description: 'Restart Jenkins once no jobs are running on environments where it is possible',
 					},
 					{
-						name: 'Safely Shutdown Jenkins',
+						name: 'Safely Shutdown',
 						value: 'safeExit',
 						description: 'Shutdown once no jobs are running',
 					},
 					{
-						name: 'Shutdown Jenkins',
+						name: 'Shutdown',
 						value: 'exit',
 						description: 'Shutdown Jenkins immediately',
 					},
 				],
 				default: 'safeRestart',
-				description: 'Jenkins operation',
+				description: 'Jenkins instance operations',
 				noDataExpression: true,
 			},
 			{
@@ -309,6 +354,19 @@ export class Jenkins implements INodeType {
 				default: '',
 				description: 'Freeform reason for quiet down mode',
 			},
+			{
+				displayName: 'Instance operation can shutdown Jenkins instance and make it unresponsive. Some commands maybe not be available depending on instance implementation.',
+				name: 'instanceNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'instance',
+						],
+					},
+				},
+			},
 
 			// --------------------------------------------------------------------------------------------------------
 			//         Builds operations
@@ -326,7 +384,7 @@ export class Jenkins implements INodeType {
 				},
 				options: [
 					{
-						name: 'Get All Builds',
+						name: 'Get All',
 						value: 'build:getAll',
 						description: 'List Builds',
 					},
@@ -334,24 +392,6 @@ export class Jenkins implements INodeType {
 				default: 'build:getAll',
 				description: 'Build operation',
 				noDataExpression: true,
-			},
-			{
-				displayName: 'Depth',
-				name: 'depth',
-				type: 'number',
-				displayOptions: {
-					show: {
-						resource: [
-							'build',
-						],
-						operation: [
-							'build:getAll',
-						],
-					},
-				},
-				required: true,
-				default: 1,
-				description: '',
 			},
 			{
 				displayName: 'Filters',
@@ -370,6 +410,13 @@ export class Jenkins implements INodeType {
 					},
 				},
 				options: [
+					{
+						displayName: 'Depth',
+						name: 'depth',
+						type: 'number',
+						default: 1,
+						description: 'Number depth parameter',
+					},
 					{
 						displayName: 'Tree',
 						name: 'tree',
@@ -445,17 +492,19 @@ export class Jenkins implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
-				const { baseUrl } = await this.getCredentials('JenkinsApi') as JenkinsApiCredentials;
 				if (resource === 'job') {
 					if (operation === 'trigger') {
 						const token = this.getNodeParameter('token', i) as string;
 						const job = this.getNodeParameter('job', i) as string;
-						const endpoint = `${baseUrl}/job/${job}/build?token=${token}`;
-						responseData = await jenkinsApiRequest.call(this, 'get', endpoint);
+						const url = tolerateTrailingSlash(this.getNodeParameter('url', i) as string);
+						const endpoint = `${url}/job/${job}/build?token=${token}`;
+						await jenkinsApiRequest.call(this, 'get', endpoint);
+						responseData = { success: true };
 					}
 					if (operation === 'triggerParams') {
 						const token = this.getNodeParameter('token', i) as string;
 						const job = this.getNodeParameter('job', i) as string;
+						const url = tolerateTrailingSlash(this.getNodeParameter('url', i) as string);
 						const params = this.getNodeParameter('param.params', i , [] ) as [];
 						let body = {};
 						if (params.length) {
@@ -464,12 +513,18 @@ export class Jenkins implements INodeType {
 								return body;
 							}, {});
 						}
-						const endpoint = `${baseUrl}/job/${job}/buildWithParameters?token=${token}`;
-						responseData = await jenkinsApiRequest.call(this, 'get', endpoint, {}, {}, { data: body });
+						const endpoint = `${url}/job/${job}/buildWithParameters?token=${token}`;
+						await jenkinsApiRequest.call(this, 'get', endpoint, {}, {}, { data: body });
+						responseData = { success: true };
 					}
 					if (operation === 'copy') {
 						const job = this.getNodeParameter('job', i) as string;
 						const name = this.getNodeParameter('newJob', i) as string;
+						const credentials = await this.getCredentials('JenkinsApi') as JenkinsApiCredentials;
+						if (credentials === undefined) {
+							throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+						}
+						const { baseUrl } = credentials;
 						const queryParams = {
 							name,
 							mode: 'copy',
@@ -477,10 +532,16 @@ export class Jenkins implements INodeType {
 						};
 
 						const endpoint = `${baseUrl}/createItem`;
-						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams);
+						await jenkinsApiRequest.call(this, 'post', endpoint, credentials, queryParams);
+						responseData = { success: true };
 					}
 					if (operation === 'create') {
 						const name = this.getNodeParameter('newJob', i) as string;
+						const credentials = await this.getCredentials('JenkinsApi') as JenkinsApiCredentials;
+						if (credentials === undefined) {
+							throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+						}
+						const { baseUrl } = credentials;
 						const queryParams = {
 							name,
 						};
@@ -491,71 +552,101 @@ export class Jenkins implements INodeType {
 						const body = this.getNodeParameter('xml', i) as string;
 
 						const endpoint = `${baseUrl}/createItem`;
-						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams, headers, body);
+						await jenkinsApiRequest.call(this, 'post', endpoint, credentials, queryParams, headers, body);
+						responseData = { success: true };
 					}
 				}
-				if (resource === 'instance') {
+				else {
+					const credentials = await this.getCredentials('JenkinsApi') as JenkinsApiCredentials;
+					if (credentials === undefined) {
+						throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+					}
+					const { baseUrl } = credentials;
 
-					if (operation === 'quietDown') {
-						const reason = this.getNodeParameter('reason', i) as string;
-						let queryParams;
-						if (reason) {
-							queryParams = {
-								reason,
-							};
+					if (resource === 'instance') {
+						if (operation === 'quietDown') {
+							const reason = this.getNodeParameter('reason', i) as string;
+							const { baseUrl } = credentials;
+
+							let queryParams;
+							if (reason) {
+								queryParams = {
+									reason,
+								};
+							}
+
+							const endpoint = `${baseUrl}/quietDown`;
+							await jenkinsApiRequest.call(this, 'post', endpoint, credentials, queryParams);
+							responseData = { success: true };
 						}
-
-						const endpoint = `${baseUrl}/quietDown`;
-						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams);
-					}
-					if (operation === 'cancelQuietDown') {
-						const endpoint = `${baseUrl}/cancelQuietDown`;
-						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
-					}
-					if (operation === 'restart') {
-						const endpoint = `${baseUrl}/restart`;
-						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
-					}
-					if (operation === 'safeRestart') {
-						const endpoint = `${baseUrl}/safeRestart`;
-						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
-					}
-					if (operation === 'exit') {
-						const endpoint = `${baseUrl}/exit`;
-						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
-					}
-					if (operation === 'safeExit') {
-						const endpoint = `${baseUrl}/safeExit`;
-						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
-					}
-				}
-				if (resource === 'build') {
-					if (operation === 'build:getAll') {
-						const endpoint = `${baseUrl}/api/xml`;
-						const depth = this.getNodeParameter('depth', i) as number;
-
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-						const tree = filters.tree as string ;
-						const xpath = filters.xpath as string;
-						const exclude = filters.exclude as string;
-
-						const queryParams = {
-							depth,
-							tree,
-							xpath,
-							exclude,
-						};
-
-						const response = await jenkinsApiRequest.call(this, 'get', endpoint, queryParams);
-						responseData = await new Promise((resolve, reject) => {
-							parseString(response, { explicitArray: false }, (err, data) => {
-								if (err) {
-									return reject(err);
+						if (operation === 'cancelQuietDown') {
+							const endpoint = `${baseUrl}/cancelQuietDown`;
+							await jenkinsApiRequest.call(this, 'post', endpoint, credentials);
+							responseData = { success: true };
+						}
+						if (operation === 'restart') {
+							const endpoint = `${baseUrl}/restart`;
+							try {
+								await jenkinsApiRequest.call(this, 'post', endpoint, credentials);
+							} catch (error) {
+								if (error.httpCode === '503') {
+									responseData = { success: true };
+								} else {
+									throw new NodeApiError(this.getNode(), error);
 								}
-								resolve(data);
+							}
+						}
+						if (operation === 'safeRestart') {
+							const endpoint = `${baseUrl}/safeRestart`;
+							try {
+								await jenkinsApiRequest.call(this, 'post', endpoint, credentials);
+							} catch (error) {
+								if (error.httpCode === '503') {
+									responseData = { success: true };
+								} else {
+									throw new NodeApiError(this.getNode(), error);
+								}
+							}
+						}
+						if (operation === 'exit') {
+							const endpoint = `${baseUrl}/exit`;
+							await jenkinsApiRequest.call(this, 'post', endpoint, credentials);
+							responseData = { success: true };
+						}
+						if (operation === 'safeExit') {
+							const endpoint = `${baseUrl}/safeExit`;
+							await jenkinsApiRequest.call(this, 'post', endpoint, credentials);
+							responseData = { success: true };
+						}
+					}
+
+					if (resource === 'build') {
+						if (operation === 'build:getAll') {
+							const endpoint = `${baseUrl}/api/xml`;
+							const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+							const tree = filters.tree as string ;
+							const xpath = filters.xpath as string;
+							const exclude = filters.exclude as string;
+							const depth = filters.depth as number;
+
+							const queryParams = {
+								depth: depth ? depth : 1,
+								tree,
+								xpath,
+								exclude,
+							};
+
+							const response = await jenkinsApiRequest.call(this, 'get', endpoint, credentials, queryParams);
+							responseData = await new Promise((resolve, reject) => {
+								parseString(response, { explicitArray: false }, (err, data) => {
+									if (err) {
+										return reject(err);
+									}
+									resolve(data);
+								});
 							});
-						});
+						}
 					}
 				}
 				if (Array.isArray(responseData)) {
