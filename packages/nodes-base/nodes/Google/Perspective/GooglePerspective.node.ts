@@ -147,7 +147,6 @@ export class GooglePerspective implements INodeType {
 								name: 'scoreThreshold',
 								type: 'number',
 								typeOptions: {
-									numberStepSize: 0.1,
 									numberPrecision: 2,
 									minValue: 0,
 									maxValue: 1,

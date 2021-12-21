@@ -289,7 +289,6 @@ export class Todoist implements INodeType {
 						name: 'priority',
 						type: 'number',
 						typeOptions: {
-							numberStepSize: 1,
 							maxValue: 4,
 							minValue: 1,
 						},
@@ -480,7 +479,6 @@ export class Todoist implements INodeType {
 						name: 'priority',
 						type: 'number',
 						typeOptions: {
-							numberStepSize: 1,
 							maxValue: 4,
 							minValue: 1,
 						},
