@@ -27,10 +27,45 @@ import {
 } from 'fs/promises';
 import * as glob from 'fast-glob';
 import * as path from 'path';
+import * as fs from 'fs';
+import { performance } from 'perf_hooks';
 import { getLogger } from './Logger';
 import * as config from '../config';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
+
+/**
+ * Traverse a dir recursively and collect file paths that pass a test.
+ */
+function collectPaths(
+	dir: string,
+	test: (arg: string) => boolean,
+	collection: string[] = [],
+	{ dirsToSkip }: { dirsToSkip: string[] } = { dirsToSkip: [] },
+): string[] {
+	fs.readdirSync(dir).forEach((item) => {
+		const itemPath = path.join(dir, item);
+
+		if (!dirsToSkip.includes(itemPath) && fs.lstatSync(itemPath).isDirectory()) {
+			collectPaths(itemPath, test, collection, { dirsToSkip });
+		}
+
+		if (test(item)) {
+			collection.push(itemPath);
+		}
+	});
+
+	return collection;
+}
+
+const isNodePath = (filePath: string) => filePath.endsWith('.node.js');
+const isCredPath = (filePath: string) => filePath.endsWith('.credentials.js');
+
+const getTail = (acc: string[], cur: string) => {
+	const tail = cur.split('/n8n-nodes-base/').pop();
+	if (tail) acc.push(tail);
+	return acc;
+};
 
 class LoadNodesAndCredentialsClass {
 	nodeTypes: INodeTypeData = {};
@@ -48,6 +83,8 @@ class LoadNodesAndCredentialsClass {
 	logger: ILogger;
 
 	async init() {
+		const t0 = performance.now();
+
 		this.logger = getLogger();
 		LoggerProxy.init(this.logger);
 
@@ -104,6 +141,10 @@ class LoadNodesAndCredentialsClass {
 		for (const directory of customDirectories) {
 			await this.loadDataFromDirectory('CUSTOM', directory);
 		}
+
+		const t1 = performance.now();
+		// eslint-disable-next-line no-console
+		console.log(`*** LoadNodesAndCredentials.init() took ${t1 - t0} milliseconds. ***`);
 	}
 
 	/**
@@ -357,6 +398,20 @@ class LoadNodesAndCredentialsClass {
 			return;
 		}
 
+		const loadRecursively = true;
+
+		let nodesPaths;
+		let credsPaths;
+
+		if (loadRecursively) {
+			const distNodesPath = path.join(packagePath, 'dist', 'nodes');
+			const distCredsPath = path.join(packagePath, 'dist', 'credentials');
+			nodesPaths = collectPaths(distNodesPath, isNodePath, [], {
+				dirsToSkip: ['descriptions'],
+			}).reduce(getTail, []);
+			credsPaths = collectPaths(distCredsPath, isCredPath).reduce(getTail, []);
+		}
+
 		let tempPath: string;
 		let filePath: string;
 
@@ -364,7 +419,7 @@ class LoadNodesAndCredentialsClass {
 		let fileName: string;
 		let type: string;
 		if (packageFile.n8n.hasOwnProperty('nodes') && Array.isArray(packageFile.n8n.nodes)) {
-			for (filePath of packageFile.n8n.nodes) {
+			for (filePath of loadRecursively ? nodesPaths : packageFile.n8n.nodes) {
 				tempPath = path.join(packagePath, filePath);
 				[fileName, type] = path.parse(filePath).name.split('.');
 				await this.loadNodeFromFile(packageName, fileName, tempPath);
@@ -376,7 +431,7 @@ class LoadNodesAndCredentialsClass {
 			packageFile.n8n.hasOwnProperty('credentials') &&
 			Array.isArray(packageFile.n8n.credentials)
 		) {
-			for (filePath of packageFile.n8n.credentials) {
+			for (filePath of loadRecursively ? credsPaths : packageFile.n8n.credentials) {
 				tempPath = path.join(packagePath, filePath);
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				[fileName, type] = path.parse(filePath).name.split('.');
