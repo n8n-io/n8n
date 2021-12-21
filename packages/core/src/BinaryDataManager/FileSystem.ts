@@ -4,7 +4,8 @@ import { v4 as uuid } from 'uuid';
 
 import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 
-const PREFIX_METAFILE = 'binarymeta-';
+const PREFIX_METAFILE = 'binarymeta';
+const PREFIX_PERSISTED_METAFILE = 'persistedmeta';
 
 export class BinaryDataFileSystem implements IBinaryDataManager {
 	private storagePath: string;
@@ -21,6 +22,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 			setInterval(async () => {
 				// get all files and delete data
 				await this.deleteMarkedFiles();
+				await this.deleteMarkedPersistedFiles();
 			}, this.binaryDataTTL * 30000);
 		}
 
@@ -32,6 +34,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 			.then(async () => fs.readdir(this.getBinaryDataPersistMetaPath()))
 			.catch(async () => fs.mkdir(this.getBinaryDataPersistMetaPath(), { recursive: true }))
 			.then(async () => this.deleteMarkedFiles())
+			.then(async () => this.deleteMarkedPersistedFiles())
 			.then(() => {});
 	}
 
@@ -48,10 +51,13 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 
 	private async addBinaryIdToPersistMeta(executionId: string, identifier: string): Promise<void> {
 		const currentTime = new Date().getTime();
-		const timeoutTime = currentTime + this.binaryDataTTL * 60000;
-		const fileNameTS = (timeoutTime / 3600000 + 1).toString().split('.')[0];
+		const timeAtNextHour = currentTime + 3600000 - (currentTime % 3600000);
+		const timeoutTime = timeAtNextHour + this.binaryDataTTL * 60000;
 
-		const filePath = path.join(this.getBinaryDataPersistMetaPath(), `${executionId}_${fileNameTS}`);
+		const filePath = path.join(
+			this.getBinaryDataPersistMetaPath(),
+			`${PREFIX_PERSISTED_METAFILE}_${executionId}_${timeoutTime}`,
+		);
 
 		return fs
 			.readFile(filePath)
@@ -62,7 +68,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 	async markDataForDeletion(identifiers: string[]): Promise<void> {
 		const tt = new Date(new Date().getTime() + this.binaryDataTTL * 60000);
 		return fs.writeFile(
-			path.join(this.getBinaryDataMetaPath(), PREFIX_METAFILE + tt.valueOf().toString()),
+			path.join(this.getBinaryDataMetaPath(), `${PREFIX_METAFILE}_${tt.valueOf()}`),
 			JSON.stringify(identifiers, null, '\t'),
 		);
 	}
@@ -74,7 +80,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		const filteredFilenames = metaFileNames.filter((filename) => {
 			try {
 				return (
-					filename.startsWith(PREFIX_METAFILE) &&
+					filename.startsWith(`${PREFIX_METAFILE}_`) &&
 					parseInt(filename.substr(11), 10) < currentTimeValue
 				);
 			} catch (e) {
@@ -87,6 +93,45 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 				this.deleteMetaFileByName(filename),
 			);
 		});
+
+		return Promise.all(proms);
+	}
+
+	async deleteMarkedPersistedFiles(): Promise<unknown> {
+		const currentTimeValue = new Date().valueOf();
+		const metaFileNames = await fs.readdir(this.getBinaryDataPersistMetaPath());
+
+		const execsAdded: { [key: string]: number } = {};
+
+		const proms = metaFileNames.reduce(
+			(prev, curr) => {
+				const [prefix, executionId, partialTS] = curr.split('_');
+
+				if (prefix !== PREFIX_PERSISTED_METAFILE) {
+					return prev;
+				}
+
+				const execTimestamp = parseInt(partialTS, 10);
+
+				if (execTimestamp < currentTimeValue) {
+					if (execsAdded[executionId]) {
+						// do not delete data, only meta file
+						prev.push(this.deletePersistedMetaFileByName(curr));
+						return prev;
+					}
+
+					execsAdded[executionId] = 1;
+					prev.push(
+						this.deleteBinaryDataByExecutionId(executionId).then(async () =>
+							this.deletePersistedMetaFileByName(curr),
+						),
+					);
+				}
+
+				return prev;
+			},
+			[Promise.resolve()],
+		);
 
 		return Promise.all(proms);
 	}
@@ -116,9 +161,9 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 
 	async persistBinaryDataForExecutionId(executionId: string): Promise<void> {
 		return fs.readdir(this.getBinaryDataPersistMetaPath()).then(async (metafiles) => {
-			const abc = metafiles.reduce(
+			const proms = metafiles.reduce(
 				(prev, curr) => {
-					if (curr.startsWith(`${executionId}_`)) {
+					if (curr.startsWith(`${PREFIX_PERSISTED_METAFILE}_${executionId}_`)) {
 						prev.push(fs.rm(path.join(this.getBinaryDataPersistMetaPath(), curr)));
 						return prev;
 					}
@@ -128,7 +173,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 				[Promise.resolve()],
 			);
 
-			return Promise.all(abc).then(() => {});
+			return Promise.all(proms).then(() => {});
 		});
 	}
 
@@ -153,6 +198,10 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 					identifiers.map(async (identifier) => this.deleteBinaryDataByIdentifier(identifier)),
 				);
 			});
+	}
+
+	private async deletePersistedMetaFileByName(filename: string): Promise<void> {
+		return fs.rm(path.join(this.getBinaryDataPersistMetaPath(), filename));
 	}
 
 	private async deleteMetaFileByName(filename: string): Promise<void> {

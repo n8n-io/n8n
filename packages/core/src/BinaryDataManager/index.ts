@@ -99,9 +99,7 @@ export class BinaryDataManager {
 
 	async persistBinaryDataForExecutionId(executionId: string): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].persistBinaryDataForExecutionId(
-				executionId,
-			);
+			return this.managers[this.binaryDataMode].persistBinaryDataForExecutionId(executionId);
 		}
 
 		return Promise.resolve();
