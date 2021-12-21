@@ -577,7 +577,7 @@ export class Onfleet implements INodeType {
 		): Promise<IDataObject | IDataObject[]> {
 		if (operation === 'createBatch') {
 			/* -------------------------------------------------------------------------- */
-			/*                             Add tasks by batch                             */
+			/*                       Create multiple tasks by batch                       */
 			/* -------------------------------------------------------------------------- */
 			const path = `${resource}/batch`;
 			const tasksData = { tasks: items.map((_item, index) => Onfleet.getTaskFields.call(this, index, operation)) };
@@ -591,7 +591,7 @@ export class Onfleet implements INodeType {
 			try {
 				if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                               Add a new task                               */
+					/*                              Create a new task                             */
 					/* -------------------------------------------------------------------------- */
 					const taskData = Onfleet.getTaskFields.call(this, index, operation);
 					if (!taskData) { continue ;}
@@ -771,7 +771,7 @@ export class Onfleet implements INodeType {
 			try {
 				if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                             Add a new recipient                            */
+					/*                           Create a new recipient                           */
 					/* -------------------------------------------------------------------------- */
 					const recipientData = Onfleet.getRecipientFields.call(this, index, operation);
 					if (!recipientData) { continue; }
@@ -832,7 +832,7 @@ export class Onfleet implements INodeType {
 					responseData.push(...await onfleetApiRequest.call(this, 'GET', encodedApiKey, resource));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                               Add a new admin                              */
+					/*                             Create a new admin                             */
 					/* -------------------------------------------------------------------------- */
 					const adminData = Onfleet.getAdminFields.call(this, index, operation);
 					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, adminData));
@@ -890,7 +890,7 @@ export class Onfleet implements INodeType {
 					responseData.push(...await onfleetApiRequest.call(this, 'GET', encodedApiKey, resource));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                                Add a new hub                               */
+					/*                              Create a new hub                              */
 					/* -------------------------------------------------------------------------- */
 					const hubData = Onfleet.getHubFields.call(this, index, operation);
 					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, hubData));
@@ -955,7 +955,7 @@ export class Onfleet implements INodeType {
 					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path, {}, workerFilters));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                              Add a new worker                              */
+					/*                             Create a new worker                            */
 					/* -------------------------------------------------------------------------- */
 					const workerData = Onfleet.getWorkerFields.call(this, index, operation);
 					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, workerData));
@@ -1038,7 +1038,7 @@ export class Onfleet implements INodeType {
 					responseData.push(...await onfleetApiRequest.call(this, 'GET', encodedApiKey, resource));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                              Add a new webhook                             */
+					/*                            Create a new webhook                            */
 					/* -------------------------------------------------------------------------- */
 					const webhookData = Onfleet.getWebhookFields.call(this, index, operation);
 					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, webhookData));
@@ -1157,7 +1157,7 @@ export class Onfleet implements INodeType {
 					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
-					/*                               Add a new team                               */
+					/*                              Create a new team                             */
 					/* -------------------------------------------------------------------------- */
 					const teamData = Onfleet.getTeamFields.call(this, index, operation);
 					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, teamData));

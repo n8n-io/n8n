@@ -14,9 +14,9 @@ export const destinationOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
+				name: 'Create',
 				value: 'create',
-				description: 'Add a new destination.',
+				description: 'Create a new destination.',
 			},
 			{
 				name: 'Get',

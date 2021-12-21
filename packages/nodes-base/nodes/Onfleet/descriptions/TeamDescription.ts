@@ -14,9 +14,9 @@ export const teamOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
+				name: 'Create',
 				value: 'create',
-				description: 'Add a new Onfleet team.',
+				description: 'Create a new Onfleet team.',
 			},
 			{
 				name: 'Update',

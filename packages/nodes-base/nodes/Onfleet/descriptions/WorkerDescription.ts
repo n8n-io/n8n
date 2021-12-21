@@ -14,7 +14,7 @@ export const workerOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
+				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet worker.',
 			},

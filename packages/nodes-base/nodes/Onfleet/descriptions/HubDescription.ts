@@ -14,9 +14,9 @@ export const hubOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
+				name: 'Create',
 				value: 'create',
-				description: 'Add a new Onfleet hub.',
+				description: 'Create a new Onfleet hub.',
 			},
 			{
 				name: 'List hubs',

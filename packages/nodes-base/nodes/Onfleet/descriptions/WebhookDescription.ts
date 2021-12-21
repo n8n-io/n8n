@@ -15,9 +15,9 @@ export const webhookOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
+				name: 'Create',
 				value: 'create',
-				description: 'Add a new Onfleet webhook.',
+				description: 'Create a new Onfleet webhook.',
 			},
 			{
 				name: 'Remove',

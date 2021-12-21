@@ -14,9 +14,9 @@ export const recipientOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
+				name: 'Create',
 				value: 'create',
-				description: 'Add a new Onfleet recipient.',
+				description: 'Create a new Onfleet recipient.',
 			},
 			{
 				name: 'Get',

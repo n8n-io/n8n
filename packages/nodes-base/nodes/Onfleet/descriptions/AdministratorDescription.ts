@@ -14,9 +14,9 @@ export const adminOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
+				name: 'Create',
 				value: 'create',
-				description: 'Add a new Onfleet admin.',
+				description: 'Create a new Onfleet admin.',
 			},
 			{
 				name: 'Remove',
