@@ -1,4 +1,5 @@
 /* eslint-disable import/no-cycle */
+import { BinaryDataManager } from 'n8n-core';
 import { IDataObject, IRun, TelemetryHelpers } from 'n8n-workflow';
 import {
 	IDiagnosticInfo,
@@ -77,7 +78,11 @@ export class InternalHooksClass implements IInternalHooksClass {
 		});
 	}
 
-	async onWorkflowPostExecute(workflow: IWorkflowBase, runData?: IRun): Promise<void> {
+	async onWorkflowPostExecute(
+		executionId: string,
+		workflow: IWorkflowBase,
+		runData?: IRun,
+	): Promise<void> {
 		const properties: IDataObject = {
 			workflow_id: workflow.id,
 			is_manual: false,
@@ -121,7 +126,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 			}
 		}
 
-		return this.telemetry.trackWorkflowExecution(properties);
+		return Promise.all([
+			BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId),
+			this.telemetry.trackWorkflowExecution(properties),
+		]).then(() => {});
 	}
 
 	async onN8nStop(): Promise<void> {

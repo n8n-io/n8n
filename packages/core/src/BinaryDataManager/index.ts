@@ -97,6 +97,16 @@ export class BinaryDataManager {
 		return Promise.resolve();
 	}
 
+	async persistBinaryDataForExecutionId(executionId: string): Promise<void> {
+		if (this.managers[this.binaryDataMode]) {
+			return this.managers[this.binaryDataMode].persistBinaryDataForExecutionId(
+				executionId,
+			);
+		}
+
+		return Promise.resolve();
+	}
+
 	private generateBinaryId(filename: string) {
 		return `${this.binaryDataMode}:${filename}`;
 	}

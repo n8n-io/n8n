@@ -919,7 +919,7 @@ export async function executeWorkflow(
 	}
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData]);
-	void InternalHooksManager.getInstance().onWorkflowPostExecute(workflowData, data);
+	void InternalHooksManager.getInstance().onWorkflowPostExecute(executionId, workflowData, data);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully

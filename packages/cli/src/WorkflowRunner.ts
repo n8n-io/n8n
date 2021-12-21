@@ -174,6 +174,7 @@ export class WorkflowRunner {
 		postExecutePromise
 			.then(async (executionData) => {
 				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+					executionId!,
 					data.workflowData,
 					executionData,
 				);
