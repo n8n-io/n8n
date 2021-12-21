@@ -43,7 +43,6 @@ export class Todoist implements INodeType {
 		description: 'Consume Todoist API',
 		defaults: {
 			name: 'Todoist',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

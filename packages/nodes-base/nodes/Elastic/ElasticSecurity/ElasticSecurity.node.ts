@@ -57,7 +57,6 @@ export class ElasticSecurity implements INodeType {
 		description: 'Consume the Elastic Security API',
 		defaults: {
 			name: 'Elastic Security',
-			color: '#f3d337',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -29,7 +29,6 @@ export class Drift implements INodeType {
 		description: 'Consume Drift API',
 		defaults: {
 			name: 'Drift ',
-			color: '#404040',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

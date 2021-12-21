@@ -38,7 +38,6 @@ export class GooglePerspective implements INodeType {
 		subtitle: '={{$parameter["operation"]}}',
 		defaults: {
 			name: 'Google Perspective',
-			color: '#200647',
 		},
 		inputs: [
 			'main',

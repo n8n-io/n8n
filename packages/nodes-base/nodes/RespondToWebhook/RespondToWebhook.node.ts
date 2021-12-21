@@ -23,7 +23,6 @@ export class RespondToWebhook implements INodeType {
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
-			color: '#885577',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

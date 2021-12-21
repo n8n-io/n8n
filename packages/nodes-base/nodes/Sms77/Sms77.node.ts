@@ -25,7 +25,6 @@ export class Sms77 implements INodeType {
 		description: 'Send SMS and make text-to-speech calls',
 		defaults: {
 			name: 'Sms77',
-			color: '#00d46a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

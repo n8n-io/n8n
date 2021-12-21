@@ -27,7 +27,6 @@ export class LemlistTrigger implements INodeType {
 		description: 'Handle Lemlist events via webhooks',
 		defaults: {
 			name: 'Lemlist Trigger',
-			color: '#4d19ff',
 		},
 		inputs: [],
 		outputs: ['main'],

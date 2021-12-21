@@ -45,7 +45,6 @@ export class Twitter implements INodeType {
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
 			name: 'Twitter',
-			color: '#1DA1F2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
