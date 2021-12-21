@@ -22,6 +22,7 @@ import { learnersTrainingSessionFields, learnersTrainingSessionOperations } from
 import { speakersTrainingModuleFields, speakersTrainingModuleOperations } from './SpeakersTrainingModule';
 import { contactFields, contactOperations } from './Contact';
 import {companyFields, companyOperations} from './Company';
+import {annexCostFields, annexCostOperations} from "./AnnexCost";
 
 interface YpkSettingType {
 	id: string;
@@ -58,6 +59,10 @@ export class Ypk implements INodeType {
 					{
 						name: 'Apprenant',
 						value: 'learner',
+					},
+					{
+						name: 'Cout Annexe',
+						value: 'annexCost',
 					},
 					{
 						name: 'Contact',
@@ -98,6 +103,7 @@ export class Ypk implements INodeType {
 			},
 
 			// Operations
+			...annexCostOperations,
 			...contactOperations,
 			...companyOperations,
 			...learnerOperations,
@@ -109,6 +115,7 @@ export class Ypk implements INodeType {
 			...speakerOperations,
 
 			// Fields
+			...annexCostFields,
 			...contactFields,
 			...companyFields,
 			...learnerFields,
@@ -501,10 +508,41 @@ export class Ypk implements INodeType {
 					method = 'GET';
 				}
 				if (operation === 'getAll') {
-					const trainingSessionId = this.getNodeParameter('training_session_id', i, {}) as IDataObject;
+					const trainingSessionId = this.getNodeParameter('training_session_id', i, "") as string;
 
 					endpoint = `training_sessions/${trainingSessionId}/speakers_training_modules`;
 					dataKey = 'speakers_training_modules';
+					method = 'GET';
+				}
+			}
+
+
+			if (resource === 'annexCost') {
+				endpoint = 'annex_costs';
+				const trainingSessionId = this.getNodeParameter('training_session_id', i, '') as string;
+				const type = this.getNodeParameter('type', i, '') as string;
+				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+				const id = this.getNodeParameter('id', i, '') as string;
+				body = { annex_cost: { ...additionalFields } };
+
+				if (operation === 'create') {
+					endpoint = `training_sessions/${trainingSessionId}/annex_costs/${type}`;
+					dataKey = 'annex_cost';
+					method = 'POST';
+				}
+				if (operation === 'update') {
+					endpoint = `annex_costs/${id}`;
+					dataKey = 'annex_cost';
+					method = 'PATCH';
+				}
+				if (operation === 'delete') {
+					endpoint = `annex_costs/${id}`;
+					dataKey = 'annex_cost';
+					method = 'DELETE';
+				}
+				if (operation === 'getAll') {
+					endpoint = `training_sessions/${trainingSessionId}/annex_costs`;
+					dataKey = 'annex_costs';
 					method = 'GET';
 				}
 			}

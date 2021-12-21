@@ -216,7 +216,7 @@ export const speakersTrainingModuleFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get',
+					'getAll',
 				],
 				resource: [
 					'speakersTrainingModule',
