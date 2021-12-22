@@ -37,3 +37,16 @@ export async function getNodeTranslationPath(
 		? join(nodeDir, `v${maxVersion}`, 'translations', `${language}.json`)
 		: join(nodeDir, 'translations', `${language}.json`);
 }
+
+export function getNodeCredentialTranslationPath({
+	locale,
+	credentialType,
+}: {
+	locale: string;
+	credentialType: string;
+}): string {
+	const packagesPath = join(__dirname, '..', '..', '..');
+	const credsPath = join(packagesPath, 'nodes-base', 'dist', 'credentials');
+
+	return join(credsPath, 'translations', locale, `${credentialType}.json`);
+}

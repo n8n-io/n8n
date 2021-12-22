@@ -148,7 +148,7 @@ import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
-import { getNodeTranslationPath } from './TranslationHelpers';
+import { getNodeCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1172,6 +1172,28 @@ class App {
 					}
 
 					return returnData;
+				},
+			),
+		);
+
+		this.app.get(
+			`/${this.restEndpoint}/node-credential-translation`,
+			ResponseHelper.send(
+				async (
+					req: express.Request & { query: { credentialType: string } },
+					res: express.Response,
+				): Promise<object | null> => {
+					const credTranslationPath = getNodeCredentialTranslationPath({
+						locale: this.frontendSettings.defaultLocale,
+						credentialType: req.query.credentialType,
+					});
+
+					try {
+						const credTranslation = require(credTranslationPath);
+						return credTranslation;
+					} catch (error) {
+						return null;
+					}
 				},
 			),
 		);
