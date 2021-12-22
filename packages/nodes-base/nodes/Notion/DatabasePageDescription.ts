@@ -24,7 +24,7 @@ export const databasePageOperations = [
 		displayOptions: {
 			show: {
 				version: [
-					1,
+					2,
 				],
 				resource: [
 					'databasePage',
@@ -36,6 +36,11 @@ export const databasePageOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a pages in a database',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a page in a database',
 			},
 			{
 				name: 'Get All',
@@ -57,7 +62,7 @@ export const databasePageOperations = [
 		displayOptions: {
 			show: {
 				version: [
-					2,
+					1,
 				],
 				resource: [
 					'databasePage',
@@ -69,11 +74,6 @@ export const databasePageOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a pages in a database',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get a page in a database',
 			},
 			{
 				name: 'Get All',
