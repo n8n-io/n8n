@@ -109,14 +109,12 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 					if (execsAdded[executionId]) {
 						// do not delete data, only meta file
 						prev.push(this.deleteMetaFileByPath(path.join(metaPath, curr)));
-						// prev.push(this.deleteMetaFileByName(curr));
 						return prev;
 					}
 
 					execsAdded[executionId] = 1;
 					prev.push(
 						this.deleteBinaryDataByExecutionId(executionId).then(async () =>
-							// this.deleteMetaFileByName(curr),
 							this.deleteMetaFileByPath(path.join(metaPath, curr)),
 						),
 					);
