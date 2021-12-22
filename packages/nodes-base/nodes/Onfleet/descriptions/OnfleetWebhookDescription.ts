@@ -15,3 +15,21 @@ export const eventDisplay: INodeProperties = {
 	default: [],
 	description: 'The event to listen to.',
 };
+
+export const eventNameField = {
+	displayName: 'Additional fields',
+	name: 'additionalFields',
+	type: 'collection',
+	placeholder: 'Add fields',
+	default: {},
+	options: [
+		{
+			displayName: 'Name',
+			name: 'name',
+			type: 'string',
+			required: false,
+			default: null,
+			description: 'A name for the webhook for identification.',
+		},
+	],
+} as INodeProperties;
