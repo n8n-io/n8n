@@ -2,6 +2,10 @@ import { IRestApiContext, IUser } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from './helpers';
 
+export async function loginCurrentUser(context: IRestApiContext): Promise<IUser | null> {
+	return await makeRestApiRequest(context, 'GET', '/login');
+}
+
 export async function getCurrentUser(context: IRestApiContext): Promise<IUser | null> {
 	return await makeRestApiRequest(context, 'GET', '/user');
 }

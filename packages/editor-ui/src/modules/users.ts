@@ -1,15 +1,45 @@
-import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateUser, updateUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
-import { LOGIN_STATUS, ROLE } from '@/constants';
+import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateUser, updateUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
+import { LOGIN_STATUS, PERMISSIONS, ROLE } from '@/constants';
 import Vue from 'vue';
-import { RouteRecordPublic } from 'vue-router';
 import {  ActionContext, Module } from 'vuex';
 import {
+	IPermissions,
 	IRole,
 	IRootState,
 	IUser,
 	IUsersState,
 } from '../Interface';
-import router from '../router';
+
+const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
+	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
+	if (permissions.deny) {
+		if (permissions.deny.loginStatus && permissions.deny.loginStatus.includes(loginStatus)) {
+			return false;
+		}
+
+		if (currentUser) {
+			const role = currentUser.email ? currentUser.globalRole.name: ROLE.Default;
+			if (permissions.deny.role && permissions.deny.role.includes(role)) {
+				return false;
+			}
+		}
+	}
+
+	if (permissions.allow) {
+		if (permissions.allow.loginStatus && permissions.allow.loginStatus.includes(loginStatus)) {
+			return true;
+		}
+
+		if (currentUser) {
+			const role = currentUser.email ? currentUser.globalRole.name: ROLE.Default;
+			if (permissions.allow.role && permissions.allow.role.includes(role)) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+};
 
 const module: Module<IUsersState, IRootState> = {
 	namespaced: true,
@@ -46,32 +76,40 @@ const module: Module<IUsersState, IRootState> = {
 		canCurrentUserAccessView(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return (viewName: string): boolean => {
 				const user = getters.currentUser as IUser | null;
-				const route = router.getRoutes().find((item: RouteRecordPublic) => item.name === viewName);
-
-				const authorize: string[] | null = route && route.meta ? route.meta.authorize : null;
-
-				if (authorize) {
-					if (!user && !authorize.includes(LOGIN_STATUS.LoggedOut)) {
-						return false;
-					}
-					if (user && (!authorize.includes(LOGIN_STATUS.LoggedIn) && !authorize.includes(user.globalRole.name))) {
-						return false;
-					}
+				const authorize: IPermissions | null = PERMISSIONS.ROUTES[viewName];
+				if (!authorize) {
+					return false;
 				}
 
-				return true;
+				return isAuthorized(authorize, user);
 			};
-		},
-		canUserDeleteTags(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			const user = getters.currentUser as IUser | null;
-
-			return user && user.globalRole.name === ROLE.Owner;
 		},
 		getUserById(state: IUsersState): (userId: string) => IUser | null {
 			return (userId: string): IUser | null => state.users[userId];
 		},
+		canUserDeleteTags(state: IUsersState, getters: any) { // tslint:disable-line:no-any
+			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, getters.currentUser);
+		},
+		canUserAccessSidebarUserInfo(state: IUsersState, getters: any) { // tslint:disable-line:no-any
+			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, getters.currentUser);
+		},
+		canUserAccessSettings(state: IUsersState, getters: any) { // tslint:disable-line:no-any
+			return isAuthorized(PERMISSIONS.ROUTES.SettingsRedirect, getters.currentUser);
+		},
+		isDefaultUser(state: IUsersState, getter: any): boolean { // tslint:disable-line:no-any
+			const user = getter.currentUser as IUser | null;
+
+			return user ? !user.email : false;
+		},
 	},
 	actions: {
+		async loginWithCookie(context: ActionContext<IUsersState, IRootState>) {
+			const user = await loginCurrentUser(context.rootGetters.getRestApiContext);
+			if (user) {
+				context.commit('addUsers', [user]);
+				context.commit('setCurrentUserId', user.id);
+			}
+		},
 		async fetchCurrentUser(context: ActionContext<IUsersState, IRootState>) {
 			const user = await getCurrentUser(context.rootGetters.getRestApiContext);
 			if (user) {
@@ -79,7 +117,7 @@ const module: Module<IUsersState, IRootState> = {
 				context.commit('setCurrentUserId', user.id);
 			}
 		},
-		async login(context: ActionContext<IUsersState, IRootState>, params: {email: string, password: string}) {
+		async loginWithCreds(context: ActionContext<IUsersState, IRootState>, params: {email: string, password: string}) {
 			const user = await login(context.rootGetters.getRestApiContext, params);
 			if (user) {
 				context.commit('addUsers', [user]);
@@ -95,9 +133,6 @@ const module: Module<IUsersState, IRootState> = {
 			if (user) {
 				context.commit('addUsers', [user]);
 				context.commit('setCurrentUserId', user.id);
-				context.commit('settings/completeInstanceSetup', null, {
-					root: true,
-				});
 			}
 		},
 		async validateSignupToken(context: ActionContext<IUsersState, IRootState>, params: {token: string}): Promise<{ inviter: { firstName: string, lastName: string } }> {

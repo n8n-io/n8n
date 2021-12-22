@@ -484,7 +484,24 @@ export interface IPersonalizationSurvey {
 export interface IUserManagementConfig {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
-};
+}
+
+export interface IPermissionGroup {
+	loginStatus?: ILogInStatus[];
+	role?: IRole[];
+	um?: boolean;
+}
+
+export interface IPermissions {
+	allow?: IPermissionGroup;
+	deny?: IPermissionGroup;
+}
+
+export interface IUserPermissions {
+	[category: string]: {
+		[permission: string]: IPermissions;
+	};
+}
 
 export interface IN8nUISettings {
 	endpointWebhook: string;
@@ -726,13 +743,15 @@ export interface IBounds {
 	maxY: number;
 }
 
-export type IRole = 'owner' | 'member';
+export type ILogInStatus = 'LoggedIn' | 'LoggedOut';
+
+export type IRole = 'default' | 'owner' | 'member';
 
 export interface IUser {
 	id: string;
 	firstName?: string;
 	lastName?: string;
-	email: string;
+	email?: string;
 	globalRole: {
 		name: IRole;
 		id: string;

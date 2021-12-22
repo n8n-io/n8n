@@ -7,13 +7,13 @@
 				</i>
 				<n8n-heading slot="title" size="large" :bold="true">Settings</n8n-heading>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/personal">
+			<n8n-menu-item index="/settings/personal" v-if="canAccessUsersView('PersonalSettings')">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-astronaut" />
 				</i>
 				<span slot="title">Personal</span>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/users" v-if="canAccessUsersView">
+			<n8n-menu-item index="/settings/users" v-if="canAccessUsersView('UsersSettings')">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-friends" />
 				</i>
@@ -37,13 +37,13 @@ export default Vue.extend({
 	name: 'SettingsSidebar',
 	computed: {
 		...mapGetters('settings', ['versionCli']),
-		canAccessUsersView(): boolean {
-			const isAuthorized = this.$store.getters['users/canCurrentUserAccessView'];
-
-			return isAuthorized('UsersSettings');
-		},
 	},
 	methods: {
+		canAccessUsersView(viewName: string): boolean {
+			const isAuthorized = this.$store.getters['users/canCurrentUserAccessView'];
+
+			return isAuthorized(viewName);
+		},
 		onVersionClick() {
 			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 		},

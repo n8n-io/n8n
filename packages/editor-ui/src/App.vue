@@ -64,28 +64,29 @@ export default mixins(
 				throw e;
 			}
 
-			if (!this.isUserManagementEnabled) {
-				return;
-			}
-
 			try {
-				await this.$store.dispatch('users/fetchCurrentUser');
+				await this.$store.dispatch('users/loginWithCookie');
 			} catch (e) {
 			}
 		},
 		authenticate() {
-			if (!this.isUserManagementEnabled) {
-				this.loading = false;
-
-				if (this.$route.name && !['ExecutionById', 'NodeViewNew', 'NodeViewExisting', 'WorkflowTemplate'].includes(this.$route.name)) {
-					this.$router.push('/404');
+			if (this.$route.name === 'SettingsRedirect') {
+				if (this.$store.getters['users/isDefaultUser']) {
+					this.$router.push({
+						name: 'UsersSettings',
+					});
+				}
+				else {
+					this.$router.push({
+						name: 'PersonalSettings',
+					});
 				}
 
 				return;
 			}
 
 			// redirect to setup page. user should be redirected to this only once
-			if (this.showSetupPage) {
+			if (this.isUserManagementEnabled && this.showSetupPage) {
 				this.loading = false;
 				if (this.$route.name === 'SetupView') {
 					return;

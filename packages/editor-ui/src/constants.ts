@@ -1,4 +1,4 @@
-import { IRole } from "./Interface";
+import { ILogInStatus, IRole, IUserPermissions } from "./Interface";
 
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
@@ -138,12 +138,109 @@ export const CODING_SKILL_KEY = 'codingSkill';
 export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
 export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
 
-export const ROLE: {Owner: IRole, Member: IRole} = {
+export const ROLE: {Owner: IRole, Member: IRole, Default: IRole} = {
 	Owner: 'owner',
 	Member: 'member',
+	Default: 'default', // default user with no email when setting up instance
 };
 
-export const LOGIN_STATUS: {LoggedIn: string, LoggedOut: string} = {
-	LoggedIn: 'LoggedIn',
-	LoggedOut: 'LoggedOut',
+export const LOGIN_STATUS: {LoggedIn: ILogInStatus, LoggedOut: ILogInStatus} = {
+	LoggedIn: 'LoggedIn', // Can be owner or member or default user
+	LoggedOut: 'LoggedOut', // Can only be logged out if UM has been setup
+};
+
+export const PERMISSIONS: IUserPermissions = {
+	ROUTES: {
+		ExecutionById: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+		},
+		NodeViewNew: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+		},
+		NodeViewExisting: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+		},
+		WorkflowTemplate: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+		},
+		SigninView: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedOut],
+			},
+		},
+		SignupView: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedOut],
+			},
+		},
+		SetupView: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+			deny: {
+				um: false,
+			},
+		},
+		ForgotMyPasswordView: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedOut],
+			},
+		},
+		ChangePasswordView: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedOut],
+			},
+		},
+		SettingsRedirect: {
+			allow: {
+				role: [ROLE.Default, ROLE.Owner],
+			},
+		},
+		UsersSettings: {
+			allow: {
+				role: [ROLE.Default, ROLE.Owner],
+			},
+			deny: {
+				um: false,
+			},
+		},
+		PersonalSettings: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+			deny: {
+				role: [ROLE.Default],
+			},
+		},
+		NotFoundView: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
+			},
+		},
+	},
+	TAGS: {
+		CAN_DELETE_TAGS: {
+			allow: {
+				role: [ROLE.Owner, ROLE.Default],
+			},
+		},
+	},
+	PRIMARY_MENU: {
+		CAN_ACCESS_USER_INFO: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+			deny: {
+				role: [ROLE.Default],
+			},
+		},
+	},
 };

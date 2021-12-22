@@ -3,6 +3,13 @@ import { IDataObject } from 'n8n-workflow';
 
 const users = [
 	{
+		id: '0',
+		globalRole: {
+			name: 'owner',
+			id: "1",
+		},
+	},
+	{
 		id: '10',
 		firstName: 'xi',
 		lastName: 'lll',
@@ -90,6 +97,10 @@ const users = [
 	},
 ];
 
+if (!window.localStorage.getItem('mock.users.currentUserId')) {
+	window.localStorage.setItem('mock.users.currentUserId', '0');
+}
+
 const getRandomId = () =>  `${Math.floor(Math.random() * 10000000000 + 100)}`;
 
 if (!window.localStorage.getItem('mock.users.users')) {
@@ -129,6 +140,12 @@ function removeUser(userId: string) {
 
 function log(context: IRestApiContext, method: string, path: string, params?: any): void { // tslint:disable-line:no-any
 	console.log(method, path, params); // eslint-disable-line no-console
+}
+
+export async function loginCurrentUser(context: IRestApiContext): Promise<IUser | null> {
+	log(context, 'GET', '/login');
+
+	return await Promise.resolve(getCurrUser());
 }
 
 export async function getCurrentUser(context: IRestApiContext): Promise<IUser | null> {
