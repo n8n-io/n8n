@@ -107,6 +107,13 @@ export const bookmarkFields: INodeProperties[] = [
 				description: 'Whether this bookmark is marked as favorite.',
 			},
 			{
+					displayName: 'Fetch Cover/Description/HTML for URL',
+					name: 'pleaseParse',
+					type: 'boolean',
+					default: false,
+					description: 'Whether Raindrop should load cover, description and HTML for the URL',
+			},
+			{
 				displayName: 'Order',
 				name: 'order',
 				type: 'number',
