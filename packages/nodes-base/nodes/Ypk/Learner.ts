@@ -71,30 +71,22 @@ const additionalFieldsLearners: INodeProperties[] = [
 	{
 		displayName: 'Gender',
 		name: 'gender',
-		type: 'collection',
-		default: '',
+		type: 'options',
 		options: [
 			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				options: [
-					{
-						name: 'Femme',
-						value: 'female',
-					},
-					{
-						name: 'Homme',
-						value: 'male',
-					},
-					{
-						name: 'Autre',
-						value: 'other',
-					},
-				],
-				default: '',
+				name: 'Femme',
+				value: 'female',
+			},
+			{
+				name: 'Homme',
+				value: 'male',
+			},
+			{
+				name: 'Autre',
+				value: 'other',
 			},
 		],
+		default: '',
 		description: `learner's gender`,
 	},
 	{
@@ -253,16 +245,6 @@ export const learnerFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'learner',
-						],
-					},
-				},
 				description: 'learner\'s firstname.',
 			},
 			{
@@ -271,16 +253,6 @@ export const learnerFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'learner',
-						],
-					},
-				},
 				description: 'learner\'s lastname.',
 			},
 			...additionalFieldsLearners,
