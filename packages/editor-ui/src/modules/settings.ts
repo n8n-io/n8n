@@ -33,10 +33,10 @@ const module: Module<ISettingsState, IRootState> = {
 			return state.settings.versionCli;
 		},
 		isUserManagementEnabled(state: ISettingsState): boolean {
-			return !!state.settings.userManagement && state.settings.userManagement.enabled;
+			return state.userManagement.enabled;
 		},
 		showSetupPage(state: ISettingsState) {
-			return state.settings.userManagement.showSetupOnFirstLoad;
+			return state.userManagement.showSetupOnFirstLoad;
 		},
 	},
 	mutations: {
@@ -52,7 +52,7 @@ const module: Module<ISettingsState, IRootState> = {
 			});
 		},
 		stopShowingSetupPage(state: ISettingsState) {
-			Vue.set(state.settings.userManagement, 'showSetupOnFirstLoad', false);
+			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);
 		},
 	},
 	actions: {

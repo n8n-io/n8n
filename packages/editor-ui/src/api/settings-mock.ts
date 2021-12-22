@@ -13,6 +13,7 @@ export async function getSettings(context: IRestApiContext): Promise<IN8nUISetti
 	const settings = await makeRestApiRequest(context, 'GET', '/settings');
 	const isUMEnabled = window.localStorage.getItem('mock.settings.isUserManagementEnabled');
 	const showSetupOnFirstLoad = window.localStorage.getItem('mock.settings.showSetupOnFirstLoad');
+	window.localStorage.setItem('mock.settings.showSetupOnFirstLoad', 'false');
 	settings.userManagement = {
 		enabled: isUMEnabled === 'true',
 		showSetupOnFirstLoad: showSetupOnFirstLoad === 'true',
