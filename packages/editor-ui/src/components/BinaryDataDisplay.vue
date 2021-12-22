@@ -4,14 +4,14 @@
 			@click.stop="closeWindow"
 			size="small"
 			class="binary-data-window-back"
-			title="Back to overview page"
+			:title="$locale.baseText('binaryDataDisplay.backToOverviewPage')"
 			icon="arrow-left"
-			label="Back to list"
+			:label="$locale.baseText('binaryDataDisplay.backToList')"
 		/>
 
 		<div class="binary-data-window-wrapper">
 			<div v-if="!binaryData">
-				Data to display did not get found
+				{{ $locale.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
 			</div>
 			<BinaryDataDisplayEmbed v-else :binaryData="binaryData"/>
 		</div>

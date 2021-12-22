@@ -9,7 +9,7 @@
 		<div v-else>
 			<video v-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
 				<source :src="embedSource" :type="binaryData.mimeType">
-				Your browser does not support the video element. Kindly update it to latest version.
+				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
 			<embed v-else :src="embedSource" class="binary-data" :class="embedClass"/>
 		</div>

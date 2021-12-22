@@ -16,6 +16,7 @@ import {
 	IWorkflowShortResponse,
 	IRestApi,
 	IWorkflowDataUpdate,
+	INodeTranslationHeaders,
 } from '@/Interface';
 import {
 	IDataObject,
@@ -76,6 +77,10 @@ export const restApi = Vue.extend({
 				},
 				stopCurrentExecution: (executionId: string): Promise<IExecutionsStopData> => {
 					return self.restApi().makeRestApiRequest('POST', `/executions-current/${executionId}/stop`);
+				},
+
+				getNodeTranslationHeaders: (): Promise<INodeTranslationHeaders> => {
+					return self.restApi().makeRestApiRequest('GET', '/node-translation-headers');
 				},
 
 				// Returns all node-types
