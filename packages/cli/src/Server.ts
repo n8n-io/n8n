@@ -2459,7 +2459,7 @@ class App {
 					const execs = await Db.collections.Execution!.find({ ...filters, select: ['id'] });
 
 					await Promise.all(
-						execs.map((item) =>
+						execs.map(async (item) =>
 							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(item.id.toString()),
 						),
 					);
@@ -2467,7 +2467,7 @@ class App {
 					await Db.collections.Execution!.delete(filters);
 				} else if (deleteData.ids !== undefined) {
 					await Promise.all(
-						deleteData.ids.map((id) =>
+						deleteData.ids.map(async (id) =>
 							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id),
 						),
 					);
