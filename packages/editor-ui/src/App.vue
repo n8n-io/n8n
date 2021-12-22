@@ -46,7 +46,7 @@ export default mixins(
 		this.authenticate();
 	},
 	computed: {
-		...mapGetters('settings', ['isUserManagementEnabled', 'isInstanceSetup']),
+		...mapGetters('settings', ['isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['canCurrentUserAccessView', 'currentUser']),
 	},
 	methods: {
@@ -84,13 +84,15 @@ export default mixins(
 				return;
 			}
 
-			if (!this.isInstanceSetup) {
+			// redirect to setup page. user should be redirected to this only once
+			if (this.showSetupPage) {
 				this.loading = false;
 				if (this.$route.name === 'SetupView') {
 					return;
 				}
 
 				this.$router.push({name: 'SetupView'});
+				this.$store.commit('settings/stopShowingSetupPage');
 				return;
 			}
 

@@ -481,6 +481,11 @@ export interface IPersonalizationSurvey {
 	shouldShow: boolean;
 }
 
+export interface IUserManagementConfig {
+	enabled: boolean;
+	showSetupOnFirstLoad?: boolean;
+};
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -503,10 +508,7 @@ export interface IN8nUISettings {
 	instanceId: string;
 	personalizationSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
-	userManagement?: {
-		enabled: boolean;
-		hasOwner: boolean;
-	};
+	userManagement: IUserManagementConfig;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -690,16 +692,13 @@ export interface IUiState {
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
+	userManagement: IUserManagementConfig;
 }
 
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
 	nextVersions: IVersion[];
 	currentVersion: IVersion | undefined;
-}
-
-export interface ISettingsState {
-	settings: IN8nUISettings;
 }
 
 export interface IUsersState {

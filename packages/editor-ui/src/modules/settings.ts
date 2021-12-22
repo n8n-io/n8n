@@ -15,6 +15,10 @@ const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
 	state: {
 		settings: {} as IN8nUISettings,
+		userManagement: {
+			enabled: false,
+			showSetupOnFirstLoad: false,
+		},
 	},
 	getters: {
 		personalizedNodeTypes(state: ISettingsState): string[] {
@@ -31,13 +35,15 @@ const module: Module<ISettingsState, IRootState> = {
 		isUserManagementEnabled(state: ISettingsState): boolean {
 			return !!state.settings.userManagement && state.settings.userManagement.enabled;
 		},
-		isInstanceSetup(state: ISettingsState) {
-			return !!state.settings.userManagement && state.settings.userManagement.hasOwner;
+		showSetupPage(state: ISettingsState) {
+			return state.settings.userManagement.showSetupOnFirstLoad;
 		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
 			state.settings = settings;
+			state.userManagement.enabled = settings.userManagement.enabled;
+			state.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
 		},
 		setPersonalizationAnswers(state: ISettingsState, answers: IPersonalizationSurveyAnswers) {
 			Vue.set(state.settings, 'personalizationSurvey', {
@@ -45,10 +51,8 @@ const module: Module<ISettingsState, IRootState> = {
 				shouldShow: false,
 			});
 		},
-		completeInstanceSetup(state: ISettingsState) {
-			if (state.settings.userManagement) {
-				state.settings.userManagement.hasOwner = true;
-			}
+		stopShowingSetupPage(state: ISettingsState) {
+			Vue.set(state.settings.userManagement, 'showSetupOnFirstLoad', false);
 		},
 	},
 	actions: {
