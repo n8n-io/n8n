@@ -1,7 +1,7 @@
 <template>
 	<div class="workflow-activator">
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
-			<div slot="content">This workflow has no trigger nodes that require activation</div>
+			<div slot="content">{{ $locale.baseText('workflowActivator.tooltip') }}</div>
 			<el-switch
 				v-loading="loading"
 				element-loading-spinner="el-icon-loading"

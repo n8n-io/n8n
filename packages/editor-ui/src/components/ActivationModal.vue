@@ -3,21 +3,21 @@
 		:name="WORKFLOW_ACTIVE_MODAL_KEY"
 		width="460px"
 		minWidth="350px"
-		title="Workflow activated"
+		:title="$locale.baseText('activationModal.modalTitle')"
 	>
 		<template v-slot:content>
 			<div>
 				<n8n-text>{{triggerContent}}</n8n-text>
 			</div>
 			<div :class="$style.spaced">
-				<n8n-text><n8n-text :bold="true">These executions will not show up immediately in the editor</n8n-text>, but you can see them in the <a @click="showExecutionsList">execution list</a> if you choose to <a @click="showSettings">save executions</a>.</n8n-text>
+				<n8n-text><n8n-text :bold="true">{{ $locale.baseText('activationModal.messageFirstChunk') }}</n8n-text>{{ $locale.baseText('activationModal.messageSecondChunk') }}<a @click="showExecutionsList">{{ $locale.baseText('activationModal.messageExecutionsLink') }}</a>{{ $locale.baseText('activationModal.messageThirdChunk') }}<a @click="showSettings">{{ $locale.baseText('activationModal.messageSaveLink') }}</a>.</n8n-text>
 			</div>
 		</template>
 
 
 		<template v-slot:footer="{ close }">
 			<div :class="$style.footer">
-				<el-checkbox :value="checked" @change="handleCheckboxChange">Don't show again</el-checkbox>
+				<el-checkbox :value="checked" @change="handleCheckboxChange">{{ $locale.baseText('activationModal.checkboxLabel') }}</el-checkbox>
 				<n8n-button @click="close" label="Got it"/>
 			</div>
 		</template>
