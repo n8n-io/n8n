@@ -36,3 +36,50 @@ export function generateTokenWithAESKey(timestamp: string, email: string, aesKey
 	const encrypted = encryptAES(messageToEncrypt, aesKey);
 	return encodeURIComponent(encrypted);
 }
+
+export class UrlParams {
+	constructor(
+		public gql = '',
+		public paginateBy = 25,
+		public orderBy = '-id',
+		public page = 1,
+		public fields = 'id',
+	) {
+	}
+}
+
+export function gllueUrlBuilder(host: string, resource: string, option = 'simple_list_with_ids', urlParams: UrlParams): string {
+	const baseUrl = `${host}\\rest\\${resource}\\${option}\\`;
+	const params = [];
+	if (!urlParams) {
+		return baseUrl;
+	}
+
+	if (urlParams.gql !== undefined) {
+		let gql: string;
+		if (urlParams.gql !== '') {
+			const groups = urlParams.gql.split('&').map((group) => {
+				const [name, value] = group.split('=');
+				const encodedValue = encodeURIComponent(value);
+				return `${name}=${encodedValue}`;
+			});
+			gql = encodeURIComponent(groups.join('&'));
+		} else {
+			gql = urlParams.gql;
+		}
+		params.push(`gql=${gql}`);
+	}
+	if (urlParams.paginateBy !== undefined) {
+		params.push(`paginate_by=${urlParams.paginateBy}`);
+	}
+	if (urlParams.orderBy !== undefined) {
+		params.push(`ordering=${urlParams.orderBy}`);
+	}
+	if (urlParams.page !== undefined) {
+		params.push(`page=${urlParams.page}`);
+	}
+	if (urlParams.fields !== undefined) {
+		params.push(`fields=${urlParams.fields}`);
+	}
+	return `${baseUrl}?${params.join('&')}`;
+}
