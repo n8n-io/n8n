@@ -27,15 +27,17 @@ async function getMaxVersion(from: string) {
 }
 
 export async function getNodeTranslationPath(
-	nodeSourcePath: string,
+	sourcePath: string,
+	nodeType: string,
 	language: string,
 ): Promise<string> {
-	const nodeDir = dirname(nodeSourcePath);
+	const nodeDir = dirname(sourcePath);
+	const shortNodeType = nodeType.replace('n8n-nodes-base.', '');
 	const maxVersion = await getMaxVersion(nodeDir);
 
 	return maxVersion
-		? join(nodeDir, `v${maxVersion}`, 'translations', `${language}.json`)
-		: join(nodeDir, 'translations', `${language}.json`);
+		? join(nodeDir, `v${maxVersion}`, 'translations', language, `${shortNodeType}.json`)
+		: join(nodeDir, 'translations', language, `${shortNodeType}.json`);
 }
 
 export function getNodeCredentialTranslationPath({

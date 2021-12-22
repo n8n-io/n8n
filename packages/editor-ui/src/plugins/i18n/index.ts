@@ -301,12 +301,15 @@ export async function loadLanguage(language?: string) {
 
 export function addNodeTranslation(
 	nodeTranslation: { [key: string]: object },
+	nodeType: string,
 	language: string,
 ) {
+	const shortNodeType = nodeType.replace('n8n-nodes-base.', '');
+
 	const newNodesBase = {
 		'n8n-nodes-base': Object.assign(
 			i18nInstance.messages[language]['n8n-nodes-base'] || {},
-			nodeTranslation,
+			{ [shortNodeType]: nodeTranslation },
 		),
 	};
 

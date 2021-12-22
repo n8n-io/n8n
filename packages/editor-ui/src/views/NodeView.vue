@@ -2670,7 +2670,7 @@ export default mixins(
 
 					nodesInfo.forEach(nodeInfo => {
 						if (nodeInfo.translation) {
-							addNodeTranslation(nodeInfo.translation, this.$store.getters.defaultLocale);
+							addNodeTranslation(nodeInfo.translation, nodeInfo.name, this.$store.getters.defaultLocale);
 						}
 					});
 

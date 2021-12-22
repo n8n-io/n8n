@@ -1221,13 +1221,17 @@ class App {
 						nodeTypes: INodeTypeDescription[],
 					) {
 						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
-						const translationPath = await getNodeTranslationPath(sourcePath, defaultLocale);
+						const translationPath = await getNodeTranslationPath(
+							sourcePath,
+							description.name,
+							defaultLocale,
+						);
 
 						try {
 							const translation = await readFile(translationPath, 'utf8');
 							description.translation = JSON.parse(translation);
 						} catch (error) {
-							// ignore - no translation at expected translation path
+							// ignore - no translation exists at path
 						}
 
 						nodeTypes.push(description);
