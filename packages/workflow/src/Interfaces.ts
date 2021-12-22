@@ -1093,6 +1093,7 @@ export interface INodeGraphItem {
 	resource?: string;
 	operation?: string;
 	domain?: string;
+	position: [number, number];
 }
 
 export interface INodeNameIndex {

@@ -25,6 +25,7 @@ export function generateNodesGraph(workflow: IWorkflowBase): INodesGraphResult {
 		nodesGraph.node_types.push(node.type);
 		const nodeItem: INodeGraphItem = {
 			type: node.type,
+			position: node.position,
 		};
 
 		if (node.type === 'n8n-nodes-base.httpRequest') {
