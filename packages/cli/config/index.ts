@@ -675,6 +675,12 @@ const config = convict({
 			env: 'N8N_BINARY_DATA_TTL',
 			doc: 'TTL for binary data of unsaved executions in minutes',
 		},
+		persistedBinaryDataTTL: {
+			format: Number,
+			default: 1440,
+			env: 'N8N_PERSISTED_BINARY_DATA_TTL',
+			doc: 'TTL for binary data of unsaved executions in minutes',
+		},
 	},
 
 	deployment: {

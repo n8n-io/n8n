@@ -12,18 +12,23 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 
 	private binaryDataTTL: number;
 
+	private persistedBinaryDataTTL: number;
+
 	constructor(config: IBinaryDataConfig) {
 		this.storagePath = config.localStoragePath;
 		this.binaryDataTTL = config.binaryDataTTL;
+		this.persistedBinaryDataTTL = config.persistedBinaryDataTTL;
 	}
 
 	async init(startPurger = false): Promise<void> {
 		if (startPurger) {
 			setInterval(async () => {
-				// get all files and delete data
 				await this.deleteMarkedFiles();
-				await this.deleteMarkedPersistedFiles();
 			}, this.binaryDataTTL * 30000);
+
+			setInterval(async () => {
+				await this.deleteMarkedPersistedFiles();
+			}, this.persistedBinaryDataTTL * 30000);
 		}
 
 		return fs
@@ -52,7 +57,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 	private async addBinaryIdToPersistMeta(executionId: string, identifier: string): Promise<void> {
 		const currentTime = new Date().getTime();
 		const timeAtNextHour = currentTime + 3600000 - (currentTime % 3600000);
-		const timeoutTime = timeAtNextHour + this.binaryDataTTL * 60000;
+		const timeoutTime = timeAtNextHour + this.persistedBinaryDataTTL * 60000;
 
 		const filePath = path.join(
 			this.getBinaryDataPersistMetaPath(),

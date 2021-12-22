@@ -243,6 +243,7 @@ export interface IBinaryDataConfig {
 	availableModes: string;
 	localStoragePath: string;
 	binaryDataTTL: number;
+	persistedBinaryDataTTL: number;
 }
 
 export interface IExecutionBase {
