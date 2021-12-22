@@ -34,6 +34,7 @@ import { Role } from './databases/entities/Role';
 import { User } from './databases/entities/User';
 import { SharedCredentials } from './databases/entities/SharedCredentials';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import { Settings } from './databases/entities/Settings';
 
 export interface IActivationError {
 	time: number;
@@ -78,6 +79,7 @@ export interface IDatabaseCollections {
 	User: Repository<User> | null;
 	SharedCredentials: Repository<SharedCredentials> | null;
 	SharedWorkflow: Repository<SharedWorkflow> | null;
+	Settings: Repository<Settings> | null;
 }
 
 export interface IWebhookDb {
@@ -87,6 +89,16 @@ export interface IWebhookDb {
 	node: string;
 	webhookId?: string;
 	pathLength?: number;
+}
+
+// ----------------------------------
+//               settings
+// ----------------------------------
+
+export interface ISettingsDb {
+	key: string;
+	value: string | boolean | IDataObject | number;
+	loadOnStartup: boolean;
 }
 
 // ----------------------------------

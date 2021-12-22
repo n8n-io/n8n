@@ -28,6 +28,7 @@ export const collections: IDatabaseCollections = {
 	User: null,
 	SharedCredentials: null,
 	SharedWorkflow: null,
+	Settings: null,
 };
 
 export async function init(): Promise<IDatabaseCollections> {
@@ -152,6 +153,7 @@ export async function init(): Promise<IDatabaseCollections> {
 	collections.User = getRepository(entities.User);
 	collections.SharedCredentials = getRepository(entities.SharedCredentials);
 	collections.SharedWorkflow = getRepository(entities.SharedWorkflow);
+	collections.Settings = getRepository(entities.Settings);
 
 	return collections;
 }

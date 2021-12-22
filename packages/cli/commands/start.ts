@@ -207,6 +207,23 @@ export class Start extends Command {
 				// Wait till the database is ready
 				await startDbInitPromise;
 
+				if (config.get('userManagement.emails.mode') === 'smtp') {
+					const smtpConfiguration = config.get('userManagement.emails.smtp');
+					await Db.collections.Settings!.save({
+						key: 'userManagement.emails.smtp',
+						value: JSON.stringify(smtpConfiguration),
+						loadOnStartup: true,
+					});
+				} else {
+					// If we don't have SMTP settings, try loading from db.
+					const smtpSettings = await Db.collections.Settings!.findOne({
+						key: 'userManagement.emails.smtp',
+					});
+					if (smtpSettings) {
+						config.set('userManagement.emails.smtp', JSON.parse(smtpSettings.value));
+					}
+				}
+
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');
 					const redisPassword = config.get('queue.bull.redis.password');

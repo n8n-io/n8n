@@ -7,6 +7,7 @@ import { WebhookEntity } from './WebhookEntity';
 import { TagEntity } from './TagEntity';
 import { User } from './User';
 import { Role } from './Role';
+import { Settings } from './Settings';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 
@@ -18,6 +19,7 @@ export const entities = {
 	TagEntity,
 	User,
 	Role,
+	Settings,
 	SharedWorkflow,
 	SharedCredentials,
 };

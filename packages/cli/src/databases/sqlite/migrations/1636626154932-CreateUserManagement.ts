@@ -25,7 +25,7 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			'CREATE TABLE "settings" ("key"	TEXT NOT NULL,"value"	TEXT NOT NULL DEFAULT \'\',"loadOnStartup"	INTEGER DEFAULT 0,PRIMARY KEY("key"));',
+			'CREATE TABLE "settings" ("key"	TEXT NOT NULL,"value"	TEXT NOT NULL DEFAULT \'\',"loadOnStartup"	boolean NOT NULL default false,PRIMARY KEY("key"));',
 		);
 
 
