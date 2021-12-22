@@ -9,6 +9,8 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { getAccessToken } from './GenericFunctions';
+
 import {
 	OptionsWithUri,
 } from 'request';
@@ -162,10 +164,13 @@ export class HaloPSA implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
+		const token = await getAccessToken.call(this);
+
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const credentials = await this.getCredentials('haloPSAApi');
 
-		console.log(operation, resource);
+		console.log(operation, resource, token);
 
 		return [[]];
 	}
