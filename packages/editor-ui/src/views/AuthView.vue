@@ -10,6 +10,7 @@
 			<n8n-form-box
 				v-bind="form"
 				:buttonLoading="formLoading"
+				@secondaryClick="onSecondaryClick"
 				@submit="onSubmit"
 				@input="onInput"
 			/>
@@ -44,6 +45,9 @@ export default Vue.extend({
 		},
 		onSubmit(values: {[key: string]: string}) {
 			this.$emit('submit', values);
+		},
+		onSecondaryClick() {
+			this.$emit('secondaryClick');
 		},
 	},
 });
