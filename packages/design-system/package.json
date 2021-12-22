@@ -76,6 +76,6 @@
     "vue-loader": "^15.9.7",
     "vue-property-decorator": "^9.1.2",
     "vue-template-compiler": "^2.6.11",
-    "vue2-boring-avatars": "^0.3.4"
+    "vue2-boring-avatars": "0.3.4"
   }
 }
