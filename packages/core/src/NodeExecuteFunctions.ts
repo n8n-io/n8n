@@ -517,9 +517,15 @@ async function proxyRequestToAxios(
 			throw error;
 		});
 		const userpass = `${auth?.username as string}:${auth?.password as string}`;
-		axiosConfig.auth = digest(axiosConfig.method, axiosConfig.url, header, userpass);
+		axiosConfig.headers = {};
+		axiosConfig.headers.Authorization = digest(
+			axiosConfig.method,
+			'/digest-auth/potato/123/456',
+			header,
+			userpass,
+		);
+		axiosConfig.headers.Authorization += ', algorithm=MD5';
 	}
-
 	return new Promise((resolve, reject) => {
 		axios(axiosConfig)
 			.then((response) => {
