@@ -540,9 +540,7 @@ export class WorkflowRunner {
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
 						await Db.collections.Execution!.delete(executionId);
-						await BinaryDataManager.getInstance().findAndMarkDataForDeletionFromFullRunData(
-							runData,
-						);
+						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(executionId);
 					}
 					// eslint-disable-next-line id-denylist
 				} catch (err) {

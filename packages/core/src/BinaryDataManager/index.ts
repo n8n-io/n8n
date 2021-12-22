@@ -1,4 +1,4 @@
-import { IBinaryData, INodeExecutionData, IRun, IRunData, ITaskData } from 'n8n-workflow';
+import { IBinaryData, INodeExecutionData } from 'n8n-workflow';
 import { BINARY_ENCODING } from '../Constants';
 import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 import { BinaryDataFileSystem } from './FileSystem';
@@ -80,10 +80,17 @@ export class BinaryDataManager {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	async findAndMarkDataForDeletionFromFullRunData(fullRunData: IRun): Promise<void> {
+	async markDataForDeletionByExecutionId(executionId: string): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			const identifiers = this.findBinaryDataFromRunData(fullRunData.data.resultData.runData);
-			return this.markDataForDeletion(identifiers);
+			return this.managers[this.binaryDataMode].markDataForDeletionByExecutionId(executionId);
+		}
+
+		return Promise.resolve();
+	}
+
+	async persistBinaryDataForExecutionId(executionId: string): Promise<void> {
+		if (this.managers[this.binaryDataMode]) {
+			return this.managers[this.binaryDataMode].persistBinaryDataForExecutionId(executionId);
 		}
 
 		return Promise.resolve();
@@ -97,12 +104,33 @@ export class BinaryDataManager {
 		return Promise.resolve();
 	}
 
-	async persistBinaryDataForExecutionId(executionId: string): Promise<void> {
-		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].persistBinaryDataForExecutionId(executionId);
+	async duplicateBinaryData(
+		inputData: Array<INodeExecutionData[] | null> | unknown,
+		executionId: string,
+	): Promise<INodeExecutionData[][]> {
+		if (inputData && this.managers[this.binaryDataMode]) {
+			const returnInputData = (inputData as INodeExecutionData[][]).map(
+				async (executionDataArray) => {
+					if (executionDataArray) {
+						return Promise.all(
+							executionDataArray.map((executionData) => {
+								if (executionData.binary) {
+									return this.duplicateBinaryDataInExecData(executionData, executionId);
+								}
+
+								return executionData;
+							}),
+						);
+					}
+
+					return executionDataArray;
+				},
+			);
+
+			return Promise.all(returnInputData);
 		}
 
-		return Promise.resolve();
+		return Promise.resolve(inputData as INodeExecutionData[][]);
 	}
 
 	private generateBinaryId(filename: string) {
@@ -155,72 +183,5 @@ export class BinaryDataManager {
 		}
 
 		return executionData;
-	}
-
-	async duplicateBinaryData(
-		inputData: Array<INodeExecutionData[] | null> | unknown,
-		executionId: string,
-	): Promise<INodeExecutionData[][]> {
-		if (inputData && this.managers[this.binaryDataMode]) {
-			const returnInputData = (inputData as INodeExecutionData[][]).map(
-				async (executionDataArray) => {
-					if (executionDataArray) {
-						return Promise.all(
-							executionDataArray.map((executionData) => {
-								if (executionData.binary) {
-									return this.duplicateBinaryDataInExecData(executionData, executionId);
-								}
-
-								return executionData;
-							}),
-						);
-					}
-
-					return executionDataArray;
-				},
-			);
-
-			return Promise.all(returnInputData);
-		}
-
-		return Promise.resolve(inputData as INodeExecutionData[][]);
-	}
-
-	private async markDataForDeletion(identifiers: string[]): Promise<void> {
-		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].markDataForDeletion(
-				identifiers.map((id) => this.splitBinaryModeFileId(id).id),
-			);
-		}
-
-		return Promise.resolve();
-	}
-
-	private findBinaryDataFromRunData(runData: IRunData): string[] {
-		const allIdentifiers: string[] = [];
-
-		Object.values(runData).forEach((item: ITaskData[]) => {
-			item.forEach((taskData) => {
-				if (taskData?.data) {
-					Object.values(taskData.data).forEach((connectionData) => {
-						connectionData.forEach((executionData) => {
-							if (executionData) {
-								executionData.forEach((element) => {
-									if (element?.binary) {
-										Object.values(element?.binary).forEach((binaryItem) => {
-											if (binaryItem.id) {
-												allIdentifiers.push(binaryItem.id);
-											}
-										});
-									}
-								});
-							}
-						});
-					});
-				}
-			});
-		});
-
-		return allIdentifiers;
 	}
 }

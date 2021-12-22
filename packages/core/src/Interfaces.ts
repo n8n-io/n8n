@@ -280,7 +280,7 @@ export interface IBinaryDataManager {
 	init(startPurger: boolean): Promise<void>;
 	storeBinaryData(binaryBuffer: Buffer, executionId: string): Promise<string>;
 	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
-	markDataForDeletion(identifiers: string[]): Promise<void>;
+	markDataForDeletionByExecutionId(executionId: string): Promise<void>;
 	deleteMarkedFiles(): Promise<unknown>;
 	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;
 	duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string>;
