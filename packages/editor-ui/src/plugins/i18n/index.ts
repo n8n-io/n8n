@@ -9,7 +9,6 @@ const englishBaseText = require('./locales/en');
 Vue.use(VueI18n);
 
 const REUSABLE_DYNAMIC_TEXT_KEY = 'reusableDynamicText';
-const CREDENTIALS_MODAL_KEY = 'credentialsModal';
 const NODE_VIEW_KEY = 'nodeView';
 
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
@@ -81,10 +80,8 @@ export class I18nClass {
 	}
 
 	credText () {
-		const { credentialTextRenderKeys: keys } = this.$store.getters;
-		const nodeType = keys ? keys.nodeType : '';
-		const credentialType = keys ? keys.credentialType : '';
-		const credentialPrefix = `${nodeType}.${CREDENTIALS_MODAL_KEY}.${credentialType}`;
+		const credentialType = this.$store.getters.activeCredentialType;
+		const credentialPrefix = `n8n-nodes-base.credentials.${credentialType}`;
 		const context = this;
 
 		return {
@@ -163,7 +160,7 @@ export class I18nClass {
 	}
 
 	nodeText () {
-		const type = this.$store.getters.activeNode.type;
+		const { type } = this.$store.getters.activeNode;
 		const nodePrefix = `${type}.${NODE_VIEW_KEY}`;
 		const context = this;
 
@@ -310,6 +307,31 @@ export function addNodeTranslation(
 		'n8n-nodes-base': Object.assign(
 			i18nInstance.messages[language]['n8n-nodes-base'] || {},
 			nodeTranslation,
+		),
+	};
+
+	i18nInstance.setLocaleMessage(
+		language,
+		Object.assign(i18nInstance.messages[language], newNodesBase),
+	);
+}
+
+export function addNodeCredentialTranslation(
+	nodeCredentialTranslation: { [key: string]: object },
+	language: string,
+) {
+	const oldNodesBase = i18nInstance.messages[language]['n8n-nodes-base'] || {};
+
+	const newCredentials = {
+		// @ts-ignore
+		...oldNodesBase.credentials,
+		...nodeCredentialTranslation,
+	};
+
+	const newNodesBase = {
+		'n8n-nodes-base': Object.assign(
+			oldNodesBase,
+			{ credentials: newCredentials },
 		),
 	};
 
