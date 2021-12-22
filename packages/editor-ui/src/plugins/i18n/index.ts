@@ -42,10 +42,6 @@ export class I18nClass {
 		return this.i18n.te(key);
 	}
 
-	number(value: number, options: VueI18n.FormattedNumberPartType) {
-		return this.i18n.n(value, options);
-	}
-
 	shortNodeType(longNodeType: string) {
 		return longNodeType.replace('n8n-nodes-base.', '');
 	}
