@@ -5,6 +5,7 @@ import {
 	IInternalHooksClass,
 	IPersonalizationSurveyAnswers,
 	IWorkflowBase,
+	IWorkflowDb,
 } from '.';
 import { Telemetry } from './telemetry';
 
@@ -65,7 +66,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		});
 	}
 
-	async onWorkflowSaved(workflow: IWorkflowBase): Promise<void> {
+	async onWorkflowSaved(workflow: IWorkflowDb): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow);
 
 		return this.telemetry.track('User saved workflow', {
@@ -73,6 +74,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
 			version_cli: this.versionCli,
+			num_tags: workflow.tags.length,
 		});
 	}
 
