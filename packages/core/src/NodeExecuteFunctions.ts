@@ -520,7 +520,7 @@ async function proxyRequestToAxios(
 		axiosConfig.headers = {};
 		axiosConfig.headers.Authorization = digest(
 			axiosConfig.method,
-			'/digest-auth/potato/123/456',
+			axiosConfig.url,
 			header,
 			userpass,
 		);
