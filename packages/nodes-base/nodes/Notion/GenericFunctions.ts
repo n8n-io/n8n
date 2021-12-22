@@ -290,7 +290,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 		case 'people':
 			//if expression it's a single value, make it an array
 			if (!Array.isArray(value.peopleValue)) {
-				value.peopleValue = [value.peopleValue]
+				value.peopleValue = [value.peopleValue];
 			}
 
 			result = {

@@ -9,6 +9,9 @@ export const databaseOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
+				version: [
+					2,
+				],
 				resource: [
 					'database',
 				],
@@ -29,13 +32,34 @@ export const databaseOperations = [
 				name: 'Search',
 				value: 'search',
 				description: 'search databases using text search',
-				displayOptions: {
-					show: {
-						version: [
-							2,
-						],
-					},
-				},
+			},
+		],
+		default: 'get',
+	},
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				version: [
+					1,
+				],
+				resource: [
+					'database',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a database',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all databases',
 			},
 		],
 		default: 'get',
