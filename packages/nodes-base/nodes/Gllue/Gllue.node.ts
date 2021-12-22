@@ -62,7 +62,6 @@ export class Gllue implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-
 		const credentials = await this.getCredentials('gllueApi') as IDataObject;
 
 		const timestamp = helpers.getCurrentTimeStamp();
