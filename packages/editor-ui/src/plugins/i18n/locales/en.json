@@ -1039,5 +1039,11 @@
 		"timeoutAfter": "Timeout After",
 		"timeoutWorkflow": "Timeout Workflow",
 		"timezone": "Timezone"
+	},
+	"templates": {
+		"heading": "Workflow templates",
+		"newButton": "New blank workflow",
+		"searchPlaceholder": "Search workflows",
+		"categoriesHeading": "Categories"
 	}
 }

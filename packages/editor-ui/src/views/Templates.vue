@@ -1,9 +1,20 @@
 <template>
 	<div class="view-root">
 		<div class="view-wrapper">
-			<div class>
-				<h2 class="filters">filters</h2>
+			<div class="filters">
+				<TemplateFilters />
+			</div>
+			<div class="search">
+				<!-- TODO maxlength -->
+				<n8n-input
+					v-model="search"
+					@input="onSearchInput"
+					clearable
+					:placeholder="$locale.baseText('templates.searchPlaceholder')"
+				>
+					<font-awesome-icon icon="search" slot="prefix" />
 
+				</n8n-input>
 			</div>
 
 
@@ -14,33 +25,55 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import TemplateFilters from '@/components/TemplateFilters.vue';
 
 export default {
 	name: 'Templates',
+	components: {
+		TemplateFilters,
+	},
+	data () {
+		return {
+			search: '',
+ 		};
+	},
+	methods: {
+		onSearchInput(value) {
+			console.log(value);
+
+		},
+	},
 };
 
 </script>
 
-<style scoped lang="scss">
+<style lang="scss">
 
 .view-root {
-	position: absolute;
+	position: fixed;
 	width: 100%;
 	height: 100%;
+	padding-left: $--sidebar-width;
 	left: 0;
 	top: 0;
 	overflow: hidden;
 }
 
 .view-wrapper {
-	position: fixed;
+	margin-top: 120px;
+	padding: 0 48px;
+	display: flex;
 	width: 100%;
 	height: 100%;
-}
 
-.filters {
-	margin-top: 65px;
-	margin-left: 65px;
+	.filters {
+		width: 188px;
+	}
+
+	.search {
+		width: 100%;
+		margin-left: 24px;
+	}
 }
 
 </style>
