@@ -6,8 +6,8 @@
 
 <script lang="ts">
 interface IProps {
-	url: string,
-	width: string,
+	url: string;
+	width: string;
 }
 
 export default {
@@ -22,7 +22,7 @@ export default {
 			let srcset = '';
 			if (images) {
 				for (let i = 0; i < images.length; i++) {
-					srcset += images[i].url + ` ${images[0].width}w,`;
+					srcset += images[i].url + ` ${images[i].width}w,`;
 				}
 			}
 			return srcset;

@@ -1,6 +1,6 @@
 <template functional>
 	<div :class="$style.tags">
-		<n8n-tag v-for="(tag, key) in props.tags" :key="'tag-'+ key" :tag="tag.name" />
+		<n8n-tag v-for="(tag, key) in props.tags" :key="'tag-' + key" :tag="tag.name" />
 	</div>
 </template>
 

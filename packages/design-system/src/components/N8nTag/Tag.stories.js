@@ -2,7 +2,14 @@ import N8nTag from './Tag.vue';
 
 export default {
 	title: 'Atoms/Tag',
-	component: N8nImage,
+	component: N8nTag,
+	argTypes: {
+		tag: {
+			control: {
+				control: 'text',
+			},
+		},
+	},
 };
 
 const Template = (args, { argTypes }) => ({
@@ -11,7 +18,7 @@ const Template = (args, { argTypes }) => ({
 		N8nTag,
 	},
 	template:
-		'<n8n-tag></n8n-tag>',
+		'<n8n-tag v-bind="$props"></n8n-tag>',
 });
 
-export const InputLabel = Template.bind({});
+export const Tag = Template.bind({});
