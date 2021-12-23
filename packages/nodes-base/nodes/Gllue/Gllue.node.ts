@@ -1,11 +1,9 @@
 import {IExecuteFunctions,} from 'n8n-core';
 
 import {IDataObject, INodeExecutionData, INodeType, INodeTypeDescription,} from 'n8n-workflow';
-
-import {OptionsWithUri,} from 'request';
 import {clientFields, clientOperations} from './ClientDescription';
-import {UrlParams} from './helpers';
-import {cityFields, cityOperations} from "./CityDescription";
+import {getResponseByUri, UrlParams} from './helpers';
+import {cityFields, cityOperations} from './CityDescription';
 
 const helpers = require('./helpers');
 
@@ -83,20 +81,3 @@ export class Gllue implements INodeType {
 	}
 }
 
-function buildOptionWithUri(uriGenerated: string): OptionsWithUri {
-	return {
-		headers: {
-			'Accept': 'application/json',
-		},
-		method: 'GET',
-		uri: uriGenerated,
-		json: true,
-	};
-}
-
-// tslint:disable-next-line:no-any
-async function getResponseByUri(uriGenerated: string, requestMethod:any) {
-	const options = buildOptionWithUri(uriGenerated);
-	console.log(`request with ${options.uri}`);
-	return await requestMethod(options);
-}

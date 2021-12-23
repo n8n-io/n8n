@@ -1,3 +1,5 @@
+import {OptionsWithUri} from "request";
+
 const crypto = require('crypto');
 
 export function getCurrentTimeStamp(): string {
@@ -81,4 +83,22 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 	}
 
 	return `${baseUrl}?${params.join('&')}`;
+}
+
+function buildOptionWithUri(uriGenerated: string): OptionsWithUri {
+	return {
+		headers: {
+			'Accept': 'application/json',
+		},
+		method: 'GET',
+		uri: uriGenerated,
+		json: true,
+	};
+}
+
+// tslint:disable-next-line:no-any
+export async function getResponseByUri(uriGenerated: string, requestMethod: any) {
+	const options = buildOptionWithUri(uriGenerated);
+	console.log(`request with ${options.uri}`);
+	return await requestMethod(options);
 }
