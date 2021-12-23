@@ -161,7 +161,7 @@ export default mixins(
 						this.$store.commit('setWorkflowActive', this.workflowId);
 
 						// Show activation dialog only for current workflow and if user hasn't deactivated it
-						if (this.isCurrentWorkflow && !window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG)) {
+						if (this.isCurrentWorkflow && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
 							this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
 						}
 					} else {
