@@ -125,7 +125,7 @@ export class Kitemaker implements INodeType {
 
 				const responseData = await kitemakerRequest.call(this, { query: getStatuses });
 				const { data: { organization: { spaces } } } = responseData;
-				const space = spaces.find((e: { [x: string]: string; }) => e.id == spaceId)
+				const space = spaces.find((e: { [x: string]: string; }) => e.id === spaceId);
 
 				return createLoadOptions(space.statuses);
 			},
