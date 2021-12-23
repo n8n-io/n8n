@@ -11,7 +11,6 @@
 		"module": "commonjs",
 		"noImplicitAny": true,
 		"removeComments": true,
-		"skipLibCheck": true,
 		"strictNullChecks": true,
 		"forceConsistentCasingInFileNames": true,
 		"noImplicitReturns": true,

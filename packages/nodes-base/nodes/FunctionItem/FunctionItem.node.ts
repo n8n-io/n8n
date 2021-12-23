@@ -120,7 +120,7 @@ return item;`,
 						returnData.push({json:{ error: error.message }});
 						continue;
 					} else {
-						// Try to find the lien number which contains the error and attach to error message
+						// Try to find the line number which contains the error and attach to error message
 						const stackLines = error.stack.split('\n');
 						if (stackLines.length > 0) {
 							const lineParts = stackLines[1].split(':');
