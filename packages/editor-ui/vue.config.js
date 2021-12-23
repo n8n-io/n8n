@@ -25,7 +25,7 @@ module.exports = {
 			disableHostCheck: true,
 		},
 		plugins: [
-			new MonacoWebpackPlugin({ languages: ['javascript', 'html', 'typescript'] }),
+			new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] }),
 		],
 	},
 	css: {
