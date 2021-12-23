@@ -24,7 +24,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 
 export default {
@@ -37,10 +36,13 @@ export default {
 			search: '',
  		};
 	},
+	async mounted() {
+		const response = await this.$store.dispatch('templates/getSearchResults');
+		// console.log(response);
+	},
 	methods: {
-		onSearchInput(value) {
-			console.log(value);
-
+		onSearchInput(value: string) {
+			// console.log(value);
 		},
 	},
 };

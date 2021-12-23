@@ -746,3 +746,58 @@ export interface IBounds {
 	maxX: number;
 	maxY: number;
 }
+
+export interface IZoomConfig {
+	scale: number;
+	offset: XYPosition;
+}
+
+export interface ISearchResults {
+	categories: ITemplateCategory[];
+	collections: ITemplateCollection[];
+	totalWorkflows: number;
+	workflows: IN8nTemplate[];
+}
+
+export interface ITemplateCategory {
+	id: string;
+	name: string;
+}
+
+export interface ITemplateCollection {
+	id: string;
+	name: string;
+	workflowsCount: number;
+	nodes: ITemplateNode[];
+}
+
+export interface ITemplateNode {
+	displayName: string;
+	name: string;
+	icon: string;
+	defaults: {
+		color: string;
+	};
+	// iconData: {
+	// 	fileBuffer: string,
+	// 	type: string,
+	// }
+
+}
+
+export interface IN8nTemplate {
+	id: string;
+	name: string;
+	createdAt: string;
+	description: string;
+	nodes: ITemplateNode[];
+	totalViews: number;
+	user: {
+		username: string;
+	};
+}
+
+export interface ITemplateState {
+	template: {};
+	searchResults: {};
+}
