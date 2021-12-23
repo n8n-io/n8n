@@ -29,7 +29,6 @@ export class GoogleDrive implements INodeType {
 		description: 'Access data on Google Drive',
 		defaults: {
 			name: 'Google Drive',
-			color: '#4285F4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

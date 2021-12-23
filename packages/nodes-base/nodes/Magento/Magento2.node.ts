@@ -67,7 +67,6 @@ export class Magento2 implements INodeType {
 		description: 'Consume Magento API',
 		defaults: {
 			name: 'Magento 2',
-			color: '#ec6737',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -564,7 +563,7 @@ export class Magento2 implements INodeType {
 								sku,
 								name,
 								attribute_set_id: parseInt(attributeSetId, 10),
-								price, 
+								price,
 							},
 						};
 

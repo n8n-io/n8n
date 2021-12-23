@@ -58,7 +58,6 @@ export class YouTube implements INodeType {
 		description: 'Consume YouTube API',
 		defaults: {
 			name: 'YouTube',
-			color: '#FF0000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
