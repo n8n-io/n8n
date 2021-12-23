@@ -17,8 +17,6 @@ export function isForMultiCollection(path: string | undefined): path is string {
 export function isForFixedCollection(path: string | undefined): path is string {
 	if (!path) return false;
 
-	console.log(path);
-
 	return path.split('.').length === 4;
 }
 
