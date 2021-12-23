@@ -1,7 +1,7 @@
 <template>
 	<div @keydown.stop class="duplicate-parameter">
 		<n8n-input-label
-			:label="$locale.nodeText().inputLabelDisplayName(parameter)"
+			:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 			:tooltipText="$locale.nodeText().inputLabelDescription(parameter)"
 			:underline="true"
 			:labelHoverableOnly="true"

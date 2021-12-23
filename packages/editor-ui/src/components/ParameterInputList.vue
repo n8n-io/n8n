@@ -33,7 +33,7 @@
 					/>
 				</div>
 				<n8n-input-label
-					:label="$locale.nodeText().inputLabelDisplayName(parameter)"
+					:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 					:tooltipText="$locale.nodeText().inputLabelDescription(parameter)"
 					size="small"
 					:underline="true"
