@@ -3,6 +3,7 @@ import Router from 'vue-router';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
+import TemplateView from '@/views/TemplateView.vue';
 
 Vue.use(Router);
 
@@ -17,6 +18,14 @@ export default new Router({
 			components: {
 				default: NodeView,
 				header: MainHeader,
+				sidebar: MainSidebar,
+			},
+		},
+		{
+			path: '/template/:id',
+			name: 'TemplateView',
+			components: {
+				default: TemplateView,
 				sidebar: MainSidebar,
 			},
 		},

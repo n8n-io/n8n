@@ -26,10 +26,16 @@
   },
   "dependencies": {
     "@fontsource/open-sans": "^4.5.0",
+    "@types/markdown-it": "^12.2.3",
+    "markdown-it": "^12.3.0",
+    "markdown-it-emoji": "^2.0.0",
+    "markdown-it-link-attributes": "^3.0.0",
+    "markdown-it-task-lists": "^2.1.1",
     "n8n-design-system": "~0.9.0",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
-    "vue-fragment": "^1.5.2"
+    "vue-fragment": "^1.5.2",
+    "xss": "^1.0.10"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
@@ -72,11 +78,11 @@
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
     "n8n-workflow": "~0.79.0",
-    "sass": "^1.26.5",
     "normalize-wheel": "^1.0.1",
     "prismjs": "^1.17.1",
     "quill": "^2.0.0-dev.3",
     "quill-autoformat": "^0.1.1",
+    "sass": "^1.26.5",
     "sass-loader": "^8.0.2",
     "string-template-parser": "^1.2.6",
     "ts-jest": "^26.3.0",
