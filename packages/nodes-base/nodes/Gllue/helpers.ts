@@ -40,10 +40,10 @@ export function generateTokenWithAESKey(timestamp: string, email: string, aesKey
 export class UrlParams {
 	constructor(
 		public gql = '',
+		public fields = 'id',
 		public paginateBy = 25,
 		public orderBy = '-id',
 		public page = 1,
-		public fields = 'id',
 	) {
 	}
 }
@@ -69,6 +69,9 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 		}
 		params.push(`gql=${gql}`);
 	}
+	if (urlParams.fields !== undefined) {
+		params.push(`fields=${urlParams.fields}`);
+	}
 	if (urlParams.paginateBy !== undefined) {
 		params.push(`paginate_by=${urlParams.paginateBy}`);
 	}
@@ -78,8 +81,6 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 	if (urlParams.page !== undefined) {
 		params.push(`page=${urlParams.page}`);
 	}
-	if (urlParams.fields !== undefined) {
-		params.push(`fields=${urlParams.fields}`);
-	}
+
 	return `${baseUrl}?${params.join('&')}`;
 }

@@ -16,12 +16,12 @@ export const clientOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all clients',
+				name: 'Simple List with IDs',
+				value: 'simple_list_with_ids',
+				description: 'Get all clients with Simple List',
 			},
 		],
-		default: 'getAll',
+		default: 'simple_list_with_ids',
 		description: 'The operation to perform.',
 	},
 ];
@@ -42,7 +42,7 @@ export const clientFields: INodeProperties[] = [
 					'client',
 				],
 				operation: [
-					'getAll',
+					'simple_list_with_ids',
 				],
 			},
 		},
