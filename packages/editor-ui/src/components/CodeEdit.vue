@@ -133,14 +133,16 @@ export default mixins(
 
 		loadAutocompleteData(): void {
 			if (['function', 'functionItem'].includes(this.codeAutocomplete)) {
-				const executedWorkflow: IExecutionResponse | null = this.$store.getters.getWorkflowExecution;
-				const workflow = this.getWorkflow();
-				const activeNode: INodeUi | null = this.$store.getters.activeNode;
-				const inputIndex = 0;
 				const itemIndex = 0;
 				const inputName = 'main';
 				const mode = 'manual';
-				const runIndex = 0;
+				let runIndex = 0;
+
+				const executedWorkflow: IExecutionResponse | null = this.$store.getters.getWorkflowExecution;
+				const workflow = this.getWorkflow();
+				const activeNode: INodeUi | null = this.$store.getters.activeNode;
+				const parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
+				const inputIndex = workflow.getNodeConnectionOutputIndex(activeNode.name, parentNode[0]);
 
 				const autocompleteData: string[] = [];
 
@@ -155,8 +157,10 @@ export default mixins(
 					};
 				} else {
 					runExecutionData = executionData.data;
+					if (runExecutionData.resultData.runData[activeNode.name]) {
+						runIndex = runExecutionData.resultData.runData[activeNode.name].length - 1;
+					}
 				}
-				const parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
 
 				const connectionInputData = this.connectionInputData(parentNode, inputName, runIndex, inputIndex);
 
@@ -178,7 +182,7 @@ export default mixins(
 
 				const baseKeys = ['$env', '$executionId', '$mode', '$parameter', '$position', '$resumeWebhookUrl', '$workflow'];
 				const additionalKeys = ['$json', '$binary'];
-				if (executedWorkflow && connectionInputData) {
+				if (executedWorkflow && connectionInputData && connectionInputData.length) {
 					baseKeys.push(...additionalKeys);
 				} else {
 					additionalKeys.forEach(key => {
