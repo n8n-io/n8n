@@ -48,7 +48,6 @@ export class Zulip implements INodeType {
 		description: 'Consume Zulip API',
 		defaults: {
 			name: 'Zulip',
-			color: '#156742',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

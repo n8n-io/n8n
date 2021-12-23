@@ -27,7 +27,6 @@ export class GitlabTrigger implements INodeType {
 		description: 'Starts the workflow when GitLab events occur',
 		defaults: {
 			name: 'Gitlab Trigger',
-			color: '#FC6D27',
 		},
 		inputs: [],
 		outputs: ['main'],

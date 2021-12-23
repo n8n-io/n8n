@@ -29,7 +29,6 @@ export class AutopilotTrigger implements INodeType {
 		description: 'Handle Autopilot events via webhooks',
 		defaults: {
 			name: 'Autopilot Trigger',
-			color: '#6ad7b9',
 		},
 		inputs: [],
 		outputs: ['main'],

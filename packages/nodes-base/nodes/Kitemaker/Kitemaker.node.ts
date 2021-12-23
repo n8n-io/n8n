@@ -55,7 +55,6 @@ export class Kitemaker implements INodeType {
 		description: 'Consume the Kitemaker GraphQL API',
 		defaults: {
 			name: 'Kitemaker',
-			color: '#662482',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

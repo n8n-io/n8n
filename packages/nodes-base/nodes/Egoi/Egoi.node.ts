@@ -35,7 +35,6 @@ export class Egoi implements INodeType {
 		description: 'Consume E-goi API',
 		defaults: {
 			name: 'E-goi',
-			color: '#4cacd6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

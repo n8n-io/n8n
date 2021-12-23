@@ -30,7 +30,6 @@ export class TelegramTrigger implements INodeType {
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
 			name: 'Telegram Trigger',
-			color: '#0088cc',
 		},
 		inputs: [],
 		outputs: ['main'],

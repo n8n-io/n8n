@@ -94,7 +94,6 @@
 			:max="getArgument('maxValue')"
 			:min="getArgument('minValue')"
 			:precision="getArgument('numberPrecision')"
-			:step="getArgument('numberStepSize')"
 			:disabled="isReadOnly"
 			@change="valueChanged"
 			@input="onTextInputChange"
