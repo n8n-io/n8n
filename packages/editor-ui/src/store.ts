@@ -38,6 +38,7 @@ import settings from './modules/settings';
 import ui from './modules/ui';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
+import templates from './modules/templates';
 
 Vue.use(Vuex);
 
@@ -96,6 +97,7 @@ const modules = {
 	credentials,
 	tags,
 	settings,
+	templates,
 	workflows,
 	versions,
 	ui,

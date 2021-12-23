@@ -46,6 +46,7 @@ import locale from 'element-ui/lib/locale';
 import {
 	N8nIconButton,
 	N8nButton,
+	N8nImage,
 	N8nInfoTip,
 	N8nInput,
 	N8nInputLabel,
@@ -56,6 +57,8 @@ import {
 	N8nSelect,
 	N8nSpinner,
 	N8nSquareButton,
+	N8nTags,
+	N8nTag,
 	N8nText,
 	N8nTooltip,
 	N8nOption,
@@ -67,6 +70,7 @@ Vue.use(Fragment.Plugin);
 // n8n design system
 Vue.use(N8nButton);
 Vue.use(N8nIconButton);
+Vue.use(N8nImage);
 Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
@@ -77,6 +81,8 @@ Vue.use(N8nMenuItem);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
 Vue.component('n8n-square-button', N8nSquareButton);
+Vue.use(N8nTags);
+Vue.use(N8nTag);
 Vue.component('n8n-text', N8nText);
 Vue.use(N8nTooltip);
 Vue.use(N8nOption);

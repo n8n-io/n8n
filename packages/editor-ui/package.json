@@ -26,11 +26,17 @@
   },
   "dependencies": {
     "@fontsource/open-sans": "^4.5.0",
+    "@types/markdown-it": "^12.2.3",
+    "markdown-it": "^12.3.0",
+    "markdown-it-emoji": "^2.0.0",
+    "markdown-it-link-attributes": "^3.0.0",
+    "markdown-it-task-lists": "^2.1.1",
     "n8n-design-system": "~0.9.0",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
     "vue-fragment": "^1.5.2",
-    "vue-i18n": "^8.26.7"
+    "vue-i18n": "^8.26.7",
+    "xss": "^1.0.10"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
