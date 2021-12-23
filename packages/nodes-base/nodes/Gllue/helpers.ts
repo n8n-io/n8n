@@ -56,40 +56,29 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 		return baseUrl;
 	}
 
-	if (urlParams.gql !== undefined) {
-		let gql: string;
-		if (urlParams.gql !== '') {
-			const groups = urlParams.gql.split('&').map((group) => {
-				const [name, value] = group.split('=');
-				const encodedValue = encodeURIComponent(value);
-				return `${name}=${encodedValue}`;
-			});
-			gql = encodeURIComponent(groups.join('&'));
-		} else {
-			gql = urlParams.gql;
-		}
-		params.push(`gql=${gql}`);
+	let gql: string;
+	if (urlParams.gql !== '') {
+		const groups = urlParams.gql.split('&').map((group) => {
+			const [name, value] = group.split('=');
+			const encodedValue = encodeURIComponent(value);
+			return `${name}=${encodedValue}`;
+		});
+		gql = encodeURIComponent(groups.join('&'));
+	} else {
+		gql = urlParams.gql;
 	}
-	if (urlParams.fields !== undefined) {
-		params.push(`fields=${urlParams.fields}`);
+	params.push(`gql=${gql}`);
+
+	params.push(`fields=${urlParams.fields}`);
+	params.push(`paginate_by=${urlParams.paginateBy}`);
+	params.push(`ordering=${urlParams.orderBy}`);
+	params.push(`page=${urlParams.page}`);
+
+	if (urlParams.token !== '') {
+		params.push(`private_token=${urlParams.token}`);
+	} else {
+		throw new Error('Private Token is required');
 	}
 
-	if (urlParams.paginateBy !== undefined) {
-		params.push(`paginate_by=${urlParams.paginateBy}`);
-	}
-	if (urlParams.orderBy !== undefined) {
-		params.push(`ordering=${urlParams.orderBy}`);
-	}
-	if (urlParams.page !== undefined) {
-		params.push(`page=${urlParams.page}`);
-	}
-
-	if (urlParams.token !== undefined) {
-		if (urlParams.token !== '') {
-			params.push(`private_token=${urlParams.token}`);
-		} else {
-			throw new Error('Private Token is required');
-		}
-	}
 	return `${baseUrl}?${params.join('&')}`;
 }
