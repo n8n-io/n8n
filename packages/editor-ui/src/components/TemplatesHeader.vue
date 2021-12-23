@@ -1,10 +1,10 @@
 <template>
 	<div>
-		<div :class="{'main-header': true, expanded: !sidebarMenuCollapsed}">
-			<div class="top-menu">
-				<n8n-heading size="2xlarge">Workflow templates</n8n-heading>
-				<div class="right">
-					<n8n-button type="outline" label="New blank workflow"></n8n-button>
+		<div :class="sidebarMenuCollapsed ? $style.templatesHeader : $style.templatesHeader + $style.expanded">
+			<div :class="$style.topView">
+				<n8n-heading size="2xlarge">{{$locale.baseText('templates.heading')}}</n8n-heading>
+				<div>
+					<n8n-button type="outline" :label="$locale.baseText('templates.newButton')" @click="openNewWorkflow"></n8n-button>
 				</div>
 			</div>
 		</div>
@@ -22,14 +22,18 @@ export default {
 			'sidebarMenuCollapsed',
 		]),
 	},
+	methods: {
+		openNewWorkflow() {
+			this.$router.push({ name: 'NodeViewNew' });
+		},
+	},
 };
 </script>
 
-<style lang="scss">
-.main-header {
+<style lang="scss" module>
+.templatesHeader {
 	position: fixed;
 	top: 0;
-	background-color: #fff;
 	height: 120px;
 	width: 100%;
 	box-sizing: border-box;
@@ -41,18 +45,13 @@ export default {
 	}
 }
 
-.top-menu {
+.topView {
 	display: flex;
 	flex-direction: row;
-	align-content: end;
+  justify-content: space-between;
 	font-weight: 400;
 	padding: 48px;
 	//todo var
-}
-
-.right {
-	// position: relative;
-	// margin-right: 0
 }
 
 </style>
