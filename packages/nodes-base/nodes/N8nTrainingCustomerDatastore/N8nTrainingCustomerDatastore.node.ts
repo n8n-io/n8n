@@ -63,7 +63,6 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		description: 'Dummy node used for n8n training',
 		defaults: {
 			name: 'Customer Datastore',
-			color: '#ff6d5a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

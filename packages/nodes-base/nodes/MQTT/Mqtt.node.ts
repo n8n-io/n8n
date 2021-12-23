@@ -25,7 +25,6 @@ export class Mqtt implements INodeType {
 		description: 'Push messages to MQTT',
 		defaults: {
 			name: 'MQTT',
-			color: '#9b27af',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

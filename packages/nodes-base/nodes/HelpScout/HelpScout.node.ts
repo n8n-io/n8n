@@ -67,7 +67,6 @@ export class HelpScout implements INodeType {
 		description: 'Consume HelpScout API',
 		defaults: {
 			name: 'HelpScout',
-			color: '#1392ee',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

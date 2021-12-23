@@ -28,7 +28,6 @@ export class Snowflake implements INodeType {
 		description: 'Get, add and update data in Snowflake',
 		defaults: {
 			name: 'Snowflake',
-			color: '#5ebbeb',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

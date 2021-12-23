@@ -36,7 +36,7 @@ const ISO6391 = require('iso-639-1');
 
 export class Twitter implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Twitter ',
+		displayName: 'Twitter',
 		name: 'twitter',
 		icon: 'file:twitter.svg',
 		group: ['input', 'output'],
@@ -45,7 +45,6 @@ export class Twitter implements INodeType {
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
 			name: 'Twitter',
-			color: '#1DA1F2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -31,7 +31,6 @@ export class WorkableTrigger implements INodeType {
 		description: 'Starts the workflow when Workable events occur',
 		defaults: {
 			name: 'Workable Trigger',
-			color: '#29b6f6',
 		},
 		inputs: [],
 		outputs: ['main'],
