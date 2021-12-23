@@ -39,7 +39,7 @@ export default mixins(
 	workflowHelpers,
 ).extend({
 	name: 'CodeEdit',
-	props: ['codeAutocomplete', 'dialogVisible', 'parameter', 'type', 'value'],
+	props: ['codeAutocomplete', 'parameter', 'type', 'value'],
 	data() {
 		return {
 			monacoInstance: null as monaco.editor.IStandaloneCodeEditor | null,
@@ -142,7 +142,7 @@ export default mixins(
 				const workflow = this.getWorkflow();
 				const activeNode: INodeUi | null = this.$store.getters.activeNode;
 				const parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
-				const inputIndex = workflow.getNodeConnectionOutputIndex(activeNode.name, parentNode[0]);
+				const inputIndex = workflow.getNodeConnectionOutputIndex(activeNode!.name, parentNode[0]) || 0;
 
 				const autocompleteData: string[] = [];
 
@@ -157,8 +157,8 @@ export default mixins(
 					};
 				} else {
 					runExecutionData = executionData.data;
-					if (runExecutionData.resultData.runData[activeNode.name]) {
-						runIndex = runExecutionData.resultData.runData[activeNode.name].length - 1;
+					if (runExecutionData.resultData.runData[activeNode!.name]) {
+						runIndex = runExecutionData.resultData.runData[activeNode!.name].length - 1;
 					}
 				}
 
@@ -240,10 +240,6 @@ export default mixins(
 </script>
 
 <style scoped>
-.editor-description {
-	font-weight: bold;
-	padding: 0 0 0.5em 0.2em;
-}
 
 .text-editor {
 	min-height: 30rem;
