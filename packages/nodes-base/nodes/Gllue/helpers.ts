@@ -41,6 +41,7 @@ export class UrlParams {
 	constructor(
 		public gql = '',
 		public fields = 'id',
+		public token = '',
 		public paginateBy = 25,
 		public orderBy = '-id',
 		public page = 1,
@@ -72,6 +73,7 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 	if (urlParams.fields !== undefined) {
 		params.push(`fields=${urlParams.fields}`);
 	}
+
 	if (urlParams.paginateBy !== undefined) {
 		params.push(`paginate_by=${urlParams.paginateBy}`);
 	}
@@ -82,5 +84,12 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 		params.push(`page=${urlParams.page}`);
 	}
 
+	if (urlParams.token !== undefined) {
+		if (urlParams.token !== '') {
+			params.push(`private_token=${urlParams.token}`);
+		} else {
+			throw new Error('Private Token is required');
+		}
+	}
 	return `${baseUrl}?${params.join('&')}`;
 }
