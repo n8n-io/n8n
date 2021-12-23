@@ -1,8 +1,9 @@
 /**
- * Check if a param path indicates that the param is inside a `collection` param.
+ * Check if a param path indicates that the param is inside a `collection` param
+ * having `multipleValues: true`.
  * Example: `label` in `parameters.labels[0].label`
  */
-export function isForCollection(path: string | undefined): path is string {
+export function isForMultiCollection(path: string | undefined): path is string {
 	if (!path) return false;
 
 	return /[\]\]]/.test(path);
@@ -31,9 +32,10 @@ export function toSectionTitleKey(path: string, optionName: string) {
 }
 
 /**
- * Generate the render key for a param inside a `collection` param.
+ * Generate the render key for a param inside a `collection` param
+ * having `multipleValues: true`.
  */
-export function toCollectionKey(path: string) {
+export function toMultiCollectionKey(path: string) {
 	return removeParams(path).replace(/\[\d\]/, '.options');
 }
 

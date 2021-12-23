@@ -5,11 +5,11 @@ import { Store } from "vuex";
 import Vue from 'vue';
 import { INodeTranslationHeaders, IRootState } from '@/Interface';
 import {
-	isForCollection,
+	isForMultiCollection,
 	isForFixedCollection,
 	toSectionTitleKey,
 	toFixedCollectionKey,
-	toCollectionKey,
+	toMultiCollectionKey,
 } from "./utils";
 
 const englishBaseText = require('./locales/en');
@@ -184,8 +184,8 @@ export class I18nClass {
 					middleKey = toSectionTitleKey(path!, parameterName);
 				} else if (isForFixedCollection(path)) {
 					middleKey = toFixedCollectionKey(path);
-				} else if (isForCollection(path)) {
-					middleKey = toCollectionKey(path);
+				} else if (isForMultiCollection(path)) {
+					middleKey = toMultiCollectionKey(path);
 				}
 
 				return context.dynamicRender({
@@ -205,8 +205,8 @@ export class I18nClass {
 
 				if (isForFixedCollection(path)) {
 					middleKey = toFixedCollectionKey(path);
-				} else if (isForCollection(path)) {
-					middleKey = toCollectionKey(path);
+				} else if (isForMultiCollection(path)) {
+					middleKey = toMultiCollectionKey(path);
 				}
 
 				return context.dynamicRender({
@@ -280,8 +280,8 @@ export class I18nClass {
 
 				if (isForFixedCollection(path)) {
 					middleKey = toFixedCollectionKey(path);
-				} else if (isForCollection(path)) {
-					middleKey = toCollectionKey(path);
+				} else if (isForMultiCollection(path)) {
+					middleKey = toMultiCollectionKey(path);
 				}
 
 				return context.dynamicRender({
