@@ -89,6 +89,14 @@
         }
       }
     },
+    "editFields": {
+      "displayName": "🇩🇪 Edit Fields",
+      "options": {
+        "title": {
+          "displayName": "🇩🇪 Title"
+        }
+      }
+    },
     "additionalParameters": {
       "displayName": "🇩🇪 Additional Parameters",
       "placeholder": "🇩🇪 Add Field",
