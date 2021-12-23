@@ -216,7 +216,10 @@ export class Raindrop implements INodeType {
 							};
 							delete updateFields.collectionId;
 						}
-
+						if (updateFields.pleaseParse === true) {
+							body.pleaseParse = {};
+							delete updateFields.pleaseParse;
+						}
 						if (updateFields.tags) {
 							body.tags = (updateFields.tags as string).split(',').map(tag => tag.trim()) as string[];
 						}
