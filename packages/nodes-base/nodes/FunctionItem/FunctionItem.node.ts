@@ -114,7 +114,7 @@ return item;`,
 				let jsonData: IDataObject;
 				try {
 					// Execute the function code
-					jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
+					jsonData = await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({json:{ error: error.message }});
