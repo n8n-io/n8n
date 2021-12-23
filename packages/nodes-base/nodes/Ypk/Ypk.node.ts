@@ -15,15 +15,14 @@ import {
 import { ypkApiRequest } from './GenericFunctions';
 import { learnerFields, learnerOperations } from './Learner';
 import { speakerFields, speakerOperations } from './Speaker';
-import { referentFields, referentOperations } from './Referent';
 import { trainingFields, trainingOperations } from './Training';
 import { trainingSessionFields, trainingSessionOperations } from './TrainingSession';
 import { speakersTrainingSessionFields, speakersTrainingSessionOperations } from './SpeakersTrainingSession';
 import { learnersTrainingSessionFields, learnersTrainingSessionOperations } from './LearnersTrainingSession';
 import { speakersTrainingModuleFields, speakersTrainingModuleOperations } from './SpeakersTrainingModule';
 import { contactFields, contactOperations } from './Contact';
-import {companyFields, companyOperations} from './Company';
-import {annexCostFields, annexCostOperations} from "./AnnexCost";
+import { companyFields, companyOperations } from './Company';
+import { annexCostFields, annexCostOperations } from "./AnnexCost";
 
 interface YpkSettingType {
 	id: string;
@@ -76,6 +75,10 @@ export class Ypk implements INodeType {
 					{
 						name: 'Formateur',
 						value: 'speaker',
+					},
+          {
+						name: 'Referents',
+						value: 'referent',
 					},
 					{
 						name: 'Formation',
@@ -214,7 +217,7 @@ export class Ypk implements INodeType {
 				const lastName = this.getNodeParameter('last_name', i, '') as string;
 				const id = this.getNodeParameter('id', i, '') as string;
 				const { street,additional, zip_code, city, country } = additionalFields;
-				body = { learner: { first_name: firstName,last_name: lastName, address_attributes: { street,additional, zip_code, city, country }, profile_attributes: {}, ...additionalFields } };
+				body = { learner: { first_name: firstName,last_name: lastName, address_attributes: { street, additional, zip_code, city, country }, profile_attributes: {}, ...additionalFields } };
 
 				if (operation === 'create') {
 					// get email input
@@ -253,8 +256,8 @@ export class Ypk implements INodeType {
 				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 				const name = this.getNodeParameter('name', i, '') as string;
 				const id = this.getNodeParameter('id', i, '') as string;
-				const { street, zip_code, city, country } = additionalFields;
-				body = { company: { name, address_attributes: { street, zip_code, city, country, }, ...additionalFields }};
+				const { street, zip_code, city, country, referent_first_name, referent_last_name, referent_phone, referent_email, referent_position } = additionalFields;
+				body = { company: { name, address_attributes: { street, zip_code, city, country, }, referent_attributes: { first_name: referent_first_name, last_name: referent_last_name, phone: referent_phone, email: referent_email, position: referent_position },  ...additionalFields }};
 
 				if (operation === 'create') {
 					// get email input
@@ -338,7 +341,6 @@ export class Ypk implements INodeType {
 				body = { speaker: { first_name: firstName,last_name: lastName, address_attributes: { street,additional, zip_code, city, country }, profile_attributes: {}, ...additionalFields } };
 
 				if (operation === 'create') {
-					// get email input
 					dataKey = 'speaker';
 					method = 'POST';
 				}
@@ -515,46 +517,6 @@ export class Ypk implements INodeType {
 					method = 'GET';
 				}
 			}
-
-      if (resource === 'referent') {
-				endpoint = 'referents';
-				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-				// const firstName = this.getNodeParameter('first_name', i, '') as string;
-				// const lastName = this.getNodeParameter('last_name', i, '') as string;
-				const id = this.getNodeParameter('id', i, '') as string;
-				body = { referent: { ...additionalFields } };
-
-				if (operation === 'create') {
-					// get email input
-					dataKey = 'referent';
-					method = 'POST';
-				}
-				if (operation === 'update') {
-					endpoint = `referents/${id}`;
-					dataKey = 'referent';
-					method = 'PATCH';
-				}
-				if (operation === 'delete') {
-					endpoint = `referents/${id}`;
-					dataKey = 'referent';
-					method = 'DELETE';
-				}
-				if (operation === 'get') {
-					endpoint = `referents/${id}`;
-					dataKey = 'referent';
-					method = 'GET';
-				}
-				if (operation === 'getAll') {
-					// const { search_by_firstname, search_by_lastname } = this.getNodeParameter('filters', i, {}) as IDataObject;
-
-					endpoint = `referents`;
-					// qs['q[first_name_cont]'] = search_by_firstname;
-					// qs['q[last_name_cont]'] = search_by_lastname;
-					dataKey = 'referents';
-					method = 'GET';
-				}
-			}
-
 
 			if (resource === 'annexCost') {
 				endpoint = 'annex_costs';
