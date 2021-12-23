@@ -135,7 +135,7 @@ export const annexCostFields: INodeProperties[] = [
 					'create',
 				],
 				resource: [
-					'contact',
+					'annexCost',
 				],
 			},
 		},

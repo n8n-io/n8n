@@ -250,9 +250,8 @@ export class Ypk implements INodeType {
 				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 				const name = this.getNodeParameter('name', i, '') as string;
 				const id = this.getNodeParameter('id', i, '') as string;
-				const { ...fields } = additionalFields;
-				const { street, zip_code, city, country } = fields;
-				body = { company: { name, address_attributes: { street, zip_code, city, country, }, ...fields }};
+				const { street, zip_code, city, country } = additionalFields;
+				body = { company: { name, address_attributes: { street, zip_code, city, country, }, ...additionalFields }};
 
 				if (operation === 'create') {
 					// get email input

@@ -155,7 +155,7 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Statut',
 		name: 'contact_status_id',
-		type: 'number',
+		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getContactStatusesOptions',
 		},

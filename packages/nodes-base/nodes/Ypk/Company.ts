@@ -215,9 +215,27 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		description: 'ID of the company to update.',
 	},
+  {
+		displayName: 'Raison sociale',
+		name: 'name',
+		type: 'string',
+		default: '',
+
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'company',
+				],
+			},
+		},
+		description: 'company\'s name.',
+	},
 	{
 		displayName: 'Update Fields',
-		name: 'updateFields',
+		name: 'additionalFields',
 		type: 'collection',
 		description: 'The fields to update.',
 		placeholder: 'Add Field',
@@ -233,24 +251,6 @@ export const companyFields: INodeProperties[] = [
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'Raison Sociale',
-				name: 'name',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'company',
-						],
-					},
-				},
-				description: 'company\'s firstname.',
-			},
 			...additionalFieldsCompanies,
 		],
 	},
