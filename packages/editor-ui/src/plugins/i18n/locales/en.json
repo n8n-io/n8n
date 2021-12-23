@@ -413,6 +413,7 @@
 			"dontWorryYouCanProbablyDoItWithThe": "Don’t worry, you can probably do it with the",
 			"httpRequest": "HTTP Request",
 			"node": "node",
+			"or": "or",
 			"requestTheNode": "Request the node",
 			"wantUsToMakeItFaster": "Want us to make it faster?",
 			"weDidntMakeThatYet": "We didn't make that... yet",
@@ -422,10 +423,10 @@
 			"searchNodes": "Search nodes..."
 		},
 		"subcategoryDescriptions": {
-			"branches": "Branches, core triggers, merge data",
-			"http": "HTTP Requests (API calls), date and time, scrape HTML",
-			"manipulate": "Manipulate data fields, run code",
-			"work": "Work with CSV, XML, text, images etc."
+			"dataTransformation": "Manipulate data fields, run code",
+			"files": "Work with CSV, XML, text, images etc.",
+			"flow": "Branches, core triggers, merge data",
+			"helpers": "HTTP Requests (API calls), date and time, scrape HTML"
 		},
 		"subcategoryNames": {
 			"dataTransformation": "Data Transformation",
