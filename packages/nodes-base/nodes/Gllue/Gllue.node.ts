@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import {IExecuteFunctions,} from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import {IDataObject, INodeExecutionData, INodeType, INodeTypeDescription,} from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import {OptionsWithUri,} from 'request';
 import {clientFields, clientOperations} from './ClientDescription';
 import {UrlParams} from './helpers';
 import {cityFields, cityOperations} from "./CityDescription";
@@ -81,31 +72,31 @@ export class Gllue implements INodeType {
 
 		if (resource === 'client') {
 			if (operation === 'simple_list_with_ids') {
-				const options: OptionsWithUri = {
-					headers: {
-						'Accept': 'application/json',
-					},
-					method: 'GET',
-					uri: uriGenerated,
-					json: true,
-				};
-				console.log(`request with ${options.uri}`);
-				responseData = await this.helpers.request(options);
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
 			}
-		}else if(resource === 'city'){
+		} else if (resource === 'city') {
 			if (operation === 'simple_list_with_ids') {
-				const options: OptionsWithUri = {
-					headers: {
-						'Accept': 'application/json',
-					},
-					method: 'GET',
-					uri: uriGenerated,
-					json: true,
-				};
-				console.log(`request with ${options.uri}`);
-				responseData = await this.helpers.request(options);
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
 			}
 		}
 		return [this.helpers.returnJsonArray(responseData)];
 	}
+}
+
+function buildOptionWithUri(uriGenerated: string): OptionsWithUri {
+	return {
+		headers: {
+			'Accept': 'application/json',
+		},
+		method: 'GET',
+		uri: uriGenerated,
+		json: true,
+	};
+}
+
+// tslint:disable-next-line:no-any
+async function getResponseByUri(uriGenerated: string, requestMethod:any) {
+	const options = buildOptionWithUri(uriGenerated);
+	console.log(`request with ${options.uri}`);
+	return await requestMethod(options);
 }
