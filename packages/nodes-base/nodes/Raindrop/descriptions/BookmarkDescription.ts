@@ -302,6 +302,13 @@ export const bookmarkFields: INodeProperties[] = [
 				description: 'Whether this bookmark is marked as favorite.',
 			},
 			{
+				displayName: 'Please Parse',
+				name: 'pleaseParse',
+				type: 'boolean',
+				default: false,
+				description: 'Whether Raindrop should reload cover, description and HTML for the URL',
+			},
+			{
 				displayName: 'Order',
 				name: 'order',
 				type: 'number',
