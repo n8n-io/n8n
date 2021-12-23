@@ -178,7 +178,7 @@ export default mixins(
 
 				const baseKeys = ['$env', '$executionId', '$mode', '$parameter', '$position', '$resumeWebhookUrl', '$workflow'];
 				const additionalKeys = ['$json', '$binary'];
-				if (executedWorkflow) {
+				if (executedWorkflow && connectionInputData) {
 					baseKeys.push(...additionalKeys);
 				} else {
 					additionalKeys.forEach(key => {
