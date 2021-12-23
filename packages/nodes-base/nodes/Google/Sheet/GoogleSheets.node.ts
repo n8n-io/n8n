@@ -42,7 +42,6 @@ export class GoogleSheets implements INodeType {
 		description: 'Read, update and write data to Google Sheets',
 		defaults: {
 			name: 'Google Sheets',
-			color: '#0aa55c',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

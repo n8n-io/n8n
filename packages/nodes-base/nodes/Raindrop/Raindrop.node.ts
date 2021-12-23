@@ -43,7 +43,6 @@ export class Raindrop implements INodeType {
 		description: 'Consume the Raindrop API',
 		defaults: {
 			name: 'Raindrop',
-			color: '#1988e0',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

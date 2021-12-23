@@ -37,7 +37,6 @@ export class MicrosoftDynamicsCrm implements INodeType {
 		description: 'Consume Microsoft Dynamics CRM API',
 		defaults: {
 			name: 'Microsoft Dynamics CRM',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

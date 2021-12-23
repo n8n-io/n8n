@@ -5,7 +5,7 @@
 				{{ $locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
 			</div>
 			<div v-if="item.properties.description" :class="$style.description">
-				{{ $locale.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryDescription}`) }}
+				{{ $locale.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}`) }}
 			</div>
 		</div>
 		<div :class="$style.action">
@@ -23,10 +23,6 @@ export default Vue.extend({
 	computed: {
 		subcategoryName() {
 			return camelcase(this.item.properties.subcategory);
-		},
-		subcategoryDescription() {
-			const firstWord = this.item.properties.description.split(' ').shift() || '';
-			return firstWord.toLowerCase().replace(/,/g, '');
 		},
 	},
 });

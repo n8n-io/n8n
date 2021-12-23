@@ -33,7 +33,6 @@ export class TaigaTrigger implements INodeType {
 		description: 'Handle Taiga events via webhook',
 		defaults: {
 			name: 'Taiga Trigger',
-			color: '#772244',
 		},
 		inputs: [],
 		outputs: ['main'],

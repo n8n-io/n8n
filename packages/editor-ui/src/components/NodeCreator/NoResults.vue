@@ -9,7 +9,7 @@
 			</div>
 			<div class="action">
 				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-				<a @click="selectHttpRequest">{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}</a> or
+				<a @click="selectHttpRequest">{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}</a> {{ $locale.baseText('nodeCreator.noResults.or') }}
 				<a @click="selectWebhook">{{ $locale.baseText('nodeCreator.noResults.webhook') }}</a> {{ $locale.baseText('nodeCreator.noResults.node') }}
 			</div>
 		</div>
