@@ -127,6 +127,18 @@ return items;`,
 			if (this.continueOnFail()) {
 				items=[{json:{ error: error.message }}];
 			} else {
+				// Try to find the lien number which contains the error and attach to error message
+				const stackLines = error.stack.split('\n');
+				if (stackLines.length > 0) {
+					const lineParts = stackLines[1].split(':');
+					if (lineParts.length > 2) {
+						const lineNumber = lineParts.splice(-2, 1);
+						if (!isNaN(lineNumber)) {
+							error.message = `${error.message} [Line ${lineNumber}]`;
+						}
+					}
+				}
+
 				return Promise.reject(error);
 			}
 		}
