@@ -26,7 +26,6 @@ export class FacebookGraphApi implements INodeType {
 		description: 'Interacts with Facebook using the Graph API',
 		defaults: {
 			name: 'Facebook Graph API',
-			color: '#3B5998',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

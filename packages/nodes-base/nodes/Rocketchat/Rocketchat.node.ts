@@ -59,7 +59,6 @@ export class Rocketchat implements INodeType {
 		description: 'Consume RocketChat API',
 		defaults: {
 			name: 'RocketChat',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
