@@ -212,7 +212,7 @@ export class Start extends Command {
 					await Db.collections.Settings!.save({
 						key: 'userManagement.emails.smtp',
 						value: JSON.stringify(smtpConfiguration),
-						loadOnStartup: true,
+						loadOnStartup: false,
 					});
 				} else {
 					// If we don't have SMTP settings, try loading from db.
@@ -223,6 +223,12 @@ export class Start extends Command {
 						config.set('userManagement.emails.smtp', JSON.parse(smtpSettings.value));
 					}
 				}
+
+				// Load settings from database and set them to config.
+				const databaseSettings = await Db.collections.Settings!.find({ loadOnStartup: true });
+				databaseSettings.forEach((setting) => {
+					config.set(setting.key, JSON.parse(setting.value));
+				});
 
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');

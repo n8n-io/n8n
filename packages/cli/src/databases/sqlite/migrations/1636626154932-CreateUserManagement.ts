@@ -56,6 +56,11 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 			INSERT INTO user(id, firstName, lastName, createdAt, updatedAt, globalRoleId) values
 			('${uuidv4()}', 'default', 'default', DateTime('now'), DateTime('now'), ${insertedOwnerRole[0].insertId})
 		`);
+
+		await queryRunner.query(`
+			INSERT INTO settings(key, value, loadOnStartup) values
+			('userManagement.hasOwner', 'false', true)
+		`);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {

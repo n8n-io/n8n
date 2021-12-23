@@ -249,6 +249,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
 
+		// TODO UM: remove this flag
 		this.isUserManagementEnabled = !config.get('userManagement.disabled');
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
@@ -295,6 +296,12 @@ class App {
 				shouldShow: false,
 			},
 			defaultLocale: config.get('defaultLocale'),
+			userManagement: {
+				enabled:
+					config.get('userManagement.disabled') === false ||
+					config.get('userManagement.hasOwner') === true,
+				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
+			},
 		};
 	}
 
@@ -619,7 +626,6 @@ class App {
 		// ----------------------------------------
 		// User Management
 		// ----------------------------------------
-		console.log('will apply um routes');
 		await userManagementRouter.addRoutes.apply(this);
 
 		// ----------------------------------------
