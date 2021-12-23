@@ -15,13 +15,10 @@ import {
 	IOAuth2Options,
 	IPollFunctions as IPollFunctionsBase,
 	IPollResponse,
-	IRunExecutionData,
 	ITriggerFunctions as ITriggerFunctionsBase,
 	ITriggerResponse,
 	IWebhookFunctions as IWebhookFunctionsBase,
-	IWorkflowBase as IWorkflowBaseWorkflow,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import { OptionsWithUri, OptionsWithUrl } from 'request';
@@ -244,37 +241,6 @@ export interface IBinaryDataConfig {
 	localStoragePath: string;
 	binaryDataTTL: number;
 	persistedBinaryDataTTL: number;
-}
-
-export interface IExecutionBase {
-	id?: number | string;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	stoppedAt?: Date; // empty value means execution is still running
-	workflowId?: string; // To be able to filter executions easily //
-	finished: boolean;
-	retryOf?: number | string; // If it is a retry, the id of the execution it is a retry of.
-	retrySuccessId?: number | string; // If it failed and a retry did succeed. The id of the successful retry.
-}
-
-export interface IWorkflowBase extends IWorkflowBaseWorkflow {
-	id?: number | string;
-}
-
-export interface IExecutionFlattedDb extends IExecutionBase {
-	id: number | string;
-	data: string;
-	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
-}
-
-export interface IExecutionResponse extends IExecutionBase {
-	id: string;
-	data: IRunExecutionData;
-	retryOf?: string;
-	retrySuccessId?: string;
-	waitTill?: Date;
-	workflowData: IWorkflowBase;
 }
 
 export interface IBinaryDataManager {
