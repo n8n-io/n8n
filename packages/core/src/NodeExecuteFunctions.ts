@@ -73,9 +73,9 @@ import { lookup } from 'mime-types';
 
 import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
 import { URL, URLSearchParams } from 'url';
+import { BinaryDataManager } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
 import {
-	BINARY_ENCODING,
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
@@ -682,7 +682,7 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
-	return Buffer.from(binaryData.data, BINARY_ENCODING);
+	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
 }
 
 /**
@@ -697,6 +697,7 @@ export async function getBinaryDataBuffer(
  */
 export async function prepareBinaryData(
 	binaryData: Buffer,
+	executionId: string,
 	filePath?: string,
 	mimeType?: string,
 ): Promise<IBinaryData> {
@@ -727,10 +728,7 @@ export async function prepareBinaryData(
 
 	const returnData: IBinaryData = {
 		mimeType,
-		// TODO: Should program it in a way that it does not have to converted to base64
-		//       It should only convert to and from base64 when saved in database because
-		//       of for example an error or when there is a wait node.
-		data: binaryData.toString(BINARY_ENCODING),
+		data: '',
 	};
 
 	if (filePath) {
@@ -753,7 +751,7 @@ export async function prepareBinaryData(
 		}
 	}
 
-	return returnData;
+	return BinaryDataManager.getInstance().storeBinaryData(returnData, binaryData, executionId);
 }
 
 /**
@@ -1370,7 +1368,19 @@ export function getExecutePollFunctions(
 			},
 			helpers: {
 				httpRequest,
-				prepareBinaryData,
+				async prepareBinaryData(
+					binaryData: Buffer,
+					filePath?: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return prepareBinaryData.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						filePath,
+						mimeType,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -1476,8 +1486,19 @@ export function getExecuteTriggerFunctions(
 			},
 			helpers: {
 				httpRequest,
-				prepareBinaryData,
-
+				async prepareBinaryData(
+					binaryData: Buffer,
+					filePath?: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return prepareBinaryData.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						filePath,
+						mimeType,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -1553,7 +1574,14 @@ export function getExecuteFunctions(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
-				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
+				return additionalData
+					.executeWorkflow(workflowInfo, additionalData, inputData)
+					.then(async (result) =>
+						BinaryDataManager.getInstance().duplicateBinaryData(
+							result,
+							additionalData.executionId!,
+						),
+					);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -1672,7 +1700,19 @@ export function getExecuteFunctions(
 			},
 			helpers: {
 				httpRequest,
-				prepareBinaryData,
+				async prepareBinaryData(
+					binaryData: Buffer,
+					filePath?: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return prepareBinaryData.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						filePath,
+						mimeType,
+					);
+				},
 				async getBinaryDataBuffer(
 					itemIndex: number,
 					propertyName: string,
@@ -1853,7 +1893,19 @@ export function getExecuteSingleFunctions(
 			},
 			helpers: {
 				httpRequest,
-				prepareBinaryData,
+				async prepareBinaryData(
+					binaryData: Buffer,
+					filePath?: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return prepareBinaryData.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						filePath,
+						mimeType,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -2234,7 +2286,19 @@ export function getExecuteWebhookFunctions(
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
 				httpRequest,
-				prepareBinaryData,
+				async prepareBinaryData(
+					binaryData: Buffer,
+					filePath?: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return prepareBinaryData.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						filePath,
+						mimeType,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
