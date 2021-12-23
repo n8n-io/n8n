@@ -91,7 +91,7 @@ export class I18nClass {
 			/**
 			 * Display name for a top-level param.
 			 */
-			topParameterDisplayName(
+			inputLabelDisplayName(
 				{ name: parameterName, displayName }: { name: string; displayName: string; },
 			) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
@@ -108,9 +108,9 @@ export class I18nClass {
 			},
 
 			/**
-			 * Description for a top-level param.
+			 * Description (tooltip text) for an input label param.
 			 */
-			topParameterDescription(
+			inputLabelDescription(
 				{ name: parameterName, description }: { name: string; description: string; },
 			) {
 				return context.dynamicRender({
@@ -173,7 +173,7 @@ export class I18nClass {
 			/**
 			 * Display name for a top-level param.
 			 */
-			topParameterDisplayName(
+			inputLabelDisplayName(
 				{ name: parameterName, displayName }: { name: string; displayName: string; },
 				path?: string,
 				{ isSectionTitle } = { isSectionTitle: false },
@@ -195,9 +195,9 @@ export class I18nClass {
 			},
 
 			/**
-			 * Description for a top-level parameter.
+			 * Description (tooltip text) for an input label param.
 			 */
-			topParameterDescription(
+			inputLabelDescription(
 				{ name: parameterName, description }: { name: string; description: string; },
 				path?: string,
 			) {
