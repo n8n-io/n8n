@@ -13,7 +13,7 @@
 		/>
 
 		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
-			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
+			<code-edit v-if="codeEditDialogVisible" :value="value" :parameter="parameter" :type="editorType" :codeAutocomplete="codeAutocomplete" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
 			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
 			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
@@ -300,6 +300,9 @@ export default mixins(
 			},
 		},
 		computed: {
+			codeAutocomplete (): string | undefined {
+				return this.getArgument('codeAutocomplete') as string | undefined;
+			},
 			showExpressionAsTextInput(): boolean {
 				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
 
@@ -499,7 +502,7 @@ export default mixins(
 				return this.parameter.default === this.value;
 			},
 			isEditor (): boolean {
-				return this.getArgument('editor') === 'code';
+				return ['code', 'json'].includes(this.editorType);
 			},
 			isValueExpression () {
 				if (this.parameter.noDataExpression === true) {
@@ -509,6 +512,9 @@ export default mixins(
 					return true;
 				}
 				return false;
+			},
+			editorType (): string {
+				return this.getArgument('editor') as string;
 			},
 			parameterOptions (): INodePropertyOptions[] {
 				if (this.remoteMethod === undefined) {
