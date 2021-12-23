@@ -213,9 +213,17 @@ export default mixins(
 				autoCompleteItems.push(`const $node = ${JSON.stringify(nodes)}`);
 
 				if (this.codeAutocomplete === 'function') {
-					autoCompleteItems.push(`const items = ${JSON.stringify(this.createSimpleRepresentation(connectionInputData))}`);
+					if (connectionInputData) {
+						autoCompleteItems.push(`const items = ${JSON.stringify(this.createSimpleRepresentation(connectionInputData))}`);
+					} else {
+						autoCompleteItems.push(`const items: {json: any}[] = []`);
+					}
 				} else if (this.codeAutocomplete === 'functionItem') {
-					autoCompleteItems.push(`const item = $json`);
+					if (connectionInputData) {
+						autoCompleteItems.push(`const item = $json`);
+					} else {
+						autoCompleteItems.push(`const item = {}`);
+					}
 				}
 
 				this.monacoLibrary = monaco.languages.typescript.javascriptDefaults.addExtraLib(
