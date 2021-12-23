@@ -201,7 +201,7 @@ export const learnerFields: INodeProperties[] = [
 		],
 	},
 	// ----------------------------------
-	//         contact:update
+	//         learner:update
 	// ----------------------------------
 	{
 		displayName: 'learner ID',
@@ -221,9 +221,44 @@ export const learnerFields: INodeProperties[] = [
 		required: true,
 		description: 'ID of the learner to update.',
 	},
+  {
+		displayName: 'Firstname',
+		name: 'first_name',
+		type: 'string',
+		default: '',
+
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'learner',
+				],
+			},
+		},
+		description: 'learner\'s firstname.',
+	},
+	{
+		displayName: 'Lastname',
+		name: 'last_name',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'learner',
+				],
+			},
+		},
+		description: 'learner\'s lastname.',
+	},
 	{
 		displayName: 'Update Fields',
-		name: 'updateFields',
+		name: 'additionalFields',
 		type: 'collection',
 		description: 'The fields to update.',
 		placeholder: 'Add Field',
@@ -239,22 +274,6 @@ export const learnerFields: INodeProperties[] = [
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'Firstname',
-				name: 'first_name',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'learner\'s firstname.',
-			},
-			{
-				displayName: 'Lastname',
-				name: 'last_name',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'learner\'s lastname.',
-			},
 			...additionalFieldsLearners,
 		],
 	},
