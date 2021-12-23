@@ -15,6 +15,7 @@ import {
 import { ypkApiRequest } from './GenericFunctions';
 import { learnerFields, learnerOperations } from './Learner';
 import { speakerFields, speakerOperations } from './Speaker';
+import { referentFields, referentOperations } from './Referent';
 import { trainingFields, trainingOperations } from './Training';
 import { trainingSessionFields, trainingSessionOperations } from './TrainingSession';
 import { speakersTrainingSessionFields, speakersTrainingSessionOperations } from './SpeakersTrainingSession';
@@ -108,6 +109,7 @@ export class Ypk implements INodeType {
 			...companyOperations,
 			...learnerOperations,
 			...learnersTrainingSessionOperations,
+      ...referentOperations,
 			...trainingOperations,
 			...trainingSessionOperations,
 			...speakersTrainingSessionOperations,
@@ -119,6 +121,7 @@ export class Ypk implements INodeType {
 			...contactFields,
 			...companyFields,
 			...learnerFields,
+      ...referentFields,
 			...learnersTrainingSessionFields,
 			...trainingFields,
 			...trainingSessionFields,
@@ -509,6 +512,45 @@ export class Ypk implements INodeType {
 
 					endpoint = `training_sessions/${trainingSessionId}/speakers_training_modules`;
 					dataKey = 'speakers_training_modules';
+					method = 'GET';
+				}
+			}
+
+      if (resource === 'referent') {
+				endpoint = 'referents';
+				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+				// const firstName = this.getNodeParameter('first_name', i, '') as string;
+				// const lastName = this.getNodeParameter('last_name', i, '') as string;
+				const id = this.getNodeParameter('id', i, '') as string;
+				body = { referent: { ...additionalFields } };
+
+				if (operation === 'create') {
+					// get email input
+					dataKey = 'referent';
+					method = 'POST';
+				}
+				if (operation === 'update') {
+					endpoint = `referents/${id}`;
+					dataKey = 'referent';
+					method = 'PATCH';
+				}
+				if (operation === 'delete') {
+					endpoint = `referents/${id}`;
+					dataKey = 'referent';
+					method = 'DELETE';
+				}
+				if (operation === 'get') {
+					endpoint = `referents/${id}`;
+					dataKey = 'referent';
+					method = 'GET';
+				}
+				if (operation === 'getAll') {
+					// const { search_by_firstname, search_by_lastname } = this.getNodeParameter('filters', i, {}) as IDataObject;
+
+					endpoint = `referents`;
+					// qs['q[first_name_cont]'] = search_by_firstname;
+					// qs['q[last_name_cont]'] = search_by_lastname;
+					dataKey = 'referents';
 					method = 'GET';
 				}
 			}
