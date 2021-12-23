@@ -49,7 +49,7 @@ export class UrlParams {
 }
 
 export function gllueUrlBuilder(host: string, resource: string, option = 'simple_list_with_ids', urlParams: UrlParams): string {
-	const baseUrl = `${host}\\rest\\${resource}\\${option}\\`;
+	const baseUrl = `${host}\\rest\\${resource}\\${option}`;
 	const params = [];
 	if (!urlParams) {
 		return baseUrl;

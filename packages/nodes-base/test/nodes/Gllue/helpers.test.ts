@@ -66,7 +66,7 @@ const PAGE = 2;
 const FIELDS = 'id,name';
 const GQL = 'type__s=prospect,client';
 const GQL_MULTIPLE = `${GQL}&keyword__eq=right`;
-const BASE_URL = `${HOST}\\rest\\${RESOURCE}\\${OPTION}\\`;
+const BASE_URL = `${HOST}\\rest\\${RESOURCE}\\${OPTION}`;
 const DEFAULT_PARAMS = 'fields=id&paginate_by=25&ordering=-id&page=1';
 
 describe('Gllue url parameters builder', () => {
