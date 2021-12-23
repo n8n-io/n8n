@@ -4,18 +4,18 @@
 			@click.stop="closeWindow"
 			size="small"
 			class="binary-data-window-back"
-			title="Back to overview page"
+			:title="$locale.baseText('binaryDataDisplay.backToOverviewPage')"
 			icon="arrow-left"
-			label="Back to list"
+			:label="$locale.baseText('binaryDataDisplay.backToList')"
 		/>
 
 		<div class="binary-data-window-wrapper">
 			<div v-if="!binaryData">
-				Data to display did not get found
+				{{ $locale.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
 			</div>
 			<video v-else-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
 				<source :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" :type="binaryData.mimeType">
-				Your browser does not support the video element. Kindly update it to latest version.
+				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
 			<embed v-else :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" class="binary-data" :class="embedClass"/>
 		</div>
