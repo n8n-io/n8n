@@ -14,6 +14,7 @@ import {
 } from 'request';
 import {clientFields, clientOperations} from './ClientDescription';
 import {UrlParams} from './helpers';
+import {cityFields, cityOperations} from "./CityDescription";
 
 const helpers = require('./helpers');
 
@@ -49,13 +50,19 @@ export class Gllue implements INodeType {
 						name: 'Client',
 						value: 'client',
 					},
+					{
+						name: 'City',
+						value: 'city',
+					},
 				],
 				default: 'client',
 				required: true,
-				description: 'Resource to client',
+				description: 'Resource to Gllue',
 			},
 			...clientOperations,
 			...clientFields,
+			...cityOperations,
+			...cityFields,
 		],
 	};
 
@@ -73,6 +80,19 @@ export class Gllue implements INodeType {
 		const uriGenerated = helpers.gllueUrlBuilder(credentials.apiHost, resource, operation, urlParams);
 
 		if (resource === 'client') {
+			if (operation === 'simple_list_with_ids') {
+				const options: OptionsWithUri = {
+					headers: {
+						'Accept': 'application/json',
+					},
+					method: 'GET',
+					uri: uriGenerated,
+					json: true,
+				};
+				console.log(`request with ${options.uri}`);
+				responseData = await this.helpers.request(options);
+			}
+		}else if(resource === 'city'){
 			if (operation === 'simple_list_with_ids') {
 				const options: OptionsWithUri = {
 					headers: {

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const clientOperations: INodeProperties[] = [
+export const cityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const clientOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'client',
+					'city',
 				],
 			},
 		},
@@ -26,9 +26,9 @@ export const clientOperations: INodeProperties[] = [
 	},
 ];
 
-export const clientFields: INodeProperties[] = [
+export const cityFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 client:getAll                             */
+	/*                                 city:simple list with ids                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Filters',
@@ -39,7 +39,7 @@ export const clientFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'client',
+					'city',
 				],
 				operation: [
 					'simple_list_with_ids',
@@ -52,7 +52,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'The query field accepts with gql syntax，type__s=prospect,client&id=1089924&keyword__eq=sony',
+				description: 'The query field accepts with gql syntax，id__s=1699,1698',
 			},
 			{
 				displayName: 'Fields',
