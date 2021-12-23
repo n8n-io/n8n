@@ -216,13 +216,13 @@ export default mixins(
 					if (connectionInputData) {
 						autoCompleteItems.push(`const items = ${JSON.stringify(this.createSimpleRepresentation(connectionInputData))}`);
 					} else {
-						autoCompleteItems.push(`const items: {json: any}[] = []`);
+						autoCompleteItems.push(`const items: {json: {[key: string]: any}}[] = []`);
 					}
 				} else if (this.codeAutocomplete === 'functionItem') {
 					if (connectionInputData) {
 						autoCompleteItems.push(`const item = $json`);
 					} else {
-						autoCompleteItems.push(`const item = {}`);
+						autoCompleteItems.push(`const item: {[key: string]: any} = {}`);
 					}
 				}
 
