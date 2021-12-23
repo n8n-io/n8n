@@ -571,7 +571,7 @@ export default mixins(
 			getPlaceholder(): string {
 				return this.isForCredential
 					? this.$locale.credText().placeholder(this.parameter)
-					: this.$locale.nodeText().placeholder(this.parameter);
+					: this.$locale.nodeText().placeholder(this.parameter, this.path);
 			},
 			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
 				return this.isForCredential

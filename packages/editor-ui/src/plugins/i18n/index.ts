@@ -4,12 +4,17 @@ import VueI18n from 'vue-i18n';
 import { Store } from "vuex";
 import Vue from 'vue';
 import { INodeTranslationHeaders, IRootState } from '@/Interface';
+import {
+	isForCollection,
+	isForFixedCollection,
+	toSectionTitleKey,
+	toFixedCollectionKey,
+	toCollectionKey,
+} from "./utils";
+
 const englishBaseText = require('./locales/en');
 
 Vue.use(VueI18n);
-
-const REUSABLE_DYNAMIC_TEXT_KEY = 'reusableDynamicText';
-const NODE_VIEW_KEY = 'nodeView';
 
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
 	const i18n = new I18nClass(store);
@@ -51,16 +56,17 @@ export class I18nClass {
 	// ----------------------------------
 
 	/**
-	 * Render a string of base text, i.e. a string with a fixed path to the localized value in the base text object. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
+	 * Render a string of base text, i.e. a string with a fixed path to the localized value. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
 	 */
 	baseText(
-		key: string, options?: { interpolate: { [key: string]: string } },
+		key: string,
+		options?: { interpolate: { [key: string]: string } },
 	): string {
 		return this.i18n.t(key, options && options.interpolate).toString();
 	}
 
 	/**
-	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value in the node text object, in the credentials modal, in the node view, or in the headers. Unlike in `baseText`, the fallback has to be set manually for dynamic text.
+	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value.
 	 */
 	private dynamicRender(
 		{ key, fallback }: { key: string; fallback: string; },
@@ -68,13 +74,13 @@ export class I18nClass {
 		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback;
 	}
 
-	/**
-	 * Render a string of dynamic header text, used in the nodes panel and in the node view.
-	 */
 	headerText(arg: { key: string; fallback: string; }) {
 		return this.dynamicRender(arg);
 	}
 
+	/**
+	 * Namespace for methods to render text in the credentials modal.
+	 */
 	credText () {
 		const credentialType = this.$store.getters.activeCredentialType;
 		const credentialPrefix = `n8n-nodes-base.credentials.${credentialType}`;
@@ -83,14 +89,14 @@ export class I18nClass {
 		return {
 
 			/**
-			 * Display name for a top-level parameter in the credentials modal.
+			 * Display name for a top-level param.
 			 */
 			topParameterDisplayName(
 				{ name: parameterName, displayName }: { name: string; displayName: string; },
 			) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
 					return context.dynamicRender({
-						key: `${REUSABLE_DYNAMIC_TEXT_KEY}.oauth2.${parameterName}`,
+						key: `reusableDynamicText.oauth2.${parameterName}`,
 						fallback: displayName,
 					});
 				}
@@ -102,7 +108,7 @@ export class I18nClass {
 			},
 
 			/**
-			 * Description for a top-level parameter in the credentials modal.
+			 * Description for a top-level param.
 			 */
 			topParameterDescription(
 				{ name: parameterName, description }: { name: string; description: string; },
@@ -114,7 +120,7 @@ export class I18nClass {
 			},
 
 			/**
-			 * Display name for an option inside an `options` or `multiOptions` parameter in the credentials modal.
+			 * Display name for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDisplayName(
 				{ name: parameterName }: { name: string; },
@@ -127,7 +133,7 @@ export class I18nClass {
 			},
 
 			/**
-			 * Description for an option inside an `options` or `multiOptions` parameter in the credentials modal.
+			 * Description for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDescription(
 				{ name: parameterName }: { name: string; },
@@ -140,7 +146,7 @@ export class I18nClass {
 			},
 
 			/**
-			 * Placeholder for a `string` or `collection` or `fixedCollection` parameter in the credentials modal.
+			 * Placeholder for a `string` or `collection` or `fixedCollection` param.
 			 * - For a `string` parameter, the placeholder is unselectable greyed-out sample text.
 			 * - For a `collection` or `fixedCollection` parameter, the placeholder is the button text.
 			 */
@@ -155,38 +161,62 @@ export class I18nClass {
 		};
 	}
 
+	/**
+	 * Namespace for methods to render text in the node view.
+	 */
 	nodeText () {
-		const { type } = this.$store.getters.activeNode;
-		const nodePrefix = `${type}.${NODE_VIEW_KEY}`;
+		const nodeType = this.shortNodeType(this.$store.getters.activeNode.type);
+		const nodePrefix = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
 
 		return {
 			/**
-			 * Display name for a top-level parameter in the node view.
+			 * Display name for a top-level param.
 			 */
 			topParameterDisplayName(
 				{ name: parameterName, displayName }: { name: string; displayName: string; },
+				path?: string,
+				{ isSectionTitle } = { isSectionTitle: false },
 			) {
+				let middleKey = parameterName;
+
+				if (isSectionTitle) {
+					middleKey = toSectionTitleKey(path!, parameterName);
+				} else if (isForFixedCollection(path)) {
+					middleKey = toFixedCollectionKey(path);
+				} else if (isForCollection(path)) {
+					middleKey = toCollectionKey(path);
+				}
+
 				return context.dynamicRender({
-					key: `${nodePrefix}.${parameterName}.displayName`,
+					key: `${nodePrefix}.${middleKey}.displayName`,
 					fallback: displayName,
 				});
 			},
 
 			/**
-			 * Description for a top-level parameter in the node view in the node view.
+			 * Description for a top-level parameter.
 			 */
 			topParameterDescription(
 				{ name: parameterName, description }: { name: string; description: string; },
+				path?: string,
 			) {
+				let middleKey = parameterName;
+
+				if (isForFixedCollection(path)) {
+					middleKey = toFixedCollectionKey(path);
+				} else if (isForCollection(path)) {
+					middleKey = toCollectionKey(path);
+				}
+
 				return context.dynamicRender({
-					key: `${nodePrefix}.${parameterName}.description`,
+					key: `${nodePrefix}.${middleKey}.description`,
 					fallback: description,
 				});
 			},
 
 			/**
-			 * Display name for an option inside a `collection` or `fixedCollection` parameter in the node view.
+			 * Display name for an option inside a `collection` or `fixedCollection` param.
 			 */
 			collectionOptionDisplayName(
 				{ name: parameterName }: { name: string; },
@@ -199,7 +229,7 @@ export class I18nClass {
 			},
 
 			/**
-			 * Display name for an option inside an `options` or `multiOptions` parameter in the node view.
+			 * Display name for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDisplayName(
 				{ name: parameterName }: { name: string; },
@@ -212,7 +242,7 @@ export class I18nClass {
 			},
 
 			/**
-			 * Description for an option inside an `options` or `multiOptions` parameter in the node view.
+			 * Description for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDescription(
 				{ name: parameterName }: { name: string; },
@@ -225,7 +255,7 @@ export class I18nClass {
 			},
 
 			/**
-			 * Text for a button to add another option inside a `collection` or `fixedCollection` parameter having`multipleValues: true` in the node view.
+			 * Text for a button to add another option inside a `collection` or `fixedCollection` param having `multipleValues: true`.
 			 */
 			multipleValueButtonText(
 				{ name: parameterName, typeOptions: { multipleValueButtonText } }:
@@ -238,15 +268,24 @@ export class I18nClass {
 			},
 
 			/**
-			 * Placeholder for a `string` or `collection` or `fixedCollection` parameter in the node view.
+			 * Placeholder for a `string` or `collection` or `fixedCollection` param.
 			 * - For a `string` parameter, the placeholder is unselectable greyed-out sample text.
 			 * - For a `collection` or `fixedCollection` parameter, the placeholder is the button text.
 			 */
 			placeholder(
 				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
+				path?: string,
 			) {
+				let middleKey = parameterName;
+
+				if (isForFixedCollection(path)) {
+					middleKey = toFixedCollectionKey(path);
+				} else if (isForCollection(path)) {
+					middleKey = toCollectionKey(path);
+				}
+
 				return context.dynamicRender({
-					key: `${nodePrefix}.${parameterName}.placeholder`,
+					key: `${nodePrefix}.${middleKey}.placeholder`,
 					fallback: placeholder,
 				});
 			},
@@ -296,16 +335,21 @@ export async function loadLanguage(language?: string) {
 }
 
 export function addNodeTranslation(
-	nodeTranslation: { [key: string]: object },
-	nodeType: string,
+	nodeTranslation: { [nodeType: string]: object },
 	language: string,
 ) {
-	const shortNodeType = nodeType.replace('n8n-nodes-base.', '');
+	const oldNodesBase = i18nInstance.messages[language]['n8n-nodes-base'] || {};
+
+	const updatedNodes = {
+		// @ts-ignore
+		...oldNodesBase.nodes,
+		...nodeTranslation,
+	};
 
 	const newNodesBase = {
 		'n8n-nodes-base': Object.assign(
-			i18nInstance.messages[language]['n8n-nodes-base'] || {},
-			{ [shortNodeType]: nodeTranslation },
+			oldNodesBase,
+			{ nodes: updatedNodes },
 		),
 	};
 
@@ -316,12 +360,12 @@ export function addNodeTranslation(
 }
 
 export function addNodeCredentialTranslation(
-	nodeCredentialTranslation: { [key: string]: object },
+	nodeCredentialTranslation: { [credentialType: string]: object },
 	language: string,
 ) {
 	const oldNodesBase = i18nInstance.messages[language]['n8n-nodes-base'] || {};
 
-	const newCredentials = {
+	const updatedCredentials = {
 		// @ts-ignore
 		...oldNodesBase.credentials,
 		...nodeCredentialTranslation,
@@ -330,7 +374,7 @@ export function addNodeCredentialTranslation(
 	const newNodesBase = {
 		'n8n-nodes-base': Object.assign(
 			oldNodesBase,
-			{ credentials: newCredentials },
+			{ credentials: updatedCredentials },
 		),
 	};
 

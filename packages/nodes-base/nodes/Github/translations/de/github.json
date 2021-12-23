@@ -69,51 +69,68 @@
     },
     "labels": {
       "displayName": "🇩🇪 Labels",
-      "multipleValueButtonText": "🇩🇪 Add Label"
-    },
-    "assignees": {
-      "displayName": "🇩🇪 Assignees",
-      "multipleValueButtonText": "🇩🇪 Add Assignee"
-    },
-    "label": {
-      "displayName": "🇩🇪 Label",
-      "description": "🇩🇪 Label to add to issue."
-    },
-    "assignee": {
-      "displayName": "🇩🇪 Assignee",
-      "description": "🇩🇪 User to assign issue to."
-    },
-    "additionalParameters": {
-      "displayName": "🇩🇪 Additional Fields",
-      "placeholder": "🇩🇪 Add Field",
+      "multipleValueButtonText": "🇩🇪 Add Label",
       "options": {
-        "author": {
-          "displayName": "🇩🇪 Author"
-        },
-        "branch": {
-          "displayName": "🇩🇪 Branch"
-        },
-        "committer": {
-          "displayName": "🇩🇪 Committer"
+        "label": {
+          "displayName": "🇩🇪 Label",
+          "description": "🇩🇪 Label to add to issue.",
+          "placeholder": "🇩🇪 Some placeholder"
         }
       }
     },
-    "author": {
-      "displayName": "🇩🇪 Author"
+    "assignees": {
+      "displayName": "🇩🇪 Assignees",
+      "multipleValueButtonText": "🇩🇪 Add Assignee",
+      "options": {
+        "assignee": {
+          "displayName": "🇩🇪 Assignee",
+          "description": "🇩🇪 User to assign issue to.",
+          "placeholder": "🇩🇪 Some placeholder"
+        }
+      }
     },
-    "branch": {
-      "displayName": "🇩🇪 Branch"
-    },
-    "committer": {
-      "displayName": "🇩🇪 Committer"
-    },
-    "name": {
-      "displayName": "🇩🇪 Name",
-      "description": "🇩🇪 The name of the author of the commit."
-    },
-    "email": {
-      "displayName": "🇩🇪 Email",
-      "description": "🇩🇪 The email of the author of the commit."
+    "additionalParameters": {
+      "displayName": "🇩🇪 Additional Parameters",
+      "placeholder": "🇩🇪 Add Field",
+      "options": {
+        "author": {
+          "displayName": "🇩🇪 Author",
+          "values": {
+            "name": {
+              "displayName": "🇩🇪 Name",
+              "description": "🇩🇪 The name of the author of the commit.",
+              "placeholder": "🇩🇪 Hans"
+            },
+            "email": {
+              "displayName": "🇩🇪 Email",
+              "description": "🇩🇪 The email of the author of the commit.",
+              "placeholder": "🇩🇪 hans@n8n.io"
+            }
+          }
+        },
+        "branch": {
+          "displayName": "🇩🇪 Branch",
+          "values": {
+            "branch": {
+              "displayName": "🇩🇪 Branch",
+              "description": "🇩🇪 The branch to commit to."
+            }
+          }
+        },
+        "committer": {
+          "displayName": "🇩🇪 Committer",
+          "values": {
+            "name": {
+              "displayName": "🇩🇪 Name",
+              "description": "🇩🇪 The name of the author of the commit."
+            },
+            "email": {
+              "displayName": "🇩🇪 Email",
+              "description": "🇩🇪 The email of the author of the commit."
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="$locale.nodeText().topParameterDisplayName(parameter)"
-		:tooltipText="$locale.nodeText().topParameterDescription(parameter)"
+		:label="$locale.nodeText().topParameterDisplayName(parameter, path)"
+		:tooltipText="$locale.nodeText().topParameterDescription(parameter, path)"
 		:showTooltip="focused"
 		:bold="false"
 		size="small"

@@ -6,7 +6,7 @@
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
 			<n8n-input-label
-				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $locale.nodeText().topParameterDisplayName(property)"
+				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $locale.nodeText().topParameterDisplayName(property, path, { isSectionTitle: true })"
 				:underline="true"
 				:labelHoverableOnly="true"
 				size="small"
