@@ -59,8 +59,8 @@ import { stringify } from 'qs';
 import * as clientOAuth1 from 'oauth-1.0a';
 import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
-// @ts-ignore
-import * as digest from 'digest-header';
+import * as crypto from 'crypto';
+import * as url from 'url';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -508,24 +508,50 @@ async function proxyRequestToAxios(
 	});
 
 	if (configObject.auth?.sendImmediately === false) {
+		// for digest-auth
 		const { auth } = axiosConfig;
 		delete axiosConfig.auth;
-		const header = await axios(axiosConfig).catch((error) => {
+		const resp1 = await axios(axiosConfig).catch((error) => {
 			if (error.response.status === 401) {
-				return error.response.headers['www-authenticate'];
+				return error;
 			}
 			throw error;
 		});
-		const userpass = `${auth?.username as string}:${auth?.password as string}`;
-		axiosConfig.headers = {};
-		axiosConfig.headers.Authorization = digest(
-			axiosConfig.method,
-			axiosConfig.url,
-			header,
-			userpass,
-		);
-		axiosConfig.headers.Authorization += ', algorithm=MD5';
+		const authDetails = resp1.response.headers['www-authenticate']
+			.split(',')
+			.map((v: string) => v.split('='));
+		const nonceCount = `000000001`.slice(-8);
+		const cnonce = crypto.randomBytes(24).toString('hex');
+		const realm: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
+			.replace(/"/g, '');
+		const nonce: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
+			.replace(/"/g, '');
+		const ha1 = crypto
+			.createHash('md5')
+			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
+			.digest('hex');
+		const path = new url.URL(axiosConfig.url!).pathname;
+		const ha2 = crypto
+			.createHash('md5')
+			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
+			.digest('hex');
+		const response = crypto
+			.createHash('md5')
+			.update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
+			.digest('hex');
+		const authorization =
+			`Digest username="${auth?.username as string}",realm="${realm}",` +
+			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
+			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
+		if (axiosConfig.headers) {
+			axiosConfig.headers.authorization = authorization;
+		} else {
+			axiosConfig.headers = { authorization };
+		}
 	}
+
 	return new Promise((resolve, reject) => {
 		axios(axiosConfig)
 			.then((response) => {
