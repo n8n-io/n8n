@@ -37,7 +37,6 @@ export class Asana implements INodeType {
 		description: 'Consume Asana REST API',
 		defaults: {
 			name: 'Asana',
-			color: '#FC636B',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -599,7 +598,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getUsers',
 						},
 						default: '',
-						description: 'The assignee to filter tasks on.  Note: If you specify assignee, you must also specify the workspace to filter on.',
+						description: 'The assignee to filter tasks on. Note: If you specify assignee, you must also specify the workspace to filter on.',
 					},
 					{
 						displayName: 'Fields',
@@ -650,7 +649,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getWorkspaces',
 						},
 						default: '',
-						description: 'The workspace to filter tasks on.  Note: If you specify workspace, you must also specify the assignee to filter on.',
+						description: 'The workspace to filter tasks on. Note: If you specify workspace, you must also specify the assignee to filter on.',
 					},
 					{
 						displayName: 'Completed Since',
@@ -1438,7 +1437,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'An identifier for the user to get data of. Can be one of an<br />email address,the globally unique identifier for the user,<br />or the keyword me to indicate the current user making the request.',
+				description: 'An identifier for the user to get data of. Can be one of an email address,the globally unique identifier for the user, or the keyword me to indicate the current user making the request.',
 			},
 
 			// ----------------------------------

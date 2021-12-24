@@ -1,6 +1,9 @@
 import {
+	ERROR_TRIGGER_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	START_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
 import {
@@ -16,10 +19,12 @@ import {
 	INodeTypes,
 	INodeTypeData,
 	INodeTypeDescription,
+	INodeVersionedType,
 	IRunData,
 	IRunExecutionData,
 	IWorfklowIssues,
 	IWorkflowDataProxyAdditionalKeys,
+	TelemetryHelpers,
 	Workflow,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -31,8 +36,9 @@ import {
 	IWorkflowData,
 	IWorkflowDb,
 	IWorkflowDataUpdate,
-	XYPositon,
+	XYPosition,
 	ITag,
+	IUpdateInformation,
 } from '../../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -43,7 +49,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { v4 as uuidv4} from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 export const workflowHelpers = mixins(
 	externalHooks,
@@ -142,13 +148,39 @@ export const workflowHelpers = mixins(
 			},
 
 			// Checks if everything in the workflow is complete and ready to be executed
-			checkReadyForExecution (workflow: Workflow) {
+			checkReadyForExecution (workflow: Workflow, lastNodeName?: string) {
 				let node: INode;
 				let nodeType: INodeType | undefined;
 				let nodeIssues: INodeIssues | null = null;
 				const workflowIssues: IWorfklowIssues = {};
 
-				for (const nodeName of Object.keys(workflow.nodes)) {
+				let checkNodes = Object.keys(workflow.nodes);
+				if (lastNodeName) {
+					checkNodes = workflow.getParentNodes(lastNodeName);
+					checkNodes.push(lastNodeName);
+				} else {
+					// As webhook nodes always take presidence check first
+					// if there are any
+					let checkWebhook: string[] = [];
+					for (const nodeName of Object.keys(workflow.nodes)) {
+						if (workflow.nodes[nodeName].disabled !== true && workflow.nodes[nodeName].type === WEBHOOK_NODE_TYPE) {
+							checkWebhook = [nodeName, ...checkWebhook, ...workflow.getChildNodes(nodeName)];
+						}
+					}
+
+					if (checkWebhook.length) {
+						checkNodes = checkWebhook;
+					} else {
+						// If no webhook nodes got found try to find another trigger node
+						const startNode = workflow.getStartNode();
+						if (startNode !== undefined) {
+							checkNodes = workflow.getChildNodes(startNode.name);
+							checkNodes.push(startNode.name);
+						}
+					}
+				}
+
+				for (const nodeName of checkNodes) {
 					nodeIssues = null;
 					node = workflow.nodes[nodeName];
 
@@ -157,7 +189,7 @@ export const workflowHelpers = mixins(
 						continue;
 					}
 
-					nodeType = workflow.nodeTypes.getByName(node.type);
+					nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 					if (nodeType === undefined) {
 						// Node type is not known
@@ -188,12 +220,12 @@ export const workflowHelpers = mixins(
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): INodeType[] => {
+					getAll: (): Array<INodeType | INodeVersionedType> => {
 						// Does not get used in Workflow so no need to return it
 						return [];
 					},
-					getByName: (nodeType: string): INodeType | undefined => {
-						const nodeTypeDescription = this.$store.getters.nodeType(nodeType);
+					getByName: (nodeType: string): INodeType | INodeVersionedType | undefined => {
+						const nodeTypeDescription = this.$store.getters.nodeType(nodeType) as INodeTypeDescription | null;
 
 						if (nodeTypeDescription === null) {
 							return undefined;
@@ -201,6 +233,21 @@ export const workflowHelpers = mixins(
 
 						return {
 							description: nodeTypeDescription,
+						};
+					},
+					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version) as INodeTypeDescription | null;
+
+						if (nodeTypeDescription === null) {
+							return undefined;
+						}
+
+						return {
+							description: nodeTypeDescription,
+							// As we do not have the trigger/poll functions available in the frontend
+							// we use the information available to figure out what are trigger nodes
+							// @ts-ignore
+							trigger: ![ERROR_TRIGGER_NODE_TYPE, START_NODE_TYPE].includes(nodeType) && nodeTypeDescription.inputs.length === 0 && !nodeTypeDescription.webhooks || undefined,
 						};
 					},
 				};
@@ -282,7 +329,7 @@ export const workflowHelpers = mixins(
 
 				// Get the data of the node type that we can get the default values
 				// TODO: Later also has to care about the node-type-version as defaults could be different
-				const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
+				const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
@@ -315,11 +362,6 @@ export const workflowHelpers = mixins(
 							nodeData.credentials = saveCredenetials;
 						}
 					}
-
-					// Save the node color only if it is different to the default color
-					if (node.color && node.color !== nodeType.defaults.color) {
-						nodeData.color = node.color;
-					}
 				} else {
 					// Node-Type is not known so save the data as it is
 					nodeData.credentials = node.credentials;
@@ -347,7 +389,6 @@ export const workflowHelpers = mixins(
 
 
 			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) {
-				const inputIndex = 0;
 				const itemIndex = 0;
 				const runIndex = 0;
 				const inputName = 'main';
@@ -355,6 +396,7 @@ export const workflowHelpers = mixins(
 				const workflow = this.getWorkflow();
 				const parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
+				const inputIndex = workflow.getNodeConnectionOutputIndex(activeNode!.name, parentNode[0]) || 0;
 				let connectionInputData = this.connectionInputData(parentNode, inputName, runIndex, inputIndex);
 
 				let runExecutionData: IRunExecutionData;
@@ -436,8 +478,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: 'Problem saving workflow',
-						message: `There was a problem saving the workflow: "${e.message}"`,
+						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
+						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `: "${e.message}"`,
 						type: 'error',
 					});
 
@@ -445,17 +487,19 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags, resetWebhookUrls}: {name?: string, tags?: string[], resetWebhookUrls?: boolean} = {}): Promise<boolean> {
+			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
 					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
 					// make sure that the new ones are not active
 					workflowDataRequest.active = false;
+					const changedNodes = {} as IDataObject;
 					if (resetWebhookUrls) {
 						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
 							if (node.webhookId) {
 								node.webhookId = uuidv4();
+								changedNodes[node.name] = node.webhookId;
 							}
 							return node;
 						});
@@ -469,10 +513,26 @@ export const workflowHelpers = mixins(
 						workflowDataRequest.tags = tags;
 					}
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
+					if (openInNewWindow) {
+						const routeData = this.$router.resolve({name: 'NodeViewExisting', params: {name: workflowData.id}});
+						window.open(routeData.href, '_blank');
+						this.$store.commit('removeActiveAction', 'workflowSaving');
+						return true;
+					}
 
-					this.$store.commit('setWorkflow', workflowData);
+					this.$store.commit('setActive', workflowData.active || false);
+					this.$store.commit('setWorkflowId', workflowData.id);
 					this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
+					this.$store.commit('setWorkflowSettings', workflowData.settings || {});
 					this.$store.commit('setStateDirty', false);
+					Object.keys(changedNodes).forEach((nodeName) => {
+						const changes = {
+							key: 'webhookId',
+							value: changedNodes[nodeName],
+							name: nodeName,
+						} as IUpdateInformation;
+						this.$store.commit('setNodeValue', changes);
+					});
 
 					const createdTags = (workflowData.tags || []) as ITag[];
 					const tagIds = createdTags.map((tag: ITag): string => tag.id);
@@ -492,8 +552,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: 'Problem saving workflow',
-						message: `There was a problem saving the workflow: "${e.message}"`,
+						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
+						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `: "${e.message}"`,
 						type: 'error',
 					});
 
@@ -503,7 +563,7 @@ export const workflowHelpers = mixins(
 
 			// Updates the position of all the nodes that the top-left node
 			// is at the given position
-			updateNodePositions (workflowData: IWorkflowData | IWorkflowDataUpdate, position: XYPositon): void {
+			updateNodePositions (workflowData: IWorkflowData | IWorkflowDataUpdate, position: XYPosition): void {
 				if (workflowData.nodes === undefined) {
 					return;
 				}
@@ -533,8 +593,7 @@ export const workflowHelpers = mixins(
 			async dataHasChanged(id: string) {
 				const currentData = await this.getWorkflowDataToSave();
 
-				let data: IWorkflowDb;
-				data = await this.restApi().getWorkflow(id);
+				const data: IWorkflowDb = await this.restApi().getWorkflow(id);
 
 				if(data !== undefined) {
 					const x = {

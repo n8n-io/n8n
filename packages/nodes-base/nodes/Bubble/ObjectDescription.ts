@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const objectOperations = [
+export const objectOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const objectOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const objectFields = [
+export const objectFields: INodeProperties[] = [
 	// ----------------------------------
 	//         object: create
 	// ----------------------------------
@@ -432,7 +432,7 @@ export const objectFields = [
 									{
 										name: 'Geographic Search',
 										value: 'geographic_search',
-										description: `Use to test if the current thing is within a radius from a central address. To use this, the value sent with the constraint must have an address and a range. See <a href="https://manual.bubble.io/core-resources/api/data-api" target="_blank">link</a>.`,
+										description: `Use to test if the current thing is within a radius from a central address. To use this, the value sent with the constraint must have an address and a range. See <a href="https://manual.bubble.io/core-resources/api/data-api">link</a>.`,
 									},
 								],
 								default: '',
@@ -471,7 +471,7 @@ export const objectFields = [
 					},
 				},
 				placeholder: `[ { "key": "name", "constraint_type": "text contains", "value": "cafe" } , { "key": "address", "constraint_type": "geographic_search", "value": { "range":10, "origin_address":"New York" } } ]`,
-				description: 'Refine the list that is returned by the Data API with search constraints, exactly as you define a search in Bubble. See <a href="https://manual.bubble.io/core-resources/api/data-api#search-constraints" target="_blank">link</a>',
+				description: 'Refine the list that is returned by the Data API with search constraints, exactly as you define a search in Bubble. See <a href="https://manual.bubble.io/core-resources/api/data-api#search-constraints">link</a>',
 			},
 			{
 				displayName: 'Sort',
@@ -492,8 +492,7 @@ export const objectFields = [
 								name: 'sort_field',
 								type: 'string',
 								default: '',
-								description: `Specify the field to use for sorting. Either use a fielddefined for</br>
-								the current typeor use _random_sorting to get the entries in a random order`,
+								description: `Specify the field to use for sorting. Either use a fielddefined for the current typeor use <code>_random_sorting</code> to get the entries in a random order`,
 							},
 							{
 								displayName: 'Descending',
@@ -514,4 +513,4 @@ export const objectFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

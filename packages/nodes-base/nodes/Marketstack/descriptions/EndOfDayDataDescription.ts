@@ -105,7 +105,7 @@ export const endOfDayDataFields: INodeProperties[] = [
 				name: 'exchange',
 				type: 'string',
 				default: '',
-				description: 'Stock exchange to filter results by, specified by <a target="_blank" href="https://en.wikipedia.org/wiki/Market_Identifier_Code">Market Identifier Code</a>, e.g. <code>XNAS</code>',
+				description: 'Stock exchange to filter results by, specified by <a href="https://en.wikipedia.org/wiki/Market_Identifier_Code">Market Identifier Code</a>, e.g. <code>XNAS</code>',
 			},
 			{
 				displayName: 'Latest',

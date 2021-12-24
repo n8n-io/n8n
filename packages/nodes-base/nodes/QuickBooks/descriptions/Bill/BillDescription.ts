@@ -6,7 +6,7 @@ import {
 	billAdditionalFieldsOptions,
 } from './BillAdditionalFieldsOptions';
 
-export const billOperations = [
+export const billOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const billOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const billFields = [
+export const billFields: INodeProperties[] = [
 	// ----------------------------------
 	//         bill: create
 	// ----------------------------------
@@ -268,7 +268,7 @@ export const billFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting bills. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
+				description: 'The condition for selecting bills. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -327,4 +327,4 @@ export const billFields = [
 		// filter out fields that cannot be updated
 		options: billAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'Balance'),
 	},
-] as INodeProperties[];
+];

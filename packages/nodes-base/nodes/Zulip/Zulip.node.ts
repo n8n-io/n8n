@@ -48,7 +48,6 @@ export class Zulip implements INodeType {
 		description: 'Consume Zulip API',
 		defaults: {
 			name: 'Zulip',
-			color: '#156742',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -430,6 +429,9 @@ export class Zulip implements INodeType {
 						}
 						if (additionalFields.isGuest) {
 							body.is_guest = additionalFields.isGuest as boolean;
+						}
+						if (additionalFields.role) {
+							body.role = additionalFields.role as number;
 						}
 						if (additionalFields.profileData) {
 							//@ts-ignore

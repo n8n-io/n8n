@@ -376,6 +376,9 @@ export function simplifyProperties(properties: any) {
 		if (['text'].includes(properties[key].type)) {
 			const texts = properties[key].text.map((e: { plain_text: string }) => e.plain_text || {}).join('');
 			results[`${key}`] = texts;
+		} else if (['rich_text'].includes(properties[key].type)) {
+			const texts = properties[key].rich_text.map((e: { plain_text: string }) => e.plain_text || {}).join('');
+			results[`${key}`] = texts;
 		} else if (['url', 'created_time', 'checkbox', 'number', 'last_edited_time', 'email', 'phone_number', 'date'].includes(properties[key].type)) {
 			// tslint:disable-next-line: no-any
 			results[`${key}`] = properties[key][type] as any;

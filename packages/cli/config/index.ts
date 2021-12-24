@@ -1,3 +1,6 @@
+/* eslint-disable no-console */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import * as convict from 'convict';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -6,7 +9,6 @@ import * as core from 'n8n-core';
 dotenv.config();
 
 const config = convict({
-
 	database: {
 		type: {
 			doc: 'Type of database to use',
@@ -84,7 +86,6 @@ const config = convict({
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
 			},
-
 		},
 		mysqldb: {
 			database: {
@@ -147,6 +148,12 @@ const config = convict({
 				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
 			},
 		},
+		defaultName: {
+			doc: 'Default name for credentials',
+			format: String,
+			default: 'My credentials',
+			env: 'CREDENTIALS_DEFAULT_NAME',
+		},
 	},
 
 	workflows: {
@@ -159,7 +166,6 @@ const config = convict({
 	},
 
 	executions: {
-
 		// By default workflows get always executed in their own process.
 		// If this option gets set to "main" it will run them in the
 		// main-process instead.
@@ -501,6 +507,12 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
 			doc: 'Path for test-webhook endpoint',
 		},
+		disableUi: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_DISABLE_UI',
+			doc: 'Disable N8N UI (Frontend).',
+		},
 		disableProductionWebhooksOnMainProcess: {
 			format: Boolean,
 			default: false,
@@ -573,7 +585,6 @@ const config = convict({
 							throw new Error();
 						}
 					}
-
 				} catch (error) {
 					throw new TypeError(`The Nodes to exclude is not a valid Array of strings.`);
 				}
@@ -645,6 +656,85 @@ const config = convict({
 		},
 	},
 
+	binaryDataManager: {
+		availableModes: {
+			format: String,
+			default: 'filesystem',
+			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
+			doc: 'Available modes of binary data storage, as comma separated strings',
+		},
+		mode: {
+			format: String,
+			default: 'default',
+			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
+			doc: 'Storage mode for binary data, default | filesystem',
+		},
+		localStoragePath: {
+			format: String,
+			default: path.join(core.UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			env: 'N8N_BINARY_DATA_STORAGE_PATH',
+			doc: 'Path for binary data storage in "filesystem" mode',
+		},
+		binaryDataTTL: {
+			format: Number,
+			default: 60,
+			env: 'N8N_BINARY_DATA_TTL',
+			doc: 'TTL for binary data of unsaved executions in minutes',
+		},
+		persistedBinaryDataTTL: {
+			format: Number,
+			default: 1440,
+			env: 'N8N_PERSISTED_BINARY_DATA_TTL',
+			doc: 'TTL for persisted binary data in minutes (binary data gets deleted if not persisted before TTL expires)',
+		},
+	},
+
+	deployment: {
+		type: {
+			format: String,
+			default: 'default',
+			env: 'N8N_DEPLOYMENT_TYPE',
+		},
+	},
+
+	personalization: {
+		enabled: {
+			doc: 'Whether personalization is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_PERSONALIZATION_ENABLED',
+		},
+	},
+
+	diagnostics: {
+		enabled: {
+			doc: 'Whether diagnostic mode is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_DIAGNOSTICS_ENABLED',
+		},
+		config: {
+			frontend: {
+				doc: 'Diagnostics config for frontend.',
+				format: String,
+				default: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
+				env: 'N8N_DIAGNOSTICS_CONFIG_FRONTEND',
+			},
+			backend: {
+				doc: 'Diagnostics config for backend.',
+				format: String,
+				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io/v1/batch',
+				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
+			},
+		},
+	},
+
+	defaultLocale: {
+		doc: 'Default locale for the UI',
+		format: String,
+		default: 'en',
+		env: 'N8N_DEFAULT_LOCALE',
+	},
 });
 
 // Overwrite default configuration with settings which got defined in

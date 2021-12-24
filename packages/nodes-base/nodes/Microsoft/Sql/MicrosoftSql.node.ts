@@ -42,7 +42,6 @@ export class MicrosoftSql implements INodeType {
 		description: 'Get, add and update data in Microsoft SQL',
 		defaults: {
 			name: 'Microsoft SQL',
-			color: '#bcbcbd',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -91,7 +90,7 @@ export class MicrosoftSql implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {

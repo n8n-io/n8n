@@ -1,16 +1,18 @@
 <template>
 	<Modal
-		:name="modalName"
-		size="xl"
+		:name="WORKFLOW_OPEN_MODAL_KEY"
+		width="80%"
+		minWidth="620px"
+		:classic="true"
 	>
 			<template v-slot:header>
 				<div class="workflows-header">
-					<div class="title">
-						<h1>Open Workflow</h1>
-					</div>
+					<n8n-heading tag="h1" size="xlarge" class="title">
+						{{ $locale.baseText('workflowOpen.openWorkflow') }}
+					</n8n-heading>
 					<div class="tags-filter">
 						<TagsDropdown
-							placeholder="Filter by tags..."
+							:placeholder="$locale.baseText('workflowOpen.openWorkflow')"
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
@@ -19,16 +21,16 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<el-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
-							<i slot="prefix" class="el-input__icon el-icon-search"></i>
-						</el-input>
+						<n8n-input :placeholder="$locale.baseText('workflowOpen.searchWorkflows')" ref="inputFieldFilter" v-model="filterText">
+							<font-awesome-icon slot="prefix" icon="search"></font-awesome-icon>
+						</n8n-input>
 					</div>
 				</div>
 			</template>
 
 			<template v-slot:content>
 				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
-					<el-table-column property="name" label="Name" class-name="clickable" sortable>
+					<el-table-column property="name" :label="$locale.baseText('workflowOpen.name')" class-name="clickable" sortable>
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
@@ -36,9 +38,9 @@
 							</div>
 						</template>
 					</el-table-column>
-					<el-table-column property="createdAt" label="Created" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column label="Active" width="75">
+					<el-table-column property="createdAt" :label="$locale.baseText('workflowOpen.created')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column property="updatedAt" :label="$locale.baseText('workflowOpen.updated')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column :label="$locale.baseText('workflowOpen.active')" width="75">
 						<template slot-scope="scope">
 							<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
 						</template>
@@ -63,6 +65,8 @@ import Modal from '@/components/Modal.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import { convertToDisplayDate } from './helpers';
+import { WORKFLOW_OPEN_MODAL_KEY } from '../constants';
 
 export default mixins(
 	genericHelpers,
@@ -85,6 +89,7 @@ export default mixins(
 			workflows: [] as IWorkflowShortResponse[],
 			filterTagIds: [] as string[],
 			prevFilterTagIds: [] as string[],
+			WORKFLOW_OPEN_MODAL_KEY,
 		};
 	},
 	computed: {
@@ -129,15 +134,22 @@ export default mixins(
 				this.filterTagIds.push(tagId);
 			}
 		},
-		async openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
+		async openWorkflow (data: IWorkflowShortResponse, column: any, cell: any, e: PointerEvent) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {
 
 				const currentWorkflowId = this.$store.getters.workflowId;
 
+				if (e.metaKey || e.ctrlKey) {
+					const route = this.$router.resolve({name: 'NodeViewExisting', params: {name: data.id}});
+					window.open(route.href, '_blank');
+
+					return;
+				}
+
 				if (data.id === currentWorkflowId) {
 					this.$showMessage({
-						title: 'Already open',
-						message: 'This is the current workflow',
+						title: this.$locale.baseText('workflowOpen.showMessage.title'),
+						message: this.$locale.baseText('workflowOpen.showMessage.message'),
 						type: 'error',
 						duration: 1500,
 					});
@@ -147,7 +159,13 @@ export default mixins(
 
 				const result = this.$store.getters.getStateIsDirty;
 				if(result) {
-					const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+					const importConfirm = await this.confirmMessage(
+						this.$locale.baseText('workflowOpen.confirmMessage.message'),
+						this.$locale.baseText('workflowOpen.confirmMessage.headline'),
+						'warning',
+						this.$locale.baseText('workflowOpen.confirmMessage.confirmButtonText'),
+						this.$locale.baseText('workflowOpen.confirmMessage.cancelButtonText'),
+					);
 					if (importConfirm === false) {
 						return;
 					} else {
@@ -176,15 +194,19 @@ export default mixins(
 						this.workflows = data;
 
 						this.workflows.forEach((workflowData: IWorkflowShortResponse) => {
-							workflowData.createdAt = this.convertToDisplayDate(workflowData.createdAt as number);
-							workflowData.updatedAt = this.convertToDisplayDate(workflowData.updatedAt as number);
+							workflowData.createdAt = convertToDisplayDate(workflowData.createdAt as number);
+							workflowData.updatedAt = convertToDisplayDate(workflowData.updatedAt as number);
 						});
 						this.isDataLoading = false;
 					},
 				)
 				.catch(
 					(error: Error) => {
-						this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+						this.$showError(
+							error,
+							this.$locale.baseText('workflowOpen.showError.title'),
+							this.$locale.baseText('workflowOpen.showError.message') + ':',
+						);
 						this.isDataLoading = false;
 					},
 				);
@@ -211,14 +233,8 @@ export default mixins(
 .workflows-header {
 	display: flex;
 
-	.title {
+	> *:first-child {
 		flex-grow: 1;
-
-		h1 {
-			font-weight: 600;
-			line-height: 24px;
-			font-size: 18px;
-		}
 	}
 
 	.search-filter {

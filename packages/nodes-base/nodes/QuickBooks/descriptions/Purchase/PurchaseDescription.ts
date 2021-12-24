@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const purchaseOperations = [
+export const purchaseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const purchaseOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const purchaseFields = [
+export const purchaseFields: INodeProperties[] = [
 	// ----------------------------------
 	//         purchase: get
 	// ----------------------------------
@@ -109,7 +109,7 @@ export const purchaseFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting purchases. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
+				description: 'The condition for selecting purchases. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -126,4 +126,4 @@ export const purchaseFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

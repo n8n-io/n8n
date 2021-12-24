@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const templateOperations = [
+export const templateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const templateOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const templateFields = [
+export const templateFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                template:create                             */
@@ -47,6 +47,6 @@ export const templateFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Render a Home Assistant template. <a href="https://www.home-assistant.io/docs/configuration/templating/" target="_blank">See template docs for more information.</a>',
+		description: 'Render a Home Assistant template. <a href="https://www.home-assistant.io/docs/configuration/templating/">See template docs for more information.</a>',
 	},
-] as INodeProperties[];
+];

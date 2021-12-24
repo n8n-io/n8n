@@ -30,7 +30,6 @@ export class DeepL implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'DeepL',
-			color: '#0f2b46',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -133,7 +132,7 @@ export class DeepL implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					responseData.push({ error: error.message });
+					responseData.push({ $error: error, $json: this.getInputData(i)});
 					continue;
 				}
 				throw error;

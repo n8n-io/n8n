@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	getEvents,
 	lemlistApiRequest,
 } from './GenericFunctions';
 
@@ -26,7 +27,6 @@ export class LemlistTrigger implements INodeType {
 		description: 'Handle Lemlist events via webhooks',
 		defaults: {
 			name: 'Lemlist Trigger',
-			color: '#4d19ff',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -52,34 +52,7 @@ export class LemlistTrigger implements INodeType {
 				required: true,
 				default: '',
 				options: [
-					{
-						name: 'Email Bounced',
-						value: 'emailsBounced',
-					},
-					{
-						name: 'Email Clicked',
-						value: 'emailsClicked',
-					},
-					{
-						name: 'Email Opened',
-						value: 'emailsOpened',
-					},
-					{
-						name: 'Email Replied',
-						value: 'emailsReplied',
-					},
-					{
-						name: 'Email Send Failed',
-						value: 'emailsSendFailed',
-					},
-					{
-						name: 'Email Sent',
-						value: 'emailsSent',
-					},
-					{
-						name: 'Email Unsubscribed',
-						value: 'emailsUnsubscribed',
-					},
+					...getEvents(),
 				],
 			},
 			{
@@ -144,8 +117,11 @@ export class LemlistTrigger implements INodeType {
 				const event = this.getNodeParameter('event') as string[];
 				const body: IDataObject = {
 					targetUrl: webhookUrl,
-					event,
+					type: event,
 				};
+				if (event.includes('*')) {
+					delete body.type;
+				}
 				Object.assign(body, options);
 				const webhook = await lemlistApiRequest.call(this, 'POST', '/hooks', body);
 				webhookData.webhookId = webhook._id;

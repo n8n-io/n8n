@@ -1,9 +1,14 @@
-import {
-	UserSettings,
-} from 'n8n-core';
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/unbound-method */
+import { BinaryDataManager, IBinaryDataConfig, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
 
+import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import * as config from '../config';
 import {
 	ActiveExecutions,
@@ -13,31 +18,21 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	TestWebhooks,
 	WebhookServer,
 } from '../src';
-import { IDataObject } from 'n8n-workflow';
 
-import { 
-	getLogger,
-} from '../src/Logger';
-
-import {
-	LoggerProxy,
-} from 'n8n-workflow';
+import { getLogger } from '../src/Logger';
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
 
-
 export class Webhook extends Command {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
 
-	static examples = [
-		`$ n8n webhook`,
-	];
+	static examples = [`$ n8n webhook`];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -48,6 +43,7 @@ export class Webhook extends Command {
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static async stopProcess() {
 		LoggerProxy.info(`\nStopping n8n...`);
 
@@ -68,14 +64,16 @@ export class Webhook extends Command {
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
-					LoggerProxy.info(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+					LoggerProxy.info(
+						`Waiting for ${executingWorkflows.length} active executions to finish...`,
+					);
 				}
+				// eslint-disable-next-line no-await-in-loop
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
 				});
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
-
 		} catch (error) {
 			LoggerProxy.error('There was an error shutting down n8n.', error);
 		}
@@ -83,7 +81,7 @@ export class Webhook extends Command {
 		process.exit(processExistCode);
 	}
 
-
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
@@ -92,6 +90,7 @@ export class Webhook extends Command {
 		process.on('SIGTERM', Webhook.stopProcess);
 		process.on('SIGINT', Webhook.stopProcess);
 
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-shadow
 		const { flags } = this.parse(Webhook);
 
 		// Wrap that the process does not close but we can still use async
@@ -114,7 +113,8 @@ export class Webhook extends Command {
 
 			try {
 				// Start directly with the init of the database to improve startup time
-				const startDbInitPromise = Db.init().catch(error => {
+				const startDbInitPromise = Db.init().catch((error) => {
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					logger.error(`There was an error initializing DB: "${error.message}"`);
 
 					processExistCode = 1;
@@ -124,6 +124,7 @@ export class Webhook extends Command {
 				});
 
 				// Make sure the settings exist
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const userSettings = await UserSettings.prepareUserSettings();
 
 				// Load all node and credential types
@@ -147,15 +148,24 @@ export class Webhook extends Command {
 				// Wait till the database is ready
 				await startDbInitPromise;
 
+				const instanceId = await UserSettings.getInstanceId();
+				const { cli } = await GenericHelpers.getVersions();
+				InternalHooksManager.init(instanceId, cli);
+
+				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				await BinaryDataManager.init(binaryDataConfig);
+
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');
 					const redisPassword = config.get('queue.bull.redis.password');
 					const redisPort = config.get('queue.bull.redis.port');
 					const redisDB = config.get('queue.bull.redis.db');
 					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
-					let lastTimer = 0, cumulativeTimeout = 0;
+					let lastTimer = 0;
+					let cumulativeTimeout = 0;
 
 					const settings = {
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
 						retryStrategy: (times: number): number | null => {
 							const now = Date.now();
 							if (now - lastTimer > 30000) {
@@ -166,7 +176,10 @@ export class Webhook extends Command {
 								cumulativeTimeout += now - lastTimer;
 								lastTimer = now;
 								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-									logger.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+									logger.error(
+										// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+										`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
+									);
 									process.exit(1);
 								}
 							}
@@ -208,11 +221,12 @@ export class Webhook extends Command {
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.initWebhooks();
 
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const editorUrl = GenericHelpers.getBaseUrl();
 				console.info('Webhook listener waiting for requests.');
-
 			} catch (error) {
 				console.error('Exiting due to error. See log message for details.');
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				logger.error(`Webhook process cannot continue. "${error.message}"`);
 
 				processExistCode = 1;

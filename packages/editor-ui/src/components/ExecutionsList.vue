@@ -1,45 +1,41 @@
 <template>
 	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
 			<div class="filters">
 				<el-row>
-					<el-col :span="4" class="filter-headline">
-						Filters:
+					<el-col :span="2" class="filter-headline">
+						{{ $locale.baseText('executionsList.filters') }}:
 					</el-col>
-					<el-col :span="6">
-						<el-select v-model="filter.workflowId" placeholder="Select Workflow" size="small" filterable @change="handleFilterChanged">
-							<el-option
+					<el-col :span="7">
+						<n8n-select v-model="filter.workflowId" :placeholder="$locale.baseText('executionsList.selectWorkflow')" size="medium" filterable @change="handleFilterChanged">
+							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
-					<el-col :span="2">&nbsp;
-					</el-col>
-					<el-col :span="4">
-						<el-select v-model="filter.status" placeholder="Select Status" size="small" filterable @change="handleFilterChanged">
-							<el-option
+					<el-col :span="5" :offset="1">
+						<n8n-select v-model="filter.status" :placeholder="$locale.baseText('executionsList.selectStatus')" size="medium" filterable @change="handleFilterChanged">
+							<n8n-option
 								v-for="item in statuses"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
-					<el-col :span="4">&nbsp;
-					</el-col>
-					<el-col :span="4" class="autorefresh">
-						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">Auto refresh</el-checkbox>
+					<el-col :span="4" :offset="5" class="autorefresh">
+						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{ $locale.baseText('executionsList.autoRefresh') }}</el-checkbox>
 					</el-col>
 				</el-row>
 			</div>
 
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
-					Selected: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
-					<el-button type="danger" title="Delete Selected" icon="el-icon-delete" size="mini" @click="handleDeleteSelected" circle></el-button>
+					{{ $locale.baseText('executionsList.selected') }}: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
+					<n8n-icon-button :title="$locale.baseText('executionsList.deleteSelected')" icon="trash" size="mini" @click="handleDeleteSelected" />
 				</span>
 			</div>
 
@@ -47,74 +43,85 @@
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
 					<template slot="header" slot-scope="scope">
-						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">Check all</el-checkbox>
+						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange" label=" "></el-checkbox>
 					</template>
 					<template slot-scope="scope">
-						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" >Check all</el-checkbox>
+						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" label=" "></el-checkbox>
 					</template>
 				</el-table-column>
-				<el-table-column property="startedAt" label="Started At / ID" width="205">
+				<el-table-column property="startedAt" :label="$locale.baseText('executionsList.startedAtId')" width="205">
 					<template slot-scope="scope">
 						{{convertToDisplayDate(scope.row.startedAt)}}<br />
 						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
 					</template>
 				</el-table-column>
-				<el-table-column property="workflowName" label="Name">
+				<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
 					<template slot-scope="scope">
 						<span class="workflow-name">
-							{{scope.row.workflowName || '[UNSAVED WORKFLOW]'}}
+							{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
 						</span>
 
 						<span v-if="scope.row.stoppedAt === undefined">
-							(running)
+							({{ $locale.baseText('executionsList.running') }})
 						</span>
 						<span v-if="scope.row.retryOf !== undefined">
-							<br /><small>Retry of "{{scope.row.retryOf}}"</small>
+							<br /><small>{{ $locale.baseText('executionsList.retryOf') }} "{{scope.row.retryOf}}"</small>
 						</span>
 						<span v-else-if="scope.row.retrySuccessId !== undefined">
-							<br /><small>Success retry "{{scope.row.retrySuccessId}}"</small>
+							<br /><small>{{ $locale.baseText('executionsList.successRetry') }} "{{scope.row.retrySuccessId}}"</small>
 						</span>
 					</template>
 				</el-table-column>
-				<el-table-column label="Status" width="120" align="center">
+				<el-table-column :label="$locale.baseText('executionsList.status')" width="122" align="center">
 					<template slot-scope="scope" align="center">
-
-						<el-tooltip placement="top" effect="light">
+						<n8n-tooltip placement="top" >
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
-
 							<span class="status-badge running" v-if="scope.row.waitTill">
-								Waiting
+								{{ $locale.baseText('executionsList.waiting') }}
 							</span>
 							<span class="status-badge running" v-else-if="scope.row.stoppedAt === undefined">
-								Running
+								{{ $locale.baseText('executionsList.running') }}
 							</span>
 							<span class="status-badge success" v-else-if="scope.row.finished">
-								Success
+								{{ $locale.baseText('executionsList.success') }}
 							</span>
 							<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
-								Error
+								{{ $locale.baseText('executionsList.error') }}
 							</span>
 							<span class="status-badge warning" v-else>
-								Unknown
+								{{ $locale.baseText('executionsList.unknown') }}
 							</span>
-						</el-tooltip>
+						</n8n-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
-							<span class="el-dropdown-link">
-								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && scope.row.waitTill === undefined" type="text" size="small" title="Retry execution">
-									<font-awesome-icon icon="redo" />
-								</el-button>
+							<span class="retry-button">
+								<n8n-icon-button
+									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
+									 type="light"
+									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
+									 size="mini"
+									 :title="$locale.baseText('executionsList.retryExecution')"
+									 icon="redo"
+								/>
 							</span>
 							<el-dropdown-menu slot="dropdown">
-								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">Retry with currently saved workflow</el-dropdown-item>
-								<el-dropdown-item :command="{command: 'original', row: scope.row}">Retry with original workflow</el-dropdown-item>
+								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">
+									{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+								</el-dropdown-item>
+								<el-dropdown-item :command="{command: 'original', row: scope.row}">
+									{{ $locale.baseText('executionsList.retryWithOriginalworkflow') }}
+								</el-dropdown-item>
 							</el-dropdown-menu>
 						</el-dropdown>
 
 					</template>
 				</el-table-column>
-				<el-table-column property="mode" label="Mode" width="100" align="center"></el-table-column>
-				<el-table-column label="Running Time" width="150" align="center">
+				<el-table-column property="mode" :label="$locale.baseText('executionsList.mode')" width="100" align="center">
+					<template slot-scope="scope">
+						{{ $locale.baseText(`executionsList.modes.${scope.row.mode}`) }}
+					</template>
+				</el-table-column>
+				<el-table-column :label="$locale.baseText('executionsList.runningTime')" width="150" align="center">
 					<template slot-scope="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
 							<font-awesome-icon icon="spinner" spin />
@@ -131,24 +138,20 @@
 				</el-table-column>
 				<el-table-column label="" width="100" align="center">
 					<template slot-scope="scope">
-						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill" class="execution-actions">
-							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" size="mini">
-								<font-awesome-icon icon="stop" />
-							</el-button>
-						</span>
-						<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" class="execution-actions">
-							<el-button circle title="Open Past Execution" @click.stop="displayExecution(scope.row)" size="mini">
-								<font-awesome-icon icon="folder-open" />
-							</el-button>
-						</span>
+						<div class="actions-container">
+							<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
+								<n8n-icon-button icon="stop" size="small" :title="$locale.baseText('executionsList.stopExecution')" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
+							</span>
+							<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" >
+								<n8n-icon-button icon="folder-open" size="small" :title="$locale.baseText('executionsList.openPastExecution')" @click.stop="(e) => displayExecution(scope.row, e)" />
+							</span>
+						</div>
 					</template>
 				</el-table-column>
 			</el-table>
 
 			<div class="load-more" v-if="finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated === true">
-				<el-button title="Load More" @click="loadMore()" size="small" :disabled="isDataLoading">
-					<font-awesome-icon icon="sync" /> Load More
-				</el-button>
+				<n8n-button icon="sync" :title="$locale.baseText('executionsList.loadMore')" :label="$locale.baseText('executionsList.loadMore')" @click="loadMore()" :loading="isDataLoading" />
 			</div>
 
 		</el-dialog>
@@ -175,6 +178,10 @@ import {
 	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
+
+import {
+	convertToDisplayDate,
+} from './helpers';
 
 import {
 	IDataObject,
@@ -223,32 +230,33 @@ export default mixins(
 
 			stoppingExecutions: [] as string[],
 			workflows: [] as IWorkflowShortResponse[],
-			statuses: [
-				{
-					id: 'ALL',
-					name: 'Any Status',
-				},
-				{
-					id: 'error',
-					name: 'Error',
-				},
-				{
-					id: 'running',
-					name: 'Running',
-				},
-				{
-					id: 'success',
-					name: 'Success',
-				},
-				{
-					id: 'waiting',
-					name: 'Waiting',
-				},
-			],
-
 		};
 	},
 	computed: {
+		statuses () {
+			return [
+				{
+					id: 'ALL',
+					name: this.$locale.baseText('executionsList.anyStatus'),
+				},
+				{
+					id: 'error',
+					name: this.$locale.baseText('executionsList.error'),
+				},
+				{
+					id: 'running',
+					name: this.$locale.baseText('executionsList.running'),
+				},
+				{
+					id: 'success',
+					name: this.$locale.baseText('executionsList.success'),
+				},
+				{
+					id: 'waiting',
+					name: this.$locale.baseText('executionsList.waiting'),
+				},
+			];
+		},
 		activeExecutions (): IExecutionsCurrentSummaryExtended[] {
 			return this.$store.getters.getActiveExecutions;
 		},
@@ -322,7 +330,15 @@ export default mixins(
 			}
 			return false;
 		},
-		displayExecution (execution: IExecutionShortResponse) {
+		convertToDisplayDate,
+		displayExecution (execution: IExecutionShortResponse, e: PointerEvent) {
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({name: 'ExecutionById', params: {id: execution.id}});
+				window.open(route.href, '_blank');
+
+				return;
+			}
+
 			this.$router.push({
 				name: 'ExecutionById',
 				params: { id: execution.id },
@@ -354,7 +370,16 @@ export default mixins(
 			}
 		},
 		async handleDeleteSelected () {
-			const deleteExecutions = await this.confirmMessage(`Are you sure that you want to delete the ${this.numSelected} selected executions?`, 'Delete Executions?', 'warning', 'Yes, delete!');
+			const deleteExecutions = await this.confirmMessage(
+				this.$locale.baseText(
+					'executionsList.confirmMessage.message',
+					{ interpolate: { numSelected: this.numSelected.toString() }},
+				),
+				this.$locale.baseText('executionsList.confirmMessage.headline'),
+				'warning',
+				this.$locale.baseText('executionsList.confirmMessage.confirmButtonText'),
+				this.$locale.baseText('executionsList.confirmMessage.cancelButtonText'),
+			);
 
 			if (deleteExecutions === false) {
 				return;
@@ -375,15 +400,19 @@ export default mixins(
 				await this.restApi().deleteExecutions(sendData);
 			} catch (error) {
 				this.isDataLoading = false;
-				this.$showError(error, 'Problem deleting executions', 'There was a problem deleting the executions:');
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
+					this.$locale.baseText('executionsList.showError.handleDeleteSelected.message'),
+				);
 
 				return;
 			}
 			this.isDataLoading = false;
 
 			this.$showMessage({
-				title: 'Execution deleted',
-				message: 'The executions got deleted!',
+				title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
+				message: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.message'),
 				type: 'success',
 			});
 
@@ -534,9 +563,18 @@ export default mixins(
 				data = await this.restApi().getPastExecutions(filter, this.requestItemsPerRequest, lastId);
 			} catch (error) {
 				this.isDataLoading = false;
-				this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.loadMore.title'),
+					this.$locale.baseText('executionsList.showError.loadMore.message') + ':',
+				);
 				return;
 			}
+
+			data.results = data.results.map((execution) => {
+				// @ts-ignore
+				return { ...execution, mode: execution.mode };
+			});
 
 			this.finishedExecutions.push.apply(this.finishedExecutions, data.results);
 			this.finishedExecutionsCount = data.count;
@@ -560,12 +598,16 @@ export default mixins(
 				// @ts-ignore
 				workflows.unshift({
 					id: 'ALL',
-					name: 'All Workflows',
+					name: this.$locale.baseText('executionsList.allWorkflows'),
 				});
 
 				Vue.set(this, 'workflows', workflows);
 			} catch (error) {
-				this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.loadWorkflows.title'),
+					this.$locale.baseText('executionsList.showError.loadWorkflows.message') + ':',
+				);
 			}
 		},
 		async openDialog () {
@@ -578,6 +620,7 @@ export default mixins(
 			this.handleAutoRefreshToggle();
 
 			this.$externalHooks().run('executionsList.openDialog');
+			this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
@@ -587,21 +630,25 @@ export default mixins(
 
 				if (retrySuccessful === true) {
 					this.$showMessage({
-						title: 'Retry successful',
-						message: 'The retry was successful!',
+						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
+						message: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.message'),
 						type: 'success',
 					});
 				} else {
 					this.$showMessage({
-						title: 'Retry unsuccessful',
-						message: 'The retry was not successful!',
+						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
+						message: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.message'),
 						type: 'error',
 					});
 				}
 
 				this.isDataLoading = false;
 			} catch (error) {
-				this.$showError(error, 'Problem with retry', 'There was a problem with the retry:');
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.retryExecution.title'),
+					this.$locale.baseText('executionsList.showError.retryExecution.message') + ':',
+				);
 
 				this.isDataLoading = false;
 			}
@@ -614,7 +661,11 @@ export default mixins(
 				const finishedExecutionsPromise = this.loadFinishedExecutions();
 				await Promise.all([activeExecutionsPromise, finishedExecutionsPromise]);
 			} catch (error) {
-				this.$showError(error, 'Problem loading', 'There was a problem loading the data:');
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.refreshData.title'),
+					this.$locale.baseText('executionsList.showError.refreshData.message') + ':',
+				);
 			}
 
 			this.isDataLoading = false;
@@ -623,23 +674,41 @@ export default mixins(
 			if (entry.waitTill) {
 				const waitDate = new Date(entry.waitTill);
 				if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-					return 'The workflow is waiting indefinitely for an incoming webhook call.';
+					return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely');
 				}
-				return `The worklow is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}.`;
+
+				return this.$locale.baseText(
+					'executionsList.statusTooltipText.theWorkflowIsWaitingTill',
+					{
+						interpolate: {
+							waitDateDate: waitDate.toLocaleDateString(),
+							waitDateTime: waitDate.toLocaleTimeString(),
+						},
+					},
+				);
 			} else if (entry.stoppedAt === undefined) {
-				return 'The worklow is currently executing.';
+				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting');
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
-				return `The workflow execution was a retry of "${entry.retryOf}" and it was successful.`;
+				return this.$locale.baseText(
+					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndItWasSuccessful',
+					{ interpolate: { entryRetryOf: entry.retryOf }},
+				);
 			} else if (entry.finished === true) {
-				return 'The worklow execution was successful.';
+				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful');
 			} else if (entry.retryOf !== undefined) {
-				return `The workflow execution was a retry of "${entry.retryOf}" and failed.<br />New retries have to be started from the original execution.`;
+				return this.$locale.baseText(
+					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndFailed',
+					{ interpolate: { entryRetryOf: entry.retryOf }},
+				);
 			} else if (entry.retrySuccessId !== undefined) {
-				return `The workflow execution failed but the retry "${entry.retrySuccessId}" was successful.`;
+				return this.$locale.baseText(
+					'executionsList.statusTooltipText.theWorkflowExecutionFailedButTheRetryWasSuccessful',
+					{ interpolate: { entryRetrySuccessId: entry.retrySuccessId }},
+				);
 			} else if (entry.stoppedAt === null) {
-				return 'The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ';
+				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning');
 			} else {
-				return 'The workflow execution failed.';
+				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowExecutionFailed');
 			}
 		},
 		async stopExecution (activeExecutionId: string) {
@@ -655,14 +724,21 @@ export default mixins(
 				this.stoppingExecutions.splice(index, 1);
 
 				this.$showMessage({
-					title: 'Execution stopped',
-					message: `The execution with the id "${activeExecutionId}" got stopped!`,
+					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
+					message: this.$locale.baseText(
+						'executionsList.showMessage.stopExecution.message',
+						{ interpolate: { activeExecutionId } },
+					),
 					type: 'success',
 				});
 
 				this.refreshData();
 			} catch (error) {
-				this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.stopExecution.title'),
+					this.$locale.baseText('executionsList.showError.stopExecution.message'),
+				);
 			}
 		},
 	},
@@ -697,13 +773,7 @@ export default mixins(
 }
 
 .retry-button {
-	color: $--custom-error-text;
-	background-color: $--custom-error-background;
 	margin-left: 5px;
-	&.warning {
-		background-color: $--custom-warning-background;
-		color: $--custom-warning-text;
-	}
 }
 
 .selection-options {
@@ -714,35 +784,33 @@ export default mixins(
 	position: relative;
 	display: inline-block;
 	padding: 0 10px;
-	height: 30px;
-	line-height: 30px;
+	line-height: 22.6px;
 	border-radius: 15px;
 	text-align: center;
-	font-weight: 400;
+	font-size: var(--font-size-s);
 
 	&.error {
-		background-color: $--custom-error-background;
-		color: $--custom-error-text;
-	}
-
-	&.running {
-		background-color: $--custom-running-background;
-		color: $--custom-running-text;
+		background-color: var(--color-danger-tint-1);
+		color: var(--color-danger);
 	}
 
 	&.success {
-		background-color: $--custom-success-background;
-		color: $--custom-success-text;
+		background-color: var(--color-success-tint-1);
+		color: var(--color-success);
 	}
 
-	&.warning {
-		background-color: $--custom-warning-background;
-		color: $--custom-warning-text;
+	&.running, &.warning {
+		background-color: var(--color-warning-tint-2);
+		color: var(--color-warning);
 	}
 }
 
 .workflow-name {
 	font-weight: bold;
+}
+
+.actions-container > * {
+	margin-left: 5px;
 }
 
 </style>

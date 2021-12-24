@@ -1,12 +1,17 @@
+import { OptionsWithUri } from 'request';
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -31,7 +36,6 @@ export class Github implements INodeType {
 		description: 'Consume GitHub API',
 		defaults: {
 			name: 'GitHub',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -39,6 +43,7 @@ export class Github implements INodeType {
 			{
 				name: 'githubApi',
 				required: true,
+				testedBy: 'githubApiTest',
 				displayOptions: {
 					show: {
 						authentication: [
@@ -481,7 +486,7 @@ export class Github implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file.',
+				description: 'Name of the binary property which contains the data for the file.',
 			},
 			{
 				displayName: 'Commit Message',
@@ -597,7 +602,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'If set it will set the data of the file as binary property<br />instead of returning the raw API response.',
+				description: 'If set it will set the data of the file as binary property instead of returning the raw API response.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -620,7 +625,7 @@ export class Github implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property in which to save<br />the binary data of the received file.',
+				description: 'Name of the binary property in which to save the binary data of the received file.',
 			},
 
 
@@ -1698,6 +1703,43 @@ export class Github implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async githubApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+				const baseUrl = credentials!.server as string || 'https://api.github.com/user';
+
+				const options: OptionsWithUri = {
+					method: 'GET',
+					headers: {
+						'User-Agent': 'n8n',
+						Authorization: `token ${credentials!.accessToken}`,
+					},
+					uri: baseUrl,
+					json: true,
+					timeout: 5000,
+				};
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.id) {
+						return {
+							status: 'Error',
+							message: `Token is not valid: ${response.error}`,
+						};
+					}
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Settings are not valid: ${error}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

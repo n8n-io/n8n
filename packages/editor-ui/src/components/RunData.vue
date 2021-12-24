@@ -2,80 +2,88 @@
 	<div class="run-data-view" v-loading="workflowRunning">
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
-		<el-button
+		<div
 			v-if="node && !isReadOnly"
-			:disabled="workflowRunning"
-			@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 			class="execute-node-button"
-			:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
 		>
-			<div class="run-icon-button">
-				<font-awesome-icon v-if="!workflowRunning" icon="play-circle"/>
-				<font-awesome-icon v-else icon="spinner" spin />
-			</div>
-
-			Execute Node
-		</el-button>
+			<n8n-button
+				:title="$locale.baseText('runData.executesThisNodeAfterExecuting', { interpolate: { nodeName: node.name } })"
+				:loading="workflowRunning"
+				icon="play-circle"
+				:label="$locale.baseText('runData.executeNode')"
+				@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
+			/>
+		</div>
 
 		<div class="header">
 			<div class="title-text">
-				<strong v-if="dataCount < maxDisplayItems">
-					Items: {{ dataCount }}
-				</strong>
-				<strong v-else>Items:
-					<el-select v-model="maxDisplayItems" @click.stop>
-						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
-					</el-select>&nbsp;/
-					{{ dataCount }}
-				</strong>
-				&nbsp;
-				<el-popover
+				<n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
+					{{ $locale.baseText('runData.items') }}: {{ dataCount }}
+				</n8n-text>
+				<div v-else class="title-text">
+					<n8n-text :bold="true">{{ $locale.baseText('runData.items') }}:</n8n-text>
+					<span class="opts">
+						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
+							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
+						</n8n-select>
+					</span>/
+					<n8n-text :bold="true">{{ dataCount }}</n8n-text>
+				</div>
+				<n8n-tooltip
 					v-if="runMetadata"
 					placement="right"
-					width="400"
-					trigger="hover"
 				>
-					<strong>Start Time:</strong> {{runMetadata.startTime}}<br/>
-					<strong>Execution Time:</strong> {{runMetadata.executionTime}} ms
-					<font-awesome-icon icon="info-circle" class="primary-color" slot="reference" />
-				</el-popover>
-				<span v-if="maxOutputIndex > 0">
-					| Output:
-					<el-select v-model="outputIndex" @click.stop>
-						<el-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
-						</el-option>
-					</el-select>
+					<div slot="content">
+						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
+						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $locale.baseText('runData.ms') }}
+					</div>
+					<font-awesome-icon icon="info-circle" class="primary-color" />
+				</n8n-tooltip>
+				<n8n-text :bold="true" v-if="maxOutputIndex > 0">
+					| {{ $locale.baseText('runData.output') }}:
+				</n8n-text>
+				<span class="opts" v-if="maxOutputIndex > 0" >
+					<n8n-select size="mini" v-model="outputIndex" @click.stop>
+						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
+						</n8n-option>
+					</n8n-select>
 				</span>
-				<span v-if="maxRunIndex > 0">
-					| Data of Execution:
-					<el-select v-model="runIndex" @click.stop>
-						<el-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
-						</el-option>
-					</el-select>
 
+				<n8n-text :bold="true" v-if="maxRunIndex > 0">
+					| {{ $locale.baseText('runData.dataOfExecution') }}:
+				</n8n-text>
+				<span class="opts">
+					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
+						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
+						</n8n-option>
+					</n8n-select>
 				</span>
+
 			</div>
-			<div v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name) && !workflowRunData[node.name][runIndex].error" class="title-data-display-selector" @click.stop>
+			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
 				<el-radio-group v-model="displayMode" size="mini">
-					<el-radio-button label="JSON" :disabled="showData === false"></el-radio-button>
-					<el-radio-button label="Table"></el-radio-button>
-					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
+					<el-radio-button :label="$locale.baseText('runData.json')" :disabled="showData === false"></el-radio-button>
+					<el-radio-button :label="$locale.baseText('runData.table')"></el-radio-button>
+					<el-radio-button :label="$locale.baseText('runData.binary')" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
-			<div class="select-button" v-if="displayMode === 'JSON' && state.path !== deselectedPlaceholder">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder" class="select-button">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
-						<el-button class="retry-button" circle type="text" size="small" title="Copy">
-							<font-awesome-icon icon="copy" />
-						</el-button>
+						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" />
 					</span>
 					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'itemPath'}">Copy Item Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">Copy Parameter Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'itemPath'}">
+							{{ $locale.baseText('runData.copyItemPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">
+							{{ $locale.baseText('runData.copyParameterPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">
+							{{ $locale.baseText('runData.copyValue') }}
+						</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
-
 			</div>
 		</div>
 		<div class="data-display-content">
@@ -84,30 +92,35 @@
 					<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
 				</div>
 				<span v-else>
-					<div v-if="showData === false" class="to-much-data">
+					<div v-if="showData === false" class="too-much-data">
 						<h3>
-							Node returned a large amount of data
+							{{ $locale.baseText('runData.nodeReturnedALargeAmountOfData') }}
 						</h3>
 
 						<div class="text">
-							The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />
-							Displaying it could cause problems!<br />
-							<br />
-							If you do decide to display it, avoid the JSON view!
+							{{ $locale.baseText(
+								'runData.theNodeContains',
+								{
+									interpolate: {
+										numberOfKb: parseInt(dataSize/1024).toLocaleString()
+									}
+								}
+							)}}
 						</div>
 
-						<el-button size="small" @click="displayMode = 'Table';showData = true;">
-							<font-awesome-icon icon="eye"/>
-							Display Data Anyway
-						</el-button>
+						<n8n-button
+							icon="eye"
+							:label="$locale.baseText('runData.displayDataAnyway')"
+							@click="displayMode = 'Table';showData = true;"
+						/>
 					</div>
 					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
-							No text data found
+							{{ $locale.baseText('runData.noTextDataFound') }}
 						</div>
 						<div v-else-if="displayMode === 'Table'">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
-								Entries exist but they do not contain any JSON data.
+								{{ $locale.baseText('runData.entriesExistButThey') }}
 							</div>
 							<table v-else-if="tableData !== null">
 								<tr>
@@ -135,7 +148,7 @@
 					</div>
 					<div v-else-if="displayMode === 'Binary'">
 						<div v-if="binaryData.length === 0" class="no-data">
-							No binary data found
+							{{ $locale.baseText('runData.noBinaryDataFound') }}
 						</div>
 
 						<div v-else>
@@ -153,27 +166,24 @@
 												{{key}}
 											</div>
 											<div v-if="binaryData.fileName">
-												<div class="label">File Name: </div>
+												<div class="label">{{ $locale.baseText('runData.fileName') }}: </div>
 												<div class="value">{{binaryData.fileName}}</div>
 											</div>
 											<div v-if="binaryData.directory">
-												<div class="label">Directory: </div>
+												<div class="label">{{ $locale.baseText('runData.directory') }}: </div>
 												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
-												<div class="label">File Extension:</div>
+												<div class="label">{{ $locale.baseText('runData.fileExtension') }}:</div>
 												<div class="value">{{binaryData.fileExtension}}</div>
 											</div>
 											<div v-if="binaryData.mimeType">
-												<div class="label">Mime Type: </div>
+												<div class="label">{{ $locale.baseText('runData.mimeType') }}: </div>
 												<div class="value">{{binaryData.mimeType}}</div>
 											</div>
 
-											<!-- <el-button @click="displayBinaryData(binaryData)"> -->
 											<div class="binary-data-show-data-button-wrapper">
-												<el-button size="mini" class="binary-data-show-data-button" @click="displayBinaryData(index, key)">
-													Show Binary Data
-												</el-button>
+												<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
 											</div>
 
 										</div>
@@ -186,9 +196,9 @@
 			</span>
 			<div v-else class="message">
 				<div>
-					<strong>No data</strong><br />
+					<n8n-text :bold="true">{{ $locale.baseText('runData.noData') }}</n8n-text ><br />
 					<br />
-					Data returned by this node will display here<br />
+					{{ $locale.baseText('runData.dataReturnedByThisNodeWillDisplayHere') }}<br />
 				</div>
 			</div>
 		</div>
@@ -203,6 +213,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
@@ -221,7 +232,7 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
-import NodeErrorView from '@/components/Error/NodeViewError.vue';
+import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from "@/components/mixins/externalHooks";
@@ -269,7 +280,16 @@ export default mixins(
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
 			};
 		},
+		mounted() {
+			this.init();
+		},
 		computed: {
+			hasNodeRun(): boolean {
+				return Boolean(this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
+			},
+			hasRunError(): boolean {
+				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);
+			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
@@ -416,6 +436,18 @@ export default mixins(
 			},
 		},
 		methods: {
+			init() {
+				// Reset the selected output index every time another node gets selected
+				this.outputIndex = 0;
+				this.maxDisplayItems = 25;
+				this.refreshDataSize();
+				if (this.displayMode === 'Binary') {
+					this.closeBinaryDataDisplay();
+					if (this.binaryData.length === 0) {
+						this.displayMode = 'Table';
+					}
+				}
+			},
 			closeBinaryDataDisplay () {
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
@@ -508,8 +540,8 @@ export default mixins(
 					return outputIndex + 1;
 				}
 
-				const nodeType = this.$store.getters.nodeType(this.node.type);
-				if (!nodeType.hasOwnProperty('outputNames') || nodeType.outputNames.length <= outputIndex) {
+				const nodeType = this.$store.getters.nodeType(this.node.type) as INodeTypeDescription | null;
+				if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
 					return outputIndex + 1;
 				}
 
@@ -600,17 +632,8 @@ export default mixins(
 			},
 		},
 		watch: {
-			node (newNode, oldNode) {
-				// Reset the selected output index every time another node gets selected
-				this.outputIndex = 0;
-				this.maxDisplayItems = 25;
-				this.refreshDataSize();
-				if (this.displayMode === 'Binary') {
-					this.closeBinaryDataDisplay();
-					if (this.binaryData.length === 0) {
-						this.displayMode = 'Table';
-					}
-				}
+			node() {
+				this.init();
 			},
 			jsonData () {
 				this.refreshDataSize();
@@ -618,12 +641,14 @@ export default mixins(
 			displayMode (newValue, oldValue) {
 				this.closeBinaryDataDisplay();
 				this.$externalHooks().run('runData.displayModeChanged', { newValue, oldValue });
+				if(this.node) {
+					const nodeType = this.node ? this.node.type : '';
+					this.$telemetry.track('User changed node output view mode', { old_mode: oldValue, new_mode: newValue, node_type: nodeType, workflow_id: this.$store.getters.workflowId });
+				}
 			},
 			maxRunIndex () {
 				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
 			},
-		},
-		mounted () {
 		},
 	});
 </script>
@@ -632,14 +657,8 @@ export default mixins(
 
 .run-data-view {
 	position: relative;
-	bottom: 0;
-	left: 0;
-	margin-left: 350px;
-	width: calc(100% - 350px);
+	width: 100%;
 	height: 100%;
-	z-index: 100;
-	color: #555;
-	font-size: 14px;
 	background-color: #f9f9f9;
 
 	.data-display-content {
@@ -649,6 +668,9 @@ export default mixins(
 		left: 0;
 		right: 0;
 		overflow-y: auto;
+		line-height: 1.5;
+		word-break: normal;
+		font-size: var(--font-size-s);
 
 		.binary-data-row {
 			display: inline-flex;
@@ -680,11 +702,6 @@ export default mixins(
 					.binary-data-show-data-button-wrapper {
 						margin-top: 1.5em;
 						text-align: center;
-						width: 100%;
-
-						.binary-data-show-data-button {
-							width: 130px;
-						}
 					}
 
 					.label {
@@ -718,6 +735,8 @@ export default mixins(
 		}
 
 		.json-data {
+			line-height: 1.5;
+
 			&.vjs-tree {
 				color: $--custom-input-font;
 			}
@@ -730,7 +749,7 @@ export default mixins(
 			margin: 1em;
 		}
 
-		.to-much-data  {
+		.too-much-data  {
 			margin: 1em;
 			text-align: center;
 
@@ -767,26 +786,15 @@ export default mixins(
 		position: absolute;
 		top: 10px;
 		right: 10px;
-		height: 30px;
-		width: 140px;
-		padding: 7px;
-		border-radius: 13px;
-		color: $--color-primary;
-		border: 1px solid $--color-primary;
-		background-color: #fff;
-	}
-	.execute-node-button:hover {
-		transform: scale(1.05);
-	}
-
-	.run-icon-button {
-		display: inline-block;
-		width: 20px;
 	}
 
 	.header {
 		padding-top: 10px;
 		padding-left: 10px;
+
+		display: flex;
+		align-items: center;
+		height: 40px;
 
 		.select-button {
 			height: 30px;
@@ -799,8 +807,12 @@ export default mixins(
 		}
 
 		.title-text {
-			display: inline-block;
-			line-height: 30px;
+			display: inline-flex;
+			align-items: center;
+
+			> * {
+				margin-right: 2px;
+			}
 		}
 
 		.title-data-display-selector {
@@ -808,7 +820,6 @@ export default mixins(
 			left: calc(50% - 105px);
 			width: 210px;
 			display: inline-block;
-			line-height: 30px;
 			text-align: center;
 
 			.entry.active {
@@ -816,22 +827,9 @@ export default mixins(
 			}
 		}
 
-		.el-select {
+		.opts {
 			width: 80px;
 			z-index: 1;
-
-			.el-input__suffix-inner {
-				// TODO: Not sure why I have to do that. Invesigate when I have some time
-				position: absolute;
-				top: -5px;
-				right: 0;
-			}
-
-			input.el-input__inner {
-				border: 1px solid $--color-primary;
-				height: 25px;
-				line-height: 25px;
-			}
 		}
 	}
 }

@@ -38,7 +38,6 @@ export class GooglePerspective implements INodeType {
 		subtitle: '={{$parameter["operation"]}}',
 		defaults: {
 			name: 'Google Perspective',
-			color: '#200647',
 		},
 		inputs: [
 			'main',
@@ -139,7 +138,7 @@ export class GooglePerspective implements INodeType {
 										value: 'toxicity',
 									},
 								],
-								description: 'Attribute to analyze in the text. Details <a target="_blank" href="https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages">here</a>',
+								description: 'Attribute to analyze in the text. Details <a href="https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages">here</a>',
 								default: 'flirtation',
 							},
 							{
@@ -147,7 +146,6 @@ export class GooglePerspective implements INodeType {
 								name: 'scoreThreshold',
 								type: 'number',
 								typeOptions: {
-									numberStepSize: 0.1,
 									numberPrecision: 2,
 									minValue: 0,
 									maxValue: 1,

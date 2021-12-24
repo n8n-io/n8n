@@ -13,6 +13,7 @@ import {
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { titleChange } from './titleChange';
@@ -21,6 +22,7 @@ export const workflowRun = mixins(
 	externalHooks,
 	restApi,
 	workflowHelpers,
+	showMessage,
 	titleChange,
 ).extend({
 	methods: {
@@ -29,7 +31,9 @@ export const workflowRun = mixins(
 			if (this.$store.getters.pushConnectionActive === false) {
 				// Do not start if the connection to server is not active
 				// because then it can not receive the data as it executes.
-				throw new Error('No active connection to server. It is maybe down.');
+				throw new Error(
+					this.$locale.baseText('workflowRun.noActiveConnectionToTheServer'),
+				);
 			}
 
 			this.$store.commit('addActiveAction', 'workflowRunning');
@@ -53,20 +57,29 @@ export const workflowRun = mixins(
 
 			return response;
 		},
-		async runWorkflow (nodeName: string, source?: string): Promise<IExecutionPushResponse | undefined> {
+		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
+			const workflow = this.getWorkflow();
+
+			if(nodeName) {
+				this.$telemetry.track('User clicked execute node button', { node_type: nodeName, workflow_id: this.$store.getters.workflowId });
+			} else {
+				this.$telemetry.track('User clicked execute workflow button', { workflow_id: this.$store.getters.workflowId });
+			}
+
 			if (this.$store.getters.isActionActive('workflowRunning') === true) {
 				return;
 			}
 
-			const workflow = this.getWorkflow();
 			this.$titleSet(workflow.name as string, 'EXECUTING');
+
+			this.clearAllStickyNotifications();
 
 			try {
 				// Check first if the workflow has any issues before execute it
 				const issuesExist = this.$store.getters.nodesIssuesExist;
 				if (issuesExist === true) {
 					// If issues exist get all of the issues of all nodes
-					const workflowIssues = this.checkReadyForExecution(workflow);
+					const workflowIssues = this.checkReadyForExecution(workflow, nodeName);
 					if (workflowIssues !== null) {
 						const errorMessages = [];
 						let nodeIssues: string[];
@@ -78,8 +91,8 @@ export const workflowRun = mixins(
 						}
 
 						this.$showMessage({
-							title: 'Workflow can not be executed',
-							message: 'The workflow has issues. Please fix them first:<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
+							title: this.$locale.baseText('workflowRun.showMessage.title'),
+							message: this.$locale.baseText('workflowRun.showMessage.message') + ':<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
 							type: 'error',
 							duration: 0,
 						});
@@ -90,7 +103,10 @@ export const workflowRun = mixins(
 				}
 
 				// Get the direct parents of the node
-				const directParentNodes = workflow.getParentNodes(nodeName, 'main', 1);
+				let directParentNodes: string[] = [];
+				if (nodeName !== undefined) {
+					directParentNodes = workflow.getParentNodes(nodeName, 'main', 1);
+				}
 
 				const runData = this.$store.getters.getWorkflowRunData;
 
@@ -129,8 +145,14 @@ export const workflowRun = mixins(
 					}
 				}
 
-				if (startNodes.length === 0) {
+				if (startNodes.length === 0 && nodeName !== undefined) {
 					startNodes.push(nodeName);
+				}
+
+				const isNewWorkflow = this.$store.getters.isNewWorkflow;
+				const hasWebhookNode = this.$store.getters.currentWorkflowHasWebhookNode;
+				if (isNewWorkflow && hasWebhookNode) {
+					await this.saveCurrentWorkflow();
 				}
 
 				const workflowData = await this.getWorkflowDataToSave();
@@ -171,6 +193,7 @@ export const workflowRun = mixins(
 					},
 				};
 				this.$store.commit('setWorkflowExecutionData', executionData);
+				this.updateNodesExecutionIssues();
 
 				 const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 
@@ -179,7 +202,11 @@ export const workflowRun = mixins(
 				 return runWorkflowApiResponse;
 			} catch (error) {
 				this.$titleSet(workflow.name as string, 'ERROR');
-				this.$showError(error, 'Problem running workflow', 'There was a problem running the workflow:');
+				this.$showError(
+					error,
+					this.$locale.baseText('workflowRun.showError.title'),
+					this.$locale.baseText('workflowRun.showError.message'),
+				);
 				return undefined;
 			}
 		},

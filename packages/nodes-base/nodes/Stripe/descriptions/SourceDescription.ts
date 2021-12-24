@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const sourceOperations = [
+export const sourceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const sourceOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const sourceFields = [
+export const sourceFields: INodeProperties[] = [
 	// ----------------------------------
 	//       source: create
 	// ----------------------------------
@@ -111,7 +111,7 @@ export const sourceFields = [
 			loadOptionsMethod: 'getCurrencies',
 		},
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a target="_blank" href="https://stripe.com/docs/currencies">Stripe-supported currency</a>',
+		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -243,4 +243,4 @@ export const sourceFields = [
 		},
 	},
 
-] as INodeProperties[];
+];

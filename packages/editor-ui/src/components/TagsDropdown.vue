@@ -1,6 +1,6 @@
 <template>
 	<div :class="{'tags-container': true, focused}" @keydown.stop v-click-outside="onClickOutside">
-		<el-select
+		<n8n-select
 			:popperAppendToBody="false"
 			:value="appliedTags"
 			:loading="isLoading"
@@ -14,8 +14,9 @@
 			ref="select"
 			loading-text="..."
 			popper-class="tags-dropdown"
+			size="medium"
 		>
-			<el-option
+			<n8n-option
 				v-if="options.length === 0 && filter && createEnabled"
 				:key="CREATE_KEY"
 				:value="CREATE_KEY"
@@ -23,16 +24,18 @@
 				ref="create"
 			>
 				<font-awesome-icon icon="plus-circle" />
-				<span>Create tag "{{ filter }}"</span>
-			</el-option>
-			<el-option v-else-if="options.length === 0" value="message" disabled>
-				<span v-if="createEnabled">Type to create a tag</span>
-				<span v-else-if="allTags.length > 0">No matching tags exist</span>
-				<span v-else>No tags exist</span>
-			</el-option>
+				<span>
+					{{ $locale.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
+				</span>
+			</n8n-option>
+			<n8n-option v-else-if="options.length === 0" value="message" disabled>
+				<span v-if="createEnabled">{{ $locale.baseText('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-else-if="allTags.length > 0">{{ $locale.baseText('tagsDropdown.noMatchingTagsExist') }}</span>
+				<span v-else>{{ $locale.baseText('tagsDropdown.noTagsExist') }}</span>
+			</n8n-option>
 
 			<!-- key is id+index for keyboard navigation to work well with filter -->
-			<el-option
+			<n8n-option
 				v-for="(tag, i) in options"
 				:value="tag.id"
 				:key="tag.id + '_' + i"
@@ -41,11 +44,11 @@
 				ref="tag"
 			/>
 
-			<el-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
+			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
-				<span>Manage tags</span>
-			</el-option>
-		</el-select>
+				<span>{{ $locale.baseText('tagsDropdown.manageTags') }}</span>
+			</n8n-option>
+		</n8n-select>
 	</div>
 </template>
 
@@ -54,7 +57,7 @@ import mixins from "vue-typed-mixins";
 import { mapGetters } from "vuex";
 
 import { ITag } from "@/Interface";
-import { MAX_TAG_NAME_LENGTH } from "@/constants";
+import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from "@/constants";
 
 import { showMessage } from "@/components/mixins/showMessage";
 
@@ -138,8 +141,11 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					"New tag was not created",
-					`A problem occurred when trying to create the "${name}" tag`,
+					this.$locale.baseText('tagsDropdown.showError.title'),
+					this.$locale.baseText(
+						'tagsDropdown.showError.message',
+						{ interpolate: { name } },
+					),
 				);
 			}
 		},
@@ -149,7 +155,7 @@ export default mixins(showMessage).extend({
 			);
 			if (ops === MANAGE_KEY) {
 				this.$data.filter = "";
-				this.$store.dispatch("ui/openTagsManagerModal");
+				this.$store.dispatch("ui/openModal", TAGS_MANAGER_MODAL_KEY);
 			} else if (ops === CREATE_KEY) {
 				this.onCreate();
 			} else {
@@ -235,31 +241,12 @@ export default mixins(showMessage).extend({
 
 <style lang="scss" scoped>
 $--max-input-height: 60px;
-$--border-radius: 20px;
 
-.tags-container {
-	overflow: hidden;
-	border: 1px solid transparent;
-	border-radius: $--border-radius;
-
-	&.focused {
-		border: 1px solid $--color-primary;
-	}
-}
-
-/deep/ .el-select {
+::v-deep .el-select {
 	.el-select__tags {
 		max-height: $--max-input-height;
-		border-radius: $--border-radius;
 		overflow-y: scroll;
 		overflow-x: hidden;
-
-		// firefox fix for scrollbars
-		scrollbar-color: $--scrollbar-thumb-color transparent;
-	}
-
-	.el-input.is-focus {
-		border-radius: $--border-radius;
 	}
 
 	input {
@@ -283,10 +270,6 @@ $--border-radius: 20px;
 	min-width: $--dropdown-width !important;
 	max-width: $--dropdown-width;
 
-	*,*:after {
-		box-sizing: border-box;
-	}
-
 	.el-tag {
 		white-space: normal;
 	}
@@ -303,6 +286,10 @@ $--border-radius: 20px;
 		ul {
 			padding: 0;
 			max-height: $--dropdown-height - $--item-height;
+
+			::-webkit-scrollbar {
+				display: none;
+			}
 		}
 
 		&:after {
@@ -365,6 +352,7 @@ $--border-radius: 20px;
 			position: absolute;
 			bottom: 0;
 			min-width: $--dropdown-width;
+			border-top: 1px solid var(--color-foreground-base);
 		}
 	}
 }

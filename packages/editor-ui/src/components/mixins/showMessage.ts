@@ -1,24 +1,50 @@
-import { Notification } from 'element-ui';
+// @ts-ignore
 import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types/notification';
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { ExecutionError } from 'n8n-workflow';
+import { ElMessageBoxOptions } from 'element-ui/types/message-box';
+import { MessageType } from 'element-ui/types/message';
+import { isChildOf } from './helpers';
+
+let stickyNotificationQueue: ElNotificationComponent[] = [];
 
 export const showMessage = mixins(externalHooks).extend({
 	methods: {
-		$showMessage(messageData: ElNotificationOptions) {
+		$showMessage(messageData: ElNotificationOptions, track = true) {
 			messageData.dangerouslyUseHTMLString = true;
 			if (messageData.position === undefined) {
 				messageData.position = 'bottom-right';
 			}
 
-			return Notification(messageData);
+			const notification = this.$notify(messageData);
+
+			if (messageData.duration === 0) {
+				stickyNotificationQueue.push(notification);
+			}
+
+			if(messageData.type === 'error' && track) {
+				this.$telemetry.track('Instance FE emitted error', { error_title: messageData.title, error_message: messageData.message, workflow_id: this.$store.getters.workflowId });
+			}
+
+			return notification;
 		},
 
-		$showWarning(title: string, message: string,  config?: {onClick?: () => void, duration?: number, customClass?: string, closeOnClick?: boolean}) {
+		$showToast(config: {
+				title: string,
+				message: string,
+				onClick?: () => void,
+				onClose?: () => void,
+				duration?: number,
+				customClass?: string,
+				closeOnClick?: boolean,
+				onLinkClick?: (e: HTMLLinkElement) => void,
+				type?: MessageType,
+			}) {
+			// eslint-disable-next-line prefer-const
 			let notification: ElNotificationComponent;
-			if (config && config.closeOnClick) {
+			if (config.closeOnClick) {
 				const cb = config.onClick;
 				config.onClick = () => {
 					if (notification) {
@@ -30,11 +56,34 @@ export const showMessage = mixins(externalHooks).extend({
 				};
 			}
 
+			if (config.onLinkClick) {
+				const onLinkClick = (e: MouseEvent) => {
+					if (e && e.target && config.onLinkClick && isChildOf(notification.$el, e.target as Element)) {
+						const target = e.target as HTMLElement;
+						if (target && target.tagName === 'A') {
+							config.onLinkClick(e.target as HTMLLinkElement);
+						}
+					}
+				};
+				window.addEventListener('click', onLinkClick);
+
+				const cb = config.onClose;
+				config.onClose = () => {
+					window.removeEventListener('click', onLinkClick);
+					if (cb) {
+						cb();
+					}
+				};
+			}
+
 			notification = this.$showMessage({
-				title,
-				message,
-				type: 'warning',
-				...(config || {}),
+				title: config.title,
+				message: config.message,
+				onClick: config.onClick,
+				onClose: config.onClose,
+				duration: config.duration,
+				customClass: config.customClass,
+				type: config.type,
 			});
 
 			return notification;
@@ -61,7 +110,8 @@ export const showMessage = mixins(externalHooks).extend({
 			return errorMessage;
 		},
 
-		$showError(error: Error, title: string, message?: string) {
+		$showError(e: Error | unknown, title: string, message?: string) {
+			const error = e as Error;
 			const messageLine = message ? `${message}<br/>` : '';
 			this.$showMessage({
 				title,
@@ -71,13 +121,40 @@ export const showMessage = mixins(externalHooks).extend({
 					${this.collapsableDetails(error)}`,
 				type: 'error',
 				duration: 0,
-			});
+			}, false);
 
 			this.$externalHooks().run('showMessage.showError', {
 				title,
 				message,
 				errorMessage: error.message,
 			});
+			this.$telemetry.track('Instance FE emitted error', { error_title: title, error_description: message, error_message: error.message, workflow_id: this.$store.getters.workflowId });
+		},
+
+		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string): Promise<boolean> {
+			try {
+				const options: ElMessageBoxOptions  = {
+					confirmButtonText: confirmButtonText || this.$locale.baseText('showMessage.ok'),
+					cancelButtonText: cancelButtonText || this.$locale.baseText('showMessage.cancel'),
+					dangerouslyUseHTMLString: true,
+					...(type && { type }),
+				};
+
+				await this.$confirm(message, headline, options);
+				return true;
+			} catch (e) {
+				return false;
+			}
+		},
+
+		clearAllStickyNotifications() {
+			stickyNotificationQueue.map((notification: ElNotificationComponent) => {
+				if (notification) {
+					notification.close();
+				}
+			});
+
+			stickyNotificationQueue = [];
 		},
 
 		// @ts-ignore
@@ -96,7 +173,7 @@ export const showMessage = mixins(externalHooks).extend({
 					<summary
 						style="color: #ff6d5a; font-weight: bold; cursor: pointer;"
 					>
-						Show Details
+						${this.$locale.baseText('showMessage.showDetails')}
 					</summary>
 					<p>${node.name}: ${errorDescription}</p>
 				</details>

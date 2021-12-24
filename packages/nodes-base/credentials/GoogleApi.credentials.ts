@@ -8,13 +8,15 @@ export class GoogleApi implements ICredentialType {
 	name = 'googleApi';
 	displayName = 'Google API';
 	documentationUrl = 'google';
+	icon = 'file:Google.svg';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Service Account Email',
 			name: 'email',
 			type: 'string',
 			default: '',
-			placeholder: 'user-808@project.iam.gserviceaccount.com',
+			description: 'The Google Service account similar to user-808@project.iam.gserviceaccount.com.',
+			required: true,
 		},
 		{
 			displayName: 'Private Key',
@@ -23,6 +25,7 @@ export class GoogleApi implements ICredentialType {
 			default: '',
 			placeholder: '-----BEGIN PRIVATE KEY-----\nXIYEvQIBADANBg<...>0IhA7TMoGYPQc=\n-----END PRIVATE KEY-----\n',
 			description: 'Enter the private key located in the JSON file downloaded from Google Cloud Console',
+			required: true,
 		},
 		{
 			displayName: 'Impersonate a User',

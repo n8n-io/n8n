@@ -6,7 +6,7 @@ import {
 	vendorAdditionalFieldsOptions,
 } from './VendorAdditionalFieldsOptions';
 
-export const vendorOperations = [
+export const vendorOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const vendorOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const vendorFields = [
+export const vendorFields: INodeProperties[] = [
 	// ----------------------------------
 	//         vendor: create
 	// ----------------------------------
@@ -161,7 +161,7 @@ export const vendorFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting vendors. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
+				description: 'The condition for selecting vendors. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -219,4 +219,4 @@ export const vendorFields = [
 		},
 		options: vendorAdditionalFieldsOptions,
 	},
-] as INodeProperties[];
+];

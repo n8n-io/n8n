@@ -1,16 +1,10 @@
-import {
-	Command,
-	flags,
-} from '@oclif/command';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable no-console */
+import { Command, flags } from '@oclif/command';
 
-import {
-	IDataObject
-} from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
-import {
-	Db,
-} from "../../src";
-
+import { Db } from '../../src';
 
 export class ListWorkflowCommand extends Command {
 	static description = '\nList workflows';
@@ -31,7 +25,9 @@ export class ListWorkflowCommand extends Command {
 		}),
 	};
 
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ListWorkflowCommand);
 
 		if (flags.active !== undefined && !['true', 'false'].includes(flags.active)) {
@@ -46,14 +42,13 @@ export class ListWorkflowCommand extends Command {
 				findQuery.active = flags.active === 'true';
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const workflows = await Db.collections.Workflow!.find(findQuery);
 			if (flags.onlyId) {
-				workflows.forEach(workflow => console.log(workflow.id));
+				workflows.forEach((workflow) => console.log(workflow.id));
 			} else {
-				workflows.forEach(workflow => console.log(workflow.id + "|" + workflow.name));
+				workflows.forEach((workflow) => console.log(`${workflow.id}|${workflow.name}`));
 			}
-
-
 		} catch (e) {
 			console.error('\nGOT ERROR');
 			console.log('====================================');

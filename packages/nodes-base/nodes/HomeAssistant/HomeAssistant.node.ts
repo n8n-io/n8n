@@ -3,10 +3,15 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -49,6 +54,8 @@ import {
 } from './CameraProxyDescription';
 
 import {
+	getHomeAssistantEntities,
+	getHomeAssistantServices,
 	homeAssistantApiRequest,
 } from './GenericFunctions';
 
@@ -63,7 +70,6 @@ export class HomeAssistant implements INodeType {
 		description: 'Consume Home Assistant API',
 		defaults: {
 			name: 'Home Assistant',
-			color: '#3578e5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -71,6 +77,7 @@ export class HomeAssistant implements INodeType {
 			{
 				name: 'homeAssistantApi',
 				required: true,
+				testedBy: 'homeAssistantApiTest',
 			},
 		],
 		properties: [
@@ -131,6 +138,63 @@ export class HomeAssistant implements INodeType {
 			...templateOperations,
 			...templateFields,
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async homeAssistantApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+				const options = {
+					method: 'GET',
+					headers: {
+						Authorization: `Bearer ${credentials!.accessToken}`,
+					},
+					uri: `${credentials!.ssl === true ? 'https' : 'http'}://${credentials!.host}:${ credentials!.port || '8123' }/api/`,
+					json: true,
+					timeout: 5000,
+				};
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.message) {
+						return {
+							status: 'Error',
+							message: `Token is not valid: ${response.error}`,
+						};
+					}
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `${error.statusCode === 401 ? 'Token is' : 'Settings are'} not valid: ${error}`,
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
+
+		loadOptions: {
+			async getAllEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantEntities.call(this);
+			},
+			async getCameraEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantEntities.call(this, 'camera');
+			},
+			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantServices.call(this);
+			},
+			async getDomainServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const currentDomain = this.getCurrentNodeParameter('domain') as string;
+				if (currentDomain) {
+					return await getHomeAssistantServices.call(this, currentDomain);
+				} else {
+					return [];
+				}
+			},
+		},
+
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

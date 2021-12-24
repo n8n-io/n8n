@@ -28,7 +28,6 @@ export class EventbriteTrigger implements INodeType {
 		description: 'Handle Eventbrite events via webhooks',
 		defaults: {
 			name: 'Eventbrite Trigger',
-			color: '#dc5237',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -182,7 +181,7 @@ export class EventbriteTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default does the webhook-data only contain the URL to receive<br />the object data manually. If this option gets activated it<br />will resolve the data automatically.',
+				description: 'By default does the webhook-data only contain the URL to receive the object data manually. If this option gets activated, it will resolve the data automatically.',
 			},
 		],
 	};

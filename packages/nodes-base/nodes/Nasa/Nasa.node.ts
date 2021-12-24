@@ -28,7 +28,6 @@ export class Nasa implements INodeType {
 		description: 'Retrieve data from the NASA API',
 		defaults: {
 			name: 'NASA',
-			color: '#0B3D91',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

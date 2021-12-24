@@ -71,7 +71,6 @@ export class Hubspot implements INodeType {
 		description: 'Consume HubSpot API',
 		defaults: {
 			name: 'Hubspot',
-			color: '#ff7f64',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -2032,10 +2031,12 @@ export class Hubspot implements INodeType {
 								qs.includeAssociations = filters.includeAssociations as boolean;
 							}
 							if (filters.properties) {
-								qs.properties = (filters.properties as string).split(',');
+								const properties = filters.properties as string | string[];
+								qs.properties = (!Array.isArray(filters.properties)) ? (properties as string).split(',') : properties;
 							}
 							if (filters.propertiesWithHistory) {
-								qs.propertiesWithHistory = (filters.propertiesWithHistory as string).split(',');
+								const propertiesWithHistory = filters.propertiesWithHistory as string | string[];
+								qs.propertiesWithHistory = (!Array.isArray(filters.propertiesWithHistory)) ? (propertiesWithHistory as string).split(',') : propertiesWithHistory;
 							}
 							const endpoint = `/deals/v1/deal/paged`;
 							if (returnAll) {
@@ -2114,7 +2115,7 @@ export class Hubspot implements INodeType {
 							if (returnAll) {
 
 								responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body, qs);
-	
+
 							} else {
 								body.limit = this.getNodeParameter('limit', 0) as number;
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);

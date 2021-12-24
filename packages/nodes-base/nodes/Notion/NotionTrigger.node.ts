@@ -29,7 +29,6 @@ export class NotionTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'Notion Trigger',
-			color: '#000000',
 		},
 		credentials: [
 			{
@@ -100,7 +99,7 @@ export class NotionTrigger implements INodeType {
 				const { results: databases } = await notionApiRequest.call(this, 'POST', `/search`, { page_size: 100, filter: { property: 'object', value: 'database' } });
 				for (const database of databases) {
 					returnData.push({
-						name: database.title[0].plain_text,
+						name: database.title[0]?.plain_text || database.id,
 						value: database.id,
 					});
 				}

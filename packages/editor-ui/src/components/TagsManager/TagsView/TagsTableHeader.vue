@@ -1,22 +1,19 @@
 <template>
 	<el-row class="tags-header">
 		<el-col :span="10">
-			<el-input
-				placeholder="Search tags"
+			<n8n-input
+				:placeholder="$locale.baseText('tagsTableHeader.searchTags')"
 				:value="search"
 				@input="onSearchChange"
 				:disabled="disabled"
 				clearable
 				:maxlength="maxLength"
 			>
-				<i slot="prefix" class="el-input__icon el-icon-search"></i>
-			</el-input>
+				<font-awesome-icon slot="prefix" icon="search" />
+			</n8n-input>
 		</el-col>
 		<el-col :span="14">
-			<el-button @click="onAddNew" :disabled="disabled" plain>
-				<font-awesome-icon icon="plus" />
-				<div class="next-icon-text">Add new</div>
-			</el-button>
+			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" :label="$locale.baseText('tagsTableHeader.addNew')" size="large" float="right" />
 		</el-col>
 	</el-row>
 </template>
@@ -24,6 +21,7 @@
 <script lang="ts">
 import { MAX_TAG_NAME_LENGTH } from "@/constants";
 import Vue from "vue";
+
 export default Vue.extend({
 	props: {
 		disabled: {
@@ -52,9 +50,5 @@ export default Vue.extend({
 <style lang="scss" scoped>
 .tags-header {
 	margin-bottom: 15px;
-}
-
-.el-button {
-	float: right;
 }
 </style>
