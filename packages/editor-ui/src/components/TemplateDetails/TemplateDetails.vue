@@ -1,6 +1,6 @@
 <template>
 	<div class="template-details">
-		<template-block title="Apps in this workflow">
+		<template-block :title="$locale.baseText('template.details.appsInTheWorkflow')">
 			<template v-slot:content>
 				<div :class="$style.icons">
 					<NodeIcon
@@ -13,27 +13,27 @@
 			</template>
 		</template-block>
 
-		<template-block title="Categories">
+		<template-block :title="$locale.baseText('template.details.categories')">
 			<template v-slot:content>
 				<n8n-tags :tags="template.categories" />
 			</template>
 		</template-block>
 
-		<template-block title="Details">
+		<template-block :title="$locale.baseText('template.details.details')">
 			<template v-slot:content>
 				<div :class="$style.text">
 					<n8n-text v-if="template.user" size="small" color="text-base">
-						Created
+						{{ $locale.baseText('template.details.created') }}
 						<TimeAgo :date="template.createdAt" />
-						by
+						{{ $locale.baseText('template.details.by') }}
 						{{ template.user.username }}
 					</n8n-text>
 				</div>
 				<div :class="$style.text">
 					<n8n-text size="small" color="text-base">
-						Viewed
+						{{ $locale.baseText('template.details.viewed') }}
 						{{ numberFormater(template.totalViews) }}
-						times
+						{{ $locale.baseText('template.details.times') }}
 					</n8n-text>
 				</div>
 			</template>

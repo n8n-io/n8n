@@ -10,7 +10,7 @@
 				<div :class="$style.button">
 					<n8n-button
 						v-if="!loading"
-						label="Use this workflow"
+						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
 						size="large"
 						@click="goToWorkflowsTemplate(template.id)"
 					/>

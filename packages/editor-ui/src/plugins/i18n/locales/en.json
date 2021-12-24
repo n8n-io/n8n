@@ -828,6 +828,21 @@
 		},
 		"notBeingUsed": "Not being used"
 	},
+	"template": {
+		"buttons": {
+			"goBackButton": "Go back",
+			"useThisWorkflowButton": "Use this workflow"
+		},
+		"details": {
+			"appsInTheWorkflow": "Apps in this workflow",
+			"by": "by",
+			"categories": "Categories",
+			"created": "Created",
+			"details": "Details",
+			"times": "times",
+			"viewed": "Viewed"
+		}
+	},
 	"textEdit": {
 		"edit": "Edit"
 	},

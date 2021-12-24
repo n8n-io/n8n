@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.wrapper" @click="$router.go(-1)">
 		<font-awesome-icon :class="$style.icon" icon="arrow-left" />
-		<n8n-text size="medium" color="text-base">Go back</n8n-text>
+		<n8n-text size="medium" color="text-base">{{ $locale.baseText('template.buttons.goBackButton') }}</n8n-text>
 	</div>
 </template>
 
