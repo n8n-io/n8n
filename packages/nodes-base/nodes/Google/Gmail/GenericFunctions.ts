@@ -216,6 +216,8 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	const now = moment().unix();
 
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n');
+
 	const signature = jwt.sign(
 		{
 			'iss': credentials.email as string,
@@ -225,11 +227,11 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			'iat': now,
 			'exp': now + 3600,
 		},
-		credentials.privateKey as string,
+		privateKey,
 		{
 			algorithm: 'RS256',
 			header: {
-				'kid': credentials.privateKey as string,
+				'kid': privateKey,
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},
@@ -252,4 +254,3 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	//@ts-ignore
 	return this.helpers.request(options);
 }
-
