@@ -2884,36 +2884,38 @@ class App {
 			);
 		}
 
-		// Read the index file and replace the path placeholder
-		const editorUiPath = require.resolve('n8n-editor-ui');
-		const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
-		const n8nPath = config.get('path');
+		if (config.get('endpoints.disableUi') !== true) {
+			// Read the index file and replace the path placeholder
+			const editorUiPath = require.resolve('n8n-editor-ui');
+			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
+			const n8nPath = config.get('path');
 
-		let readIndexFile = readFileSync(filePath, 'utf8');
-		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
-		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
+			let readIndexFile = readFileSync(filePath, 'utf8');
+			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
-		// Serve the altered index.html file separately
-		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
-			res.send(readIndexFile);
-		});
+			// Serve the altered index.html file separately
+			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
+				res.send(readIndexFile);
+			});
 
-		// Serve the website
+			// Serve the website
+			this.app.use(
+				'/',
+				express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
+					index: 'index.html',
+					setHeaders: (res, path) => {
+						if (res.req && res.req.url === '/index.html') {
+							// Set last modified date manually to n8n start time so
+							// that it hopefully refreshes the page when a new version
+							// got used
+							res.setHeader('Last-Modified', startTime);
+						}
+					},
+				}),
+			);
+		}
 		const startTime = new Date().toUTCString();
-		this.app.use(
-			'/',
-			express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
-				index: 'index.html',
-				setHeaders: (res, path) => {
-					if (res.req && res.req.url === '/index.html') {
-						// Set last modified date manually to n8n start time so
-						// that it hopefully refreshes the page when a new version
-						// got used
-						res.setHeader('Last-Modified', startTime);
-					}
-				},
-			}),
-		);
 	}
 }
 

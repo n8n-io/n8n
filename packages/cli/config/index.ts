@@ -507,6 +507,12 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
 			doc: 'Path for test-webhook endpoint',
 		},
+		disableUi: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_DISABLE_UI',
+			doc: 'Disable N8N UI (Frontend).',
+		},
 		disableProductionWebhooksOnMainProcess: {
 			format: Boolean,
 			default: false,
