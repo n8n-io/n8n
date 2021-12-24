@@ -8,7 +8,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import { odooJSONRPCRequest } from './GenericFunctions';
+import { mapOperationToJSONRPC, odooGetUserID, odooJSONRPCRequest } from './GenericFunctions';
 
 export class Odoo implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,59 +32,71 @@ export class Odoo implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Service',
-				name: 'serviceJSONRPC',
+				displayName: 'Resource',
+				name: 'resource',
 				type: 'options',
+				default: 'res.partner',
 				options: [
 					{
-						name: 'common',
-						value: 'common',
+						name: 'Contact',
+						value: 'res.partner',
 					},
 					{
-						name: 'object',
-						value: 'object',
+						name: 'Note',
+						value: 'note.note',
+					},
+					{
+						name: 'CRM',
+						value: 'crm.lead',
+					},
+					{
+						name: 'Calendar',
+						value: 'calendar.event',
+					},
+					{
+						name: 'Invoice',
+						value: 'account.move',
+					},
+					{
+						name: 'Inventory',
+						value: 'stock.picking.type',
 					},
 				],
-				default: 'common',
-				description: 'JSONRPC service.',
+				description: 'The resource to operate on.',
 			},
+
 			{
-				displayName: 'Method',
-				name: 'methodJSONRPC',
+				displayName: 'Operation',
+				name: 'operation',
 				type: 'options',
-				default: '',
+				default: 'search_read',
 				options: [
 					{
-						name: 'login',
-						value: 'login',
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new item.',
 					},
 					{
-						name: 'version',
-						value: 'version',
+						name: 'Update',
+						value: 'update',
+						description: 'Update an item.',
 					},
-				],
-				displayOptions: {
-					show: {
-						serviceJSONRPC: ['common'],
-					},
-				},
-			},
-			{
-				displayName: 'Method',
-				name: 'methodJSONRPC',
-				type: 'options',
-				default: '',
-				options: [
 					{
-						name: 'execute',
-						value: 'execute',
+						name: 'Get',
+						value: 'get',
+						description: 'Get an item.',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all items.',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete an item.',
 					},
 				],
-				displayOptions: {
-					show: {
-						serviceJSONRPC: ['object'],
-					},
-				},
 			},
 		],
 	};
@@ -94,59 +106,79 @@ export class Odoo implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const serviceJSONRPC = this.getNodeParameter('serviceJSONRPC', 0) as string;
-		const methodJSONRPC = this.getNodeParameter('methodJSONRPC', 0) as string;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
+		const serviceJSONRPC = 'object';
+		const methodJSONRPC = 'execute';
 
 		const credentials = await this.getCredentials('odooApi');
 		const url = credentials?.url as string;
-		const username = credentials?.username;
-		const password = credentials?.password;
-		const db = credentials?.db || url.split('//')[1].split('.')[0];
+		const username = credentials?.username as string;
+		const password = credentials?.password as string;
+		const db = (credentials?.db || url.split('//')[1].split('.')[0]) as string;
+		const userID = await odooGetUserID.call(this, db, username, password, url);
 
-		if (serviceJSONRPC === 'common') {
-			if (methodJSONRPC === 'login') {
-				try {
-					const body = {
-						jsonrpc: '2.0',
-						method: 'call',
-						params: {
-							service: serviceJSONRPC,
-							method: methodJSONRPC,
-							args: [db, username, password],
-						},
-						id: Math.floor(Math.random() * 100),
-					};
+		//----------------------------------------------------------------------
+		//                    Testing, delete after!!!
+		//----------------------------------------------------------------------
+		try {
+			const body = {
+				jsonrpc: '2.0',
+				method: 'call',
+				params: {
+					service: serviceJSONRPC,
+					method: methodJSONRPC,
+					args: [db, userID, password, resource, 'search_read', [], ['name']],
+				},
+				id: Math.floor(Math.random() * 100),
+			};
 
-					const loginResult = await odooJSONRPCRequest.call(this, body, url);
-					const uid = loginResult?.result;
-					console.log(loginResult, db, serviceJSONRPC, methodJSONRPC);
-				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
-				}
+			responseData = await odooJSONRPCRequest.call(this, body, url);
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData.map((data) => data.result) as IDataObject[]);
+			} else {
+				returnData.push(responseData.result as IDataObject);
 			}
+		} catch (error: any) {
+			throw new NodeApiError(this.getNode(), error);
 		}
 
-		if (serviceJSONRPC === 'object') {
-			if (methodJSONRPC === 'execute') {
-				try {
-					const body = {
-						jsonrpc: '2.0',
-						method: 'call',
-						params: {
-							service: serviceJSONRPC,
-							method: methodJSONRPC,
-							args: [db, 2, password, 'account.move', 'fields_get', [], ['string', 'type', 'help']],
-						},
-						id: Math.floor(Math.random() * 100),
-					};
+		//----------------------------------------------------------------------
+		//                            Main loop
+		//----------------------------------------------------------------------
 
-					const result = await odooJSONRPCRequest.call(this, body, url);
-					console.log(result);
-				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
-				}
+		for (let i = 0; i < items.length; i++) {
+			//    Create    ------------------------------------------------------
+			if (operation === 'create') {
+				console.log('Operation: ', mapOperationToJSONRPC[operation]);
 			}
+
+			//    Get       ------------------------------------------------------
+			if (operation === 'get') {
+				console.log('Operation: ', mapOperationToJSONRPC[operation]);
+			}
+
+			//    Get All   ------------------------------------------------------
+			if (operation === 'getAll') {
+				console.log('Operation: ', mapOperationToJSONRPC[operation]);
+			}
+
+			//    Update    ------------------------------------------------------
+			if (operation === 'update') {
+				console.log('Operation: ', mapOperationToJSONRPC[operation]);
+			}
+
+			//    Delete    ------------------------------------------------------
+			if (operation === 'delete') {
+				console.log('Operation: ', mapOperationToJSONRPC[operation]);
+			}
+
+			Array.isArray(responseData)
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
 		}
-		return [[]];
+
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
