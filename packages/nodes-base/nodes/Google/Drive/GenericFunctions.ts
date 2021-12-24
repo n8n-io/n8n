@@ -32,7 +32,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		uri: uri || `https://www.googleapis.com${resource}`,
 		json: true,
 	};
-	
+
 	options = Object.assign({}, options, option);
 
 	try {
@@ -94,6 +94,8 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	const now = moment().unix();
 
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n');
+
 	const signature = jwt.sign(
 		{
 			'iss': credentials.email as string,
@@ -103,11 +105,11 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			'iat': now,
 			'exp': now + 3600,
 		},
-		credentials.privateKey as string,
+		privateKey as string,
 		{
 			algorithm: 'RS256',
 			header: {
-				'kid': credentials.privateKey as string,
+				'kid': privateKey as string,
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},
