@@ -8,6 +8,7 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -64,7 +65,7 @@ export async function googleApiRequest(
 
 function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	{ email, privateKey }: { email: string, privateKey: string },
+	credentials: ICredentialDataDecryptedObject,
 ) {
 	// https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
@@ -75,10 +76,12 @@ function getAccessToken(
 
 	const now = moment().unix();
 
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n');
+
 	const signature = jwt.sign(
 		{
-			iss: email,
-			sub: email,
+			iss: credentials.email,
+			sub: credentials.email,
 			scope: scopes.join(' '),
 			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
