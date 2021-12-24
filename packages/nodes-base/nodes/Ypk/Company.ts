@@ -69,11 +69,11 @@ const additionalFieldsCompanies: INodeProperties[] = [
 		description: `company's siret`,
 	},
   {
-		displayName: 'Company type',
-		name: 'company_type_id',
+		displayName: 'Company category',
+		name: 'company_category',
 		type: 'string',
 		default: '',
-		description: `company's email`,
+		description: `company's category`,
 	},
   {
 		displayName: 'Website',
@@ -83,11 +83,25 @@ const additionalFieldsCompanies: INodeProperties[] = [
 		description: `company's website`,
 	},
   {
+		displayName: 'Code APE',
+		name: 'code_ape',
+		type: 'string',
+		default: '',
+		description: `company's code APE`,
+	},
+  {
 		displayName: 'TVA',
 		name: 'numero_tva_intracommunautaire',
 		type: 'string',
 		default: '',
 		description: `company's tva`,
+	},
+  {
+		displayName: 'Financement',
+		name: 'financing',
+		type: 'string',
+		default: '',
+		description: `company's financing`,
 	},
   {
 		displayName: 'Address Street',
@@ -117,9 +131,44 @@ const additionalFieldsCompanies: INodeProperties[] = [
 		default: '',
 		description: `company's address City`,
 	},
+  {
+		displayName: 'Referent id',
+		name: 'referent_id',
+		type: 'string',
+		default: '',
+		description: `company's referent id`,
+	},
+  {
+		displayName: 'Referent first name',
+		name: 'referent_first_name',
+		type: 'string',
+		default: '',
+		description: `company's referent first name`,
+	},
+  {
+		displayName: 'Referent last name',
+		name: 'referent_last_name',
+		type: 'string',
+		default: '',
+		description: `company's referent last name`,
+	},
+  {
+		displayName: 'Referent phone',
+		name: 'referent_phone',
+		type: 'string',
+		default: '',
+		description: `company's referent phone`,
+	},
+  {
+		displayName: 'Referent position',
+		name: 'referent_position',
+		type: 'string',
+		default: '',
+		description: `company's referent position`,
+	},
 	{
-		displayName: 'Company category',
-		name: 'company_category',
+		displayName: 'Company type id',
+		name: 'company_type_id',
 		type: 'collection',
 		default: '',
 		options: [
@@ -130,25 +179,25 @@ const additionalFieldsCompanies: INodeProperties[] = [
 				options: [
 					{
 						name: 'TPE/PME',
-						value: 'TPE/PME',
+						value: '1',
 					},
 					{
 						name: 'Grand compte',
-						value: 'Grand compte',
+						value: '2',
 					},
 					{
 						name: 'Public',
-						value: 'Public',
+						value: '3',
 					},
           {
 						name: 'Collectivité territoriale',
-						value: 'Collectivité territoriale',
+						value: '4',
 					},
 				],
 				default: '',
 			},
 		],
-		description: `companies' type`,
+		description: `companies' type id`,
 	},
 ];
 
@@ -215,9 +264,27 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		description: 'ID of the company to update.',
 	},
+  {
+		displayName: 'Raison sociale',
+		name: 'name',
+		type: 'string',
+		default: '',
+
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'company',
+				],
+			},
+		},
+		description: 'company\'s name.',
+	},
 	{
 		displayName: 'Update Fields',
-		name: 'updateFields',
+		name: 'additionalFields',
 		type: 'collection',
 		description: 'The fields to update.',
 		placeholder: 'Add Field',
@@ -233,24 +300,6 @@ export const companyFields: INodeProperties[] = [
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'Raison Sociale',
-				name: 'name',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'company',
-						],
-					},
-				},
-				description: 'company\'s firstname.',
-			},
 			...additionalFieldsCompanies,
 		],
 	},

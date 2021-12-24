@@ -207,7 +207,7 @@ export const trainingSessionFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'updateFields',
+		name: 'additionalFields',
 		type: 'collection',
 		description: 'The fields to update.',
 		placeholder: 'Add Field',
