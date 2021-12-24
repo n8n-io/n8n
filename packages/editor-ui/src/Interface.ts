@@ -572,6 +572,10 @@ export interface ITemplateImage {
 
 export interface ITemplateMainImage {
 	url: string;
+	metadata: ITemplateMetadata;
+}
+
+export interface ITemplateMetadata {
 	width: string;
 }
 export interface ITemplateNode {

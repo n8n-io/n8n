@@ -7,7 +7,11 @@
 <script lang="ts">
 interface IProps {
 	url: string;
-	width: string;
+	metadata: IMetadata;
+}
+
+interface IMetadata {
+  width: string
 }
 
 export default {
@@ -22,7 +26,7 @@ export default {
 			let srcset = '';
 			if (images) {
 				for (let i = 0; i < images.length; i++) {
-					srcset += images[i].url + ` ${images[i].width}w,`;
+					srcset += images[i].url + ` ${images[i].metadata.width}w,`;
 				}
 			}
 			return srcset;

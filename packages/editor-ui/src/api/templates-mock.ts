@@ -13,11 +13,15 @@ const template = {
 	mainImage: [
 		{
 			url: 'https://f000.backblazeb2.com/file/n8n-website-images/ffa19945d89a4feca922859899d435cf.png',
-			width: '1000',
+			metadata: {
+				width: '1000',
+			},
 		},
 		{
 			url: 'https://f000.backblazeb2.com/file/n8n-website-images/ffa19945d89a4feca922859899d435cf.png',
-			width: '600',
+			metadata: {
+				width: '600',
+			},
 		},
 	],
 	nodes: [
