@@ -19,6 +19,13 @@ import * as moment from 'moment-timezone';
 
 import * as jwt from 'jsonwebtoken';
 
+interface IGoogleAuthCredentials {
+	delegatedEmail?: string;
+	email: string;
+	inpersonate: boolean;
+	privateKey: string;
+}
+
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
 
@@ -47,7 +54,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
-			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
+			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request!(options);
@@ -83,7 +90,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, credentials: IDataObject): Promise<IDataObject> {
+function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -94,7 +101,8 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	const now = moment().unix();
 
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n');
+	credentials.email = credentials.email.trim();
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
 
 	const signature = jwt.sign(
 		{
