@@ -43,7 +43,6 @@ export class Box implements INodeType {
 		description: 'Consume Box API',
 		defaults: {
 			name: 'Box',
-			color: '#00aeef',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

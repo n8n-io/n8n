@@ -27,7 +27,6 @@ export class KafkaTrigger implements INodeType {
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
-			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -76,7 +75,7 @@ export class KafkaTrigger implements INodeType {
 						type: 'boolean',
 						default: true,
 						description: 'Read message from beginning .',
-					},					
+					},
 					{
 						displayName: 'JSON Parse Message',
 						name: 'jsonParseMessage',
@@ -147,7 +146,7 @@ export class KafkaTrigger implements INodeType {
 		const consumer = kafka.consumer({ groupId });
 
 		await consumer.connect();
-		
+
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		await consumer.subscribe({ topic, fromBeginning: (options.fromBeginning)? true : false });

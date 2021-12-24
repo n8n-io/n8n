@@ -25,7 +25,6 @@ export class MessageBird implements INodeType {
 		description: 'Sends SMS via MessageBird',
 		defaults: {
 			name: 'MessageBird',
-			color: '#2481d7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

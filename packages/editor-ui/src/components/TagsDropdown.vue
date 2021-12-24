@@ -24,12 +24,14 @@
 				ref="create"
 			>
 				<font-awesome-icon icon="plus-circle" />
-				<span>Create tag "{{ filter }}"</span>
+				<span>
+					{{ $locale.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
+				</span>
 			</n8n-option>
 			<n8n-option v-else-if="options.length === 0" value="message" disabled>
-				<span v-if="createEnabled">Type to create a tag</span>
-				<span v-else-if="allTags.length > 0">No matching tags exist</span>
-				<span v-else>No tags exist</span>
+				<span v-if="createEnabled">{{ $locale.baseText('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-else-if="allTags.length > 0">{{ $locale.baseText('tagsDropdown.noMatchingTagsExist') }}</span>
+				<span v-else>{{ $locale.baseText('tagsDropdown.noTagsExist') }}</span>
 			</n8n-option>
 
 			<!-- key is id+index for keyboard navigation to work well with filter -->
@@ -44,7 +46,7 @@
 
 			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
-				<span>Manage tags</span>
+				<span>{{ $locale.baseText('tagsDropdown.manageTags') }}</span>
 			</n8n-option>
 		</n8n-select>
 	</div>
@@ -139,8 +141,11 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					"New tag was not created",
-					`A problem occurred when trying to create the "${name}" tag`,
+					this.$locale.baseText('tagsDropdown.showError.title'),
+					this.$locale.baseText(
+						'tagsDropdown.showError.message',
+						{ interpolate: { name } },
+					),
 				);
 			}
 		},

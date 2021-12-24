@@ -26,7 +26,6 @@ export class LingvaNex implements INodeType {
 		description: 'Consume LingvaNex API',
 		defaults: {
 			name: 'LingvaNex',
-			color: '#00ade8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

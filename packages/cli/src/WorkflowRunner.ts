@@ -11,7 +11,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { IProcessMessage, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, IProcessMessage, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
@@ -174,6 +174,7 @@ export class WorkflowRunner {
 		postExecutePromise
 			.then(async (executionData) => {
 				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+					executionId!,
 					data.workflowData,
 					executionData,
 				);
@@ -539,6 +540,7 @@ export class WorkflowRunner {
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
 						await Db.collections.Execution!.delete(executionId);
+						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(executionId);
 					}
 					// eslint-disable-next-line id-denylist
 				} catch (err) {

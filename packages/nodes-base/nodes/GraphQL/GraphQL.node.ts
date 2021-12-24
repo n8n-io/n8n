@@ -21,7 +21,6 @@ export class GraphQL implements INodeType {
 		description: 'Makes a GraphQL request and returns the received data',
 		defaults: {
 			name: 'GraphQL',
-			color: '#E10098',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

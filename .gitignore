@@ -12,6 +12,5 @@ _START_PACKAGE
 .vscode/*
 !.vscode/extensions.json
 .idea
-vetur.config.js
 nodelinter.config.json
 packages/*/package-lock.json

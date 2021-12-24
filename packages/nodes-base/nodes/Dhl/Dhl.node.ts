@@ -29,7 +29,6 @@ export class Dhl implements INodeType {
 		description: 'Consume DHL API',
 		defaults: {
 			name: 'DHL',
-			color: '#fecc00',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

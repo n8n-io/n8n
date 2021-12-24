@@ -31,7 +31,6 @@ export class Pushbullet implements INodeType {
 		description: 'Consume Pushbullet API',
 		defaults: {
 			name: 'Pushbullet',
-			color: '#457854',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

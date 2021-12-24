@@ -37,7 +37,6 @@ export class Asana implements INodeType {
 		description: 'Consume Asana REST API',
 		defaults: {
 			name: 'Asana',
-			color: '#FC636B',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
