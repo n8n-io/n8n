@@ -3,7 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeExecutionData,
+	INodeExecutionData, NodeApiError,
 } from 'n8n-workflow';
 
 import * as customer from './customer';
@@ -43,7 +43,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			if (this.continueOnFail()) {
 				operationResult.push({json: this.getInputData(i)[0].json, error: err});
 			} else {
-				throw err;
+				throw new NodeApiError(this.getNode(), err);
 			}
 		}
 	}

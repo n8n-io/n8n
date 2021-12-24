@@ -7,6 +7,7 @@ export const ticketUpdateDescription: TicketProperties = [
 		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -55,8 +56,8 @@ export const ticketUpdateDescription: TicketProperties = [
 				default: '',
 			},
 			{
-				displayName: 'Problem Type',
-				name: 'problemType',
+				displayName: 'Issue Type',
+				name: 'issueType',
 				type: 'options',
 				options: [
 					{

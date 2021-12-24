@@ -1,5 +1,4 @@
 import {
-	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -52,7 +51,6 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			],
 			default: 'contact',
-			description: 'The resource to operate on',
 		},
 		...customer.descriptions,
 		...ticket.descriptions,

@@ -7,6 +7,7 @@ export const contactDeleteDescription: ContactProperties = [
 		displayName: 'Contact ID',
 		name: 'id',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [

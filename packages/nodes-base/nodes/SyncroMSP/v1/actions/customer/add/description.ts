@@ -8,56 +8,8 @@ import {
 
 export const customerAddDescription: CustomerProperties = [
 	{
-		displayName: 'Business Name',
-		name: 'businessName',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'add',
-				],
-			},
-		},
-		default: '',
-	},
-	{
 		displayName: 'Email',
 		name: 'email',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'add',
-				],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'First Name',
-		name: 'firstname',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'add',
-				],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'Last Name',
-		name: 'lastname',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -90,14 +42,35 @@ export const customerAddDescription: CustomerProperties = [
 		options: [
 			addressFixedCollection,
 			{
+				displayName: 'Business Name',
+				name: 'businessName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'First Name',
+				name: 'firstname',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Get SMS',
 				name: 'getSms',
 				type: 'boolean',
-				default: true,
+				default: false,
 			},
 			{
-				displayName: 'Invoice Email',
-				name: 'invoiceCcEmail',
+				displayName: 'Invoice Emails',
+				name: 'invoiceCcEmails',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastname',
 				type: 'string',
 				default: '',
 			},

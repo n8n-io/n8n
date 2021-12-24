@@ -6,6 +6,7 @@ export const ticketDeleteDescription: TicketProperties = [
 	{
 		displayName: 'Ticket ID',
 		name: 'id',
+		required: true,
 		type: 'string',
 		displayOptions: {
 			show: {

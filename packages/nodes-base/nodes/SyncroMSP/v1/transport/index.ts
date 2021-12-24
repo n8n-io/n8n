@@ -28,7 +28,7 @@ export async function apiRequest(
 		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
 	}
 
-	query['api_key']=credentials.apiKey;
+	query['api_key'] = credentials.apiKey;
 
 	const options: IHttpRequestOptions = {
 		method,

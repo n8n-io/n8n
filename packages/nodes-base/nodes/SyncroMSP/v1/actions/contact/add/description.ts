@@ -11,6 +11,7 @@ export const contactAddDescription: ContactProperties = [
 		displayName: 'Customer ID',
 		name: 'customerId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,22 +27,6 @@ export const contactAddDescription: ContactProperties = [
 	{
 		displayName: 'Email',
 		name: 'email',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'add',
-				],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'Name',
-		name: 'name',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -73,6 +58,12 @@ export const contactAddDescription: ContactProperties = [
 		default: {},
 		options: [
 			addressFixedCollection,
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+			},
 			{
 				displayName: 'Notes',
 				name: 'notes',

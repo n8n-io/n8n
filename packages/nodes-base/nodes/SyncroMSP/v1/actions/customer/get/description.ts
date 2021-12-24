@@ -7,6 +7,7 @@ export const customerGetDescription: CustomerProperties = [
 		displayName: 'Cutomer ID',
 		name: 'id',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [

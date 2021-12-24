@@ -18,6 +18,7 @@ export const ticketGetAllDescription: TicketProperties = [
 			},
 		},
 		default: false,
+		noDataExpression: true,
 		description: 'If all results should be returned or only up to a given limit',
 	},
 	{

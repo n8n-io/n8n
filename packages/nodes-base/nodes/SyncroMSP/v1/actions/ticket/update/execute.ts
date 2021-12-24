@@ -5,6 +5,7 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -14,7 +15,7 @@ import {
 
 export async function updateTicket(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('id', index) as IDataObject;
-	const { assetId, customerId, dueDate, problemType, status, subject, ticketType } = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const { assetId, customerId, dueDate, issueType, status, subject, ticketType } = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 
 	const qs = {} as IDataObject;
@@ -23,14 +24,18 @@ export async function updateTicket(this: IExecuteFunctions, index: number): Prom
 	let body = {} as IDataObject;
 
 	body = {
-		asset_id: assetId,
-		customer_id: customerId,
-		due_date: dueDate,
-		problem_type: problemType,
-		status,
-		subject,
-		ticket_type: ticketType,
+		...(assetId && { asset_id: assetId }),
+		...(customerId && { customer_id: customerId }),
+		...(dueDate && { due_date: dueDate }),
+		...(issueType && { problem_type: issueType }),
+		...(status && { status }),
+		...(subject && { subject }),
+		...(ticketType && { ticket_type: ticketType }),
 	};
+
+	if (!Object.keys(body).length) {
+		throw new NodeOperationError(this.getNode(), 'At least one update fields has to be defined');
+	}
 
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);

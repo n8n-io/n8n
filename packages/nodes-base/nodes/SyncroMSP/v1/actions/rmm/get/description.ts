@@ -7,6 +7,7 @@ export const rmmGetDescription: RmmProperties = [
 		displayName: 'RMM Alert ID',
 		name: 'id',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,6 +19,6 @@ export const rmmGetDescription: RmmProperties = [
 			},
 		},
 		default: '',
-		description: 'Get specific rmm alert by ID',
+		description: 'Get specific RMM alert by ID',
 	},
 ];

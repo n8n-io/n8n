@@ -15,7 +15,7 @@ import {
 export async function addTicket(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('customerId', index) as IDataObject;
 	const subject = this.getNodeParameter('subject', index) as IDataObject;
-	const { assetId, dueDate, problemType, status } = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const { assetId, dueDate, issueType, status } = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
@@ -24,16 +24,16 @@ export async function addTicket(this: IExecuteFunctions, index: number): Promise
 
 	body = {
 		asset_id: assetId,
-		due_date: dueDate,
-		problem_type: problemType,
+		//due_date: dueDate,
+		problem_type: issueType,
 		status,
 	};
-
 
 	body.customer_id = id;
 	body.subject = subject;
 
 	let responseData;
+	
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 	return this.helpers.returnJsonArray(responseData.ticket);

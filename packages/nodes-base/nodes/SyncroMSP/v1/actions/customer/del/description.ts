@@ -7,6 +7,7 @@ export const customerDeleteDescription: CustomerProperties = [
 		displayName: 'Customer ID',
 		name: 'id',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [

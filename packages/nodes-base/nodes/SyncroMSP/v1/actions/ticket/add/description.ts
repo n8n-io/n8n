@@ -7,6 +7,7 @@ export const ticketAddDescription: TicketProperties = [
 		displayName: 'Customer ID',
 		name: 'customerId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,6 +24,7 @@ export const ticketAddDescription: TicketProperties = [
 		displayName: 'Subject',
 		name: 'subject',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -58,15 +60,15 @@ export const ticketAddDescription: TicketProperties = [
 				type: 'string',
 				default: '',
 			},
+			// {
+			// 	displayName: 'Due Date',
+			// 	name: 'dueDate',
+			// 	type: 'dateTime',
+			// 	default: '',
+			// },
 			{
-				displayName: 'Due Date',
-				name: 'dueDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Problem Type',
-				name: 'problemType',
+				displayName: 'Issue Type',
+				name: 'issueType',
 				type: 'options',
 				options: [
 					{
@@ -127,6 +129,7 @@ export const ticketAddDescription: TicketProperties = [
 					},
 				],
 				default: 'New',
+				description: 'Filter tickets by status. It cannot be used along with the parameter Search Query',
 			},
 		],
 	},

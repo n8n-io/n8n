@@ -25,6 +25,10 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		qs = additionalFilters;
 	}
 
+	if (qs.status === undefined) {
+		qs.status = 'all';
+	}
+
 	if (returnAll === false) {
 		qs.per_page = this.getNodeParameter('limit', index) as number;
 	}

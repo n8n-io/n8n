@@ -7,6 +7,7 @@ export const rmmMuteDescription: RmmProperties = [
 		displayName: 'RMM Alert ID',
 		name: 'id',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,7 +19,7 @@ export const rmmMuteDescription: RmmProperties = [
 			},
 		},
 		default: '',
-		description: 'Delete alert by ID',
+		description: 'Mute the RMM alert by ID',
 	},
 	{
 		displayName: 'Mute Period',

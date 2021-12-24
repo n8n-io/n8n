@@ -7,6 +7,7 @@ export const rmmDeleteDescription: RmmProperties = [
 		displayName: 'RMM Alert ID',
 		name: 'id',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,6 +19,6 @@ export const rmmDeleteDescription: RmmProperties = [
 			},
 		},
 		default: '',
-		description: 'Delete alert by ID',
+		description: 'Delete the RMM alert by ID',
 	},
 ];
