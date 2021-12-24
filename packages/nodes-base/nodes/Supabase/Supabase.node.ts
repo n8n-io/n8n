@@ -3,17 +3,24 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	buildOrQuery,
 	buildQuery,
-	superbaseApiRequest,
+	supabaseApiRequest,
+	validateCrendentials,
 } from './GenericFunctions';
 
 import {
@@ -45,6 +52,7 @@ export class Supabase implements INodeType {
 			{
 				name: 'supabaseApi',
 				required: true,
+				testedBy: 'supabaseApiCredentialTest',
 			},
 		],
 		properties: [
@@ -52,6 +60,7 @@ export class Supabase implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Row',
@@ -63,6 +72,53 @@ export class Supabase implements INodeType {
 			...rowOperations,
 			...rowFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { paths } = await supabaseApiRequest.call(this, 'GET', '/',);
+				for (const path of Object.keys(paths)) {
+					//omit introspection path
+					if (path === '/') continue;
+					returnData.push({
+						name: path.replace('/', ''),
+						value: path.replace('/', ''),
+					});
+				}
+				return returnData;
+			},
+			async getTableColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const tableName = this.getCurrentNodeParameter('tableId') as string;
+				const { definitions } = await supabaseApiRequest.call(this, 'GET', '/',);
+				for (const column of Object.keys(definitions[tableName].properties)) {
+					returnData.push({
+						name: `${column} - (${definitions[tableName].properties[column].type})`,
+						value: column,
+					});
+				}
+				return returnData;
+			},
+		},
+		credentialTest: {
+			async supabaseApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				try {
+					await validateCrendentials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: 'The Service Key is invalid',
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -99,8 +155,18 @@ export class Supabase implements INodeType {
 					records.push(record);
 				}
 				const endpoint = `/${tableId}`;
-				const createdRow = await superbaseApiRequest.call(this, 'POST', endpoint, records);
-				returnData.push(...createdRow);
+				let createdRow;
+
+				try {
+					createdRow = await supabaseApiRequest.call(this, 'POST', endpoint, records);
+					returnData.push(...createdRow);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.description });
+					} else {
+						throw error;
+					}
+				}
 			}
 
 			if (operation === 'update') {
@@ -145,8 +211,17 @@ export class Supabase implements INodeType {
 							record[`${field.fieldId}`] = field.fieldValue;
 						}
 					}
-					const updatedRow = await superbaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
-					returnData.push(...updatedRow);
+					let updatedRow;
+
+					try {
+						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
+						returnData.push(...updatedRow);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.description });
+							continue;
+						}
+					}
 				}
 			}
 
@@ -160,13 +235,16 @@ export class Supabase implements INodeType {
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
-						if (matchType === 'allFilters') {
-							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-							Object.assign(qs, data);
-						}
-						if (matchType === 'anyFilter') {
-							const data = keys.map((key) => buildOrQuery(key));
-							Object.assign(qs, { or: `(${data.join(',')})` });
+
+						if (keys.length !== 0) {
+							if (matchType === 'allFilters') {
+								const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
+								Object.assign(qs, data);
+							}
+							if (matchType === 'anyFilter') {
+								const data = keys.map((key) => buildOrQuery(key));
+								Object.assign(qs, { or: `(${data.join(',')})` });
+							}
 						}
 					}
 
@@ -178,7 +256,17 @@ export class Supabase implements INodeType {
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', 0) as number;
 					}
-					const rows = await superbaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+
+					let rows;
+
+					try {
+						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.description });
+							continue;
+						}
+					}
 					returnData.push(...rows);
 				}
 			}
@@ -212,7 +300,16 @@ export class Supabase implements INodeType {
 						endpoint = `${endpoint}?${encodeURI(filterString)}`;
 					}
 
-					const rows = await superbaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
+					let rows;
+
+					try {
+						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.description });
+							continue;
+						}
+					}
 					returnData.push(...rows);
 				}
 			}

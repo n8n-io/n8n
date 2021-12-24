@@ -11,12 +11,14 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeProperties,
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function superbaseApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function supabaseApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('supabaseApi') as { host: string, serviceRole: string };
 
 	const options: OptionsWithUri = {
@@ -37,13 +39,21 @@ export async function superbaseApiRequest(this: IExecuteFunctions | IExecuteSing
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
+
 		//@ts-ignore
-		return this.helpers?.request(options);
+		return await this.helpers?.request(options);
 
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
+const mapOperations: { [key: string]: string } = {
+	'create': 'created',
+	'update': 'updated',
+	'getAll': 'retrieved',
+	'delete': 'deleted',
+};
 
 export function getFilters(
 	resources: string[],
@@ -126,7 +136,13 @@ export function getFilters(
 						{
 							displayName: 'Field Name',
 							name: 'keyName',
-							type: 'string',
+							type: 'options',
+							typeOptions: {
+								loadOptionsDependsOn: [
+									'tableId',
+								],
+								loadOptionsMethod: 'getTableColumns',
+							},
 							default: '',
 						},
 						{
@@ -210,7 +226,7 @@ export function getFilters(
 								},
 							],
 							default: '',
-						},	
+						},
 						{
 							displayName: 'Field Value',
 							name: 'keyValue',
@@ -220,6 +236,7 @@ export function getFilters(
 					],
 				},
 			],
+			description: `Filter to decide which rows get ${mapOperations[operations[0] as string]}`,
 		},
 		{
 			displayName: 'See <a href="https://postgrest.org/en/v9.0/api.html#horizontal-filtering-rows" target="_blank">PostgREST guide</a> to creating filters',
@@ -253,7 +270,7 @@ export function getFilters(
 				},
 			},
 			default: '',
-			description: '',
+			placeholder: 'name=eq.jhon',
 		},
 	];
 }
@@ -268,6 +285,29 @@ export const buildQuery = (obj: IDataObject, value: IDataObject) => {
 export const buildOrQuery = (key: IDataObject) => {
 	if (key.condition === 'fullText') {
 		return `${key.keyName}.${key.searchFunction}.${key.keyValue}`;
-	}	
+	}
 	return `${key.keyName}.${key.condition}.${key.keyValue}`;
 };
+
+
+export async function validateCrendentials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+
+	const credentials = decryptedCredentials;
+
+	const { serviceRole } = credentials as {
+		serviceRole: string,
+	};
+
+	const options: OptionsWithUri = {
+		headers: {
+			apikey: serviceRole,
+		},
+		method: 'GET',
+		uri: `${credentials.host}/rest/v1/`,
+		json: true,
+	};
+
+	return this.helpers.request!(options);
+}

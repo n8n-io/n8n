@@ -4,7 +4,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	// getWhereConditions,
 	getFilters,
 } from './GenericFunctions';
 
@@ -54,7 +53,10 @@ export const rowFields: INodeProperties[] = [
 	{
 		displayName: 'Table Name',
 		name: 'tableId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+		},
 		required: true,
 		displayOptions: {
 			show: {
@@ -70,7 +72,6 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of the table',
 	},
 	...getFilters(['row'], ['update']),
 	{
@@ -101,7 +102,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: 'defineBelow',
-		description: 'Whether to insert the input data this node receives in the new row',
+		description: '',
 	},
 	{
 		displayName: 'Inputs to Ignore',
@@ -158,7 +159,13 @@ export const rowFields: INodeProperties[] = [
 					{
 						displayName: 'Field Name',
 						name: 'fieldId',
-						type: 'string',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: [
+								'tableId',
+							],
+							loadOptionsMethod: 'getTableColumns',
+						},
 						default: '',
 					},
 					{

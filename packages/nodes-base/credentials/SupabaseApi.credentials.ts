@@ -12,6 +12,7 @@ export class SupabaseApi implements ICredentialType {
 			displayName: 'Host',
 			name: 'host',
 			type: 'string',
+			placeholder: 'https://your_account.supabase.co',
 			default: '',
 		},
 		{
