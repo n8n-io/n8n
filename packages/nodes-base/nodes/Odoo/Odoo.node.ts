@@ -174,9 +174,9 @@ export class Odoo implements INodeType {
 				console.log('Operation: ', mapOperationToJSONRPC[operation]);
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			// Array.isArray(responseData)
+			// 	? returnData.push(...responseData)
+			// 	: returnData.push(responseData);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
