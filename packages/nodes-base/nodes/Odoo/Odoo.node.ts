@@ -8,7 +8,13 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import { mapOperationToJSONRPC, odooGetUserID, odooJSONRPCRequest } from './GenericFunctions';
+import {
+	mapOperationToJSONRPC,
+	odooCreate,
+	odooGet,
+	odooGetUserID,
+	odooJSONRPCRequest,
+} from './GenericFunctions';
 
 export class Odoo implements INodeType {
 	description: INodeTypeDescription = {
@@ -69,7 +75,7 @@ export class Odoo implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				default: 'search_read',
+				default: 'getAll',
 				options: [
 					{
 						name: 'Create',
@@ -98,6 +104,58 @@ export class Odoo implements INodeType {
 					},
 				],
 			},
+			//    Create    ------------------------------------------------------
+			{
+				displayName: 'New item (JSON)',
+				name: 'newItem',
+				type: 'json',
+				default: '',
+				description: 'Specify fields of a new item',
+				placeholder: '{"memo": "New note"}',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['create'],
+					},
+				},
+			},
+
+			//    Get       ------------------------------------------------------
+			{
+				displayName: 'Item ID',
+				name: 'itemsID',
+				type: 'string',
+				default: '',
+				description: 'Specify id of an item, or comma separated list of items id',
+				placeholder: '12 or 12,15,78...',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['get'],
+					},
+				},
+			},
+
+			{
+				displayName: 'Fields to include',
+				name: 'fieldsToReturn',
+				type: 'string',
+				default: '',
+				description: 'Specify field or fields that would be returned',
+				placeholder: "name or name,memo...",
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['get'],
+					},
+				},
+			},
+
+			//    Get All   ------------------------------------------------------
+
+			//    Update    ------------------------------------------------------
+
+			//    Delete    ------------------------------------------------------
 		],
 	};
 
@@ -148,35 +206,73 @@ export class Odoo implements INodeType {
 		//                            Main loop
 		//----------------------------------------------------------------------
 
-		for (let i = 0; i < items.length; i++) {
-			//    Create    ------------------------------------------------------
-			if (operation === 'create') {
-				console.log('Operation: ', mapOperationToJSONRPC[operation]);
-			}
+		try {
+			for (let i = 0; i < items.length; i++) {
+				//    Create    ------------------------------------------------------
+				if (operation === 'create') {
+					const newItem = this.getNodeParameter('newItem', 0);
+					responseData = await odooCreate.call(
+						this,
+						db,
+						userID,
+						password,
+						resource,
+						operation,
+						url,
+						newItem,
+					);
+					console.log(responseData);
+				}
 
-			//    Get       ------------------------------------------------------
-			if (operation === 'get') {
-				console.log('Operation: ', mapOperationToJSONRPC[operation]);
-			}
+				//    Get       ------------------------------------------------------
+				if (operation === 'get') {
+					const itemsID = (this.getNodeParameter('itemsID', 0) as string)
+						.replace(/ /g, '')
+						.split('.')
+						.map((id) => +id);
+					const fieldsToReturn = (this.getNodeParameter('fieldsToReturn', 0) as string)
+						.replace(/ /g, '')
+						.split('.');
+					responseData = await odooGet.call(
+						this,
+						db,
+						userID,
+						password,
+						resource,
+						operation,
+						url,
+						itemsID,
+						fieldsToReturn,
+					);
+					// console.log(responseData);
+				}
 
-			//    Get All   ------------------------------------------------------
-			if (operation === 'getAll') {
-				console.log('Operation: ', mapOperationToJSONRPC[operation]);
-			}
+				//    Get All   ------------------------------------------------------
+				if (operation === 'getAll') {
+					console.log('Operation: ', mapOperationToJSONRPC[operation]);
+				}
 
-			//    Update    ------------------------------------------------------
-			if (operation === 'update') {
-				console.log('Operation: ', mapOperationToJSONRPC[operation]);
-			}
+				//    Update    ------------------------------------------------------
+				if (operation === 'update') {
+					console.log('Operation: ', mapOperationToJSONRPC[operation]);
+				}
 
-			//    Delete    ------------------------------------------------------
-			if (operation === 'delete') {
-				console.log('Operation: ', mapOperationToJSONRPC[operation]);
-			}
+				//    Delete    ------------------------------------------------------
+				if (operation === 'delete') {
+					console.log('Operation: ', mapOperationToJSONRPC[operation]);
+				}
 
-			// Array.isArray(responseData)
-			// 	? returnData.push(...responseData)
-			// 	: returnData.push(responseData);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(
+						returnData,
+						responseData.map((data) => data.result) as IDataObject[],
+					);
+				} else {
+					returnData.push(responseData.result as IDataObject);
+				}
+			}
+		} catch (error: any) {
+			throw new NodeApiError(this.getNode(), error);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

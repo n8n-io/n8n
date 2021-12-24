@@ -43,8 +43,13 @@ export async function odooJSONRPCRequest(
 		};
 
 		// options = Object.assign({}, options);
-
-		return await this.helpers.request!(options);
+		const result = await this.helpers.request!(options);
+		if (result.error) {
+			throw new NodeApiError(this.getNode(), result.error.data, {
+				message: result.error.data.message,
+			});
+		}
+		return result;
 	} catch (error: any) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -58,7 +63,7 @@ export async function odooCreate(
 	resource: string,
 	operation: odooCRUD,
 	url: string,
-	newItems: any[],
+	newItem: any,
 ): Promise<any> {
 	try {
 		const body = {
@@ -67,7 +72,14 @@ export async function odooCreate(
 			params: {
 				service: serviceJSONRPC,
 				method: methodJSONRPC,
-				args: [db, userID, password, resource, mapOperationToJSONRPC[operation], newItems],
+				args: [
+					db,
+					userID,
+					password,
+					resource,
+					mapOperationToJSONRPC[operation],
+					[JSON.parse(newItem)],
+				],
 			},
 			id: Math.floor(Math.random() * 100),
 		};
