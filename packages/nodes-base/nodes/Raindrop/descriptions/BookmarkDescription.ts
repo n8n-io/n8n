@@ -107,18 +107,18 @@ export const bookmarkFields: INodeProperties[] = [
 				description: 'Whether this bookmark is marked as favorite.',
 			},
 			{
-					displayName: 'Fetch Cover/Description/HTML for URL',
-					name: 'pleaseParse',
-					type: 'boolean',
-					default: false,
-					description: 'Whether Raindrop should load cover, description and HTML for the URL',
-			},
-			{
 				displayName: 'Order',
 				name: 'order',
 				type: 'number',
 				default: 0,
 				description: 'Sort order for the bookmark. For example, to move it to first place, enter 0.',
+			},
+			{
+				displayName: 'Parse Metadata',
+				name: 'pleaseParse',
+				type: 'boolean',
+				default: false,
+				description: 'Whether Raindrop should load cover, description and HTML for the URL',
 			},
 			{
 				displayName: 'Tags',
@@ -302,18 +302,18 @@ export const bookmarkFields: INodeProperties[] = [
 				description: 'Whether this bookmark is marked as favorite.',
 			},
 			{
-				displayName: 'Please Parse',
-				name: 'pleaseParse',
-				type: 'boolean',
-				default: false,
-				description: 'Whether Raindrop should reload cover, description and HTML for the URL',
-			},
-			{
 				displayName: 'Order',
 				name: 'order',
 				type: 'number',
 				default: 0,
 				description: 'For example if you want to move bookmark to the first place set this field to 0',
+			},
+			{
+				displayName: 'Parse Metadata',
+				name: 'pleaseParse',
+				type: 'boolean',
+				default: false,
+				description: 'Whether Raindrop should reload cover, description and HTML for the URL',
 			},
 			{
 				displayName: 'Tags',
