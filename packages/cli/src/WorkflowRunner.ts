@@ -186,7 +186,11 @@ export class WorkflowRunner {
 		if (externalHooks.exists('workflow.postExecute')) {
 			postExecutePromise
 				.then(async (executionData) => {
-					await externalHooks.run('workflow.postExecute', [executionData, data.workflowData, executionId]);
+					await externalHooks.run('workflow.postExecute', [
+						executionData,
+						data.workflowData,
+						executionId,
+					]);
 				})
 				.catch((error) => {
 					console.error('There was a problem running hook "workflow.postExecute"', error);
