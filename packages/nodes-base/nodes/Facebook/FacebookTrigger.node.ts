@@ -38,7 +38,6 @@ export class FacebookTrigger implements INodeType {
 		description: 'Starts the workflow when Facebook events occur',
 		defaults: {
 			name: 'Facebook Trigger',
-			color: '#3B5998',
 		},
 		inputs: [],
 		outputs: ['main'],

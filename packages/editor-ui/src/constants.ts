@@ -74,7 +74,7 @@ export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const SUBCATEGORY_DESCRIPTIONS: {
 	[category: string]: { [subcategory: string]: string };
 } = {
-	'Core Nodes': {
+	'Core Nodes': { // this - all subkeys are set from codex
 		Flow: 'Branches, core triggers, merge data',
 		Files:  'Work with CSV, XML, text, images etc.',
 		'Data Transformation': 'Manipulate data fields, run code',

@@ -38,7 +38,6 @@ export class MicrosoftOneDrive implements INodeType {
 		description: 'Consume Microsoft OneDrive API',
 		defaults: {
 			name: 'Microsoft OneDrive',
-			color: '#1d4bab',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
