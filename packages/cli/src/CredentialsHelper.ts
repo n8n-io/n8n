@@ -69,7 +69,7 @@ const mockNodeTypes: INodeTypes = {
 		if (this.nodeTypes[nodeType] === undefined) {
 			return undefined;
 		}
-		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
+		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
 	},
 };
 
