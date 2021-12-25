@@ -32,7 +32,6 @@ export class BitbucketTrigger implements INodeType {
 		description: 'Handle Bitbucket events via webhooks',
 		defaults: {
 			name: 'Bitbucket Trigger',
-			color: '#0052cc',
 		},
 		inputs: [],
 		outputs: ['main'],

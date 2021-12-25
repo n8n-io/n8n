@@ -32,7 +32,6 @@ export class NextCloud implements INodeType {
 		description: 'Access data on Nextcloud',
 		defaults: {
 			name: 'Nextcloud',
-			color: '#1cafff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

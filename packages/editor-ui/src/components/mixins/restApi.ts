@@ -16,6 +16,7 @@ import {
 	IWorkflowShortResponse,
 	IRestApi,
 	IWorkflowDataUpdate,
+	INodeTranslationHeaders,
 } from '@/Interface';
 import {
 	IDataObject,
@@ -77,6 +78,10 @@ export const restApi = Vue.extend({
 				},
 				stopCurrentExecution: (executionId: string): Promise<IExecutionsStopData> => {
 					return self.restApi().makeRestApiRequest('POST', `/executions-current/${executionId}/stop`);
+				},
+
+				getNodeTranslationHeaders: (): Promise<INodeTranslationHeaders> => {
+					return self.restApi().makeRestApiRequest('GET', '/node-translation-headers');
 				},
 
 				// Returns all node-types
@@ -180,6 +185,11 @@ export const restApi = Vue.extend({
 				// Returns all the available timezones
 				getTimezones: (): Promise<IDataObject> => {
 					return self.restApi().makeRestApiRequest('GET', `/options/timezones`);
+				},
+
+				// Binary data
+				getBinaryBufferString: (dataPath: string): Promise<string> => {
+					return self.restApi().makeRestApiRequest('GET', `/data/${dataPath}`);
 				},
 			};
 		},

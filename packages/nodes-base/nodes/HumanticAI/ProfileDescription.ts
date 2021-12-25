@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const profileOperations = [
+export const profileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const profileOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const profileFields = [
+export const profileFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 profile:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -234,4 +234,4 @@ export const profileFields = [
 		},
 		description: `The resume in PDF or DOCX format.`,
 	},
-] as INodeProperties[];
+];

@@ -119,7 +119,6 @@ export class Slack implements INodeType {
 		description: 'Consume Slack API',
 		defaults: {
 			name: 'Slack',
-			color: '#E01E5A',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

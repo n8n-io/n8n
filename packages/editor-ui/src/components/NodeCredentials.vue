@@ -2,7 +2,14 @@
 	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
 			<n8n-input-label
-				:label="`Credential for ${credentialTypeNames[credentialTypeDescription.name]}`"
+				:label="$locale.baseText(
+					'nodeCredentials.credentialFor',
+					{
+						interpolate: {
+							credentialType: credentialTypeNames[credentialTypeDescription.name]
+						}
+					}
+				)"
 				:bold="false"
 				size="small"
 
@@ -13,7 +20,7 @@
 				</div>
 
 				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
-					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$locale.baseText('nodeCredentials.selectCredential')" size="small">
 						<n8n-option
 							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
 							:key="item.id"
@@ -30,13 +37,13 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + issues.join('<br />&nbsp;&nbsp;- ')"></div>
+							<div slot="content" v-html="`${$locale.baseText('nodeCredentials.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 
 					<div :class="$style.edit" v-if="selected[credentialTypeDescription.name] && isCredentialExisting(credentialTypeDescription.name)">
-						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" title="Update Credentials" />
+						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" :title="$locale.baseText('nodeCredentials.updateCredential')" />
 					</div>
 				</div>
 			</n8n-input-label>
@@ -66,8 +73,6 @@ import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
 
-const NEW_CREDENTIALS_TEXT = '- Create New -';
-
 export default mixins(
 	genericHelpers,
 	nodeHelpers,
@@ -80,7 +85,7 @@ export default mixins(
 	],
 	data () {
 		return {
-			NEW_CREDENTIALS_TEXT,
+			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
 			newCredentialUnsubscribe: null as null | (() => void),
 		};
 	},
@@ -186,7 +191,7 @@ export default mixins(
 		},
 
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
-			if (credentialId === NEW_CREDENTIALS_TEXT) {
+			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
 				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
 				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.$store.getters.workflowId });
@@ -210,8 +215,16 @@ export default mixins(
 				});
 				this.updateNodesCredentialsIssues();
 				this.$showMessage({
-					title: 'Node credentials updated',
-					message: `Nodes that used credentials "${oldCredentials.name}" have been updated to use "${selected.name}"`,
+					title: this.$locale.baseText('nodeCredentials.showMessage.title'),
+					message: this.$locale.baseText(
+						'nodeCredentials.showMessage.message',
+						{
+							interpolate: {
+								oldCredentialName: oldCredentials.name,
+								newCredentialName: selected.name,
+							},
+						},
+					),
 					type: 'success',
 				});
 			}

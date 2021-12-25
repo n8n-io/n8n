@@ -27,7 +27,6 @@ export class LinkedIn implements INodeType {
 		description: 'Consume LinkedIn API',
 		defaults: {
 			name: 'LinkedIn',
-			color: '#0075b4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -80,7 +80,6 @@ export class ZohoCrm implements INodeType {
 		description: 'Consume Zoho CRM API',
 		defaults: {
 			name: 'Zoho',
-			color: '#CE2232',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

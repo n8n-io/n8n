@@ -29,6 +29,7 @@ import {
 	getAccessToken,
 	googleApiRequest,
 	hexToRgb,
+	IGoogleAuthCredentials,
 } from './GenericFunctions';
 
 export class GoogleSheets implements INodeType {
@@ -42,7 +43,6 @@ export class GoogleSheets implements INodeType {
 		description: 'Read, update and write data to Google Sheets',
 		defaults: {
 			name: 'Google Sheets',
-			color: '#0aa55c',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1019,7 +1019,7 @@ export class GoogleSheets implements INodeType {
 		credentialTest: {
 			async googleApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					const tokenRequest = await getAccessToken.call(this, credential.data!);
+					const tokenRequest = await getAccessToken.call(this, credential.data! as unknown as IGoogleAuthCredentials);
 					if (!tokenRequest.access_token) {
 						return {
 							status: 'Error',

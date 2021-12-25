@@ -6,8 +6,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -52,6 +54,8 @@ import {
 } from './CameraProxyDescription';
 
 import {
+	getHomeAssistantEntities,
+	getHomeAssistantServices,
 	homeAssistantApiRequest,
 } from './GenericFunctions';
 
@@ -66,7 +70,6 @@ export class HomeAssistant implements INodeType {
 		description: 'Consume Home Assistant API',
 		defaults: {
 			name: 'Home Assistant',
-			color: '#3578e5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -169,9 +172,29 @@ export class HomeAssistant implements INodeType {
 					status: 'OK',
 					message: 'Authentication successful!',
 				};
-
 			},
 		},
+
+		loadOptions: {
+			async getAllEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantEntities.call(this);
+			},
+			async getCameraEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantEntities.call(this, 'camera');
+			},
+			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantServices.call(this);
+			},
+			async getDomainServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const currentDomain = this.getCurrentNodeParameter('domain') as string;
+				if (currentDomain) {
+					return await getHomeAssistantServices.call(this, currentDomain);
+				} else {
+					return [];
+				}
+			},
+		},
+
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

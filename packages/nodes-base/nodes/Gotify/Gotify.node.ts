@@ -25,7 +25,6 @@ export class Gotify implements INodeType {
 		description: 'Consume Gotify API',
 		defaults: {
 			name: 'Gotify',
-			color: '#71c8ec',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

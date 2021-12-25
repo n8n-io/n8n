@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const linkedResourceOperations = [
+export const linkedResourceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const linkedResourceOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const linkedResourceFields = [
+export const linkedResourceFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                       linkedResource:ALL                                   */
 	/* -------------------------------------------------------------------------- */
@@ -279,4 +279,4 @@ export const linkedResourceFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

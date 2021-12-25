@@ -60,7 +60,6 @@ export class Pipedrive implements INodeType {
 		description: 'Create and edit data in Pipedrive',
 		defaults: {
 			name: 'Pipedrive',
-			color: '#227722',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
