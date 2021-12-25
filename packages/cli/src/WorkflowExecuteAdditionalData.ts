@@ -918,7 +918,7 @@ export async function executeWorkflow(
 		};
 	}
 
-	await externalHooks.run('workflow.postExecute', [data, workflowData]);
+	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 	void InternalHooksManager.getInstance().onWorkflowPostExecute(executionId, workflowData, data);
 
 	if (data.finished === true) {
