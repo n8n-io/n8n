@@ -56,12 +56,12 @@ export class Odoo implements INodeType {
 						value: 'calendar.event',
 					},
 					{
-						name: 'CRM',
-						value: 'crm.lead',
-					},
-					{
 						name: 'Contact',
 						value: 'res.partner',
+					},
+					{
+						name: 'Crm',
+						value: 'crm.lead',
 					},
 					{
 						name: 'Custom Resource',
@@ -70,10 +70,6 @@ export class Odoo implements INodeType {
 					{
 						name: 'Inventory',
 						value: 'stock.picking.type',
-					},
-					{
-						name: 'Invoice',
-						value: 'account.move',
 					},
 					{
 						name: 'Note',
@@ -219,28 +215,28 @@ export class Odoo implements INodeType {
 								required: true,
 								options: [
 									{
-										name: '=',
-										value: 'equal',
-									},
-									{
 										name: '!=',
 										value: 'notEqual',
-									},
-									{
-										name: '>',
-										value: 'greaterThen',
 									},
 									{
 										name: '<',
 										value: 'lesserThen',
 									},
 									{
-										name: '>=',
-										value: 'greaterOrEqual',
+										name: '=',
+										value: 'equal',
 									},
 									{
 										name: '=<',
 										value: 'lesserOrEqual',
+									},
+									{
+										name: '>',
+										value: 'greaterThen',
+									},
+									{
+										name: '>=',
+										value: 'greaterOrEqual',
 									},
 									{
 										name: 'Chield Of',
