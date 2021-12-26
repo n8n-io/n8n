@@ -1333,7 +1333,7 @@ export class Workflow {
 						i,
 						mode,
 						'',
-						{ $self: value },
+						{ $value: value },
 					);
 					if (tempOptions) {
 						requestData.pagination =
