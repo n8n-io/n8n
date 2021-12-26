@@ -20,7 +20,59 @@ export const mapOperationToJSONRPC = {
 	delete: 'unlink',
 };
 
-export type odooCRUD = 'create' | 'update' | 'delete' | 'get' | 'getAll';
+export const mapFilterOperationToJSONRPC = {
+	equal: '=',
+	notEqual: '!=',
+	greaterThen: '>',
+	lesserThen: '<',
+	greaterOrEqual: '>=',
+	lesserOrEqual: '=<',
+	like: 'like',
+	in: 'in',
+	notIn: 'not in',
+	childOf: 'child_of',
+};
+
+type filterOperation =
+	| 'equal'
+	| 'notEqual'
+	| 'greaterThen'
+	| 'lesserThen'
+	| 'greaterOrEqual'
+	| 'lesserOrEqual'
+	| 'like'
+	| 'in'
+	| 'notIn'
+	| 'childOf';
+
+type odooCRUD = 'create' | 'update' | 'delete' | 'get' | 'getAll';
+
+function sanitizeInput(value: any, toNumber: boolean = false) {
+	const result = (value as string)
+		.replace(/ /g, '')
+		.split(',')
+		.filter((item) => item);
+	if (toNumber) {
+		return result.map((id) => +id);
+	} else {
+		return result;
+	}
+}
+
+function processFilters(value: any) {
+	return value.filter?.map((item: any) => {
+		const operator = item.operator as filterOperation;
+		item.operator = mapFilterOperationToJSONRPC[operator];
+		return Object.values(item);
+	});
+}
+
+function processFields(value: any) {
+	return value?.fields.reduce((acc: any, record: any) => {
+		return Object.assign(acc, { [record.fieldName]: record.fieldValue });
+	}, {});
+}
+
 
 export async function odooJSONRPCRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -42,7 +94,6 @@ export async function odooJSONRPCRequest(
 			json: true,
 		};
 
-		// options = Object.assign({}, options);
 		const result = await this.helpers.request!(options);
 		if (result.error) {
 			throw new NodeApiError(this.getNode(), result.error.data, {
@@ -99,8 +150,8 @@ export async function odooGet(
 	resource: string,
 	operation: odooCRUD,
 	url: string,
-	itemsID: number[],
-	fieldsToReturn: string[] = [],
+	itemsID: any,
+	fieldsToReturn: any,
 ): Promise<any> {
 	try {
 		const body = {
@@ -115,8 +166,8 @@ export async function odooGet(
 					password,
 					resource,
 					mapOperationToJSONRPC[operation],
-					itemsID,
-					fieldsToReturn,
+					sanitizeInput(itemsID, true) || [],
+					sanitizeInput(fieldsToReturn) || [],
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -137,8 +188,8 @@ export async function odooGetAll(
 	resource: string,
 	operation: odooCRUD,
 	url: string,
-	filters: [string, string, string][],
-	fieldsToReturn: string[] = [],
+	filters: any,
+	fieldsToReturn: any,
 ): Promise<any> {
 	try {
 		const body = {
@@ -153,8 +204,8 @@ export async function odooGetAll(
 					password,
 					resource,
 					mapOperationToJSONRPC[operation],
-					filters,
-					fieldsToReturn,
+					processFilters(filters) || [],
+					sanitizeInput(fieldsToReturn) || [],
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -175,7 +226,7 @@ export async function odooUpdate(
 	resource: string,
 	operation: odooCRUD,
 	url: string,
-	itemsID: number[],
+	itemsID: any,
 	fieldsToUpdate: any,
 ): Promise<any> {
 	try {
@@ -191,8 +242,8 @@ export async function odooUpdate(
 					password,
 					resource,
 					mapOperationToJSONRPC[operation],
-					itemsID,
-					fieldsToUpdate,
+					sanitizeInput(itemsID, true) || [],
+					processFields(fieldsToUpdate) || [],
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -213,7 +264,7 @@ export async function odooDelete(
 	resource: string,
 	operation: odooCRUD,
 	url: string,
-	itemsID: number[],
+	itemsID: any,
 ): Promise<any> {
 	try {
 		const body = {
@@ -222,7 +273,14 @@ export async function odooDelete(
 			params: {
 				service: serviceJSONRPC,
 				method: methodJSONRPC,
-				args: [db, userID, password, resource, mapOperationToJSONRPC[operation], itemsID],
+				args: [
+					db,
+					userID,
+					password,
+					resource,
+					mapOperationToJSONRPC[operation],
+					sanitizeInput(itemsID, true) || [],
+				],
 			},
 			id: Math.floor(Math.random() * 100),
 		};
