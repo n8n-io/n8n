@@ -28,7 +28,7 @@
 /* eslint-disable no-await-in-loop */
 
 import * as express from 'express';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
@@ -52,14 +52,11 @@ import {
 	BinaryDataManager,
 	Credentials,
 	IBinaryDataConfig,
-	ICredentialTestFunctions,
 	LoadNodeParameterOptions,
-	NodeExecuteFunctions,
 	UserSettings,
 } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
@@ -71,7 +68,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	INodeVersionedType,
 	ITelemetrySettings,
 	IWorkflowBase,
 	LoggerProxy,
@@ -79,8 +75,6 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
-import { NodeVersionedType } from 'n8n-nodes-base';
 
 import * as basicAuth from 'basic-auth';
 import * as compression from 'compression';
