@@ -604,7 +604,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		try {
 			// eslint-disable-next-line no-underscore-dangle
-			const responseData = await workflow.__makeRoutingRequest
+			const responseData = await workflow.rawRoutingRequest
 				.call(thisArgs, requestData, credentialType, credentialsDecrypted)
 				.catch((error: AxiosError) => {
 					// Do not fail any requests to allow custom error messages and

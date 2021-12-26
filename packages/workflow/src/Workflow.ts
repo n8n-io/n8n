@@ -1307,6 +1307,21 @@ export class Workflow {
 				}
 
 				for (const property of nodeType.description.properties) {
+					let value = get(node.parameters, property.name, []) as string | IDataObject;
+					if (typeof value === 'string' && value.charAt(0) === '=') {
+						// If the value is an expression resolve it
+						value = this.expression.getParameterValue(
+							value,
+							runExecutionData,
+							runIndex,
+							i,
+							node.name,
+							connectionInputData,
+							mode,
+							{},
+						) as string | IDataObject;
+					}
+
 					const tempOptions = this.getRequestOptionsFromParameters.call(
 						thisArgs,
 						this,
@@ -1318,6 +1333,7 @@ export class Workflow {
 						i,
 						mode,
 						'',
+						{ $self: value },
 					);
 					if (tempOptions) {
 						requestData.pagination =
@@ -1357,8 +1373,7 @@ export class Workflow {
 		return [returnData];
 	}
 
-	// TODO: Fix name
-	async __makeRoutingRequest(
+	async rawRoutingRequest(
 		this: IExecuteSingleFunctions,
 		requestData: IRequestOptionsFromParameters,
 		credentialType?: string,
@@ -1408,7 +1423,7 @@ export class Workflow {
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
 			makeRoutingRequest: async (requestOptions: IRequestOptionsFromParameters) => {
-				return this.__makeRoutingRequest.call(
+				return this.rawRoutingRequest.call(
 					executeSingleFunctions,
 					requestOptions,
 					credentialType,
@@ -1452,7 +1467,7 @@ export class Workflow {
 							);
 						}
 
-						tempResponseData = await this.__makeRoutingRequest.call(
+						tempResponseData = await this.rawRoutingRequest.call(
 							executeSingleFunctions,
 							requestData,
 							credentialType,
@@ -1475,7 +1490,7 @@ export class Workflow {
 			}
 		} else {
 			// No pagination
-			responseData = await this.__makeRoutingRequest.call(
+			responseData = await this.rawRoutingRequest.call(
 				executeSingleFunctions,
 				requestData,
 				credentialType,
@@ -1520,7 +1535,26 @@ export class Workflow {
 		}
 
 		if (nodeProperties.request) {
-			Object.assign(returnData.options, nodeProperties.request);
+			for (const key of Object.keys(nodeProperties.request)) {
+				// @ts-ignore
+				let value = nodeProperties.request[key];
+				if (typeof value === 'string' && value.charAt(0) === '=') {
+					// If the value is an expression resolve it
+					value = workflow.expression.getParameterValue(
+						value,
+						runExecutionData || null,
+						runIndex || 0,
+						itemIndex || 0,
+						node.name,
+						connectionInputData,
+						mode,
+						additionalKeys || {},
+						true,
+					) as string;
+				}
+				// @ts-ignore
+				returnData.options[key] = value;
+			}
 		}
 
 		if (nodeProperties.requestProperty) {
