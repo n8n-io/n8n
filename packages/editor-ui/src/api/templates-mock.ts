@@ -62,6 +62,18 @@ const template = {
 			id: '2',
 			name: 'Building Blocks',
 		},
+		{
+			id: '3',
+			name: 'Building Blocks',
+		},
+		{
+			id: '4',
+			name: 'Building Blocks',
+		},
+		{
+			id: '5',
+			name: 'Building Blocks',
+		},
 	],
 	user: {
 		username: 'someusername',

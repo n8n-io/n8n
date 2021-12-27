@@ -16,8 +16,8 @@ export default {
 <style lang="scss" module>
 .tag {
 	width: fit-content;
-	margin-right: 4px;
-	padding: 3px 4px;
+  margin: 0 var(--spacing-4xs) var(--spacing-4xs) 0;
+	padding: var(--spacing-4xs);
 	background-color: #dbdfe7;
 	border-radius: var(--border-radius-base);
 	font-size: 11px;

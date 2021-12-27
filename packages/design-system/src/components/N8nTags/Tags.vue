@@ -23,5 +23,6 @@ export default {
 <style lang="scss" module>
 .tags {
 	display: flex;
+	flex-wrap: wrap;
 }
 </style>
