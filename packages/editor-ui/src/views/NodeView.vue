@@ -396,7 +396,7 @@ export default mixins(
 					if (nameIndex) {
 						index = parseInt(nameIndex, 10);
 					}
-					baseName = uniqueName = originalName;
+					baseName = uniqueName = found;
 				} else {
 					const nameMatch = originalName.match(/(.*\D+)(\d*)/);
 
@@ -411,7 +411,7 @@ export default mixins(
 						if (nameIndex !== '') {
 							index = parseInt(nameIndex, 10);
 						}
-						uniqueName = baseName = originalName;
+						uniqueName = baseName;
 					}
 				}
 
@@ -1954,6 +1954,10 @@ export default mixins(
 				// Deep copy the data so that data on lower levels of the node-properties do
 				// not share objects
 				const newNodeData = JSON.parse(JSON.stringify(this.getNodeDataToSave(node)));
+
+				// here
+
+				console.log(newNodeData.name);
 
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName({
