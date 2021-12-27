@@ -9,7 +9,6 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
@@ -17,6 +16,13 @@ import {
 import * as moment from 'moment-timezone';
 
 import * as jwt from 'jsonwebtoken';
+
+export interface IGoogleAuthCredentials {
+	delegatedEmail?: string;
+	email: string;
+	inpersonate: boolean;
+	privateKey: string;
+}
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
@@ -45,7 +51,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
-			const { access_token } = await getAccessToken.call(this, credentials as ICredentialDataDecryptedObject);
+			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			//@ts-ignore
@@ -82,7 +88,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-export function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | ICredentialTestFunctions, credentials: ICredentialDataDecryptedObject): Promise<IDataObject> {
+export function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | ICredentialTestFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -93,6 +99,9 @@ export function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions
 
 	const now = moment().unix();
 
+	credentials.email = credentials.email.trim();
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+
 	const signature = jwt.sign(
 		{
 			'iss': credentials.email as string,
@@ -102,11 +111,11 @@ export function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions
 			'iat': now,
 			'exp': now + 3600,
 		},
-		credentials.privateKey as string,
+		privateKey,
 		{
 			algorithm: 'RS256',
 			header: {
-				'kid': credentials.privateKey as string,
+				'kid': privateKey,
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},

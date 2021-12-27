@@ -82,7 +82,7 @@ const colors = [
 	},
 ];
 
-const annotation = [
+const annotation: INodeProperties[] = [
 	{
 		displayName: 'Annotations',
 		name: 'annotationUi',
@@ -136,9 +136,9 @@ const annotation = [
 		],
 		description: 'All annotations that apply to this rich text',
 	},
-] as INodeProperties[];
+];
 
-const typeMention = [
+const typeMention: INodeProperties[] = [
 	{
 		displayName: 'Type',
 		name: 'mentionType',
@@ -284,9 +284,9 @@ const typeMention = [
 		default: '',
 		description: `An ISO 8601 formatted date, with optional time. Represents the end of a date range`,
 	},
-] as INodeProperties[];
+];
 
-const typeEquation = [
+const typeEquation: INodeProperties[] = [
 	{
 		displayName: 'Expression',
 		name: 'expression',
@@ -301,9 +301,9 @@ const typeEquation = [
 		default: '',
 		description: '',
 	},
-] as INodeProperties[];
+];
 
-const typeText = [
+const typeText: INodeProperties[] = [
 	{
 		displayName: 'Text',
 		name: 'text',
@@ -349,9 +349,9 @@ const typeText = [
 		default: '',
 		description: 'The URL that this link points to',
 	},
-] as INodeProperties[];
+];
 
-export const text = (displayOptions: IDisplayOptions) => [
+export const text = (displayOptions: IDisplayOptions): INodeProperties[] => [
 	{
 		displayName: 'Text',
 		name: 'text',
@@ -400,7 +400,7 @@ export const text = (displayOptions: IDisplayOptions) => [
 	}] as INodeProperties[];
 
 
-const todo = (type: string) => [{
+const todo = (type: string): INodeProperties[] => [{
 	displayName: 'Checked',
 	name: 'checked',
 	type: 'boolean',
@@ -415,7 +415,7 @@ const todo = (type: string) => [{
 	description: 'Whether the to_do is checked or not',
 }] as INodeProperties[];
 
-const title = (type: string) => [{
+const title = (type: string): INodeProperties[] => [{
 	displayName: 'Title',
 	name: 'title',
 	type: 'string',
@@ -430,7 +430,7 @@ const title = (type: string) => [{
 	description: 'Plain text of page title',
 }] as INodeProperties[];
 
-const richText = (displayOptions: IDisplayOptions) => [
+const richText = (displayOptions: IDisplayOptions): INodeProperties[] => [
 	{
 		displayName: 'Rich Text',
 		name: 'richText',
@@ -438,9 +438,9 @@ const richText = (displayOptions: IDisplayOptions) => [
 		displayOptions,
 		default: false,
 	},
-] as INodeProperties[];
+];
 
-const textContent = (displayOptions: IDisplayOptions) => [
+const textContent = (displayOptions: IDisplayOptions): INodeProperties[] => [
 	{
 		displayName: 'Text',
 		name: 'textContent',
@@ -448,7 +448,7 @@ const textContent = (displayOptions: IDisplayOptions) => [
 		displayOptions,
 		default: '',
 	},
-] as INodeProperties[];
+];
 
 const block = (blockType: string) => {
 	const data: INodeProperties[] = [];
@@ -519,7 +519,7 @@ const block = (blockType: string) => {
 	return data;
 };
 
-export const blocks = (resource: string, operation: string) => [{
+export const blocks = (resource: string, operation: string): INodeProperties[] => [{
 	displayName: 'Blocks',
 	name: 'blockUi',
 	type: 'fixedCollection',
@@ -565,5 +565,5 @@ export const blocks = (resource: string, operation: string) => [{
 		},
 	],
 },
-] as INodeProperties[];
+];
 

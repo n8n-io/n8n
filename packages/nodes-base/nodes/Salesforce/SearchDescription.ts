@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const searchOperations = [
+export const searchOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const searchOperations = [
 		default: 'query',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const searchFields = [
+export const searchFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                search:query                                */
@@ -49,4 +49,4 @@ export const searchFields = [
 		},
 		description: 'A SOQL query. An example query parameter string might look like: “SELECT+Name+FROM+MyObject”. If the SOQL query string is invalid, a MALFORMED_QUERY response is returned.',
 	},
-] as INodeProperties[];
+];

@@ -66,7 +66,7 @@ export const databaseOperations: INodeProperties[] = [
 	},
 ];
 
-export const databaseFields = [
+export const databaseFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                database:get                                */

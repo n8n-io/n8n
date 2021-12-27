@@ -15,9 +15,9 @@ export class N8nTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle events from your n8n instance',
+		eventTriggerDescription: '',
 		defaults: {
 			name: 'n8n Trigger',
-			color: '#ff6d5a',
 		},
 		inputs: [],
 		outputs: ['main'],

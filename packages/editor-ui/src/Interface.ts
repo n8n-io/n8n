@@ -66,11 +66,22 @@ declare module 'jsplumb' {
 	}
 
 	interface Endpoint {
+		endpoint: any; // tslint:disable-line:no-any
+		elementId: string;
 		__meta?: {
 			nodeName: string,
+			nodeId: string,
 			index: number,
+			totalEndpoints: number;
 		};
+		getUuid(): string;
 		getOverlay(name: string): any; // tslint:disable-line:no-any
+		repaint(params?: object): void;
+	}
+
+	interface N8nPlusEndpoint extends Endpoint {
+		setSuccessOutput(message: string): void;
+		clearSuccessOutput(): void;
 	}
 
 	interface Overlay {
@@ -103,6 +114,7 @@ export interface IEndpointOptions {
 	parameters?: any; // tslint:disable-line:no-any
 	uuid?: string;
 	enabled?: boolean;
+	cssClass?: string;
 }
 
 export interface IUpdateInformation {
@@ -151,6 +163,7 @@ export interface IRestApi {
 	getPastExecutions(filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
+	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
 	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
 	getNodeParameterOptions(nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
@@ -166,6 +179,16 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
+	getBinaryBufferString(dataPath: string): Promise<string>;
+}
+
+export interface INodeTranslationHeaders {
+	data: {
+		[key: string]: {
+			displayName: string;
+			description: string;
+		},
+	};
 }
 
 export interface IBinaryDisplayData {
@@ -449,7 +472,7 @@ export interface IPushDataTestWebhook {
 
 export interface IPushDataConsoleMessage {
 	source: string;
-	message: string;
+	messages: string[];
 }
 
 export interface IVersionNotificationSettings {
@@ -458,15 +481,35 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export type IPersonalizationSurveyKeys = 'companySize' | 'codingSkill' | 'workArea' | 'otherWorkArea';
+export type IPersonalizationSurveyKeys = 'codingSkill' | 'companyIndustry' | 'companySize' | 'otherCompanyIndustry' | 'otherWorkArea' | 'workArea';
 
 export type IPersonalizationSurveyAnswers = {
-	[key in IPersonalizationSurveyKeys]: string | null
+	codingSkill: string | null;
+	companyIndustry: string[];
+	companySize: string | null;
+	otherCompanyIndustry: string | null;
+	otherWorkArea: string | null;
+	workArea: string[] | string | null;
 };
 
 export interface IPersonalizationSurvey {
 	answers?: IPersonalizationSurveyAnswers;
 	shouldShow: boolean;
+}
+
+export interface IN8nPrompts {
+	message: string;
+	title: string;
+	showContactPrompt: boolean;
+	showValueSurvey: boolean;
+}
+
+export interface IN8nValueSurveyData {
+	[key: string]: string;
+}
+
+export interface IN8nPromptResponse {
+	updated: boolean;
 }
 
 export interface IN8nUISettings {
@@ -491,6 +534,7 @@ export interface IN8nUISettings {
 	instanceId: string;
 	personalizationSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
+	defaultLocale: string;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -604,6 +648,8 @@ export interface IRootState {
 	activeActions: string[];
 	activeNode: string | null;
 	baseUrl: string;
+	credentialTextRenderKeys: { nodeType: string; credentialType: string; } | null;
+	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;
@@ -673,6 +719,7 @@ export interface IUiState {
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
+	promptsData: IN8nPrompts;
 }
 
 export interface IVersionsState {
@@ -700,4 +747,3 @@ export interface IBounds {
 	maxX: number;
 	maxY: number;
 }
-

@@ -30,6 +30,7 @@ export class FunctionItem implements INodeType {
 				name: 'functionCode',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
+					codeAutocomplete: 'functionItem',
 					editor: 'code',
 					rows: 10,
 				},
@@ -113,12 +114,27 @@ return item;`,
 				let jsonData: IDataObject;
 				try {
 					// Execute the function code
-					jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
+					jsonData = await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({json:{ error: error.message }});
 						continue;
 					} else {
+						// Try to find the line number which contains the error and attach to error message
+						const stackLines = error.stack.split('\n');
+						if (stackLines.length > 0) {
+							const lineParts = stackLines[1].split(':');
+							if (lineParts.length > 2) {
+								const lineNumber = lineParts.splice(-2, 1);
+								if (!isNaN(lineNumber)) {
+									error.message = `${error.message} [Line ${lineNumber} | Item Index: ${itemIndex}]`;
+									return Promise.reject(error);
+								}
+							}
+						}
+
+						error.message = `${error.message} [Item Index: ${itemIndex}]`;
+
 						return Promise.reject(error);
 					}
 				}

@@ -21,7 +21,6 @@ export class MySql implements INodeType {
 		description: 'Get, add and update data in MySQL',
 		defaults: {
 			name: 'MySQL',
-			color: '#4279a2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

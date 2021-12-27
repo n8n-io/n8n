@@ -55,7 +55,6 @@ export class WooCommerce implements INodeType {
 		description: 'Consume WooCommerce API',
 		defaults: {
 			name: 'WooCommerce',
-			color: '#96588a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

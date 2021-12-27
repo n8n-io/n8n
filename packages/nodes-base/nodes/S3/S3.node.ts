@@ -58,7 +58,6 @@ export class S3 implements INodeType {
 		description: 'Sends data to any S3-compatible service',
 		defaults: {
 			name: 'S3',
-			color: '#d05b4b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

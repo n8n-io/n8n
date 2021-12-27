@@ -24,6 +24,7 @@ import {
 } from './ContactDescription';
 
 import * as moment from 'moment';
+import { IData } from '../Analytics/Interfaces';
 
 export class GoogleContacts implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +37,6 @@ export class GoogleContacts implements INodeType {
 		description: 'Consume Google Contacts API',
 		defaults: {
 			name: 'Google Contacts',
-			color: '#1a73e8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -264,11 +264,19 @@ export class GoogleContacts implements INodeType {
 						responseData.contactId = responseData.resourceName.split('/')[1];
 					}
 					//https://developers.google.com/people/api/rest/v1/people.connections/list
+					//https://developers.google.com/people/api/rest/v1/people/searchContacts
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const fields = this.getNodeParameter('fields', i) as string[];
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i, {}) as IDataObject;
 						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const useQuery = this.getNodeParameter('useQuery', i) as boolean;
+
+						const endpoint = (useQuery) ? ':searchContacts' : '/me/connections';
+
+						if (useQuery) {
+							qs.query = this.getNodeParameter('query', i) as string;
+						}
 
 						if (options.sortOrder) {
 							qs.sortOrder = options.sortOrder as number;
@@ -280,25 +288,36 @@ export class GoogleContacts implements INodeType {
 							qs.personFields = (fields as string[]).join(',');
 						}
 
+						if (useQuery) {
+							qs.readMask = qs.personFields;
+							delete qs.personFields;
+						}
+
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
-								'connections',
+								(useQuery) ? 'results' : 'connections',
 								'GET',
-								`/people/me/connections`,
+								`/people${endpoint}`,
 								{},
 								qs,
 							);
+
+							if (useQuery) {
+								responseData = responseData.map((result: IDataObject) => result.person);
+							}
+
 						} else {
 							qs.pageSize = this.getNodeParameter('limit', i) as number;
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/people/me/connections`,
+								`/people${endpoint}`,
 								{},
 								qs,
 							);
-							responseData = responseData.connections;
+
+							responseData = responseData.connections || responseData.results?.map((result: IDataObject) => result.person) || [];
 						}
 
 						if (!rawData) {

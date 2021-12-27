@@ -35,7 +35,6 @@ export class Oura implements INodeType {
 		description: 'Consume Oura API',
 		defaults: {
 			name: 'Oura',
-			color: '#2f4a73',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

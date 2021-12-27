@@ -11,7 +11,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { IProcessMessage, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, IProcessMessage, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
@@ -174,6 +174,7 @@ export class WorkflowRunner {
 		postExecutePromise
 			.then(async (executionData) => {
 				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+					executionId!,
 					data.workflowData,
 					executionData,
 				);
@@ -185,7 +186,11 @@ export class WorkflowRunner {
 		if (externalHooks.exists('workflow.postExecute')) {
 			postExecutePromise
 				.then(async (executionData) => {
-					await externalHooks.run('workflow.postExecute', [executionData, data.workflowData]);
+					await externalHooks.run('workflow.postExecute', [
+						executionData,
+						data.workflowData,
+						executionId,
+					]);
 				})
 				.catch((error) => {
 					console.error('There was a problem running hook "workflow.postExecute"', error);
@@ -539,6 +544,7 @@ export class WorkflowRunner {
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
 						await Db.collections.Execution!.delete(executionId);
+						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(executionId);
 					}
 					// eslint-disable-next-line id-denylist
 				} catch (err) {

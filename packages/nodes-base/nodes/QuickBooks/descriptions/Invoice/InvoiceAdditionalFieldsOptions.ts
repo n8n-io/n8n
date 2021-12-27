@@ -1,4 +1,8 @@
-export const invoiceAdditionalFieldsOptions = [
+import {
+	INodeProperties,
+} from 'n8n-workflow';
+
+export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Balance',
 		name: 'Balance',

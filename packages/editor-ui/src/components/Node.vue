@@ -1,5 +1,5 @@
 <template>
-	<div :class="{'node-wrapper': true, selected: isSelected}" :style="nodePosition">
+	<div class="node-wrapper" :style="nodePosition">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
@@ -22,39 +22,51 @@
 					</span>
 				</div>
 
-				<div class="node-executing-info" title="Node is executing">
+				<div class="node-executing-info" :title="$locale.baseText('node.nodeIsExecuting')">
 					<font-awesome-icon icon="sync-alt" spin />
+				</div>
+
+				<div class="node-trigger-tooltip__wrapper">
+					<n8n-tooltip placement="top" :manual="true" :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
+						<div slot="content" v-text="getTriggerNodeTooltip"></div>
+						<span />
+					</n8n-tooltip>
 				</div>
 
 				<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
 			</div>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
-				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
+				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
+
 					<font-awesome-icon icon="trash" />
 				</div>
-				<div v-touch:tap="disableNode" class="option" title="Activate/Deactivate Node" >
+				<div v-touch:tap="disableNode" class="option" :title="$locale.baseText('node.activateDeactivateNode')">
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
-				<div v-touch:tap="duplicateNode" class="option" title="Duplicate Node" >
+				<div v-touch:tap="duplicateNode" class="option" :title="$locale.baseText('node.duplicateNode')">
 					<font-awesome-icon icon="clone" />
 				</div>
-				<div v-touch:tap="setNodeActive" class="option touch" title="Edit Node" v-if="!isReadOnly">
+				<div v-touch:tap="setNodeActive" class="option touch" :title="$locale.baseText('node.editNode')" v-if="!isReadOnly">
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
-				<div v-touch:tap="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
+				<div v-touch:tap="executeNode" class="option" :title="$locale.baseText('node.executeNode')" v-if="!isReadOnly && !workflowRunning">
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
 			<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
 		</div>
 		<div class="node-description">
-			<div class="node-name" :title="data.name">
-				<p>{{ nodeTitle }}</p>
-				<p v-if="data.disabled">(Disabled)</p>
+			<div class="node-name" :title="nodeTitle">
+				<p>
+					{{ nodeTitle }}
+				</p>
+				<p v-if="data.disabled">
+					({{ $locale.baseText('node.disabled') }})
+				</p>
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
-				{{nodeSubtitle}}
+				{{ nodeSubtitle }}
 			</div>
 		</div>
 	</div>
@@ -106,11 +118,44 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return workflowResultDataNode.length;
 		},
+		canvasOffsetPosition() {
+			return this.$store.getters.getNodeViewOffsetPosition;
+		},
+		getTriggerNodeTooltip (): string | undefined {
+			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
+				return this.nodeType.eventTriggerDescription;
+			} else {
+				return `Waiting for you to create an event in ${this.nodeType && this.nodeType.displayName.replace(/Trigger/, "")}`;
+			}
+		},
+		isPollingTypeNode (): boolean {
+			return !!(this.nodeType && this.nodeType.polling);
+		},
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
 		},
+		isSingleActiveTriggerNode (): boolean {
+			const nodes = this.$store.getters.workflowTriggerNodes.filter((node: INodeUi) => {
+				const nodeType =  this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
+			});
+
+			return nodes.length === 1;
+		},
+		isTriggerNode (): boolean {
+			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+		},
+		isTriggerNodeTooltipEmpty () : boolean {
+			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
+		},
+		isNodeDisabled (): boolean | undefined {
+			return this.node && this.node.disabled;
+		},
 		nodeType (): INodeTypeDescription | null {
-			return this.$store.getters.nodeType(this.data.type);
+			return this.data && this.$store.getters.nodeType(this.data.type);
+		},
+		node (): INodeUi | undefined { // same as this.data but reactive..
+			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
 		},
 		nodeClass (): object {
 			return {
@@ -126,7 +171,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			const nodeIssues = NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
 
-			return 'Issues:<br />&nbsp;&nbsp;- ' + nodeIssues.join('<br />&nbsp;&nbsp;- ');
+			return `${this.$locale.baseText('node.issues')}:<br />&nbsp;&nbsp;- ` + nodeIssues.join('<br />&nbsp;&nbsp;- ');
 		},
 		nodeDisabledIcon (): string {
 			if (this.data.disabled === false) {
@@ -136,9 +181,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 		},
 		position (): XYPosition {
-			const node = this.$store.getters.nodesByName[this.name] as INodeUi; // position responsive to store changes
-
-			return node.position;
+			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
 			return !!(this.data.disabled && this.nodeType && this.nodeType.inputs.length === 1 && this.nodeType.outputs.length === 1);
@@ -153,7 +196,17 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
+		shortNodeType (): string {
+			return this.$locale.shortNodeType(this.data.type);
+		},
 		nodeTitle (): string {
+			if (this.data.name === 'Start') {
+				return this.$locale.headerText({
+					key: `headers.start.displayName`,
+					fallback: 'Start',
+				});
+			}
+
 			return this.data.name;
 		},
 		waiting (): string | undefined {
@@ -164,9 +217,17 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				if (this.name === lastNodeExecuted) {
 					const waitDate = new Date(workflowExecution.waitTill);
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-						return 'The node is waiting indefinitely for an incoming webhook call.';
+						return this.$locale.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
 					}
-					return `Node is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}`;
+					return this.$locale.baseText(
+						'node.nodeIsWaitingTill',
+						{
+							interpolate: {
+								date: waitDate.toLocaleDateString(),
+								time: waitDate.toLocaleTimeString(),
+						 	},
+						},
+					);
 				}
 			}
 
@@ -207,11 +268,40 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		shiftOutputCount (): boolean {
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
 		},
-	},
+		shouldShowTriggerTooltip () : boolean {
+			return !!this.node &&
+				this.isTriggerNode &&
+				!this.isPollingTypeNode &&
+				!this.isNodeDisabled &&
+				this.workflowRunning &&
+				this.workflowDataItems === 0  &&
+				this.isSingleActiveTriggerNode &&
+				!this.isTriggerNodeTooltipEmpty &&
+				!this.hasIssues &&
+				!this.dragging;
+		},
+ 	},
 	watch: {
 		isActive(newValue, oldValue) {
 			if (!newValue && oldValue) {
 				this.setSubtitle();
+			}
+		},
+		canvasOffsetPosition() {
+			if (this.showTriggerNodeTooltip) {
+				this.showTriggerNodeTooltip = false;
+				setTimeout(() => {
+					this.showTriggerNodeTooltip = this.shouldShowTriggerTooltip;
+				}, 200);
+			}
+		},
+		shouldShowTriggerTooltip(shouldShowTriggerTooltip) {
+			if (shouldShowTriggerTooltip) {
+				setTimeout(() => {
+					this.showTriggerNodeTooltip = this.shouldShowTriggerTooltip;
+				}, 2500);
+			} else {
+				this.showTriggerNodeTooltip = false;
 			}
 		},
 		nodeRunData(newValue) {
@@ -228,6 +318,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		return {
 			isTouchActive: false,
 			nodeSubtitle: '',
+			showTriggerNodeTooltip: false,
+			dragging: false,
 		};
 	},
 	methods: {
@@ -256,6 +348,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.$emit('duplicateNode', this.data.name);
 			});
 		},
+
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
 		},
@@ -397,7 +490,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			top: -25px;
 			left: -10px;
 			width: 120px;
-			height: 24px;
+			height: 26px;
 			font-size: 0.9em;
 			text-align: left;
 			z-index: 10;
@@ -459,13 +552,25 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		border-color: var(--color-success-light);
 	}
 }
-
 </style>
 
 <style lang="scss">
-/** node */
-.node-wrapper.selected {
+.jtk-endpoint {
 	z-index: 2;
+}
+
+.node-trigger-tooltip {
+	&__wrapper {
+		top: -22px;
+		left: 50px;
+		position: relative;
+
+		&--item {
+			max-width: 160px;
+			position: fixed;
+			z-index: 0!important;
+		}
+	}
 }
 
 /** connector */
@@ -481,32 +586,31 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 4;
 }
 
-/** node endpoints */
-.jtk-endpoint {
-	z-index:5;
-}
-
 .jtk-connector.jtk-hover {
 	z-index: 6;
 }
 
-.disabled-linethrough {
+.jtk-endpoint.plus-endpoint {
 	z-index: 6;
 }
 
-.jtk-endpoint.jtk-hover {
+.jtk-endpoint.dot-output-endpoint {
 	z-index: 7;
 }
 
 .jtk-overlay {
-	z-index:7;
+	z-index: 7;
+}
+
+.disabled-linethrough {
+	z-index: 8;
 }
 
 .jtk-connector.jtk-dragging {
 	z-index: 8;
 }
 
-.jtk-endpoint.jtk-drag-active {
+.jtk-drag-active.dot-output-endpoint, .jtk-drag-active.rect-input-endpoint {
 	z-index: 9;
 }
 
@@ -522,4 +626,88 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 10;
 }
 
+</style>
+
+<style lang="scss">
+	$--stalklength: 40px;
+	$--box-size-medium: 24px;
+	$--box-size-small: 18px;
+
+	.plus-endpoint {
+		cursor: pointer;
+
+		.plus-stalk {
+			border-top: 2px solid var(--color-foreground-dark);
+			position: absolute;
+			width: $--stalklength;
+			height: 0;
+			right: 100%;
+			top: calc(50% - 1px);
+			pointer-events: none;
+
+		  .connection-run-items-label {
+				position: relative;
+				width: 100%;
+
+				span {
+					display: none;
+					left: calc(50% + 4px);
+				}
+			}
+		}
+
+		.plus-container {
+			color: var(--color-foreground-xdark);
+			border: 2px solid var(--color-foreground-xdark);
+			background-color: var(--color-background-xlight);
+			border-radius: var(--border-radius-base);
+			height: $--box-size-medium;
+			width: $--box-size-medium;
+
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			font-size: var(--font-size-2xs);
+			position: absolute;
+
+			top: 0;
+			right: 0;
+			pointer-events: none;
+
+			&.small {
+				height: $--box-size-small;
+				width: $--box-size-small;
+				font-size: 8px;
+			}
+
+			.fa-plus {
+				width: 1em;
+			}
+		}
+
+		.drop-hover-message {
+			font-weight: var(--font-weight-bold);
+			font-size: var(--font-size-2xs);
+			line-height: var(--font-line-height-regular);
+			color: var(--color-text-light);
+
+			position: absolute;
+			top: -6px;
+			left: calc(100% + 8px);
+			width: 200px;
+			display: none;
+		}
+
+		&.hidden > * {
+			display: none;
+		}
+
+		&.success .plus-stalk {
+			border-color: var(--color-success-light);
+
+			span {
+				display: inline;
+			}
+		}
+	}
 </style>

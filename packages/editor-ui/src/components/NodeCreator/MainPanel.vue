@@ -11,9 +11,9 @@
 			/>
 			<div class="type-selector">
 				<el-tabs v-model="selectedType" stretch>
-					<el-tab-pane label="All" :name="ALL_NODE_FILTER"></el-tab-pane>
-					<el-tab-pane label="Regular" :name="REGULAR_NODE_FILTER"></el-tab-pane>
-					<el-tab-pane label="Trigger" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.all')" :name="ALL_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.regular')" :name="REGULAR_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.trigger')" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
 				</el-tabs>
 			</div>
 			<div v-if="searchFilter.length === 0" class="scrollable">
