@@ -65,7 +65,6 @@ export default Vue.extend({
 	computed: {
 		getContent(): string {
 			if (this.content) {
-
 				const imageUrls: { [key: string]: string } = {};
 				if (this.images) {
 					// @ts-ignore
@@ -124,6 +123,21 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .markdown {
+	color: var(--color-text-base);
+	font-size: var(--font-size-s);
+	line-height: var(--font-line-height-loose);
+
+	p,
+	span {
+		line-height: var(--font-line-height-loose);
+	}
+
+	ul {
+		padding: var(--spacing-4xs);
+		padding-left: var(--spacing-m);
+		line-height: var(--font-line-height-loose);
+	}
+
 	img {
 		width: 100%;
 	}
