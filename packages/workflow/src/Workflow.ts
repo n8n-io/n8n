@@ -1303,6 +1303,8 @@ export class Workflow {
 					mode,
 				);
 
+				resolveParameterData.itemIndex = i;
+
 				const requestData: IRequestOptionsFromParameters = {
 					options: {
 						url: '', // TODO: Replace with own type where url is not required
@@ -1321,18 +1323,15 @@ export class Workflow {
 					let value = get(node.parameters, property.name, []) as string | IDataObject;
 					if (typeof value === 'string' && value.charAt(0) === '=') {
 						// If the value is an expression resolve it
-						value = this.getParameterValue(
-							value,
-							{ ...resolveParameterData, itemIndex: i },
-							{},
-							true,
-						) as string | IDataObject;
+						value = this.getParameterValue(value, resolveParameterData, {}, true) as
+							| string
+							| IDataObject;
 					}
 
 					const tempOptions = this.getRequestOptionsFromParameters(
 						thisArgs,
 						property,
-						{ ...resolveParameterData, itemIndex: i },
+						resolveParameterData,
 						'',
 						{ $value: value },
 					);
@@ -1762,7 +1761,7 @@ export class Workflow {
 							option,
 							resolveParameterData,
 							nodeProperties.typeOptions?.multipleValues ? `${loopBasePath}[${i}]` : loopBasePath,
-							{ $index: i, $self: value[i] },
+							{ ...(additionalKeys || {}), $index: i, $self: value[i] },
 						);
 
 						if (tempOptions) {
