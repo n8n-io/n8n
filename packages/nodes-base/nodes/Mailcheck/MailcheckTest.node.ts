@@ -126,6 +126,10 @@ export class MailcheckTest implements INodeType {
 						name: 'Check',
 						value: 'check',
 					},
+					{
+						name: 'Delete',
+						value: 'delete',
+					},
 				],
 				request: {
 					method: 'POST',
@@ -133,6 +137,35 @@ export class MailcheckTest implements INodeType {
 				},
 				default: 'check',
 			},
+
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+						operation: [
+							'delete',
+						],
+					},
+				},
+				request: {
+					method: 'DELETE',
+					url: '=/senders/{{$value}}', // send value in path
+				},
+				requestProperty: {
+					async postReceive (this: IExecuteSingleFunctions, item: IDataObject | IDataObject[]): Promise<IDataObject | IDataObject[] | null> {
+						return {
+							success: true,
+						};
+					},
+				},
+			},
+
 			{
 				displayName: 'Sender',
 				name: 'sender',
@@ -289,6 +322,16 @@ export class MailcheckTest implements INodeType {
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+						operation: [
+							'check',
+						],
+					},
+				},
 				placeholder: 'Add Field',
 				default: {},
 				options: [
