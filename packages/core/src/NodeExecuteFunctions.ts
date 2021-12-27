@@ -472,6 +472,47 @@ async function parseRequestObject(requestObject: IDataObject) {
 	return axiosConfig;
 }
 
+function digestAuthHeader(
+	axiosConfig: AxiosRequestConfig,
+	header: string,
+	auth: AxiosRequestConfig['auth'],
+): AxiosRequestConfig {
+	const authDetails: any = header.split(',').map((v: string) => v.split('='));
+	if (authDetails) {
+		const nonceCount = `000000001`.slice(-8);
+		const cnonce = crypto.randomBytes(24).toString('hex');
+		const realm: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
+			.replace(/"/g, '');
+		const nonce: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
+			.replace(/"/g, '');
+		const ha1 = crypto
+			.createHash('md5')
+			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
+			.digest('hex');
+		const path = new url.URL(axiosConfig.url!).pathname;
+		const ha2 = crypto
+			.createHash('md5')
+			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
+			.digest('hex');
+		const response = crypto
+			.createHash('md5')
+			.update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
+			.digest('hex');
+		const authorization =
+			`Digest username="${auth?.username as string}",realm="${realm}",` +
+			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
+			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
+		if (axiosConfig.headers) {
+			axiosConfig.headers.authorization = authorization;
+		} else {
+			axiosConfig.headers = { authorization };
+		}
+	}
+	return axiosConfig;
+}
+
 async function proxyRequestToAxios(
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
@@ -511,44 +552,17 @@ async function proxyRequestToAxios(
 		// for digest-auth
 		const { auth } = axiosConfig;
 		delete axiosConfig.auth;
-		const resp1 = await axios(axiosConfig).catch((error) => {
-			if (error.response.status === 401 && error.response.headers['www-authenticate']) {
-				return error;
+		try {
+			return await axios(axiosConfig);
+		} catch (resp: any) {
+			if (
+				resp.response === undefined ||
+				resp.response.status !== 401 ||
+				!resp.response.headers['www-authenticate']?.includes('nonce')
+			) {
+				throw resp;
 			}
-			throw error;
-		});
-		const authDetails = resp1.response.headers['www-authenticate']
-			.split(',')
-			.map((v: string) => v.split('='));
-		const nonceCount = `000000001`.slice(-8);
-		const cnonce = crypto.randomBytes(24).toString('hex');
-		const realm: string = authDetails
-			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
-			.replace(/"/g, '');
-		const nonce: string = authDetails
-			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
-			.replace(/"/g, '');
-		const ha1 = crypto
-			.createHash('md5')
-			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
-			.digest('hex');
-		const path = new url.URL(axiosConfig.url!).pathname;
-		const ha2 = crypto
-			.createHash('md5')
-			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
-			.digest('hex');
-		const response = crypto
-			.createHash('md5')
-			.update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
-			.digest('hex');
-		const authorization =
-			`Digest username="${auth?.username as string}",realm="${realm}",` +
-			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
-			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
-		if (axiosConfig.headers) {
-			axiosConfig.headers.authorization = authorization;
-		} else {
-			axiosConfig.headers = { authorization };
+			axiosConfig = digestAuthHeader(axiosConfig, resp.response.headers['www-authenticate'], auth);
 		}
 	}
 
