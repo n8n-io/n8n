@@ -1,6 +1,6 @@
 /* eslint-disable import/no-cycle */
-import { IDataObject, INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
 import { BinaryDataManager } from 'n8n-core';
+import { IDataObject, INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
 import {
 	IDiagnosticInfo,
 	IInternalHooksClass,
@@ -82,6 +82,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 			num_tags: workflow.tags.length,
 		});
 	}
+
 	async onWorkflowPostExecute(
 		executionId: string,
 		workflow: IWorkflowBase,
