@@ -512,7 +512,7 @@ async function proxyRequestToAxios(
 		const { auth } = axiosConfig;
 		delete axiosConfig.auth;
 		const resp1 = await axios(axiosConfig).catch((error) => {
-			if (error.response.status === 401) {
+			if (error.response.status === 401 && error.response.headers['www-authenticate']) {
 				return error;
 			}
 			throw error;
