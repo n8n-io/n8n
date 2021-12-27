@@ -1376,7 +1376,7 @@ export class Workflow {
 	}
 
 	async rawRoutingRequest(
-		executeSingleFunctions: IExecuteSingleFunctions,,
+		executeSingleFunctions: IExecuteSingleFunctions,
 		requestData: IRequestOptionsFromParameters,
 		resolveParameterData: IResolveParameterData,
 		credentialType?: string,
@@ -1392,7 +1392,9 @@ export class Workflow {
 				{ credentialsDecrypted },
 			)) as IDataObject;
 		} else {
-			responseData = (await executeSingleFunctions.helpers.httpRequest(requestData.options)) as IDataObject;
+			responseData = (await executeSingleFunctions.helpers.httpRequest(
+				requestData.options,
+			)) as IDataObject;
 		}
 
 		for (const postReceiveMethod of requestData.postReceive) {
@@ -1406,7 +1408,7 @@ export class Workflow {
 						responseData = responseData[postReceiveMethod.properties.property] as IDataObject;
 					}
 				} else if (postReceiveMethod.type === 'set') {
-					let { value } = postReceiveMethod.properties;
+					const { value } = postReceiveMethod.properties;
 					if (typeof value === 'string' && value.charAt(0) === '=') {
 						// If the value is an expression resolve it
 						responseData = this.getParameterValue(
@@ -1620,7 +1622,6 @@ export class Workflow {
 					// Special value got set
 					if (typeof valueString === 'string' && valueString.charAt(0) === '=') {
 						// If the valueString is an expression resolve it
-						console.log('value', value);
 						value = this.getParameterValue(
 							valueString,
 							resolveParameterData,
