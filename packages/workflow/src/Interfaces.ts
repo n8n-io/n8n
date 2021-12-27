@@ -996,7 +996,8 @@ export interface INodeRequestProperty {
 				this: IExecuteSingleFunctions,
 				item: IDataObject | IDataObject[],
 		  ) => Promise<IDataObject | IDataObject[] | null>)
-		| IPostReceiveRootProperty;
+		| IPostReceiveRootProperty
+		| IPostReceiveSet;
 }
 
 export interface IPostReceiveBase {
@@ -1012,6 +1013,23 @@ export interface IPostReceiveRootProperty extends IPostReceiveBase {
 	properties: {
 		property: string;
 	};
+}
+
+export interface IPostReceiveSet extends IPostReceiveBase {
+	type: 'set';
+	properties: {
+		value: string;
+	};
+}
+
+export interface IResolveParameterData {
+	connectionInputData: INodeExecutionData[];
+	itemIndex: number;
+	mode: WorkflowExecuteMode;
+	node: INode;
+	runExecutionData: IRunExecutionData | null;
+	runIndex: number;
+	workflow: Workflow;
 }
 
 export interface IRequestOptionsFromParameters {
@@ -1030,6 +1048,7 @@ export interface IRequestOptionsFromParameters {
 				item: IDataObject | IDataObject[],
 		  ) => Promise<IDataObject | IDataObject[] | null>)
 		| IPostReceiveRootProperty
+		| IPostReceiveSet
 	>;
 }
 

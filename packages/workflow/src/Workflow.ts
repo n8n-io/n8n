@@ -34,6 +34,7 @@ import {
 	INodeType,
 	INodeTypes,
 	IPollFunctions,
+	IResolveParameterData,
 	IRequestOptionsFromParameters,
 	IRunExecutionData,
 	ITaskDataConnections,
@@ -1277,6 +1278,16 @@ export class Workflow {
 			credentialType = nodeType.description.credentials[0].name;
 		}
 
+		const resolveParameterData: IResolveParameterData = {
+			connectionInputData,
+			itemIndex: 0,
+			mode,
+			node,
+			runExecutionData: runExecutionData || null,
+			runIndex: runIndex || 0,
+			workflow: this,
+		};
+
 		// TODO: Think about how batching could be handled for REST APIs which support it
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -1310,28 +1321,18 @@ export class Workflow {
 					let value = get(node.parameters, property.name, []) as string | IDataObject;
 					if (typeof value === 'string' && value.charAt(0) === '=') {
 						// If the value is an expression resolve it
-						value = this.expression.getParameterValue(
+						value = this.getParameterValue(
 							value,
-							runExecutionData,
-							runIndex,
-							i,
-							node.name,
-							connectionInputData,
-							mode,
+							{ ...resolveParameterData, itemIndex: i },
 							{},
+							true,
 						) as string | IDataObject;
 					}
 
-					const tempOptions = this.getRequestOptionsFromParameters.call(
+					const tempOptions = this.getRequestOptionsFromParameters(
 						thisArgs,
-						this,
 						property,
-						node,
-						runExecutionData,
-						runIndex,
-						connectionInputData,
-						i,
-						mode,
+						{ ...resolveParameterData, itemIndex: i },
 						'',
 						{ $value: value },
 					);
@@ -1356,6 +1357,7 @@ export class Workflow {
 				responseData = await this.makeRoutingRequest(
 					requestData,
 					thisArgs,
+					resolveParameterData,
 					credentialType,
 					nodeType.description.requestOperations,
 				);
@@ -1374,33 +1376,45 @@ export class Workflow {
 	}
 
 	async rawRoutingRequest(
-		this: IExecuteSingleFunctions,
+		executeSingleFunctions: IExecuteSingleFunctions,,
 		requestData: IRequestOptionsFromParameters,
+		resolveParameterData: IResolveParameterData,
 		credentialType?: string,
 		credentialsDecrypted?: ICredentialsDecrypted,
 	): Promise<IDataObject[]> {
 		let responseData: IDataObject | IDataObject[] | null;
 
 		if (credentialType) {
-			responseData = (await this.helpers.requestWithAuthentication.call(
-				this,
+			responseData = (await executeSingleFunctions.helpers.requestWithAuthentication.call(
+				executeSingleFunctions,
 				credentialType,
 				requestData.options,
 				{ credentialsDecrypted },
 			)) as IDataObject;
 		} else {
-			responseData = (await this.helpers.httpRequest(requestData.options)) as IDataObject;
+			responseData = (await executeSingleFunctions.helpers.httpRequest(requestData.options)) as IDataObject;
 		}
 
 		for (const postReceiveMethod of requestData.postReceive) {
 			if (responseData !== null) {
 				if (typeof postReceiveMethod === 'function') {
-					responseData = await postReceiveMethod.call(this, responseData);
+					responseData = await postReceiveMethod.call(executeSingleFunctions, responseData);
 				} else if (postReceiveMethod.type === 'rootProperty') {
 					if (Array.isArray(responseData)) {
 						responseData = responseData.map((item) => item[postReceiveMethod.properties.property]);
 					} else {
 						responseData = responseData[postReceiveMethod.properties.property] as IDataObject;
+					}
+				} else if (postReceiveMethod.type === 'set') {
+					let { value } = postReceiveMethod.properties;
+					if (typeof value === 'string' && value.charAt(0) === '=') {
+						// If the value is an expression resolve it
+						responseData = this.getParameterValue(
+							value,
+							resolveParameterData,
+							{ $response: responseData },
+							false,
+						) as INodeParameters;
 					}
 				}
 			}
@@ -1419,6 +1433,7 @@ export class Workflow {
 	async makeRoutingRequest(
 		requestData: IRequestOptionsFromParameters,
 		executeSingleFunctions: IExecuteSingleFunctions,
+		resolveParameterData: IResolveParameterData,
 		credentialType?: string,
 		requestOperations?: IN8nRequestOperations,
 		credentialsDecrypted?: ICredentialsDecrypted,
@@ -1431,9 +1446,10 @@ export class Workflow {
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
 			makeRoutingRequest: async (requestOptions: IRequestOptionsFromParameters) => {
-				return this.rawRoutingRequest.call(
+				return this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
+					resolveParameterData,
 					credentialType,
 					credentialsDecrypted,
 				);
@@ -1475,9 +1491,10 @@ export class Workflow {
 							);
 						}
 
-						tempResponseData = await this.rawRoutingRequest.call(
+						tempResponseData = await this.rawRoutingRequest(
 							executeSingleFunctions,
 							requestData,
+							resolveParameterData,
 							credentialType,
 							credentialsDecrypted,
 						);
@@ -1498,9 +1515,10 @@ export class Workflow {
 			}
 		} else {
 			// No pagination
-			responseData = await this.rawRoutingRequest.call(
+			responseData = await this.rawRoutingRequest(
 				executeSingleFunctions,
 				requestData,
+				resolveParameterData,
 				credentialType,
 				credentialsDecrypted,
 			);
@@ -1512,16 +1530,29 @@ export class Workflow {
 		});
 	}
 
+	getParameterValue(
+		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		data: IResolveParameterData,
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
+		returnObjectAsString = false,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | string {
+		return data.workflow.expression.getParameterValue(
+			parameterValue,
+			data.runExecutionData || null,
+			data.runIndex || 0,
+			data.itemIndex || 0,
+			data.node.name,
+			data.connectionInputData,
+			data.mode,
+			additionalKeys || {},
+			returnObjectAsString,
+		);
+	}
+
 	getRequestOptionsFromParameters(
-		this: IExecuteSingleFunctions,
-		workflow: Workflow,
+		executeSingleFunctions: IExecuteSingleFunctions,
 		nodeProperties: INodeProperties,
-		node: INode,
-		runExecutionData: IRunExecutionData,
-		runIndex: number,
-		connectionInputData: INodeExecutionData[],
-		itemIndex: number,
-		mode: WorkflowExecuteMode,
+		resolveParameterData: IResolveParameterData,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 	): IRequestOptionsFromParameters | undefined {
@@ -1538,7 +1569,13 @@ export class Workflow {
 		};
 		let basePath = path ? `${path}.` : '';
 
-		if (!NodeHelpers.displayParameter(node.parameters, nodeProperties, node.parameters)) {
+		if (
+			!NodeHelpers.displayParameter(
+				resolveParameterData.node.parameters,
+				nodeProperties,
+				resolveParameterData.node.parameters,
+			)
+		) {
 			return undefined;
 		}
 
@@ -1548,15 +1585,10 @@ export class Workflow {
 				let value = nodeProperties.request[key];
 				if (typeof value === 'string' && value.charAt(0) === '=') {
 					// If the value is an expression resolve it
-					value = workflow.expression.getParameterValue(
+					value = this.getParameterValue(
 						value,
-						runExecutionData || null,
-						runIndex || 0,
-						itemIndex || 0,
-						node.name,
-						connectionInputData,
-						mode,
-						additionalKeys || {},
+						resolveParameterData,
+						additionalKeys,
 						true,
 					) as string;
 				}
@@ -1570,34 +1602,28 @@ export class Workflow {
 			if (propertyName !== undefined) {
 				if (typeof propertyName === 'string' && propertyName.charAt(0) === '=') {
 					// If the propertyName is an expression resolve it
-					propertyName = workflow.expression.getParameterValue(
+					propertyName = this.getParameterValue(
 						propertyName,
-						runExecutionData || null,
-						runIndex || 0,
-						itemIndex || 0,
-						node.name,
-						connectionInputData,
-						mode,
-						additionalKeys || {},
+						resolveParameterData,
+						additionalKeys,
 						true,
 					) as string;
 				}
 
-				let value = this.getNodeParameter(basePath + nodeProperties.name, itemIndex) as string;
+				let value = executeSingleFunctions.getNodeParameter(
+					basePath + nodeProperties.name,
+					resolveParameterData.itemIndex,
+				) as string;
 
 				if (nodeProperties.requestProperty.value) {
 					const valueString = nodeProperties.requestProperty.value;
 					// Special value got set
 					if (typeof valueString === 'string' && valueString.charAt(0) === '=') {
 						// If the valueString is an expression resolve it
-						value = workflow.expression.getParameterValue(
+						console.log('value', value);
+						value = this.getParameterValue(
 							valueString,
-							runExecutionData || null,
-							runIndex || 0,
-							itemIndex || 0,
-							node.name,
-							connectionInputData,
-							mode,
+							resolveParameterData,
 							{ ...additionalKeys, $value: value },
 							true,
 						) as string;
@@ -1627,16 +1653,14 @@ export class Workflow {
 				let paginationValue = nodeProperties.requestProperty.pagination;
 				if (typeof paginationValue === 'string' && paginationValue.charAt(0) === '=') {
 					// If the propertyName is an expression resolve it
-					const value = this.getNodeParameter(basePath + nodeProperties.name, itemIndex) as string;
+					const value = executeSingleFunctions.getNodeParameter(
+						basePath + nodeProperties.name,
+						resolveParameterData.itemIndex,
+					) as string;
 
-					paginationValue = workflow.expression.getParameterValue(
+					paginationValue = this.getParameterValue(
 						paginationValue,
-						runExecutionData || null,
-						runIndex || 0,
-						itemIndex || 0,
-						node.name,
-						connectionInputData,
-						mode,
+						resolveParameterData,
 						{ ...additionalKeys, $value: value },
 						true,
 					) as string;
@@ -1649,19 +1673,17 @@ export class Workflow {
 				let maxResultsValue = nodeProperties.requestProperty.maxResults;
 				if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
 					// If the propertyName is an expression resolve it
-					const value = this.getNodeParameter(basePath + nodeProperties.name, itemIndex) as number;
+					const value = executeSingleFunctions.getNodeParameter(
+						basePath + nodeProperties.name,
+						resolveParameterData.itemIndex,
+					) as number;
 
-					maxResultsValue = workflow.expression.getParameterValue(
+					maxResultsValue = this.getParameterValue(
 						maxResultsValue,
-						runExecutionData || null,
-						runIndex || 0,
-						itemIndex || 0,
-						node.name,
-						connectionInputData,
-						mode,
+						resolveParameterData,
 						{ ...additionalKeys, $value: value },
 						true,
-					) as number;
+					) as string;
 				}
 
 				returnData.maxResults = maxResultsValue;
@@ -1685,7 +1707,7 @@ export class Workflow {
 		let value;
 		if (nodeProperties.type === 'collection') {
 			value = NodeHelpers.getParameterValueByPath(
-				node.parameters,
+				resolveParameterData.node.parameters,
 				nodeProperties.name,
 				basePath.slice(0, -1),
 			);
@@ -1696,18 +1718,13 @@ export class Workflow {
 					propertyOption.type !== undefined
 				) {
 					// Check only if option is set and if of type INodeProperties
-					const tempOptions = workflow.getRequestOptionsFromParameters.call(
-						this,
-						workflow,
+					const tempOptions = this.getRequestOptionsFromParameters(
+						executeSingleFunctions,
 						propertyOption,
-						node,
-						runExecutionData,
-						runIndex,
-						connectionInputData,
-						itemIndex,
-						mode,
+						resolveParameterData,
 						`${basePath}${nodeProperties.name}`,
 					);
+
 					if (tempOptions) {
 						returnData.pagination = returnData.pagination || tempOptions.pagination;
 						returnData.maxResults = returnData.maxResults || tempOptions.maxResults;
@@ -1722,7 +1739,7 @@ export class Workflow {
 			for (const propertyOptions of nodeProperties.options as INodePropertyCollection[]) {
 				// Check if the option got set and if not skip it
 				value = NodeHelpers.getParameterValueByPath(
-					node.parameters,
+					resolveParameterData.node.parameters,
 					propertyOptions.name,
 					basePath.slice(0, -1),
 				);
@@ -1739,19 +1756,14 @@ export class Workflow {
 				const loopBasePath = `${basePath}${propertyOptions.name}`;
 				for (let i = 0; i < (value as INodeParameters[]).length; i++) {
 					for (const option of propertyOptions.values) {
-						const tempOptions = workflow.getRequestOptionsFromParameters.call(
-							this,
-							workflow,
+						const tempOptions = this.getRequestOptionsFromParameters(
+							executeSingleFunctions,
 							option,
-							node,
-							runExecutionData,
-							runIndex,
-							connectionInputData,
-							itemIndex,
-							mode,
+							resolveParameterData,
 							nodeProperties.typeOptions?.multipleValues ? `${loopBasePath}[${i}]` : loopBasePath,
 							{ $index: i, $self: value[i] },
 						);
+
 						if (tempOptions) {
 							returnData.pagination = returnData.pagination || tempOptions.pagination;
 							returnData.maxResults = returnData.maxResults || tempOptions.maxResults;

@@ -30,6 +30,7 @@ import {
 	INodeTypes,
 	INodeVersionedType,
 	IRequestOptionsFromParameters,
+	IResolveParameterData,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeHelpers,
@@ -564,6 +565,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 			mode,
 		);
 
+		const resolveParameterData: IResolveParameterData = {
+			connectionInputData,
+			itemIndex: 0,
+			mode,
+			node,
+			runExecutionData: runExecutionData || null,
+			runIndex: runIndex || 0,
+			workflow,
+		};
+
 		const requestData: IRequestOptionsFromParameters = {
 			options: {
 				url: '', // TODO: Replace with own type where url is not required
@@ -578,9 +589,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			Object.assign(requestData.options, nodeType.description.requestDefaults);
 		}
 
-		const tempOptions = workflow.getRequestOptionsFromParameters.call(
+		const tempOptions = workflow.getRequestOptionsFromParameters(
 			thisArgs,
-			workflow,
 			{
 				displayName: 'Temp',
 				name: 'temp',
@@ -588,12 +598,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 				request: credentialTestFunction.testRequest.request,
 				default: '',
 			},
-			credentialTestFunction.nodeType,
-			runExecutionData,
-			runIndex,
-			connectionInputData,
-			itemIndex,
-			mode,
+			resolveParameterData,
+			'',
 		);
 
 		if (tempOptions) {

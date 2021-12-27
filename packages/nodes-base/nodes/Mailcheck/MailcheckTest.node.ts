@@ -158,11 +158,19 @@ export class MailcheckTest implements INodeType {
 					url: '=/senders/{{$value}}', // send value in path
 				},
 				requestProperty: {
-					async postReceive (this: IExecuteSingleFunctions, item: IDataObject | IDataObject[]): Promise<IDataObject | IDataObject[] | null> {
-						return {
-							success: true,
-						};
+					postReceive: {
+						type: 'set',
+						properties: {
+							value: '={{ { "success": true } }}',
+							// value: '={{ { "success": $response } }}', // Also possible to use the original response data
+						},
 					},
+					// Identical with the above
+					// async postReceive (this: IExecuteSingleFunctions, item: IDataObject | IDataObject[]): Promise<IDataObject | IDataObject[] | null> {
+					// 	return {
+					// 		success: true,
+					// 	};
+					// },
 				},
 			},
 
@@ -244,6 +252,7 @@ export class MailcheckTest implements INodeType {
 					url: 'webhook/pagination-offset-sub',
 				},
 				requestProperty: {
+					// Data to returned underneath a property called "data"
 					postReceive: {
 						type: 'rootProperty',
 						properties: {
