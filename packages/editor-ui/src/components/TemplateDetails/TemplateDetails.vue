@@ -32,7 +32,7 @@
 				<div :class="$style.text">
 					<n8n-text size="small" color="text-base">
 						{{ $locale.baseText('template.details.viewed') }}
-						{{ numberFormater(template.totalViews) }}
+						{{ abbreviateNumber(template.totalViews) }}
 						{{ $locale.baseText('template.details.times') }}
 					</n8n-text>
 				</div>
@@ -42,8 +42,10 @@
 </template>
 <script lang="ts">
 import Vue from 'vue';
+
 import TemplateBlock from './TemplateBlock/TemplateBlock.vue';
 import NodeIcon from '../../components/NodeIcon.vue';
+import { abbreviateNumber } from '../helpers';
 
 export default Vue.extend({
 	props: {
@@ -56,11 +58,7 @@ export default Vue.extend({
 		TemplateBlock,
 	},
 	methods: {
-		numberFormater(num: number) {
-			return Math.abs(num) > 999
-				? Math.sign(num) * Number((Math.abs(num) / 1000).toFixed(1)) + 'k'
-				: Math.sign(num) * Math.abs(num);
-		},
+		abbreviateNumber,
 	},
 });
 </script>
@@ -74,6 +72,6 @@ export default Vue.extend({
 }
 
 .text {
-	padding-bottom: 8px;
+	padding-bottom: var(--spacing-2xs);
 }
 </style>

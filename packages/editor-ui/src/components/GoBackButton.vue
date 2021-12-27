@@ -18,7 +18,7 @@ export default Vue.extend({});
 }
 
 .icon {
-	margin-right: 8px;
+	margin-right: var(--spacing-2xs);
 	color: #C6C8D0;
 	font-size: var(--font-size-m);
 }

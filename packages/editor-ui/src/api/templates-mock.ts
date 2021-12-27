@@ -52,7 +52,7 @@ const template = {
 			typeVersion: 1,
 		},
 	],
-	totalViews: 1200,
+	totalViews: 120000,
 	categories: [
 		{
 			id: '1',
