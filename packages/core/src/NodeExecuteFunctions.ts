@@ -534,7 +534,7 @@ async function proxyRequestToAxios(
 	}
 
 	let axiosConfig: AxiosRequestConfig = {};
-	let digestPromise: AxiosPromise | undefined;
+	let axiosPromise: AxiosPromise;
 	type ConfigObject = {
 		auth?: { sendImmediately: boolean };
 		resolveWithFullResponse?: boolean;
@@ -562,7 +562,7 @@ async function proxyRequestToAxios(
 		const { auth } = axiosConfig;
 		delete axiosConfig.auth;
 		// eslint-disable-next-line no-async-promise-executor
-		digestPromise = new Promise(async (resolve, reject) => {
+		axiosPromise = new Promise(async (resolve, reject) => {
 			try {
 				const result = await axios(axiosConfig);
 				resolve(result);
@@ -578,10 +578,12 @@ async function proxyRequestToAxios(
 				resolve(axios(axiosConfig));
 			}
 		});
+	} else {
+		axiosPromise = axios(axiosConfig);
 	}
 
 	return new Promise((resolve, reject) => {
-		(digestPromise || axios(axiosConfig))
+		axiosPromise
 			.then((response) => {
 				if (configObject.resolveWithFullResponse === true) {
 					let body = response.data;
