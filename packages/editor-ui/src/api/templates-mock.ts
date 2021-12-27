@@ -27,13 +27,13 @@ const template = {
 	nodes: [
 		{
 			defaults: {
-				color: '#000000',
+				color: '#00e000',
 			},
 			displayName: 'Play',
 			icon: 'fa:play',
 			// iconData: {
-			// 	fileBuffer: '',
-			// 	type: '',
+			// 	fileBuffer: 'file:E:\projects\clients\n8n\packages\cli\node_modules\n8n-nodes-base\dist\nodes\Webhook\webhook.svg',
+			// 	type: 'fa:play',
 			// },
 			name: 'n8n-nodes-base.start',
 			typeVersion: 1,
@@ -45,8 +45,8 @@ const template = {
 			displayName: 'Webhook',
 			icon: `file:E:\projects\clients\n8n\packages\cli\node_modules\n8n-nodes-base\dist\nodes\Webhook\webhook.svg`,
 			// iconData: {
-			// 	fileBuffer: '',
-			// 	type: '',
+			// 	fileBuffer: 'file:E:\projects\clients\n8n\packages\cli\node_modules\n8n-nodes-base\dist\nodes\Webhook\webhook.svg',
+			// 	type: 'n8n-nodes-base.webhook',
 			// },
 			name: 'n8n-nodes-base.webhook',
 			typeVersion: 1,

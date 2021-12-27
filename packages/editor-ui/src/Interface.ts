@@ -584,10 +584,10 @@ export interface ITemplateNode {
 		color: string;
 	};
 	icon: string;
-	// iconData: {
-	// 	fileBuffer: string;
-	// 	type: string;
-	// };
+	iconData?: {
+		fileBuffer?: string;
+		type?: string;
+	};
 	name: string;
 	typeVersion: number;
 }
