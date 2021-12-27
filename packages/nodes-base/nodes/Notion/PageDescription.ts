@@ -6,7 +6,7 @@ import {
 	blocks,
 } from './Blocks';
 
-export const pageOperations: INodeProperties[] = [
+export const pageOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -40,7 +40,6 @@ export const pageOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -76,7 +75,7 @@ export const pageOperations: INodeProperties[] = [
 	},
 ] as INodeProperties[];
 
-export const pageFields: INodeProperties[] = [
+export const pageFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                page:archive                                */
@@ -416,4 +415,4 @@ export const pageFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

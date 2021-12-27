@@ -450,7 +450,7 @@ const textContent = (displayOptions: IDisplayOptions): INodeProperties[] => [
 	},
 ];
 
-const block = (blockType: string) => {
+const block = (blockType: string): INodeProperties[] => {
 	const data: INodeProperties[] = [];
 	switch (blockType) {
 		case 'to_do':

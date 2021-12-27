@@ -6,7 +6,7 @@ import {
 	blocks,
 } from './Blocks';
 
-export const blockOperations: INodeProperties[] = [
+export const blockOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -32,9 +32,9 @@ export const blockOperations: INodeProperties[] = [
 		],
 		default: 'append',
 	},
-];
+] as INodeProperties[];
 
-export const blockFields: INodeProperties[] = [
+export const blockFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                block:append                                 */
@@ -120,4 +120,4 @@ export const blockFields: INodeProperties[] = [
 		default: 50,
 		description: 'How many results to return',
 	},
-];
+] as INodeProperties[];

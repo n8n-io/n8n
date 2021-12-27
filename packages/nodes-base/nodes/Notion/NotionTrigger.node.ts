@@ -34,6 +34,7 @@ export class NotionTrigger implements INodeType {
 			{
 				name: 'notionApi',
 				required: true,
+				testedBy: 'notionApiCredentialTest',
 			},
 		],
 		polling: true,
@@ -74,7 +75,7 @@ export class NotionTrigger implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The ID of this database.',
+				description: 'The ID of this database',
 			},
 			{
 				displayName: 'Simplify Output',
@@ -150,7 +151,7 @@ export class NotionTrigger implements INodeType {
 
 		if (this.getMode() === 'manual') {
 			if (simple === true) {
-				data = simplifyObjects(data);
+				data = simplifyObjects(data, false, 1);
 			}
 			if (Array.isArray(data) && data.length) {
 				return [this.helpers.returnJsonArray(data)];
@@ -174,7 +175,7 @@ export class NotionTrigger implements INodeType {
 			}
 
 			if (simple === true) {
-				records = simplifyObjects(records, false);
+				records = simplifyObjects(records, false, 1);
 			}
 
 			webhookData.lastRecordProccesed = data[0].id;
