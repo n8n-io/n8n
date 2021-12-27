@@ -1598,12 +1598,20 @@ export class Workflow {
 					}
 				}
 
-				// TODO: Have to add a way to not use dot-notation as in some cases dots in nams will be required
 				if (nodeProperties.requestProperty.type === 'query') {
-					set(returnData.options.qs as object, propertyName, value);
-				} else {
-					// @ts-ignore
-					set(returnData.options.body, propertyName, value);
+					if (nodeProperties.requestProperty.propertyInDotNotation === false) {
+						returnData.options.qs![propertyName] = value;
+					} else {
+						set(returnData.options.qs as object, propertyName, value);
+					}
+				} else if (nodeProperties.requestProperty.type === 'body') {
+					// eslint-disable-next-line no-lonely-if
+					if (nodeProperties.requestProperty.propertyInDotNotation === false) {
+						// @ts-ignore
+						returnData.options.body![propertyName] = value;
+					} else {
+						set(returnData.options.body as object, propertyName, value);
+					}
 				}
 			}
 

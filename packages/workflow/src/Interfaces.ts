@@ -985,6 +985,7 @@ export interface INodeRequestProperty {
 	type?: 'body' | 'query';
 	pagination?: boolean | string;
 	maxResults?: number | string;
+	propertyInDotNotation?: boolean; // Enabled by default
 	preSend?: (
 		this: IExecuteSingleFunctions,
 		requestOptions: IHttpRequestOptions,

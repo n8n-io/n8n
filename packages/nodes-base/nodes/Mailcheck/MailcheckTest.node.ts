@@ -336,6 +336,17 @@ export class MailcheckTest implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Some Value',
+						name: 'someValue',
+						type: 'string',
+						requestProperty: {
+							property: 'some.value',
+							propertyInDotNotation: false, // send as "some.value"
+							type: 'query',
+						},
+						default: '',
+					},
+					{
 						displayName: 'Deal ID',
 						name: 'deal_id',
 						type: 'number',
@@ -424,6 +435,16 @@ export class MailcheckTest implements INodeType {
 				placeholder: 'Add Custom Property',
 				description: 'Adds a custom property to set also values which have not been predefined.',
 				type: 'fixedCollection',
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+						operation: [
+							'check',
+						],
+					},
+				},
 				default: {},
 				options: [
 					{
@@ -461,6 +482,16 @@ export class MailcheckTest implements INodeType {
 				placeholder: 'Add Custom Property',
 				description: 'Adds a custom property to set also values which have not been predefined.',
 				type: 'fixedCollection',
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+						operation: [
+							'check',
+						],
+					},
+				},
 				default: {},
 				options: [
 					{
@@ -502,6 +533,16 @@ export class MailcheckTest implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+						operation: [
+							'check',
+						],
+					},
 				},
 				default: {},
 				options: [
