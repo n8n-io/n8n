@@ -32,7 +32,6 @@ export class NetlifyTrigger implements INodeType {
 		description: 'Handle netlify events via webhooks',
 		defaults: {
 			name: 'Netlify Trigger',
-			color: '#6ad7b9',
 		},
 		inputs: [],
 		outputs: ['main'],

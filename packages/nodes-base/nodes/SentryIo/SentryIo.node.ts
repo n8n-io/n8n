@@ -63,7 +63,6 @@ export class SentryIo implements INodeType {
 		description: 'Consume Sentry.io API',
 		defaults: {
 			name: 'Sentry.io',
-			color: '#362d59',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

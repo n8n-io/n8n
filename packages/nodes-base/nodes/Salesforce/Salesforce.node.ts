@@ -132,7 +132,6 @@ export class Salesforce implements INodeType {
 		description: 'Consume Salesforce API',
 		defaults: {
 			name: 'Salesforce',
-			color: '#429fd9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

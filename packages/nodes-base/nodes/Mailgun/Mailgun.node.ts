@@ -22,7 +22,6 @@ export class Mailgun implements INodeType {
 		description: 'Sends an email via Mailgun',
 		defaults: {
 			name: 'Mailgun',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

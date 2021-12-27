@@ -62,7 +62,6 @@ export class Clockify implements INodeType {
 		description: 'Consume Clockify REST API',
 		defaults: {
 			name: 'Clockify',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
