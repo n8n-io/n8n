@@ -82,6 +82,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onWorkflowPostExecute(workflow: IWorkflowBase, runData?: IRun): Promise<void> {
+		const promises = [Promise.resolve()];
 		const properties: IDataObject = {
 			workflow_id: workflow.id,
 			is_manual: false,
@@ -123,9 +124,39 @@ export class InternalHooksClass implements IInternalHooksClass {
 					}
 				}
 			}
+
+			if (properties.is_manual) {
+				const manualExecEventProperties = {
+					workflow_id: workflow.id,
+					status: properties.success ? 'success' : 'failed',
+					error_message: properties.error_message,
+					error_node_type: properties.error_node_type,
+					node_graph: properties.node_graph,
+					node_graph_string: properties.node_graph_string,
+					error_node_id: properties.error_node_id,
+				};
+
+				if (runData.data.startData?.destinationNode) {
+					promises.push(
+						this.telemetry.track('Manual node exec finished', {
+							...manualExecEventProperties,
+							node_type: TelemetryHelpers.getNodeTypeForName(
+								workflow,
+								runData.data.startData?.destinationNode,
+							)?.type,
+						}),
+					);
+				} else {
+					promises.push(
+						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
+					);
+				}
+			}
 		}
 
-		return this.telemetry.trackWorkflowExecution(properties);
+		promises.push(this.telemetry.trackWorkflowExecution(properties));
+
+		return Promise.all(promises).then(() => {});
 	}
 
 	async onN8nStop(): Promise<void> {
