@@ -61,7 +61,7 @@ export class MailcheckTest implements INodeType {
 				requestData.options.qs.limit = pageSize;
 				requestData.options.qs.offset = 0;
 				let tempResponseData: IDataObject[];
-				let responseData: IDataObject[] = [];
+				const responseData: IDataObject[] = [];
 
 				do {
 					if (requestData?.maxResults) {
@@ -200,7 +200,7 @@ export class MailcheckTest implements INodeType {
 							'check',
 						],
 						pagination: [
-							true
+							true,
 						],
 					},
 				},
@@ -225,7 +225,7 @@ export class MailcheckTest implements INodeType {
 							'check',
 						],
 						pagination: [
-							true
+							true,
 						],
 						returnAll: [
 							false,

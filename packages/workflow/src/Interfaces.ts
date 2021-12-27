@@ -1014,11 +1014,6 @@ export interface IRequestOptionsFromParameters {
 	>;
 }
 
-export type asdf = (
-	this: IExecutePaginationFunctions,
-	requestOptions: IRequestOptionsFromParameters,
-) => Promise<IDataObject[]>;
-
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number;
 	defaults: INodeParameters;
