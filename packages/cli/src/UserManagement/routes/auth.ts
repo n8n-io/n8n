@@ -10,6 +10,7 @@ import { N8nApp, PublicUserData } from '../Interfaces';
 import config = require('../../../config');
 import { isInstanceOwnerSetup } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
+import { IDataObject } from 'n8n-workflow';
 
 
 export function addAuthenticationMethods(this: N8nApp): void {
@@ -115,6 +116,16 @@ export function addAuthenticationMethods(this: N8nApp): void {
 				firstName: firstName ?? undefined,
 				lastName: lastName ?? undefined,
 				personalizationAnswers: personalizationAnswers ?? undefined,
+			};
+		}),
+	);
+
+	this.app.get(
+		`/${this.restEndpoint}/logout`,
+		ResponseHelper.send(async (req: Request, res: Response): Promise<IDataObject> => {
+			res.clearCookie('n8n-auth');
+			return {
+				loggedOut: true,
 			};
 		}),
 	);

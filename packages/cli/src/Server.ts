@@ -626,7 +626,7 @@ class App {
 		// ----------------------------------------
 		// User Management
 		// ----------------------------------------
-		await userManagementRouter.addRoutes.apply(this);
+		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints]);
 
 		// ----------------------------------------
 		// Healthcheck

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -14,8 +15,11 @@ import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
 import { isEmailSetup } from '../UserManagementHelper';
 
-export async function addRoutes(this: N8nApp): Promise<void> {
+export async function addRoutes(this: N8nApp, ignoredEndpoints: string[]): Promise<void> {
 	this.app.use(cookieParser());
+
+	console.log('something is happening');
+	console.log(ignoredEndpoints);
 
 	const options = {
 		jwtFromRequest: (req: Request) => {
@@ -31,11 +35,18 @@ export async function addRoutes(this: N8nApp): Promise<void> {
 			const user = await Db.collections.User!.findOne(
 				{
 					id: jwtPayload.id,
-					email: jwtPayload.email,
 				},
 				{ relations: ['globalRole'] },
 			);
-			if (!user) {
+			// console.log(user);
+			if (
+				!user ||
+				(user.password && !user.password.includes(jwtPayload.password!)) ||
+				(user.email && user.email !== jwtPayload.email)
+			) {
+				// If user has email or password in database, we check.
+				// When owner hasn't been set up, the default user
+				// won't have email nor password.
 				return done(null, false, { message: 'User not found' });
 			}
 			return done(null, user);
@@ -45,14 +56,33 @@ export async function addRoutes(this: N8nApp): Promise<void> {
 	this.app.use(passport.initialize());
 
 	this.app.use((req: Request, res: Response, next: NextFunction) => {
+		// console.log(req.url);
 		// just temp for development
-		if (req.url.includes('login')) {
+		if (
+			req.url.includes('login') ||
+			req.url === '/index.html' ||
+			req.url.startsWith('/css/') ||
+			req.url.startsWith('/js/') ||
+			req.url.startsWith('/fonts/') ||
+			req.url.startsWith('/rest/settings')
+		) {
+			// console.log('skip auth because of first block');
 			return next();
 		}
-		// get access to this from Server.ts
-		// if (authIgnoreRegex.exec(req.url)) {
-		// 	return next();
-		// }
+
+		for (let i = 0; i < ignoredEndpoints.length; i++) {
+			const path = ignoredEndpoints[i];
+			if (!path) {
+				// Skip empty paths (they might exist)
+				// eslint-disable-next-line no-continue
+				continue;
+			}
+			if (req.url.includes(path)) {
+				// console.log('skip auth because of path ', path);
+				return next();
+			}
+		}
+		// console.log('should authenticate route ', req.url);
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
