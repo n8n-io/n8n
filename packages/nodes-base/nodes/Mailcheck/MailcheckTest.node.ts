@@ -76,11 +76,11 @@ export class MailcheckTest implements INodeType {
 					tempResponseData = await this.makeRoutingRequest(requestData);
 					requestData.options.qs.offset = requestData.options.qs.offset + pageSize;
 
-					tempResponseData = get(
-						tempResponseData[0],
-						'data',
-						[],
-					) as IDataObject[];
+					// tempResponseData = get(
+					// 	tempResponseData[0],
+					// 	'data',
+					// 	[],
+					// ) as IDataObject[];
 
 					responseData.push(...tempResponseData);
 				} while (tempResponseData.length && tempResponseData.length === pageSize);
@@ -242,6 +242,14 @@ export class MailcheckTest implements INodeType {
 					method: 'GET',
 					// url: 'webhook/pagination-offset',
 					url: 'webhook/pagination-offset-sub',
+				},
+				requestProperty: {
+					postReceive: {
+						type: 'rootProperty',
+						properties: {
+							property: 'data',
+						},
+					},
 				},
 				description: 'If all results should be returned or only up to a given limit.',
 			},

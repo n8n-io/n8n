@@ -1394,7 +1394,15 @@ export class Workflow {
 
 		for (const postReceiveMethod of requestData.postReceive) {
 			if (responseData !== null) {
-				responseData = await postReceiveMethod.call(this, responseData);
+				if (typeof postReceiveMethod === 'function') {
+					responseData = await postReceiveMethod.call(this, responseData);
+				} else if (postReceiveMethod.type === 'rootProperty') {
+					if (Array.isArray(responseData)) {
+						responseData = responseData.map((item) => item[postReceiveMethod.properties.property]);
+					} else {
+						responseData = responseData[postReceiveMethod.properties.property] as IDataObject;
+					}
+				}
 			}
 		}
 

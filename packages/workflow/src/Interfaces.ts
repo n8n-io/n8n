@@ -991,10 +991,27 @@ export interface INodeRequestProperty {
 		requestOptions: IHttpRequestOptions,
 	) => Promise<IHttpRequestOptions>;
 	// TODO: Improve, think how to make it possible to handle binary data
-	postReceive?: (
-		this: IExecuteSingleFunctions,
-		item: IDataObject | IDataObject[],
-	) => Promise<IDataObject | IDataObject[] | null>;
+	postReceive?:
+		| ((
+				this: IExecuteSingleFunctions,
+				item: IDataObject | IDataObject[],
+		  ) => Promise<IDataObject | IDataObject[] | null>)
+		| IPostReceivRootProperty;
+}
+
+export interface IPostReceiveBase {
+	type: string;
+	properties: {
+		[key: string]: string | number;
+	};
+	errorMessage?: string;
+}
+
+export interface IPostReceivRootProperty extends IPostReceiveBase {
+	type: 'rootProperty';
+	properties: {
+		property: string;
+	};
 }
 
 export interface IRequestOptionsFromParameters {
@@ -1008,10 +1025,11 @@ export interface IRequestOptionsFromParameters {
 		) => Promise<IHttpRequestOptions>
 	>;
 	postReceive: Array<
-		(
-			this: IExecuteSingleFunctions,
-			item: IDataObject | IDataObject[],
-		) => Promise<IDataObject | IDataObject[] | null>
+		| ((
+				this: IExecuteSingleFunctions,
+				item: IDataObject | IDataObject[],
+		  ) => Promise<IDataObject | IDataObject[] | null>)
+		| IPostReceivRootProperty
 	>;
 }
 
