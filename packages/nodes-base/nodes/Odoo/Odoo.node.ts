@@ -8,7 +8,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeApiError,
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
@@ -478,12 +477,11 @@ export class Odoo implements INodeType {
 						returnData,
 						responseData.map((data) => data.result) as IDataObject[],
 					);
-				} else {
+				} else if (responseData) {
 					returnData.push(responseData.result as IDataObject);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-
 					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}

@@ -45,6 +45,12 @@ type FilterOperation =
 	| 'notIn'
 	| 'childOf';
 
+interface IOdooResponce {
+	jsonrpc: string;
+	id: number;
+	result?: IDataObject | IDataObject[];
+	error?: IDataObject | IDataObject[];
+}
 export interface IOdooFilterOperations {
 	filter: Array<{
 		fieldName: string;
@@ -92,7 +98,7 @@ export async function odooJSONRPCRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	body: IDataObject,
 	url: string,
-): Promise<any> {
+): Promise<IOdooResponce> {
 	try {
 		const options: OptionsWithUri = {
 			headers: {
@@ -129,7 +135,7 @@ export async function odooCreate(
 	operation: OdooCRUD,
 	url: string,
 	newItem: string,
-): Promise<any> {
+) {
 	try {
 		const body = {
 			jsonrpc: '2.0',
@@ -166,7 +172,7 @@ export async function odooGet(
 	url: string,
 	itemsID: string,
 	fieldsToReturn: string,
-): Promise<any> {
+) {
 	try {
 		const body = {
 			jsonrpc: '2.0',
@@ -204,7 +210,7 @@ export async function odooGetAll(
 	url: string,
 	filters: IOdooFilterOperations,
 	fieldsToReturn: string,
-): Promise<any> {
+) {
 	try {
 		const body = {
 			jsonrpc: '2.0',
@@ -242,7 +248,7 @@ export async function odooUpdate(
 	url: string,
 	itemsID: string,
 	fieldsToUpdate: IOdooFields,
-): Promise<any> {
+) {
 	try {
 		const body = {
 			jsonrpc: '2.0',
@@ -279,7 +285,7 @@ export async function odooDelete(
 	operation: OdooCRUD,
 	url: string,
 	itemsID: string,
-): Promise<any> {
+) {
 	try {
 		const body = {
 			jsonrpc: '2.0',
@@ -325,7 +331,7 @@ export async function odooGetUserID(
 			id: Math.floor(Math.random() * 100),
 		};
 		const loginResult = await odooJSONRPCRequest.call(this, body, url);
-		return loginResult?.result;
+		return loginResult?.result as unknown as number;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -334,7 +340,7 @@ export async function odooGetUserID(
 export async function odooGetServerVersion(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	url: string,
-): Promise<number> {
+) {
 	try {
 		const body = {
 			jsonrpc: '2.0',
