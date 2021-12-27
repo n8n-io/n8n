@@ -1955,10 +1955,6 @@ export default mixins(
 				// not share objects
 				const newNodeData = JSON.parse(JSON.stringify(this.getNodeDataToSave(node)));
 
-				// here
-
-				console.log(newNodeData.name);
-
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName({
 					originalName: newNodeData.name,
