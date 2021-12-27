@@ -2133,6 +2133,9 @@ export default mixins(
 					}
 				}
 
+				this.$externalHooks().run('node.deleteNode', { node });
+				this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
+
 				let waitForNewConnection = false;
 				// connect nodes before/after deleted node
 				const nodeType: INodeTypeDescription | null = this.$store.getters.nodeType(node.type, node.typeVersion);
