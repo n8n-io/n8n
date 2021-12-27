@@ -575,8 +575,7 @@ async function proxyRequestToAxios(
 					reject(resp);
 				}
 				axiosConfig = digestAuthAxiosConfig(axiosConfig, resp.response, auth);
-				const result = await axios(axiosConfig);
-				resolve(result);
+				resolve(axios(axiosConfig));
 			}
 		});
 	}
