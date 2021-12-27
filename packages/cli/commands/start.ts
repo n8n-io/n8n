@@ -303,7 +303,7 @@ export class Start extends Command {
 
 				const instanceId = await UserSettings.getInstanceId();
 				const { cli } = await GenericHelpers.getVersions();
-				InternalHooksManager.init(instanceId, cli);
+				InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 				await Server.start();
 

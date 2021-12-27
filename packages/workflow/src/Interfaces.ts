@@ -1094,6 +1094,7 @@ export interface INodeGraphItem {
 	operation?: string;
 	domain?: string;
 	position: [number, number];
+	mode?: string;
 }
 
 export interface INodeNameIndex {

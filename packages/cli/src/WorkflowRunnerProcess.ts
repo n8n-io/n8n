@@ -139,7 +139,7 @@ export class WorkflowRunnerProcess {
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
 		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli);
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		// Credentials should now be loaded from database.
 		// We check if any node uses credentials. If it does, then

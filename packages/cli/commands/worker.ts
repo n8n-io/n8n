@@ -274,7 +274,7 @@ export class Worker extends Command {
 				const versions = await GenericHelpers.getVersions();
 				const instanceId = await UserSettings.getInstanceId();
 
-				InternalHooksManager.init(instanceId, versions.cli);
+				InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
 
 				console.info('\nn8n worker is now ready');
 				console.info(` * Version: ${versions.cli}`);

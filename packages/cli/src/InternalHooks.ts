@@ -1,5 +1,5 @@
 /* eslint-disable import/no-cycle */
-import { IDataObject, IRun, TelemetryHelpers } from 'n8n-workflow';
+import { IDataObject, INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
 import {
 	IDiagnosticInfo,
 	IInternalHooksClass,
@@ -12,8 +12,11 @@ import { Telemetry } from './telemetry';
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
 
-	constructor(private telemetry: Telemetry, versionCli: string) {
+	private nodeTypes: INodeTypes;
+
+	constructor(private telemetry: Telemetry, versionCli: string, nodeTypes: INodeTypes) {
 		this.versionCli = versionCli;
+		this.nodeTypes = nodeTypes;
 	}
 
 	async onServerStarted(
@@ -52,7 +55,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onWorkflowCreated(workflow: IWorkflowBase): Promise<void> {
-		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow);
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 		return this.telemetry.track('User created workflow', {
 			workflow_id: workflow.id,
 			node_graph: nodeGraph,
@@ -67,7 +70,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onWorkflowSaved(workflow: IWorkflowDb): Promise<void> {
-		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow);
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
 		return this.telemetry.track('User saved workflow', {
 			workflow_id: workflow.id,
@@ -111,7 +114,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				}
 
 				if (properties.is_manual) {
-					const nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow);
+					const nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 					properties.node_graph = nodeGraphResult.nodeGraph;
 					properties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 
