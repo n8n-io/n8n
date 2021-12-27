@@ -477,7 +477,7 @@ export function simplifyProperties(properties: any) {
 }
 
 // tslint:disable-next-line: no-any
-export function simplifyObjects(objects: any, download = false, version = 1) {
+export function simplifyObjects(objects: any, download = false, version = 2) {
 	if (!Array.isArray(objects)) {
 		objects = [objects];
 	}

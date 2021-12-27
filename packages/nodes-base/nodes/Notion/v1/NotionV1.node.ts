@@ -272,11 +272,10 @@ export class NotionV1 implements INodeType {
 					if (properties.length !== 0) {
 						body.properties = mapProperties(properties, timezone) as IDataObject;
 					}
-					console.log(JSON.stringify(body.properties, undefined, 2));
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
-						responseData = simplifyObjects(responseData);
+						responseData = simplifyObjects(responseData, false, 1);
 					}
 					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
@@ -319,7 +318,7 @@ export class NotionV1 implements INodeType {
 						responseData = responseData.results;
 					}
 					if (simple === true) {
-						responseData = simplifyObjects(responseData);
+						responseData = simplifyObjects(responseData, false, 1);
 					}
 					returnData.push.apply(returnData, responseData);
 				}
@@ -339,7 +338,7 @@ export class NotionV1 implements INodeType {
 					}
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple === true) {
-						responseData = simplifyObjects(responseData);
+						responseData = simplifyObjects(responseData, false, 1);
 					}
 					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
@@ -385,7 +384,7 @@ export class NotionV1 implements INodeType {
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
-						responseData = simplifyObjects(responseData);
+						responseData = simplifyObjects(responseData, false, 1);
 					}
 					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
@@ -397,7 +396,7 @@ export class NotionV1 implements INodeType {
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 					if (simple === true) {
-						responseData = simplifyObjects(responseData);
+						responseData = simplifyObjects(responseData, false, 1);
 					}
 					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
@@ -433,7 +432,7 @@ export class NotionV1 implements INodeType {
 					}
 
 					if (simple === true) {
-						responseData = simplifyObjects(responseData);
+						responseData = simplifyObjects(responseData, false, 1);
 					}
 
 					returnData.push.apply(returnData, responseData);

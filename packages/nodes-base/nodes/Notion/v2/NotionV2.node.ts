@@ -261,7 +261,7 @@ export class NotionV2 implements INodeType {
 					const databaseId = extractDatabaseId(this.getNodeParameter('databaseId', i) as string);
 					responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 					if (simple === true) {
-						responseData = simplifyObjects(responseData, download, 2)[0];
+						responseData = simplifyObjects(responseData, download)[0];
 					}
 					returnData.push(responseData);
 				}
@@ -283,7 +283,7 @@ export class NotionV2 implements INodeType {
 					}
 
 					if (simple === true) {
-						responseData = simplifyObjects(responseData, download, 2);
+						responseData = simplifyObjects(responseData, download);
 					}
 					returnData.push.apply(returnData, responseData);
 				}
@@ -318,7 +318,7 @@ export class NotionV2 implements INodeType {
 					}
 
 					if (simple === true) {
-						responseData = simplifyObjects(responseData, download, 2);
+						responseData = simplifyObjects(responseData, download);
 					}
 
 					returnData.push.apply(returnData, responseData);
@@ -364,7 +364,7 @@ export class NotionV2 implements INodeType {
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
-						responseData = simplifyObjects(responseData, false, 2);
+						responseData = simplifyObjects(responseData);
 					}
 					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
@@ -376,7 +376,7 @@ export class NotionV2 implements INodeType {
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 					if (simple === true) {
-						responseData = simplifyObjects(responseData, download, 2);
+						responseData = simplifyObjects(responseData, download);
 					}
 					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
@@ -429,7 +429,7 @@ export class NotionV2 implements INodeType {
 						responseData = await downloadFiles.call(this, responseData);
 					}
 					if (simple === true) {
-						responseData = simplifyObjects(responseData, download, 2);
+						responseData = simplifyObjects(responseData, download);
 					}
 					returnData.push.apply(returnData, responseData);
 				}
@@ -449,7 +449,7 @@ export class NotionV2 implements INodeType {
 					}
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple === true) {
-						responseData = simplifyObjects(responseData, false, 2);
+						responseData = simplifyObjects(responseData, false);
 					}
 					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
@@ -488,7 +488,7 @@ export class NotionV2 implements INodeType {
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, { archived: true });
 					if (simple === true) {
-						responseData = simplifyObjects(responseData, download, 2);
+						responseData = simplifyObjects(responseData, download);
 					}
 					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
@@ -507,7 +507,7 @@ export class NotionV2 implements INodeType {
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
-						responseData = simplifyObjects(responseData, download, 2);
+						responseData = simplifyObjects(responseData, download);
 					}
 					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
@@ -541,7 +541,7 @@ export class NotionV2 implements INodeType {
 					}
 
 					if (simple === true) {
-						responseData = simplifyObjects(responseData, download, 2);
+						responseData = simplifyObjects(responseData, download);
 					}
 
 					returnData.push.apply(returnData, responseData);
