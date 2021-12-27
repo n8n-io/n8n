@@ -48,7 +48,6 @@ export class Webhook implements INodeType {
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		defaults: {
 			name: 'Webhook',
-			color: '#885577',
 		},
 		inputs: [],
 		outputs: ['main'],

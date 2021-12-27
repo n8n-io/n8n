@@ -27,7 +27,6 @@ export class Signl4 implements INodeType {
 		description: 'Consume SIGNL4 API',
 		defaults: {
 			name: 'SIGNL4',
-			color: '#53afe8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

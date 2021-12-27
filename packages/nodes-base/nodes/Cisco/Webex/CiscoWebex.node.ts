@@ -41,7 +41,6 @@ export class CiscoWebex implements INodeType {
 		description: 'Consume the Cisco Webex API',
 		defaults: {
 			name: 'Webex',
-			color: '#29b6f6',
 		},
 		credentials: [
 			{

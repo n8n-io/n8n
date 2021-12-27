@@ -29,7 +29,6 @@ export class NotionTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'Notion Trigger',
-			color: '#000000',
 		},
 		credentials: [
 			{

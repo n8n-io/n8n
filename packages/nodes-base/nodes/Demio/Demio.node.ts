@@ -36,7 +36,6 @@ export class Demio implements INodeType {
 		description: 'Consume the Demio API',
 		defaults: {
 			name: 'Demio',
-			color: '#02bf6f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
