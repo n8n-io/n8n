@@ -73,7 +73,7 @@ import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
-import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
+import axios, { AxiosProxyConfig, AxiosRequestConfig, AxiosResponse, Method } from 'axios';
 import { URL, URLSearchParams } from 'url';
 // eslint-disable-next-line import/no-cycle
 import {
@@ -472,12 +472,14 @@ async function parseRequestObject(requestObject: IDataObject) {
 	return axiosConfig;
 }
 
-function digestAuthHeader(
+function digestAuthAxiosConfig(
 	axiosConfig: AxiosRequestConfig,
-	header: string,
+	response: AxiosResponse,
 	auth: AxiosRequestConfig['auth'],
 ): AxiosRequestConfig {
-	const authDetails: any = header.split(',').map((v: string) => v.split('='));
+	const authDetails = response.headers['www-authenticate']
+		.split(',')
+		.map((v: string) => v.split('='));
 	if (authDetails) {
 		const nonceCount = `000000001`.slice(-8);
 		const cnonce = crypto.randomBytes(24).toString('hex');
@@ -553,7 +555,7 @@ async function proxyRequestToAxios(
 		const { auth } = axiosConfig;
 		delete axiosConfig.auth;
 		try {
-			return await axios(axiosConfig);
+			await axios(axiosConfig);
 		} catch (resp: any) {
 			if (
 				resp.response === undefined ||
@@ -562,7 +564,7 @@ async function proxyRequestToAxios(
 			) {
 				throw resp;
 			}
-			axiosConfig = digestAuthHeader(axiosConfig, resp.response.headers['www-authenticate'], auth);
+			axiosConfig = digestAuthAxiosConfig(axiosConfig, resp.response, auth);
 		}
 	}
 
