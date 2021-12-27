@@ -996,7 +996,7 @@ export interface INodeRequestProperty {
 				this: IExecuteSingleFunctions,
 				item: IDataObject | IDataObject[],
 		  ) => Promise<IDataObject | IDataObject[] | null>)
-		| IPostReceivRootProperty;
+		| IPostReceiveRootProperty;
 }
 
 export interface IPostReceiveBase {
@@ -1007,7 +1007,7 @@ export interface IPostReceiveBase {
 	errorMessage?: string;
 }
 
-export interface IPostReceivRootProperty extends IPostReceiveBase {
+export interface IPostReceiveRootProperty extends IPostReceiveBase {
 	type: 'rootProperty';
 	properties: {
 		property: string;
@@ -1029,7 +1029,7 @@ export interface IRequestOptionsFromParameters {
 				this: IExecuteSingleFunctions,
 				item: IDataObject | IDataObject[],
 		  ) => Promise<IDataObject | IDataObject[] | null>)
-		| IPostReceivRootProperty
+		| IPostReceiveRootProperty
 	>;
 }
 
