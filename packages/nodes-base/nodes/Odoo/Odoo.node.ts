@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
@@ -333,7 +334,7 @@ export class Odoo implements INodeType {
 					id: Math.floor(Math.random() * 100),
 				};
 
-				let options: OptionsWithUri = {
+				const options: OptionsWithUri = {
 					headers: {
 						'User-Agent': 'https://n8n.io',
 						Connection: 'keep-alive',
@@ -482,7 +483,8 @@ export class Odoo implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as any).message });
+
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;
