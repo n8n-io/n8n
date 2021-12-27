@@ -13,6 +13,8 @@ import {
 import { OptionsWithUri } from 'request';
 
 import {
+	IOdooFields,
+	IOdooFilterOperations,
 	odooCreate,
 	odooDelete,
 	odooGet,
@@ -391,13 +393,6 @@ export class Odoo implements INodeType {
 		const db = (credentials?.db || url.split('//')[1].split('.')[0]) as string;
 		const userID = await odooGetUserID.call(this, db, username, password, url);
 
-		// const fieldsToUpdate = this.getNodeParameter('fieldsToUpdate', 0) as any;
-		// console.log(
-		// 	fieldsToUpdate?.fields.reduce((acc: any, record: any) => {
-		// 		return Object.assign(acc, { [record.fieldName]: record.fieldValue });
-		// 	}, {}),
-		// );
-
 		//----------------------------------------------------------------------
 		//                            Main loop
 		//----------------------------------------------------------------------
@@ -414,7 +409,7 @@ export class Odoo implements INodeType {
 						resource,
 						operation,
 						url,
-						this.getNodeParameter('newItem', 0),
+						this.getNodeParameter('newItem', 0) as string,
 					);
 				}
 
@@ -428,8 +423,8 @@ export class Odoo implements INodeType {
 						resource,
 						operation,
 						url,
-						this.getNodeParameter('items_id', 0),
-						this.getNodeParameter('fieldsToReturn', 0),
+						this.getNodeParameter('items_id', 0) as string,
+						this.getNodeParameter('fieldsToReturn', 0) as string,
 					);
 				}
 
@@ -443,8 +438,8 @@ export class Odoo implements INodeType {
 						resource,
 						operation,
 						url,
-						this.getNodeParameter('filterRequest', 0),
-						this.getNodeParameter('fieldsToReturn', 0),
+						this.getNodeParameter('filterRequest', 0) as IOdooFilterOperations,
+						this.getNodeParameter('fieldsToReturn', 0) as string,
 					);
 				}
 
@@ -458,8 +453,8 @@ export class Odoo implements INodeType {
 						resource,
 						operation,
 						url,
-						this.getNodeParameter('items_id', 0),
-						this.getNodeParameter('fieldsToUpdate', 0),
+						this.getNodeParameter('items_id', 0) as string,
+						this.getNodeParameter('fieldsToUpdate', 0) as IOdooFields,
 					);
 				}
 
@@ -473,7 +468,7 @@ export class Odoo implements INodeType {
 						resource,
 						operation,
 						url,
-						this.getNodeParameter('items_id', 0),
+						this.getNodeParameter('items_id', 0) as string,
 					);
 				}
 
@@ -485,9 +480,9 @@ export class Odoo implements INodeType {
 				} else {
 					returnData.push(responseData.result as IDataObject);
 				}
-			} catch (error: any) {
+			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as any).message });
 					continue;
 				}
 				throw error;
