@@ -575,13 +575,13 @@ export default mixins(
 			},
 			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
 				return this.isForCredential
-					? this.$locale.credText().optionsOptionDisplayName(this.parameter, option)
-					: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option);
+					? this.$locale.credText().optionsOptionDisplayName(this.parameter, option, this.path)
+					: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
 			},
 			getOptionsOptionDescription(option: { value: string; description: string }): string {
 				return this.isForCredential
-					? this.$locale.credText().optionsOptionDescription(this.parameter, option)
-					: this.$locale.nodeText().optionsOptionDescription(this.parameter, option);
+					? this.$locale.credText().optionsOptionDescription(this.parameter, option, this.path)
+					: this.$locale.nodeText().optionsOptionDescription(this.parameter, option, this.path);
 			},
 
 			async loadRemoteParameterOptions () {

@@ -1,50 +1,68 @@
 /**
- * Check if a param path indicates that the param is inside a `collection` param
- * having `multipleValues: true`.
- * Example: `label` in `parameters.labels[0].label`
+ * Derive the middle key, i.e. the segment of the render key located between
+ * the initial key (path to parameters root) and the property.
+ *
+ * Needed in `nodeText()` because of possibly deeply nested params.
+ *
+ * Location: `n8n-nodes-base.nodes.github.nodeView.${middleKey}.placeholder`
  */
-export function isForMultiCollection(path: string | undefined): path is string {
-	if (!path) return false;
+export function deriveMiddleKey(
+	path: string,
+	parameter: { name: string; type: string; },
+) {
+	let middleKey = parameter.name;
 
-	return /[\]\]]/.test(path);
+	if (isOptionInCollection(path)) {
+		const [collectionName, optionName] = sanitize(path).split('.');
+		middleKey = `${collectionName}.options.${optionName}`;
+	}
+
+	if (isOptionInFixedCollection(path)) {
+		const pathSegments = sanitize(path).split('.');
+		middleKey = insertOptionsAndValues(pathSegments).join('.');
+	}
+
+	if (isFixedCollection(parameter) && path !== 'parameters') {
+		const pathSegments = [...sanitize(path).split('.'), parameter.name];
+		middleKey = insertOptionsAndValues(pathSegments).join('.');
+	}
+
+	return middleKey;
 }
 
 /**
- * Check if a param path indicates that the param is inside a `fixedCollection` param.
- * Example: `email` in `parameters.additionalParameters.author.email`
- * // TODO i18n: deeper nesting e.g. slack node
+ * Check if a param path indicates that it is an option inside a `collection` param.
  */
-export function isForFixedCollection(path: string | undefined): path is string {
-	if (!path) return false;
-
-	return path.split('.').length === 4;
-}
+export const isOptionInCollection = (path: string) => path.split('.').length === 3;
 
 /**
- * Generate the render key for the section title inside a `fixedCollection` param.
+ * Check if a param path indicates that it is an option inside a `fixedCollection` param.
  */
-export function toSectionTitleKey(path: string, optionName: string) {
-	const fixedCollectionName = removeParams(path);
-
-	return `${fixedCollectionName}.options.${optionName}`;
-}
+export const isOptionInFixedCollection = (path: string) => path.split('.').length > 3;
 
 /**
- * Generate the render key for a param inside a `collection` param
- * having `multipleValues: true`.
+ * Check if a param path indicates that it itself is a `fixedCollection` param.
  */
-export function toMultiCollectionKey(path: string) {
-	return removeParams(path).replace(/\[\d\]/, '.options');
-}
+export const isFixedCollection = (parameter: { type: string }) => parameter.type === 'fixedCollection';
 
 /**
- * Generate the render key for a param inside a `fixedCollection` param.
- * TODO i18n: deeper nesting e.g. slack node
+ * Remove all indices and the `parameters.` prefix from a parameter path.
+ * Example: `parameters.a[0].b` → `a.b`
  */
-export function toFixedCollectionKey(path: string) {
-	const [ fixedCollectionName, optionName, valueName ] = removeParams(path).split('.');
+export const sanitize = (path: string) => path.replace(/\[.*?\]/g, '').replace('parameters.', '');
 
-	return `${fixedCollectionName}.options.${optionName}.values.${valueName}`;
-}
+/**
+ * Insert `'options'` and `'values'` into an array on an alternating basis.
+ * Example: `['a', 'b', 'c']` → `['a', 'options', 'b', 'values', 'c']`
+ */
+export const insertOptionsAndValues = (pathSegments: string[]) => {
+	return pathSegments.reduce<string[]>((acc, cur, i) => {
+		acc.push(cur);
 
-const removeParams = (path: string) => path.replace('parameters.', '');
+		if (i === pathSegments.length - 1) return acc;
+
+		acc.push(i % 2 === 0 ? 'options' : 'values');
+
+		return acc;
+	}, []);
+};

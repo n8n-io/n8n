@@ -5,11 +5,10 @@ import { Store } from "vuex";
 import Vue from 'vue';
 import { INodeTranslationHeaders, IRootState } from '@/Interface';
 import {
-	isForMultiCollection,
-	isForFixedCollection,
-	toSectionTitleKey,
-	toFixedCollectionKey,
-	toMultiCollectionKey,
+	deriveMiddleKey,
+	isOptionInFixedCollection,
+	sanitize,
+	insertOptionsAndValues,
 } from "./utils";
 
 const englishBaseText = require('./locales/en');
@@ -74,6 +73,10 @@ export class I18nClass {
 		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback;
 	}
 
+	/**
+	 * Render a string of header text (a node's name and description),
+	 * used variously in the nodes panel, under the node icon, etc.
+	 */
 	headerText(arg: { key: string; fallback: string; }) {
 		return this.dynamicRender(arg);
 	}
@@ -166,65 +169,60 @@ export class I18nClass {
 	 */
 	nodeText () {
 		const nodeType = this.shortNodeType(this.$store.getters.activeNode.type);
-		const nodePrefix = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
+		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
 
 		return {
 			/**
-			 * Display name for a top-level param.
+			 * Display name for an input label, whether top-level or nested.
 			 */
 			inputLabelDisplayName(
-				{ name: parameterName, displayName }: { name: string; displayName: string; },
-				path?: string,
-				{ isSectionTitle } = { isSectionTitle: false },
+				parameter: { name: string; displayName: string; type: string },
+				path = '',
 			) {
-				let middleKey = parameterName;
+				if (!path) return; // TODO: TextEdit, CodeEdit, ParameterInputExpanded
 
-				if (isSectionTitle) {
-					middleKey = toSectionTitleKey(path!, parameterName);
-				} else if (isForFixedCollection(path)) {
-					middleKey = toFixedCollectionKey(path);
-				} else if (isForMultiCollection(path)) {
-					middleKey = toMultiCollectionKey(path);
-				}
+				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
-					key: `${nodePrefix}.${middleKey}.displayName`,
-					fallback: displayName,
+					key: `${initialKey}.${middleKey}.displayName`,
+					fallback: parameter.displayName,
 				});
 			},
 
 			/**
-			 * Description (tooltip text) for an input label param.
+			 * Description (tooltip text) for an input label, whether top-level or nested.
 			 */
 			inputLabelDescription(
-				{ name: parameterName, description }: { name: string; description: string; },
-				path?: string,
+				parameter: { name: string; description: string; type: string },
+				path = '',
 			) {
-				let middleKey = parameterName;
+				if (!path) return; // TODO: TextEdit, CodeEdit, ParameterInputExpanded
 
-				if (isForFixedCollection(path)) {
-					middleKey = toFixedCollectionKey(path);
-				} else if (isForMultiCollection(path)) {
-					middleKey = toMultiCollectionKey(path);
-				}
+				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
-					key: `${nodePrefix}.${middleKey}.description`,
-					fallback: description,
+					key: `${initialKey}.${middleKey}.description`,
+					fallback: parameter.description,
 				});
 			},
 
 			/**
-			 * Display name for an option inside a `collection` or `fixedCollection` param.
+			 * Placeholder for an input label or `collection` or `fixedCollection` param.
+			 * - For an input label, the placeholder is unselectable greyed-out sample text.
+			 * - TODO: For a `collection` or `fixedCollection`, the placeholder is the button text.
 			 */
-			collectionOptionDisplayName(
-				{ name: parameterName }: { name: string; },
-				{ name: optionName, displayName }: { name: string; displayName: string; },
+			placeholder(
+				parameter: { name: string; placeholder: string; type: string },
+				path = '',
 			) {
+				if (!path) return; // TODO: TextEdit, CodeEdit, ParameterInputExpanded
+
+				const middleKey = deriveMiddleKey(path, parameter);
+
 				return context.dynamicRender({
-					key: `${nodePrefix}.${parameterName}.options.${optionName}.displayName`,
-					fallback: displayName,
+					key: `${initialKey}.${middleKey}.placeholder`,
+					fallback: parameter.placeholder,
 				});
 			},
 
@@ -232,11 +230,19 @@ export class I18nClass {
 			 * Display name for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDisplayName(
-				{ name: parameterName }: { name: string; },
+				parameter: { name: string; },
 				{ value: optionName, name: displayName }: { value: string; name: string; },
+				path = '',
 			) {
+				let middleKey = parameter.name;
+
+				if (isOptionInFixedCollection(path)) {
+					const pathSegments = sanitize(path).split('.');
+					middleKey = insertOptionsAndValues(pathSegments).join('.');
+				}
+
 				return context.dynamicRender({
-					key: `${nodePrefix}.${parameterName}.options.${optionName}.displayName`,
+					key: `${initialKey}.${middleKey}.options.${optionName}.displayName`,
 					fallback: displayName,
 				});
 			},
@@ -245,48 +251,49 @@ export class I18nClass {
 			 * Description for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDescription(
-				{ name: parameterName }: { name: string; },
+				parameter: { name: string; },
 				{ value: optionName, description }: { value: string; description: string; },
+				path = '',
 			) {
+				let middleKey = parameter.name;
+
+				if (isOptionInFixedCollection(path)) {
+					const pathSegments = sanitize(path).split('.');
+					middleKey = insertOptionsAndValues(pathSegments).join('.');
+				}
+
 				return context.dynamicRender({
-					key: `${nodePrefix}.${parameterName}.options.${optionName}.description`,
+					key: `${initialKey}.${middleKey}.options.${optionName}.description`,
 					fallback: description,
 				});
 			},
 
 			/**
-			 * Text for a button to add another option inside a `collection` or `fixedCollection` param having `multipleValues: true`.
+			 * Display name for an option in the dropdown menu of a `collection` or `fixedCollection` param.
+			 * TODO
+			 */
+			collectionOptionDisplayName(
+				{ name: parameterName }: { name: string; },
+				{ name: optionName, displayName }: { name: string; displayName: string; },
+			) {
+				return context.dynamicRender({
+					key: `${initialKey}.${parameterName}.options.${optionName}.displayName`,
+					fallback: displayName,
+				});
+			},
+
+			/**
+			 * Text for a button to add another option inside a `collection` or
+			 * `fixedCollection` param having `multipleValues: true`.
+			 * TODO
 			 */
 			multipleValueButtonText(
 				{ name: parameterName, typeOptions: { multipleValueButtonText } }:
 				{ name: string; typeOptions: { multipleValueButtonText: string; } },
 			) {
 				return context.dynamicRender({
-					key: `${nodePrefix}.${parameterName}.multipleValueButtonText`,
+					key: `${initialKey}.${parameterName}.multipleValueButtonText`,
 					fallback: multipleValueButtonText,
-				});
-			},
-
-			/**
-			 * Placeholder for a `string` or `collection` or `fixedCollection` param.
-			 * - For a `string` parameter, the placeholder is unselectable greyed-out sample text.
-			 * - For a `collection` or `fixedCollection` parameter, the placeholder is the button text.
-			 */
-			placeholder(
-				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
-				path?: string,
-			) {
-				let middleKey = parameterName;
-
-				if (isForFixedCollection(path)) {
-					middleKey = toFixedCollectionKey(path);
-				} else if (isForMultiCollection(path)) {
-					middleKey = toMultiCollectionKey(path);
-				}
-
-				return context.dynamicRender({
-					key: `${nodePrefix}.${middleKey}.placeholder`,
-					fallback: placeholder,
 				});
 			},
 		};
