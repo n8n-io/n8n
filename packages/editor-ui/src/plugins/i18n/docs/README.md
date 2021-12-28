@@ -95,12 +95,11 @@ Dynamic text relies on data that varies per node and credential:
 A credential translation file is placed at `/nodes-base/credentials/translations/{localeIdentifier}`
 
 ```
-nodes-base
-	└── credentials
-  			└── translations
-							└── de
-									├── githubApi.json
-									└── githubOAuth2Api.json
+credentials
+  └── translations
+      └── de
+          ├── githubApi.json
+          └── githubOAuth2Api.json
 ```
 Every credential must have its own credential translation file.
 
@@ -119,15 +118,13 @@ export class GithubApi implements ICredentialType {
 A node translation file is placed at `/nodes-base/nodes/{node}/translations/{localeIdentifier}`
 
 ```
-nodes-base
-	└── nodes
-			└── GitHub
-				├── GitHub.node.ts
-				├── GitHubTrigger.node.ts
-				└── translations
-						└── de
-								├── github.json
-								└── githubTrigger.json
+GitHub
+  ├── GitHub.node.ts
+  ├── GitHubTrigger.node.ts
+  └── translations
+      └── de
+          ├── github.json
+          └── githubTrigger.json
 ```
 
 Every node must have its own node translation file.

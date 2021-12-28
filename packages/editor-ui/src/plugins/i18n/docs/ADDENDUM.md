@@ -49,18 +49,16 @@ For more information, refer to Vue i18n's [linked locale messages](https://kazup
 For nodes in versioned dirs, place the `/translations` dir for the node translation file alongside the versioned `*.node.ts` file:
 
 ```
-nodes-base
-	└── nodes
-			└── Mattermost
-					└── Mattermost.node.ts
-							└── v1
-									├── MattermostV1.node.ts
-									├── actions
-									├── methods
-									├── transport
-									└── translations
-											└── de
-													└── mattermost.json
+Mattermost
+  └── Mattermost.node.ts
+    └── v1
+        ├── MattermostV1.node.ts
+        ├── actions
+        ├── methods
+        ├── transport
+        └── translations
+            └── de
+                └── mattermost.json
 ```
 
 ### Nodes in grouping dirs
@@ -68,17 +66,15 @@ nodes-base
 For nodes in grouping dirs, e.g. Google nodes, place the `/translations` dir for the node translation file alongside the `*.node.ts` file:
 
 ```
-nodes-base
-	└── nodes
-			└── Google
-					├── Books
-					├── Calendar
-					└── Drive
-							├── GoogleDrive.node.ts
-							└── translations
-									└── de
-											├── googleDrive.json
-											└── googleDriveTrigger.json
+Google
+  ├── Books
+  ├── Calendar
+  └── Drive
+      ├── GoogleDrive.node.ts
+      └── translations
+          └── de
+              ├── googleDrive.json
+              └── googleDriveTrigger.json
 ```
 
 ## Dynamic text
