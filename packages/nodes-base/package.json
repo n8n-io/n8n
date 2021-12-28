@@ -400,6 +400,7 @@
       "dist/nodes/ERPNext/ERPNext.node.js",
       "dist/nodes/ErrorTrigger/ErrorTrigger.node.js",
       "dist/nodes/Eventbrite/EventbriteTrigger.node.js",
+      "dist/nodes/Eventbrite/Eventbrite.node.js",
       "dist/nodes/ExecuteCommand/ExecuteCommand.node.js",
       "dist/nodes/ExecuteWorkflow/ExecuteWorkflow.node.js",
       "dist/nodes/Facebook/FacebookGraphApi.node.js",

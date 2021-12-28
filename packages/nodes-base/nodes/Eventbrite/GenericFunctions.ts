@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -10,17 +8,28 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function eventbriteApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	method: string,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
 	let options: OptionsWithUri = {
 		headers: {},
 		method,
 		qs,
 		body,
-		uri: uri ||`https://www.eventbriteapi.com/v3${resource}`,
+		uri: uri || `https://www.eventbriteapi.com/v3${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -44,6 +53,7 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 			return await this.helpers.requestOAuth2!.call(this, 'eventbriteOAuth2Api', options);
 		}
 	} catch (error) {
+		// @ts-ignore
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
@@ -52,8 +62,14 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function eventbriteApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function eventbriteApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	resource: string,
+	body: IDataObject = {},
+	query: IDataObject = {},
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
