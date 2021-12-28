@@ -626,8 +626,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 					}
 
 					const errorResponseData = {
-						body: error.response.data,
-						headers: error.response.headers,
 						statusCode: error.response.status,
 						statusMessage: error.response.statusText,
 					};
