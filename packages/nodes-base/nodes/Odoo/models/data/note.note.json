@@ -1,0 +1,276 @@
+{
+	"jsonrpc": "2.0",
+	"id": 55,
+	"result": {
+			"activity_ids": {
+					"type": "one2many",
+					"required": false,
+					"string": "Activities",
+					"name": "activity_ids"
+			},
+			"activity_state": {
+					"type": "selection",
+					"help": "Status based on activities\nOverdue: Due date is already passed\nToday: Activity date is today\nPlanned: Future activities.",
+					"required": false,
+					"string": "Activity State",
+					"name": "activity_state"
+			},
+			"activity_user_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Responsible User",
+					"name": "activity_user_id"
+			},
+			"activity_type_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Next Activity Type",
+					"name": "activity_type_id"
+			},
+			"activity_type_icon": {
+					"type": "char",
+					"help": "Font awesome icon e.g. fa-tasks",
+					"required": false,
+					"string": "Activity Type Icon",
+					"name": "activity_type_icon"
+			},
+			"activity_date_deadline": {
+					"type": "date",
+					"required": false,
+					"string": "Next Activity Deadline",
+					"name": "activity_date_deadline"
+			},
+			"my_activity_date_deadline": {
+					"type": "date",
+					"required": false,
+					"string": "My Activity Deadline",
+					"name": "my_activity_date_deadline"
+			},
+			"activity_summary": {
+					"type": "char",
+					"required": false,
+					"string": "Next Activity Summary",
+					"name": "activity_summary"
+			},
+			"activity_exception_decoration": {
+					"type": "selection",
+					"help": "Type of the exception activity on record.",
+					"required": false,
+					"string": "Activity Exception Decoration",
+					"name": "activity_exception_decoration"
+			},
+			"activity_exception_icon": {
+					"type": "char",
+					"help": "Icon to indicate an exception activity.",
+					"required": false,
+					"string": "Icon",
+					"name": "activity_exception_icon"
+			},
+			"activity_calendar_event_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Next Activity Calendar Event",
+					"name": "activity_calendar_event_id"
+			},
+			"message_is_follower": {
+					"type": "boolean",
+					"required": false,
+					"string": "Is Follower",
+					"name": "message_is_follower"
+			},
+			"message_follower_ids": {
+					"type": "one2many",
+					"required": false,
+					"string": "Followers",
+					"name": "message_follower_ids"
+			},
+			"message_partner_ids": {
+					"type": "many2many",
+					"required": false,
+					"string": "Followers (Partners)",
+					"name": "message_partner_ids"
+			},
+			"message_ids": {
+					"type": "one2many",
+					"required": false,
+					"string": "Messages",
+					"name": "message_ids"
+			},
+			"has_message": {
+					"type": "boolean",
+					"required": false,
+					"string": "Has Message",
+					"name": "has_message"
+			},
+			"message_unread": {
+					"type": "boolean",
+					"help": "If checked, new messages require your attention.",
+					"required": false,
+					"string": "Unread Messages",
+					"name": "message_unread"
+			},
+			"message_unread_counter": {
+					"type": "integer",
+					"help": "Number of unread messages",
+					"required": false,
+					"string": "Unread Messages Counter",
+					"name": "message_unread_counter"
+			},
+			"message_needaction": {
+					"type": "boolean",
+					"help": "If checked, new messages require your attention.",
+					"required": false,
+					"string": "Action Needed",
+					"name": "message_needaction"
+			},
+			"message_needaction_counter": {
+					"type": "integer",
+					"help": "Number of messages which requires an action",
+					"required": false,
+					"string": "Number of Actions",
+					"name": "message_needaction_counter"
+			},
+			"message_has_error": {
+					"type": "boolean",
+					"help": "If checked, some messages have a delivery error.",
+					"required": false,
+					"string": "Message Delivery error",
+					"name": "message_has_error"
+			},
+			"message_has_error_counter": {
+					"type": "integer",
+					"help": "Number of messages with delivery error",
+					"required": false,
+					"string": "Number of errors",
+					"name": "message_has_error_counter"
+			},
+			"message_attachment_count": {
+					"type": "integer",
+					"required": false,
+					"string": "Attachment Count",
+					"name": "message_attachment_count"
+			},
+			"message_main_attachment_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Main Attachment",
+					"name": "message_main_attachment_id"
+			},
+			"website_message_ids": {
+					"type": "one2many",
+					"help": "Website communication history",
+					"required": false,
+					"string": "Website Messages",
+					"name": "website_message_ids"
+			},
+			"message_has_sms_error": {
+					"type": "boolean",
+					"help": "If checked, some messages have a delivery error.",
+					"required": false,
+					"string": "SMS Delivery error",
+					"name": "message_has_sms_error"
+			},
+			"name": {
+					"type": "text",
+					"required": false,
+					"string": "Note Summary",
+					"name": "name"
+			},
+			"user_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Owner",
+					"name": "user_id"
+			},
+			"memo": {
+					"type": "html",
+					"required": false,
+					"string": "Note Content",
+					"name": "memo"
+			},
+			"sequence": {
+					"type": "integer",
+					"required": false,
+					"string": "Sequence",
+					"name": "sequence"
+			},
+			"stage_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Stage",
+					"name": "stage_id"
+			},
+			"stage_ids": {
+					"type": "many2many",
+					"required": false,
+					"string": "Stages of Users",
+					"name": "stage_ids"
+			},
+			"open": {
+					"type": "boolean",
+					"required": false,
+					"string": "Active",
+					"name": "open"
+			},
+			"date_done": {
+					"type": "date",
+					"required": false,
+					"string": "Date done",
+					"name": "date_done"
+			},
+			"color": {
+					"type": "integer",
+					"required": false,
+					"string": "Color Index",
+					"name": "color"
+			},
+			"tag_ids": {
+					"type": "many2many",
+					"required": false,
+					"string": "Tags",
+					"name": "tag_ids"
+			},
+			"id": {
+					"type": "integer",
+					"required": false,
+					"string": "ID",
+					"name": "id"
+			},
+			"__last_update": {
+					"type": "datetime",
+					"required": false,
+					"string": "Last Modified on",
+					"name": "__last_update"
+			},
+			"display_name": {
+					"type": "char",
+					"required": false,
+					"string": "Display Name",
+					"name": "display_name"
+			},
+			"create_uid": {
+					"type": "many2one",
+					"required": false,
+					"string": "Created by",
+					"name": "create_uid"
+			},
+			"create_date": {
+					"type": "datetime",
+					"required": false,
+					"string": "Created on",
+					"name": "create_date"
+			},
+			"write_uid": {
+					"type": "many2one",
+					"required": false,
+					"string": "Last Updated by",
+					"name": "write_uid"
+			},
+			"write_date": {
+					"type": "datetime",
+					"required": false,
+					"string": "Last Updated on",
+					"name": "write_date"
+			}
+	}
+}

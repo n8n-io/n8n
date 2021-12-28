@@ -13,7 +13,6 @@ import {
 import { OptionsWithUri } from 'request';
 
 import {
-	IOdooFields,
 	IOdooFilterOperations,
 	odooCreate,
 	odooDelete,
@@ -22,6 +21,13 @@ import {
 	odooGetUserID,
 	odooUpdate,
 } from './GenericFunctions';
+import {
+	calendarEventDescription,
+	crmLeadDescription,
+	noteNoteDescription,
+	resPartnerDescription,
+	stockPickingTypeDescription,
+} from './models/OdooModelsDescription';
 
 export class Odoo implements INodeType {
 	description: INodeTypeDescription = {
@@ -130,23 +136,9 @@ export class Odoo implements INodeType {
 					},
 				],
 			},
-			//    Create    ------------------------------------------------------
-			{
-				displayName: 'New Item (JSON)',
-				name: 'newItem',
-				type: 'json',
-				default: '',
-				description: 'Specify fields of a new item',
-				placeholder: '{"memo": "New note"}',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['create'],
-					},
-				},
-			},
 
 			//    Get       ------------------------------------------------------
+
 			{
 				displayName: 'Item ID',
 				name: 'items_id',
@@ -162,20 +154,47 @@ export class Odoo implements INodeType {
 				},
 			},
 
+			//======================================================================
 			{
 				displayName: 'Fields To Include',
-				name: 'fieldsToReturn',
-				type: 'string',
-				default: '',
-				description: 'Specify field or fields that would be returned',
-				placeholder: 'name or name,memo...',
-				required: false,
+				name: 'fieldsList',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Field',
+				},
+				default: {},
+				description: 'Choose fields to be returned',
+				placeholder: '',
 				displayOptions: {
 					show: {
+						resource: ['custom'],
 						operation: ['get', 'getAll'],
 					},
 				},
+				options: [
+					{
+						displayName: 'Fields To Be Returnedd',
+						name: 'fields',
+						values: [
+							{
+								displayName: 'Field:',
+								name: 'field',
+								type: 'string',
+								default: '',
+								description: 'Enter field name',
+								placeholder: '',
+							},
+						],
+					},
+				],
 			},
+			...noteNoteDescription,
+			...resPartnerDescription,
+			...calendarEventDescription,
+			...crmLeadDescription,
+			...stockPickingTypeDescription,
+			//======================================================================
 
 			//    Get All   ------------------------------------------------------
 
@@ -271,10 +290,11 @@ export class Odoo implements INodeType {
 				],
 			},
 
-			//    Update    ------------------------------------------------------
+			//    Update/Create    -----------------------------------------------
+
 			{
-				displayName: 'Fields To Update',
-				name: 'fieldsToUpdate',
+				displayName: 'AddFields',
+				name: 'fieldsToCreateOrUpdate',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -285,12 +305,12 @@ export class Odoo implements INodeType {
 				placeholder: '',
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: ['update', 'create'],
 					},
 				},
 				options: [
 					{
-						displayName: 'Fields To Be Updated',
+						displayName: 'Field Record:',
 						name: 'fields',
 						values: [
 							{
@@ -409,7 +429,7 @@ export class Odoo implements INodeType {
 						resource,
 						operation,
 						url,
-						this.getNodeParameter('newItem', 0) as string,
+						this.getNodeParameter('fieldsToCreateOrUpdate', 0) as IDataObject,
 					);
 				}
 
@@ -424,7 +444,7 @@ export class Odoo implements INodeType {
 						operation,
 						url,
 						this.getNodeParameter('items_id', 0) as string,
-						this.getNodeParameter('fieldsToReturn', 0) as string,
+						this.getNodeParameter('fieldsList', 0) as IDataObject,
 					);
 				}
 
@@ -439,7 +459,7 @@ export class Odoo implements INodeType {
 						operation,
 						url,
 						this.getNodeParameter('filterRequest', 0) as IOdooFilterOperations,
-						this.getNodeParameter('fieldsToReturn', 0) as string,
+						this.getNodeParameter('fieldsList', 0) as IDataObject,
 					);
 				}
 
@@ -454,7 +474,7 @@ export class Odoo implements INodeType {
 						operation,
 						url,
 						this.getNodeParameter('items_id', 0) as string,
-						this.getNodeParameter('fieldsToUpdate', 0) as IOdooFields,
+						this.getNodeParameter('fieldsToCreateOrUpdate', 0) as IDataObject,
 					);
 				}
 
@@ -473,10 +493,7 @@ export class Odoo implements INodeType {
 				}
 
 				if (Array.isArray(responseData)) {
-					returnData.push.apply(
-						returnData,
-						responseData,
-					);
+					returnData.push.apply(returnData, responseData);
 				} else if (responseData !== undefined) {
 					returnData.push(responseData);
 				}
@@ -489,6 +506,7 @@ export class Odoo implements INodeType {
 			}
 		}
 
+		console.log(noteNoteDescription);
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

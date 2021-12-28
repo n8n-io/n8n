@@ -1,0 +1,228 @@
+{
+	"jsonrpc": "2.0",
+	"id": 55,
+	"result": {
+			"name": {
+					"type": "char",
+					"required": true,
+					"string": "Operation Type",
+					"name": "name"
+			},
+			"color": {
+					"type": "integer",
+					"required": false,
+					"string": "Color",
+					"name": "color"
+			},
+			"sequence": {
+					"type": "integer",
+					"help": "Used to order the 'All Operations' kanban view",
+					"required": false,
+					"string": "Sequence",
+					"name": "sequence"
+			},
+			"sequence_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Reference Sequence",
+					"name": "sequence_id"
+			},
+			"sequence_code": {
+					"type": "char",
+					"required": true,
+					"string": "Code",
+					"name": "sequence_code"
+			},
+			"default_location_src_id": {
+					"type": "many2one",
+					"help": "This is the default source location when you create a picking manually with this operation type. It is possible however to change it or that the routes put another location. If it is empty, it will check for the supplier location on the partner. ",
+					"required": false,
+					"string": "Default Source Location",
+					"name": "default_location_src_id"
+			},
+			"default_location_dest_id": {
+					"type": "many2one",
+					"help": "This is the default destination location when you create a picking manually with this operation type. It is possible however to change it or that the routes put another location. If it is empty, it will check for the customer location on the partner. ",
+					"required": false,
+					"string": "Default Destination Location",
+					"name": "default_location_dest_id"
+			},
+			"code": {
+					"type": "selection",
+					"required": true,
+					"string": "Type of Operation",
+					"name": "code"
+			},
+			"return_picking_type_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Operation Type for Returns",
+					"name": "return_picking_type_id"
+			},
+			"show_entire_packs": {
+					"type": "boolean",
+					"help": "If ticked, you will be able to select entire packages to move",
+					"required": false,
+					"string": "Move Entire Packages",
+					"name": "show_entire_packs"
+			},
+			"warehouse_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Warehouse",
+					"name": "warehouse_id"
+			},
+			"active": {
+					"type": "boolean",
+					"required": false,
+					"string": "Active",
+					"name": "active"
+			},
+			"use_create_lots": {
+					"type": "boolean",
+					"help": "If this is checked only, it will suppose you want to create new Lots/Serial Numbers, so you can provide them in a text field. ",
+					"required": false,
+					"string": "Create New Lots/Serial Numbers",
+					"name": "use_create_lots"
+			},
+			"use_existing_lots": {
+					"type": "boolean",
+					"help": "If this is checked, you will be able to choose the Lots/Serial Numbers. You can also decide to not put lots in this operation type.  This means it will create stock with no lot or not put a restriction on the lot taken. ",
+					"required": false,
+					"string": "Use Existing Lots/Serial Numbers",
+					"name": "use_existing_lots"
+			},
+			"print_label": {
+					"type": "boolean",
+					"help": "If this checkbox is ticked, label will be print in this operation.",
+					"required": false,
+					"string": "Print Label",
+					"name": "print_label"
+			},
+			"show_operations": {
+					"type": "boolean",
+					"help": "If this checkbox is ticked, the pickings lines will represent detailed stock operations. If not, the picking lines will represent an aggregate of detailed stock operations.",
+					"required": false,
+					"string": "Show Detailed Operations",
+					"name": "show_operations"
+			},
+			"show_reserved": {
+					"type": "boolean",
+					"help": "If this checkbox is ticked, Odoo will automatically pre-fill the detailed operations with the corresponding products, locations and lot/serial numbers.",
+					"required": false,
+					"string": "Pre-fill Detailed Operations",
+					"name": "show_reserved"
+			},
+			"reservation_method": {
+					"type": "selection",
+					"help": "How products in transfers of this operation type should be reserved.",
+					"required": true,
+					"string": "Reservation Method",
+					"name": "reservation_method"
+			},
+			"reservation_days_before": {
+					"type": "integer",
+					"help": "Maximum number of days before scheduled date that products should be reserved.",
+					"required": false,
+					"string": "Days",
+					"name": "reservation_days_before"
+			},
+			"reservation_days_before_priority": {
+					"type": "integer",
+					"help": "Maximum number of days before scheduled date that priority picking products should be reserved.",
+					"required": false,
+					"string": "Days when starred",
+					"name": "reservation_days_before_priority"
+			},
+			"count_picking_draft": {
+					"type": "integer",
+					"required": false,
+					"string": "Count Picking Draft",
+					"name": "count_picking_draft"
+			},
+			"count_picking_ready": {
+					"type": "integer",
+					"required": false,
+					"string": "Count Picking Ready",
+					"name": "count_picking_ready"
+			},
+			"count_picking": {
+					"type": "integer",
+					"required": false,
+					"string": "Count Picking",
+					"name": "count_picking"
+			},
+			"count_picking_waiting": {
+					"type": "integer",
+					"required": false,
+					"string": "Count Picking Waiting",
+					"name": "count_picking_waiting"
+			},
+			"count_picking_late": {
+					"type": "integer",
+					"required": false,
+					"string": "Count Picking Late",
+					"name": "count_picking_late"
+			},
+			"count_picking_backorders": {
+					"type": "integer",
+					"required": false,
+					"string": "Count Picking Backorders",
+					"name": "count_picking_backorders"
+			},
+			"barcode": {
+					"type": "char",
+					"required": false,
+					"string": "Barcode",
+					"name": "barcode"
+			},
+			"company_id": {
+					"type": "many2one",
+					"required": true,
+					"string": "Company",
+					"name": "company_id"
+			},
+			"id": {
+					"type": "integer",
+					"required": false,
+					"string": "ID",
+					"name": "id"
+			},
+			"__last_update": {
+					"type": "datetime",
+					"required": false,
+					"string": "Last Modified on",
+					"name": "__last_update"
+			},
+			"display_name": {
+					"type": "char",
+					"required": false,
+					"string": "Display Name",
+					"name": "display_name"
+			},
+			"create_uid": {
+					"type": "many2one",
+					"required": false,
+					"string": "Created by",
+					"name": "create_uid"
+			},
+			"create_date": {
+					"type": "datetime",
+					"required": false,
+					"string": "Created on",
+					"name": "create_date"
+			},
+			"write_uid": {
+					"type": "many2one",
+					"required": false,
+					"string": "Last Updated by",
+					"name": "write_uid"
+			},
+			"write_date": {
+					"type": "datetime",
+					"required": false,
+					"string": "Last Updated on",
+					"name": "write_date"
+			}
+	}
+}

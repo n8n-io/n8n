@@ -59,10 +59,17 @@ export interface IOdooFilterOperations {
 	}>;
 }
 
-export interface IOdooFields {
+export interface IOdooNameValueFields {
 	fields: Array<{
 		fieldName: string;
 		fieldValue: string;
+	}>;
+}
+
+export interface IOdooResponceFields {
+	fields: Array<{
+		field: string;
+		fromList?: boolean;
 	}>;
 }
 
@@ -88,10 +95,16 @@ function processFilters(value: IOdooFilterOperations) {
 	});
 }
 
-function processFields(value: IOdooFields) {
-	return value?.fields.reduce((acc, record) => {
+function processNameValueFields(value: IDataObject) {
+	const data = value as unknown as IOdooNameValueFields;
+	return data?.fields?.reduce((acc, record) => {
 		return Object.assign(acc, { [record.fieldName]: record.fieldValue });
 	}, {});
+}
+
+function processResponceFields(value: IDataObject) {
+	const data = value as unknown as IOdooResponceFields;
+	return data?.fields?.map((entry) => entry.field);
 }
 
 export async function odooJSONRPCRequest(
@@ -134,7 +147,7 @@ export async function odooCreate(
 	resource: string,
 	operation: OdooCRUD,
 	url: string,
-	newItem: string,
+	newItem: IDataObject,
 ) {
 	try {
 		const body = {
@@ -149,14 +162,14 @@ export async function odooCreate(
 					password,
 					resource,
 					mapOperationToJSONRPC[operation],
-					[JSON.parse(newItem)],
+					processNameValueFields(newItem) || {},
 				],
 			},
 			id: Math.floor(Math.random() * 100),
 		};
 
 		const result = await odooJSONRPCRequest.call(this, body, url);
-		return result;
+		return { id: result };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -171,7 +184,7 @@ export async function odooGet(
 	operation: OdooCRUD,
 	url: string,
 	itemsID: string,
-	fieldsToReturn: string,
+	fieldsToReturn: IDataObject,
 ) {
 	try {
 		const body = {
@@ -187,7 +200,7 @@ export async function odooGet(
 					resource,
 					mapOperationToJSONRPC[operation],
 					sanitizeInput(itemsID, true) || [],
-					sanitizeInput(fieldsToReturn) || [],
+					processResponceFields(fieldsToReturn) || [],
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -209,7 +222,7 @@ export async function odooGetAll(
 	operation: OdooCRUD,
 	url: string,
 	filters: IOdooFilterOperations,
-	fieldsToReturn: string,
+	fieldsToReturn: IDataObject,
 ) {
 	try {
 		const body = {
@@ -225,7 +238,7 @@ export async function odooGetAll(
 					resource,
 					mapOperationToJSONRPC[operation],
 					processFilters(filters) || [],
-					sanitizeInput(fieldsToReturn) || [],
+					processResponceFields(fieldsToReturn) || [],
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -247,7 +260,7 @@ export async function odooUpdate(
 	operation: OdooCRUD,
 	url: string,
 	itemsID: string,
-	fieldsToUpdate: IOdooFields,
+	fieldsToUpdate: IDataObject,
 ) {
 	try {
 		const body = {
@@ -263,14 +276,14 @@ export async function odooUpdate(
 					resource,
 					mapOperationToJSONRPC[operation],
 					sanitizeInput(itemsID, true) || [],
-					processFields(fieldsToUpdate) || [],
+					processNameValueFields(fieldsToUpdate) || {},
 				],
 			},
 			id: Math.floor(Math.random() * 100),
 		};
 
 		const result = await odooJSONRPCRequest.call(this, body, url);
-		return result;
+		return {success: result};
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -306,7 +319,7 @@ export async function odooDelete(
 		};
 
 		const result = await odooJSONRPCRequest.call(this, body, url);
-		return result;
+		return {success: result};
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

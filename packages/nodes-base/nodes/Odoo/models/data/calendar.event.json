@@ -1,0 +1,465 @@
+{
+	"jsonrpc": "2.0",
+	"id": 55,
+	"result": {
+			"message_is_follower": {
+					"type": "boolean",
+					"required": false,
+					"string": "Is Follower",
+					"name": "message_is_follower"
+			},
+			"message_follower_ids": {
+					"type": "one2many",
+					"required": false,
+					"string": "Followers",
+					"name": "message_follower_ids"
+			},
+			"message_partner_ids": {
+					"type": "many2many",
+					"required": false,
+					"string": "Followers (Partners)",
+					"name": "message_partner_ids"
+			},
+			"message_ids": {
+					"type": "one2many",
+					"required": false,
+					"string": "Messages",
+					"name": "message_ids"
+			},
+			"has_message": {
+					"type": "boolean",
+					"required": false,
+					"string": "Has Message",
+					"name": "has_message"
+			},
+			"message_unread": {
+					"type": "boolean",
+					"help": "If checked, new messages require your attention.",
+					"required": false,
+					"string": "Unread Messages",
+					"name": "message_unread"
+			},
+			"message_unread_counter": {
+					"type": "integer",
+					"help": "Number of unread messages",
+					"required": false,
+					"string": "Unread Messages Counter",
+					"name": "message_unread_counter"
+			},
+			"message_needaction": {
+					"type": "boolean",
+					"help": "If checked, new messages require your attention.",
+					"required": false,
+					"string": "Action Needed",
+					"name": "message_needaction"
+			},
+			"message_needaction_counter": {
+					"type": "integer",
+					"help": "Number of messages which requires an action",
+					"required": false,
+					"string": "Number of Actions",
+					"name": "message_needaction_counter"
+			},
+			"message_has_error": {
+					"type": "boolean",
+					"help": "If checked, some messages have a delivery error.",
+					"required": false,
+					"string": "Message Delivery error",
+					"name": "message_has_error"
+			},
+			"message_has_error_counter": {
+					"type": "integer",
+					"help": "Number of messages with delivery error",
+					"required": false,
+					"string": "Number of errors",
+					"name": "message_has_error_counter"
+			},
+			"message_attachment_count": {
+					"type": "integer",
+					"required": false,
+					"string": "Attachment Count",
+					"name": "message_attachment_count"
+			},
+			"message_main_attachment_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Main Attachment",
+					"name": "message_main_attachment_id"
+			},
+			"website_message_ids": {
+					"type": "one2many",
+					"help": "Website communication history",
+					"required": false,
+					"string": "Website Messages",
+					"name": "website_message_ids"
+			},
+			"message_has_sms_error": {
+					"type": "boolean",
+					"help": "If checked, some messages have a delivery error.",
+					"required": false,
+					"string": "SMS Delivery error",
+					"name": "message_has_sms_error"
+			},
+			"name": {
+					"type": "char",
+					"required": true,
+					"string": "Meeting Subject",
+					"name": "name"
+			},
+			"description": {
+					"type": "html",
+					"required": false,
+					"string": "Description",
+					"name": "description"
+			},
+			"user_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Organizer",
+					"name": "user_id"
+			},
+			"partner_id": {
+					"type": "many2one",
+					"help": "Partner-related data of the user",
+					"required": false,
+					"string": "Scheduled by",
+					"name": "partner_id"
+			},
+			"location": {
+					"type": "char",
+					"help": "Location of Event",
+					"required": false,
+					"string": "Location",
+					"name": "location"
+			},
+			"videocall_location": {
+					"type": "char",
+					"required": false,
+					"string": "Meeting URL",
+					"name": "videocall_location"
+			},
+			"privacy": {
+					"type": "selection",
+					"help": "People to whom this event will be visible.",
+					"required": true,
+					"string": "Privacy",
+					"name": "privacy"
+			},
+			"show_as": {
+					"type": "selection",
+					"help": "If the time is shown as 'busy', this event will be visible to other people with either the full         information or simply 'busy' written depending on its privacy. Use this option to let other people know         that you are unavailable during that period of time. \n If the time is shown as 'free', this event won't         be visible to other people at all. Use this option to let other people know that you are available during         that period of time.",
+					"required": true,
+					"string": "Show as",
+					"name": "show_as"
+			},
+			"is_highlighted": {
+					"type": "boolean",
+					"required": false,
+					"string": "Is the Event Highlighted",
+					"name": "is_highlighted"
+			},
+			"is_organizer_alone": {
+					"type": "boolean",
+					"help": "Check if the organizer is alone in the event, i.e. if the organizer is the only one that hasn't declined\n        the event (only if the organizer is not the only attendee)",
+					"required": false,
+					"string": "Is the Organizer Alone",
+					"name": "is_organizer_alone"
+			},
+			"active": {
+					"type": "boolean",
+					"help": "If the active field is set to false, it will allow you to hide the event alarm information without removing it.",
+					"required": false,
+					"string": "Active",
+					"name": "active"
+			},
+			"categ_ids": {
+					"type": "many2many",
+					"required": false,
+					"string": "Tags",
+					"name": "categ_ids"
+			},
+			"start": {
+					"type": "datetime",
+					"help": "Start date of an event, without time for full days events",
+					"required": true,
+					"string": "Start",
+					"name": "start"
+			},
+			"stop": {
+					"type": "datetime",
+					"help": "Stop date of an event, without time for full days events",
+					"required": true,
+					"string": "Stop",
+					"name": "stop"
+			},
+			"display_time": {
+					"type": "char",
+					"required": false,
+					"string": "Event Time",
+					"name": "display_time"
+			},
+			"allday": {
+					"type": "boolean",
+					"required": false,
+					"string": "All Day",
+					"name": "allday"
+			},
+			"start_date": {
+					"type": "date",
+					"required": false,
+					"string": "Start Date",
+					"name": "start_date"
+			},
+			"stop_date": {
+					"type": "date",
+					"required": false,
+					"string": "End Date",
+					"name": "stop_date"
+			},
+			"duration": {
+					"type": "float",
+					"required": false,
+					"string": "Duration",
+					"name": "duration"
+			},
+			"res_id": {
+					"type": "integer",
+					"required": false,
+					"string": "Document ID",
+					"name": "res_id"
+			},
+			"res_model_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Document Model",
+					"name": "res_model_id"
+			},
+			"res_model": {
+					"type": "char",
+					"required": false,
+					"string": "Document Model Name",
+					"name": "res_model"
+			},
+			"activity_ids": {
+					"type": "one2many",
+					"required": false,
+					"string": "Activities",
+					"name": "activity_ids"
+			},
+			"attendee_ids": {
+					"type": "one2many",
+					"required": false,
+					"string": "Participant",
+					"name": "attendee_ids"
+			},
+			"attendee_status": {
+					"type": "selection",
+					"required": false,
+					"string": "Attendee Status",
+					"name": "attendee_status"
+			},
+			"partner_ids": {
+					"type": "many2many",
+					"required": false,
+					"string": "Attendees",
+					"name": "partner_ids"
+			},
+			"alarm_ids": {
+					"type": "many2many",
+					"help": "Notifications sent to all attendees to remind of the meeting.",
+					"required": false,
+					"string": "Reminders",
+					"name": "alarm_ids"
+			},
+			"recurrency": {
+					"type": "boolean",
+					"required": false,
+					"string": "Recurrent",
+					"name": "recurrency"
+			},
+			"recurrence_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Recurrence Rule",
+					"name": "recurrence_id"
+			},
+			"follow_recurrence": {
+					"type": "boolean",
+					"required": false,
+					"string": "Follow Recurrence",
+					"name": "follow_recurrence"
+			},
+			"recurrence_update": {
+					"type": "selection",
+					"help": "Choose what to do with other events in the recurrence. Updating All Events is not allowed when dates or time is modified",
+					"required": false,
+					"string": "Recurrence Update",
+					"name": "recurrence_update"
+			},
+			"rrule": {
+					"type": "char",
+					"required": false,
+					"string": "Recurrent Rule",
+					"name": "rrule"
+			},
+			"rrule_type": {
+					"type": "selection",
+					"help": "Let the event automatically repeat at that interval",
+					"required": false,
+					"string": "Recurrence",
+					"name": "rrule_type"
+			},
+			"event_tz": {
+					"type": "selection",
+					"required": false,
+					"string": "Timezone",
+					"name": "event_tz"
+			},
+			"end_type": {
+					"type": "selection",
+					"required": false,
+					"string": "Recurrence Termination",
+					"name": "end_type"
+			},
+			"interval": {
+					"type": "integer",
+					"help": "Repeat every (Days/Week/Month/Year)",
+					"required": false,
+					"string": "Repeat Every",
+					"name": "interval"
+			},
+			"count": {
+					"type": "integer",
+					"help": "Repeat x times",
+					"required": false,
+					"string": "Repeat",
+					"name": "count"
+			},
+			"mon": {
+					"type": "boolean",
+					"required": false,
+					"string": "Mon",
+					"name": "mon"
+			},
+			"tue": {
+					"type": "boolean",
+					"required": false,
+					"string": "Tue",
+					"name": "tue"
+			},
+			"wed": {
+					"type": "boolean",
+					"required": false,
+					"string": "Wed",
+					"name": "wed"
+			},
+			"thu": {
+					"type": "boolean",
+					"required": false,
+					"string": "Thu",
+					"name": "thu"
+			},
+			"fri": {
+					"type": "boolean",
+					"required": false,
+					"string": "Fri",
+					"name": "fri"
+			},
+			"sat": {
+					"type": "boolean",
+					"required": false,
+					"string": "Sat",
+					"name": "sat"
+			},
+			"sun": {
+					"type": "boolean",
+					"required": false,
+					"string": "Sun",
+					"name": "sun"
+			},
+			"month_by": {
+					"type": "selection",
+					"required": false,
+					"string": "Option",
+					"name": "month_by"
+			},
+			"day": {
+					"type": "integer",
+					"required": false,
+					"string": "Date of month",
+					"name": "day"
+			},
+			"weekday": {
+					"type": "selection",
+					"required": false,
+					"string": "Weekday",
+					"name": "weekday"
+			},
+			"byday": {
+					"type": "selection",
+					"required": false,
+					"string": "Byday",
+					"name": "byday"
+			},
+			"until": {
+					"type": "date",
+					"required": false,
+					"string": "Until",
+					"name": "until"
+			},
+			"display_description": {
+					"type": "boolean",
+					"required": false,
+					"string": "Display Description",
+					"name": "display_description"
+			},
+			"id": {
+					"type": "integer",
+					"required": false,
+					"string": "ID",
+					"name": "id"
+			},
+			"__last_update": {
+					"type": "datetime",
+					"required": false,
+					"string": "Last Modified on",
+					"name": "__last_update"
+			},
+			"display_name": {
+					"type": "char",
+					"required": false,
+					"string": "Display Name",
+					"name": "display_name"
+			},
+			"create_uid": {
+					"type": "many2one",
+					"required": false,
+					"string": "Created by",
+					"name": "create_uid"
+			},
+			"create_date": {
+					"type": "datetime",
+					"required": false,
+					"string": "Created on",
+					"name": "create_date"
+			},
+			"write_uid": {
+					"type": "many2one",
+					"required": false,
+					"string": "Last Updated by",
+					"name": "write_uid"
+			},
+			"write_date": {
+					"type": "datetime",
+					"required": false,
+					"string": "Last Updated on",
+					"name": "write_date"
+			},
+			"opportunity_id": {
+					"type": "many2one",
+					"required": false,
+					"string": "Opportunity",
+					"name": "opportunity_id"
+			}
+	}
+}
