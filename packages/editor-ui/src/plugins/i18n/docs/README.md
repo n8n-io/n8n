@@ -11,8 +11,14 @@ n8n allows for internalization of the majority of UI text:
 Currently, n8n does _not_ allow for internalization of:
 
 - messages from outside the `editor-ui` package, e.g. `No active database connection`,
+- strings in certain Vue components, e.g. date time picker
 - node subtitles, e.g. `create: user` or `getAll: post` below the node name on the canvas,
 - new version notification contents in the updates panel, e.g. `Includes node enhancements`.
+
+Pending functionality:
+- Search in nodes panel by translated node name
+- UI responsiveness to differently sized strings
+- Number formatting
 
 ## Locale identifiers
 
