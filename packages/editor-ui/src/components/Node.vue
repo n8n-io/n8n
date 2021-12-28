@@ -123,9 +123,18 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		getTriggerNodeTooltip (): string | undefined {
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
-				return this.nodeType.eventTriggerDescription;
+				const nodeName = this.$locale.shortNodeType(this.nodeType.name);
+				const { eventTriggerDescription } = this.nodeType;
+				return this.$locale.nodeText().eventTriggerDescription(nodeName, eventTriggerDescription);
 			} else {
-				return `Waiting for you to create an event in ${this.nodeType && this.nodeType.displayName.replace(/Trigger/, "")}`;
+				return this.$locale.baseText(
+					'node.waitingForYouToCreateAnEventIn',
+					{
+						interpolate: {
+							nodeType: this.nodeType && this.nodeType.displayName.replace(/Trigger/, ""),
+						},
+					},
+				);
 			}
 		},
 		isPollingTypeNode (): boolean {

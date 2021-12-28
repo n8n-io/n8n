@@ -168,7 +168,8 @@ export class I18nClass {
 	 * Namespace for methods to render text in the node view.
 	 */
 	nodeText () {
-		const nodeType = this.shortNodeType(this.$store.getters.activeNode.type);
+		const activeNode = this.$store.getters.activeNode;
+		const nodeType = activeNode ? this.shortNodeType(activeNode.type) : '';
 		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
 
@@ -298,6 +299,13 @@ export class I18nClass {
 				return context.dynamicRender({
 					key: `${initialKey}.${parameterName}.multipleValueButtonText`,
 					fallback: multipleValueButtonText,
+				});
+			},
+
+			eventTriggerDescription(nodeType: string, eventTriggerDescription: string) {
+				return context.dynamicRender({
+					key: `n8n-nodes-base.nodes.${nodeType}.nodeView.eventTriggerDescription`,
+					fallback: eventTriggerDescription,
 				});
 			},
 		};
