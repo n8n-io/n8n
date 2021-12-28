@@ -98,7 +98,7 @@ export async function odooJSONRPCRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	body: IDataObject,
 	url: string,
-): Promise<IOdooResponce> {
+): Promise<IDataObject | IDataObject[]> {
 	try {
 		const options: OptionsWithUri = {
 			headers: {
@@ -114,13 +114,13 @@ export async function odooJSONRPCRequest(
 			json: true,
 		};
 
-		const result = await this.helpers.request!(options);
-		if (result.error) {
-			throw new NodeApiError(this.getNode(), result.error.data, {
-				message: result.error.data.message,
+		const responce = await this.helpers.request!(options);
+		if (responce.error) {
+			throw new NodeApiError(this.getNode(), responce.error.data, {
+				message: responce.error.data.message,
 			});
 		}
-		return result;
+		return responce.result;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -331,7 +331,7 @@ export async function odooGetUserID(
 			id: Math.floor(Math.random() * 100),
 		};
 		const loginResult = await odooJSONRPCRequest.call(this, body, url);
-		return loginResult?.result as unknown as number;
+		return loginResult as unknown as number;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

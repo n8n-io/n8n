@@ -475,10 +475,10 @@ export class Odoo implements INodeType {
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(
 						returnData,
-						responseData.map((data) => data.result) as IDataObject[],
+						responseData,
 					);
-				} else if (responseData) {
-					returnData.push(responseData.result as IDataObject);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
