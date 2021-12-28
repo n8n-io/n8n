@@ -6,7 +6,7 @@ n8n allows for internalization of the majority of UI text:
 
 - base text, e.g. menu display items in the left-hand sidebar menu,
 - node text, e.g. parameter display names and placeholders in the node view,
-- <a href="####`header`-section">header text</a>, e.g. node display names and descriptions at various spots.
+- header text, e.g. node display names and descriptions at various spots.
 
 Currently, n8n does _not_ allow for internalization of:
 
