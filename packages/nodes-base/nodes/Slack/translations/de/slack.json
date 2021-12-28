@@ -87,6 +87,7 @@
 										},
 										"confirmUi": {
 											"displayName": "🇩🇪 Confirm",
+											"placeholder": "🇩🇪 Add Confirm",
 											"options": {
 												"confirmValue": {
 													"values": {
