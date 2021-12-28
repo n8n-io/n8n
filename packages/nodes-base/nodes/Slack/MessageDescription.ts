@@ -675,7 +675,7 @@ export const messageFields: INodeProperties[] = [
 										},
 										default: '',
 										description: 'The text for the block.',
-										placeholder: 'i18n TODO DELETE Sample placeholder'
+										placeholder: 'i18n TODO DELETE Sample placeholder',
 									},
 									{
 										displayName: 'Emoji',
