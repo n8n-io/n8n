@@ -53,3 +53,16 @@ describe('Private Token Generator', () => {
 		expect(realData).toEqual(TOKEN);
 	});
 });
+
+describe('gllue Api Request', () => {
+		it('gllue api request uri should contain private_token', () => {
+        const credentials = { apiHost: 'http://test.com', apiUsername: EMAIL, apiAesKey: AES_KEY };
+        const options = helpers.generateGllueApiUriOptions(credentials, 'POST', '/rest/contract/list', { ids: [1, 2, 3] });
+        expect(options.uri).toContain('private_token')
+    });
+		it('gllue api request option should not contain body if body is empty', () => {
+        const credentials = { apiHost: 'http://test.com', apiUsername: EMAIL, apiAesKey: AES_KEY };
+        const options = helpers.generateGllueApiUriOptions(credentials, 'GET', '/rest/contract/list');
+        expect(Object.keys(options)).not.toContain(["body"]);
+    });
+});
