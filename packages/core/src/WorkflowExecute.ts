@@ -11,6 +11,8 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import * as PCancelable from 'p-cancelable';
 
+import { freemem, totalmem } from 'os';
+
 import {
 	ExecutionError,
 	IConnection,
@@ -63,6 +65,30 @@ export class WorkflowExecute {
 				waitingExecution: {},
 			},
 		};
+	}
+
+	async checkMemory(maxWait: number): Promise<void> {
+		const toMb = (value: number): string => {
+			return `${(value / 1024 / 1024).toString()} MB`;
+		};
+
+		const used = process.memoryUsage();
+
+		console.log(
+			`Check [maxWait: ${maxWait}] = Currently used: ${toMb(used.rss)} - total ${toMb(
+				totalmem(),
+			)} - free ${toMb(freemem())}`,
+		);
+
+		const freeMemory = freemem() / 1024 / 1024;
+		if (freeMemory < 128) {
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+			if (maxWait > 0) {
+				await this.checkMemory(--maxWait);
+			}
+
+			throw new Error('About to run out of memory');
+		}
 	}
 
 	/**
@@ -807,6 +833,8 @@ export class WorkflowExecute {
 								}
 							}
 
+							console.log(`Running node "${executionNode.name}" started`);
+							await this.checkMemory(5);
 							Logger.debug(`Running node "${executionNode.name}" started`, {
 								node: executionNode.name,
 								workflowId: workflow.id,
