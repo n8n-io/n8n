@@ -210,7 +210,7 @@ export class I18nClass {
 			/**
 			 * Placeholder for an input label or `collection` or `fixedCollection` param.
 			 * - For an input label, the placeholder is unselectable greyed-out sample text.
-			 * - TODO: For a `collection` or `fixedCollection`, the placeholder is the button text.
+			 * - For a `collection` or `fixedCollection`, the placeholder is the button text.
 			 */
 			placeholder(
 				parameter: { name: string; placeholder: string; type: string },
@@ -218,7 +218,12 @@ export class I18nClass {
 			) {
 				if (!path) return; // TODO: TextEdit, CodeEdit, ParameterInputExpanded
 
-				const middleKey = deriveMiddleKey(path, parameter);
+				let middleKey = parameter.name;
+
+				if (isOptionInFixedCollection(path)) {
+					const pathSegments = sanitize(path).split('.');
+					middleKey = insertOptionsAndValues(pathSegments).join('.');
+				}
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.placeholder`,
