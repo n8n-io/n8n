@@ -609,7 +609,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				requestData.postReceive.push(...tempOptions.postReceive);
 			}
 
-			const responseData = await routingNode
+			await routingNode
 				.rawRoutingRequest(
 					thisArgs,
 					requestData,

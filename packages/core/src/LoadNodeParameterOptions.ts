@@ -18,6 +18,7 @@ import {
 	INodeTypes,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
+	RoutingNode,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -176,7 +177,7 @@ export class LoadNodeParameterOptions {
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 
-		const thisArgs = NodeExecuteFunctions.getExecuteSingleFunctions(
+		const executeSingleFunctions = NodeExecuteFunctions.getExecuteSingleFunctions(
 			this.workflow,
 			runExecutionData,
 			runIndex,
@@ -188,16 +189,25 @@ export class LoadNodeParameterOptions {
 			mode,
 		);
 
+		const routingNode = new RoutingNode(
+			this.workflow,
+			node!,
+			connectionInputData,
+			runExecutionData ?? null,
+			additionalData,
+			mode,
+		);
+
 		let responseData: IN8nHttpResponse;
 		if (node?.credentials && Object.keys(node.credentials).length) {
 			const credentialType = Object.keys(node?.credentials)[0];
-			responseData = await thisArgs.helpers.requestWithAuthentication.call(
-				thisArgs,
+			responseData = await executeSingleFunctions.helpers.requestWithAuthentication.call(
+				executeSingleFunctions,
 				credentialType,
 				options,
 			);
 		} else {
-			responseData = await thisArgs.helpers.httpRequest(options);
+			responseData = await executeSingleFunctions.helpers.httpRequest(options);
 		}
 
 		let optionsData: IDataObject[];
@@ -214,76 +224,44 @@ export class LoadNodeParameterOptions {
 		const returnData = optionsData.map((optionData) => {
 			// Get value for 'value'
 			let valueProperty = loadOptions.value.property;
-			if (valueProperty.charAt(0) === '=') {
-				valueProperty = this.workflow.expression.getParameterValue(
-					valueProperty,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					TEMP_NODE_NAME,
-					connectionInputData,
-					mode,
-					{},
-					true,
-				) as string;
-			}
+			valueProperty = routingNode.getParameterValue(
+				valueProperty,
+				itemIndex,
+				runIndex,
+				{},
+				true,
+			) as string;
 
 			let valueValue = get(optionData, valueProperty);
 			if (loadOptions.value.value) {
-				if (loadOptions.value.value.charAt(0) === '=') {
-					valueValue = this.workflow.expression.getParameterValue(
-						loadOptions.value.value,
-						runExecutionData,
-						runIndex,
-						itemIndex,
-						TEMP_NODE_NAME,
-						connectionInputData,
-						mode,
-						{ $value: valueValue },
-						true,
-					) as string;
-				} else {
-					// If no expression set directly even though it makes theoretically not much sense
-					// as then all options will have the same value
-					valueValue = loadOptions.value.value;
-				}
-			}
-
-			// Get value for 'name'
-			let nameProperty = loadOptions.name.property;
-			if (nameProperty.charAt(0) === '=') {
-				nameProperty = this.workflow.expression.getParameterValue(
-					nameProperty,
-					runExecutionData,
-					runIndex,
+				valueValue = routingNode.getParameterValue(
+					loadOptions.value.value,
 					itemIndex,
-					TEMP_NODE_NAME,
-					connectionInputData,
-					mode,
-					{},
+					runIndex,
+					{ $value: valueValue },
 					true,
 				) as string;
 			}
+
+			// Get value for 'name'
+			const nameProperty = routingNode.getParameterValue(
+				loadOptions.name.property,
+				itemIndex,
+				runIndex,
+				{},
+				true,
+			) as string;
+
 			let nameValue = get(optionData, nameProperty);
 			if (loadOptions.name.value) {
-				if (loadOptions.name.value.charAt(0) === '=') {
-					nameValue = this.workflow.expression.getParameterValue(
-						loadOptions.name.value,
-						runExecutionData,
-						runIndex,
-						itemIndex,
-						TEMP_NODE_NAME,
-						connectionInputData,
-						mode,
-						{ $value: nameValue },
-						true,
-						{ value: valueValue },
-					) as string;
-				} else {
-					// If no expression set directly even though it makes theoretically not much sense
-					// as then all options will have the same name
-					nameValue = loadOptions.name.value;
-				}
+				// Value overwrite is set so resolve
+				nameValue = routingNode.getParameterValue(
+					loadOptions.name.value,
+					itemIndex,
+					runIndex,
+					{ $value: nameValue, $self: { value: valueValue } },
+					true,
+				) as string;
 			}
 
 			return {

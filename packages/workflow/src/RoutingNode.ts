@@ -113,11 +113,11 @@ export class RoutingNode {
 				}
 
 				for (const property of nodeType.description.properties) {
-					let value = get(this.node.parameters, property.name, []) as string | IDataObject;
-					if (typeof value === 'string' && value.charAt(0) === '=') {
-						// If the value is an expression resolve it
-						value = this.getParameterValue(value, i, runIndex, {}, true) as string | IDataObject;
-					}
+					let value = get(this.node.parameters, property.name, []) as string | NodeParameterValue;
+					// If the value is an expression resolve it
+					value = this.getParameterValue(value, i, runIndex, {}, true) as
+						| string
+						| NodeParameterValue;
 
 					const tempOptions = this.getRequestOptionsFromParameters(
 						thisArgs,
@@ -202,16 +202,14 @@ export class RoutingNode {
 					}
 				} else if (postReceiveMethod.type === 'set') {
 					const { value } = postReceiveMethod.properties;
-					if (typeof value === 'string' && value.charAt(0) === '=') {
-						// If the value is an expression resolve it
-						responseData = this.getParameterValue(
-							value,
-							itemIndex,
-							runIndex,
-							{ $response: responseData },
-							false,
-						) as INodeParameters;
-					}
+					// If the value is an expression resolve it
+					responseData = this.getParameterValue(
+						value,
+						itemIndex,
+						runIndex,
+						{ $response: responseData },
+						false,
+					) as INodeParameters;
 				}
 			}
 		}
@@ -337,17 +335,21 @@ export class RoutingNode {
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | string {
-		return this.workflow.expression.getParameterValue(
-			parameterValue,
-			this.runExecutionData ?? null,
-			runIndex,
-			itemIndex,
-			this.node.name,
-			this.connectionInputData,
-			this.mode,
-			additionalKeys ?? {},
-			returnObjectAsString,
-		);
+		if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
+			return this.workflow.expression.getParameterValue(
+				parameterValue,
+				this.runExecutionData ?? null,
+				runIndex,
+				itemIndex,
+				this.node.name,
+				this.connectionInputData,
+				this.mode,
+				additionalKeys ?? {},
+				returnObjectAsString,
+			);
+		}
+
+		return parameterValue;
 	}
 
 	getRequestOptionsFromParameters(
@@ -379,16 +381,8 @@ export class RoutingNode {
 			for (const key of Object.keys(nodeProperties.request)) {
 				// @ts-ignore
 				let value = nodeProperties.request[key];
-				if (typeof value === 'string' && value.charAt(0) === '=') {
-					// If the value is an expression resolve it
-					value = this.getParameterValue(
-						value,
-						itemIndex,
-						runIndex,
-						additionalKeys,
-						true,
-					) as string;
-				}
+				// If the value is an expression resolve it
+				value = this.getParameterValue(value, itemIndex, runIndex, additionalKeys, true) as string;
 				// @ts-ignore
 				returnData.options[key] = value;
 			}
@@ -397,16 +391,14 @@ export class RoutingNode {
 		if (nodeProperties.requestProperty) {
 			let propertyName = nodeProperties.requestProperty.property;
 			if (propertyName !== undefined) {
-				if (typeof propertyName === 'string' && propertyName.charAt(0) === '=') {
-					// If the propertyName is an expression resolve it
-					propertyName = this.getParameterValue(
-						propertyName,
-						itemIndex,
-						runIndex,
-						additionalKeys,
-						true,
-					) as string;
-				}
+				// If the propertyName is an expression resolve it
+				propertyName = this.getParameterValue(
+					propertyName,
+					itemIndex,
+					runIndex,
+					additionalKeys,
+					true,
+				) as string;
 
 				let value = executeSingleFunctions.getNodeParameter(
 					basePath + nodeProperties.name,
@@ -416,18 +408,14 @@ export class RoutingNode {
 				if (nodeProperties.requestProperty.value) {
 					const valueString = nodeProperties.requestProperty.value;
 					// Special value got set
-					if (typeof valueString === 'string' && valueString.charAt(0) === '=') {
-						// If the valueString is an expression resolve it
-						value = this.getParameterValue(
-							valueString,
-							itemIndex,
-							runIndex,
-							{ ...additionalKeys, $value: value },
-							true,
-						) as string;
-					} else {
-						value = valueString;
-					}
+					// If the valueString is an expression resolve it
+					value = this.getParameterValue(
+						valueString,
+						itemIndex,
+						runIndex,
+						{ ...additionalKeys, $value: value },
+						true,
+					) as string;
 				}
 
 				if (nodeProperties.requestProperty.type === 'query') {
