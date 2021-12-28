@@ -8,6 +8,7 @@ export * from './Interfaces';
 export * from './Expression';
 export * from './NodeErrors';
 export * as TelemetryHelpers from './TelemetryHelpers';
+export * from './RoutingNode';
 export * from './Workflow';
 export * from './WorkflowDataProxy';
 export * from './WorkflowErrors';

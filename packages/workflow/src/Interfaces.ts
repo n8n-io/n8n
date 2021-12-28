@@ -1022,16 +1022,6 @@ export interface IPostReceiveSet extends IPostReceiveBase {
 	};
 }
 
-export interface IResolveParameterData {
-	connectionInputData: INodeExecutionData[];
-	itemIndex: number;
-	mode: WorkflowExecuteMode;
-	node: INode;
-	runExecutionData: IRunExecutionData | null;
-	runIndex: number;
-	workflow: Workflow;
-}
-
 export interface IRequestOptionsFromParameters {
 	options: IHttpRequestOptions;
 	pagination?: boolean | string;

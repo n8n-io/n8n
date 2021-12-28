@@ -30,10 +30,10 @@ import {
 	INodeTypes,
 	INodeVersionedType,
 	IRequestOptionsFromParameters,
-	IResolveParameterData,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeHelpers,
+	RoutingNode,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -565,16 +565,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			mode,
 		);
 
-		const resolveParameterData: IResolveParameterData = {
-			connectionInputData,
-			itemIndex: 0,
-			mode,
-			node,
-			runExecutionData: runExecutionData || null,
-			runIndex: runIndex || 0,
-			workflow,
-		};
-
 		const requestData: IRequestOptionsFromParameters = {
 			options: {
 				url: '', // TODO: Replace with own type where url is not required
@@ -589,29 +579,45 @@ export class CredentialsHelper extends ICredentialsHelper {
 			Object.assign(requestData.options, nodeType.description.requestDefaults);
 		}
 
-		const tempOptions = workflow.getRequestOptionsFromParameters(
-			thisArgs,
-			{
-				displayName: 'Temp',
-				name: 'temp',
-				type: 'string',
-				request: credentialTestFunction.testRequest.request,
-				default: '',
-			},
-			resolveParameterData,
-			'',
-		);
-
-		if (tempOptions) {
-			merge(requestData.options, tempOptions.options);
-			requestData.preSend.push(...tempOptions.preSend);
-			requestData.postReceive.push(...tempOptions.postReceive);
-		}
-
 		try {
-			// eslint-disable-next-line no-underscore-dangle
-			const responseData = await workflow.rawRoutingRequest
-				.call(thisArgs, requestData, credentialType, credentialsDecrypted)
+			const routingNode = new RoutingNode(
+				workflow,
+				node,
+				connectionInputData,
+				runExecutionData ?? null,
+				additionalData,
+				mode,
+			);
+
+			const tempOptions = routingNode.getRequestOptionsFromParameters(
+				thisArgs,
+				{
+					displayName: 'Temp',
+					name: 'temp',
+					type: 'string',
+					request: credentialTestFunction.testRequest.request,
+					default: '',
+				},
+				itemIndex,
+				runIndex,
+				'',
+			);
+
+			if (tempOptions) {
+				merge(requestData.options, tempOptions.options);
+				requestData.preSend.push(...tempOptions.preSend);
+				requestData.postReceive.push(...tempOptions.postReceive);
+			}
+
+			const responseData = await routingNode
+				.rawRoutingRequest(
+					thisArgs,
+					requestData,
+					itemIndex,
+					runIndex,
+					credentialType,
+					credentialsDecrypted,
+				)
 				.catch((error: AxiosError) => {
 					// Do not fail any requests to allow custom error messages and
 					// make logic easier
@@ -619,37 +625,41 @@ export class CredentialsHelper extends ICredentialsHelper {
 						throw error;
 					}
 
-					return {
+					const errorResponseData = {
 						body: error.response.data,
 						headers: error.response.headers,
 						statusCode: error.response.status,
 						statusMessage: error.response.statusText,
 					};
-				});
 
-			if (credentialTestFunction.testRequest.rules) {
-				// Special testing rules are defined so check all in order
-				for (const rule of credentialTestFunction.testRequest.rules) {
-					if (rule.type === 'responseCode') {
-						if (responseData.statusCode === rule.properties.value) {
-							return {
-								status: 'Error',
-								message: rule.properties.message,
-							};
+					if (credentialTestFunction.testRequest.rules) {
+						// Special testing rules are defined so check all in order
+						for (const rule of credentialTestFunction.testRequest.rules) {
+							if (rule.type === 'responseCode') {
+								if (errorResponseData.statusCode === rule.properties.value) {
+									return {
+										status: 'Error',
+										message: rule.properties.message,
+									};
+								}
+							}
 						}
 					}
-				}
-			}
 
-			if (responseData.statusCode < 199 || responseData.statusCode > 299) {
-				// All requests with response codes that are not 2xx are treated by default as failed
-				return {
-					status: 'Error',
-					message:
-						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-						responseData.statusMessage || `Received HTTP status code: ${responseData.statusCode}`,
-				};
-			}
+					if (errorResponseData.statusCode < 199 || errorResponseData.statusCode > 299) {
+						// All requests with response codes that are not 2xx are treated by default as failed
+						return {
+							status: 'Error',
+							message:
+								// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+								errorResponseData.statusMessage ||
+								`Received HTTP status code: ${errorResponseData.statusCode}`,
+						};
+					}
+
+					// If we are still here mark it as success
+					return [];
+				});
 
 			return {
 				status: 'OK',
