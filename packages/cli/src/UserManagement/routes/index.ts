@@ -18,9 +18,6 @@ import { isEmailSetup } from '../UserManagementHelper';
 export async function addRoutes(this: N8nApp, ignoredEndpoints: string[]): Promise<void> {
 	this.app.use(cookieParser());
 
-	console.log('something is happening');
-	console.log(ignoredEndpoints);
-
 	const options = {
 		jwtFromRequest: (req: Request) => {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
