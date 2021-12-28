@@ -67,6 +67,11 @@ export class Jenkins implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Build',
+						value: 'build',
+						description: 'List of builds job',
+					},
+					{
 						name: 'Instance',
 						value: 'instance',
 						description: 'Jenkins instance',
@@ -75,11 +80,6 @@ export class Jenkins implements INodeType {
 						name: 'Job',
 						value: 'job',
 						description: 'Jenkins job',
-					},
-					{
-						name: 'Build',
-						value: 'build',
-						description: 'List of builds job',
 					},
 				],
 				default: 'job',
@@ -102,16 +102,6 @@ export class Jenkins implements INodeType {
 				},
 				options: [
 					{
-						name: 'Trigger',
-						value: 'trigger',
-						description: 'Trigger a specific job',
-					},
-					{
-						name: 'Trigger with Parameters',
-						value: 'triggerParams',
-						description: 'Trigger a specific job',
-					},
-					{
 						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a specific job',
@@ -120,6 +110,16 @@ export class Jenkins implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new job',
+					},
+					{
+						name: 'Trigger',
+						value: 'trigger',
+						description: 'Trigger a specific job',
+					},
+					{
+						name: 'Trigger with Parameters',
+						value: 'triggerParams',
+						description: 'Trigger a specific job',
 					},
 				],
 				default: 'trigger',
@@ -249,7 +249,7 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Name of the new jenkins job',
+				description: 'Name of the new Jenkins job',
 			},
 			{
 				displayName: 'XML',
@@ -270,7 +270,7 @@ export class Jenkins implements INodeType {
 				description: 'XML of Jenkins config',
 			},
 			{
-				displayName: 'You can get an XML form existing job by adding "config.xml" to the job\'s URL',
+				displayName: 'You can get an XML from existing job by adding "config.xml" to the job\'s URL',
 				name: 'createNotice',
 				type: 'notice',
 				default: '',
@@ -355,7 +355,7 @@ export class Jenkins implements INodeType {
 				description: 'Freeform reason for quiet down mode',
 			},
 			{
-				displayName: 'Instance operation can shutdown Jenkins instance and make it unresponsive. Some commands maybe not be available depending on instance implementation.',
+				displayName: 'Instance operation can shutdown Jenkins instance and make it unresponsive. Some commands may not be available depending on instance implementation.',
 				name: 'instanceNotice',
 				type: 'notice',
 				default: '',
@@ -415,28 +415,28 @@ export class Jenkins implements INodeType {
 						name: 'depth',
 						type: 'number',
 						default: 1,
-						description: 'Number depth parameter',
-					},
-					{
-						displayName: 'Tree',
-						name: 'tree',
-						type: 'string',
-						default: '',
-						description: 'String tree parameter',
-					},
-					{
-						displayName: 'Xpath',
-						name: 'xpath',
-						type: 'string',
-						default: '',
-						description: 'String xpath parameter',
+						description: 'Depth parameter (type number)',
 					},
 					{
 						displayName: 'Exclude',
 						name: 'exclude',
 						type: 'string',
 						default: '',
-						description: 'String exclude parameter',
+						description: 'Exclude parameter (type string)',
+					},
+					{
+						displayName: 'Tree',
+						name: 'tree',
+						type: 'string',
+						default: '',
+						description: 'Tree parameter (type string)',
+					},
+					{
+						displayName: 'Xpath',
+						name: 'xpath',
+						type: 'string',
+						default: '',
+						description: 'Xpath parameter (type string)',
 					},
 				],
 			},
