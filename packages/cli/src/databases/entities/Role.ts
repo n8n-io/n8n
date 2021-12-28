@@ -17,7 +17,7 @@ import { User } from './User';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 
-type RoleScopes = 'global';
+type RoleScopes = 'global' | 'workflow' | 'credential';
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 function getTimestampSyntax() {

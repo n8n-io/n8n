@@ -11,15 +11,17 @@ import { PublicUserData } from './Interfaces';
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function saveWorkflowOwnership(
-	savedWorkflow: WorkflowEntity,
-	incomingData: IDataObject,
+	workflow: WorkflowEntity,
+	user: User,
 ): Promise<SharedWorkflow | undefined> {
-	// TODO: check if incoming data is in this format
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+	const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'workflow' });
+
 	// eslint-disable-next-line consistent-return, @typescript-eslint/return-await
 	return await Db.collections.SharedWorkflow?.save({
-		role: incomingData.role as Role,
-		user: incomingData.user as User,
-		workflow: savedWorkflow,
+		role,
+		user,
+		workflow,
 	});
 }
 

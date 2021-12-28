@@ -704,7 +704,7 @@ class App {
 						.catch(WorkflowHelpers.throwDuplicateEntryError)) as WorkflowEntity;
 					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, incomingTagOrder);
 					try {
-						await UserManagementHelpers.saveWorkflowOwnership(savedWorkflow, incomingData);
+						await UserManagementHelpers.saveWorkflowOwnership(savedWorkflow, req.user);
 					} catch (error) {
 						// TODO UM: decide if this is fatal and we must rollback or
 						// log and treat it elsewhere.
@@ -836,8 +836,7 @@ class App {
 					const workflow = await qb.getOne();
 
 					if (workflow === undefined) {
-						const error = new ResponseHelper.ResponseError('Workflow not found', 404, 404);
-						throw error;
+						return undefined;
 					}
 
 					// @ts-ignore
@@ -873,7 +872,7 @@ class App {
 						throw new ResponseHelper.ResponseError(
 							`Workflow with id "${id}" could not be found to be updated.`,
 							undefined,
-							400,
+							404,
 						);
 					}
 
