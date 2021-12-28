@@ -30,7 +30,6 @@ export class Dropbox implements INodeType {
 		description: 'Access data on Dropbox',
 		defaults: {
 			name: 'Dropbox',
-			color: '#007ee5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

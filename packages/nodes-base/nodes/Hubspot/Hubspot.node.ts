@@ -71,7 +71,6 @@ export class Hubspot implements INodeType {
 		description: 'Consume HubSpot API',
 		defaults: {
 			name: 'Hubspot',
-			color: '#ff7f64',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

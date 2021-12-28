@@ -196,6 +196,11 @@ export const restApi = Vue.extend({
 				getTimezones: (): Promise<IDataObject> => {
 					return self.restApi().makeRestApiRequest('GET', `/options/timezones`);
 				},
+
+				// Binary data
+				getBinaryBufferString: (dataPath: string): Promise<string> => {
+					return self.restApi().makeRestApiRequest('GET', `/data/${dataPath}`);
+				},
 			};
 		},
 	},

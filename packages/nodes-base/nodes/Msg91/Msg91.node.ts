@@ -23,7 +23,6 @@ export class Msg91 implements INodeType {
 		description: 'Sends transactional SMS via MSG91',
 		defaults: {
 			name: 'Msg91',
-			color: '#0000ff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
