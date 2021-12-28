@@ -275,7 +275,7 @@ export class I18nClass {
 
 			/**
 			 * Display name for an option in the dropdown menu of a `collection` or `fixedCollection` param.
-			 * TODO
+			 * No nesting support since `collection` cannot be nested in a `collection` or in a `fixedCollection`.
 			 */
 			collectionOptionDisplayName(
 				{ name: parameterName }: { name: string; },
