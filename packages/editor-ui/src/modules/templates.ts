@@ -2,6 +2,8 @@ import { getTemplateById } from '@/api/templates-mock';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
+	IN8nTemplateResponse,
+	IN8nTemplateWorkflow,
 	IN8nTemplate,
 	ITemplateState,
 } from '../Interface';
@@ -25,7 +27,10 @@ const module: Module<ITemplateState, IRootState> = {
 	actions: {
 		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
 			try {
-				const template: IN8nTemplate = await getTemplateById(templateId);
+				const response: IN8nTemplateResponse = await getTemplateById(templateId);
+				const data: IN8nTemplateWorkflow = response.data;
+				const template: IN8nTemplate = data.workflow;
+
 				context.commit('setTemplate', template);
 				return template;
 			} catch(e) {

@@ -511,6 +511,14 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
+export interface IN8nTemplateResponse {
+	data: IN8nTemplateWorkflow;
+}
+
+export interface IN8nTemplateWorkflow {
+	workflow: IN8nTemplate;
+}
+
 export interface IN8nTemplate {
 	id: string;
 	categories: ITemplateCategories[];

@@ -26,7 +26,12 @@ export default {
 			let srcset = '';
 			if (images) {
 				for (let i = 0; i < images.length; i++) {
-					srcset += images[i].url + ` ${images[i].metadata.width}w,`;
+          if (!images[i].metadata) {
+            srcset += images[i].url + ` 600w,`;
+          } else {
+						srcset += images[i].url + ` ${images[i].metadata.width}w,`;
+					}
+
 				}
 			}
 			return srcset;
