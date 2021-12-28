@@ -97,11 +97,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 		if (runData !== undefined) {
 			properties.execution_mode = runData.mode;
-			if (runData.mode === 'manual') {
-				properties.is_manual = true;
-			}
-
 			properties.success = !!runData.finished;
+			properties.is_manual = runData.mode === 'manual';
 
 			if (!properties.success && runData?.data.resultData.error) {
 				properties.error_message = runData?.data.resultData.error.message;
@@ -141,6 +138,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 					node_graph_string: properties.node_graph_string,
 					error_node_id: properties.error_node_id,
 				};
+
+				if (!manualExecEventProperties.node_graph) {
+					manualExecEventProperties.node_graph = TelemetryHelpers.generateNodesGraph(
+						workflow,
+						this.nodeTypes,
+					);
+					manualExecEventProperties.node_graph_string = JSON.stringify(
+						manualExecEventProperties.node_graph,
+					);
+				}
 
 				if (runData.data.startData?.destinationNode) {
 					promises.push(
