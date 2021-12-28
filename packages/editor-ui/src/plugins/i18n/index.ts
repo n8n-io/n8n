@@ -290,7 +290,6 @@ export class I18nClass {
 			/**
 			 * Text for a button to add another option inside a `collection` or
 			 * `fixedCollection` param having `multipleValues: true`.
-			 * TODO
 			 */
 			multipleValueButtonText(
 				{ name: parameterName, typeOptions: { multipleValueButtonText } }:
