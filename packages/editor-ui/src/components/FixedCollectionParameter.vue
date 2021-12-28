@@ -86,7 +86,6 @@ export default mixins(genericHelpers)
 		computed: {
 			getPlaceholderText (): string {
 				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
-				console.log(placeholder);
 				return placeholder ? placeholder : this.$locale.baseText('fixedCollectionParameter.choose');
 			},
 			getProperties (): INodePropertyCollection[] {
