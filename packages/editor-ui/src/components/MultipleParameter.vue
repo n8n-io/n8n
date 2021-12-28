@@ -65,8 +65,8 @@ export default mixins(genericHelpers)
 		computed: {
 			addButtonText (): string {
 				if (
-					!this.parameter.typeOptions &&
-					!this.parameter.typeOptions.multipleValueButtonText
+					!this.parameter.typeOptions ||
+					(this.parameter.typeOptions && !this.parameter.typeOptions.multipleValueButtonText)
 				) {
 					return this.$locale.baseText('multipleParameter.addItem');
 				}
