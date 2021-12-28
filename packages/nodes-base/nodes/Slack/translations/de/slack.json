@@ -31,6 +31,7 @@
 						},
 						"elementsUi": {
 							"displayName": "🇩🇪 Elements",
+							"placeholder": "🇩🇪 Add Element",
 							"description": "🇩🇪 Some description for Elements",
 							"options": {
 								"elementsValues": {
