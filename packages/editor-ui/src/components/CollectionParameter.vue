@@ -67,7 +67,7 @@ export default mixins(
 		},
 		computed: {
 			getPlaceholderText (): string {
-				const placeholder = this.$locale.nodeText().placeholder(this.parameter);
+				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
 				return placeholder ? placeholder : this.$locale.baseText('collectionParameter.choose');
 			},
 			getProperties (): INodeProperties[] {
