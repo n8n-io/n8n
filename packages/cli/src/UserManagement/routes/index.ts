@@ -7,15 +7,21 @@ import cookieParser = require('cookie-parser');
 import * as passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
+import { genSaltSync, hashSync } from 'bcryptjs';
 import { N8nApp, PublicUserData } from '../Interfaces';
 import { addAuthenticationMethods } from './auth';
 import config = require('../../../config');
 import { Db, GenericHelpers, ResponseHelper } from '../..';
 import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
-import { isEmailSetup } from '../UserManagementHelper';
+import { generatePublicUserData, isEmailSetup, isValidEmail } from '../UserManagementHelper';
+import { issueJWT } from '../auth/jwt';
 
-export async function addRoutes(this: N8nApp, ignoredEndpoints: string[]): Promise<void> {
+export async function addRoutes(
+	this: N8nApp,
+	ignoredEndpoints: string[],
+	restEndpoint: string,
+): Promise<void> {
 	this.app.use(cookieParser());
 
 	const options = {
@@ -35,7 +41,6 @@ export async function addRoutes(this: N8nApp, ignoredEndpoints: string[]): Promi
 				},
 				{ relations: ['globalRole'] },
 			);
-			// console.log(user);
 			if (
 				!user ||
 				(user.password && !user.password.includes(jwtPayload.password!)) ||
@@ -53,17 +58,15 @@ export async function addRoutes(this: N8nApp, ignoredEndpoints: string[]): Promi
 	this.app.use(passport.initialize());
 
 	this.app.use((req: Request, res: Response, next: NextFunction) => {
-		// console.log(req.url);
-		// just temp for development
 		if (
 			req.url.includes('login') ||
+			req.url.includes('logout') ||
 			req.url === '/index.html' ||
 			req.url.startsWith('/css/') ||
 			req.url.startsWith('/js/') ||
 			req.url.startsWith('/fonts/') ||
-			req.url.startsWith('/rest/settings')
+			req.url.startsWith(`/${restEndpoint}/settings`)
 		) {
-			// console.log('skip auth because of first block');
 			return next();
 		}
 
@@ -75,11 +78,9 @@ export async function addRoutes(this: N8nApp, ignoredEndpoints: string[]): Promi
 				continue;
 			}
 			if (req.url.includes(path)) {
-				// console.log('skip auth because of path ', path);
 				return next();
 			}
 		}
-		// console.log('should authenticate route ', req.url);
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
@@ -97,15 +98,56 @@ export async function addRoutes(this: N8nApp, ignoredEndpoints: string[]): Promi
 	this.app.post(
 		`/${this.restEndpoint}/owner-setup`,
 		ResponseHelper.send(async (req: Request, res: Response) => {
-			const role = await Db.collections.Role!.findOne({ name: 'owner', scope: 'global' });
-			const owner = await Db.collections.User!.save({
-				email: 'ben@n8n.io',
-				firstName: 'Ben',
-				lastName: 'Hesseldieck',
-				password: 'abc',
+			if (config.get('userManagement.hasOwner') === true) {
+				throw new Error('Invalid request');
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (!req.body.email || !isValidEmail(req.body.email)) {
+				throw new Error('Invalid email address');
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (!req.body.firstName || !req.body.lastName) {
+				throw new Error('First and last names are mandatory');
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (!req.body.password) {
+				throw new Error('Password is mandatory mandatory');
+			}
+
+			const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+
+			const newUser = {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				email: req.body.email,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				firstName: req.body.firstName,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				lastName: req.body.lastName,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				password: hashSync(req.body.password, genSaltSync(10)),
 				globalRole: role,
-			});
-			return owner;
+				// @ts-ignore
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				id: req.user.id,
+			};
+
+			const owner = await Db.collections.User!.save(newUser);
+			config.set('userManagement.hasOwner', true);
+			await Db.collections.Settings!.update(
+				{
+					key: 'userManagement.hasOwner',
+				},
+				{
+					value: JSON.stringify(true),
+				},
+			);
+
+			const userData = await issueJWT(owner);
+			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+			return generatePublicUserData(owner);
 		}),
 	);
 

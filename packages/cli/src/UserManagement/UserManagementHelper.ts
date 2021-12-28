@@ -7,6 +7,7 @@ import { Role } from '../databases/entities/Role';
 import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
+import { PublicUserData } from './Interfaces';
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function saveWorkflowOwnership(
@@ -30,4 +31,39 @@ export function isEmailSetup(): boolean {
 export async function isInstanceOwnerSetup(): Promise<boolean> {
 	const users = await Db.collections.User!.find({ email: Not(IsNull()) });
 	return users.length !== 0;
+}
+
+export function isValidEmail(email: string): boolean {
+	return !!/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.exec(
+		String(email).toLowerCase(),
+	);
+}
+
+export function generatePublicUserData(user: User): PublicUserData {
+	const { id, email, firstName, lastName, personalizationAnswers, password } = user;
+	const returnedUser = {
+		id,
+	} as PublicUserData;
+
+	if (email) {
+		returnedUser.email = email;
+	}
+
+	if (firstName) {
+		returnedUser.firstName = firstName;
+	}
+
+	if (lastName) {
+		returnedUser.lastName = lastName;
+	}
+
+	if (personalizationAnswers) {
+		returnedUser.personalizationAnswers = personalizationAnswers;
+	}
+
+	if (password) {
+		returnedUser.password = password.slice(Math.round(password.length / 2));
+	}
+
+	return returnedUser;
 }
