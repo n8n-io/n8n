@@ -4,6 +4,15 @@
     "description": "🇩🇪 Consume Slack API"
   },
   "nodeView": {
+		"attachments": {
+			"multipleValueButtonText": "🇩🇪 Add attachment",
+			"placeholder": "🇩🇪 Add attachment item",
+			"options": {
+				"fallback": {
+					"displayName": "🇩🇪 Fallback Text"
+				}
+			}
+		},
     "blocksUi": {
       "displayName": "🇩🇪 Blocks",
 			"placeholder": "🇩🇪 Add Block",
