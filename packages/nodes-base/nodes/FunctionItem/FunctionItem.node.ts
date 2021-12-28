@@ -66,12 +66,12 @@ return item;`,
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
 						// Is some special object like a Date so stringify
-						inputData[key] = JSON.stringify(inputData[key]);
+						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
 					}
 				}
 			});
 			return inputData;
-		}
+		};
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {

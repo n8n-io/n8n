@@ -67,12 +67,12 @@ return items;`,
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
 						// Is some special object like a Date so stringify
-						inputData[key] = JSON.stringify(inputData[key]);
+						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
 					}
 				}
 			});
 			return inputData;
-		}
+		};
 
 		// Define the global objects for the custom function
 		const sandbox = {
