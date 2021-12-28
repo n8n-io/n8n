@@ -44,6 +44,13 @@ export const ticketUpdateDescription: TicketProperties = [
 				default: '',
 			},
 			{
+				displayName: 'Assign to Contact',
+				name: 'contactId',
+				type: 'string',
+				default: '',
+				description: 'The ID of the contact you want to assign the ticket to',
+			},
+			{
 				displayName: 'Customer ID',
 				name: 'customerId',
 				type: 'string',

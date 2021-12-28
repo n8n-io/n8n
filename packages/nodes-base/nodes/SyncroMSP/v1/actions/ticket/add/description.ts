@@ -60,6 +60,13 @@ export const ticketAddDescription: TicketProperties = [
 				type: 'string',
 				default: '',
 			},
+			{
+				displayName: 'Assign to Contact',
+				name: 'contactId',
+				type: 'string',
+				default: '',
+				description: 'The ID of the contact you want to assign the ticket to',
+			},
 			// {
 			// 	displayName: 'Due Date',
 			// 	name: 'dueDate',

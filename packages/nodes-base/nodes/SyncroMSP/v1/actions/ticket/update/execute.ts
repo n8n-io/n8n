@@ -15,7 +15,7 @@ import {
 
 export async function updateTicket(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('id', index) as IDataObject;
-	const { assetId, customerId, dueDate, issueType, status, subject, ticketType } = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const { assetId, customerId, dueDate, issueType, status, subject, ticketType, contactId } = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 
 	const qs = {} as IDataObject;
@@ -31,6 +31,7 @@ export async function updateTicket(this: IExecuteFunctions, index: number): Prom
 		...(status && { status }),
 		...(subject && { subject }),
 		...(ticketType && { ticket_type: ticketType }),
+		...(contactId && { contact_id: contactId }),
 	};
 
 	if (!Object.keys(body).length) {
