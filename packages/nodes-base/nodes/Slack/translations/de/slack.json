@@ -13,6 +13,14 @@
 				}
 			}
 		},
+		"otherOptions": {
+			"displayName": "🇩🇪 Other Options",
+			"options": {
+				"icon_emoji": {
+					"displayName": "🇩🇪 Icon Emoji"
+				}
+			}
+		},
     "blocksUi": {
       "displayName": "🇩🇪 Blocks",
 			"placeholder": "🇩🇪 Add Block",
