@@ -339,6 +339,7 @@
       "dist/nodes/Aws/DynamoDB/AwsDynamoDB.node.js",
       "dist/nodes/Aws/Rekognition/AwsRekognition.node.js",
       "dist/nodes/Aws/S3/AwsS3.node.js",
+      "dist/nodes/Aws/SecretsManager/AwsSecretsManager.node.js",
       "dist/nodes/Aws/SES/AwsSes.node.js",
       "dist/nodes/Aws/SQS/AwsSqs.node.js",
       "dist/nodes/Aws/Textract/AwsTextract.node.js",
