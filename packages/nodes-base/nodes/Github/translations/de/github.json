@@ -61,12 +61,6 @@
       "displayName": "🇩🇪 Repository Name",
       "placeholder": "🇩🇪 n8n"
     },
-    "title": {
-      "displayName": "🇩🇪 Title"
-    },
-    "body": {
-      "displayName": "🇩🇪 Body"
-    },
     "labels": {
       "displayName": "🇩🇪 Labels",
       "multipleValueButtonText": "🇩🇪 Add Label",
