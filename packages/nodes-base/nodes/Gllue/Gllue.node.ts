@@ -59,11 +59,72 @@ export class Gllue implements INodeType {
 			...cityFields,
 			...industryOperations,
 			...industryFields,
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'client',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'list',
+						value: 'list',
+						description: 'List clients',
+					},
+				],
+				default: 'list',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'contract',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'delete',
+						value: 'delete',
+						description: 'Delete contract',
+					},
+				],
+				default: 'delete',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Contract ID',
+				name: 'id',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'contract',
+						],
+					},
+				},
+				default:'',
+				description:'Contract ID',
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let responseData;
+		const items = this.getInputData();
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		// tslint:disable-next-line:no-any
@@ -86,6 +147,15 @@ export class Gllue implements INodeType {
 		} else if (resource == 'industry') {
 			if (operation === 'simple_list_with_ids'){
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
+			}
+		} else if (resource == 'contract'){
+			if (operation === 'delete'){
+				const api_path = '/rest/clientcontract/delete';
+				const contract_ids = items.map(
+					(item, index) => this.getNodeParameter('id', index)
+				);
+				const body = { ids: contract_ids, count: contract_ids.length };
+				responseData = await helpers.gllueApiRequest.call(this, 'POST', api_path,{}, body, credentials);
 			}
 		}
 		return [this.helpers.returnJsonArray(responseData)];
