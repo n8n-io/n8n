@@ -14,6 +14,8 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
+import * as moment from 'moment';
+
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	let authenticationMethod = this.getNodeParameter('authentication', 0);
@@ -36,7 +38,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			const credentials = await this.getCredentials('hubspotApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
-
+			console.log(JSON.stringify(options, undefined, 2));
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'developerApi') {
 			const credentials = await this.getCredentials('hubspotDeveloperApi');
@@ -1888,3 +1890,73 @@ export const dealFields = [
 		'label': 'Closed Won Reason',
 	},
 ];
+
+const reduceMetadatFields = (data: string[]) => {
+	return data.reduce((a, v) => {
+		//@ts-ignore
+		a.push(...v.split(','));
+		return a;
+	}, []).map(email => ({ email }));
+};
+
+export const getEmailMetadata = (meta: IDataObject) => {
+	return {
+		from: {
+			...(meta.fromEmail && { email: meta.fromEmail }),
+			...(meta.firstName && { firstName: meta.firstName }),
+			...(meta.lastName && { lastName: meta.lastName }),
+		},
+		cc: reduceMetadatFields(meta.cc as string[] || []),
+		bcc: reduceMetadatFields(meta.bcc as string[] || []),
+		...(meta.subject && { subject: meta.subject }),
+		...(meta.html && { html: meta.html }),
+		...(meta.text && { text: meta.text }),
+	};
+};
+
+export const getTaskMetadata = (meta: IDataObject) => {
+	return {
+		...(meta.body && { body: meta.body }),
+		...(meta.subject && { subject: meta.subject }),
+		...(meta.status && { status: meta.status }),
+		...(meta.forObjectType && { forObjectType: meta.forObjectType }),
+	};
+};
+
+export const getMeetingMetadata = (meta: IDataObject) => {
+	return {
+		...(meta.body && { body: meta.body }),
+		...(meta.startTime && { startTime: moment(meta.startTime as string).unix() }),
+		...(meta.endTime && { endTime: moment(meta.endTime as string).unix() }),
+		...(meta.title && { title: meta.title }),
+		...(meta.internalMeetingNotes && { internalMeetingNotes: meta.internalMeetingNotes }),
+	};
+};
+
+export const getCallMetadata = (meta: IDataObject) => {
+	return {
+		...(meta.toNumber && { toNumber: meta.toNumber }),
+		...(meta.fromNumber && { fromNumber: meta.fromNumber }),
+		...(meta.status && { status: meta.status }),
+		...(meta.durationMilliseconds && { durationMilliseconds: meta.durationMilliseconds }),
+		...(meta.recordingUrl && { recordingUrl: meta.recordingUrl }),
+		...(meta.body && { body: meta.body }),
+	};
+};
+
+
+export const getAssociations = (associations: {
+	companyIds: string,
+	dealIds: string,
+	ownerIds: string,
+	contactIds: string,
+	ticketIds: string;
+}) => {
+	return {
+		...(associations.companyIds && { companyIds: associations.companyIds.split(',') }),
+		...(associations.contactIds && { contactIds: associations.contactIds.split(',') }),
+		...(associations.dealIds && { dealIds: associations.dealIds.split(',') }),
+		...(associations.ownerIds && { ownerIds: associations.ownerIds.split(',') }),
+		...(associations.ticketIds && { ticketIds: associations.ticketIds.split(',') }),
+	};
+};

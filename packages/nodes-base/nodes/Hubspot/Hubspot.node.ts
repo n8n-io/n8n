@@ -13,6 +13,10 @@ import {
 
 import {
 	clean,
+	getAssociations,
+	getEmailMetadata,
+	getMeetingMetadata,
+	getTaskMetadata,
 	hubspotApiRequest,
 	hubspotApiRequestAllItems,
 } from './GenericFunctions';
@@ -38,6 +42,11 @@ import {
 } from './DealDescription';
 
 import {
+	engagementFields,
+	engagementOperations,
+} from './EngagementDescription';
+
+import {
 	formFields,
 	formOperations,
 } from './FormDescription';
@@ -59,6 +68,7 @@ import {
 import {
 	snakeCase,
 } from 'change-case';
+import { measureMemory } from 'vm';
 
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
@@ -139,6 +149,10 @@ export class Hubspot implements INodeType {
 						value: 'deal',
 					},
 					{
+						name: 'Engagement',
+						value: 'engagement',
+					},
+					{
 						name: 'Form',
 						value: 'form',
 					},
@@ -162,6 +176,9 @@ export class Hubspot implements INodeType {
 			// DEAL
 			...dealOperations,
 			...dealFields,
+			// ENGAGEMENT
+			...engagementOperations,
+			...engagementFields,
 			// FORM
 			...formOperations,
 			...formFields,
@@ -914,7 +931,7 @@ export class Hubspot implements INodeType {
 		} else {
 			for (let i = 0; i < length; i++) {
 				try {
-				//https://developers.hubspot.com/docs/methods/contacts/create_or_update
+					//https://developers.hubspot.com/docs/methods/contacts/create_or_update
 					if (resource === 'contact') {
 						//https://developers.hubspot.com/docs/methods/companies/create_company
 						if (operation === 'upsert') {
@@ -2120,6 +2137,74 @@ export class Hubspot implements INodeType {
 							} else {
 								body.limit = this.getNodeParameter('limit', 0) as number;
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
+								responseData = responseData.results;
+							}
+						}
+					}
+					if (resource === 'engagement') {
+						//https://legacydocs.hubspot.com/docs/methods/engagements/create_engagement
+						if (operation === 'create') {
+							const type = this.getNodeParameter('type', i) as string;
+							const metadata = this.getNodeParameter('metadata', i) as IDataObject;
+							const associations = this.getNodeParameter('associations', i) as IDataObject;
+
+							const body: {
+								engagement: { type: string },
+								metadata: IDataObject,
+								associations: IDataObject
+							} = {
+								engagement: {
+									type: type.toUpperCase(),
+								},
+								metadata: {},
+								associations: {},
+
+							};
+
+							if (type === 'email') {
+								body.metadata = getEmailMetadata(metadata);
+							}
+
+							if (type === 'task') {
+								body.metadata = getTaskMetadata(metadata);
+							}
+
+							if (type === 'meeting') {
+								body.metadata = getMeetingMetadata(metadata);
+							}
+
+							if (type === 'call') {
+								body.metadata = getMeetingMetadata(metadata);
+							}
+
+							//@ts-ignore
+							body.associations = getAssociations(associations);
+
+							const endpoint = '/engagements/v1/engagements';
+							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
+						}
+						//https://legacydocs.hubspot.com/docs/methods/engagements/get_engagement
+						if (operation === 'delete') {
+							const engagementId = this.getNodeParameter('engagementId', i) as string;
+							const endpoint = `/engagements/v1/engagements/${engagementId}`;
+							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint, {}, qs);
+							responseData = { success: true };
+						}
+						//https://legacydocs.hubspot.com/docs/methods/engagements/get_engagement
+						if (operation === 'get') {
+							const engagementId = this.getNodeParameter('engagementId', i) as string;
+							const endpoint = `/engagements/v1/engagements/${engagementId}`;
+							responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+						}
+						//https://legacydocs.hubspot.com/docs/methods/engagements/get-all-engagements
+						if (operation === 'getAll') {
+							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const endpoint = `/engagements/v1/engagements/paged`;
+							if (returnAll) {
+								responseData = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, qs);
+							} else {
+								qs.limit = this.getNodeParameter('limit', 0) as number;
+								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
 							}
 						}
