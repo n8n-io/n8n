@@ -23,7 +23,6 @@ export class Redis implements INodeType {
 		description: 'Get, send and update data in Redis',
 		defaults: {
 			name: 'Redis',
-			color: '#0033AA',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

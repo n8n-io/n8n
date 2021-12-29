@@ -39,7 +39,6 @@ export class PayPal implements INodeType {
 		description: 'Consume PayPal API',
 		defaults: {
 			name: 'PayPal',
-			color: '#356ae6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

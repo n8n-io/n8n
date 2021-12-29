@@ -46,7 +46,6 @@ export class PipedriveTrigger implements INodeType {
 		description: 'Starts the workflow when Pipedrive events occur',
 		defaults: {
 			name: 'Pipedrive Trigger',
-			color: '#559922',
 		},
 		inputs: [],
 		outputs: ['main'],

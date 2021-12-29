@@ -61,7 +61,6 @@ export class Cortex implements INodeType {
 		description: 'Apply the Cortex analyzer/responder on the given entity',
 		defaults: {
 			name: 'Cortex',
-			color: '#54c4c3',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -38,7 +38,6 @@ export class GSuiteAdmin implements INodeType {
 		description: 'Consume G Suite Admin API',
 		defaults: {
 			name: 'G Suite Admin',
-			color: '#ecbb26',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
