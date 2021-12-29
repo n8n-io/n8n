@@ -26,7 +26,6 @@ export class Gitlab implements INodeType {
 		description: 'Retrieve data from GitLab API',
 		defaults: {
 			name: 'Gitlab',
-			color: '#FC6D27',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

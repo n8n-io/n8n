@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const userOperations: INodeProperties[] = [
+export const userOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,11 +27,10 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const userFields: INodeProperties[] = [
+export const userFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                user:get                                    */
@@ -71,7 +70,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -95,6 +94,6 @@ export const userFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
-];
+] as INodeProperties[];

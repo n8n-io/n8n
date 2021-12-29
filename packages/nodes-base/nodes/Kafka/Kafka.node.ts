@@ -28,7 +28,6 @@ export class Kafka implements INodeType {
 		description: 'Sends messages to a Kafka topic',
 		defaults: {
 			name: 'Kafka',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

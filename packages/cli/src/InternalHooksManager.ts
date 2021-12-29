@@ -13,9 +13,12 @@ export class InternalHooksManager {
 		throw new Error('InternalHooks not initialized');
 	}
 
-	static init(instanceId: string): InternalHooksClass {
+	static init(instanceId: string, versionCli: string): InternalHooksClass {
 		if (!this.internalHooksInstance) {
-			this.internalHooksInstance = new InternalHooksClass(new Telemetry(instanceId));
+			this.internalHooksInstance = new InternalHooksClass(
+				new Telemetry(instanceId, versionCli),
+				versionCli,
+			);
 		}
 
 		return this.internalHooksInstance;

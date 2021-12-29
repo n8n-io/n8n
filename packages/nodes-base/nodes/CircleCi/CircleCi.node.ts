@@ -30,7 +30,6 @@ export class CircleCi implements INodeType {
 		description: 'Consume CircleCI API',
 		defaults: {
 			name: 'CircleCI',
-			color: '#04AA51',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -26,6 +26,8 @@ export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
+export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
+export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
@@ -72,7 +74,7 @@ export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const SUBCATEGORY_DESCRIPTIONS: {
 	[category: string]: { [subcategory: string]: string };
 } = {
-	'Core Nodes': {
+	'Core Nodes': { // this - all subkeys are set from codex
 		Flow: 'Branches, core triggers, merge data',
 		Files:  'Work with CSV, XML, text, images etc.',
 		'Data Transformation': 'Manipulate data fields, run code',
@@ -131,4 +133,6 @@ export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
 export const CODING_SKILL_KEY = 'codingSkill';
 export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
 export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
+
+export const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
