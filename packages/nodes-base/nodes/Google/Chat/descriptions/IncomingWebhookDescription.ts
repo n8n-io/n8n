@@ -67,8 +67,8 @@ export const incomingWebhookFields = [
 		description: 'URL for the incoming webhook.',
 	},
 	{
-		displayName: 'Json Parameter Message',
-		name: 'jsonParameterMessage',
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
 		type: 'boolean',
 		displayOptions: {
 			show: {
@@ -97,7 +97,7 @@ export const incomingWebhookFields = [
 				operation: [
 					'create',
 				],
-				jsonParameterMessage: [
+				jsonParameters: [
 					false,
 				],
 			},
@@ -126,7 +126,7 @@ export const incomingWebhookFields = [
 				operation: [
 					'create',
 				],
-				jsonParameterMessage: [
+				jsonParameters: [
 					true,
 				],
 			},
@@ -149,7 +149,7 @@ export const incomingWebhookFields = [
 				operation: [
 					'create',
 				],
-				jsonParameterMessage: [
+				jsonParameters: [
 					true,
 				],
 			},
@@ -158,9 +158,10 @@ export const incomingWebhookFields = [
 		description: 'Message input as JSON Object or JSON String.',
 	},
 	{
-		displayName: 'Query Parameters',
-		name: 'queryParameters',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {

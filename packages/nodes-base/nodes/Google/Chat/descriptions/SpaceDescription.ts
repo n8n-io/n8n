@@ -40,10 +40,13 @@ export const  spaceFields = [
 	/*                                 space:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Name',
-		name: 'name',
-		type: 'string',
+		displayName: 'Space Name',
+		name: 'spaceName',
+		type: 'options',
 		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getSpaces',
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -54,7 +57,7 @@ export const  spaceFields = [
 				],
 			},
 		},
-		default: '',
+		default: [],
 		description: 'Resource name of the space, in the form "spaces/*".',
 	},
 

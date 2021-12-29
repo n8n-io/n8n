@@ -49,8 +49,11 @@ export const messageFields = [
 	{
 		displayName: 'Space Name',
 		name: 'spaceName',
-		type: 'string',
+		type: 'options',
 		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getSpaces',
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -65,8 +68,8 @@ export const messageFields = [
 		description: 'Space resource name, in the form "spaces/*". Example: spaces/AAAAMpdlehY',
 	},
 	{
-		displayName: 'Json Parameter Message',
-		name: 'jsonParameterMessage',
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
 		type: 'boolean',
 		displayOptions: {
 			show: {
@@ -95,7 +98,7 @@ export const messageFields = [
 				operation: [
 					'create',
 				],
-				jsonParameterMessage: [
+				jsonParameters: [
 					false,
 				],
 			},
@@ -171,7 +174,7 @@ export const messageFields = [
 				operation: [
 					'create',
 				],
-				jsonParameterMessage: [
+				jsonParameters: [
 					true,
 				],
 			},
@@ -194,7 +197,7 @@ export const messageFields = [
 				operation: [
 					'create',
 				],
-				jsonParameterMessage: [
+				jsonParameters: [
 					true,
 				],
 			},
@@ -203,9 +206,10 @@ export const messageFields = [
 		description: 'Message input as JSON Object or JSON String.',
 	},
 	{
-		displayName: 'Query Parameters',
-		name: 'queryParameters',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -239,8 +243,8 @@ export const messageFields = [
 	/*                                 messages:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Name',
-		name: 'name',
+		displayName: 'Message Name',
+		name: 'messageName',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -261,8 +265,8 @@ export const messageFields = [
 	/*                                 message:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Name',
-		name: 'name',
+		displayName: 'Message Name',
+		name: 'messageName',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -283,8 +287,8 @@ export const messageFields = [
 	/*                                 message:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Name',
-		name: 'name',
+		displayName: 'Message Name',
+		name: 'messageName',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -301,8 +305,8 @@ export const messageFields = [
 		description: 'Resource name of the message to be retrieved, in the form "spaces/*/messages/*".',
 	},
 	{
-		displayName: 'Json Parameter Message',
-		name: 'jsonParameterMessage',
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
 		type: 'boolean',
 		displayOptions: {
 			show: {
@@ -331,7 +335,7 @@ export const messageFields = [
 				operation: [
 					'update',
 				],
-				jsonParameterMessage: [
+				jsonParameters: [
 					false,
 				],
 			},
@@ -407,7 +411,7 @@ export const messageFields = [
 				operation: [
 					'update',
 				],
-				jsonParameterMessage: [
+				jsonParameters: [
 					true,
 				],
 			},
@@ -430,7 +434,7 @@ export const messageFields = [
 				operation: [
 					'update',
 				],
-				jsonParameterMessage: [
+				jsonParameters: [
 					true,
 				],
 			},

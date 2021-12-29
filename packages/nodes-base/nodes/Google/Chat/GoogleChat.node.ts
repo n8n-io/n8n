@@ -3,8 +3,9 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
@@ -106,6 +107,33 @@ export class GoogleChat implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			// Get all the spaces to display them to user so that he can
+			// select them easily
+			async getSpaces(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const spaces = await googleApiRequestAllItems.call(
+					this,
+					'spaces',
+					'GET',
+					`/v1/spaces`,
+				);
+				for (const space of spaces) {
+					const spaceName = space.name;
+					const spaceId = space.name;
+					returnData.push({
+						name: spaceName,
+						value: spaceId,
+					});
+				}
+				return returnData;
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
@@ -171,12 +199,12 @@ export class GoogleChat implements INodeType {
 
 						// https://developers.google.com/chat/reference/rest/v1/spaces/get
 
-						const name = this.getNodeParameter('name', i) as string;
+						const spaceName = this.getNodeParameter('spaceName', i) as string;
 
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/v1/${name}`,
+							`/v1/${spaceName}`,
 						);
 
 					} else if (operation === 'getAll') {
@@ -218,12 +246,12 @@ export class GoogleChat implements INodeType {
 
 						// https://developers.google.com/chat/reference/rest/v1/spaces.members/get
 
-						const name = this.getNodeParameter('name', i) as string;
+						const memberName = this.getNodeParameter('memberName', i) as string;
 
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/v1/${name}`,
+							`/v1/${memberName}`,
 						);
 
 					} else if (operation === 'getAll') {
@@ -273,18 +301,18 @@ export class GoogleChat implements INodeType {
 
 						const spaceName = this.getNodeParameter('spaceName', i) as string;
 
-						// get query parameters for threadKey and requestId
-						const queryParameters = this.getNodeParameter('queryParameters', i) as IDataObject;
-						if (queryParameters.threadKey) {
-							qs.threadKey = queryParameters.threadKey;
+						// get additional fields for threadKey and requestId
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						if (additionalFields.threadKey) {
+							qs.threadKey = additionalFields.threadKey;
 						}
-						if (queryParameters.requestId) {
-							qs.requestId = queryParameters.requestId;
+						if (additionalFields.requestId) {
+							qs.requestId = additionalFields.requestId;
 						}
 
 						let message: IMessage = {};
-						const jsonParameterMessage = this.getNodeParameter('jsonParameterMessage', i) as boolean;
-						if (jsonParameterMessage) {
+						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						if (jsonParameters) {
 							const messageJson = this.getNodeParameter('messageJson', i);
 
 							if (messageJson instanceof Object) {
@@ -332,12 +360,12 @@ export class GoogleChat implements INodeType {
 
 						// https://developers.google.com/chat/reference/rest/v1/spaces.messages/delete
 
-						const name = this.getNodeParameter('name', i) as string;
+						const messageName = this.getNodeParameter('messageName', i) as string;
 
 						responseData = await googleApiRequest.call(
 							this,
 							'DELETE',
-							`/v1/${name}`,
+							`/v1/${messageName}`,
 						);
 
 					} else if (operation === 'get') {
@@ -348,12 +376,12 @@ export class GoogleChat implements INodeType {
 
 						// https://developers.google.com/chat/reference/rest/v1/spaces.messages/get
 
-						const name = this.getNodeParameter('name', i) as string;
+						const messageName = this.getNodeParameter('messageName', i) as string;
 
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/v1/${name}`,
+							`/v1/${messageName}`,
 						);
 
 					} else if (operation === 'update') {
@@ -364,11 +392,11 @@ export class GoogleChat implements INodeType {
 
 						// https://developers.google.com/chat/reference/rest/v1/spaces.messages/update
 
-						const name = this.getNodeParameter('name', i) as string;
+						const messageName = this.getNodeParameter('messageName', i) as string;
 
 						let message: IMessage = {};
-						const jsonParameterMessage = this.getNodeParameter('jsonParameterMessage', i) as boolean;
-						if (jsonParameterMessage) {
+						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						if (jsonParameters) {
 							const messageJson = this.getNodeParameter('messageJson', i);
 
 							if (messageJson instanceof Object) {
@@ -411,7 +439,7 @@ export class GoogleChat implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
-							`/v1/${name}`,
+							`/v1/${messageName}`,
 							body,
 							qs,
 						);
@@ -426,12 +454,12 @@ export class GoogleChat implements INodeType {
 
 						// https://developers.google.com/chat/reference/rest/v1/spaces.messages.attachments/get
 
-						const name = this.getNodeParameter('name', i) as string;
+						const attachmentName = this.getNodeParameter('attachmentName', i) as string;
 
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/v1/${name}`,
+							`/v1/${attachmentName}`,
 						);
 					}
 				} else if (resource === 'incomingWebhook') {
@@ -445,15 +473,15 @@ export class GoogleChat implements INodeType {
 
 						const uri = this.getNodeParameter('incomingWebhookUrl', i) as string;
 
-						// get query parameters for threadKey
-						const queryParameters = this.getNodeParameter('queryParameters', i) as IDataObject;
-						if (queryParameters.threadKey) {
-							qs.threadKey = queryParameters.threadKey;
+						// get additional fields for threadKey
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						if (additionalFields.threadKey) {
+							qs.threadKey = additionalFields.threadKey;
 						}
 
 						let message: IMessage = {};
-						const jsonParameterMessage = this.getNodeParameter('jsonParameterMessage', i) as boolean;
-						if (jsonParameterMessage) {
+						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						if (jsonParameters) {
 							const messageJson = this.getNodeParameter('messageJson', i);
 
 							if (messageJson instanceof Object) {

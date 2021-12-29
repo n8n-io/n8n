@@ -31,8 +31,8 @@ export const  attachmentFields = [
 	/*                                 attachments:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Name',
-		name: 'name',
+		displayName: 'Attachment Name',
+		name: 'attachmentName',
 		type: 'string',
 		required: true,
 		displayOptions: {

@@ -41,10 +41,11 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		options.encoding = null;
 	}
 
+	let responseData: IDataObject | undefined;
 	try {
 		if (noCredentials) {
 			//@ts-ignore
-			return await this.helpers.request(options);
+			responseData = await this.helpers.request(options);
 		} else{
 			const credentials = await this.getCredentials('googleApi');
 
@@ -56,13 +57,19 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			options.headers!.Authorization = `Bearer ${access_token}`;
 
 			//@ts-ignore
-			return await this.helpers.request(options);
+			responseData = await this.helpers.request(options);
 		}
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
 		}
 		throw new NodeApiError(this.getNode(), error);
+	}
+	if(Object.keys(responseData as IDataObject).length !== 0) {
+		return responseData;
+	}
+	else {
+		return { "success": true };
 	}
 }
 
