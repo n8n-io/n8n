@@ -37,7 +37,7 @@ export const engagementOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ];
 
@@ -119,7 +119,7 @@ export const engagementFields: INodeProperties[] = [
 					},
 					{
 						name: 'Contact',
-						value: 'contact',
+						value: 'CONTACT',
 					},
 				],
 				default: '',
@@ -519,7 +519,7 @@ export const engagementFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -543,6 +543,6 @@ export const engagementFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ];
