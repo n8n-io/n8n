@@ -12,7 +12,7 @@ import {
 } from '../../../transport';
 
 export async function getEmployeeOut(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	let body = {} as IDataObject;
+	let body: IDataObject = {};
 	const requestMethod = 'GET';
 	const endpoint = 'time_off/whos_out';
 

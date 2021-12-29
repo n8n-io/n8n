@@ -19,7 +19,6 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
 			},
 		},
 		default: '',
-		description: 'Employee ID',
 	},
 	{
 		displayName: 'Table Name',
@@ -37,7 +36,6 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
 			},
 		},
 		default: '',
-		description: 'Name of the table',
 	},
 	{
 		displayName: 'Row ID',
@@ -55,7 +53,6 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
 			},
 		},
 		default: '',
-		description: 'Row ID',
 	},
 	{
 		displayName: 'Location',
@@ -73,7 +70,6 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
 			},
 		},
 		default: '',
-		description: 'Location',
 	},
 	{
 		displayName: 'Update Fields',
@@ -97,35 +93,30 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
 				name: 'date',
 				type: 'string',
 				default: '',
-				description: 'Date',
 			},
 			{
 				displayName: 'Division',
 				name: 'division',
 				type: 'string',
 				default: '',
-				description: 'Division',
 			},
 			{
 				displayName: 'Department',
 				name: 'department',
 				type: 'string',
 				default: '',
-				description: 'Department',
 			},
 			{
 				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
-				description: 'Job Title',
 			},
 			{
 				displayName: 'Reports To',
 				name: 'reportsTo',
 				type: 'string',
 				default: '',
-				description: 'Reports To',
 			},
 		],
 	},

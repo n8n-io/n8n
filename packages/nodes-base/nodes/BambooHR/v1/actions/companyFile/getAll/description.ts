@@ -8,7 +8,7 @@ export const companyFileGetAllDescription: CompanyFileProperties = [
 		name: 'onlyFiles',
 		type: 'boolean',
 		default: true,
-		description: 'Returns all the files without the categories.',
+		description: 'Whether to return all the files without the categories.',
 		displayOptions: {
 			show: {
 				operation: [
@@ -25,7 +25,7 @@ export const companyFileGetAllDescription: CompanyFileProperties = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results.',
 		displayOptions: {
 			show: {
 				operation: [

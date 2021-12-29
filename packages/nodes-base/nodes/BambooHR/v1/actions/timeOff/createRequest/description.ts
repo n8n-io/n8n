@@ -40,7 +40,6 @@ export const timeOffCreateRequestDescription: TimeOffProperties = [
 			},
 		},
 		default: '',
-		description: 'The time off type IDs in a given company can be looked up using the Metadata API',
 	},
 	{
 		displayName: 'Status',
@@ -72,7 +71,6 @@ export const timeOffCreateRequestDescription: TimeOffProperties = [
 			},
 		},
 		default: 'approved',
-		description: 'The possible status values are: "approved", "denied" (or "declined"), "requested"',
 	},
 	{
 		displayName: 'Start Date',

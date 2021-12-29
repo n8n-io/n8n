@@ -21,14 +21,14 @@ export const timeOffGetEmployeeOutDescription: TimeOffProperties = [
 		},
 		options: [
 			{
-				displayName: 'Start',
+				displayName: 'Start Date',
 				name: 'start',
 				type: 'string',
 				default: '',
 				description: 'A date in the form YYYY-MM-DD - defaults to the current date.',
 			},
 			{
-				displayName: 'End',
+				displayName: 'End Date',
 				name: 'end',
 				type: 'string',
 				default: '',

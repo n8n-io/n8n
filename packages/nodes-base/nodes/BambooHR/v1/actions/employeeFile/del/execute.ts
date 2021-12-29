@@ -12,12 +12,12 @@ import {
 } from '../../../transport';
 
 export async function del(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const body = {} as IDataObject;
+	const body: IDataObject = {};
 	const requestMethod = 'DELETE';
 
 	//meta data
-	const id = this.getNodeParameter('id', index) as string;
-	const fileId = this.getNodeParameter('fileId', index) as string;
+	const id: string = this.getNodeParameter('id', index) as string;
+	const fileId: string = this.getNodeParameter('fileId', index) as string;
 
 	//endpoint
 	const endpoint = `employees/${id}/files/${fileId}`;

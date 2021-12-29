@@ -8,7 +8,7 @@ export const employeesGetAllDescription: EmployeesProperties = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results.',
 		displayOptions: {
 			show: {
 				resource: [

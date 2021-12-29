@@ -51,7 +51,6 @@ export const timeOffChangeStatusDescription: TimeOffProperties = [
 			},
 		},
 		default: 'approved',
-		description: 'Request Status. Choose one of: approved, cancelled, denied',
 	},
 	{
 		displayName: 'Additional Fields',

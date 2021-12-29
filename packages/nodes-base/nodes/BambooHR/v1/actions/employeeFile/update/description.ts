@@ -61,7 +61,7 @@ export const employeeFileUpdateDescription: EmployeeFileProperties = [
 				name: 'categoryId',
 				type: 'string',
 				default: '',
-				description: 'Move the file to a different category',
+				description: 'ID of the new category of the file',
 			},
 			{
 				displayName: 'Name',
@@ -75,7 +75,7 @@ export const employeeFileUpdateDescription: EmployeeFileProperties = [
 				name: 'shareWithEmployee',
 				type: 'boolean',
 				default: true,
-				description: 'Update whether this file is shared or not',
+				description: 'Whether this file is shared or not',
 			},
 		],
 	},

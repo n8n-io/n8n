@@ -4,24 +4,6 @@ import {
 
 export const reportsGetDescription: ReportsProperties = [
 	{
-		displayName: 'Report ID',
-		name: 'id',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'reports',
-				],
-			},
-		},
-		default: '',
-		description: 'ID of the Report. You can get the report number by hovering over the report name on the reports page and grabbing the ID.',
-	},
-	{
 		displayName: 'Format',
 		name: 'format',
 		type: 'options',
@@ -59,6 +41,24 @@ export const reportsGetDescription: ReportsProperties = [
 			},
 		},
 		default: 'JSON',
-		description: 'The output format for the report. Supported formats: CSV, PDF, XLS, XML, JSON',
+		description: 'The output format for the report',
+	},
+	{
+		displayName: 'Report ID',
+		name: 'id',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'reports',
+				],
+			},
+		},
+		default: '',
+		description: 'ID of the report. You can get the report number by hovering over the report name on the reports page and grabbing the ID.',
 	},
 ];

@@ -12,13 +12,13 @@ import {
 } from '../../../transport';
 
 export async function download(this: IExecuteFunctions, index: number): Promise<any> {
-	const body = {} as IDataObject;
+	const body: IDataObject = {};
 	const requestMethod = 'GET';
 
 	//meta data
-	const id = this.getNodeParameter('id', index) as string;
-	const fileId = this.getNodeParameter('fileId', index) as string;
-	const output = 'data' as string;
+	const id: string = this.getNodeParameter('id', index) as string;
+	const fileId: string = this.getNodeParameter('fileId', index) as string;
+	const output: string = 'data' as string;
 
 	//endpoint
 	const endpoint = `employees/${id}/files/${fileId}/`;

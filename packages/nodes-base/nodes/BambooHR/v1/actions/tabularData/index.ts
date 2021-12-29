@@ -13,7 +13,7 @@ export {
 };
 
 
-export const descriptions = [
+export const descriptions: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,7 +29,7 @@ export const descriptions = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Adds a table row',
+				description: 'Add a table row',
 			},
 			{
 				name: 'Get',
@@ -48,10 +48,9 @@ export const descriptions = [
 			},
 		],
 		default: 'create',
-		description: '',
 	},
 	...create.description,
 	...get.description,
 	...getAll.description,
 	...update.description,
-] as INodeProperties[];
+];

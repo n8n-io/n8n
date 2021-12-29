@@ -15,7 +15,7 @@ export {
 };
 
 
-export const descriptions = [
+export const descriptions: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -55,11 +55,10 @@ export const descriptions = [
 			},
 		],
 		default: 'addCategory',
-		description: '',
 	},
 	...addCategory.description,
 	...del.description,
 	...download.description,
 	...getAll.description,
 	...update.description,
-] as INodeProperties[];
+];

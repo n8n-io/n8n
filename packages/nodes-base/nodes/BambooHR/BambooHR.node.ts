@@ -13,6 +13,7 @@ import {
 
 import { router } from './v1/actions/router';
 import { versionDescription } from './v1/actions/versionDescription';
+import { loadOptions } from './v1/methods';
 
 import {
 	apiRequest,
@@ -28,32 +29,9 @@ export class BambooHR implements INodeType {
 		};
 	}
 
-	methods = {
-		loadOptions: {
-			async getTimeOffTypeID(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const body = {} as IDataObject;
-				const requestMethod = 'GET';
-				const endPoint = 'meta/time_off/types';
-
-				const response = await apiRequest.call(this, requestMethod, endPoint, body);
-				const timeOffTypeIds = response.body.timeOffTypes;
-
-				for (const item of timeOffTypeIds) {
-					returnData.push({
-						name: item.name,
-						value: item.id,
-					});
-				}
-				return returnData;
-			},
-		},
-	};
+	methods = { loadOptions };
 
 	async execute(this: IExecuteFunctions) {
-		// Router returns INodeExecutionData[]
-		// We need to output INodeExecutionData[][]
-		// So we wrap in []
 		return [await router.call(this)];
 	}
 }

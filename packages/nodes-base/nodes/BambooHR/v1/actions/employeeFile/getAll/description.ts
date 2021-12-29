@@ -19,14 +19,14 @@ export const employeeFileGetAllDescription: EmployeeFileProperties = [
 			},
 		},
 		default: '',
-		description: 'ID of the employee. When set to 0, the fields of the user who created the API are retrieved.',
+		description: 'ID of the employee. Set to <code>0</code> to retrieve the fields of the logged-in user.',
 	},
 	{
 		displayName: 'Only Files',
 		name: 'onlyFiles',
 		type: 'boolean',
 		default: true,
-		description: 'Returns all the files without the categories.',
+		description: 'Whether to return all the files without the categories.',
 		displayOptions: {
 			show: {
 				operation: [
@@ -43,7 +43,7 @@ export const employeeFileGetAllDescription: EmployeeFileProperties = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results.',
 		displayOptions: {
 			show: {
 				operation: [

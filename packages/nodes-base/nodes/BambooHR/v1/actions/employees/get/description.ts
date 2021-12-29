@@ -4,24 +4,6 @@ import {
 
 export const employeesGetDescription: EmployeesProperties = [
 	{
-		displayName: 'Employee ID',
-		name: 'id',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'employees',
-				],
-			},
-		},
-		default: '',
-		description: 'Id of the employee',
-	},
-	{
 		displayName: 'Fields',
 		name: 'fields',
 		type: 'multiOptions',
@@ -129,6 +111,23 @@ export const employeesGetDescription: EmployeesProperties = [
 			'supervisor',
 			'photoUrl',
 		],
-		description: 'Set of fields to get from employee data, separated by coma',
+		description: 'Set of fields to get from employee data, separated by comma',
+	},
+	{
+		displayName: 'Employee ID',
+		name: 'id',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'employees',
+				],
+			},
+		},
+		default: '',
 	},
 ];

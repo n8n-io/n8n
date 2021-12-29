@@ -12,7 +12,7 @@ import {
 } from '../../../transport';
 
 export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const body = {} as IDataObject;
+	const body: IDataObject = {};
 	const requestMethod = 'POST';
 	const endpoint = 'employees';
 

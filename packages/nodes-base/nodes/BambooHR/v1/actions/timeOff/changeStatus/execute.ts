@@ -12,7 +12,7 @@ import {
 } from '../../../transport';
 
 export async function changeStatus(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	let body = {} as IDataObject;
+	let body: IDataObject = {};
 	const requestMethod = 'PUT';
 
 	//meta data

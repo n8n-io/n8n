@@ -16,7 +16,7 @@ export async function addCategory(this: IExecuteFunctions, index: number): Promi
 	const endpoint = 'employees/files/categories';
 
 	//body parameters
-	const categoryName = this.getNodeParameter('categoryName', index) as string;
+	const categoryName: string = this.getNodeParameter('categoryName', index) as string;
 	body.push(categoryName);
 
 	//response

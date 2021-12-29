@@ -15,7 +15,7 @@ export {
 };
 
 
-export const descriptions = [
+export const descriptions: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -46,7 +46,7 @@ export const descriptions = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Lists company files and categories',
+				description: 'List company files and categories',
 			},
 			{
 				name: 'Update',
@@ -62,4 +62,4 @@ export const descriptions = [
 	...download.description,
 	...getAll.description,
 	...update.description,
-] as INodeProperties[];
+];
