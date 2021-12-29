@@ -47,7 +47,6 @@ export default mixins(
 		};
 	},
 	mounted() {
-		console.log(this.path);
 		setTimeout(this.loadEditor);
 	},
 	destroyed() {
