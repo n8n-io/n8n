@@ -9,11 +9,13 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	clean,
 	getAssociations,
+	getCallMetadata,
 	getEmailMetadata,
 	getMeetingMetadata,
 	getTaskMetadata,
@@ -68,7 +70,6 @@ import {
 import {
 	snakeCase,
 } from 'change-case';
-import { measureMemory } from 'vm';
 
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
@@ -1363,11 +1364,9 @@ export class Hubspot implements INodeType {
 							const endpoint = '/crm/v3/objects/contacts/search';
 
 							if (returnAll) {
-
 								responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body, qs);
-
 							} else {
-								qs.count = this.getNodeParameter('limit', 0) as number;
+								body.limit = this.getNodeParameter('limit', 0) as number;
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
 								responseData = responseData.results;
 							}
@@ -2146,7 +2145,14 @@ export class Hubspot implements INodeType {
 						if (operation === 'create') {
 							const type = this.getNodeParameter('type', i) as string;
 							const metadata = this.getNodeParameter('metadata', i) as IDataObject;
-							const associations = this.getNodeParameter('associations', i) as IDataObject;
+							const associations = this.getNodeParameter('additionalFields.associations', i, {}) as IDataObject;
+
+							if (!Object.keys(metadata).length) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`At least one metadata field needs to set`,
+								);
+							}
 
 							const body: {
 								engagement: { type: string },
@@ -2158,7 +2164,6 @@ export class Hubspot implements INodeType {
 								},
 								metadata: {},
 								associations: {},
-
 							};
 
 							if (type === 'email') {
@@ -2174,7 +2179,7 @@ export class Hubspot implements INodeType {
 							}
 
 							if (type === 'call') {
-								body.metadata = getMeetingMetadata(metadata);
+								body.metadata = getCallMetadata(metadata);
 							}
 
 							//@ts-ignore

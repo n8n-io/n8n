@@ -38,7 +38,6 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			const credentials = await this.getCredentials('hubspotApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
-			console.log(JSON.stringify(options, undefined, 2));
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'developerApi') {
 			const credentials = await this.getCredentials('hubspotDeveloperApi');
@@ -1953,10 +1952,10 @@ export const getAssociations = (associations: {
 	ticketIds: string;
 }) => {
 	return {
-		...(associations.companyIds && { companyIds: associations.companyIds.split(',') }),
-		...(associations.contactIds && { contactIds: associations.contactIds.split(',') }),
-		...(associations.dealIds && { dealIds: associations.dealIds.split(',') }),
-		...(associations.ownerIds && { ownerIds: associations.ownerIds.split(',') }),
-		...(associations.ticketIds && { ticketIds: associations.ticketIds.split(',') }),
+		...(associations.companyIds && { companyIds: associations.companyIds.toString().split(',') }),
+		...(associations.contactIds && { contactIds: associations.contactIds.toString().split(',') }),
+		...(associations.dealIds && { dealIds: associations.dealIds.toString().split(',') }),
+		...(associations.ownerIds && { ownerIds: associations.ownerIds.toString().split(',') }),
+		...(associations.ticketIds && { ticketIds: associations.ticketIds.toString().split(',') }),
 	};
 };

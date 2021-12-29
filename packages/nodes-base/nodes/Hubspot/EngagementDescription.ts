@@ -53,12 +53,12 @@ export const engagementFields: INodeProperties[] = [
 		required: true,
 		options: [
 			{
-				name: 'Email',
-				value: 'email',
-			},
-			{
 				name: 'Call',
 				value: 'call',
+			},
+			{
+				name: 'Email',
+				value: 'email',
 			},
 			{
 				name: 'Meeting',
@@ -240,7 +240,7 @@ export const engagementFields: INodeProperties[] = [
 				description: '',
 			},
 			{
-				displayName: 'To Email',
+				displayName: 'To Emails',
 				name: 'toEmail',
 				type: 'string',
 				typeOptions: {
@@ -303,7 +303,7 @@ export const engagementFields: INodeProperties[] = [
 			{
 				displayName: 'Title',
 				name: 'title',
-				type: 'dateTime',
+				type: 'string',
 				default: '',
 				description: '',
 			},
@@ -403,7 +403,7 @@ export const engagementFields: INodeProperties[] = [
 						value: 'CALLING_CRM_USER',
 					},
 				],
-				default: '',
+				default: 'QUEUED',
 				description: '',
 			},
 			{
@@ -416,8 +416,8 @@ export const engagementFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Associations',
-		name: 'associations',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -433,39 +433,48 @@ export const engagementFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company IDs',
-				name: 'companyIds',
-				type: 'string',
-				default: '',
-				description: '',
-			},
-			{
-				displayName: 'Contact IDs',
-				name: 'contactIds',
-				type: 'string',
-				default: '',
-				description: '',
-			},
-			{
-				displayName: 'Deals IDs',
-				name: 'dealIds',
-				type: 'string',
-				default: '',
-				description: '',
-			},
-			{
-				displayName: 'Owner IDs',
-				name: 'ownerIds',
-				type: 'string',
-				default: '',
-				description: '',
-			},
-			{
-				displayName: 'Ticket IDs',
-				name: 'ticketIds',
-				type: 'string',
-				default: '',
-				description: '',
+				displayName: 'Associations',
+				name: 'associations',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Company IDs',
+						name: 'companyIds',
+						type: 'string',
+						default: '',
+						description: '',
+					},
+					{
+						displayName: 'Contact IDs',
+						name: 'contactIds',
+						type: 'string',
+						default: '',
+						description: '',
+					},
+					{
+						displayName: 'Deals IDs',
+						name: 'dealIds',
+						type: 'string',
+						default: '',
+						description: '',
+					},
+					{
+						displayName: 'Owner IDs',
+						name: 'ownerIds',
+						type: 'string',
+						default: '',
+						description: '',
+					},
+					{
+						displayName: 'Ticket IDs',
+						name: 'ticketIds',
+						type: 'string',
+						default: '',
+						description: '',
+					},
+				],
 			},
 		],
 	},
