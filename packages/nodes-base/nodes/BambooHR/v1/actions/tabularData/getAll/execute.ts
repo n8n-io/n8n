@@ -22,7 +22,7 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 
 	//query parameter
 	const since = this.getNodeParameter('since', index) as string;
-  const date = moment(since).format('YYYY-MM-DDTHH:mm:ss') + 'Z';
+	const date = moment(since).format('YYYY-MM-DDTHH:mm:ss') + 'Z';
 	const encodedDate = encodeURIComponent(date);
 
 	//endpoint

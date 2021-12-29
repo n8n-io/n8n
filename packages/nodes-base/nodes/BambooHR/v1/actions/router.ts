@@ -32,8 +32,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			if (bamboohr.resource === 'employees') {
 				operationResult.push(...await employees[bamboohr.operation].execute.call(this, i));
 			} else if (bamboohr.resource === 'employeeFile') {
+				//@ts-ignore
 				operationResult.push(...await employeeFile[bamboohr.operation].execute.call(this, i));
 			} else if (bamboohr.resource === 'companyFile') {
+				//@ts-ignore
 				operationResult.push(...await companyFile[bamboohr.operation].execute.call(this, i));
 			} else if (bamboohr.resource === 'reports') {
 				operationResult.push(...await reports[bamboohr.operation].execute.call(this, i));

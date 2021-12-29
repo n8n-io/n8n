@@ -3,9 +3,6 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
@@ -14,11 +11,6 @@ import {
 import { router } from './v1/actions/router';
 import { versionDescription } from './v1/actions/versionDescription';
 import { loadOptions } from './v1/methods';
-
-import {
-	apiRequest,
-} from './v1/transport';
-
 export class BambooHR implements INodeType {
 	description: INodeTypeDescription;
 
