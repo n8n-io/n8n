@@ -139,6 +139,41 @@ export async function odooJSONRPCRequest(
 	}
 }
 
+export async function odooGetModelFields(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	db: string,
+	userID: number,
+	password: string,
+	resource: string,
+	url: string,
+) {
+	try {
+		const body = {
+			jsonrpc: '2.0',
+			method: 'call',
+			params: {
+				service: serviceJSONRPC,
+				method: methodJSONRPC,
+				args: [
+					db,
+					userID,
+					password,
+					resource,
+					'fields_get',
+					[],
+					['string', 'type', 'help', 'required', 'name'],
+				],
+			},
+			id: Math.floor(Math.random() * 100),
+		};
+
+		const result = await odooJSONRPCRequest.call(this, body, url);
+		return result;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
 export async function odooCreate(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	db: string,
@@ -283,7 +318,7 @@ export async function odooUpdate(
 		};
 
 		const result = await odooJSONRPCRequest.call(this, body, url);
-		return {success: result};
+		return { success: result };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -319,7 +354,7 @@ export async function odooDelete(
 		};
 
 		const result = await odooJSONRPCRequest.call(this, body, url);
-		return {success: result};
+		return { success: result };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

@@ -25,6 +25,9 @@ export class OdooApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 			required: true,
+			typeOptions: {
+				password: true,
+			},
 		},
 		{
 			displayName: 'Database name: ',

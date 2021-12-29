@@ -4,7 +4,9 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
@@ -18,6 +20,7 @@ import {
 	odooDelete,
 	odooGet,
 	odooGetAll,
+	odooGetModelFields,
 	odooGetUserID,
 	odooUpdate,
 } from './GenericFunctions';
@@ -178,12 +181,40 @@ export class Odoo implements INodeType {
 						name: 'fields',
 						values: [
 							{
+								displayName: 'Choose From List',
+								name: 'fromList',
+								type: 'boolean',
+								default: false,
+								description: 'Whether to use options from list',
+							},
+							{
 								displayName: 'Field:',
 								name: 'field',
 								type: 'string',
 								default: '',
 								description: 'Enter field name',
 								placeholder: '',
+								displayOptions: {
+									show: {
+										fromList: [false],
+									},
+								},
+							},
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								default: '',
+								noDataExpression: true,
+								typeOptions: {
+									loadOptionsDependsOn: ['customResource'],
+									loadOptionsMethod: 'getModelFields',
+								},
+								displayOptions: {
+									show: {
+										fromList: [true],
+									},
+								},
 							},
 						],
 					},
@@ -335,6 +366,39 @@ export class Odoo implements INodeType {
 	};
 
 	methods = {
+		loadOptions: {
+			async getModelFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const customResource = this.getCurrentNodeParameter('customResource') as string;
+
+				const credentials = await this.getCredentials('odooApi');
+				const url = credentials?.url as string;
+				const username = credentials?.username as string;
+				const password = credentials?.password as string;
+				const db = (credentials?.db || url.split('//')[1].split('.')[0]) as string;
+				const userID = await odooGetUserID.call(this, db, username, password, url);
+
+				const responce = await odooGetModelFields.call(
+					this,
+					db,
+					userID,
+					password,
+					customResource,
+					url,
+				);
+
+				const options = Object.values(responce).map((field) => {
+					const optionField = field as { [key: string]: string };
+					return {
+						name: optionField.name,
+						value: optionField.name,
+						// nodelinter-ignore-next-line
+						description: optionField.string.replace(/^./, optionField.string[0].toUpperCase()),
+					};
+				});
+
+				return options.sort((a, b) => a.name.localeCompare(b.name));
+			},
+		},
 		credentialTest: {
 			async odooApiTest(
 				this: ICredentialTestFunctions,
@@ -506,7 +570,16 @@ export class Odoo implements INodeType {
 			}
 		}
 
-		console.log(noteNoteDescription);
+		// const test = await odooGetModelFields.call(
+		// 	this,
+		// 	db,
+		// 	userID,
+		// 	password,
+		// 	this.getNodeParameter('customResource', 0) as string,
+		// 	url,
+		// );
+		// console.log(test);
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
