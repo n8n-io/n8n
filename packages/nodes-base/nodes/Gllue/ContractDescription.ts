@@ -8,7 +8,7 @@ export const contractOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'clientcontract',
+					'contract',
 				],
 			},
 		},
@@ -36,7 +36,7 @@ export const contractFields: INodeProperties[] = [
 					'delete',
 				],
 				resource: [
-					'clientcontract',
+					'contract',
 				],
 			},
 		},

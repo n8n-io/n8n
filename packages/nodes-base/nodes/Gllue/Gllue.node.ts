@@ -51,7 +51,7 @@ export class Gllue implements INodeType {
 					},
 					{
 						name: 'Contract',
-						value: 'clientcontract',
+						value: 'contract',
 					},
 				],
 				default: 'client',
@@ -71,11 +71,10 @@ export class Gllue implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let responseData;
-		const items = this.getInputData();
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		// tslint:disable-next-line:no-any
-		const filters = this.getNodeParameter('filters', 0) as any;
+		const filters = this.getNodeParameter('filters', 0, {fields: 'id'}) as any;
 		const credentials = await this.getCredentials('gllueApi') as IDataObject;
 
 		const timestamp = helpers.getCurrentTimeStamp();
@@ -97,15 +96,15 @@ export class Gllue implements INodeType {
 			}
 		} else if (resource == 'contract'){
 			if (operation === 'delete'){
-				const api_path = '/rest/clientcontract/delete';
-				const contract_ids = items.map(
+				const contract_ids = this.getInputData().map(
 					(item, index) => this.getNodeParameter('id', index)
 				);
 				const body = { ids: contract_ids, count: contract_ids.length };
-				responseData = await helpers.gllueApiRequest.call(this, 'POST', api_path,{}, body, credentials);
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request, 'POST', body);
 			}
 		}
 		return [this.helpers.returnJsonArray(responseData)];
-	}
+	};
+
 }
 
