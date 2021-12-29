@@ -186,7 +186,7 @@ const typeMention: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The id of the user being mentioned',
+		description: 'The ID of the user being mentioned',
 	},
 	{
 		displayName: 'Page ID',
@@ -200,7 +200,7 @@ const typeMention: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The id of the page being mentioned',
+		description: 'The ID of the page being mentioned',
 	},
 	{
 		displayName: 'Database ID',
@@ -217,7 +217,7 @@ const typeMention: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The id of the database being mentioned',
+		description: 'The ID of the database being mentioned',
 	},
 	{
 		displayName: 'Range',
@@ -566,4 +566,3 @@ export const blocks = (resource: string, operation: string): INodeProperties[] =
 	],
 },
 ];
-
