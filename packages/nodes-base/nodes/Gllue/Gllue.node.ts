@@ -4,6 +4,7 @@ import {IDataObject, INodeExecutionData, INodeType, INodeTypeDescription,} from 
 import {clientFields, clientOperations} from './ClientDescription';
 import {getResponseByUri, UrlParams} from './helpers';
 import {cityFields, cityOperations} from './CityDescription';
+import {industryFields, industryOperations} from './IndustryDescription';
 
 const helpers = require('./helpers');
 
@@ -43,6 +44,10 @@ export class Gllue implements INodeType {
 						name: 'City',
 						value: 'city',
 					},
+					{
+						name: 'Industry',
+						value: 'industry',
+					},
 				],
 				default: 'client',
 				required: true,
@@ -52,6 +57,8 @@ export class Gllue implements INodeType {
 			...clientFields,
 			...cityOperations,
 			...cityFields,
+			...industryOperations,
+			...industryFields,
 		],
 	};
 
@@ -74,6 +81,10 @@ export class Gllue implements INodeType {
 			}
 		} else if (resource === 'city') {
 			if (operation === 'simple_list_with_ids') {
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
+			}
+		} else if (resource == 'industry') {
+			if (operation === 'simple_list_with_ids'){
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
 			}
 		}
