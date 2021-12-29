@@ -13,8 +13,8 @@
 		/>
 
 		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
-			<code-edit v-if="codeEditDialogVisible" :value="value" :parameter="parameter" :type="editorType" :codeAutocomplete="codeAutocomplete" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
-			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
+			<code-edit v-if="codeEditDialogVisible" :value="value" :parameter="parameter" :type="editorType" :codeAutocomplete="codeAutocomplete" :path="path" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
+			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
 			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>

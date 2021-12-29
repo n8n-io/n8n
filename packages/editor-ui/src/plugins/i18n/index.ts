@@ -179,10 +179,8 @@ export class I18nClass {
 			 */
 			inputLabelDisplayName(
 				parameter: { name: string; displayName: string; type: string },
-				path = '',
+				path: string,
 			) {
-				if (!path) return; // TODO: TextEdit, CodeEdit, ParameterInputExpanded
-
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
@@ -196,10 +194,8 @@ export class I18nClass {
 			 */
 			inputLabelDescription(
 				parameter: { name: string; description: string; type: string },
-				path = '',
+				path: string,
 			) {
-				if (!path) return; // TODO: TextEdit, CodeEdit, ParameterInputExpanded
-
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
@@ -209,16 +205,15 @@ export class I18nClass {
 			},
 
 			/**
-			 * Placeholder for an input label or `collection` or `fixedCollection` param.
+			 * Placeholder for an input label or `collection` or `fixedCollection` param,
+			 * whether top-level or nested.
 			 * - For an input label, the placeholder is unselectable greyed-out sample text.
 			 * - For a `collection` or `fixedCollection`, the placeholder is the button text.
 			 */
 			placeholder(
 				parameter: { name: string; placeholder: string; type: string },
-				path = '',
+				path: string,
 			) {
-				if (!path) return; // TODO: TextEdit, CodeEdit, ParameterInputExpanded
-
 				let middleKey = parameter.name;
 
 				if (isOptionInFixedCollection(path)) {
@@ -233,12 +228,13 @@ export class I18nClass {
 			},
 
 			/**
-			 * Display name for an option inside an `options` or `multiOptions` param.
+			 * Display name for an option inside an `options` or `multiOptions` param,
+			 * whether top-level or nested.
 			 */
 			optionsOptionDisplayName(
 				parameter: { name: string; },
 				{ value: optionName, name: displayName }: { value: string; name: string; },
-				path = '',
+				path: string,
 			) {
 				let middleKey = parameter.name;
 
@@ -254,12 +250,13 @@ export class I18nClass {
 			},
 
 			/**
-			 * Description for an option inside an `options` or `multiOptions` param.
+			 * Description for an option inside an `options` or `multiOptions` param,
+			 * whether top-level or nested.
 			 */
 			optionsOptionDescription(
 				parameter: { name: string; },
 				{ value: optionName, description }: { value: string; description: string; },
-				path = '',
+				path: string,
 			) {
 				let middleKey = parameter.name;
 
@@ -275,8 +272,9 @@ export class I18nClass {
 			},
 
 			/**
-			 * Display name for an option in the dropdown menu of a `collection` or `fixedCollection` param.
-			 * No nesting support since `collection` cannot be nested in a `collection` or in a `fixedCollection`.
+			 * Display name for an option in the dropdown menu of a `collection` or
+			 * fixedCollection` param. No nesting support since `collection` cannot
+			 * be nested in a `collection` or in a `fixedCollection`.
 			 */
 			collectionOptionDisplayName(
 				{ name: parameterName }: { name: string; },
@@ -302,7 +300,10 @@ export class I18nClass {
 				});
 			},
 
-			eventTriggerDescription(nodeType: string, eventTriggerDescription: string) {
+			eventTriggerDescription(
+				nodeType: string,
+				eventTriggerDescription: string,
+			) {
 				return context.dynamicRender({
 					key: `n8n-nodes-base.nodes.${nodeType}.nodeView.eventTriggerDescription`,
 					fallback: eventTriggerDescription,
