@@ -92,3 +92,15 @@ Currently only the keys `oauth.clientId` and `oauth.clientSecret` are supported 
 			"clientId": "🇩🇪 Client ID",
 			"clientSecret": "🇩🇪 Client Secret",
 ```
+
+### Special cases
+
+`eventTriggerDescription` is a dynamic node property that is not part of node parameters. To translate it, set the `eventTriggerDescription` key at the root level of the `nodeView` property in the node translation file.
+
+```json
+{
+	"nodeView": {
+		"eventTriggerDescription": "🇩🇪 Waiting for you to call the Test URL"
+	}
+}
+```
