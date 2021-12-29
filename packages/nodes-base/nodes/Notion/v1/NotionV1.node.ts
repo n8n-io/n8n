@@ -30,7 +30,7 @@ import * as moment from 'moment-timezone';
 
 import {
 	versionDescription
-} from './versionDescription';
+} from './VersionDescription';
 
 export class NotionV1 implements INodeType {
 
@@ -227,7 +227,7 @@ export class NotionV1 implements INodeType {
 			}
 		}
 
-		
+
 
 		if (resource === 'database') {
 
