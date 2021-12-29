@@ -1,5 +1,5 @@
 import * as addCategory from './addCategory';
-import * as del from './del';
+import * as del from './delete';
 import * as download from './download';
 import * as getAll from './getAll';
 import * as update from './update';
