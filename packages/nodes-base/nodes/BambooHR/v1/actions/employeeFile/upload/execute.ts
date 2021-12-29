@@ -11,17 +11,24 @@ import {
 	apiRequest,
 } from '../../../transport';
 
-export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function upload(this: IExecuteFunctions, index: number): Promise<any> {
 	const body: IDataObject = {};
 	const requestMethod = 'POST';
-	const endpoint = 'employees';
-	const companyName = this.getNodeParameter('companyName', index) as string;
 
-	body.firstName = this.getNodeParameter('firstName', index) as string;
-	body.lastName = this.getNodeParameter('lastName', index) as string;
+	body.file = this.getNodeParameter('file', index) as string;
+	body.fileName = this.getNodeParameter('fileName', index) as string;
+	body.category = this.getNodeParameter('category', index) as string;
+	body.share = this.getNodeParameter('share', index) as string;
 
-	const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endpoint}/`;
-	const responseData = await apiRequest.call(this, requestMethod, uri, body);
+	console.log(body);
 
-	return this.helpers.returnJsonArray(responseData);
+	//meta data
+	const id: string = this.getNodeParameter('id', index) as string;
+
+	//endpoint
+	const endpoint = `employees/${id}/files`;
+
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, { formData: body }, {} as IDataObject, 'json', 'multipart/form-data');
+
+	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
 }

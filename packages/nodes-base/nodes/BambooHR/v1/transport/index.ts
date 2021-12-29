@@ -21,6 +21,7 @@ export async function apiRequest(
 	body: string[] | IDataObject = {},
 	query: IDataObject = {},
 	encoding: 'json' | 'arraybuffer' = 'json',
+	contentType: string = 'application/json',
 ) {
 	const credentials = await this.getCredentials('bambooHRApi');
 
@@ -45,7 +46,7 @@ export async function apiRequest(
 			password: 'x',
 		},
 		headers: {
-			'Content-Type': 'application/json',
+			'Content-Type': contentType,
 		},
 		returnFullResponse: true,
 		json: true,
