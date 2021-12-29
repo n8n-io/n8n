@@ -16,7 +16,7 @@ import {
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
 	endPoint: string,
 	body: string[] | IDataObject = {},
 	query: IDataObject = {},
