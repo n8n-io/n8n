@@ -1,6 +1,5 @@
 import {OptionsWithUri} from "request";
-import {IExecuteFunctions} from 'n8n-core';
-import {IDataObject, LoggerProxy as Logger} from "n8n-workflow";
+import {IDataObject} from "n8n-workflow";
 
 const crypto = require('crypto');
 
@@ -87,54 +86,14 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 	return `${baseUrl}?${params.join('&')}`;
 }
 
-function buildOptionWithUri(uriGenerated: string): OptionsWithUri {
-	return {
+function buildOptionWithUri(uriGenerated: string, method: string = 'GET', body: IDataObject = {}): OptionsWithUri {
+	const options: OptionsWithUri = {
 		headers: {
 			'Accept': 'application/json',
 		},
-		method: 'GET',
-		uri: uriGenerated,
-		json: true,
-	};
-}
-
-// tslint:disable-next-line:no-any
-export async function getResponseByUri(uriGenerated: string, requestMethod: any) {
-	const options = buildOptionWithUri(uriGenerated);
-	console.log(`request with ${options.uri}`);
-	return await requestMethod(options);
-}
-
-export async function gllueApiRequest(
-	this: IExecuteFunctions,
-	method: string,
-	api_path: string,
-	query_string: IDataObject = {},
-	body: IDataObject = {},
-	credentials: IDataObject = {},
-	) {
-		credentials = Object.keys(credentials) ? credentials: await this.getCredentials('gllueApi') as IDataObject
-		const options : OptionsWithUri = generateGllueApiUriOptions(credentials, method, api_path, query_string, body);
-		return await this.helpers.request(options);
-}
-
-export function generateGllueApiUriOptions(
-	credentials: IDataObject,
-	method: string,
-	apiPath: string,
-	queryString: IDataObject = {},
-	body: IDataObject = {},
-){
-	const timestamp = getCurrentTimeStamp();
-	const token = generateTokenWithAESKey( timestamp, credentials.apiUsername as string, credentials.apiAesKey as string);
-	const qs = Object.assign(queryString, {private_token: token});
-
-	let uri = `${credentials.apiHost}${apiPath}?${querystring.stringify(qs)}`;
-	const options : OptionsWithUri = {
-		headers: {'Accept': 'application/json'},
 		method: method,
+		uri: uriGenerated,
 		body: body,
-		uri: uri,
 		json: true,
 	};
 
@@ -144,11 +103,10 @@ export function generateGllueApiUriOptions(
 	return options;
 }
 
-function getGllueApiUri(apiHost: string, apiPath: string, queryString: IDataObject = {}){
-	let uri = `${apiHost}${apiPath}`;
-	if (Object.keys(queryString).length){
-		uri = `${uri}?${querystring.stringify(queryString)}`;
-	}
-	return uri;
+// tslint:disable-next-line:no-any
+export async function getResponseByUri(uriGenerated: string, requestMethod: any, method: string = 'GET', body: IDataObject = {}) {
+	const options = buildOptionWithUri(uriGenerated, method, body);
+	console.log(`request with ${options.uri}`);
+	return await requestMethod(options);
 }
 
