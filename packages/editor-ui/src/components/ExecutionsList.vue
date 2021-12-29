@@ -240,7 +240,7 @@ export default mixins(
 			EXECUTIONS_MODAL_KEY,
 		};
 	},
-	async mounted() {
+	async created() {
 		Vue.set(this, 'selectedItems', {});
 		this.filter.workflowId = 'ALL';
 		this.checkAll = false;
