@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.template">
+	<div :class="[$style.template, !isMenuCollapsed ? $style.expanded : '']">
 		<div :class="$style.header">
 			<go-back-button />
 			<div :class="$style.wrapper">
@@ -59,6 +59,9 @@ export default mixins(workflowHelpers).extend({
 		TemplateDetails,
 	},
 	computed: {
+		isMenuCollapsed() {
+			return this.$store.getters['ui/sidebarMenuCollapsed'];
+		},
 		template() {
 			return this.$store.getters['templates/getTemplate'];
 		},
@@ -95,13 +98,17 @@ export default mixins(workflowHelpers).extend({
 
 <style lang="scss" module>
 .template {
-	max-width: calc(100% - 48px);
+	max-width: calc(100% - 65px);
 	margin: 0 auto;
-	padding-left: 64px;
+	padding-left: 65px;
+}
+
+.expanded {
+	padding-left: 200px;
 }
 
 .header {
-	padding: 48px 0px 40px;
+	padding: 18px 0px 40px;
 	display: flex;
 	flex-direction: column;
 }
