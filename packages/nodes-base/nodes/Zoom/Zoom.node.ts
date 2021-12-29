@@ -315,10 +315,11 @@ export class Zoom implements INodeType {
 
 						if (additionalFields.startTime) {
 							if (additionalFields.timeZone) {
-								body.start_time = moment(additionalFields.startTime as string).format('YYYY-MM-DDTHH:mm:ss');
+								//remove the current timezone and set the timezone defined in the UI
+								const startTimeWithoutTimezone = moment.parseZone(additionalFields.startTime as string).format('YYYY-MM-DDTHH:mm:ss');
+								body.start_time = moment.tz(startTimeWithoutTimezone, additionalFields.timeZone as string).format();
 							} else {
-								// if none timezone it's defined used n8n timezone
-								body.start_time = moment.tz(additionalFields.startTime as string, this.getTimezone()).format();
+								body.start_time = additionalFields.startTime;
 							}
 						}
 
