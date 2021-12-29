@@ -40,7 +40,7 @@ export async function getNodeTranslationPath(
 		: join(nodeDir, 'translations', language, `${shortNodeType}.json`);
 }
 
-export function getNodeCredentialTranslationPath({
+export function getCredentialTranslationPath({
 	locale,
 	credentialType,
 }: {

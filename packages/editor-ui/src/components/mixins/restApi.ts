@@ -79,7 +79,7 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('POST', `/executions-current/${executionId}/stop`);
 				},
 
-				getNodeCredentialTranslation: (credentialType): Promise<object> => {
+				getCredentialTranslation: (credentialType): Promise<object> => {
 					return self.restApi().makeRestApiRequest('GET', '/node-credential-translation', { credentialType });
 				},
 

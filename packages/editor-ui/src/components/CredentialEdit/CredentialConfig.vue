@@ -132,7 +132,7 @@ export default mixins(restApi).extend({
 
 		this.$store.commit('setActiveCredentialType', this.credentialType.name);
 
-		const credTranslation = await this.restApi().getNodeCredentialTranslation(this.credentialType.name);
+		const credTranslation = await this.restApi().getCredentialTranslation(this.credentialType.name);
 
 		addNodeCredentialTranslation(
 			{ [this.credentialType.name]: credTranslation },

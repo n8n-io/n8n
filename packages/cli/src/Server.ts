@@ -150,7 +150,7 @@ import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
-import { getNodeCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
+import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1185,14 +1185,13 @@ class App {
 					req: express.Request & { query: { credentialType: string } },
 					res: express.Response,
 				): Promise<object | null> => {
-					const credTranslationPath = getNodeCredentialTranslationPath({
+					const credTranslationPath = getCredentialTranslationPath({
 						locale: this.frontendSettings.defaultLocale,
 						credentialType: req.query.credentialType,
 					});
 
 					try {
-						const credTranslation = require(credTranslationPath);
-						return credTranslation;
+						return require(credTranslationPath);
 					} catch (error) {
 						return null;
 					}
