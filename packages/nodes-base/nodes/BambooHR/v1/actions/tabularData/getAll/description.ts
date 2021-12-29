@@ -24,7 +24,7 @@ export const tabularDataGetAllDescription: TabularDataProperties = [
 	{
 		displayName: 'Since',
 		name: 'since',
-		type: 'string',
+		type: 'dateTime',
 		required: true,
 		displayOptions: {
 			show: {
@@ -37,6 +37,5 @@ export const tabularDataGetAllDescription: TabularDataProperties = [
 			},
 		},
 		default: '',
-		description: 'URL encoded iso8601 timestamp',
 	},
 ];

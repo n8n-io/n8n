@@ -11,6 +11,8 @@ import {
 	apiRequest,
 } from '../../../transport';
 
+import * as moment from 'moment';
+
 export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	let body: IDataObject = {};
 	const requestMethod = 'POST';
@@ -25,6 +27,8 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	//body parameters
 	body = this.getNodeParameter('additionalFields', index) as IDataObject;
 	body.location = this.getNodeParameter('location', index) as string;
+	const date = body.date as string;
+	body.date = moment(date).format('YYYY-MM-DD');
 
 	//response
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);

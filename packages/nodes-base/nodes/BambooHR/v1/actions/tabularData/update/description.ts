@@ -91,7 +91,7 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
 			{
 				displayName: 'Date',
 				name: 'date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{

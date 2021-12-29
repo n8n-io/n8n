@@ -17,7 +17,6 @@ export const versionDescription: INodeTypeDescription = {
 	],
 	defaults: {
 		name: 'BambooHR',
-		color: '#73c41d',
 	},
 	description: 'Consume BambooHR API',
 	displayName: 'BambooHR',

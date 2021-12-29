@@ -75,7 +75,7 @@ export const timeOffCreateRequestDescription: TimeOffProperties = [
 	{
 		displayName: 'Start Date',
 		name: 'start',
-		type: 'string',
+		type: 'dateTime',
 		required: true,
 		displayOptions: {
 			show: {
@@ -88,12 +88,11 @@ export const timeOffCreateRequestDescription: TimeOffProperties = [
 			},
 		},
 		default: '',
-		description: 'The date of the history item should be in the form YYYY-MM-DD',
 	},
 	{
 		displayName: 'End Date',
 		name: 'end',
-		type: 'string',
+		type: 'dateTime',
 		required: true,
 		displayOptions: {
 			show: {
@@ -106,7 +105,6 @@ export const timeOffCreateRequestDescription: TimeOffProperties = [
 			},
 		},
 		default: '',
-		description: 'The date of the history item should be in the form YYYY-MM-DD',
 	},
 	{
 		displayName: 'Additional Fields',

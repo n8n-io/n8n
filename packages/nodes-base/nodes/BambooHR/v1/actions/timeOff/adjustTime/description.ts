@@ -42,7 +42,7 @@ export const timeOffAdjustTimeDescription: TimeOffProperties = [
 	{
 		displayName: 'Date',
 		name: 'date',
-		type: 'string',
+		type: 'dateTime',
 		required: true,
 		displayOptions: {
 			show: {

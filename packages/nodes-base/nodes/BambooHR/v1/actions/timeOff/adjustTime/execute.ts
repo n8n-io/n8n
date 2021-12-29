@@ -11,6 +11,8 @@ import {
 	apiRequest,
 } from '../../../transport';
 
+import * as moment from 'moment';
+
 export async function adjustTime(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const body: IDataObject = {};
 	const requestMethod = 'PUT';
@@ -21,9 +23,11 @@ export async function adjustTime(this: IExecuteFunctions, index: number): Promis
 	//endpoint
 	const endpoint = `employees/${employeeId}/time_off/balance_adjustment/`;
 
+	const date = this.getNodeParameter('date', index) as string;
+
 	//body parameters
 	body.timeOffTypeId = this.getNodeParameter('timeOffTypeId', index) as string;
-	body.date = this.getNodeParameter('date', index) as string;
+	body.date = moment(date).format('YYYY-MM-DD');
 	body.amount = this.getNodeParameter('amount', index) as string;
 	body.note = this.getNodeParameter('note', index) as string;
 

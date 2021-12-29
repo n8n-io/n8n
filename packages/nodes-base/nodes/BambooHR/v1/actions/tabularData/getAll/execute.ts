@@ -11,6 +11,8 @@ import {
 	apiRequest,
 } from '../../../transport';
 
+import * as moment from 'moment';
+
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
@@ -20,10 +22,11 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 
 	//query parameter
 	const since = this.getNodeParameter('since', index) as string;
-	const encodedSince = encodeURIComponent(since);
+  const date = moment(since).format('YYYY-MM-DDTHH:mm:ss') + 'Z';
+	const encodedDate = encodeURIComponent(date);
 
 	//endpoint
-	const endpoint = `employees/changed/tables/${tableName}/?since=${encodedSince}`;
+	const endpoint = `employees/changed/tables/${tableName}/?since=${encodedDate}`;
 
 	//response
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);

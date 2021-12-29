@@ -77,7 +77,7 @@ export const tabularDataCreateDescription: TabularDataProperties = [
 			{
 				displayName: 'Date',
 				name: 'date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Date in format YYYY-MM-DD',
 			},
