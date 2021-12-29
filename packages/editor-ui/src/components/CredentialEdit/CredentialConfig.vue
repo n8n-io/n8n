@@ -81,7 +81,7 @@ import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
 import { restApi } from '@/components/mixins/restApi';
-import { addNodeCredentialTranslation } from '@/plugins/i18n';
+import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(restApi).extend({
@@ -134,7 +134,7 @@ export default mixins(restApi).extend({
 
 		const credTranslation = await this.restApi().getCredentialTranslation(this.credentialType.name);
 
-		addNodeCredentialTranslation(
+		addCredentialTranslation(
 			{ [this.credentialType.name]: credTranslation },
 			this.$store.getters.defaultLocale,
 		);

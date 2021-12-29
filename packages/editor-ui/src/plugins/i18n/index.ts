@@ -363,6 +363,9 @@ export async function loadLanguage(language?: string) {
 	setLanguage(language);
 }
 
+/**
+ * Add a node translation to the i18n instance's `messages` object.
+ */
 export function addNodeTranslation(
 	nodeTranslation: { [nodeType: string]: object },
 	language: string,
@@ -388,7 +391,10 @@ export function addNodeTranslation(
 	);
 }
 
-export function addNodeCredentialTranslation(
+/**
+ * Add a credential translation to the i18n instance's `messages` object.
+ */
+export function addCredentialTranslation(
 	nodeCredentialTranslation: { [credentialType: string]: object },
 	language: string,
 ) {
@@ -413,6 +419,9 @@ export function addNodeCredentialTranslation(
 	);
 }
 
+/**
+ * Add a node's header strings to the i18n instance's `messages` object.
+ */
 export function addHeaders(
 	headers: INodeTranslationHeaders,
 	language: string,
