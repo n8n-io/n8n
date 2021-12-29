@@ -18,7 +18,7 @@ Currently, n8n does _not_ allow for internalization of:
 Pending functionality:
 - Search in nodes panel by translated node name
 - UI responsiveness to differently sized strings
-- Number formatting
+- Locale-aware number formatting
 
 ## Locale identifiers
 
@@ -83,7 +83,7 @@ As an optional final step, remove any untranslated strings from the new base tex
 
 ## Dynamic text
 
-Dynamic text relies on data that varies per node and credential:
+Dynamic text relies on data specific to each node and credential:
 
 - `headerText` and `nodeText` in the **node translation file**
 - `credText` in the **credential translation file**
@@ -228,8 +228,8 @@ The `header` section points to an object that may contain only two keys, `displa
 ```ts
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'GitHub', // key to use in node translation file
-		description: 'Consume GitHub API', // key to use in node translation file
+		displayName: 'GitHub', // key to use in translation
+		description: 'Consume GitHub API', // key to use in translation
 		name: 'github',
 		icon: 'file:github.svg',
 		group: ['input'],
