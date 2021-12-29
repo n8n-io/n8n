@@ -24,10 +24,10 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	//endpoint
-	const endPoint = `employees/${id}/files/view/`;
+	const endpoint = `employees/${id}/files/view/`;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	const onlyFilesArray = [];
 

@@ -14,7 +14,7 @@ import {
 export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	let body = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endPoint = 'employees';
+	const endpoint = 'employees';
 
 	//body parameters
 	body = this.getNodeParameter('additionalFields', index) as IDataObject;
@@ -22,7 +22,7 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	body.lastName = this.getNodeParameter('lastName', index) as string;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//obtain employeeID
 	const rawEmployeeId = responseData.headers.location.lastIndexOf('/');

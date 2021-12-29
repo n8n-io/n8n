@@ -19,7 +19,7 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	const id = this.getNodeParameter('id', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${id}`;
+	const endpoint = `employees/${id}`;
 
 	//body parameters
 	body = this.getNodeParameter('updateFields', index) as IDataObject;
@@ -27,7 +27,7 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	body.lastName = this.getNodeParameter('lastName', index) as string;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });

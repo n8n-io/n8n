@@ -14,14 +14,14 @@ import {
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const body = {} as IDataObject;
 	const requestMethod = 'GET';
-	const endPoint = 'employees/directory';
+	const endpoint = 'employees/directory';
 
 	//limit parameters
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return limited result
 	if (!returnAll && responseData.body.employees.length > limit) {

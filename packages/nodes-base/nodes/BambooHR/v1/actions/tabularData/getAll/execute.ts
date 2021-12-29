@@ -23,10 +23,10 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	const encodedSince = encodeURIComponent(since);
 
 	//endpoint
-	const endPoint = `employees/changed/tables/${tableName}/?since=${encodedSince}`;
+	const endpoint = `employees/changed/tables/${tableName}/?since=${encodedSince}`;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray(responseData);

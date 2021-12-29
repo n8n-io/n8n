@@ -21,14 +21,14 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	const rowId = this.getNodeParameter('rowId', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${id}/tables/${tableName}/${rowId}`;
+	const endpoint = `employees/${id}/tables/${tableName}/${rowId}`;
 
 	//body parameters
 	body = this.getNodeParameter('additionalFields', index) as IDataObject;
 	body.location = this.getNodeParameter('location', index) as string;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });

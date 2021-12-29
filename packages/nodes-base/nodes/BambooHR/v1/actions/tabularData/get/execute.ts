@@ -20,10 +20,10 @@ export async function get(this: IExecuteFunctions, index: number): Promise<INode
 	const tableName = this.getNodeParameter('table', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${id}/tables/${tableName}`;
+	const endpoint = `employees/${id}/tables/${tableName}`;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray(responseData);

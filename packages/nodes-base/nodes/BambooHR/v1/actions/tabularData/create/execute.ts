@@ -20,14 +20,14 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	const tableName = this.getNodeParameter('table', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${id}/tables/${tableName}`;
+	const endpoint = `employees/${id}/tables/${tableName}`;
 
 	//body parameters
 	body = this.getNodeParameter('additionalFields', index) as IDataObject;
 	body.location = this.getNodeParameter('location', index) as string;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });

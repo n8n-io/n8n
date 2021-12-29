@@ -14,13 +14,13 @@ import {
 export async function getEmployeeOut(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	let body = {} as IDataObject;
 	const requestMethod = 'GET';
-	const endPoint = 'time_off/whos_out';
+	const endpoint = 'time_off/whos_out';
 
 	//body parameters
 	body = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray(responseData);

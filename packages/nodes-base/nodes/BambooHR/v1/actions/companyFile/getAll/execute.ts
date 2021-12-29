@@ -12,17 +12,17 @@ import {
 } from '../../../transport';
 
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const body = {} as IDataObject;
+	const body: IDataObject = {};
 	const requestMethod = 'GET';
-	const endPoint = 'files/view';
+	const endpoint = 'files/view';
 
 	//limit parameters
-	const onlyFiles =  this.getNodeParameter('onlyFiles', index) as boolean;
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
+	const onlyFiles: boolean =  this.getNodeParameter('onlyFiles', index) as boolean;
+	const returnAll: boolean = this.getNodeParameter('returnAll', 0, false) as boolean;
+	const limit: number = this.getNodeParameter('limit', 0, 0) as number;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	const onlyFilesArray = [];
 

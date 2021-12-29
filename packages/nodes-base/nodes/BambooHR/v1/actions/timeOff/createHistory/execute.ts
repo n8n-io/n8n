@@ -19,7 +19,7 @@ export async function createHistory(this: IExecuteFunctions, index: number): Pro
 	const employeeId = this.getNodeParameter('employeeId', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${employeeId}/time_off/history`;
+	const endpoint = `employees/${employeeId}/time_off/history`;
 
 	//body parameters
 	body.timeOffRequestId = this.getNodeParameter('timeOffRequestId', index) as string;
@@ -27,7 +27,7 @@ export async function createHistory(this: IExecuteFunctions, index: number): Pro
 	body.note = this.getNodeParameter('note', index) as string;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });

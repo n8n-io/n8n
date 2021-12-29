@@ -19,7 +19,7 @@ export async function adjustTime(this: IExecuteFunctions, index: number): Promis
 	const employeeId = this.getNodeParameter('employeeId', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${employeeId}/time_off/balance_adjustment/`;
+	const endpoint = `employees/${employeeId}/time_off/balance_adjustment/`;
 
 	//body parameters
 	body.timeOffTypeId = this.getNodeParameter('timeOffTypeId', index) as string;
@@ -28,7 +28,7 @@ export async function adjustTime(this: IExecuteFunctions, index: number): Promis
 	body.note = this.getNodeParameter('note', index) as string;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });

@@ -20,10 +20,10 @@ export async function get(this: IExecuteFunctions, index: number): Promise<INode
 	const format = this.getNodeParameter('format', 0) as string;
 
 	//endpoint
-	const endPoint = `reports/${id}/?${format}`;
+	const endpoint = `reports/${id}/?${format}`;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray(responseData);

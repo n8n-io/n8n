@@ -19,10 +19,10 @@ export async function assign(this: IExecuteFunctions, index: number): Promise<IN
 	const employeeId = this.getNodeParameter('employeeId', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${employeeId}/time_off/policies`;
+	const endpoint = `employees/${employeeId}/time_off/policies`;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });

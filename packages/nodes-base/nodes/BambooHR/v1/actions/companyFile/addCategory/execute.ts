@@ -13,14 +13,14 @@ import {
 export async function addCategory(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const body: string[] = [];
 	const requestMethod = 'POST';
-	const endPoint = 'files/categories';
+	const endpoint = 'files/categories';
 
 	//body parameters
-	const categoryName = this.getNodeParameter('categoryName', index) as string;
+	const categoryName: string = this.getNodeParameter('categoryName', index) as string;
 	body.push(categoryName);
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });

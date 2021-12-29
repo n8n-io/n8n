@@ -20,10 +20,10 @@ export async function del(this: IExecuteFunctions, index: number): Promise<INode
 	const fileId = this.getNodeParameter('fileId', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${id}/files/${fileId}`;
+	const endpoint = `employees/${id}/files/${fileId}`;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });

@@ -20,10 +20,10 @@ export async function estimateFutureTime(this: IExecuteFunctions, index: number)
 	const end = this.getNodeParameter('end', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${employeeId}/time_off/calculator/?end=${end}`;
+	const endpoint = `employees/${employeeId}/time_off/calculator/?end=${end}`;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray(responseData);

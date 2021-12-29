@@ -21,10 +21,10 @@ export async function download(this: IExecuteFunctions, index: number): Promise<
 	const output = 'data' as string;
 
 	//endpoint
-	const endPoint = `employees/${id}/files/${fileId}/`;
+	const endpoint = `employees/${id}/files/${fileId}/`;
 
 	//response
-	const response = await apiRequest.call(this, requestMethod, endPoint, body, {} as IDataObject, 'arraybuffer');
+	const response = await apiRequest.call(this, requestMethod, endpoint, body, {} as IDataObject, 'arraybuffer');
 	const mimeType = response.headers['content-type'];
 	const fileName = response.headers['content-disposition'];
 

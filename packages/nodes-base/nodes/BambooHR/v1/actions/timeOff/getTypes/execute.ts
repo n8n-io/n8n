@@ -14,10 +14,10 @@ import {
 export async function getTypes(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const body = {} as IDataObject;
 	const requestMethod = 'GET';
-	const endPoint = 'meta/time_off/types';
+	const endpoint = 'meta/time_off/types';
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray(responseData);

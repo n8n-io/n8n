@@ -19,7 +19,7 @@ export async function createRequest(this: IExecuteFunctions, index: number): Pro
 	const employeeId = this.getNodeParameter('employeeId', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${employeeId}/time_off/request`;
+	const endpoint = `employees/${employeeId}/time_off/request`;
 
 	//body parameters
 	body = this.getNodeParameter('additionalFields', index) as IDataObject;
@@ -29,7 +29,7 @@ export async function createRequest(this: IExecuteFunctions, index: number): Pro
 	body.end = this.getNodeParameter('end', index) as string;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });

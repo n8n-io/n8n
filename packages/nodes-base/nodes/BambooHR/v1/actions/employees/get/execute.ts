@@ -22,10 +22,10 @@ export async function get(this: IExecuteFunctions, index: number): Promise<INode
 	const fields = this.getNodeParameter('fields', index);
 
 	//endpoint
-	const endPoint = `employees/${id}/?fields=${fields}`;
+	const endpoint = `employees/${id}/?fields=${fields}`;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray(responseData.body);

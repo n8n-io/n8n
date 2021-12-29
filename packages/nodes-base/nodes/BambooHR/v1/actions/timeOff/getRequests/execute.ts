@@ -20,10 +20,10 @@ export async function getRequests(this: IExecuteFunctions, index: number): Promi
 	const end = this.getNodeParameter('end', index) as string;
 
 	//endpoint
-	const endPoint = `time_off/requests/?start=${start}&end=${end}`;
+	const endpoint = `time_off/requests/?start=${start}&end=${end}`;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
 	return this.helpers.returnJsonArray(responseData);
