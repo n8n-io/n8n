@@ -1,10 +1,10 @@
 /**
  * Derive the middle key, i.e. the segment of the render key located between
- * the initial key (path to parameters root) and the property.
+ * the initial key (path to parameters root) and the property to render.
  *
- * Required by `nodeText()` to handle nested params.
+ * Used by `nodeText()` to handle nested params.
  *
- * Location: `n8n-nodes-base.nodes.github.nodeView.${middleKey}.placeholder`
+ * Location: `n8n-nodes-base.nodes.github.nodeView.<middleKey>.placeholder`
  */
 export function deriveMiddleKey(
 	path: string,
@@ -12,14 +12,17 @@ export function deriveMiddleKey(
 ) {
 	let middleKey = parameter.name;
 
-	if (isNestedInCollectionLike(path)) {
+	if (
+		isTopLevelCollection(path, parameter) ||
+		isNestedInCollectionLike(path)
+	) {
 		const pathSegments = normalize(path).split('.');
 		middleKey = insertOptionsAndValues(pathSegments).join('.');
 	}
 
 	if (
-		isCollection(parameter) ||
-		(isFixedCollection(parameter) && isNotRootPath(path))
+		isNestedCollection(path, parameter) ||
+		isFixedCollection(path, parameter)
 	) {
 		const pathSegments = [...normalize(path).split('.'), parameter.name];
 		middleKey = insertOptionsAndValues(pathSegments).join('.');
@@ -29,25 +32,23 @@ export function deriveMiddleKey(
 }
 
 /**
- * Check if a param path indicates that the param is nested inside a `collection`
- * or `fixedCollection` param.
+ * Check if a param path is for a param nested inside a `collection` or
+ * `fixedCollection` param.
  */
-export const isNestedInCollectionLike = (path: string) => path.split('.').length > 3;
+export const isNestedInCollectionLike = (path: string) => path.split('.').length >= 3;
+
+const isTopLevelCollection = (path: string, parameter: { type: string }) =>
+	path.split('.').length === 2 && parameter.type === 'collection';
+
+const isNestedCollection = (path: string, parameter: { type: string }) =>
+	path.split('.').length > 2 && parameter.type === 'collection';
 
 /**
- * Check if a param is a `collection`.
+ * Check if the param is a normal `fixedCollection`, i.e. a FC other than the wrapper
+ * that sits at the root of a node's top-level param and contains all of them.
  */
-const isCollection = (parameter: { type: string }) => parameter.type === 'collection';
-
-/**
- * Check if a param is a `fixedCollection`.
- */
-const isFixedCollection = (parameter: { type: string }) => parameter.type === 'fixedCollection';
-
-/**
- * Check if a path is not the root path that is a fixed collection containing all node params.
- */
-const isNotRootPath = (path: string) => path !== 'parameters';
+const isFixedCollection = (path: string, parameter: { type: string }) =>
+	parameter.type === 'fixedCollection' && path !== 'parameters';
 
 /**
  * Remove all indices and the `parameters.` prefix from a parameter path.
@@ -57,8 +58,8 @@ const isNotRootPath = (path: string) => path !== 'parameters';
 export const normalize = (path: string) => path.replace(/\[.*?\]/g, '').replace('parameters.', '');
 
 /**
- * Insert `'options'` and `'values'` into an array on an alternating basis in an array of
- * indefinite length, for use as a valid render key for a collection-like param.
+ * Insert `'options'` and `'values'` on an alternating basis in a string array of
+ * indefinite length. Helper to create a valid render key for a collection-like param.
  *
  * Example: `['a', 'b', 'c']` → `['a', 'options', 'b', 'values', 'c']`
  */
