@@ -34,11 +34,7 @@ export const employeeFileUploadDescription: EmployeeFileProperties = [
 				resource: [
 					'employeeFile',
 				],
-				binaryData: [
-					false,
-				],
 			},
-
 		},
 		placeholder: '',
 		description: 'The text content of the file to upload.',
@@ -78,10 +74,11 @@ export const employeeFileUploadDescription: EmployeeFileProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Share',
+		displayName: 'Share with employee',
 		name: 'share',
-		type: 'string',
-		required: true,
+		type: 'boolean',
+		default: true,
+		description: 'Whether this file is shared or not',
 		displayOptions: {
 			show: {
 				operation: [
@@ -92,6 +89,5 @@ export const employeeFileUploadDescription: EmployeeFileProperties = [
 				],
 			},
 		},
-		default: 'yes',
 	},
 ];
