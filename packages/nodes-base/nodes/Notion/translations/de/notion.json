@@ -1,0 +1,54 @@
+{
+	"nodeView": {
+		"blockUi": {
+			"displayName": "🇩🇪 Blocks",
+			"options": {
+				"blockValues": {
+					"values": {
+						"type": {
+							"displayName": "🇩🇪 Type"
+						},
+						"text": {
+							"displayName": "🇩🇪 Text",
+							"options": {
+								"text": {
+									"values": {
+										"textType": {
+											"displayName": "🇩🇪 Text Type",
+											"options": {
+												"text": {
+													"displayName": "🇩🇪 Text"
+												},
+												"equation": {
+													"displayName": "🇩🇪 Equation"
+												},
+												"mention": {
+													"displayName": "🇩🇪 Mention"
+												}
+											}
+										},
+										"annotationUi": {
+											"displayName": "🇩🇪 Annotations",
+											"placeholder": "🇩🇪 Add Annotation",
+											"options": {
+												"bold": {
+													"displayName": "🇩🇪 Bold"
+												},
+												"italic": {
+													"displayName": "🇩🇪 Italic"
+												},
+												"strikethrough": {
+													"displayName": "🇩🇪 Strikethrough"
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
