@@ -2,7 +2,7 @@ import { join, dirname } from 'path';
 import { readdir } from 'fs/promises';
 import { Dirent } from 'fs';
 
-const ALLOWED_VERSIONED_DIRNAME_LENGTH = [2, 3]; // v1, v10
+const ALLOWED_VERSIONED_DIRNAME_LENGTH = [2, 3]; // e.g. v1, v10
 
 function isVersionedDirname(dirent: Dirent) {
 	if (!dirent.isDirectory()) return false;
@@ -26,18 +26,28 @@ async function getMaxVersion(from: string) {
 	return Math.max(...dirnames.map((d) => parseInt(d.charAt(1), 10)));
 }
 
-export async function getNodeTranslationPath(
-	sourcePath: string,
-	nodeType: string,
-	language: string,
-): Promise<string> {
-	const nodeDir = dirname(sourcePath);
-	const shortNodeType = nodeType.replace('n8n-nodes-base.', '');
+/**
+ * Get the full path to a node translation file.
+ *
+ * Example:
+ * `/Users/<user>/Development/n8n/packages/cli/node_modules/n8n-nodes-base/dist/nodes/Slack/translations/de/slack.json`
+ */
+export async function getNodeTranslationPath({
+	nodeSourcePath,
+	longNodeType,
+	locale,
+}: {
+	nodeSourcePath: string;
+	longNodeType: string;
+	locale: string;
+}): Promise<string> {
+	const nodeDir = dirname(nodeSourcePath);
 	const maxVersion = await getMaxVersion(nodeDir);
+	const nodeType = longNodeType.replace('n8n-nodes-base.', '');
 
 	return maxVersion
-		? join(nodeDir, `v${maxVersion}`, 'translations', language, `${shortNodeType}.json`)
-		: join(nodeDir, 'translations', language, `${shortNodeType}.json`);
+		? join(nodeDir, `v${maxVersion}`, 'translations', locale, `${nodeType}.json`)
+		: join(nodeDir, 'translations', locale, `${nodeType}.json`);
 }
 
 export function getCredentialTranslationPath({

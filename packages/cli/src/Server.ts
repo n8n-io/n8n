@@ -1222,11 +1222,11 @@ class App {
 						nodeTypes: INodeTypeDescription[],
 					) {
 						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
-						const translationPath = await getNodeTranslationPath(
-							sourcePath,
-							description.name,
-							defaultLocale,
-						);
+						const translationPath = await getNodeTranslationPath({
+							nodeSourcePath: sourcePath,
+							longNodeType: description.name,
+							locale: defaultLocale,
+						});
 
 						try {
 							const translation = await readFile(translationPath, 'utf8');
