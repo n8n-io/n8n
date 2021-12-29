@@ -97,10 +97,10 @@ A credential translation file is placed at `/nodes-base/credentials/translations
 
 ```
 credentials
-  └── translations
-      └── de
-          ├── githubApi.json
-          └── githubOAuth2Api.json
+	└── translations
+			└── de
+					├── githubApi.json
+					└── githubOAuth2Api.json
 ```
 Every credential must have its own credential translation file.
 
@@ -120,12 +120,12 @@ A node translation file is placed at `/nodes-base/nodes/{node}/translations/{loc
 
 ```
 GitHub
-  ├── GitHub.node.ts
-  ├── GitHubTrigger.node.ts
-  └── translations
-      └── de
-          ├── github.json
-          └── githubTrigger.json
+	├── GitHub.node.ts
+	├── GitHubTrigger.node.ts
+	└── translations
+			└── de
+					├── github.json
+					└── githubTrigger.json
 ```
 
 Every node must have its own node translation file.
@@ -206,7 +206,7 @@ The object for each node credential parameter allows for the keys `displayName`,
 ```
 
 <p align="center">
-  <img src="img/cred.png">
+	<img src="img/cred.png">
 </p>
 
 Only existing parameters are translatable. If a credential parameter does not have a description in the English original, adding a translation for that non-existing parameter will not result in the translation being displayed - the parameter will need to be added in the English original first.
@@ -249,14 +249,14 @@ export class Github implements INodeType {
 Header text is used wherever the node's display name and description are needed:
 
 <p align="center">
-    <img src="img/header1.png" width="400">
-    <img src="img/header2.png" width="200">
-    <img src="img/header3.png" width="400">
+		<img src="img/header1.png" width="400">
+		<img src="img/header2.png" width="200">
+		<img src="img/header3.png" width="400">
 </p>
 
 <p align="center">
-    <img src="img/header4.png" width="400">
-    <img src="img/header5.png" width="500">
+		<img src="img/header4.png" width="400">
+		<img src="img/header5.png" width="500">
 </p>
 
 In turn, the `nodeView` section points to an object containing translation keys that match the node's operational parameters, found in the `*.node.ts` and also found in `*Description.ts` files in the same dir.
@@ -409,16 +409,16 @@ Example of `collection` parameter:
 {
 	"nodeView": {
 		"labels": {
-      "displayName": "🇩🇪 Labels",
-      "multipleValueButtonText": "🇩🇪 Add Label",
-      "options": {
-        "label": {
-          "displayName": "🇩🇪 Label",
-          "description": "🇩🇪 Label to add to issue",
-          "placeholder": "🇩🇪 Some placeholder"
-        }
-      }
-    }
+			"displayName": "🇩🇪 Labels",
+			"multipleValueButtonText": "🇩🇪 Add Label",
+			"options": {
+				"label": {
+					"displayName": "🇩🇪 Label",
+					"description": "🇩🇪 Label to add to issue",
+					"placeholder": "🇩🇪 Some placeholder"
+				}
+			}
+		}
 	}
 }
 ```
@@ -476,24 +476,24 @@ Example of `fixedCollection` parameter:
 {
 	"nodeView": {
 		"additionalParameters": {
-      "displayName": "🇩🇪 Additional Parameters",
-      "placeholder": "🇩🇪 Add Field",
-      "options": {
-        "author": {
-          "displayName": "🇩🇪 Author",
-          "values": {
-            "name": {
-              "displayName": "🇩🇪 Name",
-              "description": "🇩🇪 Name of the author of the commit",
-              "placeholder": "🇩🇪 Jan"
-            },
-            "email": {
-              "displayName": "🇩🇪 Email",
-              "description": "🇩🇪 Email of the author of the commit",
-              "placeholder": "🇩🇪 jan@n8n.io"
-            }
-          }
-        },
+		"displayName": "🇩🇪 Additional Parameters",
+			"placeholder": "🇩🇪 Add Field",
+			"options": {
+				"author": {
+					"displayName": "🇩🇪 Author",
+					"values": {
+						"name": {
+							"displayName": "🇩🇪 Name",
+							"description": "🇩🇪 Name of the author of the commit",
+							"placeholder": "🇩🇪 Jan"
+						},
+						"email": {
+							"displayName": "🇩🇪 Email",
+							"description": "🇩🇪 Email of the author of the commit",
+							"placeholder": "🇩🇪 jan@n8n.io"
+						}
+					}
+				},
 			}
 		}
 	}
@@ -501,7 +501,7 @@ Example of `fixedCollection` parameter:
 ```
 
 <p align="center">
-    <img src="img/node4.png" width="400">
+		<img src="img/node4.png" width="400">
 </p>
 
 > For information on **reusable dynamic text**, refer to the [Addendum](./ADDENDUM.md).

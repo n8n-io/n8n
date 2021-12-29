@@ -7,18 +7,22 @@
 Certain base text strings use [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) to allow for a variable to be passed in, signalled by curly braces:
 
 ```json
-"stopExecution": {
-	"message": "The execution with the ID {activeExecutionId} got stopped!",
-	"title": "Execution stopped"
+{
+	"stopExecution": {
+		"message": "The execution with the ID {activeExecutionId} got stopped!",
+		"title": "Execution stopped"
+	}
 }
 ```
 
 When translating a string containing an interpolated variable, leave the variable untranslated:
 
 ```json
-"stopExecution": {
-	"message": "Die Ausführung mit der ID {activeExecutionId} wurde gestoppt",
-	"title": "Execution stopped"
+{
+	"stopExecution": {
+		"message": "Die Ausführung mit der ID {activeExecutionId} wurde gestoppt",
+		"title": "Execution stopped"
+	}
 }
 ```
 
@@ -40,6 +44,7 @@ As a convenience, the base text file may contain the special key `reusableBaseTe
 		"saving": "🇩🇪 Saving",
 		"saved": "🇩🇪 Saved",
 	},
+}
 ```
 
 For more information, refer to Vue i18n's [linked locale messages](https://kazupon.github.io/vue-i18n/guide/messages.html#linked-locale-messages).
@@ -91,6 +96,9 @@ Currently only the keys `oauth.clientId` and `oauth.clientSecret` are supported 
 		"oauth2": {
 			"clientId": "🇩🇪 Client ID",
 			"clientSecret": "🇩🇪 Client Secret",
+		}
+	}
+}
 ```
 
 ### Special cases
