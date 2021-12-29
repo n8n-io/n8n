@@ -5,6 +5,7 @@ import {clientFields, clientOperations} from './ClientDescription';
 import {getResponseByUri, UrlParams} from './helpers';
 import {cityFields, cityOperations} from './CityDescription';
 import {industryFields, industryOperations} from './IndustryDescription';
+import {contractFields, contractOperations} from "./ContractDescription";
 
 const helpers = require('./helpers');
 
@@ -48,6 +49,10 @@ export class Gllue implements INodeType {
 						name: 'Industry',
 						value: 'industry',
 					},
+					{
+						name: 'Contract',
+						value: 'clientcontract',
+					},
 				],
 				default: 'client',
 				required: true,
@@ -59,66 +64,8 @@ export class Gllue implements INodeType {
 			...cityFields,
 			...industryOperations,
 			...industryFields,
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'client',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'list',
-						value: 'list',
-						description: 'List clients',
-					},
-				],
-				default: 'list',
-				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'contract',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'delete',
-						value: 'delete',
-						description: 'Delete contract',
-					},
-				],
-				default: 'delete',
-				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Contract ID',
-				name: 'id',
-				type: 'string',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'contract',
-						],
-					},
-				},
-				default:'',
-				description:'Contract ID',
-			},
+			...contractOperations,
+			...contractFields,
 		],
 	};
 
