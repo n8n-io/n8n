@@ -1179,7 +1179,7 @@ class App {
 		);
 
 		this.app.get(
-			`/${this.restEndpoint}/node-credential-translation`,
+			`/${this.restEndpoint}/credential-translation`,
 			ResponseHelper.send(
 				async (
 					req: express.Request & { query: { credentialType: string } },
