@@ -28,6 +28,7 @@ export interface IBinaryData {
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
+	id?: string;
 }
 
 export interface IOAuth2Options {
@@ -631,10 +632,13 @@ export type NodePropertyTypes =
 	| 'options'
 	| 'string';
 
-export type EditorTypes = 'code';
+export type CodeAutocompleteTypes = 'function' | 'functionItem';
+
+export type EditorTypes = 'code' | 'json';
 
 export interface INodePropertyTypeOptions {
 	alwaysOpenEditWindow?: boolean; // Supported by: string
+	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorTypes; // Supported by: string
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
@@ -849,6 +853,7 @@ export interface IWebhookDescription {
 }
 
 export interface IWorkflowDataProxyData {
+	[key: string]: any;
 	$binary: any;
 	$data: any;
 	$env: any;
