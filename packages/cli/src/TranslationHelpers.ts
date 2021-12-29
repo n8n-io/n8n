@@ -27,10 +27,7 @@ async function getMaxVersion(from: string) {
 }
 
 /**
- * Get the full path to a node translation file.
- *
- * Example:
- * `/Users/<user>/Development/n8n/packages/cli/node_modules/n8n-nodes-base/dist/nodes/Slack/translations/de/slack.json`
+ * Get the full path to a node translation file in `/dist`.
  */
 export async function getNodeTranslationPath({
 	nodeSourcePath,
@@ -50,6 +47,9 @@ export async function getNodeTranslationPath({
 		: join(nodeDir, 'translations', locale, `${nodeType}.json`);
 }
 
+/**
+ * Get the full path to a credential translation file in `/dist`.
+ */
 export function getCredentialTranslationPath({
 	locale,
 	credentialType,

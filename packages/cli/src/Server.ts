@@ -1185,13 +1185,13 @@ class App {
 					req: express.Request & { query: { credentialType: string } },
 					res: express.Response,
 				): Promise<object | null> => {
-					const credTranslationPath = getCredentialTranslationPath({
+					const translationPath = getCredentialTranslationPath({
 						locale: this.frontendSettings.defaultLocale,
 						credentialType: req.query.credentialType,
 					});
 
 					try {
-						return require(credTranslationPath);
+						return require(translationPath);
 					} catch (error) {
 						return null;
 					}
