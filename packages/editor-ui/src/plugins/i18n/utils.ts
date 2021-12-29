@@ -2,7 +2,7 @@
  * Derive the middle key, i.e. the segment of the render key located between
  * the initial key (path to parameters root) and the property.
  *
- * Needed in `nodeText()` because of possibly deeply nested params.
+ * Required by `nodeText()` to handle nested params.
  *
  * Location: `n8n-nodes-base.nodes.github.nodeView.${middleKey}.placeholder`
  */
@@ -12,18 +12,16 @@ export function deriveMiddleKey(
 ) {
 	let middleKey = parameter.name;
 
-	if (isOptionInCollection(path)) {
-		const [collectionName, optionName] = sanitize(path).split('.');
-		middleKey = `${collectionName}.options.${optionName}`;
-	}
-
-	if (isOptionInFixedCollection(path)) {
-		const pathSegments = sanitize(path).split('.');
+	if (isNestedInCollectionLike(path)) {
+		const pathSegments = normalize(path).split('.');
 		middleKey = insertOptionsAndValues(pathSegments).join('.');
 	}
 
-	if (isFixedCollection(parameter) && path !== 'parameters') {
-		const pathSegments = [...sanitize(path).split('.'), parameter.name];
+	if (
+		isCollection(parameter) ||
+		(isFixedCollection(parameter) && isNotRootPath(path))
+	) {
+		const pathSegments = [...normalize(path).split('.'), parameter.name];
 		middleKey = insertOptionsAndValues(pathSegments).join('.');
 	}
 
@@ -31,28 +29,37 @@ export function deriveMiddleKey(
 }
 
 /**
- * Check if a param path indicates that it is an option inside a `collection` param.
+ * Check if a param path indicates that the param is nested inside a `collection`
+ * or `fixedCollection` param.
  */
-export const isOptionInCollection = (path: string) => path.split('.').length === 3;
+export const isNestedInCollectionLike = (path: string) => path.split('.').length > 3;
 
 /**
- * Check if a param path indicates that it is an option inside a `fixedCollection` param.
+ * Check if a param is a `collection`.
  */
-export const isOptionInFixedCollection = (path: string) => path.split('.').length > 3;
+const isCollection = (parameter: { type: string }) => parameter.type === 'collection';
 
 /**
- * Check if a param path indicates that it itself is a `fixedCollection` param.
+ * Check if a param is a `fixedCollection`.
  */
-export const isFixedCollection = (parameter: { type: string }) => parameter.type === 'fixedCollection';
+const isFixedCollection = (parameter: { type: string }) => parameter.type === 'fixedCollection';
+
+/**
+ * Check if a path is not the root path that is a fixed collection containing all node params.
+ */
+const isNotRootPath = (path: string) => path !== 'parameters';
 
 /**
  * Remove all indices and the `parameters.` prefix from a parameter path.
+ *
  * Example: `parameters.a[0].b` → `a.b`
  */
-export const sanitize = (path: string) => path.replace(/\[.*?\]/g, '').replace('parameters.', '');
+export const normalize = (path: string) => path.replace(/\[.*?\]/g, '').replace('parameters.', '');
 
 /**
- * Insert `'options'` and `'values'` into an array on an alternating basis.
+ * Insert `'options'` and `'values'` into an array on an alternating basis in an array of
+ * indefinite length, for use as a valid render key for a collection-like param.
+ *
  * Example: `['a', 'b', 'c']` → `['a', 'options', 'b', 'values', 'c']`
  */
 export const insertOptionsAndValues = (pathSegments: string[]) => {

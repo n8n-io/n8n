@@ -6,8 +6,8 @@ import Vue from 'vue';
 import { INodeTranslationHeaders, IRootState } from '@/Interface';
 import {
 	deriveMiddleKey,
-	isOptionInFixedCollection,
-	sanitize,
+	isNestedInCollectionLike,
+	normalize,
 	insertOptionsAndValues,
 } from "./utils";
 
@@ -82,7 +82,7 @@ export class I18nClass {
 	}
 
 	/**
-	 * Namespace for methods to render text in the credentials modal.
+	 * Namespace for methods to render text in the credentials details modal.
 	 */
 	credText () {
 		const credentialType = this.$store.getters.activeCredentialType;
@@ -165,11 +165,12 @@ export class I18nClass {
 	}
 
 	/**
-	 * Namespace for methods to render text in the node view.
+	 * Namespace for methods to render text in the node details view,
+	 * except for `eventTriggerDescription`.
 	 */
 	nodeText () {
 		const activeNode = this.$store.getters.activeNode;
-		const nodeType = activeNode ? this.shortNodeType(activeNode.type) : '';
+		const nodeType = activeNode ? this.shortNodeType(activeNode.type) : ''; // unused in eventTriggerDescription
 		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
 
@@ -216,8 +217,8 @@ export class I18nClass {
 			) {
 				let middleKey = parameter.name;
 
-				if (isOptionInFixedCollection(path)) {
-					const pathSegments = sanitize(path).split('.');
+				if (isNestedInCollectionLike(path)) {
+					const pathSegments = normalize(path).split('.');
 					middleKey = insertOptionsAndValues(pathSegments).join('.');
 				}
 
@@ -238,8 +239,8 @@ export class I18nClass {
 			) {
 				let middleKey = parameter.name;
 
-				if (isOptionInFixedCollection(path)) {
-					const pathSegments = sanitize(path).split('.');
+				if (isNestedInCollectionLike(path)) {
+					const pathSegments = normalize(path).split('.');
 					middleKey = insertOptionsAndValues(pathSegments).join('.');
 				}
 
@@ -260,8 +261,8 @@ export class I18nClass {
 			) {
 				let middleKey = parameter.name;
 
-				if (isOptionInFixedCollection(path)) {
-					const pathSegments = sanitize(path).split('.');
+				if (isNestedInCollectionLike(path)) {
+					const pathSegments = normalize(path).split('.');
 					middleKey = insertOptionsAndValues(pathSegments).join('.');
 				}
 
@@ -277,11 +278,19 @@ export class I18nClass {
 			 * be nested in a `collection` or in a `fixedCollection`.
 			 */
 			collectionOptionDisplayName(
-				{ name: parameterName }: { name: string; },
+				parameter: { name: string; },
 				{ name: optionName, displayName }: { name: string; displayName: string; },
+				path: string,
 			) {
+				let middleKey = parameter.name;
+
+				if (isNestedInCollectionLike(path)) {
+					const pathSegments = normalize(path).split('.');
+					middleKey = insertOptionsAndValues(pathSegments).join('.');
+				}
+
 				return context.dynamicRender({
-					key: `${initialKey}.${parameterName}.options.${optionName}.displayName`,
+					key: `${initialKey}.${middleKey}.options.${optionName}.displayName`,
 					fallback: displayName,
 				});
 			},

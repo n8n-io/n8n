@@ -19,7 +19,7 @@
 						<n8n-option
 							v-for="item in parameterOptions"
 							:key="item.name"
-							:label="$locale.nodeText().collectionOptionDisplayName(parameter, item)"
+							:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
 							:value="item.name">
 						</n8n-option>
 					</n8n-select>
