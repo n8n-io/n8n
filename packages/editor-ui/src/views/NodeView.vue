@@ -2670,10 +2670,10 @@ export default mixins(
 
 					nodesInfo.forEach(nodeInfo => {
 						if (nodeInfo.translation) {
-							const shortNodeType = nodeInfo.name.replace('n8n-nodes-base.', '');
+							const nodeType = this.$locale.shortNodeType(nodeInfo.name);
 
 							addNodeTranslation(
-								{ [shortNodeType]: nodeInfo.translation },
+								{ [nodeType]: nodeInfo.translation },
 								this.$store.getters.defaultLocale,
 							);
 						}
