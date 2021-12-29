@@ -33,7 +33,7 @@ export async function addRoutes(
 	};
 
 	passport.use(
-		new Strategy(options, async function (jwtPayload: PublicUserData, done) {
+		new Strategy(options, async function validateCookieContents(jwtPayload: PublicUserData, done) {
 			// We will assign the `sub` property on the JWT to the database ID of user
 			const user = await Db.collections.User!.findOne(
 				{

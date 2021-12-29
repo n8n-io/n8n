@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -12,6 +13,7 @@ import { Command, flags } from '@oclif/command';
 import * as Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import { createHash } from 'crypto';
 import * as config from '../config';
 import {
 	ActiveExecutions,
@@ -31,7 +33,6 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
-import { createHash } from 'crypto';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');

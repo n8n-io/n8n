@@ -1,9 +1,8 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
-import { IDataObject } from 'n8n-workflow';
 import { IsNull, Not } from 'typeorm';
 import { Db } from '..';
 import config = require('../../config');
-import { Role } from '../databases/entities/Role';
 import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';

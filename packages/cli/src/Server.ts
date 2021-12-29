@@ -154,6 +154,7 @@ import { NameRequest } from './WorkflowHelpers';
 import { getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
+import { User } from './databases/entities/User';
 
 require('body-parser-xml')(bodyParser);
 
@@ -704,7 +705,7 @@ class App {
 						.catch(WorkflowHelpers.throwDuplicateEntryError)) as WorkflowEntity;
 					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, incomingTagOrder);
 					try {
-						await UserManagementHelpers.saveWorkflowOwnership(savedWorkflow, req.user);
+						await UserManagementHelpers.saveWorkflowOwnership(savedWorkflow, req.user as User);
 					} catch (error) {
 						// TODO UM: decide if this is fatal and we must rollback or
 						// log and treat it elsewhere.
