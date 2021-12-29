@@ -18,7 +18,7 @@ export async function download(this: IExecuteFunctions, index: number): Promise<
 	//meta data
 	const id: string = this.getNodeParameter('id', index) as string;
 	const fileId: string = this.getNodeParameter('fileId', index) as string;
-	const output: string = 'data' as string;
+	const output: string = this.getNodeParameter('output', index) as string;
 
 	//endpoint
 	const endpoint = `employees/${id}/files/${fileId}/`;
