@@ -1,19 +1,14 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import {IExecuteFunctions,} from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
-import {
-	OptionsWithUri,
-} from 'request';
+import {IDataObject, INodeExecutionData, INodeType, INodeTypeDescription,} from 'n8n-workflow';
+import {clientFields, clientOperations} from './ClientDescription';
+import {getResponseByUri, UrlParams} from './helpers';
+import {cityFields, cityOperations} from './CityDescription';
+import {industryFields, industryOperations} from './IndustryDescription';
+import {contractFields, contractOperations} from './ContractDescription';
 
 const helpers = require('./helpers');
+
 
 export class Gllue implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,32 +41,31 @@ export class Gllue implements INodeType {
 						name: 'Client',
 						value: 'client',
 					},
+					{
+						name: 'City',
+						value: 'city',
+					},
+					{
+						name: 'Industry',
+						value: 'industry',
+					},
+					{
+						name: 'Contract',
+						value: 'clientcontract',
+					},
 				],
 				default: 'client',
 				required: true,
-				description: 'Resource to consume',
+				description: 'Resource to Gllue',
 			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'client',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'list',
-						value: 'list',
-						description: 'List clients',
-					},
-				],
-				default: 'list',
-				description: 'The operation to perform.',
-			},
+			...clientOperations,
+			...clientFields,
+			...cityOperations,
+			...cityFields,
+			...industryOperations,
+			...industryFields,
+			...contractOperations,
+			...contractFields,
 		],
 	};
 
@@ -79,25 +73,38 @@ export class Gllue implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		// tslint:disable-next-line:no-any
+		const filters = this.getNodeParameter('filters', 0, {fields: 'id'}) as any;
 		const credentials = await this.getCredentials('gllueApi') as IDataObject;
 
 		const timestamp = helpers.getCurrentTimeStamp();
 		const token = helpers.generateTokenWithAESKey(timestamp, credentials.apiUsername, credentials.apiAesKey);
+		const urlParams = new UrlParams(filters.query, filters.fields, token);
+		const uriGenerated = helpers.gllueUrlBuilder(credentials.apiHost, resource, operation, urlParams);
 
 		if (resource === 'client') {
-			if (operation === 'list') {
-				const options: OptionsWithUri = {
-					headers: {
-						'Accept': 'application/json',
-					},
-					method: 'GET',
-					uri: `${credentials.apiHost}/rest/client/simple_list_with_ids?paginate_by=25&ordering=-id&gql=&page=1&fields='id'&private_token=${token}`,
-					json: true,
-				};
-
-				responseData = await this.helpers.request(options);
+			if (operation === 'simple_list_with_ids') {
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
+			}
+		} else if (resource === 'city') {
+			if (operation === 'simple_list_with_ids') {
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
+			}
+		} else if (resource === 'industry') {
+			if (operation === 'simple_list_with_ids'){
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
+			}
+		} else if (resource === 'clientcontract'){
+			if (operation === 'delete'){
+				const contractIds = this.getInputData().map(
+					(item, index) => this.getNodeParameter('id', index),
+				);
+				const body = { ids: contractIds, count: contractIds.length };
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request, 'POST', body);
 			}
 		}
-		return [this.helpers.returnJsonArray(responseData.result.client)];
+		return [this.helpers.returnJsonArray(responseData)];
 	}
+
 }
+
