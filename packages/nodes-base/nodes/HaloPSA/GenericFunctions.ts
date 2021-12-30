@@ -1,54 +1,29 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-/**
- * Make an authenticated API request to Bubble.
- */
-// export async function haloPSAApiRequest(
-// 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-// ) {
-// 	const credentials = await this.getCredentials('haloPSAApi');
-// 	console.log(credentials);
+interface IHaloPSATokens {
+	scope: string;
+	token_type: string;
+	access_token: string;
+	expires_in: number;
+	refresh_token: string;
+	id_token: string;
+}
 
-// 	const options: OptionsWithUri = {
-// 		headers: {
-// 			'Content-Type': 'application/x-www-form-urlencoded',
-// 			'Accept': 'application/json'
-// 		},
-// 		method: 'POST',
-// 		uri: `https://uk-trial.halopsa.com/token`,
-// 		json: true,
-// 		form: {
-// 			...credentials
-// 		},
-// 	};
-
-// 	try {
-// 		return await this.helpers.request!(options);
-// 	} catch (error) {
-// 		throw new NodeApiError(this.getNode(), error);
-// 	}
-// }
-
-export async function getAccessToken(
+export async function getAccessTokens(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-): Promise<any> {
-
-	const credentials = await this.getCredentials('haloPSAApi') as IDataObject;
+): Promise<IHaloPSATokens> {
+	const credentials = (await this.getCredentials('haloPSAApi')) as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -58,26 +33,47 @@ export async function getAccessToken(
 		form: {
 			client_id: credentials.client_id,
 			client_secret: credentials.client_secret,
-			grant_type: credentials.grant_type,
+			grant_type: 'client_credentials',
 			scope: credentials.scope,
 		},
-		uri: await getTokenUrl.call(this),
+		uri: getAuthUrl(credentials),
 		json: true,
 	};
 
 	try {
-		const { access_token } = await this.helpers.request!(options);
-		return access_token;
+		const tokens = await this.helpers.request!(options);
+		return tokens;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-async function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const credentials = await this.getCredentials('haloPSAApi') as IDataObject;
-
+function getAuthUrl(credentials: IDataObject) {
 	return credentials.hostingType === 'on-premise'
 		? '${credentials.appUrl}/auth/token'
-		: `https://auth.haloservicedesk.com/token?tenant=${credentials.tenant}`;
+		: `${credentials.authUrl}/token?tenant=${credentials.tenant}`;
+}
 
+export async function validateCrendetials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject,
+): Promise<IHaloPSATokens> {
+	const credentials = decryptedCredentials;
+
+	let options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		method: 'POST',
+		form: {
+			client_id: credentials.client_id,
+			client_secret: credentials.client_secret,
+			grant_type: 'client_credentials',
+			scope: credentials.scope,
+		},
+		uri: getAuthUrl(credentials),
+		json: true,
+	};
+
+	return (await this.helpers.request!(options)) as IHaloPSATokens;
 }

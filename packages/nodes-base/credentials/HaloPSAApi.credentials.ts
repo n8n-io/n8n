@@ -16,32 +16,24 @@ export class HaloPSAApi implements ICredentialType {
 			options: [
 				{
 					name: 'On-Premise Solution',
-					value: 'on-premise',
+					value: 'onPremise',
 				},
 				{
-					name: 'Hosted Solution',
-					value: 'hosted',
+					name: 'Hosted Solution Of Halo',
+					value: 'hostedHalo',
 				},
 			],
-			default: 'on-premise',
+			default: 'hostedHalo',
 			required: true,
 			description: 'Hosting Type',
 		},
 		{
-			displayName: 'HaloPSA Applicaiton Url',
-			name: 'appUrl',
+			displayName: 'HaloPSA Authorisation Server Url',
+			name: 'authUrl',
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'Your Halo Web Applicaiton Url',
-		},
-		{
-			displayName: 'Client credentials"',
-			name: 'grant_type',
-			type: 'hidden',
-			default: 'client_credentials',
-			required: true,
-			description: 'Must be "client_credentials"',
+			description: 'Your Halo Authorisation Server Url',
 		},
 		{
 			displayName: 'Client ID',
@@ -66,12 +58,12 @@ export class HaloPSAApi implements ICredentialType {
 			displayOptions: {
 				show: {
 					hostingType: [
-						'hosted',
+						'hostedHalo',
 					],
 				},
 			},
 			default: '',
-			description: 'An additional tenant parameter for hosted solution',
+			description: 'An additional tenant parameter for HaloPSA hosted solution',
 		},
 		{
 			displayName: 'Scope',
