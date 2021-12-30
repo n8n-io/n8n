@@ -5,6 +5,7 @@ import {
 	ICredentialsExpressionResolveValues,
 	ICredentialsHelper,
 	INode,
+	INodeCredentialsDetails,
 	INodeParameters,
 	INodeProperties,
 	INodeType,
@@ -39,30 +40,32 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance
 	 *
-	 * @param {string} name Name of the credentials to return instance of
+	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
 	 * @param {string} type Type of the credentials to return instance of
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
 	 */
-	async getCredentials(name: string, type: string): Promise<Credentials> {
-		const credentialsDb = await Db.collections.Credentials?.find({ type });
-
-		if (credentialsDb === undefined || credentialsDb.length === 0) {
-			throw new Error(`No credentials of type "${type}" exist.`);
+	async getCredentials(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+	): Promise<Credentials> {
+		if (!nodeCredentials.id) {
+			throw new Error(`Credentials "${nodeCredentials.name}" for type "${type}" don't have an ID.`);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const credential = credentialsDb.find((credential) => credential.name === name);
+		const credentials = await Db.collections.Credentials?.findOne({ id: nodeCredentials.id, type });
 
-		if (credential === undefined) {
-			throw new Error(`No credentials with name "${name}" exist for type "${type}".`);
+		if (!credentials) {
+			throw new Error(
+				`Credentials with ID "${nodeCredentials.id}" don't exist for type "${type}".`,
+			);
 		}
 
 		return new Credentials(
-			credential.name,
-			credential.type,
-			credential.nodesAccess,
-			credential.data,
+			{ id: credentials.id.toString(), name: credentials.name },
+			credentials.type,
+			credentials.nodesAccess,
+			credentials.data,
 		);
 	}
 
@@ -101,21 +104,20 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the decrypted credential data with applied overwrites
 	 *
-	 * @param {string} name Name of the credentials to return data of
+	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
 	 * @param {string} type Type of the credentials to return data of
 	 * @param {boolean} [raw] Return the data as supplied without defaults or overwrites
 	 * @returns {ICredentialDataDecryptedObject}
 	 * @memberof CredentialsHelper
 	 */
 	async getDecrypted(
-		name: string,
+		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
-		const credentials = await this.getCredentials(name, type);
-
+		const credentials = await this.getCredentials(nodeCredentials, type);
 		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
 
 		if (raw === true) {
@@ -228,12 +230,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @memberof CredentialsHelper
 	 */
 	async updateCredentials(
-		name: string,
+		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/await-thenable
-		const credentials = await this.getCredentials(name, type);
+		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		if (Db.collections.Credentials === null) {
 			// The first time executeWorkflow gets called the Database has
@@ -251,7 +253,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		// Save the credentials in DB
 		const findQuery = {
-			name,
+			id: credentials.id,
 			type,
 		};
 

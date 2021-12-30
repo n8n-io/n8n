@@ -58,7 +58,7 @@ export class Clearbit implements INodeType {
 					{
 						name: 'Person',
 						value: 'person',
-						description: `The Person API lets you retrieve social information associated with an email address,<br/>
+						description: `The Person API lets you retrieve social information associated with an email address,
 						such as a person’s name, location and Twitter handle.`,
 					},
 				],

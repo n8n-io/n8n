@@ -1,8 +1,14 @@
 import {
+	OptionsWithUri,
+} from 'request';
+
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -10,6 +16,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -42,7 +49,7 @@ import {
 import {
 	IComment,
 	ITicket,
- } from './TicketInterface';
+} from './TicketInterface';
 
 export class Zendesk implements INodeType {
 	description: INodeTypeDescription = {
@@ -70,6 +77,7 @@ export class Zendesk implements INodeType {
 						],
 					},
 				},
+				testedBy: 'zendeskSoftwareApiTest',
 			},
 			{
 				name: 'zendeskOAuth2Api',
@@ -99,7 +107,7 @@ export class Zendesk implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'Resource',
@@ -109,7 +117,7 @@ export class Zendesk implements INodeType {
 					{
 						name: 'Ticket',
 						value: 'ticket',
-						description: 'Tickets are the means through which your end users (customers) communicate with agents in Zendesk Support.',
+						description: 'Tickets are the means through which your end users (customers) communicate with agents in Zendesk Support',
 					},
 					{
 						name: 'Ticket Field',
@@ -128,7 +136,7 @@ export class Zendesk implements INodeType {
 					},
 				],
 				default: 'ticket',
-				description: 'Resource to consume.',
+				description: 'Resource to consume',
 			},
 			// TICKET
 			...ticketOperations,
@@ -146,6 +154,42 @@ export class Zendesk implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async zendeskSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+				const subdomain = credentials!.subdomain;
+				const email = credentials!.email;
+				const apiToken = credentials!.apiToken;
+
+				const base64Key =  Buffer.from(`${email}/token:${apiToken}`).toString('base64');
+				const options: OptionsWithUri = {
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': `Basic ${base64Key}`,
+					},
+					method: 'GET',
+					uri: `https://${subdomain}.zendesk.com/api/v2/ticket_fields.json`,
+					qs: {
+						recent: 0,
+					},
+					json: true,
+					timeout: 5000,
+				};
+
+				try {
+					await this.helpers.request!(options);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid: ${error.message}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the custom fields to display them to user so that he can
 			// select them easily
@@ -286,12 +330,12 @@ export class Zendesk implements INodeType {
 							body: description,
 						};
 						const body: ITicket = {
-								comment,
+							comment,
 						};
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
 
-							if (additionalFieldsJson !== '' ) {
+							if (additionalFieldsJson !== '') {
 
 								if (validateJSON(additionalFieldsJson) !== undefined) {
 
@@ -343,7 +387,7 @@ export class Zendesk implements INodeType {
 						if (jsonParameters) {
 							const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i) as string;
 
-							if (updateFieldsJson !== '' ) {
+							if (updateFieldsJson !== '') {
 
 								if (validateJSON(updateFieldsJson) !== undefined) {
 
@@ -382,44 +426,87 @@ export class Zendesk implements INodeType {
 							if (updateFields.customFieldsUi) {
 								body.custom_fields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 							}
+							if (updateFields.assigneeEmail) {
+								body.assignee_email = updateFields.assigneeEmail as string;
+							}
+							if (updateFields.internalNote) {
+								const comment: IComment = {
+									html_body: updateFields.internalNote as string,
+									public: false,
+								};
+								body.comment = comment;
+							}
+
+							if (updateFields.publicReply) {
+								const comment: IComment = {
+									body: updateFields.publicReply as string,
+									public: true,
+								};
+								body.comment = comment;
+							}
+
 						}
 						responseData = await zendeskApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, { ticket: body });
 						responseData = responseData.ticket;
 					}
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
+					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#show-suspended-ticket
 					if (operation === 'get') {
+						const ticketType = this.getNodeParameter('ticketType', i) as string;
 						const ticketId = this.getNodeParameter('id', i) as string;
-						responseData = await zendeskApiRequest.call(this, 'GET', `/tickets/${ticketId}`, {});
-						responseData = responseData.ticket;
+						const endpoint = (ticketType === 'regular') ? `/tickets/${ticketId}` : `/suspended_tickets/${ticketId}`;
+						responseData = await zendeskApiRequest.call(this, 'GET', endpoint, {});
+						responseData = responseData.ticket || responseData.suspended_ticket;
 					}
 					//https://developer.zendesk.com/rest_api/docs/support/search#list-search-results
+					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#list-suspended-tickets
 					if (operation === 'getAll') {
+						const ticketType = this.getNodeParameter('ticketType', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						qs.query = 'type:ticket';
+						if (options.query) {
+							qs.query += ` ${options.query}`;
+						}
 						if (options.status) {
 							qs.query += ` status:${options.status}`;
 						}
+						if (options.group) {
+							qs.query += ` group:${options.group}`;
+						}
+
 						if (options.sortBy) {
 							qs.sort_by = options.sortBy;
 						}
 						if (options.sortOrder) {
 							qs.sort_order = options.sortOrder;
 						}
+						const endpoint = (ticketType === 'regular') ? `/search` : `/suspended_tickets`;
+						const property = (ticketType === 'regular') ? 'results' : 'suspended_tickets';
 						if (returnAll) {
-							responseData = await zendeskApiRequestAllItems.call(this, 'results', 'GET', `/search`, {}, qs);
+							responseData = await zendeskApiRequestAllItems.call(this, property, 'GET', endpoint, {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
 							qs.per_page = limit;
-							responseData = await zendeskApiRequest.call(this, 'GET', `/search`, {}, qs);
-							responseData = responseData.results;
+							responseData = await zendeskApiRequest.call(this, 'GET', endpoint, {}, qs);
+							responseData = responseData.results || responseData.suspended_tickets;
 						}
 					}
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#delete-ticket
+					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#delete-suspended-ticket
 					if (operation === 'delete') {
+						const ticketType = this.getNodeParameter('ticketType', i) as string;
+						const ticketId = this.getNodeParameter('id', i) as string;
+						const endpoint = (ticketType === 'regular') ? `/tickets/${ticketId}` : `/suspended_tickets/${ticketId}`;
+						responseData = await zendeskApiRequest.call(this, 'DELETE', endpoint, {});
+						responseData = { success: true };
+					}
+					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#recover-suspended-ticket
+					if (operation === 'recover') {
 						const ticketId = this.getNodeParameter('id', i) as string;
 						try {
-							responseData = await zendeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`, {});
+							responseData = await zendeskApiRequest.call(this, 'PUT', `/suspended_tickets/${ticketId}/recover`, {});
+							responseData = responseData.ticket;
 						} catch (error) {
 							throw new NodeApiError(this.getNode(), error);
 						}

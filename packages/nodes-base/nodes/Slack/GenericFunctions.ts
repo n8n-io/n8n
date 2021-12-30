@@ -58,6 +58,12 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 		}
 
 		if (response.ok === false) {
+			if (response.error === 'paid_teams_only') {
+				throw new NodeOperationError(this.getNode(), `Your current Slack plan does not include the resource '${this.getNodeParameter('resource', 0) as string}'`, {
+					description: `Hint: Upgrate to the Slack plan that includes the funcionality you want to use.`,
+				});
+			}
+
 			throw new NodeOperationError(this.getNode(), 'Slack error response: ' + JSON.stringify(response));
 		}
 
@@ -71,15 +77,21 @@ export async function slackApiRequestAllItems(this: IExecuteFunctions | ILoadOpt
 	const returnData: IDataObject[] = [];
 	let responseData;
 	query.page = 1;
-	query.count = 100;
+	//if the endpoint uses legacy pagination use count
+	//https://api.slack.com/docs/pagination#classic
+	if (endpoint.includes('files.list')) {
+		query.count = 100;
+	} else {
+		query.limit = 100;
+	}
 	do {
 		responseData = await slackApiRequest.call(this, method, endpoint, body, query);
-		query.cursor = encodeURIComponent(_.get(responseData, 'response_metadata.next_cursor'));
+		query.cursor = _.get(responseData, 'response_metadata.next_cursor');
 		query.page++;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
 		(responseData.response_metadata !== undefined &&
-			responseData.response_metadata.mext_cursor !== undefined &&
+			responseData.response_metadata.next_cursor !== undefined &&
 			responseData.response_metadata.next_cursor !== '' &&
 			responseData.response_metadata.next_cursor !== null) ||
 		(responseData.paging !== undefined &&

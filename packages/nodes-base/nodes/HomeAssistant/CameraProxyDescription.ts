@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const cameraProxyOperations = [
+export const cameraProxyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const cameraProxyOperations = [
 		default: 'getScreenshot',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const cameraProxyFields = [
+export const cameraProxyFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                       cameraProxy:getScreenshot                            */
 	/* -------------------------------------------------------------------------- */
@@ -64,6 +64,6 @@ export const cameraProxyFields = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
-] as INodeProperties[];
+];

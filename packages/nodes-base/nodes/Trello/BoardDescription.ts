@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const boardOperations = [
+export const boardOperations: INodeProperties[] = [
 	// ----------------------------------
 	//         board
 	// ----------------------------------
@@ -42,9 +42,9 @@ export const boardOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const boardFields = [
+export const boardFields: INodeProperties[] = [
 
 	// ----------------------------------
 	//         board:create
@@ -368,7 +368,7 @@ export const boardFields = [
 				name: 'fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list:<br />closed, dateLastActivity, dateLastView, desc, descData,<br />idOrganization, invitations, invited, labelNames, memberships,<br />name, pinned, powerUps, prefs, shortLink, shortUrl,<br />starred, subscribed, url',
+				description: 'Fields to return. Either "all" or a comma-separated list: closed, dateLastActivity, dateLastView, desc, descData, idOrganization, invitations, invited, labelNames, memberships, name, pinned, powerUps, prefs, shortLink, shortUrl, starred, subscribed, url',
 			},
 			{
 				displayName: 'Plugin Data',
@@ -456,4 +456,4 @@ export const boardFields = [
 		],
 	},
 
-] as INodeProperties[];
+];
