@@ -6,7 +6,7 @@
 			<div :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading v-if="!loading" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
-					<!-- <n8n-loading :animated="true" :loading="loading" :rows="2" :variant="'h1'" /> -->
+					<n8n-loading :animated="true" :loading="loading" :rows="2" :variant="'h1'" />
 				</div>
 				<div :class="$style.button">
 					<n8n-button
@@ -15,14 +15,16 @@
 						size="large"
 						@click="goToWorkflowsTemplate(template.id)"
 					/>
-					<!-- <n8n-loading :animated="true" :loading="loading" :rows="1" :variant="'button'" /> -->
+					<n8n-loading :animated="true" :loading="loading" :rows="1" :variant="'button'" />
 				</div>
 			</div>
 		</div>
 		<div>
-			<div :class="$style.image">
-				<n8n-image v-if="!loading" :images="template.mainImage" />
-				<!-- <n8n-loading :animated="true" :loading="loading" :rows="1" :variant="'image'" /> -->
+			<div v-show="!loading" :class="$style.image">
+				<n8n-image :images="template.mainImage" />
+			</div>
+			<div v-show="loading" :class="$style.image">
+				<n8n-loading :animated="true" :loading="loading" :rows="1" :variant="'image'" />
 			</div>
 			<div :class="$style.content">
 				<div :class="$style.markdown">
@@ -31,13 +33,13 @@
 						:content="template.description"
 						:images="template.image"
 					/>
-					<!-- <n8n-loading :animated="true" :loading="loading" :rows="3" :variant="'p'" />
+					<n8n-loading :animated="true" :loading="loading" :rows="3" :variant="'p'" />
 					<div v-if="loading" :class="$style.spacer" />
-					<n8n-loading :animated="true" :loading="loading" :rows="3" :variant="'p'" /> -->
+					<n8n-loading :animated="true" :loading="loading" :rows="3" :variant="'p'" />
 				</div>
 				<div :class="$style.details">
 					<template-details v-if="!loading" :template="template" />
-					<!-- <n8n-loading :animated="true" :loading="loading" :rows="5" :variant="'p'" /> -->
+					<n8n-loading :animated="true" :loading="loading" :rows="5" :variant="'p'" />
 				</div>
 			</div>
 		</div>
@@ -79,6 +81,7 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	async mounted() {
+		this.loading = true;
 		const templateId = this.$route.params.id;
 		const response = await this.$store.dispatch('templates/getTemplateById', templateId);
 		if (!response) {
@@ -100,11 +103,14 @@ export default mixins(workflowHelpers).extend({
 
 <style lang="scss" module>
 .template {
+	width: 100%;
 	display: flex;
 	justify-content: center;
 }
 
 .container {
+	width: 100%;
+
 	@media (max-width: $--breakpoint-md) {
 		max-width: 900px;
 		margin: 0 48px 0 113px;
