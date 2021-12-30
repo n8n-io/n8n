@@ -1,4 +1,3 @@
-import { add } from 'lodash';
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -14,7 +13,7 @@ import {
 
 export async function addCustomer(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const email = this.getNodeParameter('email', index) as IDataObject;
-	const { address, getSms, businessName, lastname, firstname, invoiceCcEmails, noEmail, notes, notificationEmail, phone, referredBy } = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const { address, getSms, businessName, lastname, firstName, invoiceCcEmails, noEmail, notes, notificationEmail, phone, referredBy } = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
@@ -27,13 +26,11 @@ export async function addCustomer(this: IExecuteFunctions, index: number): Promi
 		addressData.address_2 = addressData.address2;
 	}
 
-	console.log(invoiceCcEmails);
-
 	body = {
 		...addressData,
 		business_name: businessName,
 		email,
-		firstname,
+		firstname: firstName,
 		get_sms: getSms,
 		invoice_cc_emails: (invoiceCcEmails as string[]).join(','),
 		lastname,

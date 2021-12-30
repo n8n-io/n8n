@@ -2,7 +2,7 @@ import {
 	RmmProperties,
 } from '../../Interfaces';
 
-export const rmmAddDescription: RmmProperties = [
+export const rmmCreateDescription: RmmProperties = [
 	{
 		displayName: 'Asset ID',
 		name: 'assetId',
@@ -13,7 +13,7 @@ export const rmmAddDescription: RmmProperties = [
 					'rmm',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -29,7 +29,7 @@ export const rmmAddDescription: RmmProperties = [
 					'rmm',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -45,7 +45,7 @@ export const rmmAddDescription: RmmProperties = [
 					'rmm',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -55,14 +55,14 @@ export const rmmAddDescription: RmmProperties = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'create Field',
 		displayOptions: {
 			show: {
 				resource: [
 					'rmm',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},

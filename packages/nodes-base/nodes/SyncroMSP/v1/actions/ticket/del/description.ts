@@ -5,7 +5,7 @@ import {
 export const ticketDeleteDescription: TicketProperties = [
 	{
 		displayName: 'Ticket ID',
-		name: 'id',
+		name: 'ticketId',
 		required: true,
 		type: 'string',
 		displayOptions: {

@@ -5,7 +5,7 @@ import {
 export const customerGetDescription: CustomerProperties = [
 	{
 		displayName: 'Cutomer ID',
-		name: 'id',
+		name: 'customerId',
 		type: 'string',
 		required: true,
 		displayOptions: {

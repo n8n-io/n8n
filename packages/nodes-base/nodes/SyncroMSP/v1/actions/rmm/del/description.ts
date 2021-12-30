@@ -5,7 +5,7 @@ import {
 export const rmmDeleteDescription: RmmProperties = [
 	{
 		displayName: 'RMM Alert ID',
-		name: 'id',
+		name: 'alertId',
 		type: 'string',
 		required: true,
 		displayOptions: {

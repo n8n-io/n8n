@@ -5,7 +5,7 @@ import {
 export const customerDeleteDescription: CustomerProperties = [
 	{
 		displayName: 'Customer ID',
-		name: 'id',
+		name: 'customerId',
 		type: 'string',
 		required: true,
 		displayOptions: {

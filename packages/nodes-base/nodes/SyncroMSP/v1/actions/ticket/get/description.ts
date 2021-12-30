@@ -5,7 +5,7 @@ import {
 export const ticketGetDescription: TicketProperties = [
 	{
 		displayName: 'Ticket ID',
-		name: 'id',
+		name: 'ticketId',
 		type: 'string',
 		displayOptions: {
 			show: {

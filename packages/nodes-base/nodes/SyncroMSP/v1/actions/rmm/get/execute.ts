@@ -13,7 +13,7 @@ import {
 
 
 export async function getAlert(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const id = this.getNodeParameter('id', index) as string;
+	const id = this.getNodeParameter('alertId', index) as string;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';

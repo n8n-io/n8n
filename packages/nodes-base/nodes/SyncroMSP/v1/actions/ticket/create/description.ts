@@ -2,7 +2,7 @@ import {
 	TicketProperties,
 } from '../../Interfaces';
 
-export const ticketAddDescription: TicketProperties = [
+export const ticketCreateDescription: TicketProperties = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
@@ -14,7 +14,7 @@ export const ticketAddDescription: TicketProperties = [
 					'ticket',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -31,7 +31,7 @@ export const ticketAddDescription: TicketProperties = [
 					'ticket',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -41,14 +41,14 @@ export const ticketAddDescription: TicketProperties = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'create Field',
 		displayOptions: {
 			show: {
 				resource: [
 					'ticket',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -107,16 +107,24 @@ export const ticketAddDescription: TicketProperties = [
 				type: 'options',
 				options: [
 					{
-						name: 'New',
-						value: 'New',
+						name: 'Customer Reply',
+						value: 'Customer Reply',
 					},
 					{
 						name: 'In Progress',
 						value: 'In Progress',
 					},
 					{
+						name: 'New',
+						value: 'New',
+					},
+					{
 						name: 'Resolved',
 						value: 'Resolved',
+					},
+					{
+						name: 'Scheduled',
+						value: 'Scheduled',
 					},
 					{
 						name: 'Waiting for Parts',
@@ -126,14 +134,7 @@ export const ticketAddDescription: TicketProperties = [
 						name: 'Waiting on Customer',
 						value: 'Waiting on Customer',
 					},
-					{
-						name: 'Scheduled',
-						value: 'Scheduled',
-					},
-					{
-						name: 'Customer Reply',
-						value: 'Customer Reply',
-					},
+
 				],
 				default: 'New',
 				description: 'Filter tickets by status. It cannot be used along with the parameter Search Query',

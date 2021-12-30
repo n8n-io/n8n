@@ -34,7 +34,7 @@ export async function apiRequest(
 		method,
 		body,
 		qs: query,
-		url: `https://${credentials.subDomain}.syncromsp.com/api/v1/${endpoint}`,
+		url: `https://${credentials.subdomain}.syncromsp.com/api/v1/${endpoint}`,
 		headers: {},
 	};
 

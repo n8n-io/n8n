@@ -9,7 +9,7 @@ import {
 export const customerUpdateDescription: CustomerProperties = [
 	{
 		displayName: 'Customer ID',
-		name: 'id',
+		name: 'customerId',
 		type: 'string',
 		displayOptions: {
 			show: {

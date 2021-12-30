@@ -11,18 +11,17 @@ import {
 	apiRequest, apiRequestAllItems
 } from '../../../transport';
 
-
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const additionalFilters = this.getNodeParameter('additionalFilters', index) as IDataObject;
+	const filters = this.getNodeParameter('filters', index) as IDataObject;
 
 	let qs = {} as IDataObject;
 	const requestMethod = 'GET';
 	const endpoint = 'rmm_alerts';
 	const body = {} as IDataObject;
 
-	if (additionalFilters) {
-		qs = additionalFilters;
+	if (filters) {
+		qs = filters;
 	}
 
 	if (qs.status === undefined) {

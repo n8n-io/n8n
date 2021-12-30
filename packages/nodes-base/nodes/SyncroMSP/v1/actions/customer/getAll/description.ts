@@ -43,7 +43,7 @@ export const customerGetAllDescription: CustomerProperties = [
 	},
 	{
 		displayName: 'Filters',
-		name: 'additionalFilters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Filter',
 		displayOptions: {
@@ -72,7 +72,7 @@ export const customerGetAllDescription: CustomerProperties = [
 			},
 			{
 				displayName: 'First Name',
-				name: 'firstname',
+				name: 'firstName',
 				type: 'string',
 				default: '',
 			},

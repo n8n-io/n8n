@@ -1,6 +1,6 @@
 
 import * as getAll from './getAll';
-import * as add from './add';
+import * as create from './create';
 import * as del from './del';
 import * as update from './update';
 import * as get from './get';
@@ -9,7 +9,7 @@ import { INodeProperties } from 'n8n-workflow';
 
 export {
 	getAll,
-	add,
+	create,
 	del as delete,
 	update,
 	get,
@@ -31,8 +31,8 @@ export const descriptions = [
 		options: [
 			{
 				name: 'Create',
-				value: 'add',
-				description: 'Add new customer',
+				value: 'create',
+				description: 'Create new customer',
 			},
 			{
 				name: 'Delete',
@@ -56,11 +56,11 @@ export const descriptions = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
+		description: '',
 	},
 	...getAll.description,
 	...get.description,
-	...add.description,
+	...create.description,
 	...del.description,
 	...update.description,
 ] as INodeProperties[];

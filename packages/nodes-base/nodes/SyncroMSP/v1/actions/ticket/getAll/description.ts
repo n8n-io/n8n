@@ -43,7 +43,7 @@ export const ticketGetAllDescription: TicketProperties = [
 	},
 	{
 		displayName: 'Filters',
-		name: 'additionalFilters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Filter',
 		displayOptions: {

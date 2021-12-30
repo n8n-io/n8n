@@ -14,15 +14,15 @@ import {
 
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const additionalFilters = this.getNodeParameter('additionalFilters', index) as IDataObject;
+	const filters = this.getNodeParameter('filters', index) as IDataObject;
 
 	let qs = {} as IDataObject;
 	const requestMethod = 'GET';
 	const endpoint = 'customers';
 	const body = {} as IDataObject;
 
-	if (additionalFilters) {
-		qs = additionalFilters;
+	if (filters) {
+		qs = filters;
 		if (qs.businessName) {
 			qs.business_name = qs.businessName;
 		}

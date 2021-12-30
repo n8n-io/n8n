@@ -16,7 +16,7 @@ export class SyncroMspApi implements ICredentialType {
 		},
 		{
 			displayName: 'Subdomain',
-			name: 'subDomain',
+			name: 'subdomain',
 			type: 'string',
 			default: '',
 		},

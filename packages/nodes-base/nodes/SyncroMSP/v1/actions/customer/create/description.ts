@@ -6,7 +6,7 @@ import {
 	addressFixedCollection
 } from '../../../methods/sharedFields';
 
-export const customerAddDescription: CustomerProperties = [
+export const customerCreateDescription: CustomerProperties = [
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -17,7 +17,7 @@ export const customerAddDescription: CustomerProperties = [
 					'customer',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -27,14 +27,14 @@ export const customerAddDescription: CustomerProperties = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'create Field',
 		displayOptions: {
 			show: {
 				resource: [
 					'customer',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -49,7 +49,7 @@ export const customerAddDescription: CustomerProperties = [
 			},
 			{
 				displayName: 'First Name',
-				name: 'firstname',
+				name: 'firstName',
 				type: 'string',
 				default: '',
 			},

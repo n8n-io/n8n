@@ -13,7 +13,7 @@ import {
 
 
 export async function getCustomer(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const id = this.getNodeParameter('id', index) as string;
+	const id = this.getNodeParameter('customerId', index) as string;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';

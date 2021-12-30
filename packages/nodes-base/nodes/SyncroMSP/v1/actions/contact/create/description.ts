@@ -6,10 +6,10 @@ import {
 	addressFixedCollection
 } from '../../../methods/sharedFields';
 
-export const contactAddDescription: ContactProperties = [
+export const contactCreateDescription: ContactProperties = [
 	{
 		displayName: 'Customer ID',
-		name: 'customerId',
+		name: 'id',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -18,7 +18,7 @@ export const contactAddDescription: ContactProperties = [
 					'contact',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -34,7 +34,7 @@ export const contactAddDescription: ContactProperties = [
 					'contact',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -44,14 +44,14 @@ export const contactAddDescription: ContactProperties = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'create Field',
 		displayOptions: {
 			show: {
 				resource: [
 					'contact',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},

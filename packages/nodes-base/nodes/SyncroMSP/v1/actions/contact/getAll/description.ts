@@ -24,7 +24,7 @@ export const contactGetAllDescription: ContactProperties = [
 	{
 		displayName: 'Limit',
 		name: 'limit',
-		type: 'string',
+		type: 'number',
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,6 +38,6 @@ export const contactGetAllDescription: ContactProperties = [
 				],
 			},
 		},
-		default: '25',
+		default: 25,
 	},
 ];

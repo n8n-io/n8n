@@ -1,7 +1,7 @@
 
 import * as get from './get';
 import * as getAll from './getAll';
-import * as add from './add';
+import * as create from './create';
 import * as del from './del';
 import * as mute from './mute';
 
@@ -12,7 +12,7 @@ export {
 	get,
 	mute,
 	del as delete,
-	add,
+	create,
 };
 
 
@@ -31,8 +31,8 @@ export const descriptions = [
 		options: [
 			{
 				name: 'Create',
-				value: 'add',
-				description: 'Add new RMM Alert',
+				value: 'create',
+				description: 'Create new RMM Alert',
 			},
 			{
 				name: 'Delete',
@@ -56,11 +56,11 @@ export const descriptions = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
+		description: '',
 	},
 	...getAll.description,
 	...get.description,
-	...add.description,
+	...create.description,
 	...del.description,
 	...mute.description,
 ] as INodeProperties[];
