@@ -26,11 +26,11 @@ export default Vue.extend({
 }
 
 .header {
-	padding: 4px 0;
+	padding: 0 0 var(--spacing-4xs);
 	border-bottom: 1px solid $--node-creator-border-color;
 }
 
 .content {
-	padding: 12px 0;
+	padding: var(--spacing-xs) 0;
 }
 </style>

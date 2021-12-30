@@ -1,5 +1,6 @@
 <template>
-	<div :class="[$style.template, !isMenuCollapsed ? $style.expanded : '']">
+<div :class="$style.template">
+	<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
 		<div :class="$style.header">
 			<go-back-button />
 			<div :class="$style.wrapper">
@@ -41,6 +42,7 @@
 			</div>
 		</div>
 	</div>
+</div>
 </template>
 
 <script lang="ts">
@@ -98,17 +100,30 @@ export default mixins(workflowHelpers).extend({
 
 <style lang="scss" module>
 .template {
-	max-width: calc(100% - 65px);
-	margin: 0 auto;
-	padding-left: 65px;
+	display: flex;
+	justify-content: center;
+}
+
+.container {
+	@media (max-width: $--breakpoint-md) {
+		max-width: 900px;
+		margin: 0 48px 0 113px;
+		padding: 48px 0 48px;
+	}
+
+	@media (min-width: $--breakpoint-md) {
+		max-width: 1024px;
+		margin: 0 64px 0 129px;
+		padding: 64px 0 64px;
+	}
 }
 
 .expanded {
-	padding-left: 200px;
+	margin-left: 248px;
 }
 
 .header {
-	padding: 18px 0px 40px;
+	padding: 0px 0px 40px;
 	display: flex;
 	flex-direction: column;
 }
