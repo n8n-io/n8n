@@ -6,6 +6,8 @@ import {
 
 import {
 	GenericValue,
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
 	IHttpRequestOptions,
 	NodeApiError,
@@ -66,4 +68,26 @@ export async function apiRequestAllItems(
 		responseData[endpoint].length !== 0
 	);
 	return returnData;
+}
+
+export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+	const credentials = decryptedCredentials;
+
+	const {
+		subdomain,
+		apiKey,
+	} = credentials as {
+		subdomain: string,
+		apiKey: string,
+	};
+
+	const options: IHttpRequestOptions = {
+		method: 'GET',
+		qs: {
+			api_key: apiKey,
+		},
+		url: `https://${subdomain}.syncromsp.com/api/v1//me`,
+	};
+
+	return await this.helpers.httpRequest(options);
 }
