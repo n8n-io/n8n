@@ -20,7 +20,7 @@ export class OdooApi implements ICredentialType {
 			required: true,
 		},
 		{
-			displayName: 'Password: ',
+			displayName: 'Password Or API Key: ',
 			name: 'password',
 			type: 'string' as NodePropertyTypes,
 			default: '',

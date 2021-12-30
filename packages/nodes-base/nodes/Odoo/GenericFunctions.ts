@@ -45,12 +45,6 @@ type FilterOperation =
 	| 'notIn'
 	| 'childOf';
 
-interface IOdooResponce {
-	jsonrpc: string;
-	id: number;
-	result?: IDataObject | IDataObject[];
-	error?: IDataObject | IDataObject[];
-}
 export interface IOdooFilterOperations {
 	filter: Array<{
 		fieldName: string;

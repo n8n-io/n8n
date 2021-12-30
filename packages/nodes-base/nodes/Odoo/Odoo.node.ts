@@ -570,16 +570,6 @@ export class Odoo implements INodeType {
 			}
 		}
 
-		// const test = await odooGetModelFields.call(
-		// 	this,
-		// 	db,
-		// 	userID,
-		// 	password,
-		// 	this.getNodeParameter('customResource', 0) as string,
-		// 	url,
-		// );
-		// console.log(test);
-
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
