@@ -53,14 +53,14 @@ export class UrlParams {
 }
 
 export function gllueUrlBuilder(host: string, resource: string, option = 'simple_list_with_ids', urlParams: UrlParams): string {
-	const baseUrl = `${host}\\rest\\${resource}\\${option}`;
+	const baseUrl = `${host}/rest/${resource}/${option}`;
 	const params = [];
 	if (!urlParams) {
 		return baseUrl;
 	}
 
 	let gql: string;
-	if (urlParams.gql !== '') {
+	if (urlParams.gql !== undefined && urlParams.gql !== '') {
 		const groups = urlParams.gql.split('&').map((group) => {
 			const [name, value] = group.split('=');
 			const encodedValue = encodeURIComponent(value);
@@ -86,14 +86,14 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 	return `${baseUrl}?${params.join('&')}`;
 }
 
-function buildOptionWithUri(uriGenerated: string, method: string = 'GET', body: IDataObject = {}): OptionsWithUri {
+function buildOptionWithUri(uriGenerated: string, method = 'GET', body: IDataObject = {}): OptionsWithUri {
 	const options: OptionsWithUri = {
 		headers: {
 			'Accept': 'application/json',
 		},
-		method: method,
+		method,
+		body,
 		uri: uriGenerated,
-		body: body,
 		json: true,
 	};
 
