@@ -24,21 +24,21 @@ interface IHaloPSATokens {
 	id_token: string;
 }
 
-const pluralResource: {[key: string]: string} = {
-	client: "clients",
-	asset: "assets",
-	attachment: "attachments",
-	clientcontract: "contracts",
-	invoice: "invoices",
-	item: "items",
-	kbarticle: "articles",
-	opportunities: "tickets",
-	projects: "tickets",
-	quotation: "quotes",
-	report: "reports",
-	site: "sites",
-	supplier: "suppliers",
-}
+const pluralResource: { [key: string]: string } = {
+	client: 'clients',
+	asset: 'assets',
+	attachment: 'attachments',
+	clientcontract: 'contracts',
+	invoice: 'invoices',
+	item: 'items',
+	kbarticle: 'articles',
+	opportunities: 'tickets',
+	projects: 'tickets',
+	quotation: 'quotes',
+	report: 'reports',
+	site: 'sites',
+	supplier: 'suppliers',
+};
 
 // API Requests ---------------------------------------------------------------------
 
@@ -81,7 +81,7 @@ export async function haloPSAApiRequest(
 	resource: string,
 	method: string,
 	accessToken: string,
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<IDataObject | IDataObject[]> {
