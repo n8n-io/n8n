@@ -9,15 +9,16 @@ export class ZammadBasicApi implements ICredentialType {
 	documentationUrl = 'zammad';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Zammad URL',
-			name: 'zammadUrl',
+			displayName: 'Domain',
+			name: 'domain',
 			type: 'string',
-			default: 'https://your_url.zammad.com',
+			default: 'https://n8n.zammad.com',
 			required: true,
 		},
 		{
-			displayName: 'User Name / E-Mail',
-			name: 'userName',
+			displayName: 'User Name',
+			name: 'username',
+			description: 'Email also allowed',
 			type: 'string',
 			default: '',
 			required: true,

@@ -1,56 +1,66 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const mentionsDescription = [
+export const mentionsDescription: INodeProperties[] = [
 	// ----------------------------------
-	//         Operation: mention
+	//           operations
 	// ----------------------------------
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['mention'],
-				api: ['rest'],
+				resource: [
+					'mention',
+				],
+				api: [
+					'rest',
+				],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an entry.',
-			},
-			{
-				name: 'List',
-				value: 'list',
-				description: 'Get data of all entries.',
+				description: 'Create an entry',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an entry.',
+				description: 'Delete an entry',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get data of all entries',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
+
 	// ----------------------------------
-	//         Fields: mention
+	//             fields
 	// ----------------------------------
 	{
-		displayName: 'Mentionabe Type',
+		displayName: 'Mentionable Type',
 		name: 'mentionable_type',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['mention'],
-				api: ['rest'],
+				operation: [
+					'create',
+				],
+				resource: [
+					'mention',
+				],
+				api: [
+					'rest',
+				],
 			},
 		},
-		description: 'The type of the mentionable.',
 	},
 	{
 		displayName: 'Mentionable ID',
@@ -60,12 +70,17 @@ export const mentionsDescription = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['mention'],
-				api: ['rest'],
+				operation: [
+					'create',
+				],
+				resource: [
+					'mention',
+				],
+				api: [
+					'rest',
+				],
 			},
 		},
-		description: 'The id of the mentionable.',
 	},
 	{
 		displayName: 'Mention ID',
@@ -75,11 +90,16 @@ export const mentionsDescription = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['delete'],
-				resource: ['mention'],
-				api: ['rest'],
+				operation: [
+					'delete',
+				],
+				resource: [
+					'mention',
+				],
+				api: [
+					'rest',
+				],
 			},
 		},
-		description: 'The id of the mention.',
 	},
-] as INodeProperties[];
+];

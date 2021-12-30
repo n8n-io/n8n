@@ -1,41 +1,48 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const userAccessTokensDescription = [
+export const userAccessTokensDescription: INodeProperties[] = [
 	// ----------------------------------
-	//         Operation: useraccesstoken
+	//           operations
 	// ----------------------------------
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['userAccessToken'],
-				api: ['rest'],
+				resource: [
+					'userAccessToken',
+				],
+				api: [
+					'rest',
+				],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an entry.',
-			},
-			{
-				name: 'List',
-				value: 'list',
-				description: 'Get data of all entries.',
+				description: 'Create an entry',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Update an entry.',
+				description: 'Update an entry',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get data of all entries',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
+
 	// ----------------------------------
-	//         Fields: useraccesstoken
+	//             fields
 	// ----------------------------------
 	{
 		displayName: 'ID',
@@ -45,12 +52,18 @@ export const userAccessTokensDescription = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['delete'],
-				resource: ['userAccessToken'],
-				api: ['rest'],
+				operation: [
+					'delete',
+				],
+				resource: [
+					'userAccessToken',
+				],
+				api: [
+					'rest',
+				],
 			},
 		},
-		description: 'The ID of the user access token.',
+		description: 'The ID of the user access token',
 	},
 	{
 		displayName: 'Label',
@@ -59,13 +72,19 @@ export const userAccessTokensDescription = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['userAccessToken'],
-				api: ['rest'],
+				operation: [
+					'create',
+				],
+				resource: [
+					'userAccessToken',
+				],
+				api: [
+					'rest',
+				],
 			},
 		},
 		default: '',
-		description: 'The Label of the user access token.',
+		description: 'The Label of the user access token',
 	},
 	{
 		displayName: 'Expires At',
@@ -74,28 +93,41 @@ export const userAccessTokensDescription = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['userAccessToken'],
-				api: ['rest'],
+				operation: [
+					'create',
+				],
+				resource: [
+					'userAccessToken',
+				],
+				api: [
+					'rest',
+				],
 			},
 		},
 		default: '',
-		description: 'The expiration time of the user access token.',
+		description: 'The expiration time of the user access token',
 	},
 	{
 		displayName: 'Permissions',
 		name: 'permissions',
 		placeholder: 'Add Permission',
-		description: 'Adds a permission for the access token.',
+		description: 'Adds a permission for the access token',
 		type: 'fixedCollection',
+		required: true,
 		typeOptions: {
 			multipleValues: true,
 		},
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['userAccessToken'],
-				api: ['rest'],
+				operation: [
+					'create',
+				],
+				resource: [
+					'userAccessToken',
+				],
+				api: [
+					'rest',
+				],
 			},
 		},
 		default: {},
@@ -109,10 +141,10 @@ export const userAccessTokensDescription = [
 						name: 'permission',
 						type: 'string',
 						default: '',
-						description: 'Permission to set.',
+						description: 'Permission to set',
 					},
 				],
 			},
 		],
 	},
-] as INodeProperties[];
+];
