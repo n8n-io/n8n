@@ -12,7 +12,7 @@ import {
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import { getAccessTokens, validateCrendetials } from './GenericFunctions';
+import { getAccessTokens, haloPSAApiRequest, validateCrendetials } from './GenericFunctions';
 
 import { OptionsWithUri } from 'request';
 
@@ -40,25 +40,71 @@ export class HaloPSA implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Resource Server',
+				name: 'apiUrl',
+				type: 'string',
+				default: '',
+				placeholder: ' https://your-halo-web-app-url/api',
+				required: true,
+				description:
+					'By default, the Resource server is available at *your Halo Web Applicaiton url*"/api". Each resource then has it\'s own endpoint, e.g Tickets are available at *your Halo Web Applicaiton url*"/api/tickets". Endpoints accept the HTTP GET, POST and DELETE methods depending on the resource that you are accessing.',
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Ticket',
-						value: 'ticket',
+						name: 'Client',
+						value: 'client',
+					},
+					{
+						name: 'Contract',
+						value: 'clientcontract',
 					},
 					{
 						name: 'Invoice',
 						value: 'invoice',
 					},
 					{
-						name: 'Client',
-						value: 'client',
+						name: 'Knowledge Base Article',
+						value: 'kbarticle',
+					},
+					{
+						name: 'Opportunitie',
+						value: 'opportunities',
+					},
+					{
+						name: 'Project',
+						value: 'projects',
+					},
+					{
+						name: 'Quotation',
+						value: 'quotation',
+					},
+					{
+						name: 'Report',
+						value: 'report',
+					},
+					{
+						name: 'Site',
+						value: 'site',
+					},
+					{
+						name: 'Supplier',
+						value: 'supplier',
+					},
+					{
+						name: 'Ticket',
+						value: 'tickets',
+					},
+					{
+						name: 'Users',
+						value: 'users',
 					},
 				],
-				default: 'ticket',
+				default: 'tickets',
 				required: true,
 				description: 'Resource to consume',
 			},
@@ -69,24 +115,24 @@ export class HaloPSA implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: ['client', 'invoice', 'ticket'],
+						resource: ['tickets', 'users', 'client'],
 					},
 				},
 				options: [
 					{
 						name: 'Get All',
-						value: 'getAll',
+						value: 'GET',
 					},
 					{
 						name: 'Create',
-						value: 'create',
+						value: 'POST',
 					},
 					{
 						name: 'Delete',
-						value: 'delete',
+						value: 'DELETE',
 					},
 				],
-				default: 'getAll',
+				default: 'GET',
 			},
 			{
 				displayName: 'Return All',
@@ -94,8 +140,8 @@ export class HaloPSA implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: ['client', 'invoice', 'ticket'],
-						operation: ['getAll'],
+						resource: ['tickets', 'users', 'client'],
+						operation: ['GET'],
 					},
 				},
 				default: false,
@@ -109,8 +155,8 @@ export class HaloPSA implements INodeType {
 				description: 'Max number of results to return',
 				displayOptions: {
 					show: {
-						resource: ['client', 'invoice', 'ticket'],
-						operation: ['getAll'],
+						resource: ['tickets', 'users', 'client'],
+						operation: ['GET'],
 						returnAll: [false],
 					},
 				},
@@ -120,12 +166,14 @@ export class HaloPSA implements INodeType {
 				},
 			},
 		],
-
 	};
 
 	methods = {
 		credentialTest: {
-			async haloPSAApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async haloPSAApiCredentialTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<NodeCredentialTestResult> {
 				try {
 					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
@@ -154,8 +202,19 @@ export class HaloPSA implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				responseData = tokens;
-				returnData.push(responseData as unknown as IDataObject);
+				responseData = await haloPSAApiRequest.call(
+					this,
+					this.getNodeParameter('apiUrl', 0) as string,
+					this.getNodeParameter('resource', 0) as string,
+					this.getNodeParameter('operation', 0) as string,
+					tokens.access_token,
+				);
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData);
+				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: (error as JsonObject).message });

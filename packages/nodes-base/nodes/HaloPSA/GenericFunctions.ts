@@ -4,13 +4,17 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 	JsonObject,
+	JsonValue,
 	NodeApiError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
+// Interfaces and Types -------------------------------------------------------------
 interface IHaloPSATokens {
 	scope: string;
 	token_type: string;
@@ -19,6 +23,24 @@ interface IHaloPSATokens {
 	refresh_token: string;
 	id_token: string;
 }
+
+const pluralResource: {[key: string]: string} = {
+	client: "clients",
+	asset: "assets",
+	attachment: "attachments",
+	clientcontract: "contracts",
+	invoice: "invoices",
+	item: "items",
+	kbarticle: "articles",
+	opportunities: "tickets",
+	projects: "tickets",
+	quotation: "quotes",
+	report: "reports",
+	site: "sites",
+	supplier: "suppliers",
+}
+
+// API Requests ---------------------------------------------------------------------
 
 export async function getAccessTokens(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -48,11 +70,58 @@ export async function getAccessTokens(
 	}
 }
 
+export async function haloPSAApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IPollFunctions,
+	url: string,
+	resource: string,
+	method: string,
+	accessToken: string,
+	body: any = {},
+	qs: IDataObject = {},
+	option: IDataObject = {},
+): Promise<any> {
+	try {
+		let options: OptionsWithUri = {
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+				'User-Agent': 'https://n8n.io',
+				Connection: 'keep-alive',
+				Accept: '*/*',
+				'Accept-Encoding': 'gzip, deflate, br',
+				'Content-Type': 'application/json',
+			},
+			method,
+			qs,
+			body,
+			uri: `${url}/${resource}`,
+			json: true,
+		};
+		options = Object.assign({}, options, option);
+		if (Object.keys(body).length === 0) {
+			delete options.body;
+		}
+		const result = await this.helpers.request!(options);
+
+		return result[pluralResource[resource] || resource] || result;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+// Utilities ------------------------------------------------------------------------
+
 function getAuthUrl(credentials: IDataObject) {
 	return credentials.hostingType === 'on-premise'
 		? '${credentials.appUrl}/auth/token'
 		: `${credentials.authUrl}/token?tenant=${credentials.tenant}`;
 }
+
+// Validation -----------------------------------------------------------------------
 
 export async function validateCrendetials(
 	this: ICredentialTestFunctions,
@@ -77,3 +146,5 @@ export async function validateCrendetials(
 
 	return (await this.helpers.request!(options)) as IHaloPSATokens;
 }
+
+// ----------------------------------------------------------------------------------
