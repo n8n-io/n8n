@@ -3,6 +3,8 @@
 import { IsNull, Not } from 'typeorm';
 import { Db } from '..';
 import config = require('../../config');
+import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
+import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
@@ -22,6 +24,21 @@ export async function saveWorkflowOwnership(
 		user,
 		workflow,
 	});
+}
+
+export async function saveCredentialOwnership(
+	credentials: CredentialsEntity,
+	user: User,
+): Promise<SharedCredentials> {
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+	const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'credential' });
+
+	// eslint-disable-next-line consistent-return, @typescript-eslint/return-await
+	return (await Db.collections.SharedCredentials?.save({
+		role,
+		user,
+		credentials,
+	})) as SharedCredentials;
 }
 
 export function isEmailSetup(): boolean {

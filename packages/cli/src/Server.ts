@@ -155,6 +155,7 @@ import { getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
 import { User } from './databases/entities/User';
+import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 require('body-parser-xml')(bodyParser);
 
@@ -786,13 +787,13 @@ class App {
 					const jsonFilters = JSON.parse(req.query.filter as string);
 					const keys = Object.keys(jsonFilters);
 					keys.forEach((key) => {
-						queryBuilder.where(`w.${key} = :${key}`, { [key]: jsonFilters[key] });
+						queryBuilder.andWhere(`w.${key} = :${key}`, { [key]: jsonFilters[key] });
 					});
 				}
 				// Simplified checks for now. Get only
 				// workflows I have access to.
 				queryBuilder.innerJoin('w.shared', 'shared');
-				queryBuilder.where('shared.user', req.user);
+				queryBuilder.andWhere('shared.userId = :userId', { userId: (req.user as User).id });
 
 				const workflows = await queryBuilder.getMany();
 
@@ -1171,6 +1172,17 @@ class App {
 		this.app.delete(
 			`/${this.restEndpoint}/tags/:id`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
+				if (
+					config.get('userManagement.hasOwner') === true &&
+					(req.user as User).globalRole.name !== 'owner'
+				) {
+					throw new ResponseHelper.ResponseError(
+						'You are not allowed to perform this action',
+						403,
+						403,
+						'Only owners can remove tags',
+					);
+				}
 				const id = Number(req.params.id);
 
 				await this.externalHooks.run('tag.beforeDelete', [id]);
@@ -1214,10 +1226,8 @@ class App {
 					);
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
-					if (this.isUserManagementEnabled) {
-						// TODO UM: restrict user access to credentials he cannot use.
-						additionalData.userId = req.body.userId;
-					}
+					// TODO UM: restrict user access to credentials he cannot use.
+					additionalData.userId = (req.user as User).id;
 
 					return loadDataInstance.getOptions(methodName, additionalData);
 				},
@@ -1386,7 +1396,7 @@ class App {
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<string[]> => {
 					const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(
-						this.isUserManagementEnabled ? req.body.userId : undefined,
+						(req.user as User).id,
 					);
 					return activeWorkflows.map((workflow) => workflow.id.toString());
 				},
@@ -1402,9 +1412,19 @@ class App {
 					res: express.Response,
 				): Promise<IActivationError | undefined> => {
 					const { id } = req.params;
-					if (this.isUserManagementEnabled) {
-						// TODO UM: Check if current user has access to this workflow.
+
+					const qb = Db.collections.Workflow!.createQueryBuilder('w');
+					qb.andWhere('w.id = :id', { id });
+
+					qb.innerJoin('w.shared', 'shared');
+					qb.andWhere('shared.userId = :userId', { userId: (req.user as User).id });
+
+					const workflow = await qb.getOne();
+
+					if (workflow === undefined) {
+						return undefined;
 					}
+
 					return this.activeWorkflowRunner.getActivationError(id);
 				},
 			),
@@ -1431,6 +1451,16 @@ class App {
 			`/${this.restEndpoint}/credentials/:id`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 				const { id } = req.params;
+
+				const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
+				queryBuilder.andWhere('c.id = :id', { id });
+				queryBuilder.innerJoin('c.shared', 'shared', 'shared.userId = :userId', {
+					userId: (req.user as User).id,
+				});
+				const credential = await queryBuilder.getOne();
+				if (!credential) {
+					return false;
+				}
 
 				await this.externalHooks.run('credentials.delete', [id]);
 
@@ -1483,6 +1513,15 @@ class App {
 					// Save the credentials in DB
 					const result = await Db.collections.Credentials!.save(newCredentialsData);
 					result.data = incomingData.data;
+
+					try {
+						await UserManagementHelpers.saveCredentialOwnership(
+							result as CredentialsEntity,
+							req.user as User,
+						);
+					} catch (error) {
+						LoggerProxy.error('Failed saving credential ownership.');
+					}
 
 					// Convert to response format in which the id is a string
 					(result as unknown as ICredentialsResponse).id = result.id.toString();
@@ -1589,6 +1628,21 @@ class App {
 
 					const { id } = req.params;
 
+					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
+					queryBuilder.andWhere('c.id = :id', { id });
+					queryBuilder.innerJoin('c.shared', 'shared');
+					queryBuilder.andWhere('shared.userId = :userId', {
+						userId: (req.user as User).id,
+					});
+					const result = (await queryBuilder.getOne()) as CredentialsEntity;
+					if (!result) {
+						throw new ResponseHelper.ResponseError(
+							`Credentials with the id "${id}" do not exist.`,
+							undefined,
+							400,
+						);
+					}
+
 					if (incomingData.name === '') {
 						throw new Error('Credentials have to have a name set!');
 					}
@@ -1603,16 +1657,6 @@ class App {
 					const encryptionKey = await UserSettings.getEncryptionKey();
 					if (encryptionKey === undefined) {
 						throw new Error('No encryption key got found to encrypt the credentials!');
-					}
-
-					// Load the currently saved credentials to be able to persist some of the data if
-					const result = await Db.collections.Credentials!.findOne(id);
-					if (result === undefined) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with the id "${id}" do not exist.`,
-							undefined,
-							400,
-						);
 					}
 
 					const currentlySavedCredentials = new Credentials(
@@ -1676,17 +1720,29 @@ class App {
 					req: express.Request,
 					res: express.Response,
 				): Promise<ICredentialsDecryptedResponse | ICredentialsResponse | undefined> => {
-					const findQuery = {} as FindManyOptions;
+					const { id } = req.params;
+					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
+					queryBuilder.andWhere('c.id = :id', { id });
+					queryBuilder.innerJoin('c.shared', 'shared');
+					queryBuilder.andWhere('shared.userId = :userId', {
+						userId: (req.user as User).id,
+					});
 
 					// Make sure the variable has an expected value
 					const includeData = ['true', true].includes(req.query.includeData as string);
 
 					if (!includeData) {
-						// Return only the fields we need
-						findQuery.select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
+						queryBuilder.select([
+							'c.id',
+							'c.name',
+							'c.type',
+							'c.nodesAccess',
+							'c.createdAt',
+							'c.updatedAt',
+						]);
 					}
 
-					const result = await Db.collections.Credentials!.findOne(req.params.id);
+					const result = (await queryBuilder.getOne()) as CredentialsEntity;
 
 					if (result === undefined) {
 						return result;
@@ -1720,23 +1776,26 @@ class App {
 			`/${this.restEndpoint}/credentials`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse[]> => {
-					const findQuery = {} as FindManyOptions;
+					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
+					queryBuilder.innerJoin('c.shared', 'shared');
+					queryBuilder.andWhere('shared.userId = :userId', {
+						userId: (req.user as User).id,
+					});
+
 					if (req.query.filter) {
-						findQuery.where = JSON.parse(req.query.filter as string) as IDataObject;
-						if (findQuery.where.id !== undefined) {
-							// No idea if multiple where parameters make db search
-							// slower but to be sure that that is not the case we
-							// remove all unnecessary fields in case the id is defined.
-							// @ts-ignore
-							findQuery.where = { id: findQuery.where.id };
-						}
+						queryBuilder.andWhere(JSON.parse(req.query.filter as string) as IDataObject);
 					}
 
-					findQuery.select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
+					queryBuilder.select([
+						'c.id',
+						'c.name',
+						'c.type',
+						'c.nodesAccess',
+						'c.createdAt',
+						'c.updatedAt',
+					]);
 
-					const results = (await Db.collections.Credentials!.find(
-						findQuery,
-					)) as unknown as ICredentialsResponse[];
+					const results = (await queryBuilder.getMany()) as unknown as ICredentialsResponse[];
 
 					let encryptionKey;
 
@@ -1829,7 +1888,14 @@ class App {
 					return '';
 				}
 
-				const result = await Db.collections.Credentials!.findOne(req.query.id as string);
+				const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
+				queryBuilder.andWhere('c.id = :id', { id: req.query.id });
+				queryBuilder.innerJoin('c.shared', 'shared');
+				queryBuilder.andWhere('shared.userId = :userId', {
+					userId: (req.user as User).id,
+				});
+
+				const result = await queryBuilder.getOne();
 				if (result === undefined) {
 					res.status(404).send('The credential is not known.');
 					return '';
@@ -1941,7 +2007,14 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const result = await Db.collections.Credentials!.findOne(cid as any);
+					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
+					queryBuilder.andWhere('c.id = :id', { id: cud });
+					queryBuilder.innerJoin('c.shared', 'shared');
+					queryBuilder.andWhere('shared.userId = :userId', {
+						userId: (req.user as User).id,
+					});
+
+					const result = await queryBuilder.getOne();
 					if (result === undefined) {
 						const errorResponse = new ResponseHelper.ResponseError(
 							'The credential is not known.',
@@ -2037,7 +2110,14 @@ class App {
 					return '';
 				}
 
-				const result = await Db.collections.Credentials!.findOne(req.query.id as string);
+				const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
+				queryBuilder.andWhere('c.id = :id', { id: req.query.id });
+				queryBuilder.innerJoin('c.shared', 'shared');
+				queryBuilder.andWhere('shared.userId = :userId', {
+					userId: (req.user as User).id,
+				});
+
+				const result = await queryBuilder.getOne();
 				if (result === undefined) {
 					res.status(404).send('The credential is not known.');
 					return '';
@@ -2159,7 +2239,14 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const result = await Db.collections.Credentials!.findOne(state.cid);
+					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
+					queryBuilder.andWhere('c.id = :id', { id: state.cid });
+					queryBuilder.innerJoin('c.shared', 'shared');
+					queryBuilder.andWhere('shared.userId = :userId', {
+						userId: (req.user as User).id,
+					});
+
+					const result = await queryBuilder.getOne();
 					if (result === undefined) {
 						const errorResponse = new ResponseHelper.ResponseError(
 							'The credential is not known.',

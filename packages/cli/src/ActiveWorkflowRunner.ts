@@ -334,16 +334,16 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async getActiveWorkflows(userId?: string): Promise<IWorkflowDb[]> {
-		const qb = Db.collections.Workflow!.createQueryBuilder('w');
-		qb.where('active = :active', { active: true });
-		qb.select('w.id');
-
+		// TODO UM: make userId mandatory?
+		const queryBuilder = Db.collections.Workflow!.createQueryBuilder('w');
+		queryBuilder.andWhere('active = :active', { active: true });
+		queryBuilder.select('w.id');
 		if (userId) {
-			// TODO UM: implement this.
-			// qb.innerJoin
+			queryBuilder.innerJoin('w.shared', 'shared');
+			queryBuilder.andWhere('shared.user = :userId', { userId });
 		}
 
-		const activeWorkflows = (await qb.getMany()) as IWorkflowDb[];
+		const activeWorkflows = (await queryBuilder.getMany()) as IWorkflowDb[];
 		return activeWorkflows.filter(
 			(workflow) => this.activationErrors[workflow.id.toString()] === undefined,
 		);
@@ -356,8 +356,16 @@ export class ActiveWorkflowRunner {
 	 * @returns {boolean}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	async isActive(id: string): Promise<boolean> {
-		const workflow = (await Db.collections.Workflow?.findOne({ id: Number(id) })) as IWorkflowDb;
+	async isActive(id: string, userId?: string): Promise<boolean> {
+		// TODO UM: make userId mandatory?
+		const queryBuilder = Db.collections.Workflow!.createQueryBuilder('w');
+		queryBuilder.andWhere('w.id = :id', { id });
+		if (userId) {
+			queryBuilder.innerJoin('w.shared', 'shared');
+			queryBuilder.andWhere('shared.user = :userId', { userId });
+		}
+
+		const workflow = (await queryBuilder.getOne()) as IWorkflowDb;
 		return workflow?.active;
 	}
 
