@@ -1,4 +1,4 @@
-import {INodeProperties} from "n8n-workflow";
+import {INodeProperties} from 'n8n-workflow';
 
 export const contractOperations: INodeProperties[] = [
 	{
@@ -8,7 +8,7 @@ export const contractOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contract',
+					'clientcontract',
 				],
 			},
 		},
@@ -36,7 +36,7 @@ export const contractFields: INodeProperties[] = [
 					'delete',
 				],
 				resource: [
-					'contract',
+					'clientcontract',
 				],
 			},
 		},

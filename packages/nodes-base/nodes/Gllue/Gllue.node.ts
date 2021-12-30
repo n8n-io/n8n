@@ -5,7 +5,7 @@ import {clientFields, clientOperations} from './ClientDescription';
 import {getResponseByUri, UrlParams} from './helpers';
 import {cityFields, cityOperations} from './CityDescription';
 import {industryFields, industryOperations} from './IndustryDescription';
-import {contractFields, contractOperations} from "./ContractDescription";
+import {contractFields, contractOperations} from './ContractDescription';
 
 const helpers = require('./helpers');
 
@@ -51,7 +51,7 @@ export class Gllue implements INodeType {
 					},
 					{
 						name: 'Contract',
-						value: 'contract',
+						value: 'clientcontract',
 					},
 				],
 				default: 'client',
@@ -90,21 +90,21 @@ export class Gllue implements INodeType {
 			if (operation === 'simple_list_with_ids') {
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
 			}
-		} else if (resource == 'industry') {
+		} else if (resource === 'industry') {
 			if (operation === 'simple_list_with_ids'){
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
 			}
-		} else if (resource == 'contract'){
+		} else if (resource === 'clientcontract'){
 			if (operation === 'delete'){
-				const contract_ids = this.getInputData().map(
-					(item, index) => this.getNodeParameter('id', index)
+				const contractIds = this.getInputData().map(
+					(item, index) => this.getNodeParameter('id', index),
 				);
-				const body = { ids: contract_ids, count: contract_ids.length };
+				const body = { ids: contractIds, count: contractIds.length };
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request, 'POST', body);
 			}
 		}
 		return [this.helpers.returnJsonArray(responseData)];
-	};
+	}
 
 }
 
