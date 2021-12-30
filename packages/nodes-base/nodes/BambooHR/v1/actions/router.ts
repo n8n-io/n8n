@@ -38,6 +38,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				//@ts-ignore
 				operationResult.push(...await companyFile[bamboohr.operation].execute.call(this, i));
 			} else if (bamboohr.resource === 'reports') {
+				//@ts-ignore
 				operationResult.push(...await reports[bamboohr.operation].execute.call(this, i));
 			} else if (bamboohr.resource === 'tabularData') {
 				operationResult.push(...await tabularData[bamboohr.operation].execute.call(this, i));
