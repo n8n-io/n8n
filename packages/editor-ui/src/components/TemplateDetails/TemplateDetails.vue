@@ -44,7 +44,7 @@
 import Vue from 'vue';
 
 import TemplateBlock from './TemplateBlock/TemplateBlock.vue';
-import NodeIcon from '../../components/NodeIcon.vue';
+import NodeIcon from './NodeIcon/NodeIcon.vue';
 import { abbreviateNumber } from '../helpers';
 
 export default Vue.extend({
@@ -54,8 +54,8 @@ export default Vue.extend({
 		},
 	},
 	components: {
-		NodeIcon,
 		TemplateBlock,
+		NodeIcon,
 	},
 	methods: {
 		abbreviateNumber,
@@ -65,6 +65,7 @@ export default Vue.extend({
 <style lang="scss" module>
 .icons {
 	display: flex;
+	flex-wrap: wrap;
 }
 
 .tags {
