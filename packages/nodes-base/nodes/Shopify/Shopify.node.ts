@@ -50,7 +50,6 @@ export class Shopify implements INodeType {
 		description: 'Consume Shopify API',
 		defaults: {
 			name: 'Shopify',
-			color: '#559922',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

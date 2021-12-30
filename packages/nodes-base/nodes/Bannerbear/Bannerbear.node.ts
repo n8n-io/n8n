@@ -37,7 +37,6 @@ export class Bannerbear implements INodeType {
 		description: 'Consume Bannerbear API',
 		defaults: {
 			name: 'Bannerbear',
-			color: '#f9d749',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

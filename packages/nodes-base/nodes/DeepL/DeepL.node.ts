@@ -30,7 +30,6 @@ export class DeepL implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'DeepL',
-			color: '#0f2b46',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
