@@ -125,19 +125,27 @@ export class MailcheckTest implements INodeType {
 					{
 						name: 'Check',
 						value: 'check',
+						request: {
+							method: 'POST',
+							url: '/singleEmail:check',
+						},
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
+						request: {
+							method: 'POST',
+							url: '/singleEmail:delete',
+						},
 					},
 				],
-				request: {
-					method: 'POST',
-					url: '/singleEmail:check',
-				},
+				// The "request" can be defined both on the property or the option
+				// request: {
+				// 	method: 'POST',
+				// 	url: '=/singleEmail:{{$value}}',
+				// },
 				default: 'check',
 			},
-
 			{
 				displayName: 'ID',
 				name: 'id',

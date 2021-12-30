@@ -18,6 +18,7 @@ import {
 	INodeExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
+	INodePropertyOptions,
 	INodeType,
 	IRequestOptionsFromParameters,
 	IRunExecutionData,
@@ -354,7 +355,7 @@ export class RoutingNode {
 
 	getRequestOptionsFromParameters(
 		executeSingleFunctions: IExecuteSingleFunctions,
-		nodeProperties: INodeProperties,
+		nodeProperties: INodeProperties | INodePropertyOptions,
 		itemIndex: number,
 		runIndex: number,
 		path: string,
@@ -486,14 +487,48 @@ export class RoutingNode {
 		}
 
 		// Check if there are any child properties
-		if (nodeProperties.options === undefined) {
+		if (!Object.prototype.hasOwnProperty.call(nodeProperties, 'options')) {
 			// There are none so nothing else to check
 			return returnData;
 		}
 
+		// Everything after this point can only be of type INodeProperties
+		nodeProperties = nodeProperties as INodeProperties;
+
 		// Check the child parameters
 		let value;
-		if (nodeProperties.type === 'collection') {
+		if (nodeProperties.type === 'options') {
+			const optionValue = NodeHelpers.getParameterValueByPath(
+				this.node.parameters,
+				nodeProperties.name,
+				basePath.slice(0, -1),
+			);
+
+			// Find the selected option
+			const selectedOption = (nodeProperties.options as INodePropertyOptions[]).filter(
+				(option) => option.value === optionValue,
+			);
+
+			if (selectedOption.length) {
+				// Check only if option is set and if of type INodeProperties
+				const tempOptions = this.getRequestOptionsFromParameters(
+					executeSingleFunctions,
+					selectedOption[0],
+					itemIndex,
+					runIndex,
+					`${basePath}${nodeProperties.name}`,
+					{ $value: optionValue },
+				);
+
+				if (tempOptions) {
+					returnData.pagination = returnData.pagination ?? tempOptions.pagination;
+					returnData.maxResults = returnData.maxResults ?? tempOptions.maxResults;
+					merge(returnData.options, tempOptions.options);
+					returnData.preSend.push(...tempOptions.preSend);
+					returnData.postReceive.push(...tempOptions.postReceive);
+				}
+			}
+		} else if (nodeProperties.type === 'collection') {
 			value = NodeHelpers.getParameterValueByPath(
 				this.node.parameters,
 				nodeProperties.name,

@@ -860,6 +860,8 @@ export interface INodePropertyOptions {
 	name: string;
 	value: string | number | boolean;
 	description?: string;
+	request?: IHttpRequestOptions;
+	requestProperty?: INodeRequestProperty;
 }
 
 export interface INodePropertyCollection {
