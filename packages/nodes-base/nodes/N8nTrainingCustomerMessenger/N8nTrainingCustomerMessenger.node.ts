@@ -19,7 +19,6 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 		description: 'Dummy node used for n8n training',
 		defaults: {
 			name: 'Customer Messenger',
-			color: '#ff6d5a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

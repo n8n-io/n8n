@@ -87,7 +87,6 @@ export class InvoiceNinja implements INodeType {
 		description: 'Consume Invoice Ninja API',
 		defaults: {
 			name: 'Invoice Ninja',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
