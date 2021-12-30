@@ -84,7 +84,7 @@ export async function haloPSAApiRequest(
 	body: any = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-): Promise<any> {
+): Promise<IDataObject | IDataObject[]> {
 	try {
 		let options: OptionsWithUri = {
 			headers: {
