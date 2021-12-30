@@ -88,10 +88,10 @@ export const objectsDescription: INodeProperties[] = [
 					'create',
 				],
 				resource: [
-					'object'
+					'object',
 				],
 				api: [
-					'rest'
+					'rest',
 				],
 			},
 		},

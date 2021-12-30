@@ -10,18 +10,18 @@ import {
 } from 'n8n-workflow';
 
 import {
-	usersDescription,
-	organizationsDescription,
-	groupsDescription,
-	ticketsDescription,
-	mentionsDescription,
-	tagsDescription,
-	statesDescription,
-	prioritiesDescription,
 	articlesDescription,
-	onlineNotificationsDescription,
+	groupsDescription,
+	mentionsDescription,
 	objectsDescription,
+	onlineNotificationsDescription,
+	organizationsDescription,
+	prioritiesDescription,
+	statesDescription,
+	tagsDescription,
+	ticketsDescription,
 	userAccessTokensDescription,
+	usersDescription,
 } from './descriptions';
 
 import {
@@ -30,8 +30,8 @@ import {
 
 import {
 	CustomFields,
-	Permissions,
 	Field,
+	Permissions,
 } from './types';
 
 export class Zammad implements INodeType {
@@ -380,7 +380,7 @@ export class Zammad implements INodeType {
 						//           user:search
 						// ----------------------------------
 
-						const qs: IDataObject = {}
+						const qs: IDataObject = {};
 
 						qs.query = this.getNodeParameter('query', i) as string;
 						qs.limit = this.getNodeParameter('limit', i)?.toString() as string;
@@ -670,7 +670,7 @@ export class Zammad implements INodeType {
 						//          mention:create
 						// ----------------------------------
 
-						const body: IDataObject = {}
+						const body: IDataObject = {};
 						body.mentionable_type = this.getNodeParameter('mentionable_type', i) as string;
 						body.mentionable_id = this.getNodeParameter('mentionable_id', i) as string;
 
@@ -1007,7 +1007,7 @@ export class Zammad implements INodeType {
 						const bodyString = this.getNodeParameter('data', i) as string;
 						const body = JSON.parse(bodyString) as IDataObject;
 						body.id = id;
-						const endpoint = `/object_manager_attributes/${id}`
+						const endpoint = `/object_manager_attributes/${id}`;
 
 						responseData = await zammadApiRequest.call(this, 'PUT', endpoint, body);
 
