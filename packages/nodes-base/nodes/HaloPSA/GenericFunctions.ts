@@ -60,7 +60,7 @@ export async function validateCrendetials(
 ): Promise<IHaloPSATokens> {
 	const credentials = decryptedCredentials;
 
-	let options: OptionsWithUri = {
+	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
