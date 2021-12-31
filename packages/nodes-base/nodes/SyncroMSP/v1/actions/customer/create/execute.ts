@@ -32,7 +32,7 @@ export async function addCustomer(this: IExecuteFunctions, index: number): Promi
 		email,
 		firstname: firstName,
 		get_sms: getSms,
-		invoice_cc_emails: (invoiceCcEmails as string[]).join(','),
+		invoice_cc_emails: (invoiceCcEmails as string[] || []).join(','),
 		lastname,
 		no_email: noEmail,
 		notes,

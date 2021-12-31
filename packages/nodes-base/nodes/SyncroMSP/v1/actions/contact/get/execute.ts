@@ -13,7 +13,7 @@ import {
 
 
 export async function getContact(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const id = this.getNodeParameter('id', index) as string;
+	const id = this.getNodeParameter('contactId', index) as string;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';

@@ -55,7 +55,7 @@ export const rmmCreateDescription: RmmProperties = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'create Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [
@@ -73,26 +73,6 @@ export const rmmCreateDescription: RmmProperties = [
 				name: 'resolved',
 				type: 'boolean',
 				default: false,
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{
-						name: 'Active',
-						value: 'active',
-					},
-					{
-						name: 'All',
-						value: 'all',
-					},
-					{
-						name: 'Resolved',
-						value: 'resolved',
-					},
-				],
-				default: 'active',
 			},
 		],
 	},

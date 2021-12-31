@@ -66,9 +66,13 @@ export const customerUpdateDescription: CustomerProperties = [
 				default: true,
 			},
 			{
-				displayName: 'Invoice Email',
-				name: 'invoiceCcEmail',
+				displayName: 'Invoice Emails',
+				name: 'invoiceCcEmails',
 				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Email',
+				},
 				default: '',
 			},
 			{

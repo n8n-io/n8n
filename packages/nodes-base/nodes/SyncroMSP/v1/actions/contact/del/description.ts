@@ -5,7 +5,7 @@ import {
 export const contactDeleteDescription: ContactProperties = [
 	{
 		displayName: 'Contact ID',
-		name: 'id',
+		name: 'contactId',
 		type: 'string',
 		required: true,
 		displayOptions: {

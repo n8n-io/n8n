@@ -13,7 +13,7 @@ import {
 
 
 export async function createContact(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const id = this.getNodeParameter('id', index) as IDataObject;
+	const id = this.getNodeParameter('customerId', index) as IDataObject;
 	const email = this.getNodeParameter('email', index) as IDataObject;
 	const { address, notes, phone, name } = this.getNodeParameter('additionalFields', index) as IDataObject;
 

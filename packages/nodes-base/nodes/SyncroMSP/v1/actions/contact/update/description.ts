@@ -9,7 +9,7 @@ import {
 export const contactUpdateDescription: ContactProperties = [
 	{
 		displayName: 'Contact ID',
-		name: 'id',
+		name: 'contactId',
 		type: 'string',
 		displayOptions: {
 			show: {

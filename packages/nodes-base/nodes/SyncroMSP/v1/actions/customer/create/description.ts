@@ -27,7 +27,7 @@ export const customerCreateDescription: CustomerProperties = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'create Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [
@@ -65,6 +65,7 @@ export const customerCreateDescription: CustomerProperties = [
 				type: 'string',
 				typeOptions: {
 					multipleValues: true,
+					multipleValueButtonText: 'Add Email',
 				},
 				default: '',
 			},

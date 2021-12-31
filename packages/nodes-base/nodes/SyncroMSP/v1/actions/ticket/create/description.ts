@@ -41,7 +41,7 @@ export const ticketCreateDescription: TicketProperties = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'create Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [

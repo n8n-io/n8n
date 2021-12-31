@@ -25,7 +25,7 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'syncroMspApi',
 			required: true,
-			testedBy: 'SyncroMspApiCredentialTest',
+			testedBy: 'syncroMspApiCredentialTest',
 		},
 	],
 	properties: [

@@ -9,7 +9,7 @@ import {
 export const contactCreateDescription: ContactProperties = [
 	{
 		displayName: 'Customer ID',
-		name: 'id',
+		name: 'customerId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -44,7 +44,7 @@ export const contactCreateDescription: ContactProperties = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'create Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [

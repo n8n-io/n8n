@@ -15,7 +15,7 @@ import {
 
 export async function updateCustomer(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('customerId', index) as IDataObject;
-	const { address, businessName, email, firstName, getSms, invoiceCcEmail,
+	const { address, businessName, email, firstName, getSms, invoiceCcEmails,
 		lastName, noEmail, notes, notificationEmail, phone, referredBy } = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;
@@ -35,7 +35,7 @@ export async function updateCustomer(this: IExecuteFunctions, index: number): Pr
 		email,
 		firstname: firstName,
 		get_sms: getSms,
-		invoice_cc_email: invoiceCcEmail,
+		invoice_cc_emails: (invoiceCcEmails as string[] || []).join(','),
 		lastname: lastName,
 		no_email: noEmail,
 		notes,

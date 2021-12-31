@@ -89,5 +89,5 @@ export async function validateCredentials(this: ICredentialTestFunctions, decryp
 		url: `https://${subdomain}.syncromsp.com/api/v1//me`,
 	};
 
-	return await this.helpers.httpRequest(options);
+	return this.helpers.request(options);
 }
