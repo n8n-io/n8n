@@ -36,6 +36,16 @@ export class HaloPSAApi implements ICredentialType {
 			description: 'Your Halo Authorisation Server Url',
 		},
 		{
+			displayName: 'Resource Server',
+			name: 'resourceApiUrl',
+			type: 'string',
+			default: '',
+			placeholder: ' https://your-halo-web-app-url/api',
+			required: true,
+			description:
+				'By default, the Resource server is available at *your Halo Web Applicaiton url*"/api". Each resource then has it\'s own endpoint, e.g Tickets are available at *your Halo Web Applicaiton url*"/api/tickets". Endpoints accept the HTTP GET, POST and DELETE methods depending on the resource that you are accessing.',
+		},
+		{
 			displayName: 'Client ID',
 			name: 'client_id',
 			type: 'string',

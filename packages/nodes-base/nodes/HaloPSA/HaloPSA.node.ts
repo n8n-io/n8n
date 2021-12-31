@@ -12,9 +12,12 @@ import {
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import { getAccessTokens, haloPSAApiRequest, validateCrendetials } from './GenericFunctions';
-
-import { OptionsWithUri } from 'request';
+import {
+	getAccessTokens,
+	haloPSAApiRequest,
+	processFields,
+	validateCrendetials,
+} from './GenericFunctions';
 
 export class HaloPSA implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,16 +43,6 @@ export class HaloPSA implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Resource Server',
-				name: 'apiUrl',
-				type: 'string',
-				default: '',
-				placeholder: ' https://your-halo-web-app-url/api',
-				required: true,
-				description:
-					'By default, the Resource server is available at *your Halo Web Applicaiton url*"/api". Each resource then has it\'s own endpoint, e.g Tickets are available at *your Halo Web Applicaiton url*"/api/tickets". Endpoints accept the HTTP GET, POST and DELETE methods depending on the resource that you are accessing.',
-			},
-			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
@@ -66,10 +59,6 @@ export class HaloPSA implements INodeType {
 					{
 						name: 'Invoice',
 						value: 'invoice',
-					},
-					{
-						name: 'Knowledge Base Article',
-						value: 'kbarticle',
 					},
 					{
 						name: 'Opportunitie',
@@ -113,35 +102,111 @@ export class HaloPSA implements INodeType {
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+					},
+				],
+				default: 'getAll',
+			},
+
+			// Get, Update, Delete ----------------------------------------------------
+			{
+				displayName: 'Item ID',
+				name: 'item_id',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					numberStepSize: 1,
+				},
+				default: 0,
+				description: 'Specify item ID',
 				displayOptions: {
 					show: {
-						resource: ['tickets', 'users', 'client'],
+						operation: ['get', 'update', 'delete'],
+					},
+				},
+			},
+
+			// Create, Update --------------------------------------------------------
+			{
+				displayName: 'Add Field',
+				name: 'fieldsToCreateOrUpdate',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Field',
+				},
+				default: {},
+				description: 'Add field and value',
+				placeholder: '',
+				displayOptions: {
+					show: {
+						operation: ['update', 'create'],
 					},
 				},
 				options: [
 					{
-						name: 'Get All',
-						value: 'GET',
-					},
-					{
-						name: 'Create',
-						value: 'POST',
-					},
-					{
-						name: 'Delete',
-						value: 'DELETE',
+						displayName: 'Field:',
+						name: 'fields',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'string',
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'New Value',
+								name: 'fieldValue',
+								type: 'string',
+								default: '',
+								required: true,
+							},
+						],
 					},
 				],
-				default: 'GET',
 			},
+
+			// Delete ----------------------------------------------------------------
+			{
+				displayName: 'The Reason For Deleting Item',
+				name: 'reasonForDeletion',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['delete'],
+					},
+				},
+			},
+
+			// Get All ----------------------------------------------------------------
 			{
 				displayName: 'Return All',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: ['tickets', 'users', 'client'],
-						operation: ['GET'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -155,9 +220,8 @@ export class HaloPSA implements INodeType {
 				description: 'Max number of results to return',
 				displayOptions: {
 					show: {
-						resource: ['tickets', 'users', 'client'],
-						operation: ['GET'],
 						returnAll: [false],
+						operation: ['getAll'],
 					},
 				},
 				typeOptions: {
@@ -199,16 +263,81 @@ export class HaloPSA implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const resourceApiUrl = ((await this.getCredentials('haloPSAApi')) as IDataObject)
+			.resourceApiUrl as string;
+
+		//====================================================================
+		//                        Main Loop
+		//====================================================================
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				responseData = await haloPSAApiRequest.call(
-					this,
-					this.getNodeParameter('apiUrl', 0) as string,
-					this.getNodeParameter('resource', 0) as string,
-					this.getNodeParameter('operation', 0) as string,
-					tokens.access_token,
-				);
+				// Create ----------------------------------------------------
+				if (operation === 'create') {
+					const data = this.getNodeParameter('fieldsToCreateOrUpdate', 0) as IDataObject;
+					const body = [processFields(data)];
+					responseData = await haloPSAApiRequest.call(
+						this,
+						resourceApiUrl,
+						resource,
+						'POST',
+						tokens.access_token,
+						'',
+						body,
+					);
+				}
+				// Delete ----------------------------------------------------
+				if (operation === 'delete') {
+					const itemID = this.getNodeParameter('item_id', 0) as string;
+					const reasonForDeletion = this.getNodeParameter('reasonForDeletion', 0) as string;
+					responseData = await haloPSAApiRequest.call(
+						this,
+						resourceApiUrl,
+						resource,
+						'DELETE',
+						tokens.access_token,
+						itemID,
+						{},
+						{ reason: reasonForDeletion },
+					);
+				}
+				// Get -------------------------------------------------------
+				if (operation === 'get') {
+					const itemID = this.getNodeParameter('item_id', 0) as string;
+					responseData = await haloPSAApiRequest.call(
+						this,
+						resourceApiUrl,
+						resource,
+						'GET',
+						tokens.access_token,
+						itemID,
+					);
+				}
+				// Get All ---------------------------------------------------
+				if (operation === 'getAll') {
+					responseData = await haloPSAApiRequest.call(
+						this,
+						resourceApiUrl,
+						resource,
+						'GET',
+						tokens.access_token,
+					);
+				}
+				// Update ----------------------------------------------------
+				if (operation === 'update') {
+					const itemID = this.getNodeParameter('item_id', 0) as string;
+					const data = this.getNodeParameter('fieldsToCreateOrUpdate', 0) as IDataObject;
+					const body = [{ id: +itemID, ...processFields(data) }];
+					responseData = await haloPSAApiRequest.call(
+						this,
+						resourceApiUrl,
+						resource,
+						'POST',
+						tokens.access_token,
+						'',
+						body,
+					);
+				}
 
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData);

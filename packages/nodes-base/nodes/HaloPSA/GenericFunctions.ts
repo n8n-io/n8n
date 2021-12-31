@@ -31,7 +31,6 @@ const pluralResource: { [key: string]: string } = {
 	clientcontract: 'contracts',
 	invoice: 'invoices',
 	item: 'items',
-	kbarticle: 'articles',
 	opportunities: 'tickets',
 	projects: 'tickets',
 	quotation: 'quotes',
@@ -81,7 +80,8 @@ export async function haloPSAApiRequest(
 	resource: string,
 	method: string,
 	accessToken: string,
-	body: IDataObject = {},
+	itemID = '',
+	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<IDataObject | IDataObject[]> {
@@ -98,7 +98,7 @@ export async function haloPSAApiRequest(
 			method,
 			qs,
 			body,
-			uri: `${url}/${resource}`,
+			uri: itemID ? `${url}/${resource}/${itemID}` : `${url}/${resource}`,
 			json: true,
 		};
 		options = Object.assign({}, options, option);
@@ -119,6 +119,14 @@ function getAuthUrl(credentials: IDataObject) {
 	return credentials.hostingType === 'on-premise'
 		? '${credentials.appUrl}/auth/token'
 		: `${credentials.authUrl}/token?tenant=${credentials.tenant}`;
+}
+
+export function processFields(data: IDataObject): IDataObject {
+	return (data.fields as IDataObject[])?.reduce((acc, item) => {
+		const { fieldName, fieldValue } = item;
+		acc[fieldName as string] = fieldValue;
+		return acc;
+	}, {});
 }
 
 // Validation -----------------------------------------------------------------------
