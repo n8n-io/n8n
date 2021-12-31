@@ -1634,7 +1634,7 @@ class App {
 					queryBuilder.andWhere('shared.userId = :userId', {
 						userId: (req.user as User).id,
 					});
-					const result = (await queryBuilder.getOne()) as CredentialsEntity;
+					const result = (await queryBuilder.getOne()) as ICredentialsDb;
 					if (!result) {
 						throw new ResponseHelper.ResponseError(
 							`Credentials with the id "${id}" do not exist.`,
@@ -1742,7 +1742,7 @@ class App {
 						]);
 					}
 
-					const result = (await queryBuilder.getOne()) as CredentialsEntity;
+					const result = (await queryBuilder.getOne()) as ICredentialsDb;
 
 					if (result === undefined) {
 						return result;
@@ -1783,7 +1783,7 @@ class App {
 					});
 
 					if (req.query.filter) {
-						queryBuilder.andWhere(JSON.parse(req.query.filter as string) as IDataObject);
+						queryBuilder.andWhere(JSON.parse(req.query.filter as string));
 					}
 
 					queryBuilder.select([
@@ -2008,7 +2008,7 @@ class App {
 					}
 
 					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-					queryBuilder.andWhere('c.id = :id', { id: cud });
+					queryBuilder.andWhere('c.id = :id', { id: cid });
 					queryBuilder.innerJoin('c.shared', 'shared');
 					queryBuilder.andWhere('shared.userId = :userId', {
 						userId: (req.user as User).id,
