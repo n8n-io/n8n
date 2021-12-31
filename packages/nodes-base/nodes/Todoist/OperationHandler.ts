@@ -42,6 +42,10 @@ export class CreateHandler implements OperationHandler {
 			body.section_id = options.section as number;
 		}
 
+		if (options.dueLang) {
+			body.due_lang = options.dueLang as string;
+		}
+
 		const data = await todoistApiRequest.call(ctx, 'POST', '/tasks', body);
 
 		return {
@@ -187,6 +191,10 @@ export class UpdateHandler implements OperationHandler {
 			Array.isArray(updateFields.labels) &&
 			updateFields.labels.length !== 0) {
 			body.label_ids = updateFields.labels as number[];
+		}
+
+		if (updateFields.dueLang) {
+			body.due_lang = updateFields.dueLang as string;
 		}
 
 		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body);

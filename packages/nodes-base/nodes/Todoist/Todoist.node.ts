@@ -10,10 +10,6 @@ import {
 } from 'n8n-workflow';
 
 import {todoistApiRequest,} from './GenericFunctions';
-import {
-	FormatDueDatetime,
-	todoistApiRequest,
-} from './GenericFunctions';
 
 import {OperationType, TodoistService} from './Service';
 
