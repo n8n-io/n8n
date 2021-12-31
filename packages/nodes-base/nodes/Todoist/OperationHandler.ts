@@ -1,7 +1,7 @@
 import {IDataObject} from 'n8n-workflow';
 import {Context, todoistApiRequest, todoistSyncRequest} from './GenericFunctions';
 import {Section, TodoistResponse} from './Service';
-import { v4 as uuid } from 'uuid';
+import {v4 as uuid} from 'uuid';
 
 export interface OperationHandler {
 	handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse>;
@@ -115,7 +115,7 @@ export class GetAllHandler implements OperationHandler {
 		}
 
 		let responseData = await todoistApiRequest.call(ctx, 'GET', '/tasks', {}, qs);
-		const sections = await this.getSections(ctx, filters.projectId as string);
+		const sections = await getSections(ctx, filters.projectId as number);
 		for (const task of responseData) {
 			task.section = sections.get(task.section_id as string);
 		}
@@ -130,11 +130,16 @@ export class GetAllHandler implements OperationHandler {
 			data: responseData,
 		};
 	}
+}
 
-	private async getSections(ctx: Context, projectId: string): Promise<Map<string, string>> {
-		const sections: Section[] = await todoistApiRequest.call(ctx, 'GET', '/sections', {}, {project_id: projectId});
-		return new Map(sections.map(s => [s.id, s.name]));
-	}
+async function getSections(ctx: Context, projectId: number): Promise<Map<string, string>> {
+	const sections: Section[] = await todoistApiRequest.call(ctx, 'GET', '/sections', {}, {project_id: projectId});
+	return new Map(sections.map(s => [s.id, s.name]));
+}
+
+async function getSectionIds(ctx: Context, projectId: number): Promise<Map<string, number>> {
+	const sections: Section[] = await todoistApiRequest.call(ctx, 'GET', '/sections', {}, {project_id: projectId});
+	return new Map(sections.map(s => [s.name, s.id as unknown as number]));
 }
 
 export class ReopenHandler implements OperationHandler {
@@ -193,8 +198,8 @@ export class UpdateHandler implements OperationHandler {
 export class MoveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		//https://api.todoist.com/sync/v8/sync
-		const taskId = ctx.getNodeParameter('taskId', itemIndex) as string;
-		const section = ctx.getNodeParameter('section', itemIndex) as string;
+		const taskId = ctx.getNodeParameter('taskId', itemIndex) as number;
+		const section = ctx.getNodeParameter('section', itemIndex) as number;
 
 		const body: SyncRequest = {
 			commands: [
@@ -215,6 +220,77 @@ export class MoveHandler implements OperationHandler {
 	}
 }
 
+export class SyncHandler implements OperationHandler {
+	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
+		const commandsJson = ctx.getNodeParameter('commands', itemIndex) as string;
+		const projectId = ctx.getNodeParameter('project', itemIndex) as number;
+		const sections = await getSectionIds(ctx, projectId);
+		const commands: Command[] = JSON.parse(commandsJson);
+		const tempIdMapping = new Map<string,string>();
+
+		for (let i = 0; i < commands.length; i++) {
+			const command = commands[i];
+			this.enrichUUID(command);
+			this.enrichSection(command, sections);
+			this.enrichProjectId(command, projectId);
+			this.enrichTempId(command,tempIdMapping, projectId);
+		}
+
+		const body: SyncRequest = {
+			commands,
+			temp_id_mapping: this.convertToObject(tempIdMapping),
+		};
+
+		const response = await todoistSyncRequest.call(ctx, body);
+
+		return {success: true, data: response};
+	}
+
+	private convertToObject(map: Map<string, string>) {
+		return Array.from(map.entries()).reduce((o, [key, value]) => {
+			// @ts-ignore
+			o[key] = value;
+			return o;
+		}, {});
+	}
+
+	private enrichUUID(command: Command) {
+		command.uuid = uuid();
+	}
+
+	private enrichSection(command: Command, sections: Map<string, number>) {
+		if (command.args!==undefined && command.args.section !== undefined) {
+			const sectionId = sections.get(command.args.section);
+			if (sectionId) {
+				command.args.section_id = sectionId;
+			} else {
+				throw new Error('Section ' + command.args.section + ' doesn\'t exist on Todoist');
+			}
+		}
+	}
+
+	private enrichProjectId(command: Command, projectId: number) {
+		if (this.requiresProjectId(command)) {
+			command.args.project_id = projectId;
+		}
+	}
+
+	private requiresProjectId(command: Command) {
+		return command.type === CommandType.ITEM_ADD;
+	}
+
+	private enrichTempId(command: Command, tempIdMapping: Map<string,string>, projectId: number) {
+		if (this.requiresTempId(command)) {
+			command.temp_id = uuid() as string;
+			tempIdMapping.set(command.temp_id, projectId as unknown as string);
+		}
+	}
+
+	private requiresTempId(command: Command) {
+		return command.type === CommandType.ITEM_ADD;
+	}
+}
+
 export interface CreateTaskRequest {
 	content?: string;
 	description?: string;
@@ -232,14 +308,27 @@ export interface CreateTaskRequest {
 
 export interface SyncRequest {
 	commands: Command[];
+	temp_id_mapping?: {};
 }
 
 export interface Command {
 	type: CommandType;
 	uuid: string;
-	args: {};
+	temp_id?: string;
+	args: {
+		id?: number
+		section_id?: number
+		project_id?: number | string
+		section?: string,
+		content?: string
+	};
 }
 
 export enum CommandType {
 	ITEM_MOVE = 'item_move',
+	ITEM_ADD = 'item_add',
+	ITEM_UPDATE = 'item_update',
+	ITEM_REORDER = 'item_reorder',
+	ITEM_DELETE = 'item_delete',
+	ITEM_COMPLETE = 'item_complete',
 }

@@ -6,6 +6,7 @@ import {
 	GetHandler,
 	MoveHandler,
 	ReopenHandler,
+	SyncHandler,
 	UpdateHandler
 } from './OperationHandler';
 import {Context} from './GenericFunctions';
@@ -25,6 +26,7 @@ export class TodoistService implements Service {
 		'reopen': new ReopenHandler(),
 		'update': new UpdateHandler(),
 		'move': new MoveHandler(),
+		'sync': new SyncHandler(),
 	};
 
 }
@@ -38,6 +40,7 @@ export enum OperationType {
 	reopen = 'reopen',
 	update = 'update',
 	move = 'move',
+	sync = 'sync',
 }
 
 export interface Section {

@@ -139,6 +139,11 @@ export class Todoist implements INodeType {
 						value: 'move',
 						description: 'Move a task',
 					},
+					{
+						name: 'Sync',
+						value: 'sync',
+						description: 'Sync a project',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -158,6 +163,7 @@ export class Todoist implements INodeType {
 						operation: [
 							'create',
 							'move',
+							'sync',
 						],
 					},
 				},
@@ -225,6 +231,24 @@ export class Todoist implements INodeType {
 				default: '',
 				required: true,
 				description: 'Task content',
+			},
+			{
+				displayName: 'Sync Commands',
+				name: 'commands',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'task',
+						],
+						operation: [
+							'sync',
+						],
+					},
+				},
+				default: '[]',
+				required: false,
+				description: 'Sync body',
 			},
 			{
 				displayName: 'Task ID',
