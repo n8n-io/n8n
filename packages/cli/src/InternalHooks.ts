@@ -100,6 +100,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 			properties.success = !!runData.finished;
 			properties.is_manual = runData.mode === 'manual';
 
+			let nodeGraphResult;
+
 			if (!properties.success && runData?.data.resultData.error) {
 				properties.error_message = runData?.data.resultData.error.message;
 				let errorNodeName = runData?.data.resultData.error.node?.name;
@@ -118,7 +120,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				}
 
 				if (properties.is_manual) {
-					const nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 					properties.node_graph = nodeGraphResult.nodeGraph;
 					properties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 
@@ -129,6 +131,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 			}
 
 			if (properties.is_manual) {
+				if (!nodeGraphResult) {
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+				}
+
 				const manualExecEventProperties = {
 					workflow_id: workflow.id,
 					status: properties.success ? 'success' : 'failed',
@@ -140,10 +146,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 				};
 
 				if (!manualExecEventProperties.node_graph) {
-					manualExecEventProperties.node_graph = TelemetryHelpers.generateNodesGraph(
-						workflow,
-						this.nodeTypes,
-					);
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					manualExecEventProperties.node_graph = nodeGraphResult.nodeGraph;
 					manualExecEventProperties.node_graph_string = JSON.stringify(
 						manualExecEventProperties.node_graph,
 					);
@@ -157,6 +161,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 								workflow,
 								runData.data.startData?.destinationNode,
 							)?.type,
+							node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
 						}),
 					);
 				} else {
