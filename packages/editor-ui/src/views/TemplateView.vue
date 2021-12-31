@@ -106,6 +106,7 @@ export default mixins(workflowHelpers).extend({
 	width: 100%;
 	display: flex;
 	justify-content: center;
+	background-color: $--node-creator-no-results-background-color;
 }
 
 .container {
@@ -129,7 +130,7 @@ export default mixins(workflowHelpers).extend({
 }
 
 .header {
-	padding: 0px 0px 40px;
+	padding: 0px 0px var(--spacing-2xl);
 	display: flex;
 	flex-direction: column;
 }
@@ -157,13 +158,13 @@ export default mixins(workflowHelpers).extend({
 }
 
 .content {
-	padding: 40px 0;
+	padding: var(--spacing-2xl) 0;
 	display: flex;
 	justify-content: space-between;
 }
 
 .markdown {
-	width: 75%;
+	padding-right: var(--spacing-2xl);
 }
 
 .spacer {
@@ -171,6 +172,6 @@ export default mixins(workflowHelpers).extend({
 }
 
 .details {
-	width: 20%;
+	min-width: 180px;
 }
 </style>

@@ -1,6 +1,6 @@
 <template functional>
-	<div :class="$style.image">
-		<img :srcset="$options.methods.getSrcset(props.images)" />
+	<div :class="$style.wrapper">
+		<img :class="$style.image" :srcset="$options.methods.getSrcset(props.images)" />
 	</div>
 </template>
 
@@ -42,5 +42,7 @@ export default {
 
 <style lang="scss" module>
 .image {
+	border: 1px solid $--node-creator-border-color;
+	border-radius: var(--border-radius-large);
 }
 </style>

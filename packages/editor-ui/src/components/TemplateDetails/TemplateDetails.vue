@@ -73,6 +73,6 @@ export default Vue.extend({
 }
 
 .text {
-	padding-bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing-xs);
 }
 </style>

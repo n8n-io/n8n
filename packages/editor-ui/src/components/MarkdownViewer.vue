@@ -129,17 +129,21 @@ export default Vue.extend({
 
 	p,
 	span {
+		font-size: var(--font-size-s);
 		line-height: var(--font-line-height-loose);
 	}
 
 	ul {
 		padding: var(--spacing-4xs);
 		padding-left: var(--spacing-m);
+		font-size: var(--font-size-s);
 		line-height: var(--font-line-height-loose);
 	}
 
 	img {
 		width: 100%;
+		border: 1px solid $--node-creator-border-color;
+		border-radius: var(--border-radius-large);
 	}
 }
 </style>
