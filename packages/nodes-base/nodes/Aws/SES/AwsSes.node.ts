@@ -34,7 +34,6 @@ export class AwsSes implements INodeType {
 		description: 'Sends data to AWS SES',
 		defaults: {
 			name: 'AWS SES',
-			color: '#FF9900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

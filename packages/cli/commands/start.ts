@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as localtunnel from 'localtunnel';
-import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
+import { BinaryDataManager, IBinaryDataConfig, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
@@ -152,17 +152,6 @@ export class Start extends Command {
 				const logger = getLogger();
 				LoggerProxy.init(logger);
 				logger.info('Initializing n8n process');
-
-				logger.info(
-					'\n' +
-						'****************************************************\n' +
-						'*                                                  *\n' +
-						'*   n8n now sends selected, anonymous telemetry.   *\n' +
-						'*      For more details (and how to opt out):      *\n' +
-						'*   https://docs.n8n.io/reference/telemetry.html   *\n' +
-						'*                                                  *\n' +
-						'****************************************************\n',
-				);
 
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error: Error) => {
@@ -313,7 +302,11 @@ export class Start extends Command {
 				}
 
 				const instanceId = await UserSettings.getInstanceId();
-				InternalHooksManager.init(instanceId);
+				const { cli } = await GenericHelpers.getVersions();
+				InternalHooksManager.init(instanceId, cli);
+
+				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				await BinaryDataManager.init(binaryDataConfig, true);
 
 				await Server.start();
 

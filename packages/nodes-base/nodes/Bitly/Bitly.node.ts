@@ -32,7 +32,6 @@ export class Bitly implements INodeType {
 		description: 'Consume Bitly API',
 		defaults: {
 			name: 'Bitly',
-			color: '#d3643b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

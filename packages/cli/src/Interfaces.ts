@@ -310,16 +310,24 @@ export interface IDiagnosticInfo {
 		[key: string]: string | number | undefined;
 	};
 	deploymentType: string;
+	binaryDataMode: string;
 }
 
 export interface IInternalHooksClass {
 	onN8nStop(): Promise<void>;
-	onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<unknown[]>;
+	onServerStarted(
+		diagnosticInfo: IDiagnosticInfo,
+		firstWorkflowCreatedAt?: Date,
+	): Promise<unknown[]>;
 	onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void>;
 	onWorkflowCreated(workflow: IWorkflowBase): Promise<void>;
 	onWorkflowDeleted(workflowId: string): Promise<void>;
 	onWorkflowSaved(workflow: IWorkflowBase): Promise<void>;
-	onWorkflowPostExecute(workflow: IWorkflowBase, runData?: IRun): Promise<void>;
+	onWorkflowPostExecute(
+		executionId: string,
+		workflow: IWorkflowBase,
+		runData?: IRun,
+	): Promise<void>;
 }
 
 export interface IN8nConfig {
@@ -400,13 +408,16 @@ export interface IN8nUISettings {
 	instanceId: string;
 	telemetry: ITelemetrySettings;
 	personalizationSurvey: IPersonalizationSurvey;
+	defaultLocale: string;
 }
 
 export interface IPersonalizationSurveyAnswers {
-	companySize: string | null;
 	codingSkill: string | null;
-	workArea: string | null;
+	companyIndustry: string[];
+	companySize: string | null;
+	otherCompanyIndustry: string | null;
 	otherWorkArea: string | null;
+	workArea: string[] | string | null;
 }
 
 export interface IPersonalizationSurvey {

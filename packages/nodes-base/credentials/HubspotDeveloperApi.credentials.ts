@@ -4,7 +4,12 @@ import {
 } from 'n8n-workflow';
 
 const scopes = [
-	'contacts',
+	'crm.objects.contacts.read',
+	'crm.schemas.contacts.read',
+	'crm.objects.companies.read',
+	'crm.schemas.companies.read',
+	'crm.objects.deals.read',
+	'crm.schemas.deals.read',
 ];
 
 export class HubspotDeveloperApi implements ICredentialType {
