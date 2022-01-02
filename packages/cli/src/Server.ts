@@ -99,6 +99,7 @@ import querystring from 'querystring';
 import promClient, { Registry } from 'prom-client';
 import * as Queue from './Queue';
 import {
+	LoadNodesAndCredentials,
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialsHelper,
@@ -682,6 +683,37 @@ class App {
 
 			next();
 		});
+
+		// Does very basic health check
+		this.app.post(
+			`/${this.restEndpoint}/node`,
+			ResponseHelper.send(async (req: express.Request, res: express.Response) => {
+				const url = req.body.url as string;
+				if (url === undefined) {
+					throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, undefined, 400);
+				}
+
+				try {
+					const nodes = await LoadNodesAndCredentials().loadNpmModuleFromUrl(url);
+
+					// Inform the connected frontends that new nodes are available
+					nodes.forEach((nodeData) => {
+						const pushInstance = Push.getInstance();
+						pushInstance.send('reloadNodeType', nodeData);
+					});
+
+					return {
+						nodes,
+					};
+				} catch (error) {
+					throw new ResponseHelper.ResponseError(
+						`Error loading nodes from "${url}": ${error.message}`,
+						undefined,
+						500,
+					);
+				}
+			}),
+		);
 
 		// ----------------------------------------
 		// User Management
