@@ -270,7 +270,7 @@ export class Jenkins implements INodeType {
 				description: 'XML of Jenkins config',
 			},
 			{
-				displayName: 'You can get an XML from existing job by adding "config.xml" to the job\'s URL',
+				displayName: 'To get the XML of an existing job, add ‘config.xml’ to the end of the job URL',
 				name: 'createNotice',
 				type: 'notice',
 				default: '',
@@ -385,11 +385,11 @@ export class Jenkins implements INodeType {
 				options: [
 					{
 						name: 'Get All',
-						value: 'build:getAll',
+						value: 'getAll',
 						description: 'List Builds',
 					},
 				],
-				default: 'build:getAll',
+				default: 'getAll',
 				description: 'Build operation',
 				noDataExpression: true,
 			},
@@ -405,7 +405,7 @@ export class Jenkins implements INodeType {
 							'build',
 						],
 						operation: [
-							'build:getAll',
+							'getAll',
 						],
 					},
 				},
@@ -505,10 +505,10 @@ export class Jenkins implements INodeType {
 						const token = this.getNodeParameter('token', i) as string;
 						const job = this.getNodeParameter('job', i) as string;
 						const url = tolerateTrailingSlash(this.getNodeParameter('url', i) as string);
-						const params = this.getNodeParameter('param.params', i , [] ) as [];
+						const params = this.getNodeParameter('param.params', i, []) as [];
 						let body = {};
 						if (params.length) {
-							body = params.reduce((body:IDataObject , param: {name: string; value: string}) => {
+							body = params.reduce((body: IDataObject, param: { name: string; value: string }) => {
 								body[param.name] = param.value;
 								return body;
 							}, {});
@@ -621,11 +621,11 @@ export class Jenkins implements INodeType {
 					}
 
 					if (resource === 'build') {
-						if (operation === 'build:getAll') {
+						if (operation === 'getAll') {
 							const endpoint = `${baseUrl}/api/xml`;
 							const filters = this.getNodeParameter('filters', i) as IDataObject;
 
-							const tree = filters.tree as string ;
+							const tree = filters.tree as string;
 							const xpath = filters.xpath as string;
 							const exclude = filters.exclude as string;
 							const depth = filters.depth as number;
@@ -639,13 +639,15 @@ export class Jenkins implements INodeType {
 
 							const response = await jenkinsApiRequest.call(this, 'get', endpoint, credentials, queryParams);
 							responseData = await new Promise((resolve, reject) => {
-								parseString(response, { explicitArray: false }, (err, data) => {
+								parseString(response, { explicitArray: false, ignoreAttrs: true }, (err, data) => {
 									if (err) {
 										return reject(err);
 									}
 									resolve(data);
 								});
-							});
+							}) as IDataObject;
+
+							responseData = responseData.hudson;
 						}
 					}
 				}
