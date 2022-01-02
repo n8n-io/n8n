@@ -284,6 +284,13 @@ export class Webhook implements INodeType {
 									it will be the prefix and a number starting with 0 will be attached to it.`,
 					},
 					{
+						displayName: 'Ignore Bots',
+						name: 'ignoreBots',
+						type: 'boolean',
+						default: false,
+						description: 'Set to true to ignore requests from bots like link previewers and web crawlers',
+					},
+					{
 						displayName: 'Response Data',
 						name: 'responseData',
 						type: 'string',
@@ -379,13 +386,6 @@ export class Webhook implements INodeType {
 						},
 						default: false,
 						description: 'Raw body (binary)',
-					},
-					{
-						displayName: 'Ignore Bots',
-						name: 'ignoreBots',
-						type: 'boolean',
-						default: false,
-						description: 'Set to true to ignore requests from bots like link previewers and web crawlers',
 					},
 				],
 			},
