@@ -1,3 +1,5 @@
+/* eslint-disable import/no-cycle */
+/* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable no-param-reassign */
@@ -16,18 +18,26 @@ import {
 	ILogger,
 	INodeType,
 	INodeTypeData,
+	INodeTypeNameVersion,
 	INodeVersionedType,
 	LoggerProxy,
 } from 'n8n-workflow';
 
 import {
 	access as fsAccess,
+	mkdir as fsMkdir,
 	readdir as fsReaddir,
 	readFile as fsReadFile,
+	rename as fsRename,
+	rm as fsRm,
 	stat as fsStat,
+	writeFile as fsWriteFile,
 } from 'fs/promises';
 import glob from 'fast-glob';
 import path from 'path';
+import requestPromise from 'request-promise-native';
+import { extract } from 'tar';
+import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
 import config from '../config';
 
@@ -49,6 +59,11 @@ class LoadNodesAndCredentialsClass {
 	async init() {
 		this.logger = getLogger();
 		LoggerProxy.init(this.logger);
+
+		// Make sure the imported modules can resolve dependencies fine.
+		process.env.NODE_PATH = module.paths.join(':');
+		// @ts-ignore
+		module.constructor._initPaths();
 
 		// Get the path to the node-modules folder to be later able
 		// to load the credentials and nodes
@@ -83,7 +98,22 @@ class LoadNodesAndCredentialsClass {
 		const packages = await this.getN8nNodePackages();
 
 		for (const packageName of packages) {
-			await this.loadDataFromPackage(packageName);
+			await this.loadDataFromPackage(path.join(this.nodeModulesPath, packageName));
+		}
+
+		// Read downloaded nodes and credentials
+		const downloadedNodesFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+		for (const folderContent of await fsReaddir(downloadedNodesFolder)) {
+			if (!(await fsStat(path.join(downloadedNodesFolder, folderContent))).isDirectory()) {
+				continue;
+			}
+
+			const packagePath = path.join(downloadedNodesFolder, folderContent, 'package');
+			if (!(await fsStat(packagePath)).isDirectory()) {
+				continue;
+			}
+
+			await this.loadDataFromPackage(packagePath);
 		}
 
 		// Read nodes and credentials from custom directories
@@ -175,6 +205,47 @@ class LoadNodesAndCredentialsClass {
 		};
 	}
 
+	async loadNpmModuleFromUrl(url: string): Promise<INodeTypeNameVersion[]> {
+		let data: Uint8Array;
+		try {
+			data = await requestPromise.get(url, { encoding: null });
+		} catch (error) {
+			throw new Error('Could not download node package.');
+		}
+
+		const urlParts = path.parse(url);
+
+		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+		const tempNodeUnpackedPath = path.join(downloadFolder, urlParts.name);
+		const nodeTarFilePath = tempNodeUnpackedPath + urlParts.ext;
+
+		await fsMkdir(tempNodeUnpackedPath);
+		await fsWriteFile(nodeTarFilePath, data, 'binary');
+		await extract({
+			file: nodeTarFilePath,
+			cwd: tempNodeUnpackedPath,
+		});
+
+		// Delete the node tar file
+		await fsRm(nodeTarFilePath);
+
+		const packagePath = path.join(tempNodeUnpackedPath, 'package');
+
+		// Get the information from the package.json file
+		const packageFile = await this.readPackageJson(packagePath);
+
+		// Fix package path
+		const finalNodeUnpackedPath = path.join(
+			downloadFolder,
+			// Replace slash for packages that have namespace
+			packageFile.name.replace(new RegExp('/'), '_'),
+		);
+		await fsRename(tempNodeUnpackedPath, finalNodeUnpackedPath);
+
+		// Load credentials and nodes
+		return this.loadDataFromPackage(path.join(finalNodeUnpackedPath, 'package'));
+	}
+
 	/**
 	 * Loads a node from a file
 	 *
@@ -183,9 +254,14 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} filePath The file to read node from
 	 * @returns {Promise<void>}
 	 */
-	async loadNodeFromFile(packageName: string, nodeName: string, filePath: string): Promise<void> {
+	async loadNodeFromFile(
+		packageName: string,
+		nodeName: string,
+		filePath: string,
+	): Promise<INodeTypeNameVersion | undefined> {
 		let tempNode: INodeType | INodeVersionedType;
 		let fullNodeName: string;
+		let nodeVersion = 1;
 
 		// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
 		const tempModule = require(filePath);
@@ -221,6 +297,7 @@ class LoadNodesAndCredentialsClass {
 		if (tempNode.hasOwnProperty('nodeVersions')) {
 			const versionedNodeType = (tempNode as INodeVersionedType).getNodeType();
 			this.addCodex({ node: versionedNodeType, filePath, isCustom: packageName === 'CUSTOM' });
+			nodeVersion = (tempNode as INodeVersionedType).currentVersion;
 
 			if (
 				versionedNodeType.description.icon !== undefined &&
@@ -239,6 +316,8 @@ class LoadNodesAndCredentialsClass {
 					{ filePath },
 				);
 			}
+		} else {
+			nodeVersion = (tempNode as INodeType).description.version;
 		}
 
 		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
@@ -254,6 +333,12 @@ class LoadNodesAndCredentialsClass {
 			type: tempNode,
 			sourcePath: filePath,
 		};
+
+		// eslint-disable-next-line consistent-return
+		return {
+			name: fullNodeName,
+			version: nodeVersion,
+		} as INodeTypeNameVersion;
 	}
 
 	/**
@@ -328,7 +413,8 @@ class LoadNodesAndCredentialsClass {
 		let fileName: string;
 		let type: string;
 
-		const loadPromises = [];
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const loadPromises: any[] = [];
 		for (const filePath of files) {
 			[fileName, type] = path.parse(filePath).name.split('.');
 
@@ -342,25 +428,32 @@ class LoadNodesAndCredentialsClass {
 		await Promise.all(loadPromises);
 	}
 
+	async readPackageJson(packagePath: string): Promise<IN8nNodePackageJson> {
+		// Get the absolute path of the package
+		const packageFileString = await fsReadFile(path.join(packagePath, 'package.json'), 'utf8');
+		return JSON.parse(packageFileString) as IN8nNodePackageJson;
+	}
+
 	/**
 	 * Loads nodes and credentials from the package with the given name
 	 *
-	 * @param {string} packageName The name to read data from
+	 * @param {string} packagePath The path to read data from
 	 * @returns {Promise<void>}
 	 */
-	async loadDataFromPackage(packageName: string): Promise<void> {
+	async loadDataFromPackage(packagePath: string): Promise<INodeTypeNameVersion[]> {
 		// Get the absolute path of the package
-		const packagePath = path.join(this.nodeModulesPath, packageName);
-
-		// Read the data from the package.json file to see if any n8n data is defiend
-		const packageFileString = await fsReadFile(path.join(packagePath, 'package.json'), 'utf8');
-		const packageFile = JSON.parse(packageFileString);
-		if (!packageFile.hasOwnProperty('n8n')) {
-			return;
+		const packageFile = await this.readPackageJson(packagePath);
+		// if (!packageFile.hasOwnProperty('n8n')) {
+		if (!packageFile.n8n) {
+			return [];
 		}
+
+		const packageName = packageFile.name;
 
 		let tempPath: string;
 		let filePath: string;
+
+		const returnData: INodeTypeNameVersion[] = [];
 
 		// Read all node types
 		let fileName: string;
@@ -369,7 +462,10 @@ class LoadNodesAndCredentialsClass {
 			for (filePath of packageFile.n8n.nodes) {
 				tempPath = path.join(packagePath, filePath);
 				[fileName, type] = path.parse(filePath).name.split('.');
-				await this.loadNodeFromFile(packageName, fileName, tempPath);
+				const loadData = await this.loadNodeFromFile(packageName, fileName, tempPath);
+				if (loadData) {
+					returnData.push(loadData);
+				}
 			}
 		}
 
@@ -386,6 +482,8 @@ class LoadNodesAndCredentialsClass {
 				this.loadCredentialsFromFile(fileName, tempPath);
 			}
 		}
+
+		return returnData;
 	}
 }
 
