@@ -58,6 +58,21 @@ return item;`,
 		const length = items.length as unknown as number;
 		let item: INodeExecutionData;
 
+		const cleanupData = (inputData: IDataObject): IDataObject => {
+			Object.keys(inputData).map(key => {
+				if (inputData[key] !== null && typeof inputData[key] === 'object') {
+					if (inputData[key]!.constructor.name === 'Object') {
+						// Is regular node.js object so check its data
+						inputData[key] = cleanupData(inputData[key] as IDataObject);
+					} else {
+						// Is some special object like a Date so stringify
+						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+					}
+				}
+			});
+			return inputData;
+		};
+
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
 				item = items[itemIndex];
@@ -145,7 +160,7 @@ return item;`,
 				}
 
 				const returnItem: INodeExecutionData = {
-					json: jsonData,
+					json: cleanupData(jsonData),
 				};
 
 				if (item.binary) {
