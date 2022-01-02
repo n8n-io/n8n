@@ -538,6 +538,13 @@ export class Wait implements INodeType {
 									it will be the prefix and a number starting with 0 will be attached to it.`,
 					},
 					{
+						displayName: 'Ignore Bots',
+						name: 'ignoreBots',
+						type: 'boolean',
+						default: false,
+						description: 'Set to true to ignore requests from bots like link previewers and web crawlers',
+					},
+					{
 						displayName: 'Response Data',
 						name: 'responseData',
 						type: 'string',
@@ -627,13 +634,6 @@ export class Wait implements INodeType {
 						default: '',
 						placeholder: 'webhook',
 						description: 'This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes. Note: Does not support expressions.',
-					},
-					{
-						displayName: 'Ignore Bots',
-						name: 'ignoreBots',
-						type: 'boolean',
-						default: false,
-						description: 'Set to true to ignore requests from bots like link previewers and web crawlers',
 					},
 					// {
 					// 	displayName: 'Raw Body',
