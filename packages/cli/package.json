@@ -69,6 +69,7 @@
     "@types/node": "14.17.27",
     "@types/open": "^6.1.0",
     "@types/parseurl": "^1.3.1",
+    "@types/tar": "~6.1.1",
     "@types/request-promise-native": "~1.0.15",
     "@types/validator": "^13.7.0",
     "concurrently": "^5.1.0",
@@ -122,6 +123,7 @@
     "request-promise-native": "^1.0.7",
     "sqlite3": "^5.0.1",
     "sse-channel": "^3.1.1",
+    "tar": "~6.1.11",
     "tslib": "1.14.1",
     "typeorm": "0.2.30",
     "winston": "^3.3.3"

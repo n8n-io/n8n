@@ -97,7 +97,7 @@ export default Vue.extend({
 	},
 	watch: {
 		nodeTypes(newList, prevList) {
-			if (prevList.length === 0) {
+			if (newList.length !== prevList.length) {
 				this.allNodeTypes = newList;
 			}
 		},

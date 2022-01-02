@@ -9,6 +9,7 @@ import { createHash, randomBytes } from 'crypto';
 import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
 	EXTENSIONS_SUBDIRECTORY,
+	DOWNLOADED_NODES_SUBDIRECTORY,
 	IUserSettings,
 	USER_FOLDER_ENV_OVERWRITE,
 	USER_SETTINGS_FILE_NAME,
@@ -266,6 +267,18 @@ export function getUserN8nFolderPath(): string {
  */
 export function getUserN8nFolderCustomExtensionPath(): string {
 	return path.join(getUserN8nFolderPath(), EXTENSIONS_SUBDIRECTORY);
+}
+
+/**
+ * Returns the path to the n8n user folder with the nodes that
+ * have been downloaded
+ *
+ * @export
+ * @returns {string}
+ */
+export function getUserN8nFolderDowloadedNodesPath(): string {
+	// TODO: Replace "nodes" with constant
+	return path.join(getUserN8nFolderPath(), DOWNLOADED_NODES_SUBDIRECTORY);
 }
 
 /**
