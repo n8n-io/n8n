@@ -432,6 +432,15 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
+export interface IN8nNodePackageJson {
+	name: string;
+	version: string;
+	n8n?: {
+		credentials?: string[];
+		nodes?: string[];
+	};
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -497,6 +506,7 @@ export type IPushData =
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
 	| PushDataConsoleMessage
+	| PushDataReloadNodeType
 	| PushDataTestWebhook;
 
 type PushDataExecutionFinished = {
@@ -522,6 +532,11 @@ type PushDataExecuteBefore = {
 type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
+};
+
+type PushDataReloadNodeType = {
+	data: IPushDataReloadNodeType;
+	type: 'reloadNodeType';
 };
 
 type PushDataTestWebhook = {
@@ -553,6 +568,11 @@ export interface IPushDataNodeExecuteAfter {
 export interface IPushDataNodeExecuteBefore {
 	executionId: string;
 	nodeName: string;
+}
+
+export interface IPushDataReloadNodeType {
+	name: string;
+	version: number;
 }
 
 export interface IPushDataTestWebhook {
