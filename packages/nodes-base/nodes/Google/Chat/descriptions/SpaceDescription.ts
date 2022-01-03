@@ -10,6 +10,7 @@ export const spaceOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {

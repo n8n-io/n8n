@@ -6,6 +6,7 @@ export const messageOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -104,7 +105,7 @@ export const messageFields = [
 			},
 		},
 		default: {'text': ''},
-		description: '',
+		description: 'The message object.',
 		options: [
 			{
 				displayName: 'Text',
@@ -163,7 +164,7 @@ export const messageFields = [
 		],
 	},
 	{
-		displayName: 'See <a href="https://developers.google.com/chat/reference/rest/v1/spaces.messages#Message" target="_blank">Google Chat guide</a> to creating messages',
+		displayName: 'See <a href="https://developers.google.com/chat/reference/rest/v1/spaces.messages#Message" target="_blank">Google Chat Guide</a> To Creating Messages',
 		name: 'jsonNotice',
 		type: 'notice',
 		displayOptions: {
@@ -341,7 +342,7 @@ export const messageFields = [
 			},
 		},
 		default: {'text': ''},
-		description: '',
+		description: 'The message object.',
 		options: [
 			{
 				displayName: 'Text',
@@ -400,7 +401,7 @@ export const messageFields = [
 		],
 	},
 	{
-		displayName: 'See <a href="https://developers.google.com/chat/reference/rest/v1/spaces.messages#Message" target="_blank">Google Chat guide</a> to creating messages',
+		displayName: 'See <a href="https://developers.google.com/chat/reference/rest/v1/spaces.messages#Message" target="_blank">Google Chat Guide</a> To Creating Messages',
 		name: 'jsonNotice',
 		type: 'notice',
 		displayOptions: {

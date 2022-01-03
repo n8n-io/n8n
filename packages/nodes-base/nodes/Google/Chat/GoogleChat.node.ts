@@ -3,7 +3,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, ILoadOptionsFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -62,15 +63,21 @@ export class GoogleChat implements INodeType {
 			{
 				displayName: 'Resource',
 				name: 'resource',
+				required: true,
+				noDataExpression: true,
 				type: 'options',
 				options: [
 					{
-						name: 'Media',
-						value: 'media',
+						name: 'Attachment',
+						value: 'attachment',
 					},
 					{
-						name: 'Space',
-						value: 'space',
+						name: 'Incoming Webhook',
+						value: 'incomingWebhook',
+					},
+					{
+						name: 'Media',
+						value: 'media',
 					},
 					{
 						name: 'Member',
@@ -81,29 +88,25 @@ export class GoogleChat implements INodeType {
 						value: 'message',
 					},
 					{
-						name: 'Attachment',
-						value: 'attachment',
-					},
-					{
-						name: 'Incoming Webhook',
-						value: 'incomingWebhook',
+						name: 'Space',
+						value: 'space',
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on. ',
 			},
-			...mediaOperations,
-			...mediaFields,
-			...spaceOperations,
-			...spaceFields,
-			...memberOperations,
-			...memberFields,
-			...messageOperations,
-			...messageFields,
 			...attachmentOperations,
 			...attachmentFields,
 			...incomingWebhookOperations,
 			...incomingWebhookFields,
+			...mediaOperations,
+			...mediaFields,
+			...memberOperations,
+			...memberFields,
+			...messageOperations,
+			...messageFields,
+			...spaceOperations,
+			...spaceFields,
 		],
 	};
 

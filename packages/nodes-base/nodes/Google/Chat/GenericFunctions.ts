@@ -69,7 +69,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		return responseData;
 	}
 	else {
-		return { "success": true };
+		return { 'success': true };
 	}
 }
 

@@ -6,6 +6,7 @@ export const attachmentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -18,7 +19,7 @@ export const attachmentOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Gets the metadata of a message attachment. The attachment data is fetched using the media API.',
+				description: 'Gets the metadata of a message attachment. The attachment data is fetched using the media API',
 			},
 		],
 		default: 'get',
