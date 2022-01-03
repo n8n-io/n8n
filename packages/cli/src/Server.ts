@@ -862,7 +862,6 @@ class App {
 
 					let isActive = false;
 					const qb = Db.collections.Workflow!.createQueryBuilder('w');
-					qb.leftJoinAndSelect('w.tags', 't');
 					qb.andWhere('w.id = :workflowId', { workflowId: req.params.id });
 					qb.innerJoin('w.shared', 'shared');
 					// @ts-ignore
@@ -986,7 +985,6 @@ class App {
 
 				let isActive = false;
 				const qb = Db.collections.Workflow!.createQueryBuilder('w');
-				qb.leftJoinAndSelect('w.tags', 't');
 				qb.andWhere('w.id = :workflowId', { workflowId: req.params.id });
 				qb.innerJoin('w.shared', 'shared');
 				// @ts-ignore
@@ -2453,9 +2451,12 @@ class App {
 						resultsQuery.andWhere(`execution.id NOT IN (:...ids)`, { ids: executingWorkflowIds });
 					}
 
+					resultsQuery.innerJoin('workflow_entity', 'w', 'w.id = execution.workflowId');
+					resultsQuery.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
+					resultsQuery.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
 					const resultsPromise = resultsQuery.getMany();
 
-					const countPromise = getExecutionsCount(countFilter);
+					const countPromise = getExecutionsCount(countFilter, req.user as User);
 
 					const results: IExecutionFlattedDb[] = await resultsPromise;
 					const countedObjects = await countPromise;
@@ -2494,7 +2495,13 @@ class App {
 					req: express.Request,
 					res: express.Response,
 				): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
-					const result = await Db.collections.Execution!.findOne(req.params.id);
+					const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
+					queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
+					queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
+					queryBuilder.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
+					queryBuilder.andWhere('e.id = :id', { id: req.params.id });
+
+					const result = await queryBuilder.getOne();
 
 					if (result === undefined) {
 						return undefined;
@@ -2515,8 +2522,14 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/executions/:id/retry`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
+				const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
+				queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
+				queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
+				queryBuilder.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
+				queryBuilder.andWhere('e.id = :id', { id: req.params.id });
+
 				// Get the data to execute
-				const fullExecutionDataFlatted = await Db.collections.Execution!.findOne(req.params.id);
+				const fullExecutionDataFlatted = await queryBuilder.getOne();
 
 				if (fullExecutionDataFlatted === undefined) {
 					throw new ResponseHelper.ResponseError(
@@ -2629,30 +2642,65 @@ class App {
 				if (deleteData.deleteBefore !== undefined) {
 					const filters = {
 						startedAt: LessThanOrEqual(deleteData.deleteBefore),
-					};
+					} as IDataObject;
 
 					if (deleteData.filters !== undefined) {
 						Object.assign(filters, deleteData.filters);
 					}
 
-					const execs = await Db.collections.Execution!.find({ ...filters, select: ['id'] });
+					const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
+					queryBuilder.select(['e.id']);
+					queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
+					queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
+					queryBuilder.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
+					const keys = Object.keys(filters);
+					keys.forEach((filter) => {
+						queryBuilder.andWhere(`e.${filter} = :${filter}_value`, {
+							[`${filter}_value`]: filters[filter],
+						});
+					});
+
+					const execs = await queryBuilder.getMany();
+
+					if (execs.length === 0) {
+						return;
+					}
+
+					const executionIds = [] as string[];
 
 					await Promise.all(
-						execs.map(async (item) =>
-							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(item.id.toString()),
-						),
+						execs.map(async (item) => {
+							executionIds.push(item.id.toString());
+							return BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(
+								item.id.toString(),
+							);
+						}),
 					);
 
-					await Db.collections.Execution!.delete(filters);
+					// Delete only executions that I own.
+					await Db.collections.Execution!.delete({ id: In(executionIds) });
 				} else if (deleteData.ids !== undefined) {
+					const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
+					queryBuilder.select(['e.id']);
+					queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
+					queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
+					queryBuilder.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
+					queryBuilder.andWhere('e.id IN :ids', { ids: deleteData.ids });
+
+					const idsToDelete = (await queryBuilder.getMany()).map((row) => row.id) as string[];
+
+					if (idsToDelete.length === 0) {
+						return;
+					}
+
 					await Promise.all(
-						deleteData.ids.map(async (id) =>
+						idsToDelete.map(async (id) =>
 							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id),
 						),
 					);
 
 					// Deletes all executions with the given ids
-					await Db.collections.Execution!.delete(deleteData.ids);
+					await Db.collections.Execution!.delete(idsToDelete);
 				} else {
 					throw new Error('Required body-data "ids" or "deleteBefore" is missing!');
 				}
@@ -2696,7 +2744,10 @@ class App {
 								'execution.startedAt',
 							])
 							.orderBy('execution.id', 'DESC')
-							.andWhere(`execution.id IN (:...ids)`, { ids: currentlyRunningExecutionIds });
+							.andWhere(`execution.id IN (:...ids)`, { ids: currentlyRunningExecutionIds })
+							.innerJoin('workflow', 'w', 'w.id = execution.workflowId')
+							.innerJoin('shared_workflow', 'sw', 'w.id = sw.workflowId')
+							.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
 
 						if (req.query.filter) {
 							const filter = JSON.parse(req.query.filter as string);
@@ -2728,8 +2779,23 @@ class App {
 						filter = JSON.parse(req.query.filter as string);
 					}
 
+					// Get the ID of all workflows I have access to and use it to filter the current executions
+					const queryBuilder = Db.collections.Workflow!.createQueryBuilder('w');
+					queryBuilder.innerJoin('w.shared', 'shared');
+					queryBuilder.andWhere('shared.userId = :userId', { userId: (req.user as User).id });
+					queryBuilder.select(['w.id']);
+
+					const myWorkflows = await queryBuilder.getMany();
+					const workflowsMap = {} as IDataObject;
+					myWorkflows.forEach((workflow) => {
+						workflowsMap[workflow.id.toString()] = 1;
+					});
+
 					for (const data of executingWorkflows) {
-						if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
+						if (
+							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
+							workflowsMap[data.workflowId.toString()]
+						) {
 							continue;
 						}
 						returnData.push({
@@ -2752,6 +2818,20 @@ class App {
 			`/${this.restEndpoint}/executions-current/:id/stop`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IExecutionsStopData> => {
+					const resultsQuery = await Db.collections
+						.Execution!.createQueryBuilder('execution')
+						.select(['execution.id'])
+						.andWhere(`execution.id = :id`, { id: req.params.id })
+						.innerJoin('workflow', 'w', 'w.id = execution.workflowId')
+						.innerJoin('shared_workflow', 'sw', 'w.id = sw.workflowId')
+						.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
+
+					try {
+						await resultsQuery.getOneOrFail();
+					} catch (err) {
+						throw new ResponseHelper.ResponseError('Execution not found', undefined, 404);
+					}
+
 					if (config.get('executions.mode') === 'queue') {
 						// Manual executions should still be stoppable, so
 						// try notifying the `activeExecutions` to stop it.
@@ -2829,6 +2909,7 @@ class App {
 		this.app.delete(
 			`/${this.restEndpoint}/test-webhook/:id`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
+				// TODO UM: check if this needs validation with user management.
 				const workflowId = req.params.id;
 				return this.testWebhooks.cancelTestWebhook(workflowId);
 			}),
@@ -2854,6 +2935,7 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/data/:path`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+				// TODO UM: check if this needs permission check for UM
 				const dataPath = req.params.path;
 				return BinaryDataManager.getInstance()
 					.retrieveBinaryDataByIdentifier(dataPath)
@@ -2886,6 +2968,7 @@ class App {
 			`/${this.restEndpoint}/user-survey`,
 			async (req: express.Request, res: express.Response) => {
 				if (!this.frontendSettings.personalizationSurvey.shouldShow) {
+					// TODO UM: check if this needs permission check for UM
 					ResponseHelper.sendErrorResponse(
 						res,
 						new ResponseHelper.ResponseError('User survey already submitted', undefined, 400),
@@ -3191,14 +3274,30 @@ export async function start(): Promise<void> {
 
 async function getExecutionsCount(
 	countFilter: IDataObject,
+	user: User,
 ): Promise<{ count: number; estimate: boolean }> {
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 	const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
 
 	// Do regular count for other databases than pgsql and
 	// if we are filtering based on workflowId or finished fields.
-	if (dbType !== 'postgresdb' || filteredFields.length > 0) {
-		const count = await Db.collections.Execution!.count(countFilter);
+	if (
+		dbType !== 'postgresdb' ||
+		filteredFields.length > 0 ||
+		config.get('userManagement.hasOwner') === true
+	) {
+		const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
+		queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
+		queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
+		queryBuilder.andWhere('sw.userId = :userId', { userId: user.id });
+		const fields = Object.keys(countFilter);
+		fields.forEach((field) => {
+			queryBuilder.andWhere(`e.${field} = :${field}_value`, {
+				[`${field}_value`]: countFilter[field] as string,
+			});
+		});
+
+		const count = await queryBuilder.getCount();
 		return { count, estimate: false };
 	}
 
@@ -3221,6 +3320,11 @@ async function getExecutionsCount(
 		LoggerProxy.warn(`Unable to get executions count from postgres: ${err}`);
 	}
 
-	const count = await Db.collections.Execution!.count(countFilter);
+	const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
+	queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
+	queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
+	queryBuilder.andWhere('sw.userId = :userId', { userId: user.id });
+
+	const count = await queryBuilder.getCount();
 	return { count, estimate: false };
 }
