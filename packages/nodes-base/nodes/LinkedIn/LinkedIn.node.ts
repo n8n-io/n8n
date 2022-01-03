@@ -149,7 +149,7 @@ export class LinkedIn implements INodeType {
 							}
 
 							// Buffer binary data
-							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
+							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
 							// Upload image
 							await linkedInApiRequest.call(this, 'POST', uploadUrl, buffer, true);
 
