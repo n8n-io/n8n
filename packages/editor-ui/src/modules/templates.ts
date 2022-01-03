@@ -5,6 +5,7 @@ import {
 	IN8nTemplate,
 	ITemplateState,
 	ISearchResults,
+	ITemplateCategory,
 } from '../Interface';
 import Vue from 'vue';
 
@@ -12,11 +13,15 @@ const module: Module<ITemplateState, IRootState> = {
 	namespaced: true,
 	state: {
 		template: {},
+		categories: [],
 		searchResults: {},
 	},
 	getters: {
 		getTemplate(state: ITemplateState) {
 			return state.template;
+		},
+		getCategories(state: ITemplateState) {
+			return state.categories;
 		},
 	},
 	mutations: {
@@ -26,13 +31,20 @@ const module: Module<ITemplateState, IRootState> = {
 		setResults(state: ITemplateState, results: ISearchResults) {
 			Vue.set(state, 'results', results);
 		},
+		setCategories(state: ITemplateState, categories: ITemplateCategory[]) {
+			Vue.set(state, 'categories', categories);
+		},
 	},
 	actions: {
 		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
 			try {
 				const results: ISearchResults = await getSearchResults();
-				console.log(results);
 				context.commit('setResults', results);
+				const categories = results.categories.map((category: ITemplateCategory) => {
+					category.selected = false;
+					return category;
+				});
+				context.commit('setCategories', categories);
 				return results;
 			} catch(e) {
 				return;

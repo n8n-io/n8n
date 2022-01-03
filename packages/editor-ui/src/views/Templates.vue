@@ -2,7 +2,7 @@
 	<div class="view-root">
 		<div class="view-wrapper">
 			<div class="filters">
-				<TemplateFilters />
+				<TemplateFilters/>
 			</div>
 			<div class="search">
 				<!-- TODO maxlength -->
@@ -25,8 +25,13 @@
 
 <script lang="ts">
 import TemplateFilters from '@/components/TemplateFilters.vue';
+import { genericHelpers } from '@/components/mixins/genericHelpers';
 
-export default {
+import mixins from 'vue-typed-mixins';
+
+export default mixins(
+	genericHelpers,
+).extend({
 	name: 'Templates',
 	components: {
 		TemplateFilters,
@@ -34,18 +39,20 @@ export default {
 	data () {
 		return {
 			search: '',
+			categories: [],
  		};
 	},
-	async mounted() {
-		const response = await this.$store.dispatch('templates/getSearchResults');
-		// console.log(response);
+	async created() {
+		const { categories, collections, totalWorkflows, workflows } = await this.$store.dispatch('templates/getSearchResults');
+		// this.categories = categories;
+		// console.log(categories);
 	},
 	methods: {
 		onSearchInput(value: string) {
 			// console.log(value);
 		},
 	},
-};
+});
 
 </script>
 

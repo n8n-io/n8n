@@ -762,6 +762,7 @@ export interface ISearchResults {
 export interface ITemplateCategory {
 	id: string;
 	name: string;
+	selected?: boolean;
 }
 
 export interface ITemplateCollection {
@@ -799,5 +800,6 @@ export interface IN8nTemplate {
 
 export interface ITemplateState {
 	template: {};
+	categories: ITemplateCategory[];
 	searchResults: {};
 }

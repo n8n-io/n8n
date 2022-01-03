@@ -14,8 +14,12 @@
 <script lang="ts">
 
 import { mapGetters } from 'vuex';
+import mixins from 'vue-typed-mixins';
+import { genericHelpers } from '@/components/mixins/genericHelpers';
 
-export default {
+export default mixins(
+	genericHelpers,
+).extend({
 	name: 'TemplatesHeader',
 	computed: {
 		...mapGetters('ui', [
@@ -27,7 +31,7 @@ export default {
 			this.$router.push({ name: 'NodeViewNew' });
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
