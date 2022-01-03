@@ -1436,7 +1436,7 @@ class App {
 									const testFunctionSearch =
 										credential.name === credentialType && !!credential.testedBy;
 									if (testFunctionSearch) {
-										foundTestFunction = (node as unknown as INodeType).methods!.credentialTest![
+										foundTestFunction = (nodeType as unknown as INodeType).methods!.credentialTest![
 											credential.testedBy!
 										];
 									}
