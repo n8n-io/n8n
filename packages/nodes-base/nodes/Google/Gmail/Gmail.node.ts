@@ -216,7 +216,11 @@ export class Gmail implements INodeType {
 						});
 					}
 				}
-				return returnData;
+				return returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 			},
 		},
 	};
@@ -408,6 +412,7 @@ export class Gmail implements INodeType {
 					if (operation === 'reply') {
 
 						const id = this.getNodeParameter('messageId', i) as string;
+						let subject = this.getNodeParameter('subject', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -468,18 +473,22 @@ export class Gmail implements INodeType {
 							}
 						}
 						// if no recipient is defined then grab the one who sent the email
-						if (toStr === '') {
+						if (toStr === '' || subject === '') {
 							endpoint = `/gmail/v1/users/me/messages/${id}`;
 
 							qs.format = 'metadata';
 
 							const { payload } = await googleApiRequest.call(this, method, endpoint, body, qs);
 
-							for (const header of payload.headers as IDataObject[]) {
-								if (header.name === 'From') {
-									toStr = `<${extractEmail(header.value as string)}>,`;
-									break;
+							if (toStr === '') {
+								for (const header of payload.headers as IDataObject[]) {
+									if (header.name === 'From') {
+										toStr = `<${extractEmail(header.value as string)}>,`;
+										break;
+									}
 								}
+							} else {
+								subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0].value;
 							}
 						}
 
@@ -488,7 +497,7 @@ export class Gmail implements INodeType {
 							to: toStr,
 							cc: ccStr,
 							bcc: bccStr,
-							subject: this.getNodeParameter('subject', i) as string,
+							subject,
 							body: this.getNodeParameter('message', i) as string,
 							attachments: attachmentsList,
 						};

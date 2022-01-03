@@ -117,8 +117,26 @@ export const messageFields: INodeProperties[] = [
 					'message',
 				],
 				operation: [
-					'reply',
 					'send',
+				],
+			},
+		},
+		placeholder: 'Hello World!',
+		description: 'The message subject.',
+	},
+	{
+		displayName: 'Subject',
+		name: 'subject',
+		type: 'string',
+		default: '',
+		required: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'reply',
 				],
 			},
 		},
