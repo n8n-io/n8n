@@ -610,7 +610,7 @@ class App {
 			next();
 		});
 
-		// Does very basic health check
+		// Install new credentials/nodes from npm
 		this.app.post(
 			`/${this.restEndpoint}/node`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response) => {
