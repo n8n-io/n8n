@@ -59,6 +59,8 @@ import { stringify } from 'qs';
 import * as clientOAuth1 from 'oauth-1.0a';
 import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
+import * as crypto from 'crypto';
+import * as url from 'url';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -71,7 +73,13 @@ import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
-import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
+import axios, {
+	AxiosPromise,
+	AxiosProxyConfig,
+	AxiosRequestConfig,
+	AxiosResponse,
+	Method,
+} from 'axios';
 import { URL, URLSearchParams } from 'url';
 import { BinaryDataManager } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
@@ -470,6 +478,49 @@ async function parseRequestObject(requestObject: IDataObject) {
 	return axiosConfig;
 }
 
+function digestAuthAxiosConfig(
+	axiosConfig: AxiosRequestConfig,
+	response: AxiosResponse,
+	auth: AxiosRequestConfig['auth'],
+): AxiosRequestConfig {
+	const authDetails = response.headers['www-authenticate']
+		.split(',')
+		.map((v: string) => v.split('='));
+	if (authDetails) {
+		const nonceCount = `000000001`;
+		const cnonce = crypto.randomBytes(24).toString('hex');
+		const realm: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
+			.replace(/"/g, '');
+		const nonce: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
+			.replace(/"/g, '');
+		const ha1 = crypto
+			.createHash('md5')
+			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
+			.digest('hex');
+		const path = new url.URL(axiosConfig.url!).pathname;
+		const ha2 = crypto
+			.createHash('md5')
+			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
+			.digest('hex');
+		const response = crypto
+			.createHash('md5')
+			.update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
+			.digest('hex');
+		const authorization =
+			`Digest username="${auth?.username as string}",realm="${realm}",` +
+			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
+			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
+		if (axiosConfig.headers) {
+			axiosConfig.headers.authorization = authorization;
+		} else {
+			axiosConfig.headers = { authorization };
+		}
+	}
+	return axiosConfig;
+}
+
 async function proxyRequestToAxios(
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
@@ -483,8 +534,13 @@ async function proxyRequestToAxios(
 	}
 
 	let axiosConfig: AxiosRequestConfig = {};
-
-	let configObject: IDataObject;
+	let axiosPromise: AxiosPromise;
+	type ConfigObject = {
+		auth?: { sendImmediately: boolean };
+		resolveWithFullResponse?: boolean;
+		simple?: boolean;
+	};
+	let configObject: ConfigObject;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
 		axiosConfig.url = uriOrObject;
 	}
@@ -501,8 +557,33 @@ async function proxyRequestToAxios(
 		parsedConfig: axiosConfig,
 	});
 
+	if (configObject.auth?.sendImmediately === false) {
+		// for digest-auth
+		const { auth } = axiosConfig;
+		delete axiosConfig.auth;
+		// eslint-disable-next-line no-async-promise-executor
+		axiosPromise = new Promise(async (resolve, reject) => {
+			try {
+				const result = await axios(axiosConfig);
+				resolve(result);
+			} catch (resp: any) {
+				if (
+					resp.response === undefined ||
+					resp.response.status !== 401 ||
+					!resp.response.headers['www-authenticate']?.includes('nonce')
+				) {
+					reject(resp);
+				}
+				axiosConfig = digestAuthAxiosConfig(axiosConfig, resp.response, auth);
+				resolve(axios(axiosConfig));
+			}
+		});
+	} else {
+		axiosPromise = axios(axiosConfig);
+	}
+
 	return new Promise((resolve, reject) => {
-		axios(axiosConfig)
+		axiosPromise
 			.then((response) => {
 				if (configObject.resolveWithFullResponse === true) {
 					let body = response.data;
