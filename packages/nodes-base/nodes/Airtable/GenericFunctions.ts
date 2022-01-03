@@ -122,7 +122,6 @@ export async function downloadRecordAttachments(this: IExecuteFunctions | IPollF
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
 		element.json = record as unknown as IDataObject;
-		console.log(record.fields);
 		for (const fieldName of fieldNames) {
 			if (record.fields[fieldName] !== undefined) {
 				for (const [index, attachment] of (record.fields[fieldName] as IAttachment[]).entries()) {

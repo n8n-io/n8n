@@ -1351,14 +1351,14 @@ export class EditImage implements INodeType {
 
 				returnData.push(await (new Promise<INodeExecutionData>((resolve, reject) => {
 					gmInstance
-						.toBuffer((error: Error | null, buffer: Buffer) => {
+						.toBuffer(async (error: Error | null, buffer: Buffer) => {
 							cleanupFunctions.forEach(async cleanup => await cleanup());
 
 							if (error) {
 								return reject(error);
 							}
 
-							newItem.binary![dataPropertyName as string].data = buffer.toString(BINARY_ENCODING);
+							newItem.binary![dataPropertyName as string].data = (await this.helpers.prepareBinaryData(Buffer.from(buffer))).data;
 
 							return resolve(newItem);
 						});
