@@ -36,16 +36,8 @@ export function addAuthenticationMethods(this: N8nApp): void {
 			} catch (error) {
 				throw new Error('Unable to access database.');
 			}
-			if (!user || !user.password) {
+			if (!user || !user.password || !(await compare(req.body.password, user.password))) {
 				// password is empty until user signs up
-				const error = new Error('Username or password invalid');
-				// @ts-ignore
-				error.httpStatusCode = 401;
-				throw error;
-			}
-
-			const passwordValidation = await compare(req.body.password, user.password);
-			if (!passwordValidation) {
 				const error = new Error('Username or password invalid');
 				// @ts-ignore
 				error.httpStatusCode = 401;
