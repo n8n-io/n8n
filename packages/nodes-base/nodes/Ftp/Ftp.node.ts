@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -503,7 +500,7 @@ export class Ftp implements INodeType {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 							}
 
-							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
+							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
 							await sftp!.put(buffer, remotePath);
 						} else {
 							// Is text file
@@ -597,7 +594,7 @@ export class Ftp implements INodeType {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 							}
 
-							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
+							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
 
 							try {
 								await ftp!.put(buffer, remotePath);
