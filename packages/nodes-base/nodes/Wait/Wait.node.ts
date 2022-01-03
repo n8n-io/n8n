@@ -1,4 +1,5 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	WAIT_TIME_UNLIMITED,
 } from 'n8n-core';
