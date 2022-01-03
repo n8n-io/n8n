@@ -127,7 +127,7 @@ export async function downloadRecordAttachments(this: IExecuteFunctions | IPollF
 				for (const [index, attachment] of (record.fields[fieldName] as IAttachment[]).entries()) {
 					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, { json: false, encoding: null });
 					element.binary![`${fieldName}_${index}`] = {
-						data: Buffer.from(file).toString('base64'),
+						data: await this.helpers.prepareBinaryData(Buffer.from(file), attachment.filename),
 						fileName: attachment.filename,
 						mimeType: attachment.type,
 					};
