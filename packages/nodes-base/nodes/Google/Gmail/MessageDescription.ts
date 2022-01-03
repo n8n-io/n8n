@@ -125,25 +125,6 @@ export const messageFields: INodeProperties[] = [
 		description: 'The message subject.',
 	},
 	{
-		displayName: 'Subject',
-		name: 'subject',
-		type: 'string',
-		default: '',
-		required: false,
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
-			},
-		},
-		placeholder: 'Hello World!',
-		description: 'The message subject.',
-	},
-	{
 		displayName: 'HTML',
 		name: 'includeHtml',
 		type: 'boolean',

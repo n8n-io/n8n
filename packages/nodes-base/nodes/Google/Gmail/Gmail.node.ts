@@ -412,8 +412,6 @@ export class Gmail implements INodeType {
 					if (operation === 'reply') {
 
 						const id = this.getNodeParameter('messageId', i) as string;
-						let subject = this.getNodeParameter('subject', i) as string;
-
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						let toStr = '';
@@ -473,24 +471,26 @@ export class Gmail implements INodeType {
 							}
 						}
 						// if no recipient is defined then grab the one who sent the email
-						if (toStr === '' || subject === '') {
-							endpoint = `/gmail/v1/users/me/messages/${id}`;
 
-							qs.format = 'metadata';
+						endpoint = `/gmail/v1/users/me/messages/${id}`;
 
-							const { payload } = await googleApiRequest.call(this, method, endpoint, body, qs);
+						qs.format = 'metadata';
 
-							if (toStr === '') {
-								for (const header of payload.headers as IDataObject[]) {
-									if (header.name === 'From') {
-										toStr = `<${extractEmail(header.value as string)}>,`;
-										break;
-									}
+						const { payload } = await googleApiRequest.call(this, method, endpoint, body, qs);
+
+						if (toStr === '') {
+							for (const header of payload.headers as IDataObject[]) {
+								if (header.name === 'From') {
+									console.log(header.value);
+									toStr = `<${extractEmail(header.value as string)}>,`;
+									break;
 								}
-							} else {
-								subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0].value;
 							}
 						}
+
+						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0].value;
+
+						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0].value;
 
 						const email: IEmail = {
 							from: additionalFields.senderName as string || '',
@@ -510,7 +510,7 @@ export class Gmail implements INodeType {
 						method = 'POST';
 
 						email.inReplyTo = id;
-						email.reference = id;
+						email.reference = references;
 
 						body = {
 							raw: await encodeEmail(email),

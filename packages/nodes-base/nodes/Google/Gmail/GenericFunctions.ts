@@ -172,7 +172,6 @@ export async function encodeEmail(email: IEmail) {
 		mailOptions.attachments = attachments;
 	}
 
-
 	const mail = new mailComposer(mailOptions);
 
 	mailBody = await new Promise((resolve) => {
@@ -204,8 +203,11 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 }
 
 export function extractEmail(s: string) {
-	const data = s.split('<')[1];
-	return data.substring(0, data.length - 1);
+	if (s.includes('<')) {
+		const data = s.split('<')[1];
+		return data.substring(0, data.length - 1);
+	}
+	return s;
 }
 
 function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
