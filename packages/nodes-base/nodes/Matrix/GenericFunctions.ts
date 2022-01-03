@@ -5,7 +5,6 @@ import {
 import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
