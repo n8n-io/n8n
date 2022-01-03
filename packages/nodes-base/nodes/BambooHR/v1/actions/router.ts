@@ -6,10 +6,10 @@ import {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
-import * as employees from './employees';
+import * as employee from './employee';
 import * as employeeFile from './employeeFile';
 import * as companyFile from './companyFile';
-import * as reports from './reports';
+import * as report from './report';
 import * as tabularData from './tabularData';
 import * as timeOff from './timeOff';
 
@@ -29,17 +29,17 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		} as BambooHR;
 
 		try {
-			if (bamboohr.resource === 'employees') {
-				operationResult.push(...await employees[bamboohr.operation].execute.call(this, i));
+			if (bamboohr.resource === 'employee') {
+				operationResult.push(...await employee[bamboohr.operation].execute.call(this, i));
 			} else if (bamboohr.resource === 'employeeFile') {
 				//@ts-ignore
 				operationResult.push(...await employeeFile[bamboohr.operation].execute.call(this, i));
 			} else if (bamboohr.resource === 'companyFile') {
 				//@ts-ignore
 				operationResult.push(...await companyFile[bamboohr.operation].execute.call(this, i));
-			} else if (bamboohr.resource === 'reports') {
+			} else if (bamboohr.resource === 'report') {
 				//@ts-ignore
-				operationResult.push(...await reports[bamboohr.operation].execute.call(this, i));
+				operationResult.push(...await report[bamboohr.operation].execute.call(this, i));
 			} else if (bamboohr.resource === 'tabularData') {
 				operationResult.push(...await tabularData[bamboohr.operation].execute.call(this, i));
 			} else if (bamboohr.resource === 'timeOff') {

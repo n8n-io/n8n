@@ -1,8 +1,8 @@
 import {
-	EmployeesProperties,
+	EmployeeProperties,
 } from '../../Interfaces';
 
-export const employeesUpdateDescription: EmployeesProperties = [
+export const employeeUpdateDescription: EmployeeProperties = [
 	{
 		displayName: 'Employee ID',
 		name: 'id',
@@ -14,48 +14,12 @@ export const employeesUpdateDescription: EmployeesProperties = [
 					'update',
 				],
 				resource: [
-					'employees',
+					'employee',
 				],
 			},
 		},
 		default: '',
-		description: 'Id of the employee',
-	},
-	{
-		displayName: 'First Name',
-		name: 'firstName',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'employees',
-				],
-			},
-		},
-		default: '',
-		description: 'First name of the employee',
-	},
-	{
-		displayName: 'Last Name',
-		name: 'lastName',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'employees',
-				],
-			},
-		},
-		default: '',
-		description: 'Last name of the employee',
+		description: 'ID of the employee',
 	},
 	{
 		displayName: 'Update Fields',
@@ -69,7 +33,7 @@ export const employeesUpdateDescription: EmployeesProperties = [
 					'update',
 				],
 				resource: [
-					'employees',
+					'employee',
 				],
 			},
 		},
@@ -80,6 +44,20 @@ export const employeesUpdateDescription: EmployeesProperties = [
 				type: 'string',
 				default: '',
 				description: 'Display Name',
+			},
+			{
+				displayName: 'First Name',
+				name: 'firstName',
+				type: 'string',
+				default: '',
+				description: 'First name of the employee',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
+				description: 'Last name of the employee',
 			},
 			{
 				displayName: 'Preferred Name',

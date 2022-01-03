@@ -17,11 +17,10 @@ import {
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-	endPoint: string,
+	endpoint: string,
 	body: string[] | IDataObject = {},
 	query: IDataObject = {},
-	encoding: 'json' | 'arraybuffer' = 'json',
-	contentType = 'application/json',
+	option: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials('bambooHRApi');
 
@@ -31,27 +30,37 @@ export async function apiRequest(
 
 	//set-up credentials
 	const apiKey = credentials.apiKey;
-	const companyName = credentials.companyName;
+	const subdomain = credentials.subdomain;
 
 	//set-up uri
-	const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}`;
+	const uri = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/${endpoint}`;
 
 	const options: IHttpRequestOptions = {
 		method,
-		body: body ? JSON.stringify(body) : null,
+		body,
+		headers: {
+			'content-type': 'application/json',
+		},
 		qs: query,
 		url: uri,
 		auth: {
 			username: apiKey as string,
 			password: 'x',
 		},
-		headers: {
-			'Content-Type': contentType,
-		},
 		returnFullResponse: true,
 		json: true,
-		encoding,
 	};
+
+	if (Object.keys(option).length) {
+		Object.assign(options, option);
+	}
+
+	if (!Object.keys(body).length) {
+		delete options.body;
+	}
+
+	//console.log(options);
+
 
 	try {
 		return await this.helpers.httpRequest(options);

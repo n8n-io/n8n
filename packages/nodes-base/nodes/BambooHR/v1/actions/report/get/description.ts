@@ -1,8 +1,8 @@
 import {
-	ReportsProperties,
+	ReportProperties,
 } from '../../Interfaces';
 
-export const reportsGetDescription: ReportsProperties = [
+export const reportGetDescription: ReportProperties = [
 	{
 		displayName: 'Format',
 		name: 'format',
@@ -36,7 +36,7 @@ export const reportsGetDescription: ReportsProperties = [
 					'get',
 				],
 				resource: [
-					'reports',
+					'report',
 				],
 			},
 		},
@@ -54,7 +54,7 @@ export const reportsGetDescription: ReportsProperties = [
 					'get',
 				],
 				resource: [
-					'reports',
+					'report',
 				],
 			},
 		},

@@ -9,14 +9,14 @@ export class BambooHRApi implements ICredentialType {
 	documentationUrl = 'bambooHR';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Key',
-			name: 'apiKey',
+			displayName: 'Subdomain',
+			name: 'subdomain',
 			type: 'string',
 			default: '',
 		},
 		{
-			displayName: 'Company name',
-			name: 'companyName',
+			displayName: 'API Key',
+			name: 'apiKey',
 			type: 'string',
 			default: '',
 		},

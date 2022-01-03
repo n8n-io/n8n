@@ -2,9 +2,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import * as companyFile from './companyFile';
-import * as employees from './employees';
+import * as employee from './employee';
 import * as employeeFile from './employeeFile';
-import * as reports from './reports';
+import * as report from './report';
 import * as tabularData from './tabularData';
 import * as timeOff from './timeOff';
 
@@ -13,6 +13,7 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'bambooHRApi',
 			required: true,
+			testedBy: 'bambooHrApiCredentialTest',
 		},
 	],
 	defaults: {
@@ -33,7 +34,7 @@ export const versionDescription: INodeTypeDescription = {
 			options: [
 				{
 					name: 'Employee',
-					value: 'employees',
+					value: 'employee',
 				},
 				{
 					name: 'Employee File',
@@ -45,7 +46,7 @@ export const versionDescription: INodeTypeDescription = {
 				},
 				{
 					name: 'Company Report',
-					value: 'reports',
+					value: 'report',
 				},
 				{
 					name: 'Tabular Data',
@@ -56,12 +57,12 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'timeOff',
 				},
 			],
-			default: 'employees',
+			default: 'employee',
 		},
-		...employees.descriptions,
+		...employee.descriptions,
 		...employeeFile.descriptions,
 		...companyFile.descriptions,
-		...reports.descriptions,
+		...report.descriptions,
 		...tabularData.descriptions,
 		...timeOff.descriptions,
 	],

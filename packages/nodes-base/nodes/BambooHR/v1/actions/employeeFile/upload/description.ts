@@ -22,10 +22,10 @@ export const employeeFileUploadDescription: EmployeeFileProperties = [
 		description: 'ID of the employee',
 	},
 	{
-		displayName: 'File Content',
-		name: 'file',
+		displayName: 'Input Data Field Name',
+		name: 'binaryPropertyName',
 		type: 'string',
-		default: '',
+		default: 'data',
 		displayOptions: {
 			show: {
 				operation: [
@@ -36,29 +36,29 @@ export const employeeFileUploadDescription: EmployeeFileProperties = [
 				],
 			},
 		},
-		placeholder: '',
-		description: 'The text content of the file to upload.',
-	},
-	{
-		displayName: 'File name',
-		name: 'fileName',
-		type: 'string',
 		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'employeeFile',
-				],
-			},
-		},
-		default: '',
+		description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG',
 	},
+	// {
+	// 	displayName: 'File Name',
+	// 	name: 'fileName',
+	// 	type: 'string',
+	// 	required: true,
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: [
+	// 				'upload',
+	// 			],
+	// 			resource: [
+	// 				'employeeFile',
+	// 			],
+	// 		},
+	// 	},
+	// 	default: '',
+	// },
 	{
 		displayName: 'Category ID',
-		name: 'category',
+		name: 'categoryId',
 		type: 'string',
 		required: true,
 		displayOptions: {

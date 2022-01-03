@@ -29,6 +29,8 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	//response
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
+	console.log(responseData);
+
 	const onlyFilesArray = [];
 
 	//return only files without categories

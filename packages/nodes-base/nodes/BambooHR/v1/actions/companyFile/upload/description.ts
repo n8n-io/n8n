@@ -1,7 +1,7 @@
 import {
-	EmployeesProperties,
+	EmployeeProperties,
 } from '../../Interfaces';
 
-export const employeesCreateDescription: EmployeesProperties = [
+export const employeesCreateDescription: EmployeeProperties = [
 
 ];

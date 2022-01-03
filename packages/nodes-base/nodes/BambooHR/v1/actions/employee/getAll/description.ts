@@ -1,31 +1,28 @@
-import {
-	EmployeesProperties,
-} from '../../Interfaces';
+import { INodeProperties } from 'n8n-workflow';
 
-export const employeesGetAllDescription: EmployeesProperties = [
+export const employeeGetAllDescription: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to return all results.',
 		displayOptions: {
 			show: {
 				resource: [
-					'employees',
+					'employee',
 				],
 				operation: [
 					'getAll',
 				],
 			},
 		},
+		description: 'Whether to return all results',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -33,7 +30,7 @@ export const employeesGetAllDescription: EmployeesProperties = [
 		displayOptions: {
 			show: {
 				resource: [
-					'employees',
+					'employee',
 				],
 				operation: [
 					'getAll',
@@ -43,5 +40,6 @@ export const employeesGetAllDescription: EmployeesProperties = [
 				],
 			},
 		},
+		description: 'The number of results to return',
 	},
 ];

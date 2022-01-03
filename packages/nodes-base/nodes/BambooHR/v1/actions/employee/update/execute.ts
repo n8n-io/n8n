@@ -3,6 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	INodeExecutionData,
 } from 'n8n-workflow';
 
@@ -10,14 +11,18 @@ import {
 	apiRequest,
 } from '../../../transport';
 
-export async function addCategory(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const body: string[] = [];
+export async function update(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+	let body: IDataObject = {};
 	const requestMethod = 'POST';
-	const endpoint = 'employees/files/categories';
+
+	//meta data
+	const id = this.getNodeParameter('id', index) as string;
+
+	//endpoint
+	const endpoint = `employees/${id}`;
 
 	//body parameters
-	const categoryName: string = this.getNodeParameter('categoryName', index) as string;
-	body.push(categoryName);
+	body = this.getNodeParameter('updateFields', index) as IDataObject;
 
 	//response
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);

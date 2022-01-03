@@ -11,6 +11,8 @@ import {
 import { router } from './v1/actions/router';
 import { versionDescription } from './v1/actions/versionDescription';
 import { loadOptions } from './v1/methods';
+import { credentialTest } from './v1/methods';
+
 export class BambooHR implements INodeType {
 	description: INodeTypeDescription;
 
@@ -21,7 +23,10 @@ export class BambooHR implements INodeType {
 		};
 	}
 
-	methods = { loadOptions };
+	methods = { 
+		loadOptions,
+		credentialTest,
+	};
 
 	async execute(this: IExecuteFunctions) {
 		return [await router.call(this)];

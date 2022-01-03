@@ -1,5 +1,5 @@
 import { update as execute } from './execute';
-import { employeesUpdateDescription as description } from './description';
+import { employeeUpdateDescription as description } from './description';
 
 export {
 	description,
