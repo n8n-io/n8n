@@ -426,7 +426,7 @@ export class YouTube implements INodeType {
 							mimeType = item.binary[binaryProperty].mimeType;
 						}
 
-						const body = Buffer.from(item.binary[binaryProperty].data, BINARY_ENCODING);
+						const body = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 						const requestOptions = {
 							headers: {
@@ -913,7 +913,7 @@ export class YouTube implements INodeType {
 							mimeType = item.binary[binaryProperty].mimeType;
 						}
 
-						const body = Buffer.from(item.binary[binaryProperty].data, BINARY_ENCODING);
+						const body = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 						const requestOptions = {
 							headers: {
