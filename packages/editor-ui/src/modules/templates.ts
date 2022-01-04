@@ -1,9 +1,10 @@
-import { getSearchResults } from '@/api/search-results-mock';
+import { getTemplates } from '@/api/templates';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
 	IN8nTemplate,
 	ITemplateState,
+	ISearchPayload,
 	ISearchResults,
 	ITemplateCategory,
 } from '../Interface';
@@ -38,7 +39,8 @@ const module: Module<ITemplateState, IRootState> = {
 	actions: {
 		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
 			try {
-				const results: ISearchResults = await getSearchResults();
+				const payload: ISearchPayload = await getTemplates(10, 0, null, null);
+				const results : ISearchResults = payload.data
 				context.commit('setResults', results);
 				const categories = results.categories.map((category: ITemplateCategory) => {
 					category.selected = false;

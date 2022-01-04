@@ -1,4 +1,4 @@
-import { IN8nTemplate, ISearchResults } from '@/Interface';
+import { IN8nTemplate, ISearchPayload } from '@/Interface';
 import { post } from './helpers';
 import { TEMPLATES_BASE_URL } from '@/constants';
 
@@ -9,7 +9,7 @@ export async function getTemplates(
 	search: string | null,
 	allData = true,
 	searchQuery = false,
-): Promise<ISearchResults> {
+): Promise<ISearchPayload> {
 	const query = `query {
 		categories(sort:"name") @include(if: ${allData}) @skip(if: ${searchQuery}){
 			id
