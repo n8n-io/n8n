@@ -6,7 +6,7 @@ import {
  * Options to be displayed
  */
 export const nodeDescription: INodeTypeDescription = {
-	displayName: 'MongoDbTrigger',
+	displayName: 'MongoDb Change Stream Trigger',
 	name: 'mongoDbTrigger',
 	icon: 'file:mongodb.svg',
 	group: ['transform'],
@@ -26,21 +26,6 @@ export const nodeDescription: INodeTypeDescription = {
 	],
 	properties: [
 		{
-			displayName: 'Connection String',
-			name: 'connectionString',
-			type: 'string',
-			required: true,
-			default: '',
-		},
-		{
-			displayName: 'Database',
-			name: 'database',
-			type: 'string',
-			required: true,
-			default: '',
-			description: 'MongoDb Database',
-		},
-		{
 			displayName: 'Collection',
 			name: 'collection',
 			type: 'string',
@@ -49,49 +34,11 @@ export const nodeDescription: INodeTypeDescription = {
 			description: 'MongoDb Collection',
 		},
 		{
-			displayName: 'Pipeline',
-			name: 'pipeline',
-			type: 'fixedCollection',
-			placeholder: 'Pipeline Options',
-			default: {},
-			options: [
-				{
-					displayName: 'Match',
-					name: 'match',
-					values: [
-						{
-							displayName: 'Item',
-							name: 'matchItem',
-							type: 'json',
-							default: '',
-						},
-						{
-							displayName: 'Value',
-							name: 'matchValue',
-							type: 'string',
-							default: '',
-						},
-					],
-				},
-				{
-					displayName: 'Project',
-					name: 'project',
-					values: [
-						{
-							displayName: 'Item',
-							name: 'projectItem',
-							type: 'json',
-							default: '',
-						},
-						{
-							displayName: 'Value',
-							name: 'projectValue',
-							type: 'string',
-							default: '',
-						},
-					],
-				},
-			],
+			displayName: 'Get Full Document',
+			name: 'getFullDocument',
+			type: 'boolean',
+			default: false,
+			description: 'Get JSON of full document or only changed fields',
 		},
 	],
 };
