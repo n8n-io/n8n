@@ -5,7 +5,9 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
@@ -13,6 +15,7 @@ import {
 } from 'n8n-workflow';
 import { clientDescription } from './descriptions/ClientDescription';
 import { invoiceDescription } from './descriptions/InvoiceDescription';
+import { siteDescription } from './descriptions/SiteDescription';
 import { ticketDescription } from './descriptions/TicketDescription';
 import { userDescription } from './descriptions/UserDescription';
 
@@ -154,8 +157,43 @@ export class HaloPSA implements INodeType {
 			...invoiceDescription,
 			...userDescription,
 			...clientDescription,
+			...siteDescription,
 
 			// Create, Update --------------------------------------------------------
+			{
+				displayName: 'Website',
+				name: 'sitesList',
+				type: 'options',
+				default: '',
+				noDataExpression: true,
+				typeOptions: {
+					loadOptionsMethod: 'getHaloPSASites',
+				},
+				displayOptions: {
+					show: {
+						operation: ['create'],
+						resource: ['client'],
+					},
+				},
+			},
+
+			{
+				displayName: 'Client',
+				name: 'clientsList',
+				type: 'options',
+				default: '',
+				noDataExpression: true,
+				typeOptions: {
+					loadOptionsMethod: 'getHaloPSAClients',
+				},
+				displayOptions: {
+					show: {
+						operation: ['create'],
+						resource: ['site'],
+					},
+				},
+			},
+
 			{
 				displayName: 'Add Field',
 				name: 'fieldsToCreateOrUpdate',
@@ -243,6 +281,52 @@ export class HaloPSA implements INodeType {
 	};
 
 	methods = {
+		loadOptions: {
+			async getHaloPSASites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const credentials = await this.getCredentials('haloPSAApi');
+				const tokens = await getAccessTokens.call(this);
+
+				const responce = (await haloPSAApiRequest.call(
+					this,
+					credentials?.resourceApiUrl as string,
+					'site',
+					'GET',
+					tokens.access_token,
+				)) as IDataObject[];
+
+				const options = responce.map((site) => {
+					return {
+						name: site.clientsite_name as string,
+						value: site.id as number,
+					};
+				});
+
+				return options.sort((a, b) => a.name.localeCompare(b.name));
+			},
+
+			async getHaloPSAClients(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const credentials = await this.getCredentials('haloPSAApi');
+				const tokens = await getAccessTokens.call(this);
+
+				const responce = (await haloPSAApiRequest.call(
+					this,
+					credentials?.resourceApiUrl as string,
+					'client',
+					'GET',
+					tokens.access_token,
+				)) as IDataObject[];
+
+				const options = responce.map((client) => {
+					return {
+						name: client.name as string,
+						value: client.id as number,
+					};
+				});
+
+				return options.sort((a, b) => a.name.localeCompare(b.name));
+			},
+		},
+
 		credentialTest: {
 			async haloPSAApiCredentialTest(
 				this: ICredentialTestFunctions,
@@ -289,20 +373,27 @@ export class HaloPSA implements INodeType {
 
 					if (resource === 'tickets') {
 						const summary = this.getNodeParameter('summary', 0) as string;
-						const details = this.getNodeParameter('details', 0) as string;
 						item[summary] = summary;
+						const details = this.getNodeParameter('details', 0) as string;
 						item[details] = details;
 					}
 
 					if (resource === 'client') {
 						const name = this.getNodeParameter('clientName', 0) as string;
 						item['name'] = name;
-						const clientIsVip = this.getNodeParameter('clientIsVip', 0) as string;
+						const clientIsVip = this.getNodeParameter('clientIsVip', 0) as boolean;
 						item['is_vip'] = clientIsVip;
 						const clientRef = this.getNodeParameter('clientRef', 0) as string;
 						item['ref'] = clientRef;
-						const clientWebsite = this.getNodeParameter('clientWebsite', 0) as string;
-						item['website'] = clientWebsite;
+						const site = this.getNodeParameter('sitesList', 0) as string;
+						item['website'] = site;
+					}
+
+					if (resource === 'site') {
+						const siteName = this.getNodeParameter('siteName', 0) as string;
+						item['name'] = siteName;
+						const client = this.getNodeParameter('clientsList', 0) as number;
+						item['client_id'] = client;
 					}
 
 					const body = [item];
