@@ -470,7 +470,6 @@ export class Gmail implements INodeType {
 								attachmentsList = attachmentsBinary;
 							}
 						}
-						// if no recipient is defined then grab the one who sent the email
 
 						endpoint = `/gmail/v1/users/me/messages/${id}`;
 
@@ -488,9 +487,9 @@ export class Gmail implements INodeType {
 							}
 						}
 
-						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0].value;
+						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0].value  || '';
 
-						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0].value;
+						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0].value || '';
 
 						const email: IEmail = {
 							from: additionalFields.senderName as string || '',
