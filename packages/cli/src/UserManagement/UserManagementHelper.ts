@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import { IsNull, Not } from 'typeorm';
@@ -84,4 +87,14 @@ export function generatePublicUserData(user: User): PublicUserData {
 	}
 
 	return returnedUser;
+}
+
+/**
+ * Remove sensitive properties from user to be returned to client.
+ */
+export function sanitizeUser(user: User) {
+	delete user.password;
+	delete user.resetPasswordToken;
+
+	return user;
 }
