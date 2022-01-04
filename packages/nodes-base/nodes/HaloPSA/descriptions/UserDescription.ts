@@ -1,18 +1,18 @@
 import { INodeProperties } from 'n8n-workflow';
 
 export const userDescription: INodeProperties[] = [
-	// {
-	// 	displayName: 'Field:',
-	// 	name: 'field',
-	// 	type: 'string',
-	// 	default: '',
-	// 	description: 'Enter field name',
-	// 	placeholder: '',
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: ['create'],
-	// 			resource: ['users'],
-	// 		},
-	// 	},
-	// },
+	{
+		displayName: 'Name:',
+		name: 'userName',
+		type: 'string',
+		default: '',
+		description: 'Enter user name',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['users'],
+			},
+		},
+	},
 ];

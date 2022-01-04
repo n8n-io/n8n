@@ -172,7 +172,7 @@ export class HaloPSA implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create'],
-						resource: ['client'],
+						resource: ['client', 'users'],
 					},
 				},
 			},
@@ -189,7 +189,7 @@ export class HaloPSA implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create'],
-						resource: ['site'],
+						resource: ['site', 'invoice'],
 					},
 				},
 			},
@@ -389,11 +389,25 @@ export class HaloPSA implements INodeType {
 						item['website'] = site;
 					}
 
+					if (resource === 'users') {
+						const name = this.getNodeParameter('userName', 0) as string;
+						item['name'] = name;
+						const site = this.getNodeParameter('sitesList', 0) as string;
+						item['site_id'] = site;
+					}
+
 					if (resource === 'site') {
 						const siteName = this.getNodeParameter('siteName', 0) as string;
 						item['name'] = siteName;
 						const client = this.getNodeParameter('clientsList', 0) as number;
 						item['client_id'] = client;
+					}
+
+					if (resource === 'invoice') {
+						const client = this.getNodeParameter('clientsList', 0) as number;
+						item['client_id'] = client;
+						const invoiceDate = this.getNodeParameter('invoiceDate', 0) as number;
+						item['invoice_date'] = invoiceDate;
 					}
 
 					const body = [item];

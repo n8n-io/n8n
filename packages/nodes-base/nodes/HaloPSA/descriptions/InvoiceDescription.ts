@@ -2,12 +2,11 @@ import { INodeProperties } from 'n8n-workflow';
 
 export const invoiceDescription: INodeProperties[] = [
 	{
-		displayName: 'Field:',
-		name: 'field',
-		type: 'string',
+		displayName: 'Date:',
+		name: 'invoiceDate',
+		type: 'dateTime',
 		default: '',
-		description: 'Enter field name',
-		placeholder: '',
+		description: 'The date and time of invoice',
 		displayOptions: {
 			show: {
 				operation: ['create'],
