@@ -48,6 +48,13 @@ export const learnerOperations: INodeProperties[] = [
 
 const additionalFieldsLearners: INodeProperties[] = [
 	{
+    displayName: "Learner's company id",
+		name: 'company_id',
+		type: 'string',
+		default: '',
+		description: `learner's company id`,
+  },
+  {
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',

@@ -214,8 +214,8 @@ export class Ypk implements INodeType {
 				const firstName = this.getNodeParameter('first_name', i, '') as string;
 				const lastName = this.getNodeParameter('last_name', i, '') as string;
 				const id = this.getNodeParameter('id', i, '') as string;
-				const { street,additional, zip_code, city, country } = additionalFields;
-				body = { learner: { first_name: firstName,last_name: lastName, address_attributes: { street, additional, zip_code, city, country }, profile_attributes: {}, ...additionalFields } };
+				const { street,additional, zip_code, city, country, company_id } = additionalFields;
+				body = { learner: { first_name: firstName,last_name: lastName, address_attributes: { street, additional, zip_code, city, country }, profile_attributes: {}, ...additionalFields, company_ids: [company_id], } };
 
 				if (operation === 'create') {
 					// get email input
