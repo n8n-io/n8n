@@ -4,9 +4,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable import/no-cycle */
 
+import { genSaltSync, hashSync } from 'bcryptjs';
 import express = require('express');
 import { Db, ResponseHelper } from '../..';
-import { User } from '../../databases/entities/User';
 import { issueJWT } from '../auth/jwt';
 import {
 	N8nApp,
@@ -16,17 +16,7 @@ import {
 	UpdateUserPasswordRequest,
 	PersonalizationAnswersRequest,
 } from '../Interfaces';
-
-/**
- * Remove sensitive properties from user to be returned to client.
- * TODO: Place this elsewhere.
- */
-function sanitizeUser(user: User) {
-	delete user.password;
-	delete user.resetPasswordToken;
-
-	return user;
-}
+import { isValidEmail, sanitizeUser } from '../UserManagementHelper';
 
 export function addMeNamespace(this: N8nApp): void {
 	/**
@@ -46,6 +36,10 @@ export function addMeNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/me`,
 		ResponseHelper.send(
 			async (req: UpdateUserSettingsRequest, res: express.Response): Promise<PublicUserData> => {
+				if (req.body.email && !isValidEmail(req.body.email)) {
+					throw new Error('Invalid email address');
+				}
+
 				const user = await Db.collections.User!.save({ id: req.user.id, ...req.body });
 
 				const userData = await issueJWT(user);
@@ -63,7 +57,13 @@ export function addMeNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/me/password`,
 		ResponseHelper.send(
 			async (req: UpdateUserPasswordRequest, res: express.Response): Promise<PublicUserData> => {
-				const user = await Db.collections.User!.save({ id: req.user.id, ...req.body });
+				if (!req.body.password) {
+					throw new Error('Password is mandatory');
+				}
+
+				const newPassword = hashSync(req.body.password, genSaltSync(10));
+
+				const user = await Db.collections.User!.save({ id: req.user.id, password: newPassword });
 
 				const userData = await issueJWT(user);
 				res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
@@ -78,18 +78,22 @@ export function addMeNamespace(this: N8nApp): void {
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/me/survey`,
-		ResponseHelper.send(
-			async (
-				req: PersonalizationAnswersRequest,
-				res: express.Response,
-			): Promise<PublicUserData> => {
-				const user = await Db.collections.User!.save({ id: req.user.id, ...req.body });
+		ResponseHelper.send(async (req: PersonalizationAnswersRequest, res: express.Response) => {
+			const { body: personalizationAnswers } = req;
 
-				const userData = await issueJWT(user);
-				res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+			if (!personalizationAnswers) {
+				throw new Error('Personalization answers are mandatory');
+			}
 
-				return sanitizeUser(user);
-			},
-		),
+			const user = await Db.collections.User!.save({
+				id: req.user.id,
+				personalizationAnswers,
+			});
+
+			const userData = await issueJWT(user);
+			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+
+			return { success: true };
+		}),
 	);
 }
