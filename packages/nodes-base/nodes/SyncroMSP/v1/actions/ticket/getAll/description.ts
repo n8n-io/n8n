@@ -72,16 +72,24 @@ export const ticketGetAllDescription: TicketProperties = [
 				type: 'options',
 				options: [
 					{
-						name: 'New',
-						value: 'New',
+						name: 'Customer Reply',
+						value: 'Customer Reply',
 					},
 					{
 						name: 'In Progress',
 						value: 'In Progress',
 					},
 					{
+						name: 'New',
+						value: 'New',
+					},
+					{
 						name: 'Resolved',
 						value: 'Resolved',
+					},
+					{
+						name: 'Scheduled',
+						value: 'Scheduled',
 					},
 					{
 						name: 'Waiting for Parts',
@@ -90,14 +98,6 @@ export const ticketGetAllDescription: TicketProperties = [
 					{
 						name: 'Waiting on Customer',
 						value: 'Waiting on Customer',
-					},
-					{
-						name: 'Scheduled',
-						value: 'Scheduled',
-					},
-					{
-						name: 'Customer Reply',
-						value: 'Customer Reply',
 					},
 				],
 				default: 'New',

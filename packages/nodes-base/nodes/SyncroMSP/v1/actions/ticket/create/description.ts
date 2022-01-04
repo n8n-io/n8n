@@ -79,10 +79,6 @@ export const ticketCreateDescription: TicketProperties = [
 				type: 'options',
 				options: [
 					{
-						name: 'Remote Support',
-						value: 'Remote Support',
-					},
-					{
 						name: 'Contract Work',
 						value: 'Contract Work',
 					},
@@ -91,12 +87,16 @@ export const ticketCreateDescription: TicketProperties = [
 						value: 'Network Project',
 					},
 					{
+						name: 'Other',
+						value: 'Other',
+					},
+					{
 						name: 'Regular Maintenance',
 						value: 'Regular Maintenance',
 					},
 					{
-						name: 'Other',
-						value: 'Other',
+						name: 'Remote Support',
+						value: 'Remote Support',
 					},
 				],
 				default: '',
@@ -137,7 +137,7 @@ export const ticketCreateDescription: TicketProperties = [
 
 				],
 				default: 'New',
-				description: 'Filter tickets by status. It cannot be used along with the parameter Search Query',
+				description: 'If used along the parameter Search Query, only Search Query will be applied',
 			},
 		],
 	},

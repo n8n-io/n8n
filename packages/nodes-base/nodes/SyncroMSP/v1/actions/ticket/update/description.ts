@@ -68,10 +68,6 @@ export const ticketUpdateDescription: TicketProperties = [
 				type: 'options',
 				options: [
 					{
-						name: 'Remote Support',
-						value: 'Remote Support',
-					},
-					{
 						name: 'Contract Work',
 						value: 'Contract Work',
 					},
@@ -80,12 +76,16 @@ export const ticketUpdateDescription: TicketProperties = [
 						value: 'Network Project',
 					},
 					{
+						name: 'Other',
+						value: 'Other',
+					},
+					{
 						name: 'Regular Maintenance',
 						value: 'Regular Maintenance',
 					},
 					{
-						name: 'Other',
-						value: 'Other',
+						name: 'Remote Support',
+						value: 'Remote Support',
 					},
 				],
 				default: '',
@@ -96,16 +96,24 @@ export const ticketUpdateDescription: TicketProperties = [
 				type: 'options',
 				options: [
 					{
-						name: 'New',
-						value: 'New',
+						name: 'Customer Reply',
+						value: 'Customer Reply',
 					},
 					{
 						name: 'In Progress',
 						value: 'In Progress',
 					},
 					{
+						name: 'New',
+						value: 'New',
+					},
+					{
 						name: 'Resolved',
 						value: 'Resolved',
+					},
+					{
+						name: 'Scheduled',
+						value: 'Scheduled',
 					},
 					{
 						name: 'Waiting for Parts',
@@ -114,14 +122,6 @@ export const ticketUpdateDescription: TicketProperties = [
 					{
 						name: 'Waiting on Customer',
 						value: 'Waiting on Customer',
-					},
-					{
-						name: 'Scheduled',
-						value: 'Scheduled',
-					},
-					{
-						name: 'Customer Reply',
-						value: 'Customer Reply',
 					},
 				],
 				default: 'New',
