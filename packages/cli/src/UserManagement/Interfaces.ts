@@ -1,7 +1,6 @@
 /* eslint-disable import/no-cycle */
 import { Application } from 'express';
 import express = require('express');
-import { IDataObject } from 'n8n-workflow';
 import { JwtFromRequestFunction } from 'passport-jwt';
 import { User } from '../databases/entities/User';
 
@@ -21,7 +20,7 @@ export interface PublicUserData {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	personalizationAnswers?: IDataObject | null;
+	personalizationAnswers?: { [key: string]: string } | null;
 	password?: string;
 	passwordResetToken?: string;
 }
@@ -44,7 +43,10 @@ export type UpdateUserPasswordRequest = RequestWithCustomBody<Pick<PublicUserDat
 };
 
 export type PersonalizationAnswersRequest = RequestWithCustomBody<
-	Pick<PublicUserData, 'personalizationAnswers'>
+	| {
+			[key: string]: string;
+	  }
+	| {}
 > & {
 	user: User;
 };
