@@ -513,6 +513,7 @@
       "dist/nodes/Mocean/Mocean.node.js",
       "dist/nodes/MondayCom/MondayCom.node.js",
       "dist/nodes/MongoDb/MongoDb.node.js",
+      "dist/nodes/MongoDb/MongoDbTrigger.node.js",
       "dist/nodes/MonicaCrm/MonicaCrm.node.js",
       "dist/nodes/MoveBinaryData/MoveBinaryData.node.js",
       "dist/nodes/MQTT/Mqtt.node.js",
