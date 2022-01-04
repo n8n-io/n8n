@@ -58,7 +58,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		sortCategories(categories) {
+		sortCategories(categories: ITemplateCategory[]) {
 			const selectedCategories = this.categories.filter(({ selected }:ITemplateCategory) =>{
 				return selected;
 			});
