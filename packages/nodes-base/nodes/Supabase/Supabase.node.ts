@@ -17,6 +17,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
 	supabaseApiRequest,
@@ -169,7 +170,7 @@ export class Supabase implements INodeType {
 				}
 			}
 
-			if (operation === 'update') {
+			if (operation === 'delete') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
@@ -178,6 +179,11 @@ export class Supabase implements INodeType {
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
+
+						if (!keys.length) {
+							throw new NodeOperationError(this.getNode(), 'At least one filter must be defined');
+						}
+
 						if (matchType === 'allFilters') {
 							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
 							Object.assign(qs, data);
@@ -193,35 +199,43 @@ export class Supabase implements INodeType {
 						endpoint = `${endpoint}?${encodeURI(filterString)}`;
 					}
 
-					const record: IDataObject = {};
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
-
-					if (dataToSend === 'autoMapInputData') {
-						const incomingKeys = Object.keys(items[i].json);
-						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
-
-						for (const key of incomingKeys) {
-							if (inputDataToIgnore.includes(key)) continue;
-							record[key] = items[i].json[key];
-						}
-					} else {
-						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-						for (const field of fields) {
-							record[`${field.fieldId}`] = field.fieldValue;
-						}
-					}
-					let updatedRow;
+					let rows;
 
 					try {
-						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
-						returnData.push(...updatedRow);
+						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.description });
 							continue;
 						}
 					}
+					returnData.push(...rows);
+				}
+			}
+
+			if (operation === 'get') {
+				const tableId = this.getNodeParameter('tableId', 0) as string;
+				const endpoint = `/${tableId}`;
+
+				for (let i = 0; i < length; i++) {
+					const primaryKey = this.getNodeParameter('primaryKey.data', i, []) as IDataObject[];
+					const data = primaryKey.reduce((obj, value) => buildGetQuery(obj, value), {});
+					Object.assign(qs, data);
+					let rows;
+
+					if (!primaryKey.length) {
+						throw new NodeOperationError(this.getNode(), 'The primary key has to be defined');
+					}
+
+					try {
+						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.description });
+							continue;
+						}
+					}
+					returnData.push(...rows);
 				}
 			}
 
@@ -271,7 +285,7 @@ export class Supabase implements INodeType {
 				}
 			}
 
-			if (operation === 'delete') {
+			if (operation === 'update') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
@@ -300,17 +314,35 @@ export class Supabase implements INodeType {
 						endpoint = `${endpoint}?${encodeURI(filterString)}`;
 					}
 
-					let rows;
+					const record: IDataObject = {};
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+
+					if (dataToSend === 'autoMapInputData') {
+						const incomingKeys = Object.keys(items[i].json);
+						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+
+						for (const key of incomingKeys) {
+							if (inputDataToIgnore.includes(key)) continue;
+							record[key] = items[i].json[key];
+						}
+					} else {
+						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
+						for (const field of fields) {
+							record[`${field.fieldId}`] = field.fieldValue;
+						}
+					}
+					let updatedRow;
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
+						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
+						returnData.push(...updatedRow);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.description });
 							continue;
 						}
 					}
-					returnData.push(...rows);
 				}
 			}
 		}

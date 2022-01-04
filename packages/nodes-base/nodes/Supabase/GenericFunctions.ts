@@ -39,7 +39,6 @@ export async function supabaseApiRequest(this: IExecuteFunctions | IExecuteSingl
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-
 		//@ts-ignore
 		return await this.helpers?.request(options);
 
@@ -57,17 +56,30 @@ const mapOperations: { [key: string]: string } = {
 
 export function getFilters(
 	resources: string[],
-	operations: string[]): INodeProperties[] {
+	operations: string[],
+	{
+		includeNoneOption = true,
+		filterTypeDisplayName = 'Filter',
+		filterFixedCollectionDisplayName = 'Filters',
+		filterStringDisplayName = 'Filters (String)',
+		mustMatchOptions = [
+			{
+				name: 'Any Filter',
+				value: 'anyFilter',
+			},
+			{
+				name: 'All Filters',
+				value: 'allFilters',
+			},
+		],
+	}): INodeProperties[] {
 	return [
 		{
-			displayName: 'Filter',
+			displayName: filterTypeDisplayName,
 			name: 'filterType',
 			type: 'options',
 			options: [
-				{
-					name: 'None',
-					value: 'none',
-				},
+				...(includeNoneOption ? [{ name: 'None', value: 'none' }] : []),
 				{
 					name: 'Build Manually',
 					value: 'manual',
@@ -83,22 +95,13 @@ export function getFilters(
 					operation: operations,
 				},
 			},
-			default: 'none',
+			default: 'manual',
 		},
 		{
 			displayName: 'Must Match',
 			name: 'matchType',
 			type: 'options',
-			options: [
-				{
-					name: 'Any Filter',
-					value: 'anyFilter',
-				},
-				{
-					name: 'All Filters',
-					value: 'allFilters',
-				},
-			],
+			options: mustMatchOptions,
 			displayOptions: {
 				show: {
 					resource: resources,
@@ -111,7 +114,7 @@ export function getFilters(
 			default: 'anyFilter',
 		},
 		{
-			displayName: 'Filters',
+			displayName: filterFixedCollectionDisplayName,
 			name: 'filters',
 			type: 'fixedCollection',
 			typeOptions: {
@@ -289,6 +292,9 @@ export const buildOrQuery = (key: IDataObject) => {
 	return `${key.keyName}.${key.condition}.${key.keyValue}`;
 };
 
+export const buildGetQuery = (obj: IDataObject, value: IDataObject) => {
+	return Object.assign(obj, { [`${value.keyName}`]: `eq.${value.keyValue}` });
+};
 
 export async function validateCrendentials(
 	this: ICredentialTestFunctions,
