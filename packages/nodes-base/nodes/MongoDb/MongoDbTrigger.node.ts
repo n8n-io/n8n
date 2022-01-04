@@ -1,4 +1,4 @@
-import {INode, INodeType, INodeTypeDescription, ITriggerResponse} from 'n8n-workflow';
+import {INodeType, INodeTypeDescription, ITriggerResponse} from 'n8n-workflow';
 import {ITriggerFunctions} from 'n8n-core';
 import {MongoClient} from 'mongodb';
 import {validateAndResolveMongoCredentials} from './mongo.node.utils';
@@ -36,9 +36,7 @@ export class MongoDbTrigger implements INodeType {
 			await client.close();
 		}
 
-		async function manualTriggerFunction() {
-
-		}
+		async function manualTriggerFunction() {}
 
 		return {
 			closeFunction,
