@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -16,6 +18,7 @@ import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
 import { generatePublicUserData, isEmailSetup, isValidEmail } from '../UserManagementHelper';
 import { issueJWT } from '../auth/jwt';
+import { addMeNamespace } from './me';
 
 export async function addRoutes(
 	this: N8nApp,
@@ -85,6 +88,7 @@ export async function addRoutes(
 	});
 
 	addAuthenticationMethods.apply(this);
+	addMeNamespace.apply(this);
 
 	// ----------------------------------------
 	// Temporary code below - must be refactored
