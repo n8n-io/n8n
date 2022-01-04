@@ -1,4 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {IExecuteFunctions, ITriggerFunctions} from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -34,7 +34,7 @@ function buildParameterizedConnString(
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 export function buildMongoConnectionParams(
-	self: IExecuteFunctions,
+	self: IExecuteFunctions | ITriggerFunctions,
 	credentials: IMongoCredentialsType,
 ): IMongoCredentials {
 	const sanitizedDbName =
@@ -68,7 +68,7 @@ export function buildMongoConnectionParams(
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 export function validateAndResolveMongoCredentials(
-	self: IExecuteFunctions,
+	self: IExecuteFunctions | ITriggerFunctions,
 	credentials?: ICredentialDataDecryptedObject,
 ): IMongoCredentials {
 	if (credentials === undefined) {
