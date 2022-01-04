@@ -11,7 +11,7 @@ export const nodeDescription: INodeTypeDescription = {
 	icon: 'file:mongodb.svg',
 	group: ['transform'],
 	version: 1,
-	description: 'Watch for change events in a collection',
+	description: 'Watch for change events in a collection.',
 	defaults: {
 		name: 'MongoDbTrigger',
 		color: '#1A82e2',
@@ -31,14 +31,14 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			required: true,
 			default: '',
-			description: 'MongoDb Collection',
+			description: 'MongoDb Collection.',
 		},
 		{
 			displayName: 'Get Full Document',
 			name: 'getFullDocument',
 			type: 'boolean',
 			default: false,
-			description: 'Get JSON of full document or only changed fields',
+			description: 'Get JSON of full document or only changed fields.',
 		},
 	],
 };

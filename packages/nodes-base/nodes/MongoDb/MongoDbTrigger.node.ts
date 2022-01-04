@@ -1,6 +1,6 @@
 import {INodeType, INodeTypeDescription, ITriggerResponse} from 'n8n-workflow';
 import {ITriggerFunctions} from 'n8n-core';
-import {MongoClient} from 'mongodb';
+import {ChangeStream, Collection, MongoClient, MongoError} from 'mongodb';
 import {validateAndResolveMongoCredentials} from './mongo.node.utils';
 import {nodeDescription} from './mongoTrigger.node.options';
 
@@ -8,21 +8,35 @@ export class MongoDbTrigger implements INodeType {
 	description: INodeTypeDescription = nodeDescription;
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const { database, connectionString } = validateAndResolveMongoCredentials(this, await this.getCredentials('mongoDb'));
+		const {database, connectionString} = validateAndResolveMongoCredentials(
+			this,
+			await this.getCredentials('mongoDb'),
+		);
 		const collectionName = this.getNodeParameter('collection', '') as string;
 		const getFullDocument = this.getNodeParameter('getFullDocument', false);
 		const self = this;
 
+		let changedObject = {};
+		let changeStream: ChangeStream;
+
 		const client: MongoClient = new MongoClient(connectionString);
 		await client.connect();
-		const collection = client.db(database).collection(collectionName);
-		const changeStream = getFullDocument ?
-			collection.watch({fullDocument: 'updateLookup'}) :
-			collection.watch();
 
-		let changedObject = {};
+		client.db(database)
+			.listCollections({name: collectionName})
+			.hasNext((error: MongoError, isFound: boolean) => {
+				if (isFound) {
+					const collection: Collection = client.db(database).collection(collectionName);
+					changeStream = getFullDocument ?
+						collection.watch({fullDocument: 'updateLookup'}) :
+						collection.watch();
 
-		await monitorListingsUsingEventEmitter();
+					monitorListingsUsingEventEmitter();
+				}
+				else {
+					self.emit([self.helpers.returnJsonArray({error: 'Collection does not exist.'})]);
+				}
+		});
 
 		async function monitorListingsUsingEventEmitter() {
 			changeStream.on('change', (next) => {
@@ -32,11 +46,12 @@ export class MongoDbTrigger implements INodeType {
 		}
 
 		async function closeFunction() {
-			await changeStream.close();
+			await changeStream?.close();
 			await client.close();
 		}
 
-		async function manualTriggerFunction() {}
+		async function manualTriggerFunction() {
+		}
 
 		return {
 			closeFunction,
