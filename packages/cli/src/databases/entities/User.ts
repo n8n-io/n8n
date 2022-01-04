@@ -67,16 +67,16 @@ export class User {
 	lastName: string;
 
 	@Column({ nullable: true })
-	password: string;
+	password?: string;
 
 	@Column({ nullable: true })
-	resetPasswordToken: string;
+	resetPasswordToken?: string;
 
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
 	})
-	personalizationAnswers: IDataObject;
+	personalizationAnswers: IDataObject | null;
 
 	@ManyToOne(() => Role, (role) => role.globalForUsers, {
 		cascade: true,
