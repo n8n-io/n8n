@@ -11,10 +11,10 @@ import {
 	JsonObject,
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
-import { ClientDescription } from './descriptions/ClientDescription';
-import { InvoiceDescription } from './descriptions/InvoiceDescription';
-import { TicketDescription } from './descriptions/TicketDescription';
-import { UserDescription } from './descriptions/UserDescription';
+import { clientDescription } from './descriptions/ClientDescription';
+import { invoiceDescription } from './descriptions/InvoiceDescription';
+import { ticketDescription } from './descriptions/TicketDescription';
+import { userDescription } from './descriptions/UserDescription';
 
 import {
 	getAccessTokens,
@@ -42,7 +42,7 @@ export class HaloPSA implements INodeType {
 			{
 				name: 'haloPSAApi',
 				required: true,
-				// testedBy: 'haloPSAApiCredentialTest',
+				testedBy: 'haloPSAApiCredentialTest',
 			},
 		],
 		properties: [
@@ -150,10 +150,10 @@ export class HaloPSA implements INodeType {
 			},
 
 			// Descriptions -------------------------------------------------------------
-			...TicketDescription,
-			...InvoiceDescription,
-			...UserDescription,
-			...ClientDescription,
+			...ticketDescription,
+			...invoiceDescription,
+			...userDescription,
+			...clientDescription,
 
 			// Create, Update --------------------------------------------------------
 			{
@@ -287,16 +287,22 @@ export class HaloPSA implements INodeType {
 					const data = this.getNodeParameter('fieldsToCreateOrUpdate', 0) as IDataObject;
 					const item = processFields(data) || {};
 
-					if(resource === 'tickets') {
+					if (resource === 'tickets') {
 						const summary = this.getNodeParameter('summary', 0) as string;
 						const details = this.getNodeParameter('details', 0) as string;
 						item[summary] = summary;
 						item[details] = details;
 					}
 
-					if(resource === 'client') {
+					if (resource === 'client') {
 						const name = this.getNodeParameter('clientName', 0) as string;
 						item['name'] = name;
+						const clientIsVip = this.getNodeParameter('clientIsVip', 0) as string;
+						item['is_vip'] = clientIsVip;
+						const clientRef = this.getNodeParameter('clientRef', 0) as string;
+						item['ref'] = clientRef;
+						const clientWebsite = this.getNodeParameter('clientWebsite', 0) as string;
+						item['website'] = clientWebsite;
 					}
 
 					const body = [item];
@@ -339,12 +345,23 @@ export class HaloPSA implements INodeType {
 				}
 				// Get All ---------------------------------------------------
 				if (operation === 'getAll') {
+					let count;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					if (returnAll) {
+						count = {};
+					} else {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						count = { count: limit };
+					}
 					responseData = await haloPSAApiRequest.call(
 						this,
 						resourceApiUrl,
 						resource,
 						'GET',
 						tokens.access_token,
+						'',
+						{},
+						count,
 					);
 				}
 				// Update ----------------------------------------------------

@@ -1,7 +1,6 @@
 import {
 	ICredentialType,
 	INodeProperties,
-	NodePropertyTypes,
 } from 'n8n-workflow';
 
 export class HaloPSAApi implements ICredentialType {
@@ -24,7 +23,6 @@ export class HaloPSAApi implements ICredentialType {
 				},
 			],
 			default: '',
-			required: true,
 			description: 'Hosting Type',
 		},
 		{
@@ -32,7 +30,7 @@ export class HaloPSAApi implements ICredentialType {
 			name: 'authUrl',
 			type: 'string',
 			default: '',
-			required: true,
+			// required: true,
 			description: 'Your Halo Authorisation Server Url',
 		},
 		{
@@ -40,8 +38,7 @@ export class HaloPSAApi implements ICredentialType {
 			name: 'resourceApiUrl',
 			type: 'string',
 			default: '',
-			placeholder: ' https://your-halo-web-app-url/api',
-			required: true,
+			// required: true,
 			description:
 				'By default, the Resource server is available at *your Halo Web Applicaiton url*"/api". Each resource then has it\'s own endpoint, e.g Tickets are available at *your Halo Web Applicaiton url*"/api/tickets". Endpoints accept the HTTP GET, POST and DELETE methods depending on the resource that you are accessing.',
 		},
@@ -50,7 +47,7 @@ export class HaloPSAApi implements ICredentialType {
 			name: 'client_id',
 			type: 'string',
 			default: '',
-			required: true,
+			// required: true,
 			description: 'Must be your applications client id',
 		},
 		{
@@ -58,7 +55,7 @@ export class HaloPSAApi implements ICredentialType {
 			name: 'client_secret',
 			type: 'string',
 			default: '',
-			required: true,
+			// required: true,
 			description: 'Must be your applications client secret',
 		},
 		{
@@ -78,9 +75,9 @@ export class HaloPSAApi implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: 'all',
-			required: true,
+			// required: true,
 			description: 'Must include any application permissions that are required by your application',
 		},
 	];

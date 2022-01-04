@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const InvoiceDescription: INodeProperties[] = [
+export const invoiceDescription: INodeProperties[] = [
 	{
 		displayName: 'Field:',
 		name: 'field',

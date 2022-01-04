@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const TicketDescription: INodeProperties[] = [
+export const ticketDescription: INodeProperties[] = [
 	{
 		displayName: 'Summary:',
 		name: 'summary',
