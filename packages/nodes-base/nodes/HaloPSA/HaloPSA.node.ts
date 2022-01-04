@@ -11,6 +11,10 @@ import {
 	JsonObject,
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
+import { ClientDescription } from './descriptions/ClientDescription';
+import { InvoiceDescription } from './descriptions/InvoiceDescription';
+import { TicketDescription } from './descriptions/TicketDescription';
+import { UserDescription } from './descriptions/UserDescription';
 
 import {
 	getAccessTokens,
@@ -38,7 +42,7 @@ export class HaloPSA implements INodeType {
 			{
 				name: 'haloPSAApi',
 				required: true,
-				testedBy: 'haloPSAApiCredentialTest',
+				// testedBy: 'haloPSAApiCredentialTest',
 			},
 		],
 		properties: [
@@ -52,38 +56,38 @@ export class HaloPSA implements INodeType {
 						name: 'Client',
 						value: 'client',
 					},
-					{
-						name: 'Contract',
-						value: 'clientcontract',
-					},
+					// {
+					// 	name: 'Contract',
+					// 	value: 'clientcontract',
+					// },
 					{
 						name: 'Invoice',
 						value: 'invoice',
 					},
-					{
-						name: 'Opportunitie',
-						value: 'opportunities',
-					},
-					{
-						name: 'Project',
-						value: 'projects',
-					},
-					{
-						name: 'Quotation',
-						value: 'quotation',
-					},
-					{
-						name: 'Report',
-						value: 'report',
-					},
+					// {
+					// 	name: 'Opportunitie',
+					// 	value: 'opportunities',
+					// },
+					// {
+					// 	name: 'Project',
+					// 	value: 'projects',
+					// },
+					// {
+					// 	name: 'Quotation',
+					// 	value: 'quotation',
+					// },
+					// {
+					// 	name: 'Report',
+					// 	value: 'report',
+					// },
 					{
 						name: 'Site',
 						value: 'site',
 					},
-					{
-						name: 'Supplier',
-						value: 'supplier',
-					},
+					// {
+					// 	name: 'Supplier',
+					// 	value: 'supplier',
+					// },
 					{
 						name: 'Ticket',
 						value: 'tickets',
@@ -144,6 +148,12 @@ export class HaloPSA implements INodeType {
 					},
 				},
 			},
+
+			// Descriptions -------------------------------------------------------------
+			...TicketDescription,
+			...InvoiceDescription,
+			...UserDescription,
+			...ClientDescription,
 
 			// Create, Update --------------------------------------------------------
 			{
@@ -275,7 +285,21 @@ export class HaloPSA implements INodeType {
 				// Create ----------------------------------------------------
 				if (operation === 'create') {
 					const data = this.getNodeParameter('fieldsToCreateOrUpdate', 0) as IDataObject;
-					const body = [processFields(data)];
+					const item = processFields(data) || {};
+
+					if(resource === 'tickets') {
+						const summary = this.getNodeParameter('summary', 0) as string;
+						const details = this.getNodeParameter('details', 0) as string;
+						item[summary] = summary;
+						item[details] = details;
+					}
+
+					if(resource === 'client') {
+						const name = this.getNodeParameter('clientName', 0) as string;
+						item['name'] = name;
+					}
+
+					const body = [item];
 					responseData = await haloPSAApiRequest.call(
 						this,
 						resourceApiUrl,

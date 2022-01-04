@@ -23,7 +23,7 @@ export class HaloPSAApi implements ICredentialType {
 					value: 'hostedHalo',
 				},
 			],
-			default: 'hostedHalo',
+			default: '',
 			required: true,
 			description: 'Hosting Type',
 		},
