@@ -1,10 +1,12 @@
-import { IN8nTemplate, ISearchPayload } from '@/Interface';
+import { ISearchPayload } from '@/Interface';
 import { post } from './helpers';
 import { TEMPLATES_BASE_URL } from '@/constants';
 
+const stagingHost = 'https://api-staging.n8n.io';
+
 export async function getTemplates(
-	limit: number = 10,
-	skip: number = 0,
+	limit: number,
+	skip: number,
 	category: string | null,
 	search: string | null,
 	allData = true,
@@ -32,7 +34,7 @@ export async function getTemplates(
 			}
 			totalViews: views
 		}
-		totalworkflow: getWorkflowCount(search: null, category: null)
+		totalworkflow: getWorkflowCount(search: ${search}, category: ${category})
 		workflows(
 			limit: ${limit},
 			start: ${skip},
@@ -55,5 +57,5 @@ export async function getTemplates(
 			created_at
 		}
 	}`;
-	return await post('https://api-staging.n8n.io', `/graphql`, {query});
+	return await post(stagingHost, `/graphql`, { query });
 }

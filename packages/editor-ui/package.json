@@ -29,6 +29,7 @@
     "n8n-design-system": "~0.9.0",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
+    "vue-agile": "^2.0.0",
     "vue-fragment": "^1.5.2",
     "vue-i18n": "^8.26.7"
   },

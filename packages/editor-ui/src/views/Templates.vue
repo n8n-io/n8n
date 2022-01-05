@@ -5,19 +5,26 @@
 				<TemplateFilters/>
 			</div>
 			<div class="search">
-				<!-- TODO maxlength -->
-				<n8n-input
-					v-model="search"
-					@input="onSearchInput"
-					clearable
-					:placeholder="$locale.baseText('templates.searchPlaceholder')"
-				>
-					<font-awesome-icon icon="search" slot="prefix" />
 
-				</n8n-input>
+				<div class="searchInput">
+					<!-- TODO maxlength -->
+					<n8n-input
+						v-model="search"
+						@input="onSearchInput"
+						clearable
+						:placeholder="$locale.baseText('templates.searchPlaceholder')"
+					>
+						<font-awesome-icon icon="search" slot="prefix" />
+
+					</n8n-input>
+				</div>
+				<div class="searchResults">
+
+					<CollectionsCarousel/>
+
+				</div>
+
 			</div>
-
-
 		</div>
 
 	</div>
@@ -25,6 +32,7 @@
 
 <script lang="ts">
 import TemplateFilters from '@/components/TemplateFilters.vue';
+import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
@@ -35,6 +43,7 @@ export default mixins(
 	name: 'Templates',
 	components: {
 		TemplateFilters,
+		CollectionsCarousel,
 	},
 	data () {
 		return {
@@ -71,18 +80,31 @@ export default mixins(
 .view-wrapper {
 	margin-top: 120px;
 	padding: 0 48px;
-	display: flex;
 	width: 100%;
 	height: 100%;
+	display: flex;
 
 	.filters {
 		width: 188px;
 	}
 
 	.search {
-		width: 100%;
+		width: -webkit-calc(100% - 188px);
+    width:    -moz-calc(100% - 188px);
+    width:         calc(100% - 188px);
 		margin-left: 24px;
+		display: flex column;
+
+		.searchInput {
+			width: 100%;
+		}
+
+		.searchResults {
+			width: 100%;
+			padding-top: 16px;
+		}
 	}
+
 }
 
 </style>

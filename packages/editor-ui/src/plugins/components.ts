@@ -37,6 +37,7 @@ import MessageBox from 'element-ui/lib/message-box';
 import Message from 'element-ui/lib/message';
 import Notification from 'element-ui/lib/notification';
 import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
+import VueAgile from 'vue-agile';
 
 // @ts-ignore
 import lang from 'element-ui/lib/locale/lang/en';
@@ -113,6 +114,7 @@ Vue.use(Badge);
 Vue.use(Card);
 Vue.use(ColorPicker);
 Vue.use(Container);
+Vue.use(VueAgile);
 
 Vue.component(CollapseTransition.name, CollapseTransition);
 

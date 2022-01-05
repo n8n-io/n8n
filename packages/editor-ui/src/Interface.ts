@@ -752,7 +752,11 @@ export interface IZoomConfig {
 	offset: XYPosition;
 }
 
-export interface ISearchResults {
+export interface ISearchPayload {
+	data: ISearchResults;
+}
+
+export interface ISearchResults{
 	categories: ITemplateCategory[];
 	collections: ITemplateCollection[];
 	totalWorkflows: number;
@@ -801,5 +805,5 @@ export interface IN8nTemplate {
 export interface ITemplateState {
 	template: {};
 	categories: ITemplateCategory[];
-	searchResults: {};
+	collections: ITemplateCollection[];
 }

@@ -7,6 +7,7 @@ import {
 	ISearchPayload,
 	ISearchResults,
 	ITemplateCategory,
+	ITemplateCollection,
 } from '../Interface';
 import Vue from 'vue';
 
@@ -15,7 +16,7 @@ const module: Module<ITemplateState, IRootState> = {
 	state: {
 		template: {},
 		categories: [],
-		searchResults: {},
+		collections: [],
 	},
 	getters: {
 		getTemplate(state: ITemplateState) {
@@ -24,29 +25,32 @@ const module: Module<ITemplateState, IRootState> = {
 		getCategories(state: ITemplateState) {
 			return state.categories;
 		},
+		getCollections(state: ITemplateState) {
+			return state.collections;
+		},
 	},
 	mutations: {
 		setTemplate(state: ITemplateState, template: IN8nTemplate) {
 			Vue.set(state, 'template', template);
 		},
-		setResults(state: ITemplateState, results: ISearchResults) {
-			Vue.set(state, 'results', results);
-		},
 		setCategories(state: ITemplateState, categories: ITemplateCategory[]) {
 			Vue.set(state, 'categories', categories);
+		},
+		setCollections(state: ITemplateState, collections: ITemplateCollection[]) {
+			Vue.set(state, 'collections', collections);
 		},
 	},
 	actions: {
 		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
 			try {
 				const payload: ISearchPayload = await getTemplates(10, 0, null, null);
-				const results : ISearchResults = payload.data
-				context.commit('setResults', results);
+				const results : ISearchResults = payload.data;
 				const categories = results.categories.map((category: ITemplateCategory) => {
 					category.selected = false;
 					return category;
 				});
 				context.commit('setCategories', categories);
+				context.commit('setCollections', results.collections);
 				return results;
 			} catch(e) {
 				return;
