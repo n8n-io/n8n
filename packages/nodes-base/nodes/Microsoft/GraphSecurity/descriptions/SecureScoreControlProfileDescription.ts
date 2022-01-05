@@ -219,10 +219,6 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 						value: 'Ignored',
 					},
 					{
-						name: 'Reviewed',
-						value: 'Reviewed',
-					},
-					{
 						name: 'Third Party',
 						value: 'ThirdParty',
 					},
