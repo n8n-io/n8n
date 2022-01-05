@@ -69,7 +69,7 @@ export class User {
 	password?: string;
 
 	@Column({ nullable: true })
-	resetPasswordToken?: string | null;
+	resetPasswordToken?: string;
 
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
