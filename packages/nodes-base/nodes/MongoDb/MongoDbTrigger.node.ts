@@ -25,7 +25,10 @@ export class MongoDbTrigger implements INodeType {
 		let changedObject = {};
 		let changeStream: ChangeStream;
 
-		const client: MongoClient = new MongoClient(connectionString);
+		const client: MongoClient = new MongoClient(connectionString, {
+			useNewUrlParser: true,
+			useUnifiedTopology: true,
+		});
 		await client.connect();
 
 		client.db(database)
@@ -78,11 +81,9 @@ function flattenJson(jsonString: string): JSON {
 
 		for (const key of keys) {
 			const value = property[key];
-
 			if (typeof(value) === 'object' && !Array.isArray(value)) {
 				flatten(value as IData, result, key);
 			}
-
 			else {
 				const keyName = parentName === '' ? key : `${parentName}.${key}`;
 				result[keyName] = value;
