@@ -36,8 +36,6 @@ export type AuthenticatedRequest<T = {}> = express.Request<{}, {}, T> & { user: 
 //         requests to /me
 // ----------------------------------
 
-export type RequestWithPayload<T> = express.Request<{}, {}, T>;
-
 declare namespace UpdateSelfPayload {
 	type Settings = Pick<PublicUserData, 'email' | 'firstName' | 'lastName'>;
 	type Password = Pick<PublicUserData, 'password'>;
