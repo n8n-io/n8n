@@ -80,6 +80,7 @@ export const secureScoreFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
+			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
