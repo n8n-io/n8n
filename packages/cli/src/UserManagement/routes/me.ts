@@ -5,16 +5,11 @@
 import { genSaltSync, hashSync } from 'bcryptjs';
 import express = require('express');
 import { Db, ResponseHelper } from '../..';
+import { User } from '../../databases/entities/User';
 import { issueJWT } from '../auth/jwt';
-import {
-	N8nApp,
-	PublicUserData,
-	UserRequest,
-	UpdateUserSettingsRequest,
-	UpdateUserPasswordRequest,
-	PersonalizationAnswersRequest,
-} from '../Interfaces';
+import { N8nApp, PublicUserData } from '../Interfaces';
 import { isValidEmail, sanitizeUser } from '../UserManagementHelper';
+import type { UpdateSelfRequest } from '../Interfaces';
 
 export function addMeNamespace(this: N8nApp): void {
 	/**
@@ -22,9 +17,11 @@ export function addMeNamespace(this: N8nApp): void {
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/me`,
-		ResponseHelper.send(async (req: UserRequest, _): Promise<PublicUserData> => {
-			return sanitizeUser(req.user);
-		}),
+		ResponseHelper.send(
+			async (req: express.Request & { user: User }, _): Promise<PublicUserData> => {
+				return sanitizeUser(req.user);
+			},
+		),
 	);
 
 	/**
@@ -33,7 +30,7 @@ export function addMeNamespace(this: N8nApp): void {
 	this.app.patch(
 		`/${this.restEndpoint}/me`,
 		ResponseHelper.send(
-			async (req: UpdateUserSettingsRequest, res: express.Response): Promise<PublicUserData> => {
+			async (req: UpdateSelfRequest.Settings, res: express.Response): Promise<PublicUserData> => {
 				if (req.body.email && !isValidEmail(req.body.email)) {
 					throw new Error('Invalid email address');
 				}
@@ -54,7 +51,7 @@ export function addMeNamespace(this: N8nApp): void {
 	this.app.patch(
 		`/${this.restEndpoint}/me/password`,
 		ResponseHelper.send(
-			async (req: UpdateUserPasswordRequest, res: express.Response): Promise<PublicUserData> => {
+			async (req: UpdateSelfRequest.Password, res: express.Response): Promise<PublicUserData> => {
 				if (!req.body.password) {
 					throw new Error('Password is mandatory');
 				}
@@ -72,11 +69,11 @@ export function addMeNamespace(this: N8nApp): void {
 	);
 
 	/**
-	 * Store the logged-in user's personalization answers.
+	 * Update the logged-in user's survey answers.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/me/survey`,
-		ResponseHelper.send(async (req: PersonalizationAnswersRequest, _) => {
+		ResponseHelper.send(async (req: UpdateSelfRequest.SurveyAnswers, _) => {
 			const { body: personalizationAnswers } = req;
 
 			if (!personalizationAnswers) {

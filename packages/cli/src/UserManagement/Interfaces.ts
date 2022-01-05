@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 /* eslint-disable import/no-cycle */
 import { Application } from 'express';
 import express = require('express');
@@ -30,25 +31,22 @@ export interface N8nApp {
 	restEndpoint: string;
 }
 
-export type UserRequest = express.Request & { user: User };
+// ----------------------------------
+//         requests to /me
+// ----------------------------------
 
-export type UpdateUserSettingsRequest = RequestWithCustomBody<
-	Pick<PublicUserData, 'email' | 'firstName' | 'lastName'>
-> & {
-	user: User;
-};
+export type RequestWithPayload<T> = express.Request<{}, {}, T>;
 
-export type UpdateUserPasswordRequest = RequestWithCustomBody<Pick<PublicUserData, 'password'>> & {
-	user: User;
-};
+export type UserProperty = { user: User };
 
-export type PersonalizationAnswersRequest = RequestWithCustomBody<
-	| {
-			[key: string]: string;
-	  }
-	| {}
-> & {
-	user: User;
-};
+declare namespace UpdateSelfPayload {
+	type Settings = Pick<PublicUserData, 'email' | 'firstName' | 'lastName'>;
+	type Password = Pick<PublicUserData, 'password'>;
+	type SurveyAnswers = { [key: string]: string } | {};
+}
 
-export type RequestWithCustomBody<T> = express.Request<{}, {}, T>;
+export declare namespace UpdateSelfRequest {
+	export type Settings = RequestWithPayload<UpdateSelfPayload.Settings> & UserProperty;
+	export type Password = RequestWithPayload<UpdateSelfPayload.Password> & UserProperty;
+	export type SurveyAnswers = RequestWithPayload<UpdateSelfPayload.SurveyAnswers> & UserProperty;
+}
