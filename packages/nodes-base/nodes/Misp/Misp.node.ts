@@ -59,7 +59,6 @@ export class Misp implements INodeType {
 		description: 'Consume the MISP API',
 		defaults: {
 			name: 'MISP',
-			color: '#36bdf7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

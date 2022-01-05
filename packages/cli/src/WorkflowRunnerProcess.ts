@@ -5,7 +5,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
+import {
+	BinaryDataManager,
+	IBinaryDataConfig,
+	IProcessMessage,
+	UserSettings,
+	WorkflowExecute,
+} from 'n8n-core';
 
 import {
 	ExecutionError,
@@ -31,6 +37,7 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
@@ -137,7 +144,11 @@ export class WorkflowRunnerProcess {
 		await externalHooks.init();
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
-		InternalHooksManager.init(instanceId);
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli);
+
+		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		await BinaryDataManager.init(binaryDataConfig);
 
 		// Credentials should now be loaded from database.
 		// We check if any node uses credentials. If it does, then
@@ -257,8 +268,12 @@ export class WorkflowRunnerProcess {
 				this.childExecutions[executionId] = executeWorkflowFunctionOutput;
 				const { workflow } = executeWorkflowFunctionOutput;
 				result = await workflowExecute.processRunExecutionData(workflow);
-				await externalHooks.run('workflow.postExecute', [result, workflowData]);
-				void InternalHooksManager.getInstance().onWorkflowPostExecute(workflowData, result);
+				await externalHooks.run('workflow.postExecute', [result, workflowData, executionId]);
+				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+					executionId,
+					workflowData,
+					result,
+				);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];
 			} catch (e) {

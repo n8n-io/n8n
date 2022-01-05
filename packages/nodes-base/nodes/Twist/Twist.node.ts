@@ -50,7 +50,6 @@ export class Twist implements INodeType {
 		description: 'Consume Twist API',
 		defaults: {
 			name: 'Twist',
-			color: '#316fea',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -26,7 +26,6 @@ export class GoogleSlides implements INodeType {
 		description: 'Consume the Google Slides API',
 		defaults: {
 			name: 'Google Slides',
-			color: '#edba25',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
