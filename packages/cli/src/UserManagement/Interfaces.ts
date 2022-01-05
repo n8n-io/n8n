@@ -59,7 +59,7 @@ export declare namespace UpdateSelfRequest {
 
 declare namespace PasswordResetPayload {
 	type Email = Pick<PublicUserData, 'email'>;
-	type NewPassword = Pick<PublicUserData, 'password'> & { token?: string; userId?: string };
+	type NewPassword = Pick<PublicUserData, 'password'> & { token?: string; id?: string };
 }
 
 declare namespace PasswordResetQuery {
