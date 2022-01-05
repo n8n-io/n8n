@@ -44,9 +44,10 @@ export async function addRoutes(
 				},
 				{ relations: ['globalRole'] },
 			);
+
 			if (
 				!user ||
-				(user.password && !user.password.includes(jwtPayload.password!)) ||
+				(user.password && !user.password.endsWith(jwtPayload.password!)) ||
 				(user.email && user.email !== jwtPayload.email)
 			) {
 				// If user has email or password in database, we check.
