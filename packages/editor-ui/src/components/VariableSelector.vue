@@ -1,7 +1,7 @@
 <template>
 	<div @keydown.stop class="variable-selector-wrapper">
 		<div class="input-wrapper">
-			<el-input placeholder="Variable filter..." v-model="variableFilter" ref="inputField" size="small" type="text"></el-input>
+			<n8n-input placeholder="Variable filter..." v-model="variableFilter" ref="inputField" size="small" type="text"></n8n-input>
 		</div>
 
 		<div class="result-wrapper">
@@ -12,15 +12,17 @@
 
 <script lang="ts">
 
-import Vue from 'vue';
+import {
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+} from '@/constants';
 
 import {
 	GenericValue,
 	IContextObject,
 	IDataObject,
-	IRun,
 	IRunData,
 	IRunExecutionData,
+	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	WorkflowDataProxy,
 } from 'n8n-workflow';
@@ -379,7 +381,12 @@ export default mixins(
 					return returnData;
 				}
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual');
+				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				};
+
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', additionalKeys);
 				const proxy = dataProxy.getDataProxy();
 
 				// @ts-ignore

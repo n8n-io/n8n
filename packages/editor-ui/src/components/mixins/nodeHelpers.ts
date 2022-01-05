@@ -1,13 +1,18 @@
 import {
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+} from '@/constants';
+
+import {
 	IBinaryKeyData,
 	ICredentialType,
 	INodeCredentialDescription,
 	NodeHelpers,
-	INodeParameters,
+	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeIssues,
 	INodeIssueData,
 	INodeIssueObjectProperty,
+	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
 	IRunData,
@@ -192,7 +197,7 @@ export const nodeHelpers = mixins(
 				let userCredentials: ICredentialsResponse[] | null;
 				let credentialType: ICredentialType | null;
 				let credentialDisplayName: string;
-				let selectedCredentials: string;
+				let selectedCredentials: INodeCredentialsDetails;
 				for (const credentialTypeDescription of nodeType!.credentials!) {
 					// Check if credentials should be displayed else ignore
 					if (this.displayParameter(node.parameters, credentialTypeDescription, '') !== true) {
@@ -200,7 +205,7 @@ export const nodeHelpers = mixins(
 					}
 
 					// Get the display name of the credential type
-					credentialType = this.$store.getters.credentialType(credentialTypeDescription.name);
+					credentialType = this.$store.getters['credentials/getCredentialTypeByName'](credentialTypeDescription.name);
 					if (credentialType === null) {
 						credentialDisplayName = credentialTypeDescription.name;
 					} else {
@@ -214,15 +219,35 @@ export const nodeHelpers = mixins(
 						}
 					} else {
 						// If they are set check if the value is valid
-						selectedCredentials = node.credentials[credentialTypeDescription.name];
-						userCredentials = this.$store.getters.credentialsByType(credentialTypeDescription.name);
+						selectedCredentials = node.credentials[credentialTypeDescription.name] as INodeCredentialsDetails;
+						if (typeof selectedCredentials === 'string') {
+							selectedCredentials = {
+								id: null,
+								name: selectedCredentials,
+							};
+						}
+
+						userCredentials = this.$store.getters['credentials/getCredentialsByType'](credentialTypeDescription.name);
 
 						if (userCredentials === null) {
 							userCredentials = [];
 						}
 
-						if (userCredentials.find((credentialData) => credentialData.name === selectedCredentials) === undefined) {
-							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials}" do not exist for "${credentialDisplayName}".`];
+						if (selectedCredentials.id) {
+							const idMatch = userCredentials.find((credentialData) => credentialData.id === selectedCredentials.id);
+							if (idMatch) {
+								continue;
+							}
+						}
+
+						const nameMatches = userCredentials.filter((credentialData) => credentialData.name === selectedCredentials.name);
+						if (nameMatches.length > 1) {
+							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" exist for "${credentialDisplayName}"`, "Credentials are not clearly identified. Please select the correct credentials."];
+							continue;
+						}
+
+						if (nameMatches.length === 0) {
+							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" do not exist for "${credentialDisplayName}".`, "You can create credentials with the exact name and then they get auto-selected on refresh."];
 						}
 					}
 				}
@@ -319,6 +344,7 @@ export const nodeHelpers = mixins(
 					};
 
 					this.$store.commit('updateNodeProperties', updateInformation);
+					this.$store.commit('clearNodeExecutionData', node.name);
 					this.updateNodeParameterIssues(node);
 					this.updateNodeCredentialIssues(node);
 				}
@@ -328,35 +354,35 @@ export const nodeHelpers = mixins(
 				if (data.notesInFlow) {
 					return data.notes;
 				}
-	
+
 				if (nodeType !== null && nodeType.subtitle !== undefined) {
-					return workflow.expression.getSimpleParameterValue(data as INode, nodeType.subtitle, 'internal') as string | undefined;
+					return workflow.expression.getSimpleParameterValue(data as INode, nodeType.subtitle, 'internal', PLACEHOLDER_FILLED_AT_EXECUTION_TIME) as string | undefined;
 				}
-	
+
 				if (data.parameters.operation !== undefined) {
 					const operation = data.parameters.operation as string;
 					if (nodeType === null) {
 						return operation;
 					}
-	
+
 					const operationData:INodeProperties = nodeType.properties.find((property: INodeProperties) => {
 						return property.name === 'operation';
 					});
 					if (operationData === undefined) {
 						return operation;
 					}
-	
+
 					if (operationData.options === undefined) {
 						return operation;
 					}
-	
+
 					const optionData = operationData.options.find((option) => {
 						return (option as INodePropertyOptions).value === data.parameters.operation;
 					});
 					if (optionData === undefined) {
 						return operation;
 					}
-	
+
 					return optionData.name;
 				}
 				return undefined;

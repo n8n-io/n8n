@@ -1,7 +1,8 @@
 {
 	"compilerOptions": {
 		"lib": [
-			"es2017"
+			"es2017",
+			"ES2020.Promise"
 		],
 		"types": [
 			"node",

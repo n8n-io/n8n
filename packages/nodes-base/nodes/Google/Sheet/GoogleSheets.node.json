@@ -79,5 +79,10 @@
 				"url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/"
 			}
 		]
-	}
+	},
+	"alias": [
+		"CSV",
+		"Spreadsheet",
+		"GS"
+	]
 }

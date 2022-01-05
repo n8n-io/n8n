@@ -1,4 +1,5 @@
 import {
+	Request,
 	sign,
 } from 'aws4';
 
@@ -31,7 +32,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 
 	let credentials;
 
-	credentials = this.getCredentials('s3');
+	credentials = await this.getCredentials('s3');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -62,7 +63,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 		path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`,
 		service: 's3',
 		body,
-	};
+	} as Request;
 
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
 

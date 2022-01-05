@@ -47,7 +47,8 @@ import {
 	databasePageFields,
 	databasePageOperations,
 } from './DatabasePageDescription';
-import { getServers } from 'dns';
+
+import * as moment from 'moment-timezone';
 
 export class Notion implements INodeType {
 	description: INodeTypeDescription = {
@@ -267,6 +268,28 @@ export class Notion implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
 			},
+
+			// Get all the timezones to display them to user so that he can
+			// select them easily
+			async getTimezones(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const timezone of moment.tz.names()) {
+					const timezoneName = timezone;
+					const timezoneId = timezone;
+					returnData.push({
+						name: timezoneName,
+						value: timezoneId,
+					});
+				}
+				returnData.unshift({
+					name: 'Default',
+					value: 'default',
+					description: 'Timezone set in n8n',
+				});
+				return returnData;
+			},
 		},
 	};
 
@@ -323,7 +346,6 @@ export class Notion implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const body: IDataObject = {
-						page_size: 100,
 						filter: { property: 'object', value: 'database' },
 					};
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;

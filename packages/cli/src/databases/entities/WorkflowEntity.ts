@@ -1,13 +1,8 @@
-import {
-	Length,
-} from 'class-validator';
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable import/no-cycle */
+import { Length } from 'class-validator';
 
-import {
-	IConnections,
-	IDataObject,
-	INode,
-	IWorkflowSettings,
-} from 'n8n-workflow';
+import { IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 
 import {
 	BeforeUpdate,
@@ -22,22 +17,43 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 
-import {
-	IWorkflowDb,
-} from '../../';
+import config = require('../../../config');
+import { DatabaseType, IWorkflowDb } from '../..';
+import { TagEntity } from './TagEntity';
 
-import {
-	getTimestampSyntax,
-	resolveDataType
-} from '../utils';
+function resolveDataType(dataType: string) {
+	const dbType = config.get('database.type') as DatabaseType;
 
-import {
-	TagEntity,
-} from './TagEntity';
+	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
+		sqlite: {
+			json: 'simple-json',
+		},
+		postgresdb: {
+			datetime: 'timestamptz',
+		},
+		mysqldb: {},
+		mariadb: {},
+	};
+
+	return typeMap[dbType][dataType] ?? dataType;
+}
+
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+function getTimestampSyntax() {
+	const dbType = config.get('database.type') as DatabaseType;
+
+	const map: { [key in DatabaseType]: string } = {
+		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
+		postgresdb: 'CURRENT_TIMESTAMP(3)',
+		mysqldb: 'CURRENT_TIMESTAMP(3)',
+		mariadb: 'CURRENT_TIMESTAMP(3)',
+	};
+
+	return map[dbType];
+}
 
 @Entity()
 export class WorkflowEntity implements IWorkflowDb {
-
 	@PrimaryGeneratedColumn()
 	id: number;
 
@@ -58,7 +74,11 @@ export class WorkflowEntity implements IWorkflowDb {
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	createdAt: Date;
 
-	@UpdateDateColumn({ precision: 3, default: () => getTimestampSyntax(), onUpdate: getTimestampSyntax() })
+	@UpdateDateColumn({
+		precision: 3,
+		default: () => getTimestampSyntax(),
+		onUpdate: getTimestampSyntax(),
+	})
 	updatedAt: Date;
 
 	@Column({
@@ -73,16 +93,16 @@ export class WorkflowEntity implements IWorkflowDb {
 	})
 	staticData?: IDataObject;
 
-	@ManyToMany(() => TagEntity, tag => tag.workflows)
+	@ManyToMany(() => TagEntity, (tag) => tag.workflows)
 	@JoinTable({
-		name: "workflows_tags", // table name for the junction table of this relation
+		name: 'workflows_tags', // table name for the junction table of this relation
 		joinColumn: {
-				name: "workflowId",
-				referencedColumnName: "id",
+			name: 'workflowId',
+			referencedColumnName: 'id',
 		},
 		inverseJoinColumn: {
-				name: "tagId",
-				referencedColumnName: "id",
+			name: 'tagId',
+			referencedColumnName: 'id',
 		},
 	})
 	tags: TagEntity[];

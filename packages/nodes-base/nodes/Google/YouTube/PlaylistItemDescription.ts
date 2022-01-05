@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const playlistItemOperations = [
+export const playlistItemOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const playlistItemOperations = [
 		default: 'add',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const playlistItemFields = [
+export const playlistItemFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 playlistItem:add                           */
 	/* -------------------------------------------------------------------------- */
@@ -118,8 +118,7 @@ export const playlistItemFields = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 			{
 				displayName: 'Position',
@@ -222,8 +221,7 @@ export const playlistItemFields = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},
@@ -269,8 +267,7 @@ export const playlistItemFields = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},
@@ -400,9 +397,8 @@ export const playlistItemFields = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -72,7 +72,7 @@ export class TimescaleDb implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -247,11 +247,7 @@ export class TimescaleDb implements INodeType {
 							},
 						],
 						default: 'multiple',
-						description: [
-							'The way queries should be sent to database.',
-							'Can be used in conjunction with <b>Continue on Fail</b>.',
-							'See the docs for more examples',
-						].join('<br>'),
+						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.timescaleDb/">the docs</a> for more examples',
 					},
 					{
 						displayName: 'Query Parameters',
@@ -274,7 +270,7 @@ export class TimescaleDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('timescaleDb');
+		const credentials = await this.getCredentials('timescaleDb');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

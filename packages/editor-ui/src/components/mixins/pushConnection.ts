@@ -16,6 +16,7 @@ import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -164,7 +165,7 @@ export const pushConnection = mixins(
 
 				if (receivedData.type === 'sendConsoleMessage') {
 					const pushData = receivedData.data;
-					console.log(pushData.source, pushData.message); // eslint-disable-line no-console
+					console.log(pushData.source, ...pushData.messages); // eslint-disable-line no-console
 					return true;
 				}
 
@@ -213,41 +214,57 @@ export const pushConnection = mixins(
 
 					const runDataExecuted = pushData.data;
 
-					let runDataExecutedErrorMessage;
+					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data.resultData.error);
+
 					// @ts-ignore
 					const workflow = this.getWorkflow();
-					if (runDataExecuted.finished !== true) {
-						// There was a problem with executing the workflow
-						let errorMessage = 'There was a problem executing the workflow!';
+					if (runDataExecuted.waitTill !== undefined) {
+						const {
+							activeExecutionId,
+							workflowSettings,
+							saveManualExecutions,
+						} = this.$store.getters;
 
-						if (runDataExecuted.data.resultData.error && runDataExecuted.data.resultData.error.message) {
-							let nodeName: string | undefined;
-							if (runDataExecuted.data.resultData.error.node) {
-								nodeName = typeof runDataExecuted.data.resultData.error.node === 'string'
-									? runDataExecuted.data.resultData.error.node
-									: runDataExecuted.data.resultData.error.node.name;
-							}
+						const isSavingExecutions= workflowSettings.saveManualExecutions === undefined ? saveManualExecutions : workflowSettings.saveManualExecutions;
 
-							const receivedError = nodeName
-								? `${nodeName}: ${runDataExecuted.data.resultData.error.message}`
-								: runDataExecuted.data.resultData.error.message;
-							errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
+						let action;
+						if (!isSavingExecutions) {
+							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
+						}
+						else {
+							action = `<a href="/execution/${activeExecutionId}" target="_blank">View the execution</a> to see what happened after this node.`;
 						}
 
-						runDataExecutedErrorMessage = errorMessage;
-
+						// Workflow did start but had been put to wait
+						this.$titleSet(workflow.name as string, 'IDLE');
+						this.$showToast({
+							title: 'Workflow started waiting',
+							message: `${action} <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+							type: 'success',
+							duration: 0,
+							onLinkClick: async (e: HTMLLinkElement) => {
+								if (e.classList.contains('open-settings')) {
+									if (this.$store.getters.isNewWorkflow) {
+										await this.saveAsNewWorkflow();
+									}
+									this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+								}
+							},
+						});
+					} else if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');
+
 						this.$showMessage({
 							title: 'Problem executing workflow',
-							message: errorMessage,
+							message: runDataExecutedErrorMessage,
 							type: 'error',
 						});
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
-							title: 'Workflow got executed',
-							message: 'Workflow did get executed successfully!',
+							title: 'Workflow was executed',
+							message: 'Workflow was executed successfully!',
 							type: 'success',
 						});
 					}
@@ -301,7 +318,7 @@ export const pushConnection = mixins(
 					const pushData = receivedData.data;
 					this.$store.commit('setExecutingNode', pushData.nodeName);
 				} else if (receivedData.type === 'testWebhookDeleted') {
-					// A test-webhook got deleted
+					// A test-webhook was deleted
 					const pushData = receivedData.data;
 
 					if (pushData.workflowId === this.$store.getters.workflowId) {

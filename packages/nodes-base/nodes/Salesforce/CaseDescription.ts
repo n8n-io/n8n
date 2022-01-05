@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const caseOperations = [
+export const caseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -52,9 +52,9 @@ export const caseOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const caseFields = [
+export const caseFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                case:create                                 */
@@ -207,6 +207,15 @@ export const caseFields = [
 				},
 				default: '',
 				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training.',
+			},
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Status',
@@ -404,6 +413,15 @@ export const caseFields = [
 				},
 				default: '',
 				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training.',
+			},
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Status',
@@ -698,4 +716,4 @@ export const caseFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

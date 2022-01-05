@@ -11,7 +11,7 @@ import {
 	filters,
 } from './Filters';
 
-export const databasePageOperations = [
+export const databasePageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const databasePageOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const databasePageFields = [
+export const databasePageFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                databasePage:create                       */
@@ -305,11 +305,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: false,
-						description: `
-						Whether or not the checkbox is checked.</br>
-						true represents checked.</br>
-						false represents unchecked.
-						`,
+						description: 'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked.',
 					},
 					{
 						displayName: 'Number',
@@ -405,6 +401,23 @@ export const databasePageFields = [
 						description: `
 						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
 					},
+					{
+						displayName: 'Timezone',
+						name: 'timezone',
+						type: 'options',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						typeOptions: {
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: 'default',
+						description: 'Time zone to use. By default n8n timezone is used.',
+					},
 				],
 			},
 		],
@@ -432,7 +445,7 @@ export const databasePageFields = [
 		description: 'The ID of the databasePage to update.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -446,7 +459,7 @@ export const databasePageFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Properties',
@@ -665,11 +678,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: false,
-						description: `
-						Whether or not the checkbox is checked.</br>
-						true represents checked.</br>
-						false represents unchecked.
-						`,
+						description: 'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked.',
 					},
 					{
 						displayName: 'Number',
@@ -764,6 +773,23 @@ export const databasePageFields = [
 						default: '',
 						description: `
 						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+					},
+					{
+						displayName: 'Timezone',
+						name: 'timezone',
+						type: 'options',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						typeOptions: {
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: 'default',
+						description: 'Time zone to use. By default n8n timezone is used.',
 					},
 				],
 			},
@@ -1019,4 +1045,4 @@ export const databasePageFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

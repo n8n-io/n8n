@@ -26,11 +26,11 @@ export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions |
 	if (source === 'contentApi') {
 		//https://ghost.org/faq/api-versioning/
 		version = 'v3';
-		credentials = this.getCredentials('ghostContentApi') as IDataObject;
+		credentials = await this.getCredentials('ghostContentApi') as IDataObject;
 		query.key = credentials.apiKey as string;
 	} else {
 		version = 'v2';
-		credentials = this.getCredentials('ghostAdminApi') as IDataObject;
+		credentials = await this.getCredentials('ghostAdminApi') as IDataObject;
 		// Create the token (including decoding secret)
 		const [id, secret] = (credentials.apiKey as string).split(':');
 
@@ -70,16 +70,15 @@ export async function ghostApiRequestAllItems(this: IHookFunctions | IExecuteFun
 
 	let responseData;
 
-	query.limit = 20;
-
-	let uri: string | undefined;
+	query.limit = 50;
+	query.page = 1;
 
 	do {
-		responseData = await ghostApiRequest.call(this, method, endpoint, body, query, uri);
-		uri = responseData.meta.pagination.next;
+		responseData = await ghostApiRequest.call(this, method, endpoint, body, query);
+		query.page = responseData.meta.pagination.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		responseData.meta.pagination.next !== null
+		query.page !== null
 	);
 	return returnData;
 }

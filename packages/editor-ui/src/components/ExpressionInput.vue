@@ -262,9 +262,7 @@ export default mixins(
 				// Convert the expression string into a Quill Operations
 				const editorOperations: DeltaOperation[] = [];
 				currentValue.replace(/\{\{(.*?)\}\}/ig, '*%%#_@^$1*%%#_@').split('*%%#_@').forEach((value: string) => {
-					if (!value) {
-
-					} else if (value.charAt(0) === '^') {
+					if (value && value.charAt(0) === '^') {
 						// Is variable
 						let displayValue = `{{${value.slice(1)}}}` as string | number | boolean | null | undefined;
 						if (this.resolvedValue) {

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const industryOperations = [
+export const industryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -31,13 +31,14 @@ export const industryOperations = [
 		],
 		default: 'getFactor',
 	},
-] as INodeProperties[];
+];
 
-export const industryFields = [
+export const industryFields: INodeProperties[] = [
 	{
 		displayName: 'Industry',
 		name: 'industry',
 		type: 'options',
+		default: 'food',
 		options: [
 			{
 				name: 'Food',
@@ -118,7 +119,7 @@ export const industryFields = [
 		description: 'Number of results to return.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -133,7 +134,7 @@ export const industryFields = [
 			},
 		},
 		default: true,
-		description: 'Simplify the response.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -170,4 +171,4 @@ export const industryFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

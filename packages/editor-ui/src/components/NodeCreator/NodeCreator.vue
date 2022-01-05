@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<SlideTransition>
-			<div class="node-creator" v-if="active" v-click-outside="closeCreator">
+			<div class="node-creator" v-if="active" v-click-outside="onClickOutside">
 				<MainPanel @nodeTypeSelected="nodeTypeSelected" :categorizedItems="categorizedItems" :categoriesWithNodes="categoriesWithNodes" :searchItems="searchItems"></MainPanel>
 			</div>
 		</SlideTransition>
@@ -19,6 +19,7 @@ import { HIDDEN_NODES  } from '@/constants';
 
 import MainPanel from './MainPanel.vue';
 import { getCategoriesWithNodes, getCategorizedList } from './helpers';
+import { mapGetters } from 'vuex';
 
 export default Vue.extend({
 	name: 'NodeCreator',
@@ -29,15 +30,36 @@ export default Vue.extend({
 	props: [
 		'active',
 	],
+	data() {
+		return {
+			allNodeTypes: [],
+		};
+	},
 	computed: {
+		...mapGetters('settings', ['personalizedNodeTypes']),
+		nodeTypes(): INodeTypeDescription[] {
+			return this.$store.getters.allNodeTypes;
+		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters.allNodeTypes
+			return this.allNodeTypes
 				.filter((nodeType: INodeTypeDescription) => {
 					return !HIDDEN_NODES.includes(nodeType.name);
-				});
+				}).reduce((accumulator: INodeTypeDescription[], currentValue: INodeTypeDescription) => {
+					// keep only latest version of the nodes
+					// accumulator starts as an empty array.
+					const exists = accumulator.findIndex(nodes => nodes.name === currentValue.name);
+					if (exists >= 0 && accumulator[exists].version < currentValue.version) {
+						// This must be a versioned node and we've found a newer version.
+						// Replace the previous one with this one.
+						accumulator[exists] = currentValue;
+					} else {
+						accumulator.push(currentValue);
+					}
+					return accumulator;
+				}, []);
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
-			return getCategoriesWithNodes(this.visibleNodeTypes);
+			return getCategoriesWithNodes(this.visibleNodeTypes, this.personalizedNodeTypes as string[]);
 		},
 		categorizedItems(): INodeCreateElement[] {
 			return getCategorizedList(this.categoriesWithNodes);
@@ -64,18 +86,27 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		closeCreator () {
-			this.$emit('closeNodeCreator');
+		onClickOutside (e: Event) {
+			if (e.type === 'click') {
+				this.$emit('closeNodeCreator');
+			}
 		},
 		nodeTypeSelected (nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
+		},
+	},
+	watch: {
+		nodeTypes(newList, prevList) {
+			if (prevList.length === 0) {
+				this.allNodeTypes = newList;
+			}
 		},
 	},
 });
 </script>
 
 <style scoped lang="scss">
-/deep/ *, *:before, *:after {
+::v-deep *, *:before, *:after {
 	box-sizing: border-box;
 }
 

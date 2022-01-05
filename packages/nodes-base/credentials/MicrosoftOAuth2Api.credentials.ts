@@ -8,6 +8,7 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 	extends = [
 		'oAuth2Api',
 	];
+	icon = 'file:Microsoft.svg';
 	displayName = 'Microsoft OAuth2 API';
 	documentationUrl = 'microsoft';
 	properties: INodeProperties[] = [

@@ -6,7 +6,7 @@ import {
 	TLP,
 } from '../interfaces/AlertInterface';
 
-export const caseOperations = [
+export const caseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const caseOperations = [
 			loadOptionsMethod: 'loadCaseOptions',
 		},
 	},
-] as INodeProperties[];
+];
 
-export const caseFields = [
+export const caseFields: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -295,6 +295,23 @@ export const caseFields = [
 			},
 		},
 	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+					'update',
+				],
+			},
+		},
+	},
 	// Optional fields (Create operation)
 	{
 		displayName: 'Options',
@@ -315,6 +332,61 @@ export const caseFields = [
 		default: '',
 		options: [
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				placeholder: 'Add Custom Field',
+				options: [
+					{
+						name: 'customFields',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadCustomFields',
+								},
+								default: 'Custom Field',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom Field value. Use an expression if the type is not a string.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Custom Fields (JSON)',
+				name: 'customFieldsJson',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
+				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
+			},
+			{
 				displayName: 'End Date',
 				name: 'endDate',
 				default: '',
@@ -333,6 +405,13 @@ export const caseFields = [
 				name: 'metrics',
 				default: '[]',
 				type: 'json',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
 				description: 'List of metrics',
 			},
 		],
@@ -356,6 +435,61 @@ export const caseFields = [
 		required: false,
 		default: '',
 		options: [
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				placeholder: 'Add Custom Field',
+				options: [
+					{
+						name: 'customFields',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadCustomFields',
+								},
+								default: 'Custom Field',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom Field value. Use an expression if the type is not a string.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Custom Fields (JSON)',
+				name: 'customFieldsJson',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
+				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
+			},
 			{
 				displayName: 'Description',
 				name: 'description',
@@ -403,6 +537,13 @@ export const caseFields = [
 				name: 'metrics',
 				type: 'json',
 				default: '[]',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
 				description: 'List of metrics',
 			},
 			{
@@ -584,6 +725,40 @@ export const caseFields = [
 		},
 		options: [
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Custom Field',
+				options: [
+					{
+						name: 'customFields',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadCustomFields',
+								},
+								default: 'Custom Field',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom Field value. Use an expression if the type is not a string.',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
@@ -754,4 +929,4 @@ export const caseFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

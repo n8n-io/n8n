@@ -1,5 +1,5 @@
 <template>
-	<el-tooltip class="primary-color" placement="bottom-end" effect="light">
+	<n8n-tooltip class="primary-color" placement="bottom-end" >
 		<div slot="content">
 			You're viewing the log of a previous execution. You cannot<br />
 			make changes since this execution already occured. Make changes<br />
@@ -9,5 +9,5 @@
 			<font-awesome-icon icon="exclamation-triangle" />
 			Read only
 		</span>
-	</el-tooltip>
+	</n8n-tooltip>
 </template>

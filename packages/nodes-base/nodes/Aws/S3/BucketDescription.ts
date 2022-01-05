@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const bucketOperations = [
+export const bucketOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -21,6 +21,11 @@ export const bucketOperations = [
 				description: 'Create a bucket',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a bucket',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all buckets',
@@ -34,9 +39,9 @@ export const bucketOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const bucketFields = [
+export const bucketFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                bucket:create                               */
@@ -152,6 +157,29 @@ export const bucketFields = [
 			},
 		],
 	},
+
+/* -------------------------------------------------------------------------- */
+/*                                bucket:delete                               */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'bucket',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: 'Name of the AWS S3 bucket to delete.',
+	},
+
 /* -------------------------------------------------------------------------- */
 /*                                 bucket:getAll                              */
 /* -------------------------------------------------------------------------- */
@@ -324,4 +352,4 @@ export const bucketFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

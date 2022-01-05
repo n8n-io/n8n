@@ -21,7 +21,7 @@ export class QuestDb implements INodeType {
 		icon: 'file:questdb.png',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in QuestDB.',
+		description: 'Get, add and update data in QuestDB',
 		defaults: {
 			name: 'QuestDB',
 			color: '#2C4A79',
@@ -63,7 +63,7 @@ export class QuestDb implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -170,11 +170,7 @@ export class QuestDb implements INodeType {
 							},
 						],
 						default: 'independently',
-						description: [
-							'The way queries should be sent to database.',
-							'Can be used in conjunction with <b>Continue on Fail</b>.',
-							'See the docs for more examples',
-						].join('<br>'),
+						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.questDb/">the docs</a> for more examples.',
 					},
 					{
 						displayName: 'Query Parameters',
@@ -210,7 +206,7 @@ export class QuestDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('questDb');
+		const credentials = await this.getCredentials('questDb');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const eventOperations = [
+export const eventOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const eventOperations = [
 		default: 'get',
 		description: 'The operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const eventFields = [
+export const eventFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                event:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -138,7 +138,7 @@ export const eventFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-	
+
 	/* -------------------------------------------------------------------------- */
 	/*                                event:get                                   */
 	/* -------------------------------------------------------------------------- */
@@ -202,4 +202,4 @@ export const eventFields = [
 		required: true,
 		description: 'The ID of the event to retrieve (either the numeric primary-key or the hexadecimal ID as reported by the raven client).',
 	},
-] as INodeProperties[];
+];

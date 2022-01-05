@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const bookmarkOperations = [
+export const bookmarkOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const bookmarkOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const bookmarkFields = [
+export const bookmarkFields: INodeProperties[] = [
 	// ----------------------------------
 	//       bookmark: create
 	// ----------------------------------
@@ -118,7 +118,7 @@ export const bookmarkFields = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Bookmark tags. Multiple can be set separated by comma.',
+				description: 'Bookmark tags. Multiple tags can be set separated by comma.',
 			},
 			{
 				displayName: 'Title',
@@ -306,7 +306,7 @@ export const bookmarkFields = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Bookmark tags. Multiple can be set separated by comma.',
+				description: 'Bookmark tags. Multiple tags can be set separated by comma.',
 			},
 			{
 				displayName: 'Title',
@@ -317,4 +317,4 @@ export const bookmarkFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

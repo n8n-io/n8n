@@ -33,18 +33,22 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	try {
 		if (authenticationMethod === 'apiKey') {
-			const credentials = this.getCredentials('hubspotApi');
+			const credentials = await this.getCredentials('hubspotApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
 
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'developerApi') {
-			const credentials = this.getCredentials('hubspotDeveloperApi');
+			if (endpoint.includes('webhooks')) {
 
-			options.qs.hapikey = credentials!.apiKey as string;
-			return await this.helpers.request!(options);
+				const credentials = await this.getCredentials('hubspotDeveloperApi');
+				options.qs.hapikey = credentials!.apiKey as string;
+				return await this.helpers.request!(options);
+
+			} else {
+				return await this.helpers.requestOAuth2!.call(this, 'hubspotDeveloperApi', options, { tokenType: 'Bearer', includeCredentialsOnRefreshOnBody: true });
+			}
 		} else {
-			// @ts-ignore
 			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer', includeCredentialsOnRefreshOnBody: true });
 		}
 	} catch (error) {
@@ -89,6 +93,17 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = '';
 	}
 	return result;
+}
+
+
+// tslint:disable-next-line: no-any
+export function clean(obj: any) {
+	for (const propName in obj) {
+		if (obj[propName] === null || obj[propName] === undefined || obj[propName] === '') {
+			delete obj[propName];
+		}
+	}
+	return obj;
 }
 
 export const propertyEvents = [

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const companyOperations = [
 		],
 		default: 'getFactor',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Scorecard Identifier',
 		name: 'scorecardIdentifier',
@@ -135,7 +135,7 @@ export const companyFields = [
 		description: 'Number of results to return.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -150,7 +150,7 @@ export const companyFields = [
 			},
 		},
 		default: true,
-		description: 'Simplify the response.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 
 	// company:getFactor
@@ -188,7 +188,7 @@ export const companyFields = [
 			},
 		],
 	},
-	
+
 	// company:getFactorHistorical
 	// company:getHistoricalScore
 	{
@@ -250,4 +250,4 @@ export const companyFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

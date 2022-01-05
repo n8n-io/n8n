@@ -14,6 +14,7 @@ export class SlackApi implements ICredentialType {
 			name: 'accessToken',
 			type: 'string',
 			default: '',
+			required: true,
 		},
 	];
 }

@@ -3,7 +3,6 @@ import {
 } from 'request';
 
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -96,7 +95,8 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 		let attachmentBody = {};
 		let response: IDataObject = {};
 
-		const isAnimatedWebp = (Buffer.from(binaryData[binaryPropertyName].data, 'base64').toString().indexOf('ANMF') !== -1);
+		const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+		const isAnimatedWebp = (dataBuffer.toString().indexOf('ANMF') !== -1);
 
 		const isImage = binaryData[binaryPropertyName].mimeType.includes('image');
 
@@ -118,9 +118,11 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 
 			// https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init
 
+			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+
 			attachmentBody = {
 				command: 'INIT',
-				total_bytes: Buffer.from(binaryData[binaryPropertyName].data, BINARY_ENCODING).byteLength,
+				total_bytes: dataBuffer.byteLength,
 				media_type: binaryData[binaryPropertyName].mimeType,
 			};
 
@@ -130,7 +132,7 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 
 			// break the data on 5mb chunks (max size that can be uploaded at once)
 
-			const binaryParts = chunks(Buffer.from(binaryData[binaryPropertyName].data, BINARY_ENCODING), 5242880);
+			const binaryParts = chunks(dataBuffer, 5242880);
 
 			let index = 0;
 
@@ -165,6 +167,7 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 				const { check_after_secs } = (response.processing_info as IDataObject);
 				await new Promise((resolve, reject) => {
 					setTimeout(() => {
+						// @ts-ignore
 						resolve();
 					}, (check_after_secs as number) * 1000);
 				});

@@ -1,0 +1,140 @@
+@use "mixins/mixins";
+@use "mixins/utils";
+@use "./common/var";
+
+@include mixins.b(progress) {
+	position: relative;
+	line-height: 1;
+
+	@include mixins.e(text) {
+		font-size: 14px;
+		color: var(--color-text-dark);
+		display: inline-block;
+		vertical-align: middle;
+		margin-left: 10px;
+		line-height: 1;
+
+		i {
+			vertical-align: middle;
+			display: block;
+		}
+	}
+
+	@include mixins.m((circle, dashboard)) {
+		display: inline-block;
+
+		.el-progress__text {
+			position: absolute;
+			top: 50%;
+			left: 0;
+			width: 100%;
+			text-align: center;
+			margin: 0;
+			transform: translate(0, -50%);
+
+			i {
+				vertical-align: middle;
+				display: inline-block;
+			}
+		}
+	}
+
+	@include mixins.m(without-text) {
+		.el-progress__text {
+			display: none;
+		}
+
+		.el-progress-bar {
+			padding-right: 0;
+			margin-right: 0;
+			display: block;
+		}
+	}
+
+	@include mixins.m(text-inside) {
+		.el-progress-bar {
+			padding-right: 0;
+			margin-right: 0;
+		}
+	}
+
+	@include mixins.when(success) {
+		.el-progress-bar__inner {
+			background-color: var(--color-success);
+		}
+
+		.el-progress__text {
+			color: var(--color-success);
+		}
+	}
+
+	@include mixins.when(warning) {
+		.el-progress-bar__inner {
+			background-color: var(--color-warning);
+		}
+
+		.el-progress__text {
+			color: var(--color-warning);
+		}
+	}
+
+	@include mixins.when(exception) {
+		.el-progress-bar__inner {
+			background-color: var(--color-danger);
+		}
+
+		.el-progress__text {
+			color: var(--color-danger);
+		}
+	}
+}
+
+@include mixins.b(progress-bar) {
+	padding-right: 50px;
+	display: inline-block;
+	vertical-align: middle;
+	width: 100%;
+	margin-right: -55px;
+	box-sizing: border-box;
+
+	@include mixins.e(outer) {
+		height: 6px;
+		border-radius: 100px;
+		background-color: var(--border-color-light);
+		overflow: hidden;
+		position: relative;
+		vertical-align: middle;
+	}
+	@include mixins.e(inner) {
+		position: absolute;
+		left: 0;
+		top: 0;
+		height: 100%;
+		background-color: var(--color-primary);
+		text-align: right;
+		border-radius: 100px;
+		line-height: 1;
+		white-space: nowrap;
+		transition: width 0.6s ease;
+
+		@include utils.utils-vertical-center;
+	}
+
+	@include mixins.e(innerText) {
+		display: inline-block;
+		vertical-align: middle;
+		color: var.$color-white;
+		font-size: 12px;
+		margin: 0 5px;
+	}
+}
+
+@keyframes progress {
+	0% {
+		background-position: 0 0;
+	}
+
+	100% {
+		background-position: 32px 0;
+	}
+}

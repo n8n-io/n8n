@@ -3,12 +3,12 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Monitoring"
+		"Development"
 	],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/uptimeRobot"
+				"url": "https://docs.n8n.io/credentials/uptimeRobot/"
 			}
 		],
 		"primaryDocumentation": [

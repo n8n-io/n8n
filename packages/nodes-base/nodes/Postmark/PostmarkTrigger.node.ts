@@ -22,7 +22,7 @@ export class PostmarkTrigger implements INodeType {
 		icon: 'file:postmark.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Postmark events occur.',
+		description: 'Starts the workflow when Postmark events occur',
 		defaults: {
 			name: 'Postmark Trigger',
 			color: '#fedd00',

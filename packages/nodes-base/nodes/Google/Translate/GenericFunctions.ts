@@ -37,7 +37,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 
 		if (authenticationMethod === 'serviceAccount') {
-			const credentials = this.getCredentials('googleApi');
+			const credentials = await this.getCredentials('googleApi');
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -64,9 +64,9 @@ export const contactOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create                              */
@@ -385,6 +385,15 @@ export const contactFields = [
 				description: 'Phone number for the contact.',
 			},
 			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
+			},
+			{
 				displayName: 'Salutation',
 				name: 'salutation',
 				type: 'string',
@@ -571,6 +580,13 @@ export const contactFields = [
 				If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.`,
 			},
 			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
+				description: 'Last name of the contact. Limited to 80 characters.',
+			},
+			{
 				displayName: 'Lead Source',
 				name: 'leadSource',
 				type: 'options',
@@ -672,6 +688,15 @@ export const contactFields = [
 				type: 'string',
 				default: '',
 				description: 'Phone number for the contact.',
+			},
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Salutation',
@@ -1022,4 +1047,4 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

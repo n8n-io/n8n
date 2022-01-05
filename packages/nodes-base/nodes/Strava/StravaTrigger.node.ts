@@ -26,7 +26,7 @@ export class StravaTrigger implements INodeType {
 		icon: 'file:strava.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a Strava events occurs.',
+		description: 'Starts the workflow when Strava events occur',
 		defaults: {
 			name: 'Strava Trigger',
 			color: '#ea5929',
@@ -103,7 +103,7 @@ export class StravaTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default the webhook-data only contain the Object ID. If this option gets activated it<br />will resolve the data automatically.',
+				description: 'By default the webhook-data only contain the Object ID. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Options',
@@ -117,8 +117,7 @@ export class StravaTrigger implements INodeType {
 						name: 'deleteIfExist',
 						type: 'boolean',
 						default: false,
-						description: `Strava allows just one subscription at all times. If you want to delete the current subscription to make<br>
-						room for a new subcription with the current parameters, set this parameter to true. Keep in mind this is a destructive operation.`,
+						description: `Strava allows just one subscription at all times. If you want to delete the current subscription to make room for a new subcription with the current parameters, set this parameter to true. Keep in mind this is a destructive operation.`,
 					},
 				],
 			},

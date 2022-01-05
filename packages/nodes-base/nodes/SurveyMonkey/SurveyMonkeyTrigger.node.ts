@@ -40,7 +40,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 		icon: 'file:surveyMonkey.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Survey Monkey events occur.',
+		description: 'Starts the workflow when Survey Monkey events occur',
 		defaults: {
 			name: 'SurveyMonkey Trigger',
 			color: '#53b675',
@@ -325,7 +325,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default the webhook-data only contain the IDs. If this option gets activated it<br />will resolve the data automatically.',
+				description: 'By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Only Answers',
@@ -497,9 +497,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 		const webhookName = this.getWebhookName();
 
 		if (authenticationMethod === 'accessToken') {
-			credentials = this.getCredentials('surveyMonkeyApi') as IDataObject;
+			credentials = await this.getCredentials('surveyMonkeyApi') as IDataObject;
 		} else {
-			credentials = this.getCredentials('surveyMonkeyOAuth2Api') as IDataObject;
+			credentials = await this.getCredentials('surveyMonkeyOAuth2Api') as IDataObject;
 		}
 
 		if (webhookName === 'setup') {

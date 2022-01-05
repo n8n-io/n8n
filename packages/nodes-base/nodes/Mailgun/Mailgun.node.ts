@@ -19,7 +19,7 @@ export class Mailgun implements INodeType {
 		icon: 'file:mailgun.svg',
 		group: ['output'],
 		version: 1,
-		description: 'Sends an Email via Mailgun',
+		description: 'Sends an email via Mailgun',
 		defaults: {
 			name: 'Mailgun',
 			color: '#c02428',
@@ -101,7 +101,7 @@ export class Mailgun implements INodeType {
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties which contain<br />data which should be added to email as attachment.<br />Multiple ones can be comma separated.',
+				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma separated.',
 			},
 		],
 	};
@@ -115,86 +115,94 @@ export class Mailgun implements INodeType {
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
-			item = items[itemIndex];
+			try {
+				item = items[itemIndex];
 
-			const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
-			const toEmail = this.getNodeParameter('toEmail', itemIndex) as string;
-			const ccEmail = this.getNodeParameter('ccEmail', itemIndex) as string;
-			const bccEmail = this.getNodeParameter('bccEmail', itemIndex) as string;
-			const subject = this.getNodeParameter('subject', itemIndex) as string;
-			const text = this.getNodeParameter('text', itemIndex) as string;
-			const html = this.getNodeParameter('html', itemIndex) as string;
-			const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
+				const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
+				const toEmail = this.getNodeParameter('toEmail', itemIndex) as string;
+				const ccEmail = this.getNodeParameter('ccEmail', itemIndex) as string;
+				const bccEmail = this.getNodeParameter('bccEmail', itemIndex) as string;
+				const subject = this.getNodeParameter('subject', itemIndex) as string;
+				const text = this.getNodeParameter('text', itemIndex) as string;
+				const html = this.getNodeParameter('html', itemIndex) as string;
+				const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
 
-			const credentials = this.getCredentials('mailgunApi');
+				const credentials = await this.getCredentials('mailgunApi');
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
+				if (credentials === undefined) {
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+				}
 
-			const formData: IDataObject = {
-				from: fromEmail,
-				to: toEmail,
-				subject,
-				text,
-				html,
-			};
+				const formData: IDataObject = {
+					from: fromEmail,
+					to: toEmail,
+					subject,
+					text,
+					html,
+				};
 
-			if (ccEmail.length !== 0) {
-				formData.cc = ccEmail;
-			}
-			if (bccEmail.length !== 0) {
-				formData.bcc = bccEmail;
-			}
+				if (ccEmail.length !== 0) {
+					formData.cc = ccEmail;
+				}
+				if (bccEmail.length !== 0) {
+					formData.bcc = bccEmail;
+				}
 
-			if (attachmentPropertyString && item.binary) {
+				if (attachmentPropertyString && item.binary) {
 
-				const attachments = [];
-				const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
-					return propertyName.trim();
-				});
-
-				for (const propertyName of attachmentProperties) {
-					if (!item.binary.hasOwnProperty(propertyName)) {
-						continue;
-					}
-					attachments.push({
-						value: Buffer.from(item.binary[propertyName].data, BINARY_ENCODING),
-						options: {
-							filename: item.binary[propertyName].fileName || 'unknown',
-
-						},
+					const attachments = [];
+					const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
+						return propertyName.trim();
 					});
+
+					for (const propertyName of attachmentProperties) {
+						if (!item.binary.hasOwnProperty(propertyName)) {
+							continue;
+						}
+						attachments.push({
+							value: Buffer.from(item.binary[propertyName].data, BINARY_ENCODING),
+							options: {
+								filename: item.binary[propertyName].fileName || 'unknown',
+
+							},
+						});
+					}
+
+					if (attachments.length) {
+						// @ts-ignore
+						formData.attachment = attachments;
+					}
 				}
 
-				if (attachments.length) {
-					// @ts-ignore
-					formData.attachment = attachments;
+				const options = {
+					method: 'POST',
+					formData,
+					uri: `https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
+					auth: {
+						user: 'api',
+						pass: credentials.apiKey as string,
+					},
+					json: true,
+				};
+
+				let responseData;
+
+				try {
+					responseData = await this.helpers.request(options);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
+
+				returnData.push({
+					json: responseData,
+				});
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message } });
+					continue;
+				}
+				throw error;
 			}
-
-			const options = {
-				method: 'POST',
-				formData,
-				uri: `https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
-				auth: {
-					user: 'api',
-					pass: credentials.apiKey as string,
-				},
-				json: true,
-			};
-
-		let responseData;
-
-		try {
-			responseData = await this.helpers.request(options);
-		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
-		}
-
-			returnData.push({
-				json: responseData,
-			});
 		}
 		return this.prepareOutputData(returnData);
 	}

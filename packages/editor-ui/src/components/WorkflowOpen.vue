@@ -1,13 +1,15 @@
 <template>
 	<Modal
-		:name="modalName"
-		size="xl"
+		:name="WORKFLOW_OPEN_MODAL_KEY"
+		width="80%"
+		minWidth="620px"
+		:classic="true"
 	>
 			<template v-slot:header>
 				<div class="workflows-header">
-					<div class="title">
-						<h1>Open Workflow</h1>
-					</div>
+					<n8n-heading tag="h1" size="xlarge" class="title">
+						Open Workflow
+					</n8n-heading>
 					<div class="tags-filter">
 						<TagsDropdown
 							placeholder="Filter by tags..."
@@ -19,9 +21,9 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<el-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
-							<i slot="prefix" class="el-input__icon el-icon-search"></i>
-						</el-input>
+						<n8n-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
+							<font-awesome-icon slot="prefix" icon="search"></font-awesome-icon>
+						</n8n-input>
 					</div>
 				</div>
 			</template>
@@ -32,7 +34,7 @@
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
-								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" />
+								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick" :clickable="true" :hoverable="true" />
 							</div>
 						</template>
 					</el-table-column>
@@ -63,6 +65,8 @@ import Modal from '@/components/Modal.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import { convertToDisplayDate } from './helpers';
+import { WORKFLOW_OPEN_MODAL_KEY } from '../constants';
 
 export default mixins(
 	genericHelpers,
@@ -85,6 +89,7 @@ export default mixins(
 			workflows: [] as IWorkflowShortResponse[],
 			filterTagIds: [] as string[],
 			prevFilterTagIds: [] as string[],
+			WORKFLOW_OPEN_MODAL_KEY,
 		};
 	},
 	computed: {
@@ -124,10 +129,22 @@ export default mixins(
 		updateTagsFilter(tags: string[]) {
 			this.filterTagIds = tags;
 		},
-		async openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
+		onTagClick(tagId: string) {
+			if (tagId !== 'count' && !this.filterTagIds.includes(tagId)) {
+				this.filterTagIds.push(tagId);
+			}
+		},
+		async openWorkflow (data: IWorkflowShortResponse, column: any, cell: any, e: PointerEvent) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {
 
 				const currentWorkflowId = this.$store.getters.workflowId;
+
+				if (e.metaKey || e.ctrlKey) {
+					const route = this.$router.resolve({name: 'NodeViewExisting', params: {name: data.id}});
+					window.open(route.href, '_blank');
+
+					return;
+				}
 
 				if (data.id === currentWorkflowId) {
 					this.$showMessage({
@@ -171,8 +188,8 @@ export default mixins(
 						this.workflows = data;
 
 						this.workflows.forEach((workflowData: IWorkflowShortResponse) => {
-							workflowData.createdAt = this.convertToDisplayDate(workflowData.createdAt as number);
-							workflowData.updatedAt = this.convertToDisplayDate(workflowData.updatedAt as number);
+							workflowData.createdAt = convertToDisplayDate(workflowData.createdAt as number);
+							workflowData.updatedAt = convertToDisplayDate(workflowData.updatedAt as number);
 						});
 						this.isDataLoading = false;
 					},
@@ -206,14 +223,8 @@ export default mixins(
 .workflows-header {
 	display: flex;
 
-	.title {
+	> *:first-child {
 		flex-grow: 1;
-
-		h1 {
-			font-weight: 600;
-			line-height: 24px;
-			font-size: 18px;
-		}
 	}
 
 	.search-filter {

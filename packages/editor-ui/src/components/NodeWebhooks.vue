@@ -1,26 +1,23 @@
 <template>
 	<div v-if="webhooksNode.length" class="webhoooks">
 		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
-			<font-awesome-icon icon="angle-up" class="minimize-button minimize-icon" />
+			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
 			Webhook URLs
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
 				<div class="url-selection">
 					<el-row>
-						<el-col :span="10" class="mode-selection-headline">
-							Display URL for:
-						</el-col>
-						<el-col :span="14">
+						<el-col :span="24">
 							<el-radio-group v-model="showUrlFor" size="mini">
-								<el-radio-button label="Production"></el-radio-button>
-								<el-radio-button label="Test"></el-radio-button>
+								<el-radio-button label="test">Test URL</el-radio-button>
+								<el-radio-button label="production">Production URL</el-radio-button>
 							</el-radio-group>
 						</el-col>
 					</el-row>
 				</div>
 
-				<el-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item" effect="light" content="Click to copy Webhook URL" placement="left">
+				<n8n-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item"  content="Click to copy Webhook URL" placement="left">
 					<div class="webhook-wrapper">
 							<div class="http-field">
 								<div class="http-method">
@@ -29,11 +26,11 @@
 							</div>
 							<div class="url-field">
 								<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-									{{getWebhookUrl(webhook, 'path')}}<br />
+									{{getWebhookUrlDisplay(webhook)}}<br />
 								</div>
 							</div>
 					</div>
-				</el-tooltip>
+				</n8n-tooltip>
 
 			</div>
 		</el-collapse-transition>
@@ -41,14 +38,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import {
+	INodeTypeDescription,
 	IWebhookDescription,
 	NodeHelpers,
-	Workflow,
 } from 'n8n-workflow';
 
+import { WEBHOOK_NODE_TYPE } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -64,12 +60,12 @@ export default mixins(
 		name: 'NodeWebhooks',
 		props: [
 			'node', // NodeUi
-			'nodeType', // NodeTypeDescription
+			'nodeType', // INodeTypeDescription
 		],
 		data () {
 			return {
-				isMinimized: true,
-				showUrlFor: 'Production',
+				isMinimized: this.nodeType && this.nodeType.name !== WEBHOOK_NODE_TYPE,
+				showUrlFor: 'test',
 			};
 		},
 		computed: {
@@ -78,7 +74,7 @@ export default mixins(
 					return [];
 				}
 
-				return this.nodeType.webhooks;
+				return (this.nodeType as INodeTypeDescription).webhooks!.filter(webhookData => webhookData.restartWebhook !== true);
 			},
 		},
 		methods: {
@@ -103,8 +99,11 @@ export default mixins(
 				}
 			},
 			getWebhookUrl (webhookData: IWebhookDescription): string {
+				if (webhookData.restartWebhook === true) {
+					return '$resumeWebhookUrl';
+				}
 				let baseUrl = this.$store.getters.getWebhookUrl;
-				if (this.showUrlFor === 'Test') {
+				if (this.showUrlFor === 'test') {
 					baseUrl = this.$store.getters.getWebhookTestUrl;
 				}
 
@@ -114,10 +113,13 @@ export default mixins(
 
 				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, this.node, path, isFullPath);
 			},
+			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
+				return this.getWebhookUrl(webhookData);
+			},
 		},
 		watch: {
 			node () {
-				this.isMinimized = true;
+				this.isMinimized = this.nodeType.name !== WEBHOOK_NODE_TYPE;
 			},
 		},
 	});
@@ -126,14 +128,14 @@ export default mixins(
 <style scoped lang="scss">
 
 .webhoooks {
-	padding: 0.7em;
-	font-size: 0.9em;
-	margin: 0.5em 0;
+	padding-bottom: var(--spacing-xs);
+	margin: var(--spacing-xs) 0;
 	border-bottom: 1px solid #ccc;
 
 	.headline {
 		color: $--color-primary;
 		font-weight: 600;
+		font-size: var(--font-size-2xs);
 	}
 }
 
@@ -152,8 +154,8 @@ export default mixins(
 	margin-left: 5px;
 	text-align: center;
 	border-radius: 2px;
-	font-size: 0.8em;
-	font-weight: 600;
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
 	color: #fff;
 }
 
@@ -173,11 +175,11 @@ export default mixins(
 .url-field {
 	display: inline-block;
 	width: calc(100% - 60px);
-	margin-left: 50px;
+	margin-left: 55px;
 }
 
 .url-selection {
-	margin-top: 1em;
+	margin-top: var(--spacing-xs);
 }
 
 .minimize-button {
@@ -203,22 +205,21 @@ export default mixins(
 	position: relative;
 	top: 0;
 	width: 100%;
-	font-size: 0.9em;
+	font-size: var(--font-size-2xs);
 	white-space: normal;
 	overflow: visible;
 	text-overflow: initial;
 	color: #404040;
-	padding: 0.5em;
 	text-align: left;
 	direction: ltr;
 	word-break: break-all;
 }
 
 .webhook-wrapper {
+	line-height: 1.5;
 	position: relative;
-	margin: 1em 0 0.5em 0;
+	margin-top: var(--spacing-xs);
 	background-color: #fff;
-	padding: 2px 0;
 	border-radius: 3px;
 }
 </style>

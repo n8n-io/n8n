@@ -3,11 +3,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-const scopes = [
-	'com.intuit.quickbooks.accounting',
-	'com.intuit.quickbooks.payment',
-];
-
 // https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization
 
 export class QuickBooksOAuth2Api implements ICredentialType {
@@ -15,7 +10,7 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 	extends = [
 		'oAuth2Api',
 	];
-	displayName = 'QuickBooks OAuth2 API';
+	displayName = 'QuickBooks Online OAuth2 API';
 	documentationUrl = 'quickbooks';
 	properties: INodeProperties[] = [
 		{
@@ -34,7 +29,7 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: scopes.join(' '),
+			default: 'com.intuit.quickbooks.accounting',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

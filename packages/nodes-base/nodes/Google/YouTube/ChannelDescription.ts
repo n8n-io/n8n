@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const channelOperations = [
+export const channelOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const channelOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const channelFields = [
+export const channelFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 channel:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -583,4 +583,4 @@ export const channelFields = [
 		},
 		default: 'data',
 	},
-] as INodeProperties[];
+];

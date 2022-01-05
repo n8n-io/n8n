@@ -37,9 +37,9 @@
 							<span class="box-card__subtitle">Data below may contain sensitive information. Proceed with caution when sharing.</span>
 						</div>
 						<div>
-							<el-button v-if="displayCause" class="copy-button" @click="copyCause" circle type="text" title="Copy to clipboard">
-								<font-awesome-icon icon="copy" />
-							</el-button>
+							<div class="copy-button" v-if="displayCause">
+								<n8n-icon-button @click="copyCause" title="Copy to Clipboard" icon="copy" />
+							</div>
 							<vue-json-pretty
 								v-if="displayCause"
 								:data="error.cause"
@@ -50,7 +50,7 @@
 								class="json-data"
 							/>
 							<span v-else>
-								The exact cause can sadly not displayed right now as the returned data is too large.
+								<font-awesome-icon icon="info-circle" /> The error cause is too large to be displayed.
 							</span>
 						</div>
 					</el-card>
@@ -179,7 +179,6 @@ details[open] {
 
 .copy-button {
 	position: absolute;
-	font-size: 1.1rem;
 	right: 50px;
 	z-index: 1000;
 }
