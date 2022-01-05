@@ -58,17 +58,25 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 		}),
 	);
 
-	// /**
-	//  * Verify password reset token and user ID.
-	//  */
-	// this.app.get(
-	// 	`/${this.restEndpoint}/resolve-password-token`,
-	// 	ResponseHelper.send(
-	// 		async (req: express.Request, res: express.Response): Promise<PublicUserData> => {
-	// 			// ...
-	// 		},
-	// 	),
-	// );
+	/**
+	 * Verify password reset token and user ID.
+	 */
+	this.app.get(
+		`/${this.restEndpoint}/resolve-password-token`,
+		ResponseHelper.send(async (req: PasswordResetRequest.Credentials) => {
+			const { t, u } = req.query;
+
+			if (!t || !u) {
+				throw new Error('Error');
+			}
+
+			const user = await Db.collections.User!.findOne({ resetPasswordToken: t, id: u });
+
+			if (!user) {
+				throw new Error('Error');
+			}
+		}),
+	);
 
 	// /**
 	//  * Verify password reset token and user ID and update password.

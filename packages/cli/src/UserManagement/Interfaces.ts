@@ -30,7 +30,12 @@ export interface N8nApp {
 	restEndpoint: string;
 }
 
-export type AuthenticatedRequest<T = {}> = express.Request<{}, {}, T> & { user: User };
+export type AuthenticatedRequest<ReqBody = {}, ReqQuery = {}> = express.Request<
+	{},
+	{},
+	ReqBody,
+	ReqQuery
+> & { user: User };
 
 // ----------------------------------
 //         requests to /me
@@ -54,10 +59,15 @@ export declare namespace UpdateSelfRequest {
 
 declare namespace PasswordResetPayload {
 	type Email = Pick<PublicUserData, 'email'>;
-	type Credentials = Pick<PublicUserData, 'password'> & { token: string; userId: string };
+	type NewPassword = Pick<PublicUserData, 'password'> & { token?: string; userId?: string };
+}
+
+declare namespace PasswordResetQuery {
+	type Credentials = { u?: string; t?: string };
 }
 
 export declare namespace PasswordResetRequest {
 	export type Email = AuthenticatedRequest<PasswordResetPayload.Email>;
-	export type Credentials = AuthenticatedRequest<PasswordResetPayload.Credentials>;
+	export type Credentials = AuthenticatedRequest<{}, PasswordResetQuery.Credentials>;
+	export type NewPassword = AuthenticatedRequest<PasswordResetPayload.NewPassword>;
 }
