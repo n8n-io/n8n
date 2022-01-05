@@ -6,7 +6,7 @@ import express = require('express');
 import { Db, ResponseHelper } from '../..';
 import { issueJWT } from '../auth/jwt';
 import { AuthenticatedRequest, N8nApp, PublicUserData } from '../Interfaces';
-import { isValidEmail, sanitizeUser } from '../UserManagementHelper';
+import { isValidEmail, isValidPassword, sanitizeUser } from '../UserManagementHelper';
 import type { UpdateSelfRequest } from '../Interfaces';
 
 export function addMeNamespace(this: N8nApp): void {
@@ -54,13 +54,12 @@ export function addMeNamespace(this: N8nApp): void {
 				throw new Error('Password is mandatory');
 			}
 
-			const passwordLength = req.body.password.split('').length;
-
-			if (passwordLength >= 8 && passwordLength <= 64) {
+			if (!isValidPassword(req.body.password)) {
 				throw new Error(
 					'Password length must be longer than or equal to 8 characters and shorter than or equal to 64 characters',
 				);
 			}
+
 			const hashedPassword = hashSync(req.body.password, genSaltSync(10));
 
 			req.user.password = hashedPassword;
