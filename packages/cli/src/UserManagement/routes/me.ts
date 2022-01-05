@@ -32,9 +32,12 @@ export function addMeNamespace(this: N8nApp): void {
 					throw new Error('Invalid email address');
 				}
 
-				const user = await Db.collections.User!.save({ id: req.user.id, ...req.body });
+				req.user = Object.assign(req.user, req.body);
+
+				const user = await Db.collections.User!.save(req.user);
 
 				const userData = await issueJWT(user);
+
 				res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
 
 				return sanitizeUser(user);
@@ -54,7 +57,9 @@ export function addMeNamespace(this: N8nApp): void {
 
 			const hashedPassword = hashSync(req.body.password, genSaltSync(10));
 
-			const user = await Db.collections.User!.save({ id: req.user.id, password: hashedPassword });
+			req.user.password = hashedPassword;
+
+			const user = await Db.collections.User!.save(req.user);
 
 			const userData = await issueJWT(user);
 			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
@@ -64,7 +69,7 @@ export function addMeNamespace(this: N8nApp): void {
 	);
 
 	/**
-	 * Update the logged-in user's survey answers.
+	 * Store the logged-in user's survey answers.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/me/survey`,
