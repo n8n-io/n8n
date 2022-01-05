@@ -20,6 +20,7 @@ import { generatePublicUserData, isEmailSetup, isValidEmail } from '../UserManag
 import { issueJWT } from '../auth/jwt';
 import { addMeNamespace } from './me';
 import { addUsersMethods } from './users';
+import { addPasswordResetNamespace } from './passwordReset';
 
 export async function addRoutes(
 	this: N8nApp,
@@ -93,6 +94,7 @@ export async function addRoutes(
 
 	addAuthenticationMethods.apply(this);
 	addMeNamespace.apply(this);
+	addPasswordResetNamespace.apply(this);
 	addUsersMethods.apply(this);
 
 	// ----------------------------------------
