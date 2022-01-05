@@ -5,10 +5,10 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import MarkdownIt from 'markdown-it';
-const markdownItLink = require('markdown-it-link-attributes');
-const markdownItEmoji = require('markdown-it-emoji');
-const markdownItTasklists = require('markdown-it-task-lists');
+import Markdown from 'markdown-it';
+const markdownLink = require('markdown-it-link-attributes');
+const markdownEmoji = require('markdown-it-emoji');
+const markdownTasklists = require('markdown-it-task-lists');
 
 import xss from 'xss';
 import { escapeMarkdown } from '../utils/markdown';
@@ -54,7 +54,7 @@ export default Vue.extend({
 			type: Object,
 			default() {
 				return {
-					markdownIt: DEFAULT_OPTIONS_MARKDOWN,
+					markdown: DEFAULT_OPTIONS_MARKDOWN,
 					linkAttributes: DEFAULT_OPTIONS_LINK_ATTRIBUTES,
 					tasklists: DEFAULT_OPTIONS_TASKLISTS,
 					xssOptions: DEFAULT_XSS_OPTIONS,
@@ -110,12 +110,11 @@ export default Vue.extend({
 		},
 	},
 	data() {
-		const optMarkdownIt = this.options.markdownIt;
 		return {
-			md: new MarkdownIt(optMarkdownIt)
-				.use(markdownItLink, this.options.linkAttributes)
-				.use(markdownItEmoji)
-				.use(markdownItTasklists, this.options.tasklists),
+			md: new Markdown(this.options.markdown)
+				.use(markdownLink, this.options.linkAttributes)
+				.use(markdownEmoji)
+				.use(markdownTasklists, this.options.tasklists),
 		};
 	},
 });
@@ -127,15 +126,19 @@ export default Vue.extend({
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
 
+	h1, h2, h3, h4 {
+		margin-bottom: var(--spacing-s);
+	}
+
 	p,
 	span {
-		margin-bottom: 16px;
+		margin-bottom: var(--spacing-s);
 		font-size: var(--font-size-s);
 		line-height: var(--font-line-height-loose);
 	}
 
 	ul, ol {
-		margin-bottom: 16px;
+		margin-bottom: var(--spacing-s);
 		padding: var(--spacing-4xs);
 		padding-left: var(--spacing-m);
 		font-size: var(--font-size-s);
@@ -144,6 +147,14 @@ export default Vue.extend({
 		li {
 			margin-top: 0.25em;
 		}
+	}
+
+	code {
+		padding: 1rem;
+	}
+
+	.label {
+    color: var(--color-text-base);
 	}
 
 	img {
