@@ -41,17 +41,4 @@ export const clientDescription: INodeProperties[] = [
 			},
 		},
 	},
-	// {
-	// 	displayName: 'Website:',
-	// 	name: 'clientWebsite',
-	// 	type: 'string',
-	// 	default: '',
-	// 	description: 'Enter website address',
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: ['create'],
-	// 			resource: ['client'],
-	// 		},
-	// 	},
-	// },
 ];

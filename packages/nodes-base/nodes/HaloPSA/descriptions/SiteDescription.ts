@@ -15,22 +15,4 @@ export const siteDescription: INodeProperties[] = [
 			},
 		},
 	},
-	// {
-	// 	displayName: 'Client ID:',
-	// 	name: 'siteClient',
-	// 	type: 'number',
-	// 	typeOptions: {
-	// 		minValue: 0,
-	// 		numberStepSize: 1,
-	// 	},
-	// 	default: 0,
-	// 	description: 'Enter client ID',
-	// 	required: true,
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: ['create'],
-	// 			resource: ['site'],
-	// 		},
-	// 	},
-	// },
 ];
