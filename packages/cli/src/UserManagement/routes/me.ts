@@ -4,9 +4,8 @@
 import { genSaltSync, hashSync } from 'bcryptjs';
 import express = require('express');
 import { Db, ResponseHelper } from '../..';
-import { User } from '../../databases/entities/User';
 import { issueJWT } from '../auth/jwt';
-import { N8nApp, PublicUserData } from '../Interfaces';
+import { AuthenticatedRequest, N8nApp, PublicUserData } from '../Interfaces';
 import { isValidEmail, sanitizeUser } from '../UserManagementHelper';
 import type { UpdateSelfRequest } from '../Interfaces';
 
@@ -16,7 +15,7 @@ export function addMeNamespace(this: N8nApp): void {
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/me`,
-		ResponseHelper.send(async (req: express.Request & { user: User }): Promise<PublicUserData> => {
+		ResponseHelper.send(async (req: AuthenticatedRequest): Promise<PublicUserData> => {
 			return sanitizeUser(req.user);
 		}),
 	);
@@ -55,6 +54,17 @@ export function addMeNamespace(this: N8nApp): void {
 				throw new Error('Password is mandatory');
 			}
 
+			// TODO
+			// Validate req.body.password
+			// Password size min 8 max 64
+
+			const passwordLength = req.body.password.split('').length;
+
+			if (passwordLength >= 8 && passwordLength <= 64) {
+				throw new Error(
+					'Password length must be longer or equal to 8 charactersand shorter or equal to 64 characters',
+				);
+			}
 			const hashedPassword = hashSync(req.body.password, genSaltSync(10));
 
 			req.user.password = hashedPassword;

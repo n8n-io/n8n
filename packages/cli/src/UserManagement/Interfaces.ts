@@ -30,13 +30,13 @@ export interface N8nApp {
 	restEndpoint: string;
 }
 
+export type AuthenticatedRequest<T = {}> = express.Request<{}, {}, T> & { user: User };
+
 // ----------------------------------
 //         requests to /me
 // ----------------------------------
 
 export type RequestWithPayload<T> = express.Request<{}, {}, T>;
-
-export type UserProperty = { user: User };
 
 declare namespace UpdateSelfPayload {
 	type Settings = Pick<PublicUserData, 'email' | 'firstName' | 'lastName'>;
@@ -45,7 +45,7 @@ declare namespace UpdateSelfPayload {
 }
 
 export declare namespace UpdateSelfRequest {
-	export type Settings = RequestWithPayload<UpdateSelfPayload.Settings> & UserProperty;
-	export type Password = RequestWithPayload<UpdateSelfPayload.Password> & UserProperty;
-	export type SurveyAnswers = RequestWithPayload<UpdateSelfPayload.SurveyAnswers> & UserProperty;
+	export type Settings = AuthenticatedRequest<UpdateSelfPayload.Settings>;
+	export type Password = AuthenticatedRequest<UpdateSelfPayload.Password>;
+	export type SurveyAnswers = AuthenticatedRequest<UpdateSelfPayload.SurveyAnswers>;
 }
