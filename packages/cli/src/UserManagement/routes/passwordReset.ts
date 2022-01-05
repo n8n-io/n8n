@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 
+import express = require('express');
 import { v4 as uuidv4 } from 'uuid';
 import { URL } from 'url';
+import { genSaltSync, hashSync } from 'bcryptjs';
 
 import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
-import { isValidEmail } from '../UserManagementHelper';
+import { isValidEmail, validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../Interfaces';
+import { issueJWT } from '../auth/jwt';
 
 export function addPasswordResetNamespace(this: N8nApp): void {
 	/**
@@ -78,13 +81,32 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 		}),
 	);
 
-	// /**
-	//  * Verify password reset token and user ID and update password.
-	//  */
-	// this.app.post(
-	// 	`/${this.restEndpoint}/change-password`,
-	// 	ResponseHelper.send(async (req: PasswordResetRequest.Credentials, res: express.Response) => {
-	// 		// ...
-	// 	}),
-	// );
+	/**
+	 * Verify password reset token and user ID and update password.
+	 */
+	this.app.post(
+		`/${this.restEndpoint}/change-password`,
+		ResponseHelper.send(async (req: PasswordResetRequest.NewPassword, res: express.Response) => {
+			const { token, id, password } = req.body;
+
+			if (!token || !id) {
+				throw new Error('Error');
+			}
+
+			const user = await Db.collections.User!.findOne({ resetPasswordToken: token, id });
+
+			if (!user) {
+				throw new Error('Error');
+			}
+
+			const validPassword = validatePassword(password);
+			req.user.password = hashSync(validPassword, genSaltSync(10));
+			req.user.resetPasswordToken = null;
+
+			await Db.collections.User!.save(req.user);
+
+			const userData = await issueJWT(req.user);
+			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+		}),
+	);
 }
