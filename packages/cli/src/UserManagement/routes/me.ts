@@ -54,10 +54,6 @@ export function addMeNamespace(this: N8nApp): void {
 				throw new Error('Password is mandatory');
 			}
 
-			// TODO
-			// Validate req.body.password
-			// Password size min 8 max 64
-
 			const passwordLength = req.body.password.split('').length;
 
 			if (passwordLength >= 8 && passwordLength <= 64) {
