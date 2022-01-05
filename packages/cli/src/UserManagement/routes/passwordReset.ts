@@ -51,7 +51,7 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 			url.searchParams.append('u', id);
 			url.searchParams.append('t', resetPasswordToken);
 
-			await UserManagementMailer.getInstance().passwordReset({
+			void UserManagementMailer.getInstance().passwordReset({
 				email,
 				firstName,
 				lastName,
