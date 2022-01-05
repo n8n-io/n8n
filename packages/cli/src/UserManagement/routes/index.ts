@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -16,6 +18,7 @@ import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
 import { generatePublicUserData, isEmailSetup, isValidEmail } from '../UserManagementHelper';
 import { issueJWT } from '../auth/jwt';
+import { addMeNamespace } from './me';
 import { addUsersMethods } from './users';
 
 export async function addRoutes(
@@ -42,9 +45,10 @@ export async function addRoutes(
 				},
 				{ relations: ['globalRole'] },
 			);
+
 			if (
 				!user ||
-				(user.password && !user.password.includes(jwtPayload.password!)) ||
+				(user.password && !user.password.endsWith(jwtPayload.password!)) ||
 				(user.email && user.email !== jwtPayload.email)
 			) {
 				// If user has email or password in database, we check.
@@ -88,6 +92,7 @@ export async function addRoutes(
 	});
 
 	addAuthenticationMethods.apply(this);
+	addMeNamespace.apply(this);
 	addUsersMethods.apply(this);
 
 	// ----------------------------------------

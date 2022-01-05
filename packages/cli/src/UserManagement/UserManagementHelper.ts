@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import { IsNull, Not } from 'typeorm';
@@ -57,6 +61,10 @@ export function isValidEmail(email: string): boolean {
 	);
 }
 
+export function isValidPassword(password: string) {
+	return password.length >= 8 && password.length <= 64;
+}
+
 export function generatePublicUserData(user: User): PublicUserData {
 	const { id, email, firstName, lastName, personalizationAnswers, password } = user;
 	const returnedUser = {
@@ -84,4 +92,13 @@ export function generatePublicUserData(user: User): PublicUserData {
 	}
 
 	return returnedUser;
+}
+
+/**
+ * Remove sensitive properties from the user to return to the client.
+ */
+export function sanitizeUser(user: User) {
+	const { password, resetPasswordToken, ...rest } = user;
+
+	return rest;
 }

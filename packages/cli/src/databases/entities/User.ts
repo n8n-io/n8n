@@ -12,7 +12,6 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 import { IsEmail } from 'class-validator';
-import { IDataObject } from 'n8n-workflow';
 import config = require('../../../config');
 import { DatabaseType } from '../..';
 import { Role } from './Role';
@@ -67,16 +66,16 @@ export class User {
 	lastName: string;
 
 	@Column({ nullable: true })
-	password: string;
+	password?: string;
 
 	@Column({ nullable: true })
-	resetPasswordToken: string;
+	resetPasswordToken?: string;
 
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
 	})
-	personalizationAnswers: IDataObject;
+	personalizationAnswers: { [key: string]: string } | null;
 
 	@ManyToOne(() => Role, (role) => role.globalForUsers, {
 		cascade: true,
