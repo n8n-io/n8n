@@ -6,7 +6,7 @@ import express = require('express');
 import { Db, ResponseHelper } from '../..';
 import { issueJWT } from '../auth/jwt';
 import { AuthenticatedRequest, N8nApp, PublicUserData } from '../Interfaces';
-import { isValidEmail, isValidPassword, sanitizeUser } from '../UserManagementHelper';
+import { isValidEmail, validatePassword, sanitizeUser } from '../UserManagementHelper';
 import type { UpdateSelfRequest } from '../Interfaces';
 
 export function addMeNamespace(this: N8nApp): void {
@@ -50,19 +50,8 @@ export function addMeNamespace(this: N8nApp): void {
 	this.app.patch(
 		`/${this.restEndpoint}/me/password`,
 		ResponseHelper.send(async (req: UpdateSelfRequest.Password, res: express.Response) => {
-			if (!req.body.password) {
-				throw new Error('Password is mandatory');
-			}
-
-			if (!isValidPassword(req.body.password)) {
-				throw new Error(
-					'Password length must be longer than or equal to 8 characters and shorter than or equal to 64 characters',
-				);
-			}
-
-			const hashedPassword = hashSync(req.body.password, genSaltSync(10));
-
-			req.user.password = hashedPassword;
+			const validPassword = validatePassword(req.body.password);
+			req.user.password = hashSync(validPassword, genSaltSync(10));
 
 			const user = await Db.collections.User!.save(req.user);
 
