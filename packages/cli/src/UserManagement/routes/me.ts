@@ -58,7 +58,7 @@ export function addMeNamespace(this: N8nApp): void {
 
 			if (passwordLength >= 8 && passwordLength <= 64) {
 				throw new Error(
-					'Password length must be longer or equal to 8 charactersand shorter or equal to 64 characters',
+					'Password length must be longer or equal to 8 characters and shorter or equal to 64 characters',
 				);
 			}
 			const hashedPassword = hashSync(req.body.password, genSaltSync(10));
