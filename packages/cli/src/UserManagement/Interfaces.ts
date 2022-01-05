@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-namespace */
 /* eslint-disable import/no-cycle */
 import { Application } from 'express';
 import express = require('express');
