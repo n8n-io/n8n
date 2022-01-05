@@ -20,7 +20,7 @@ import { isValidEmail, sanitizeUser } from '../UserManagementHelper';
 
 export function addMeNamespace(this: N8nApp): void {
 	/**
-	 * Sanitize and return currently logged-in user.
+	 * Return the logged-in user.
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/me`,
@@ -30,7 +30,7 @@ export function addMeNamespace(this: N8nApp): void {
 	);
 
 	/**
-	 * Update user settings, except password.
+	 * Update the logged-in user's settings, except password.
 	 */
 	this.app.patch(
 		`/${this.restEndpoint}/me`,
@@ -51,7 +51,7 @@ export function addMeNamespace(this: N8nApp): void {
 	);
 
 	/**
-	 * Update user password.
+	 * Update the logged-in user's password.
 	 */
 	this.app.patch(
 		`/${this.restEndpoint}/me/password`,
@@ -61,9 +61,9 @@ export function addMeNamespace(this: N8nApp): void {
 					throw new Error('Password is mandatory');
 				}
 
-				const newPassword = hashSync(req.body.password, genSaltSync(10));
+				const hashedPassword = hashSync(req.body.password, genSaltSync(10));
 
-				const user = await Db.collections.User!.save({ id: req.user.id, password: newPassword });
+				const user = await Db.collections.User!.save({ id: req.user.id, password: hashedPassword });
 
 				const userData = await issueJWT(user);
 				res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
@@ -74,7 +74,7 @@ export function addMeNamespace(this: N8nApp): void {
 	);
 
 	/**
-	 * Store personalization answers from value survey.
+	 * Store the logged-in user's personalization answers.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/me/survey`,

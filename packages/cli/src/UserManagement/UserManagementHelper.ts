@@ -90,7 +90,7 @@ export function generatePublicUserData(user: User): PublicUserData {
 }
 
 /**
- * Remove sensitive properties from user to be returned to client.
+ * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User) {
 	delete user.password;
