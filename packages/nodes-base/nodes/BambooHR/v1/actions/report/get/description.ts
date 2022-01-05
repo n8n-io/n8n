@@ -45,7 +45,7 @@ export const reportGetDescription: ReportProperties = [
 	},
 	{
 		displayName: 'Report ID',
-		name: 'id',
+		name: 'reportId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -60,5 +60,28 @@ export const reportGetDescription: ReportProperties = [
 		},
 		default: '',
 		description: 'ID of the report. You can get the report number by hovering over the report name on the reports page and grabbing the ID.',
+	},
+	{
+		displayName: 'Put Output In Field',
+		name: 'output',
+		type: 'string',
+		default: 'data',
+		required: true,
+		description: 'The name of the output field to put the binary file data in',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'report',
+				],
+			},
+			hide: {
+				format: [
+					'JSON',
+				],
+			},
+		},
 	},
 ];

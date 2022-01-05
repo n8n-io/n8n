@@ -1,5 +1,5 @@
-import { create as execute } from './execute';
-import { employeesCreateDescription as description } from './description';
+import { upload as execute } from './execute';
+import { companyUploadDescription as description } from './description';
 
 export {
 	description,

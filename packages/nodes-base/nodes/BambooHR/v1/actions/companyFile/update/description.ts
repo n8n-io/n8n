@@ -41,7 +41,10 @@ export const companyFileUpdateDescription: CompanyFileProperties = [
 			{
 				displayName: 'Category ID',
 				name: 'categoryId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getCompanyCategories',
+				},
 				default: '',
 				description: 'Move the file to a different category',
 			},
@@ -50,10 +53,10 @@ export const companyFileUpdateDescription: CompanyFileProperties = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'New name of the category',
+				description: 'New name of the file',
 			},
 			{
-				displayName: 'Share with Employee',
+				displayName: 'Share With Employee',
 				name: 'shareWithEmployee',
 				type: 'boolean',
 				default: true,

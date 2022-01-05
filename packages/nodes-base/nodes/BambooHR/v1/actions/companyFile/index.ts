@@ -2,6 +2,7 @@ import * as del from './delete';
 import * as download from './download';
 import * as getAll from './getAll';
 import * as update from './update';
+import * as upload from './upload';
 
 import { 
 	INodeProperties,
@@ -11,7 +12,8 @@ export {
 	del,
 	download,
 	getAll,
-	update
+	update,
+	upload,
 };
 
 export const descriptions: INodeProperties[] = [
@@ -45,6 +47,11 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update a company file',
+			},
+			{
+				name: 'Upload',
+				value: 'upload',
 				description: 'Upload a company file',
 			},
 		],
@@ -55,4 +62,5 @@ export const descriptions: INodeProperties[] = [
 	...download.description,
 	...getAll.description,
 	...update.description,
+	...upload.description,
 ];

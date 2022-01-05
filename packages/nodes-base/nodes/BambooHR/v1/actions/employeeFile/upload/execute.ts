@@ -37,31 +37,28 @@ export async function upload(this: IExecuteFunctions, index: number) {
 
 	const binaryData = item[propertyNameUpload] as IBinaryData;
 
-	const file = Buffer.from(binaryData.data, BINARY_ENCODING) as Buffer;
+	const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(index, propertyNameUpload);
 
-	//meta data
 	const id: string = this.getNodeParameter('id', index) as string;
 
 	body = {
-		headers: {
-			'content-type': 'multipart/form-data',
-		},
 		json: false,
 		formData: {
-			fileName: binaryData.fileName,
-			share,
-			category,
 			file: {
-				value: file,
+				value: binaryDataBuffer,
 				options: {
 					filename: binaryData.fileName,
+					contentType: binaryData.mimeType,
 				},
 			},
+			fileName: binaryData.fileName,
+			share: share.toString(),
+			category,
 		},
 	};
 
 	//endpoint
 	const endpoint = `employees/${id}/files`;
-	const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {}, body);
-	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
+	const { headers } = await apiRequest.call(this, requestMethod, endpoint, {}, {}, body);
+	return this.helpers.returnJsonArray({ fileId: headers.location.split('/').pop(), employeeId: id });
 }

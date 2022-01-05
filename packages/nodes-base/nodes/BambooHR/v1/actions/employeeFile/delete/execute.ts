@@ -23,8 +23,8 @@ export async function del(this: IExecuteFunctions, index: number): Promise<INode
 	const endpoint = `employees/${id}/files/${fileId}`;
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
+	await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
-	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
+	return this.helpers.returnJsonArray({ success: true });
 }

@@ -68,10 +68,10 @@ export const employeeFileUpdateDescription: EmployeeFileProperties = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'New name of the category',
+				description: 'New name of the file',
 			},
 			{
-				displayName: 'Share with employee',
+				displayName: 'Share With Employee',
 				name: 'shareWithEmployee',
 				type: 'boolean',
 				default: true,

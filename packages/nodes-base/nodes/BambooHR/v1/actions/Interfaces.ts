@@ -6,7 +6,7 @@ import {
 
 type BambooHRMap = {
 	employee: 'create' | 'get' | 'getAll' | 'update';
-	employeeFile: 'del' | 'download' | 'getAll' | 'update' | 'upload';
+	employeeFile: 'del' | 'download' | 'get' | 'getAll' | 'update' | 'upload';
 	companyFile: 'del' | 'download' | 'getAll' | 'update';
 	report: 'get';
 	tabularData: 'create' | 'get' | 'getAll' | 'update';

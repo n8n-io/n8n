@@ -26,8 +26,8 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	body.shareWithEmployee = body.shareWithEmployee ?  'yes' : 'no';
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
+	await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
-	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
+	return this.helpers.returnJsonArray({ fileId });
 }

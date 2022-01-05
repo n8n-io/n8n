@@ -6,10 +6,13 @@ import {
 
 import {
 	IDataObject,
-	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
+
+import {
+	OptionsWithUrl,
+} from 'request';
 
 /**
  * Make an API request to Mattermost
@@ -35,19 +38,17 @@ export async function apiRequest(
 	//set-up uri
 	const uri = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/${endpoint}`;
 
-	const options: IHttpRequestOptions = {
+	const options: OptionsWithUrl = {
 		method,
 		body,
-		headers: {
-			'content-type': 'application/json',
-		},
 		qs: query,
 		url: uri,
 		auth: {
 			username: apiKey as string,
 			password: 'x',
 		},
-		returnFullResponse: true,
+		//@ts-ignore
+		resolveWithFullResponse: true,
 		json: true,
 	};
 
@@ -59,11 +60,14 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	//console.log(options);
-
+	if (!Object.keys(query).length) {
+		delete options.qs;
+	}
+	console.log(options);
 
 	try {
-		return await this.helpers.httpRequest(options);
+		//@ts-ignore
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

@@ -30,5 +30,5 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
-	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
+	return this.helpers.returnJsonArray({ success: true});
 }
