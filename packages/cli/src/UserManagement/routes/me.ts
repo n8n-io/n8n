@@ -85,13 +85,10 @@ export function addMeNamespace(this: N8nApp): void {
 				throw new Error('Personalization answers are mandatory');
 			}
 
-			const user = await Db.collections.User!.save({
+			await Db.collections.User!.save({
 				id: req.user.id,
 				personalizationAnswers,
 			});
-
-			const userData = await issueJWT(user);
-			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
 
 			return { success: true };
 		}),
