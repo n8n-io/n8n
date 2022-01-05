@@ -47,22 +47,20 @@ export function addMeNamespace(this: N8nApp): void {
 	 */
 	this.app.patch(
 		`/${this.restEndpoint}/me/password`,
-		ResponseHelper.send(
-			async (req: UpdateSelfRequest.Password, res: express.Response): Promise<PublicUserData> => {
-				if (!req.body.password) {
-					throw new Error('Password is mandatory');
-				}
+		ResponseHelper.send(async (req: UpdateSelfRequest.Password, res: express.Response) => {
+			if (!req.body.password) {
+				throw new Error('Password is mandatory');
+			}
 
-				const hashedPassword = hashSync(req.body.password, genSaltSync(10));
+			const hashedPassword = hashSync(req.body.password, genSaltSync(10));
 
-				const user = await Db.collections.User!.save({ id: req.user.id, password: hashedPassword });
+			const user = await Db.collections.User!.save({ id: req.user.id, password: hashedPassword });
 
-				const userData = await issueJWT(user);
-				res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+			const userData = await issueJWT(user);
+			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
 
-				return sanitizeUser(user);
-			},
-		),
+			return { success: true };
+		}),
 	);
 
 	/**
