@@ -17,11 +17,9 @@ export function addMeNamespace(this: N8nApp): void {
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/me`,
-		ResponseHelper.send(
-			async (req: express.Request & { user: User }, _): Promise<PublicUserData> => {
-				return sanitizeUser(req.user);
-			},
-		),
+		ResponseHelper.send(async (req: express.Request & { user: User }): Promise<PublicUserData> => {
+			return sanitizeUser(req.user);
+		}),
 	);
 
 	/**
@@ -73,7 +71,7 @@ export function addMeNamespace(this: N8nApp): void {
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/me/survey`,
-		ResponseHelper.send(async (req: UpdateSelfRequest.SurveyAnswers, _) => {
+		ResponseHelper.send(async (req: UpdateSelfRequest.SurveyAnswers) => {
 			const { body: personalizationAnswers } = req;
 
 			if (!personalizationAnswers) {
