@@ -129,15 +129,21 @@ export default Vue.extend({
 
 	p,
 	span {
+		margin-bottom: 16px;
 		font-size: var(--font-size-s);
 		line-height: var(--font-line-height-loose);
 	}
 
-	ul {
+	ul, ol {
+		margin-bottom: 16px;
 		padding: var(--spacing-4xs);
 		padding-left: var(--spacing-m);
 		font-size: var(--font-size-s);
 		line-height: var(--font-line-height-loose);
+
+		li {
+			margin-top: 0.25em;
+		}
 	}
 
 	img {
