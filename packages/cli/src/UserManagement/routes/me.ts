@@ -1,7 +1,5 @@
-/* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable import/no-cycle */
 
 import { genSaltSync, hashSync } from 'bcryptjs';
@@ -78,7 +76,7 @@ export function addMeNamespace(this: N8nApp): void {
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/me/survey`,
-		ResponseHelper.send(async (req: PersonalizationAnswersRequest, res: express.Response) => {
+		ResponseHelper.send(async (req: PersonalizationAnswersRequest, _) => {
 			const { body: personalizationAnswers } = req;
 
 			if (!personalizationAnswers) {
