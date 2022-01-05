@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -93,8 +94,7 @@ export function generatePublicUserData(user: User): PublicUserData {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User) {
-	delete user.password;
-	delete user.resetPasswordToken;
+	const { password, resetPasswordToken, ...rest } = user;
 
-	return user;
+	return rest;
 }
