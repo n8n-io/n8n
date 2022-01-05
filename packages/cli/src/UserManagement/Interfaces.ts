@@ -47,3 +47,17 @@ export declare namespace UpdateSelfRequest {
 	export type Password = AuthenticatedRequest<UpdateSelfPayload.Password>;
 	export type SurveyAnswers = AuthenticatedRequest<UpdateSelfPayload.SurveyAnswers>;
 }
+
+// ----------------------------------
+//      password reset requests
+// ----------------------------------
+
+declare namespace PasswordResetPayload {
+	type Email = Pick<PublicUserData, 'email'>;
+	type Credentials = Pick<PublicUserData, 'password'> & { token: string; userId: string };
+}
+
+export declare namespace PasswordResetRequest {
+	export type Email = AuthenticatedRequest<PasswordResetPayload.Email>;
+	export type Credentials = AuthenticatedRequest<PasswordResetPayload.Credentials>;
+}
