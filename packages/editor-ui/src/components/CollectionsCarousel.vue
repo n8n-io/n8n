@@ -2,7 +2,7 @@
 	<div>
 		<n8n-heading size="large">Collections</n8n-heading>
 
-		<agile :slidesToShow="3" :navButtons="true" :dots="false">
+		<agile :slidesToShow="3" :navButtons="true" :dots="false" :infinite="false">
 
 			<CollectionsCard v-for="collection in fakeCollections" :key="collection.id" :title="collection.name">
 			  <template v-slot:footer>

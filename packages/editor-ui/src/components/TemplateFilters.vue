@@ -40,7 +40,14 @@ export default mixins(
 			allSelected: true,
 			collapsed: true,
 			sortedCategories: [],
+			selected: [] as string[],
 		};
+	},
+	created() {
+		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
+			this.selected = this.$route.query.categories.split(',');
+			this.allSelected = this.selected.length === 0;
+		}
 	},
 	computed: {
 		categories() {
@@ -50,12 +57,21 @@ export default mixins(
 	watch: {
 		categories(newCategories) {
 			this.sortedCategories = newCategories;
+			if (this.selected.length) {
+				this.sortedCategories.forEach((category: ITemplateCategory) => {
+					if (this.selected.includes(category.id)) {
+						category.selected = true;
+					}
+					return category;
+				});
+			}
 		},
 		collapsed(newState) {
 			if (!this.collapsed) {
 				this.sortedCategories = this.sortCategories(this.categories);
 			}
 		},
+
 	},
 	methods: {
 		sortCategories(categories: ITemplateCategory[]) {
@@ -67,6 +83,18 @@ export default mixins(
 			});
 			return selectedCategories.concat(notSelectedCategories);
 		},
+		updatQueryParam(cats: ITemplateCategory[]) {
+			const query = Object.assign({}, this.$route.query);
+			this.selected = cats.filter(({ selected }) => selected).map(({ id }) => id);
+			if (this.selected.length) {
+				const categories = this.selected.join(',');
+				query.categories = categories;
+			} else {
+				delete query.categories;
+			}
+			this.$router.replace({ query });
+
+		},
 		resetCategories(value: boolean) {
 			if (value) {
 				this.categories.forEach((category: ITemplateCategory) => {
@@ -76,6 +104,7 @@ export default mixins(
 				this.sortedCategories = this.categories;
 			}
 			this.allSelected = true;
+			this.updatQueryParam([]);
 		},
 		handleCheckboxChanged(value: boolean, selectedCategory: ITemplateCategory) {
 			if (value) {
@@ -83,6 +112,7 @@ export default mixins(
 			}
 			selectedCategory.selected = value;
 			this.sortedCategories = this.sortCategories(this.categories);
+			this.updatQueryParam(this.sortedCategories);
 		},
 		collapseAction() {
 			this.collapsed = false;

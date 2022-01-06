@@ -7,7 +7,6 @@
 			<div class="search">
 
 				<div class="searchInput">
-					<!-- TODO maxlength -->
 					<n8n-input
 						v-model="search"
 						@input="onSearchInput"
@@ -56,13 +55,17 @@ export default mixins(
  		};
 	},
 	async created() {
-		const { categories, collections, totalWorkflows, workflows } = await this.$store.dispatch('templates/getSearchResults');
-		// this.categories = categories;
-		// console.log(categories);
+		await this.$store.dispatch('templates/getSearchResults');
+		if (typeof this.$route.query.search === 'string') {
+			this.search = this.$route.query.search;
+		}
 	},
 	methods: {
-		onSearchInput(value: string) {
-			// console.log(value);
+		async onSearchInput(value: string) {
+			const query = Object.assign({}, this.$route.query);
+			query.search = value;
+			this.$router.replace({ query });
+			await this.$store.dispatch('templates/getSearchResults', value);
 		},
 	},
 });

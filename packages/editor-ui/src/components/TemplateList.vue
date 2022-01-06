@@ -67,7 +67,7 @@ export default mixins(
 		border: 1px solid #DBDFE7;
 		background-color: #FFFFFF;
 		overflow: auto;
-		height: 600px;
+		height: auto;
 
 		span {
 			margin-left: 5px;

@@ -48,9 +48,9 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 	},
 	actions: {
-		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
+		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, search = '') {
 			try {
-				const payload: ISearchPayload = await getTemplates(10, 0, null, null);
+				const payload: ISearchPayload = await getTemplates(10, 0, null, search);
 				const results : ISearchResults = payload.data;
 				const categories = results.categories.map((category: ITemplateCategory) => {
 					category.selected = false;
