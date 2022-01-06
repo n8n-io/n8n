@@ -2,7 +2,7 @@
 /* eslint-disable import/no-cycle */
 
 import express = require('express');
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
 
@@ -40,7 +40,7 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			user.resetPasswordToken = uuidv4();
+			user.resetPasswordToken = uuid();
 
 			const { id, firstName, lastName, resetPasswordToken } = user;
 
