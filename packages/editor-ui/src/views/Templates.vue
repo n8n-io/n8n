@@ -22,6 +22,8 @@
 
 					<CollectionsCarousel/>
 
+					<TemplateList/>
+
 				</div>
 
 			</div>
@@ -33,6 +35,7 @@
 <script lang="ts">
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
+import TemplateList from '@/components/TemplateList.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
@@ -44,6 +47,7 @@ export default mixins(
 	components: {
 		TemplateFilters,
 		CollectionsCarousel,
+		TemplateList,
 	},
 	data () {
 		return {

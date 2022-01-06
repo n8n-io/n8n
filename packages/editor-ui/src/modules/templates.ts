@@ -17,6 +17,7 @@ const module: Module<ITemplateState, IRootState> = {
 		template: {},
 		categories: [],
 		collections: [],
+		workflows: [],
 	},
 	getters: {
 		getTemplate(state: ITemplateState) {
@@ -28,6 +29,9 @@ const module: Module<ITemplateState, IRootState> = {
 		getCollections(state: ITemplateState) {
 			return state.collections;
 		},
+		getWorkflows(state: ITemplateState) {
+			return state.workflows;
+		},
 	},
 	mutations: {
 		setTemplate(state: ITemplateState, template: IN8nTemplate) {
@@ -38,6 +42,9 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		setCollections(state: ITemplateState, collections: ITemplateCollection[]) {
 			Vue.set(state, 'collections', collections);
+		},
+		setWorkflows(state: ITemplateState, workflows: IN8nTemplate[]) {
+			Vue.set(state, 'workflows', workflows);
 		},
 	},
 	actions: {
@@ -51,6 +58,7 @@ const module: Module<ITemplateState, IRootState> = {
 				});
 				context.commit('setCategories', categories);
 				context.commit('setCollections', results.collections);
+				context.commit('setWorkflows', results.workflows);
 				return results;
 			} catch(e) {
 				return;

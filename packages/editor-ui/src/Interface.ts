@@ -806,4 +806,5 @@ export interface ITemplateState {
 	template: {};
 	categories: ITemplateCategory[];
 	collections: ITemplateCollection[];
+	workflows: IN8nTemplate[];
 }
