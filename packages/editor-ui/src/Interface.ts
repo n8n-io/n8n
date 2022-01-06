@@ -510,6 +510,28 @@ export interface IN8nValueSurveyData {
 
 export interface IN8nPromptResponse {
 	updated: boolean;
+};
+
+export interface IUserManagementConfig {
+	enabled: boolean;
+	showSetupOnFirstLoad?: boolean;
+}
+
+export interface IPermissionGroup {
+	loginStatus?: ILogInStatus[];
+	role?: IRole[];
+	um?: boolean;
+}
+
+export interface IPermissions {
+	allow?: IPermissionGroup;
+	deny?: IPermissionGroup;
+}
+
+export interface IUserPermissions {
+	[category: string]: {
+		[permission: string]: IPermissions;
+	};
 }
 
 export interface IN8nUISettings {
@@ -534,10 +556,7 @@ export interface IN8nUISettings {
 	instanceId: string;
 	personalizationSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
-	userManagement?: {
-		enabled: boolean;
-		hasOwner: boolean;
-	};
+	userManagement: IUserManagementConfig;
 	defaultLocale: string;
 }
 
@@ -725,16 +744,13 @@ export interface IUiState {
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
+	userManagement: IUserManagementConfig;
 }
 
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
 	nextVersions: IVersion[];
 	currentVersion: IVersion | undefined;
-}
-
-export interface ISettingsState {
-	settings: IN8nUISettings;
 }
 
 export interface IUsersState {
@@ -762,13 +778,15 @@ export interface IBounds {
 	maxY: number;
 }
 
-export type IRole = 'owner' | 'member';
+export type ILogInStatus = 'LoggedIn' | 'LoggedOut';
+
+export type IRole = 'default' | 'owner' | 'member';
 
 export interface IUser {
 	id: string;
 	firstName?: string;
 	lastName?: string;
-	email: string;
+	email?: string;
 	globalRole: {
 		name: IRole;
 		id: string;
@@ -812,6 +830,7 @@ export type IFormInputs = IFormInputsRow[];
 export type IFormBoxConfig = {
 	title: string;
 	buttonText: string;
+	secondaryButtonText?: string;
 	inputs: IFormInputs;
 	redirectLink?: string;
 	redirectText?: string;

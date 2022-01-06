@@ -105,7 +105,7 @@
 					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
 				</n8n-menu-item>
 
-				<n8n-menu-item index="settings" v-if="currentUser">
+				<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser">
 					<font-awesome-icon icon="cog"/>&nbsp;
 					<span slot="title" class="item-title-root">Settings</span>
 				</n8n-menu-item>
@@ -135,7 +135,7 @@
 						</div>
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
 					</n8n-menu-item>
-					<n8n-menu-item index="user" class="user" v-if="currentUser">
+					<n8n-menu-item index="user" class="user" v-if="canUserAccessSidebarUserInfo && currentUser">
 						<div class="avatar">
 							<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
 						</div>
@@ -224,6 +224,8 @@ export default mixins(
 				'nextVersions',
 			]),
 			...mapGetters('users', [
+				'canUserAccessSettings',
+				'canUserAccessSidebarUserInfo',
 				'currentUser',
 			]),
 			helpMenuItems (): object[] {

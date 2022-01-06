@@ -5,17 +5,18 @@ if (!window.localStorage.getItem('mock.settings.isUserManagementEnabled')) {
 	window.localStorage.setItem('mock.settings.isUserManagementEnabled', 'true');
 }
 
-if (!window.localStorage.getItem('mock.settings.isInstanceSetup')) {
-	window.localStorage.setItem('mock.settings.isInstanceSetup', 'false');
+if (!window.localStorage.getItem('mock.settings.showSetupOnFirstLoad')) {
+	window.localStorage.setItem('mock.settings.showSetupOnFirstLoad', 'true');
 }
 
 export async function getSettings(context: IRestApiContext): Promise<IN8nUISettings> {
 	const settings = await makeRestApiRequest(context, 'GET', '/settings');
 	const isUMEnabled = window.localStorage.getItem('mock.settings.isUserManagementEnabled');
-	const isInstanceSetup = window.localStorage.getItem('mock.settings.isInstanceSetup');
+	const showSetupOnFirstLoad = window.localStorage.getItem('mock.settings.showSetupOnFirstLoad');
+	window.localStorage.setItem('mock.settings.showSetupOnFirstLoad', 'false');
 	settings.userManagement = {
 		enabled: isUMEnabled === 'true',
-		hasOwner: isInstanceSetup === 'true',
+		showSetupOnFirstLoad: showSetupOnFirstLoad === 'true',
 	};
 	return settings;
 }

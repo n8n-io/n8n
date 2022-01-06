@@ -23,7 +23,19 @@
 				@submit="onSubmit"
 			/>
 		</div>
-		<div :class="$style.buttonContainer">
+		<div :class="$style.buttonsContainer">
+			<span
+				v-if="secondaryButtonText"
+				:class="$style.secondaryButtonContainer"
+			>
+				<n8n-link
+					size="medium"
+					theme="text"
+					@click="onSecondaryButtonClick"
+				>
+					{{secondaryButtonText}}
+				</n8n-link>
+			</span>
 			<n8n-button
 				v-if="buttonText"
 				:label="buttonText"
@@ -75,6 +87,9 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		secondaryButtonText: {
+			type: String,
+		},
 		redirectText: {
 			type: String,
 		},
@@ -96,6 +111,9 @@ export default Vue.extend({
 		},
 		onButtonClick() {
 			this.formBus.$emit('submit');
+		},
+		onSecondaryButtonClick(e) {
+			this.$emit('secondaryClick', e);
 		},
 	},
 });
@@ -125,9 +143,15 @@ export default Vue.extend({
 	justify-content: center;
 }
 
-.buttonContainer {
+.buttonsContainer {
 	composes: actionContainer;
 	margin-bottom: var(--spacing-s);
+}
+
+.secondaryButtonContainer {
+	flex-grow: 1;
+	display: flex;
+	align-items: center;
 }
 
 .withLabel {

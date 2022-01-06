@@ -63,7 +63,7 @@ export default mixins(
 		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/login', values);
+				await this.$store.dispatch('users/loginWithCreds', values);
 				this.loading = false;
 
 				if (typeof this.$route.query.redirect === 'string') {

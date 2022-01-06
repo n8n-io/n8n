@@ -29,9 +29,6 @@ const router = new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
-			meta: {
-				authorize: [LOGIN_STATUS.LoggedIn],
-			},
 		},
 		{
 			path: '/workflow',
@@ -41,9 +38,6 @@ const router = new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
-			meta: {
-				authorize: [LOGIN_STATUS.LoggedIn],
-			},
 		},
 		{
 			path: '/workflow/:name',
@@ -52,9 +46,6 @@ const router = new Router({
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
-			},
-			meta: {
-				authorize: [LOGIN_STATUS.LoggedIn],
 			},
 		},
 		{
@@ -69,9 +60,6 @@ const router = new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
-			meta: {
-				authorize: [LOGIN_STATUS.LoggedIn],
-			},
 		},
 		{
 			path: '/signin',
@@ -79,18 +67,12 @@ const router = new Router({
 			components: {
 				default: SigninView,
 			},
-			meta: {
-				authorize: [LOGIN_STATUS.LoggedOut],
-			},
 		},
 		{
 			path: '/signup',
 			name: 'SignupView',
 			components: {
 				default: SignupView,
-			},
-			meta: {
-				authorize: [LOGIN_STATUS.LoggedOut],
 			},
 		},
 		{
@@ -106,9 +88,6 @@ const router = new Router({
 			components: {
 				default: ForgotMyPasswordView,
 			},
-			meta: {
-				authorize: [LOGIN_STATUS.LoggedOut],
-			},
 		},
 		{
 			path: '/change-password',
@@ -116,13 +95,10 @@ const router = new Router({
 			components: {
 				default: ChangePasswordView,
 			},
-			meta: {
-				authorize: [LOGIN_STATUS.LoggedOut],
-			},
 		},
 		{
 			path: '/settings',
-			redirect: '/settings/personal',
+			name: 'SettingsRedirect',
 		},
 		{
 			path: '/settings/users',
@@ -130,18 +106,12 @@ const router = new Router({
 			components: {
 				default: SettingsUsersView,
 			},
-			meta: {
-				authorize: [ROLE.Owner],
-			},
 		},
 		{
 			path: '/settings/personal',
 			name: 'PersonalSettings',
 			components: {
 				default: SettingsPersonalView,
-			},
-			meta: {
-				authorize: [LOGIN_STATUS.LoggedIn],
 			},
 		},
 		{
@@ -153,9 +123,6 @@ const router = new Router({
 				errorCode: 404,
 				redirectText: 'Go to editor',
 				redirectLink: '/',
-			},
-			meta: {
-				authorize: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
 			},
 		},
 	],

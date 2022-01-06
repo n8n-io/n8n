@@ -56,7 +56,7 @@ export default {
 			type: String,
 			default: 'primary',
 			validator: (value: string): boolean =>
-				['primary', 'danger'].indexOf(value) !== -1,
+				['primary', 'danger', 'text'].indexOf(value) !== -1,
 		},
 	},
 };
@@ -79,6 +79,10 @@ export default {
 			-(10%)
 		);
 	}
+}
+
+.text {
+	color: var(--color-text-base);
 }
 
 .danger {
