@@ -565,6 +565,7 @@
       "dist/nodes/Reddit/Reddit.node.js",
       "dist/nodes/Redis/Redis.node.js",
       "dist/nodes/RenameKeys/RenameKeys.node.js",
+      "dist/nodes/RespondToTrigger/RespondToTrigger.node.js",
       "dist/nodes/RespondToWebhook/RespondToWebhook.node.js",
       "dist/nodes/Rocketchat/Rocketchat.node.js",
       "dist/nodes/RssFeedRead/RssFeedRead.node.js",

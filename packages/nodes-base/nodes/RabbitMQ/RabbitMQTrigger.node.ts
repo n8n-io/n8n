@@ -6,6 +6,9 @@ import {
 	INodeTypeDescription,
 	ITriggerFunctions,
 	ITriggerResponse,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
+	createDeferredPromise,
 } from 'n8n-workflow';
 
 import {
@@ -44,7 +47,38 @@ export class RabbitMQTrigger implements INodeType {
 				placeholder: 'queue-name',
 				description: 'Name of the queue to publish to.',
 			},
-
+			{
+				displayName: 'Acknowledge',
+				name: 'acknowledgeMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Immediately',
+						value: 'onReceived',
+						description: 'As soon as this node executes',
+					},
+					{
+						name: 'Using \'Respond to Trigger\' node',
+						value: 'acknowledgeNode',
+						description: 'Acknowledge when acknowledge node executes',
+					},
+				],
+				default: 'onReceived',
+				description: 'When and how to acknowledge to the trigger.',
+			},
+			{
+				displayName: 'Insert a \'Respond to Trigger\' node to control when and how you acknowledge. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.respondToTrigger" target="_blank">More details</a>',
+				name: 'triggerNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						acknowledgeMode: [
+							'acknowledgeNode',
+						],
+					},
+				},
+				default: '',
+			},
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -101,6 +135,7 @@ export class RabbitMQTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const queue = this.getNodeParameter('queue') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const acknowledgeMode = this.getNodeParameter('acknowledgeMode') as string;
 
 		const channel = await rabbitmqConnectQueue.call(this, queue, options);
 
@@ -134,12 +169,36 @@ export class RabbitMQTrigger implements INodeType {
 						}
 					}
 
-					self.emit([
-						[
-							item,
-						],
-					]);
-					channel.ack(message);
+					if (acknowledgeMode == 'onReceived') {
+						self.emit([
+							[
+								item,
+							],
+						]);
+
+						channel.ack(message);
+					} else {
+						let acknowledgePromise = await createDeferredPromise<IExecuteResponsePromiseData>();
+						acknowledgePromise
+							.promise()
+							.then((response: IExecuteResponsePromiseData) => {
+								let acknowledgeResponse = response as IDataObject;
+								if (acknowledgeResponse.ack) {
+									channel.ack(message);
+								} else {
+									channel.nack(message);
+								}
+							})
+							.catch(async (error) => {
+								channel.nack(message);
+							});
+
+						self.emit([
+							[
+								item,
+							],
+						], acknowledgePromise);
+					}
 				}
 			});
 		};
