@@ -101,10 +101,10 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			req.user.password = hashSync(validPassword, genSaltSync(10));
-			req.user.resetPasswordToken = null;
-
-			await Db.collections.User!.save(req.user);
+			await Db.collections.User!.update(id, {
+				password: hashSync(validPassword, genSaltSync(10)),
+				resetPasswordToken: null,
+			});
 
 			const userData = await issueJWT(req.user);
 			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
