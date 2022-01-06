@@ -15,14 +15,6 @@ export function addUsersMethods(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: Request, res: Response) => {
-			if ((req.user as User).globalRole.name !== 'owner') {
-				throw new ResponseHelper.ResponseError(
-					'Current user cannot perform this operation',
-					undefined,
-					403,
-				);
-			}
-
 			if (!isEmailSetup()) {
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
@@ -204,15 +196,7 @@ export function addUsersMethods(this: N8nApp): void {
 
 	this.app.get(
 		`/${this.restEndpoint}/users`,
-		ResponseHelper.send(async (req: Request) => {
-			if ((req.user as User).globalRole.name !== 'owner') {
-				throw new ResponseHelper.ResponseError(
-					'Current user cannot perform this operation',
-					undefined,
-					403,
-				);
-			}
-
+		ResponseHelper.send(async () => {
 			const users = await Db.collections.User!.find();
 
 			return users.map((user) => generatePublicUserData(user));
@@ -222,15 +206,8 @@ export function addUsersMethods(this: N8nApp): void {
 	this.app.delete(
 		`/${this.restEndpoint}/users/:id`,
 		ResponseHelper.send(async (req: Request) => {
-			if (
-				(req.user as User).globalRole.name !== 'owner' ||
-				(req.user as User).id === req.params.id
-			) {
-				throw new ResponseHelper.ResponseError(
-					'Current user cannot perform this operation',
-					undefined,
-					403,
-				);
+			if ((req.user as User).id === req.params.id) {
+				throw new ResponseHelper.ResponseError('You cannot delete your own user', undefined, 403);
 			}
 
 			const transferId = req.query.transferId as string;
@@ -300,14 +277,6 @@ export function addUsersMethods(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users/:id/reinvite`,
 		ResponseHelper.send(async (req: Request) => {
-			if ((req.user as User).globalRole.name !== 'owner') {
-				throw new ResponseHelper.ResponseError(
-					'Current user cannot perform this operation',
-					undefined,
-					403,
-				);
-			}
-
 			if (!isEmailSetup()) {
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',

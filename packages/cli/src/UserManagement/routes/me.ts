@@ -6,7 +6,7 @@ import express = require('express');
 import { Db, ResponseHelper } from '../..';
 import { issueJWT } from '../auth/jwt';
 import { AuthenticatedRequest, N8nApp, PublicUserData } from '../Interfaces';
-import { isValidEmail, isValidPassword, sanitizeUser } from '../UserManagementHelper';
+import { isValidEmail, isValidPassword, generatePublicUserData } from '../UserManagementHelper';
 import type { UpdateSelfRequest } from '../Interfaces';
 
 export function addMeNamespace(this: N8nApp): void {
@@ -16,7 +16,7 @@ export function addMeNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/me`,
 		ResponseHelper.send(async (req: AuthenticatedRequest): Promise<PublicUserData> => {
-			return sanitizeUser(req.user);
+			return generatePublicUserData(req.user);
 		}),
 	);
 
@@ -39,7 +39,7 @@ export function addMeNamespace(this: N8nApp): void {
 
 				res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
 
-				return sanitizeUser(user);
+				return generatePublicUserData(user);
 			},
 		),
 	);

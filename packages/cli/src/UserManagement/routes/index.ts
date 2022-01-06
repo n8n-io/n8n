@@ -91,6 +91,33 @@ export async function addRoutes(
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
+	this.app.use((req: Request, res: Response, next: NextFunction) => {
+		// req.user is empty for public routes, so just proceed
+		// owner can do anything, so proceed as well
+		if (req.user === undefined || (req.user && (req.user as User).globalRole.name === 'owner')) {
+			next();
+			return;
+		}
+
+		// Not owner and user exists. We now protect restricted urls.
+		const postRestrictedUrls = [`/${this.restEndpoint}/users`];
+		const getRestrictedUrls = [`/${this.restEndpoint}/users`];
+		const trimmedUrl = req.url.endsWith('/') ? req.url.slice(0, -1) : req.url;
+		if (
+			(req.method === 'POST' && postRestrictedUrls.includes(trimmedUrl)) ||
+			(req.method === 'GET' && getRestrictedUrls.includes(trimmedUrl)) ||
+			(req.method === 'DELETE' &&
+				new RegExp(`/${restEndpoint}/users/[^/]+`, 'gm').test(trimmedUrl)) ||
+			(req.method === 'POST' &&
+				new RegExp(`/${restEndpoint}/users/[^/]/reinvite+`, 'gm').test(trimmedUrl))
+		) {
+			res.status(403).json({ status: 'error', message: 'Unauthorized' });
+			return;
+		}
+
+		next();
+	});
+
 	addAuthenticationMethods.apply(this);
 	addMeNamespace.apply(this);
 	addUsersMethods.apply(this);
