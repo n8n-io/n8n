@@ -510,7 +510,7 @@ export interface IN8nValueSurveyData {
 
 export interface IN8nPromptResponse {
 	updated: boolean;
-};
+}
 
 export interface IUserManagementConfig {
 	enabled: boolean;
