@@ -89,8 +89,8 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 		ResponseHelper.send(async (req: PasswordResetRequest.NewPassword, res: express.Response) => {
 			const { token: resetPasswordToken, id, password } = req.body;
 
-			if (!resetPasswordToken || !id) {
-				throw new ResponseHelper.ResponseError('', undefined, 400);
+			if (!resetPasswordToken || !id || !password) {
+				throw new ResponseHelper.ResponseError('Parameter missing', undefined, 400);
 			}
 
 			const validPassword = validatePassword(password);
