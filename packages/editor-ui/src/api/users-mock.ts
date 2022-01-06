@@ -168,7 +168,8 @@ export async function login(context: IRestApiContext, params: {email: string, pa
 
 export async function logout(context: IRestApiContext): Promise<void> {
 	log(context, 'POST', '/logout');
-	window.localStorage.removeItem('mock.users.currentUserId');
+	// @ts-ignore
+	window.localStorage.setItem('mock.users.currentUserId', undefined);
 }
 
 export async function setupOwner(context: IRestApiContext, params: { firstName: string; lastName: string; email: string; password: string;}): Promise<IUser> {
