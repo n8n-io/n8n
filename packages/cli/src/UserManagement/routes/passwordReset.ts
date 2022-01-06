@@ -37,7 +37,7 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ email });
 
 			if (!user) {
-				throw new Error('Invalid email address');
+				throw new Error('Error');
 			}
 
 			user.resetPasswordToken = uuidv4();
