@@ -10,9 +10,13 @@ import {
 	IUsersState,
 } from '../Interface';
 
-const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
+const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {currentUser: IUser | null, isUMEnabled: boolean}): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
 	if (permissions.deny) {
+		if (permissions.deny.um === isUMEnabled) {
+			return false;
+		}
+
 		if (permissions.deny.loginStatus && permissions.deny.loginStatus.includes(loginStatus)) {
 			return false;
 		}
@@ -26,6 +30,10 @@ const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boo
 	}
 
 	if (permissions.allow) {
+		if (permissions.allow.um === isUMEnabled) {
+			return true;
+		}
+
 		if (permissions.allow.loginStatus && permissions.allow.loginStatus.includes(loginStatus)) {
 			return true;
 		}
@@ -75,34 +83,36 @@ const module: Module<IUsersState, IRootState> = {
 		},
 		canCurrentUserAccessView(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return (viewName: string): boolean => {
-				const user = getters.currentUser as IUser | null;
 				const authorize: IPermissions | null = PERMISSIONS.ROUTES[viewName];
 				if (!authorize) {
 					return false;
 				}
 
-				return isAuthorized(authorize, user);
+				return isAuthorized(authorize, getters);
 			};
 		},
 		getUserById(state: IUsersState): (userId: string) => IUser | null {
 			return (userId: string): IUser | null => state.users[userId];
 		},
 		canUserDeleteTags(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, getters.currentUser);
+			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, getters);
 		},
 		canUserAccessSidebarUserInfo(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, getters.currentUser);
+			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, getters);
 		},
 		canUserAccessSettings(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.ROUTES.SettingsRedirect, getters.currentUser);
+			return isAuthorized(PERMISSIONS.ROUTES.SettingsRedirect, getters);
 		},
 		showUMSetupWarning(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, getters.currentUser);
+			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, getters);
 		},
 		isDefaultUser(state: IUsersState, getter: any): boolean { // tslint:disable-line:no-any
 			const user = getter.currentUser as IUser | null;
 
 			return user ? !user.email : false;
+		},
+		isUMEnabled(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any): boolean { // tslint:disable-line:no-any
+			return rootGetters['settings/isUserManagementEnabled'];
 		},
 	},
 	actions: {

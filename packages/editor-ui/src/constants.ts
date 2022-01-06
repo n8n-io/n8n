@@ -205,6 +205,9 @@ export const PERMISSIONS: IUserPermissions = {
 			allow: {
 				role: [ROLE.Default, ROLE.Owner],
 			},
+			deny: {
+				um: false,
+			},
 		},
 		UsersSettings: {
 			allow: {
