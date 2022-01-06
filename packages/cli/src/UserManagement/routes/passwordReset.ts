@@ -93,13 +93,14 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
+			const validPassword = validatePassword(password);
+
 			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
 
 			if (!user) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			const validPassword = validatePassword(password);
 			req.user.password = hashSync(validPassword, genSaltSync(10));
 			req.user.resetPasswordToken = null;
 
