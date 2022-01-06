@@ -99,7 +99,7 @@ export default mixins(
 				return;
 			}
 
-			if (this.$route.name === 'SetupView') {
+			if (this.$route.name === 'SetupView' && !this.isUserManagementEnabled) {
 				this.$router.push('/');
 
 				this.loading = false;

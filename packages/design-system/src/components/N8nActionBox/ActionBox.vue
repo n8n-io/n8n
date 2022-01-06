@@ -5,7 +5,9 @@
 			<n8n-heading size="xlarge">{{ props.heading }}</n8n-heading>
 			<n8n-text>{{ props.description }}</n8n-text>
 		</div>
-		<n8n-button :label="props.buttonText" size="large"></n8n-button>
+		<n8n-button :label="props.buttonText" size="large"
+			@click="(e) => listeners.click && listeners.click(e)"
+		/>
 	</div>
 </template>
 
