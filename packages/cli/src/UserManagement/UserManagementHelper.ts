@@ -5,14 +5,14 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import { IsNull, Not } from 'typeorm';
-import { Db } from '..';
+import { Db, ResponseHelper } from '..';
 import config = require('../../config');
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { PublicUserData } from './Interfaces';
+import { PublicUser } from './Interfaces';
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function saveWorkflowOwnership(
@@ -61,15 +61,27 @@ export function isValidEmail(email: string): boolean {
 	);
 }
 
-export function isValidPassword(password: string) {
-	return password.length >= 8 && password.length <= 64;
+export function validatePassword(password?: string) {
+	if (!password) {
+		throw new ResponseHelper.ResponseError('Password is mandatory', undefined, 400);
+	}
+
+	if (password.length <= 8 && password.length >= 64) {
+		throw new ResponseHelper.ResponseError(
+			'Password length must be longer than or equal to 8 characters and shorter than or equal to 64 characters',
+			undefined,
+			400,
+		);
+	}
+
+	return password;
 }
 
-export function generatePublicUserData(user: User): PublicUserData {
+export function generatePublicUserData(user: User): PublicUser {
 	const { id, email, firstName, lastName, personalizationAnswers, password } = user;
 	const returnedUser = {
 		id,
-	} as PublicUserData;
+	} as PublicUser;
 
 	if (email) {
 		returnedUser.email = email;
@@ -98,7 +110,7 @@ export function generatePublicUserData(user: User): PublicUserData {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User) {
-	const { password, resetPasswordToken, ...rest } = user;
+	const { password, resetPasswordToken, ...sanitized } = user;
 
-	return rest;
+	return sanitized;
 }

@@ -5,7 +5,7 @@ import { In } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import { Db, GenericHelpers, ResponseHelper } from '../..';
-import { N8nApp, PublicUserData } from '../Interfaces';
+import { N8nApp, PublicUser } from '../Interfaces';
 import { generatePublicUserData, isEmailSetup, isValidEmail } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
@@ -74,7 +74,7 @@ export function addUsersMethods(this: N8nApp): void {
 			}
 
 			let successfulBatch = true;
-			const createdUsers: PublicUserData[] = [];
+			const createdUsers: PublicUser[] = [];
 
 			// eslint-disable-next-line no-restricted-syntax
 			for (const invited of invitations) {

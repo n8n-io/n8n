@@ -5,8 +5,8 @@ import { genSaltSync, hashSync } from 'bcryptjs';
 import express = require('express');
 import { Db, ResponseHelper } from '../..';
 import { issueJWT } from '../auth/jwt';
-import { AuthenticatedRequest, N8nApp, PublicUserData } from '../Interfaces';
-import { isValidEmail, isValidPassword, sanitizeUser } from '../UserManagementHelper';
+import { AuthenticatedRequest, N8nApp, PublicUser } from '../Interfaces';
+import { isValidEmail, validatePassword, sanitizeUser } from '../UserManagementHelper';
 import type { UpdateSelfRequest } from '../Interfaces';
 
 export function addMeNamespace(this: N8nApp): void {
@@ -15,7 +15,7 @@ export function addMeNamespace(this: N8nApp): void {
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/me`,
-		ResponseHelper.send(async (req: AuthenticatedRequest): Promise<PublicUserData> => {
+		ResponseHelper.send(async (req: AuthenticatedRequest): Promise<PublicUser> => {
 			return sanitizeUser(req.user);
 		}),
 	);
@@ -26,7 +26,7 @@ export function addMeNamespace(this: N8nApp): void {
 	this.app.patch(
 		`/${this.restEndpoint}/me`,
 		ResponseHelper.send(
-			async (req: UpdateSelfRequest.Settings, res: express.Response): Promise<PublicUserData> => {
+			async (req: UpdateSelfRequest.Settings, res: express.Response): Promise<PublicUser> => {
 				if (req.body.email && !isValidEmail(req.body.email)) {
 					throw new Error('Invalid email address');
 				}
@@ -50,19 +50,8 @@ export function addMeNamespace(this: N8nApp): void {
 	this.app.patch(
 		`/${this.restEndpoint}/me/password`,
 		ResponseHelper.send(async (req: UpdateSelfRequest.Password, res: express.Response) => {
-			if (!req.body.password) {
-				throw new Error('Password is mandatory');
-			}
-
-			if (!isValidPassword(req.body.password)) {
-				throw new Error(
-					'Password length must be longer than or equal to 8 characters and shorter than or equal to 64 characters',
-				);
-			}
-
-			const hashedPassword = hashSync(req.body.password, genSaltSync(10));
-
-			req.user.password = hashedPassword;
+			const validPassword = validatePassword(req.body.password);
+			req.user.password = hashSync(validPassword, genSaltSync(10));
 
 			const user = await Db.collections.User!.save(req.user);
 
@@ -82,7 +71,11 @@ export function addMeNamespace(this: N8nApp): void {
 			const { body: personalizationAnswers } = req;
 
 			if (!personalizationAnswers) {
-				throw new Error('Personalization answers are mandatory');
+				throw new ResponseHelper.ResponseError(
+					'Personalization answers are mandatory',
+					undefined,
+					400,
+				);
 			}
 
 			await Db.collections.User!.save({

@@ -10,7 +10,7 @@ import * as passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
 import { genSaltSync, hashSync } from 'bcryptjs';
-import { N8nApp, PublicUserData } from '../Interfaces';
+import { N8nApp, PublicUser } from '../Interfaces';
 import { addAuthenticationMethods } from './auth';
 import config = require('../../../config');
 import { Db, GenericHelpers, ResponseHelper } from '../..';
@@ -20,6 +20,7 @@ import { generatePublicUserData, isEmailSetup, isValidEmail } from '../UserManag
 import { issueJWT } from '../auth/jwt';
 import { addMeNamespace } from './me';
 import { addUsersMethods } from './users';
+import { addPasswordResetNamespace } from './passwordReset';
 
 export async function addRoutes(
 	this: N8nApp,
@@ -37,7 +38,7 @@ export async function addRoutes(
 	};
 
 	passport.use(
-		new Strategy(options, async function validateCookieContents(jwtPayload: PublicUserData, done) {
+		new Strategy(options, async function validateCookieContents(jwtPayload: PublicUser, done) {
 			// We will assign the `sub` property on the JWT to the database ID of user
 			const user = await Db.collections.User!.findOne(
 				{
@@ -93,6 +94,7 @@ export async function addRoutes(
 
 	addAuthenticationMethods.apply(this);
 	addMeNamespace.apply(this);
+	addPasswordResetNamespace.apply(this);
 	addUsersMethods.apply(this);
 
 	// ----------------------------------------
