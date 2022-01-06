@@ -239,17 +239,25 @@ export function addUsersMethods(this: N8nApp): void {
 					{ user: transferUser },
 				);
 			} else {
-				const queryBuilderWorkflows = Db.collections.Workflow!.createQueryBuilder('w');
-				queryBuilderWorkflows.select(['w.id']);
-				queryBuilderWorkflows.innerJoin('w.shared', 'shared');
-				queryBuilderWorkflows.andWhere('shared.userId = :userId', {
-					userId: deletedUser.id,
+				const ownedWorkflows = await Db.collections.SharedWorkflow!.find({
+					relations: ['workflow'],
+					where: { user: deletedUser },
 				});
+				if (ownedWorkflows.length) {
+					await Db.collections.Workflow!.delete({
+						id: In(ownedWorkflows.map((ownedWorkflow) => ownedWorkflow.workflow.id)),
+					});
+					await Db.collections.SharedWorkflow!.delete({ user: deletedUser });
+				}
 
-				const workflows = await queryBuilderWorkflows.getMany();
-
-				if (workflows.length) {
-					await Db.collections.Workflow!.remove(workflows);
+				const ownedCredentials = await Db.collections.SharedCredentials!.find({
+					relations: ['credentials'],
+					where: { user: deletedUser },
+				});
+				if (ownedCredentials.length) {
+					await Db.collections.Credentials!.delete({
+						id: In(ownedCredentials.map((ownedCredential) => ownedCredential.credentials.id)),
+					});
 					await Db.collections.SharedWorkflow!.delete({ user: deletedUser });
 				}
 
