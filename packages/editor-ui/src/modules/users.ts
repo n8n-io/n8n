@@ -96,6 +96,9 @@ const module: Module<IUsersState, IRootState> = {
 		canUserAccessSettings(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return isAuthorized(PERMISSIONS.ROUTES.SettingsRedirect, getters.currentUser);
 		},
+		showUMSetupWarning(state: IUsersState, getters: any) { // tslint:disable-line:no-any
+			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, getters.currentUser);
+		},
 		isDefaultUser(state: IUsersState, getter: any): boolean { // tslint:disable-line:no-any
 			const user = getter.currentUser as IUser | null;
 

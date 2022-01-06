@@ -4,7 +4,7 @@
 			<div>
 				<n8n-heading size="2xlarge">Users</n8n-heading>
 			</div>
-			<div v-if="isDefaultUser" :class="$style.setupInfoContainer">
+			<div v-if="showUMSetupWarning" :class="$style.setupInfoContainer">
 				<n8n-action-box
 					emoji="😿"
 					heading="You’re missing out on user management"
@@ -43,7 +43,7 @@ export default mixins(showMessage).extend({
 		await this.$store.dispatch('users/fetchUsers');
 	},
 	computed: {
-		...mapGetters('users', ['allUsers', 'currentUserId', 'isDefaultUser']),
+		...mapGetters('users', ['allUsers', 'currentUserId', 'showUMSetupWarning']),
 	},
 	methods: {
 		redirectToSetup() {

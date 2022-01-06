@@ -245,6 +245,13 @@ export const PERMISSIONS: IUserPermissions = {
 			},
 		},
 	},
+	USER_SETTINGS: {
+		VIEW_UM_SETUP_WARNING: {
+			allow: {
+				role: [ROLE.Default],
+			},
+		},
+	},
 };
 export const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
