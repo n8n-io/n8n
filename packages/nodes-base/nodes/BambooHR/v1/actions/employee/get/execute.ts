@@ -56,4 +56,4 @@ const getAllFields = () => {
 		'supervisor',
 		'photoUrl',
 	];
-}
+};
