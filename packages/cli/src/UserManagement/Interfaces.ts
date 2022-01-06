@@ -63,7 +63,7 @@ declare namespace PasswordResetPayload {
 }
 
 declare namespace PasswordResetQuery {
-	type Credentials = { u?: string; t?: string };
+	type Credentials = { userId?: string; token?: string };
 }
 
 export declare namespace PasswordResetRequest {

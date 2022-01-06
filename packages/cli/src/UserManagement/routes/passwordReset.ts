@@ -48,8 +48,8 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 
 			const baseUrl = `${req.protocol}://${req.headers.host}`;
 			const url = new URL(`/${this.restEndpoint}/resolve-password-token`, baseUrl);
-			url.searchParams.append('u', id);
-			url.searchParams.append('t', resetPasswordToken);
+			url.searchParams.append('userId', id);
+			url.searchParams.append('token', resetPasswordToken);
 
 			void UserManagementMailer.getInstance().passwordReset({
 				email,
@@ -67,7 +67,7 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/resolve-password-token`,
 		ResponseHelper.send(async (req: PasswordResetRequest.Credentials) => {
-			const { t: resetPasswordToken, u: id } = req.query;
+			const { token: resetPasswordToken, userId: id } = req.query;
 
 			if (!resetPasswordToken || !id) {
 				throw new ResponseHelper.ResponseError('', undefined, 400);
