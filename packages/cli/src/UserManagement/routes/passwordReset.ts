@@ -23,21 +23,21 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 			const { email } = req.body;
 
 			if (!email) {
-				throw new Error('Email is mandatory');
+				throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 			}
 
 			if (!isValidEmail(email)) {
-				throw new Error('Invalid email address');
+				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
 			if (!req.headers.host) {
-				throw new Error('No host found');
+				throw new ResponseHelper.ResponseError('No host found', undefined, 400);
 			}
 
 			const user = await Db.collections.User!.findOne({ email });
 
 			if (!user) {
-				throw new Error('Error');
+				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
 			user.resetPasswordToken = uuidv4();
@@ -70,13 +70,13 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 			const { t, u } = req.query;
 
 			if (!t || !u) {
-				throw new Error('Error');
+				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
 			const user = await Db.collections.User!.findOne({ resetPasswordToken: t, id: u });
 
 			if (!user) {
-				throw new Error('Error');
+				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 		}),
 	);
@@ -90,13 +90,13 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 			const { token, id, password } = req.body;
 
 			if (!token || !id) {
-				throw new Error('Error');
+				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
 			const user = await Db.collections.User!.findOne({ resetPasswordToken: token, id });
 
 			if (!user) {
-				throw new Error('Error');
+				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
 			const validPassword = validatePassword(password);

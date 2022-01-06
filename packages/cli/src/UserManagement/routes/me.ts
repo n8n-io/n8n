@@ -71,7 +71,11 @@ export function addMeNamespace(this: N8nApp): void {
 			const { body: personalizationAnswers } = req;
 
 			if (!personalizationAnswers) {
-				throw new Error('Personalization answers are mandatory');
+				throw new ResponseHelper.ResponseError(
+					'Personalization answers are mandatory',
+					undefined,
+					400,
+				);
 			}
 
 			await Db.collections.User!.save({
