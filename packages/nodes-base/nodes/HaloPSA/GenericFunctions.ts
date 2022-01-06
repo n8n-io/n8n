@@ -117,7 +117,7 @@ export async function haloPSAApiRequest(
 
 function getAuthUrl(credentials: IDataObject) {
 	return credentials.hostingType === 'on-premise'
-		? '${credentials.appUrl}/auth/token'
+		? `${credentials.appUrl}/auth/token`
 		: `${credentials.authUrl}/token?tenant=${credentials.tenant}`;
 }
 
