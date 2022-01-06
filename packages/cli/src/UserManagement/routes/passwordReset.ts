@@ -46,7 +46,7 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 
 			await Db.collections.User!.update(id, { resetPasswordToken });
 
-			const baseUrl = `${req.protocol}://${req.headers.host}`;
+			const baseUrl = `${req.protocol}://${req.headers.host}`; // TODO: Discuss receiving path from client
 			const url = new URL(`/${this.restEndpoint}/resolve-password-token`, baseUrl);
 			url.searchParams.append('userId', id);
 			url.searchParams.append('token', resetPasswordToken);
