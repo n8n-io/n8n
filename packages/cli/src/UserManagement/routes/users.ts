@@ -226,7 +226,7 @@ export function addUsersMethods(this: N8nApp): void {
 
 			const users = await Db.collections.User!.find({ where: { id: In(searchIds) } });
 			if ((transferId && users.length !== 2) || users.length === 0) {
-				throw new ResponseHelper.ResponseError('Could not find user', undefined, 400);
+				throw new ResponseHelper.ResponseError('Could not find user', undefined, 404);
 			}
 
 			const deletedUser = users.find((user) => user.id === req.params.id) as User;
