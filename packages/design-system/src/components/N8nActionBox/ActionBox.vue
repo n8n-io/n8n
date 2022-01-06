@@ -2,10 +2,10 @@
 	<div :class="$style.container">
 		<span :class="$style.emoji">{{props.emoji}}</span>
 		<div :class="$style.description">
-			<n8n-heading size="xlarge">{{ props.heading }}</n8n-heading>
-			<n8n-text>{{ props.description }}</n8n-text>
+			<component :is="$options.components.N8nHeading" size="xlarge">{{ props.heading }}</component>
+			<component :is="$options.components.N8nText" >{{ props.description }}</component>
 		</div>
-		<n8n-button :label="props.buttonText" size="large"
+		<component :is="$options.components.N8nButton" :label="props.buttonText" size="large"
 			@click="(e) => listeners.click && listeners.click(e)"
 		/>
 	</div>
@@ -31,6 +31,11 @@ export default {
 		buttonText: {
 			type: String,
 		},
+	},
+	components: {
+		N8nButton,
+		N8nHeading,
+		N8nText,
 	},
 };
 </script>

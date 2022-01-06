@@ -27,7 +27,7 @@ const Template = (args, { argTypes }) => ({
 export const ActionBox = Template.bind({});
 ActionBox.args = {
 	emoji: "😿",
-	heading= "You’re missing out on user management",
-	description= "Set up an owner account in order to invite other users. Once set up, each user will need to use a password to access this instance.",
-	buttonText= "Set up my owner account",
+	heading: "You’re missing out on user management",
+	description: "Set up an owner account in order to invite other users. Once set up, each user will need to use a password to access this instance.",
+	buttonText: "Set up my owner account",
 };
