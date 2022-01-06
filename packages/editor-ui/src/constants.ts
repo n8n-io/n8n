@@ -185,7 +185,7 @@ export const PERMISSIONS: IUserPermissions = {
 		},
 		SetupView: {
 			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
+				role: [ROLE.Default],
 			},
 			deny: {
 				um: false,
