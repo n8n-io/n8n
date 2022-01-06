@@ -49,7 +49,9 @@ import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
 import {
+	BinaryDataManager,
 	Credentials,
+	IBinaryDataConfig,
 	ICredentialTestFunctions,
 	LoadNodeParameterOptions,
 	NodeExecuteFunctions,
@@ -1434,7 +1436,7 @@ class App {
 									const testFunctionSearch =
 										credential.name === credentialType && !!credential.testedBy;
 									if (testFunctionSearch) {
-										foundTestFunction = (node as unknown as INodeType).methods!.credentialTest![
+										foundTestFunction = (nodeType as unknown as INodeType).methods!.credentialTest![
 											credential.testedBy!
 										];
 									}
@@ -2449,12 +2451,27 @@ class App {
 					const filters = {
 						startedAt: LessThanOrEqual(deleteData.deleteBefore),
 					};
+
 					if (deleteData.filters !== undefined) {
 						Object.assign(filters, deleteData.filters);
 					}
 
+					const execs = await Db.collections.Execution!.find({ ...filters, select: ['id'] });
+
+					await Promise.all(
+						execs.map(async (item) =>
+							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(item.id.toString()),
+						),
+					);
+
 					await Db.collections.Execution!.delete(filters);
 				} else if (deleteData.ids !== undefined) {
+					await Promise.all(
+						deleteData.ids.map(async (id) =>
+							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id),
+						),
+					);
+
 					// Deletes all executions with the given ids
 					await Db.collections.Execution!.delete(deleteData.ids);
 				} else {
@@ -2647,6 +2664,23 @@ class App {
 			`/${this.restEndpoint}/options/timezones`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<object> => {
 				return timezones;
+			}),
+		);
+
+		// ----------------------------------------
+		// Binary data
+		// ----------------------------------------
+
+		// Returns binary buffer
+		this.app.get(
+			`/${this.restEndpoint}/data/:path`,
+			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+				const dataPath = req.params.path;
+				return BinaryDataManager.getInstance()
+					.retrieveBinaryDataByIdentifier(dataPath)
+					.then((buffer: Buffer) => {
+						return buffer.toString('base64');
+					});
 			}),
 		);
 
@@ -2850,36 +2884,38 @@ class App {
 			);
 		}
 
-		// Read the index file and replace the path placeholder
-		const editorUiPath = require.resolve('n8n-editor-ui');
-		const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
-		const n8nPath = config.get('path');
+		if (config.get('endpoints.disableUi') !== true) {
+			// Read the index file and replace the path placeholder
+			const editorUiPath = require.resolve('n8n-editor-ui');
+			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
+			const n8nPath = config.get('path');
 
-		let readIndexFile = readFileSync(filePath, 'utf8');
-		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
-		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
+			let readIndexFile = readFileSync(filePath, 'utf8');
+			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
-		// Serve the altered index.html file separately
-		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
-			res.send(readIndexFile);
-		});
+			// Serve the altered index.html file separately
+			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
+				res.send(readIndexFile);
+			});
 
-		// Serve the website
+			// Serve the website
+			this.app.use(
+				'/',
+				express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
+					index: 'index.html',
+					setHeaders: (res, path) => {
+						if (res.req && res.req.url === '/index.html') {
+							// Set last modified date manually to n8n start time so
+							// that it hopefully refreshes the page when a new version
+							// got used
+							res.setHeader('Last-Modified', startTime);
+						}
+					},
+				}),
+			);
+		}
 		const startTime = new Date().toUTCString();
-		this.app.use(
-			'/',
-			express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
-				index: 'index.html',
-				setHeaders: (res, path) => {
-					if (res.req && res.req.url === '/index.html') {
-						// Set last modified date manually to n8n start time so
-						// that it hopefully refreshes the page when a new version
-						// got used
-						res.setHeader('Last-Modified', startTime);
-					}
-				},
-			}),
-		);
 	}
 }
 
@@ -2917,6 +2953,7 @@ export async function start(): Promise<void> {
 
 		await app.externalHooks.run('n8n.ready', [app]);
 		const cpus = os.cpus();
+		const binarDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 		const diagnosticInfo: IDiagnosticInfo = {
 			basicAuthActive: config.get('security.basicAuth.active') as boolean,
 			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
@@ -2950,6 +2987,7 @@ export async function start(): Promise<void> {
 				executions_data_prune_timeout: config.get('executions.pruneDataTimeout'),
 			},
 			deploymentType: config.get('deployment.type'),
+			binaryDataMode: binarDataConfig.mode,
 		};
 
 		void Db.collections

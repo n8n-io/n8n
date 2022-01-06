@@ -32,7 +32,6 @@ export class PhilipsHue implements INodeType {
 		description: 'Consume Philips Hue API',
 		defaults: {
 			name: 'Philips Hue',
-			color: '#063c9a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -77,7 +76,7 @@ export class PhilipsHue implements INodeType {
 					'GET',
 					`/bridge/${user}/lights`,
 				);
-				
+
 				const groups = await philipsHueApiRequest.call(
 					this,
 					'GET',
@@ -87,13 +86,13 @@ export class PhilipsHue implements INodeType {
 				for (const light of Object.keys(lights)) {
 					let lightName = lights[light].name;
 					const lightId = light;
-					
+
 					for (const groupId of Object.keys(groups)) {
 						if(groups[groupId].type === 'Room' && groups[groupId].lights.includes(lightId)) {
 							lightName = `${groups[groupId].name}: ${lightName}`;
 						}
 					}
-					
+
 					returnData.push({
 						name: lightName,
 						value: lightId,

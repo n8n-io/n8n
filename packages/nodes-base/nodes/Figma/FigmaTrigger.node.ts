@@ -33,7 +33,6 @@ export class FigmaTrigger implements INodeType {
 		description: 'Starts the workflow when Figma events occur',
 		defaults: {
 			name: 'Figma Trigger (Beta)',
-			color: '#29b6f6',
 		},
 		inputs: [],
 		outputs: ['main'],

@@ -24,7 +24,6 @@ export class OpenThesaurus implements INodeType {
 		description: 'Get synonmns for German words using the OpenThesaurus API',
 		defaults: {
 			name: 'OpenThesaurus',
-			color: '#00ade8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

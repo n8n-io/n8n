@@ -234,3 +234,23 @@ export interface IWorkflowData {
 	pollResponses?: IPollResponse[];
 	triggerResponses?: ITriggerResponse[];
 }
+
+export interface IBinaryDataConfig {
+	mode: 'default' | 'filesystem';
+	availableModes: string;
+	localStoragePath: string;
+	binaryDataTTL: number;
+	persistedBinaryDataTTL: number;
+}
+
+export interface IBinaryDataManager {
+	init(startPurger: boolean): Promise<void>;
+	storeBinaryData(binaryBuffer: Buffer, executionId: string): Promise<string>;
+	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
+	markDataForDeletionByExecutionId(executionId: string): Promise<void>;
+	deleteMarkedFiles(): Promise<unknown>;
+	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;
+	duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string>;
+	deleteBinaryDataByExecutionId(executionId: string): Promise<void>;
+	persistBinaryDataForExecutionId(executionId: string): Promise<void>;
+}

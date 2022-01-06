@@ -393,7 +393,7 @@ export default mixins(
 					if (nameIndex) {
 						index = parseInt(nameIndex, 10);
 					}
-					baseName = uniqueName = originalName;
+					baseName = uniqueName = found;
 				} else {
 					const nameMatch = originalName.match(/(.*\D+)(\d*)/);
 
@@ -408,7 +408,7 @@ export default mixins(
 						if (nameIndex !== '') {
 							index = parseInt(nameIndex, 10);
 						}
-						uniqueName = baseName = originalName;
+						uniqueName = baseName;
 					}
 				}
 
