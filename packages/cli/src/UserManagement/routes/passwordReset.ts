@@ -12,6 +12,7 @@ import { isValidEmail, validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../Interfaces';
 import { issueJWT } from '../auth/jwt';
+import { getBaseUrl } from '../../GenericHelpers';
 
 export function addPasswordResetNamespace(this: N8nApp): void {
 	/**
@@ -30,10 +31,6 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
-			if (!req.headers.host) {
-				throw new ResponseHelper.ResponseError('No host found', undefined, 400);
-			}
-
 			const user = await Db.collections.User!.findOne({ email });
 
 			if (!user) {
@@ -46,8 +43,7 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 
 			await Db.collections.User!.update(id, { resetPasswordToken });
 
-			const baseUrl = `${req.protocol}://${req.headers.host}`; // TODO: Discuss receiving path from client
-			const url = new URL(`/${this.restEndpoint}/resolve-password-token`, baseUrl);
+			const url = new URL(`/${this.restEndpoint}/resolve-password-token`, getBaseUrl());
 			url.searchParams.append('userId', id);
 			url.searchParams.append('token', resetPasswordToken);
 
@@ -56,7 +52,7 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 				firstName,
 				lastName,
 				passwordResetUrl: url.toString(),
-				domain: req.headers.host,
+				domain: getBaseUrl(),
 			});
 		}),
 	);
