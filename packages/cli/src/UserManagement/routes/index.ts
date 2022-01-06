@@ -10,14 +10,15 @@ import * as passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
 import { genSaltSync, hashSync } from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
 import { N8nApp, PublicUserData } from '../Interfaces';
 import { addAuthenticationMethods } from './auth';
 import config = require('../../../config');
 import { Db, GenericHelpers, ResponseHelper } from '../..';
 import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
-import { generatePublicUserData, isEmailSetup, isValidEmail } from '../UserManagementHelper';
-import { issueJWT } from '../auth/jwt';
+import { generatePublicUserData, isValidEmail, isValidPassword } from '../UserManagementHelper';
+import { issueCookie, issueJWT } from '../auth/jwt';
 import { addMeNamespace } from './me';
 import { addUsersMethods } from './users';
 
@@ -91,6 +92,17 @@ export async function addRoutes(
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
+	this.app.use(async (req: Request, res: Response, next: NextFunction) => {
+		const cookieAuth = options.jwtFromRequest(req);
+		if (cookieAuth && req.user) {
+			const cookieContents = jwt.decode(cookieAuth) as PublicUserData & { exp: number };
+			if (cookieContents.exp * 1000 - Date.now() < 259200000) {
+				await issueCookie(res, req.user as User);
+			}
+		}
+		next();
+	});
+
 	addAuthenticationMethods.apply(this);
 	addMeNamespace.apply(this);
 	addUsersMethods.apply(this);
@@ -122,8 +134,8 @@ export async function addRoutes(
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (!req.body.password) {
-				throw new Error('Password is mandatory mandatory');
+			if (!req.body.password || !isValidPassword(req.body.password)) {
+				throw new Error('Password does not comply to security standards');
 			}
 
 			const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
