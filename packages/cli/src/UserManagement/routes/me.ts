@@ -5,7 +5,7 @@ import { genSaltSync, hashSync } from 'bcryptjs';
 import express = require('express');
 import { Db, ResponseHelper } from '../..';
 import { issueJWT } from '../auth/jwt';
-import { AuthenticatedRequest, N8nApp, PublicUserData } from '../Interfaces';
+import { AuthenticatedRequest, N8nApp, PublicUser } from '../Interfaces';
 import { isValidEmail, validatePassword, sanitizeUser } from '../UserManagementHelper';
 import type { UpdateSelfRequest } from '../Interfaces';
 
@@ -15,7 +15,7 @@ export function addMeNamespace(this: N8nApp): void {
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/me`,
-		ResponseHelper.send(async (req: AuthenticatedRequest): Promise<PublicUserData> => {
+		ResponseHelper.send(async (req: AuthenticatedRequest): Promise<PublicUser> => {
 			return sanitizeUser(req.user);
 		}),
 	);
@@ -26,7 +26,7 @@ export function addMeNamespace(this: N8nApp): void {
 	this.app.patch(
 		`/${this.restEndpoint}/me`,
 		ResponseHelper.send(
-			async (req: UpdateSelfRequest.Settings, res: express.Response): Promise<PublicUserData> => {
+			async (req: UpdateSelfRequest.Settings, res: express.Response): Promise<PublicUser> => {
 				if (req.body.email && !isValidEmail(req.body.email)) {
 					throw new Error('Invalid email address');
 				}

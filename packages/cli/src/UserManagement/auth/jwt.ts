@@ -2,7 +2,7 @@
 /* eslint-disable import/no-cycle */
 
 import * as jwt from 'jsonwebtoken';
-import { JwtToken, PublicUserData } from '../Interfaces';
+import { JwtToken, PublicUser } from '../Interfaces';
 import { User } from '../../databases/entities/User';
 import config = require('../../../config');
 
@@ -33,7 +33,7 @@ export async function issueJWT(user: User): Promise<JwtToken> {
 		lastName,
 		password: password ? password.slice(Math.round(password.length / 2)) : undefined,
 		personalizationAnswers,
-	} as PublicUserData;
+	} as PublicUser;
 
 	const signedToken = jwt.sign(payload, config.get('userManagement.jwtSecret'), {
 		expiresIn: expiresIn / 1000 /* in seconds */,

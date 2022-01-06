@@ -15,7 +15,7 @@ export interface JwtOptions {
 	jwtFromRequest: JwtFromRequestFunction;
 }
 
-export interface PublicUserData {
+export interface PublicUser {
 	id: string;
 	email?: string;
 	firstName?: string;
@@ -42,8 +42,8 @@ export type AuthenticatedRequest<ReqBody = {}, ReqQuery = {}> = express.Request<
 // ----------------------------------
 
 declare namespace UpdateSelfPayload {
-	type Settings = Pick<PublicUserData, 'email' | 'firstName' | 'lastName'>;
-	type Password = Pick<PublicUserData, 'password'>;
+	type Settings = Pick<PublicUser, 'email' | 'firstName' | 'lastName'>;
+	type Password = Pick<PublicUser, 'password'>;
 	type SurveyAnswers = { [key: string]: string } | {};
 }
 
@@ -58,8 +58,8 @@ export declare namespace UpdateSelfRequest {
 // ----------------------------------
 
 declare namespace PasswordResetPayload {
-	type Email = Pick<PublicUserData, 'email'>;
-	type NewPassword = Pick<PublicUserData, 'password'> & { token?: string; id?: string };
+	type Email = Pick<PublicUser, 'email'>;
+	type NewPassword = Pick<PublicUser, 'password'> & { token?: string; id?: string };
 }
 
 declare namespace PasswordResetQuery {

@@ -12,7 +12,7 @@ import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { PublicUserData } from './Interfaces';
+import { PublicUser } from './Interfaces';
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function saveWorkflowOwnership(
@@ -77,11 +77,11 @@ export function validatePassword(password?: string) {
 	return password;
 }
 
-export function generatePublicUserData(user: User): PublicUserData {
+export function generatePublicUserData(user: User): PublicUser {
 	const { id, email, firstName, lastName, personalizationAnswers, password } = user;
 	const returnedUser = {
 		id,
-	} as PublicUserData;
+	} as PublicUser;
 
 	if (email) {
 		returnedUser.email = email;
