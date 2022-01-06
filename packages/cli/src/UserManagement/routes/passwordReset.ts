@@ -43,7 +43,8 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 
 			await Db.collections.User!.update(id, { resetPasswordToken });
 
-			const url = new URL(`/${this.restEndpoint}/resolve-password-token`, getBaseUrl());
+			const baseUrl = getBaseUrl();
+			const url = new URL('/change-password', baseUrl);
 			url.searchParams.append('userId', id);
 			url.searchParams.append('token', resetPasswordToken);
 
@@ -52,7 +53,7 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 				firstName,
 				lastName,
 				passwordResetUrl: url.toString(),
-				domain: getBaseUrl(),
+				domain: baseUrl,
 			});
 		}),
 	);
