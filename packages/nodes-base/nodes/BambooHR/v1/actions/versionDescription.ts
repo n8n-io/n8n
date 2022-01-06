@@ -5,8 +5,6 @@ import * as companyFile from './companyFile';
 import * as employee from './employee';
 import * as employeeFile from './employeeFile';
 import * as report from './report';
-import * as tabularData from './tabularData';
-import * as timeOff from './timeOff';
 
 export const versionDescription: INodeTypeDescription = {
 	credentials: [
@@ -49,10 +47,6 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'report',
 				},
 				{
-					name: 'Tabular Data',
-					value: 'tabularData',
-				},
-				{
 					name: 'Time Off',
 					value: 'timeOff',
 				},
@@ -63,8 +57,6 @@ export const versionDescription: INodeTypeDescription = {
 		...employeeFile.descriptions,
 		...companyFile.descriptions,
 		...report.descriptions,
-		...tabularData.descriptions,
-		...timeOff.descriptions,
 	],
 	subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 	version: 1,

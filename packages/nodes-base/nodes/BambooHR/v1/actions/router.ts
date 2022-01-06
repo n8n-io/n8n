@@ -10,8 +10,6 @@ import * as employee from './employee';
 import * as employeeFile from './employeeFile';
 import * as companyFile from './companyFile';
 import * as report from './report';
-import * as tabularData from './tabularData';
-import * as timeOff from './timeOff';
 
 import { BambooHR } from './Interfaces';
 
@@ -40,10 +38,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			} else if (bamboohr.resource === 'report') {
 				//@ts-ignore
 				operationResult.push(...await report[bamboohr.operation].execute.call(this, i));
-			} else if (bamboohr.resource === 'tabularData') {
-				operationResult.push(...await tabularData[bamboohr.operation].execute.call(this, i));
-			} else if (bamboohr.resource === 'timeOff') {
-				operationResult.push(...await timeOff[bamboohr.operation].execute.call(this, i));
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {
