@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const tagsDescription: INodeProperties[] = [
+export const tagDescription: INodeProperties[] = [
 	// ----------------------------------
 	//           operations
 	// ----------------------------------
@@ -16,9 +16,6 @@ export const tagsDescription: INodeProperties[] = [
 				resource: [
 					'tag',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
 		options: [
@@ -30,7 +27,7 @@ export const tagsDescription: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get data of all tags of an object',
+				description: 'Retrieve all tags on an object',
 			},
 			{
 				name: 'Remove',
@@ -40,7 +37,6 @@ export const tagsDescription: INodeProperties[] = [
 			{
 				name: 'Search',
 				value: 'search', // TODO combine with get
-				description: 'Search tags',
 			},
 		],
 		default: 'add',
@@ -64,35 +60,8 @@ export const tagsDescription: INodeProperties[] = [
 				resource: [
 					'tag',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
-		description: 'The name of the tag',
-	},
-	{
-		displayName: 'Object',
-		name: 'object',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'add',
-					'remove',
-					'getAll',
-				],
-				resource: [
-					'tag',
-				],
-				api: [
-					'rest',
-				],
-			},
-		},
-		description: 'The object the tag is added to',
 	},
 	{
 		displayName: 'Object ID',
@@ -100,6 +69,7 @@ export const tagsDescription: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
+		description: 'Object to add the tag to',
 		displayOptions: {
 			show: {
 				operation: [
@@ -109,9 +79,6 @@ export const tagsDescription: INodeProperties[] = [
 				],
 				resource: [
 					'tag',
-				],
-				api: [
-					'rest',
 				],
 			},
 		},
@@ -130,11 +97,7 @@ export const tagsDescription: INodeProperties[] = [
 				resource: [
 					'tag',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
-		description: 'The search term to search the tags by',
 	},
 ];

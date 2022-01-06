@@ -3,24 +3,25 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class ZammadBasicApi implements ICredentialType {
-	name = 'zammadBasicApi';
-	displayName = 'Zammad Basic API';
+export class ZammadBasicAuthApi implements ICredentialType {
+	name = 'zammadBasicAuthApi';
+	displayName = 'Zammad Basic Auth API';
 	documentationUrl = 'zammad';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Domain',
-			name: 'domain',
+			displayName: 'Base URL',
+			name: 'baseUrl',
 			type: 'string',
-			default: 'https://n8n.zammad.com',
+			default: '',
+			placeholder: 'e.g. https://n8n-helpdesk.zammad.com',
 			required: true,
 		},
 		{
-			displayName: 'User Name',
+			displayName: 'Email',
 			name: 'username',
-			description: 'Email also allowed',
 			type: 'string',
 			default: '',
+			placeholder: 'e.g. helpdesk@n8n.io',
 			required: true,
 		},
 		{

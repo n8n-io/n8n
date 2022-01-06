@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const usersDescription: INodeProperties[] = [
+export const userDescription: INodeProperties[] = [
 	// ----------------------------------
 	//           operations
 	// ----------------------------------
@@ -16,46 +16,38 @@ export const usersDescription: INodeProperties[] = [
 				resource: [
 					'user',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an entry',
+				description: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an entry',
+				description: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of an entry',
+				description: 'Retrieve a user',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get data of all entries',
+				description: 'Retrieve all users',
 			},
 			{
-				name: 'Me',
-				value: 'me',
-				description: 'Get data of the current user',
-			},
-			{
-				name: 'Search',
-				value: 'search', // TODO combine with get
-				description: 'Get data of an entry',
+				name: 'Get Self',
+				value: 'getSelf',
+				description: 'Retrieve currently logged-in user',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an entry',
+				description: 'Update a user',
 			},
 		],
 		default: 'create',
@@ -66,192 +58,419 @@ export const usersDescription: INodeProperties[] = [
 	// ----------------------------------
 	{
 		displayName: 'Email Address',
-		name: 'emailAddress',
+		name: 'email',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
+				resource: [
+					'user',
+				],
 				operation: [
 					'create',
-					'update',
-				],
-				resource: [
-					'user',
-				],
-				api: [
-					'rest',
 				],
 			},
 		},
-		description: 'The email address of the user',
 	},
 	{
-		displayName: 'ID',
+		displayName: 'User ID',
 		name: 'id',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadUsers',
+		},
+		description: 'User to update. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-					'get',
-					'delete',
-				],
 				resource: [
 					'user',
 				],
+				operation: [
+					'update',
+				],
 			},
 		},
-		description: 'The ID of the user',
+	},
+		{
+		displayName: 'User ID',
+		name: 'id',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadUsers',
+		},
+		description: 'User to delete. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'User ID',
+		name: 'id',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadUsers',
+		},
+		description: 'User to retrieve. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
-		name: 'optionalFields',
+		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create', 'update',
-				],
 				resource: [
 					'user',
 				],
-				api: [
-					'rest',
+				operation: [
+					'create',
 				],
 			},
 		},
 		default: {},
-		description: 'Additional optional fields of the user',
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Active?',
+				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user is active',
 			},
 			{
 				displayName: 'Address',
-				name: 'address',
-				type: 'string',
-				default: '',
-				description: 'Address of the user',
+				name: 'addressUi',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Address Details',
+						name: 'addressDetails',
+						values: [
+							{
+								displayName: 'City',
+								name: 'city',
+								type: 'string',
+								default: '',
+								placeholder: 'Berlin',
+							},
+							{
+								displayName: 'Country',
+								name: 'country',
+								type: 'string',
+								default: '',
+								placeholder: 'Germany',
+							},
+							{
+								displayName: 'Street & Number',
+								name: 'address',
+								type: 'string',
+								default: '',
+								placeholder: 'Borsigstr. 27',
+							},
+							{
+								displayName: 'Zip Code',
+								name: 'zip',
+								type: 'string',
+								default: '',
+								placeholder: '10115',
+							},
+						],
+					},
+				],
 			},
 			{
-				displayName: 'City',
-				name: 'city',
-				type: 'string',
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
 				default: '',
-				description: 'City of the users address',
-			},
-			{
-				displayName: 'Country',
-				name: 'country',
-				type: 'string',
-				default: '',
-				description: 'Country of the users address',
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldPairs',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'name',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadUserCustomFields',
+								},
+								default: '',
+								description: 'Name of the custom field to set',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set on the custom field',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Department',
 				name: 'department',
 				type: 'string',
 				default: '',
-				description: 'Department of the user',
+				placeholder: 'Finance',
 			},
 			{
-				displayName: 'Fax Number',
+				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
 				default: '',
-				description: 'Fax number of the user',
+				placeholder: '+49 30 901820',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstname',
 				type: 'string',
 				default: '',
-				description: 'The first name of the user',
+				placeholder: 'John',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastname',
 				type: 'string',
 				default: '',
-				description: 'The last name of the user',
+				placeholder: 'Smith',
 			},
 			{
-				displayName: 'Login',
-				name: 'login',
-				type: 'string',
-				default: '',
-				description: 'The login name of the user',
-			},
-			{
-				displayName: 'Mobile Phone',
-				name: 'mobile',
-				type: 'string',
-				default: '',
-				description: 'Mobile phone number of the user',
-			},
-			{
-				displayName: 'Note',
+				displayName: 'Notes',
 				name: 'note',
 				type: 'string',
 				default: '',
-				description: 'The note of the user',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 			},
 			{
 				displayName: 'Organization',
 				name: 'organization',
-				type: 'string',
+				type: 'options',
 				default: '',
-				description: 'The organization of the user',
+				typeOptions: {
+					loadOptionsMethod: 'loadOrganizations',
+				},
 			},
 			{
-				displayName: 'Phone',
+				displayName: 'Phone (Landline)',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the user',
+				placeholder: '+49 30 901820',
 			},
 			{
-				displayName: 'Street',
-				name: 'street',
+				displayName: 'Phone (Mobile)',
+				name: 'mobile',
 				type: 'string',
 				default: '',
-				description: 'Street of the users address',
+				placeholder: '+49 1522 3433333',
 			},
 			{
-				displayName: 'Verified?',
+				displayName: 'Verified',
 				name: 'verified',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user is verified',
+				description: 'Whether the user has been verified',
 			},
 			{
-				displayName: 'VIP?',
+				displayName: 'VIP',
 				name: 'vip',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user is VIP',
+				description: 'Whether the user is a Very Important Person',
 			},
 			{
 				displayName: 'Website',
 				name: 'web',
 				type: 'string',
 				default: '',
-				description: 'Website of the user',
+				placeholder: 'https://n8n.io',
+			},
+		],
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'user',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Active',
+				name: 'active',
+				type: 'boolean',
+				default: false,
 			},
 			{
-				displayName: 'Zip Code',
-				name: 'zip',
+				displayName: 'Address',
+				name: 'addressUi',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Address Details',
+						name: 'addressDetails',
+						values: [
+							{
+								displayName: 'City',
+								name: 'city',
+								type: 'string',
+								default: '',
+								placeholder: 'Berlin',
+							},
+							{
+								displayName: 'Country',
+								name: 'country',
+								type: 'string',
+								default: '',
+								placeholder: 'Germany',
+							},
+							{
+								displayName: 'Street & Number',
+								name: 'address',
+								type: 'string',
+								default: '',
+								placeholder: 'Borsigstr. 27',
+							},
+							{
+								displayName: 'Zip Code',
+								name: 'zip',
+								type: 'string',
+								default: '',
+								placeholder: '10115',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Department',
+				name: 'department',
 				type: 'string',
 				default: '',
-				description: 'Zip Code of the users address',
+				placeholder: 'Finance',
+			},
+			{
+				displayName: 'Email Address',
+				name: 'email',
+				type: 'string',
+				default: '',
+				placeholder: 'hello@n8n.io',
+			},
+			{
+				displayName: 'Fax',
+				name: 'fax',
+				type: 'string',
+				default: '',
+				placeholder: '+49 30 901820',
+			},
+			{
+				displayName: 'First Name',
+				name: 'firstname',
+				type: 'string',
+				default: '',
+				placeholder: 'John',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastname',
+				type: 'string',
+				default: '',
+				placeholder: 'Smith',
+			},
+			{
+				displayName: 'Notes',
+				name: 'note',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Organization',
+				name: 'organization',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'loadOrganizations',
+				},
+			},
+			{
+				displayName: 'Phone (Landline)',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				placeholder: '+49 30 901820',
+			},
+			{
+				displayName: 'Phone (Mobile)',
+				name: 'mobile',
+				type: 'string',
+				default: '',
+				placeholder: '+49 1522 3433333',
+			},
+			{
+				displayName: 'Verified',
+				name: 'verified',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the user has been verified',
+			},
+			{
+				displayName: 'VIP',
+				name: 'vip',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the user is a Very Important Person',
+			},
+			{
+				displayName: 'Website',
+				name: 'web',
+				type: 'string',
+				default: '',
+				placeholder: 'https://n8n.io',
 			},
 		],
 	},
@@ -269,12 +488,8 @@ export const usersDescription: INodeProperties[] = [
 				resource: [
 					'user',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
-		description: 'The query to search the users',
 	},
 	{
 		displayName: 'Limit',
@@ -292,61 +507,115 @@ export const usersDescription: INodeProperties[] = [
 				resource: [
 					'user',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Sort By',
-		name: 'sort_by',
-		type: 'string',
-		default: '',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
 				resource: [
 					'user',
 				],
-				api: [
-					'rest',
+				operation: [
+					'getAll',
 				],
 			},
 		},
-		description: 'How to sort the users',
 	},
 	{
-		displayName: 'Order By',
-		name: 'order_by',
-		type: 'options',
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		description: 'Max number of results to return',
+		typeOptions: {
+			minValue: 1,
+		},
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
 				resource: [
 					'user',
 				],
-				api: [
-					'rest',
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Filter',
 		options: [
 			{
-				name: 'Ascending',
-				value: 'asc',
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'Query to filter results by',
+				placeholder: 'organization.name:n8n',
 			},
 			{
-				name: 'Descending',
-				value: 'desc',
+				displayName: 'Sort',
+				name: 'sortUi',
+				type: 'fixedCollection',
+				placeholder: 'Add Sort Options',
+				default: {},
+				options: [
+					{
+						displayName: 'Sort Options',
+						name: 'sortDetails',
+						values: [
+							{
+								displayName: 'Sort Key',
+								name: 'sort_by',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadUserFields',
+								},
+								default: '',
+							},
+							{
+								displayName: 'Sort Order',
+								name: 'order_by',
+								type: 'options',
+								options: [
+									{
+										name: 'Ascending',
+										value: 'asc',
+									},
+									{
+										name: 'Descending',
+										value: 'desc',
+									},
+								],
+								default: 'asc',
+							},
+						],
+					},
+				],
 			},
 		],
-		default: 'asc',
-		description: 'How to order the users',
 	},
 ];

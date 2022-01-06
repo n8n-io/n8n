@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const organizationsDescription: INodeProperties[] = [
+export const organizationDescription: INodeProperties[] = [
 	// ----------------------------------
 	//           operations
 	// ----------------------------------
@@ -16,41 +16,38 @@ export const organizationsDescription: INodeProperties[] = [
 				resource: [
 					'organization',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an entry',
+				description: 'Create an organization',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an entry',
+				description: 'Delete an organization',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of an entry',
+				description: 'Retrieve an organization',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get data of all entries',
+				description: 'Retrieve all organization',
 			},
 			{
 				name: 'Search',
 				value: 'search', // TODO combine with get
-				description: 'Get data of an entry',
+				description: 'Get data of an organization',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an entry',
+				description: 'Update an organization',
 			},
 		],
 		default: 'create',
@@ -69,19 +66,15 @@ export const organizationsDescription: INodeProperties[] = [
 			show: {
 				operation: [
 					'create',
-					'update',
 				],
 				resource: [
 					'organization',
-				],
-				api: [
-					'rest',
 				],
 			},
 		},
 	},
 	{
-		displayName: 'ID',
+		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -96,67 +89,92 @@ export const organizationsDescription: INodeProperties[] = [
 				resource: [
 					'organization',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
 	},
 	{
 		displayName: 'Additional Fields',
-		name: 'optionalFields',
+		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
 			show: {
 				operation: [
 					'create',
+				],
+				resource: [
+					'organization',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Active',
+				name: 'active',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Notes',
+				name: 'note',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Shared',
+				name: 'shared',
+				type: 'boolean',
+				default: false,
+			},
+		],
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
 					'update',
 				],
 				resource: [
 					'organization',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
 		default: {},
-		description: 'Additional optional fields of the organization',
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Active?',
+				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the organization is active',
 			},
 			{
-				displayName: 'Domain',
-				name: 'domain',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Domain Assignment?',
-				name: 'domain_assignment',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the organizations domain assignment is active',
-			},
-			{
-				displayName: 'Note',
+				displayName: 'Notes',
 				name: 'note',
 				type: 'string',
 				default: '',
-				description: 'The note of the organization',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 			},
 			{
-				displayName: 'Shared?',
+				displayName: 'Shared',
 				name: 'shared',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the organization is shared',
 			},
 		],
 	},
@@ -174,12 +192,8 @@ export const organizationsDescription: INodeProperties[] = [
 				resource: [
 					'organization',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
-		description: 'The query to search the organizations',
 	},
 	{
 		displayName: 'Limit',
@@ -196,9 +210,6 @@ export const organizationsDescription: INodeProperties[] = [
 				],
 				resource: [
 					'organization',
-				],
-				api: [
-					'rest',
 				],
 			},
 		},
@@ -217,15 +228,11 @@ export const organizationsDescription: INodeProperties[] = [
 				resource: [
 					'organization',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
-		description: 'How to sort the organizations',
 	},
 	{
-		displayName: 'Order By',
+		displayName: 'Sort Order',
 		name: 'order_by',
 		type: 'options',
 		displayOptions: {
@@ -235,9 +242,6 @@ export const organizationsDescription: INodeProperties[] = [
 				],
 				resource: [
 					'organization',
-				],
-				api: [
-					'rest',
 				],
 			},
 		},
@@ -252,6 +256,5 @@ export const organizationsDescription: INodeProperties[] = [
 			},
 		],
 		default: 'asc',
-		description: 'How to order the organizations',
 	},
 ];

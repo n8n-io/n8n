@@ -8,7 +8,7 @@ export class ZammadOAuth2Api implements ICredentialType {
 	extends = [
 		'oAuth2Api',
 	];
-	displayName = 'OZammad OAuth2 API';
+	displayName = 'Zammad OAuth2 API';
 	documentationUrl = 'zammad';
 	properties: INodeProperties[] = [
 		{

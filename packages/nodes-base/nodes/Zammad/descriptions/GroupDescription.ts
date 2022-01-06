@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const groupsDescription: INodeProperties[] = [
+export const groupDescription: INodeProperties[] = [
 	// ----------------------------------
 	//           operations
 	// ----------------------------------
@@ -16,36 +16,33 @@ export const groupsDescription: INodeProperties[] = [
 				resource: [
 					'group',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an entry',
+				description: 'Create a group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an entry',
+				description: 'Delete a group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of an entry',
+				description: 'Retrieve a group',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get data of all entries',
+				description: 'Get all groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an entry',
+				description: 'Update a group',
 			},
 		],
 		default: 'create',
@@ -55,7 +52,7 @@ export const groupsDescription: INodeProperties[] = [
 	//             fields
 	// ----------------------------------
 	{
-		displayName: 'Name',
+		displayName: 'Group Name',
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -64,21 +61,16 @@ export const groupsDescription: INodeProperties[] = [
 			show: {
 				operation: [
 					'create',
-					'update',
 				],
 				resource: [
 					'group',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
-		description: 'The name of the group',
 	},
 	{
-		displayName: 'ID',
-		name: 'id',
+		displayName: 'Group ID',
+		name: 'groupId',
 		type: 'string',
 		default: '',
 		required: true,
@@ -92,83 +84,92 @@ export const groupsDescription: INodeProperties[] = [
 				resource: [
 					'group',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
-		description: 'The ID of the group',
 	},
 	{
 		displayName: 'Additional Fields',
-		name: 'optionalFields',
+		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
 			show: {
 				operation: [
 					'create',
+				],
+				resource: [
+					'group',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Active',
+				name: 'active',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Followup Possible',
+				name: 'follow_up_possible',
+				type: 'boolean',
+				default: true,
+			},
+			{
+				displayName: 'Notes',
+				name: 'note',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+		],
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
 					'update',
 				],
 				resource: [
 					'group',
 				],
-				api: [
-					'rest',
-				],
 			},
 		},
 		default: {},
-		description: 'Additional optional fields of the group',
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Active?',
+				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the group is active',
 			},
 			{
-				displayName: 'Assignment Timeout',
-				name: 'assignment_timeout',
-				type: 'number',
-				default: 0,
-				description: 'The groups Assignment Timeout',
-			},
-			{
-				displayName: 'Email Address ID',
-				name: 'email_address_id',
-				type: 'number',
-				default: 0,
-				description: 'The groups email address ID',
-			},
-			{
-				displayName: 'Followup Assignment?',
-				name: 'follow_up_assignment',
-				type: 'boolean',
-				default: false,
-				description: 'Whether follow-ups should be assigned',
-			},
-			{
-				displayName: 'Followup Possible?',
+				displayName: 'Followup Possible',
 				name: 'follow_up_possible',
-				type: 'string',
-				default: 'yes',
-				description: 'If follow up is possible with this group. Is string value as required by API.',
+				type: 'boolean',
+				default: true,
 			},
 			{
-				displayName: 'Note',
+				displayName: 'Group Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Notes',
 				name: 'note',
 				type: 'string',
 				default: '',
-				description: 'The note of the group',
-			},
-			{
-				displayName: 'Signature ID',
-				name: 'signature_id',
-				type: 'number',
-				default: 0,
-				description: 'The groups gignature ID',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 			},
 		],
 	},

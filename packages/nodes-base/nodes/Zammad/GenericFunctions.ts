@@ -4,8 +4,10 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	JsonObject,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -13,29 +15,30 @@ import {
 } from 'request';
 
 import type {
-	ZammadAuthMethod,
-	ZammadBasicAuthCredentials,
-	ZammadOAuth2Credentials,
-	ZammadTokenAuthCredentials,
+	CustomFields,
 } from './types';
 
+import type { Zammad } from './types';
+
 export async function zammadApiRequest(
-	this: IExecuteFunctions,
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const authMethod = this.getNodeParameter('authentication', 0) as ZammadAuthMethod;
+	const authMethod = this.getNodeParameter('authentication', 0) as Zammad.AuthMethod;
 
 	if (authMethod === 'basicAuth') {
 
 		const {
 			username,
 			password,
-			domain,
+			baseUrl: rawBaseUrl,
 			allowUnauthorizedCerts,
-		} = await this.getCredentials('zammadBasicApi') as ZammadBasicAuthCredentials;
+		} = await this.getCredentials('zammadBasicAuthApi') as Zammad.BasicAuthCredentials;
+
+		const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
 		const options: OptionsWithUri = {
 			auth: {
@@ -45,7 +48,7 @@ export async function zammadApiRequest(
 			method,
 			body,
 			qs,
-			uri: `${domain}/api/v1${endpoint}`,
+			uri: `${baseUrl}/api/v1${endpoint}`,
 			rejectUnauthorized: !allowUnauthorizedCerts,
 			json: true,
 		};
@@ -55,6 +58,7 @@ export async function zammadApiRequest(
 		}
 
 		try {
+			// console.log(options);
 			const responseData = await this.helpers.request!(options);
 
 			if (responseData && responseData.success === false) {
@@ -92,9 +96,11 @@ export async function zammadApiRequest(
 
 		const {
 			apiKey,
-			domain,
+			baseUrl: rawBaseUrl,
 			allowUnauthorizedCerts,
-		} = await this.getCredentials('zammadTokenApi') as ZammadTokenAuthCredentials;
+		} = await this.getCredentials('zammadTokenApi') as Zammad.TokenAuthCredentials;
+
+		const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
 		const options: OptionsWithUri = {
 			headers: {
@@ -102,7 +108,7 @@ export async function zammadApiRequest(
 			},
 			method,
 			qs,
-			uri: `${domain}${endpoint}`,
+			uri: `${baseUrl}${endpoint}`,
 			rejectUnauthorized: !allowUnauthorizedCerts,
 			json: true,
 		};
@@ -145,14 +151,16 @@ export async function zammadApiRequest(
 	} else if (authMethod === 'oAuth2') {
 
 		const {
-			domain,
+			baseUrl: rawBaseUrl,
 			allowUnauthorizedCerts,
-		} = await this.getCredentials('zammadOAuth2Api') as ZammadOAuth2Credentials;
+		} = await this.getCredentials('zammadOAuth2Api') as Zammad.OAuth2Credentials;
+
+		const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
 		const options: OptionsWithUri = {
 			method,
 			qs,
-			uri: `${domain}${endpoint}`,
+			uri: `${baseUrl}${endpoint}`,
 			rejectUnauthorized: !allowUnauthorizedCerts,
 			json: true,
 		};
@@ -195,3 +203,58 @@ export async function zammadApiRequest(
 		}
 	}
 }
+
+export function populateCustomFields(body: IDataObject, customFields: CustomFields) {
+	if (!customFields?.fields?.length) return body;
+
+	customFields.fields.forEach((field) => {
+		body[field['name']] = field['value'];
+	});
+
+	return body;
+}
+
+export function tolerateTrailingSlash(url: string) {
+	return url.endsWith('/')
+		? url.substr(0, url.length - 1)
+		: url;
+}
+
+export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
+	throw new NodeOperationError(
+		this.getNode(),
+		`Please enter at least one field to update for the ${resource}`,
+	);
+}
+
+export async function zammadApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	limit = 0,
+) {
+	// https://docs.zammad.org/en/latest/api/intro.html#pagination
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	qs.per_page = 20;
+	qs.page = 1;
+
+	do {
+		responseData = await zammadApiRequest.call(this, method, endpoint, body, qs);
+		returnData.push(...responseData);
+
+		if (limit && returnData.length > limit) {
+			return returnData.slice(0, limit);
+		}
+
+		qs.page++;
+	} while (responseData.length);
+
+	return returnData;
+}
+
+export const prettifyDisplayName = (fieldName: string) => fieldName.replace('name', ' Name');
