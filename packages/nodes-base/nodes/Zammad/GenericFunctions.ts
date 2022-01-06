@@ -14,9 +14,9 @@ import {
 	OptionsWithUri,
 } from 'request';
 
-import type {
-	CustomFields,
-} from './types';
+import {
+	flow
+} from 'lodash';
 
 import type { Zammad } from './types';
 
@@ -29,8 +29,15 @@ export async function zammadApiRequest(
 ) {
 	const authMethod = this.getNodeParameter('authentication', 0) as Zammad.AuthMethod;
 
-	if (authMethod === 'basicAuth') {
+	const options: OptionsWithUri = {
+		method,
+		body,
+		qs,
+		uri: '',
+		json: true,
+	};
 
+	if (authMethod === 'basicAuth') {
 		const {
 			username,
 			password,
@@ -40,57 +47,13 @@ export async function zammadApiRequest(
 
 		const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
-		const options: OptionsWithUri = {
-			auth: {
-				user: username,
-				pass: password,
-			},
-			method,
-			body,
-			qs,
-			uri: `${baseUrl}/api/v1${endpoint}`,
-			rejectUnauthorized: !allowUnauthorizedCerts,
-			json: true,
+		options.auth = {
+			user: username,
+			pass: password,
 		};
 
-		if (!Object.keys(body).length) {
-			delete options.body;
-		}
-
-		try {
-			// console.log(options);
-			const responseData = await this.helpers.request!(options);
-
-			if (responseData && responseData.success === false) {
-				throw new NodeApiError(this.getNode(), responseData);
-			}
-
-			// This is an escape hatch because here the api works differently
-			if (
-				endpoint === '/api/v1/online_notifications/mark_all_as_read' ||
-				endpoint === '/api/v1/object_manager_attributes_execute_migrations'
-			) {
-				return { success: true };
-			}
-
-			// This is an escape hatch because here the api works differently
-			if (
-				endpoint.includes('/api/v1/tickets/') &&
-				method === 'DELETE' &&
-				responseData === undefined
-			) {
-				return { success: true };
-			}
-
-			if (method === 'DELETE' && Object.keys(responseData).length === 0) {
-				return { success: true };
-			}
-
-			return responseData;
-
-		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
-		}
+		options.uri = `${baseUrl}/api/v1${endpoint}`;
+		options.rejectUnauthorized = !allowUnauthorizedCerts;
 
 	} else if (authMethod === 'tokenAuth') {
 
@@ -102,51 +65,12 @@ export async function zammadApiRequest(
 
 		const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
-		const options: OptionsWithUri = {
-			headers: {
-				Authorization: `Token token=${apiKey}`,
-			},
-			method,
-			qs,
-			uri: `${baseUrl}${endpoint}`,
-			rejectUnauthorized: !allowUnauthorizedCerts,
-			json: true,
+		options.headers = {
+			Authorization: `Token token=${apiKey}`,
 		};
 
-		if (!Object.keys(body).length) {
-			delete options.body;
-		}
-
-		try {
-			const responseData = await this.helpers.request!(options);
-
-			if (responseData && responseData.success === false) {
-				throw new NodeApiError(this.getNode(), responseData);
-			}
-
-			// This is an escape hatch because here the api works differently
-			if (
-				endpoint === '/api/v1/online_notifications/mark_all_as_read' ||
-				endpoint === '/api/v1/object_manager_attributes_execute_migrations'
-			) {
-				return { success: true };
-			}
-			// This is an escape hatch because here the api works differently
-			if (
-				endpoint.includes('/api/v1/tickets/') &&
-				method === 'DELETE' &&
-				responseData === undefined
-			) {
-				return { success: true };
-			}
-			if (method === 'DELETE' && Object.keys(responseData).length === 0) {
-				return { success: true };
-			}
-			return responseData;
-
-		} catch (error) {
-			throw new NodeApiError(this.getNode(), error as JsonObject);
-		}
+		options.uri = `${baseUrl}/api/v1${endpoint}`;
+		options.rejectUnauthorized = !allowUnauthorizedCerts;
 
 	} else if (authMethod === 'oAuth2') {
 
@@ -157,62 +81,31 @@ export async function zammadApiRequest(
 
 		const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
-		const options: OptionsWithUri = {
-			method,
-			qs,
-			uri: `${baseUrl}${endpoint}`,
-			rejectUnauthorized: !allowUnauthorizedCerts,
-			json: true,
-		};
+		options.uri = `${baseUrl}/api/v1${endpoint}`;
+		options.rejectUnauthorized = !allowUnauthorizedCerts;
 
-		if (method === 'DELETE' && Object.keys(body).length !== 0) {
-			options.body = body;
+	}
+
+	if (!Object.keys(body).length) {
+		delete options.body;
+	}
+
+	if (!Object.keys(qs).length) {
+		delete options.qs;
+	}
+
+	try {
+		console.log(options);
+		return await this.helpers.request!(options);
+	} catch (error) {
+		if (error.error.error === 'Object already exists!') {
+			error.error.error = 'An entity with this name already exists.';
 		}
 
-		try {
-			const responseData = await this.helpers.requestOAuth2!.call(this, 'zammadOAuth2Api', options);
-
-			if (responseData && responseData.success === false) {
-				throw new NodeApiError(this.getNode(), responseData);
-			}
-
-			// This is an escape hatch because here the api works differently
-			if (
-				endpoint === '/api/v1/online_notifications/mark_all_as_read' ||
-				endpoint === '/api/v1/object_manager_attributes_execute_migrations'
-			) {
-				return { success: true };
-			}
-
-			// This is an escape hatch because here the api works differently
-			if (
-				endpoint.includes('/api/v1/tickets/') &&
-				method === 'DELETE' &&
-				responseData === undefined
-			) {
-				return { success: true };
-			}
-
-			if (Object.keys(responseData).length === 0) {
-				return { success: true };
-			}
-			return responseData;
-
-		} catch (error) {
-			throw new NodeApiError(this.getNode(), error as JsonObject);
-		}
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export function populateCustomFields(body: IDataObject, customFields: CustomFields) {
-	if (!customFields?.fields?.length) return body;
-
-	customFields.fields.forEach((field) => {
-		body[field['name']] = field['value'];
-	});
-
-	return body;
-}
 
 export function tolerateTrailingSlash(url: string) {
 	return url.endsWith('/')
@@ -258,3 +151,24 @@ export async function zammadApiRequestAllItems(
 }
 
 export const prettifyDisplayName = (fieldName: string) => fieldName.replace('name', ' Name');
+
+export const fieldToLoadOption = (i: Zammad.Field) => {
+	return { name: prettifyDisplayName(i.display), value: i.name };
+};
+
+const isTypeField = (resource: 'User' | 'Organization' | 'Group') =>
+	(i: Zammad.Field) => i.object === resource;
+
+export const isUserField = isTypeField('User');
+export const isOrganizationField = isTypeField('Organization');
+export const isGroupField = isTypeField('Group');
+
+const isCustomField = (i: Zammad.Field) => i.created_by_id !== 1; // TODO: Find better check
+
+export const isOrganizationCustomField = flow(isOrganizationField, isCustomField);
+export const isUserCustomField = flow(isUserField, isCustomField);
+export const isGroupCustomField = flow(isGroupField, isCustomField);
+
+export async function getAllFields(this: ILoadOptionsFunctions) {
+	return await zammadApiRequest.call(this, 'GET', '/object_manager_attributes') as Zammad.Field[];
+}

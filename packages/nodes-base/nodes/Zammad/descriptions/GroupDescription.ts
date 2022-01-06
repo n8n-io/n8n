@@ -70,34 +70,79 @@ export const groupDescription: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group ID',
-		name: 'groupId',
-		type: 'string',
+		name: 'id',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadGroups',
+		},
+		description: 'Group to update. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-					'get',
-					'delete',
-				],
 				resource: [
 					'group',
+				],
+				operation: [
+					'update',
 				],
 			},
 		},
 	},
+	{
+		displayName: 'Group ID',
+		name: 'id',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadGroups',
+		},
+		description: 'Group to delete. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Group ID',
+		name: 'id',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadGroups',
+		},
+		description: 'Group to retrieve. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
 				resource: [
 					'group',
+				],
+				operation: [
+					'create',
 				],
 			},
 		},
@@ -109,12 +154,6 @@ export const groupDescription: INodeProperties[] = [
 				name: 'active',
 				type: 'boolean',
 				default: false,
-			},
-			{
-				displayName: 'Followup Possible',
-				name: 'follow_up_possible',
-				type: 'boolean',
-				default: true,
 			},
 			{
 				displayName: 'Notes',
@@ -151,12 +190,6 @@ export const groupDescription: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Followup Possible',
-				name: 'follow_up_possible',
-				type: 'boolean',
-				default: true,
-			},
-			{
 				displayName: 'Group Name',
 				name: 'name',
 				type: 'string',
@@ -172,5 +205,45 @@ export const groupDescription: INodeProperties[] = [
 				},
 			},
 		],
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		description: 'Max number of results to return',
+		typeOptions: {
+			minValue: 1,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
 	},
 ];

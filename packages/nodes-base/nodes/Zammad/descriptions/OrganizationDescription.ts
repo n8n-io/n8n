@@ -37,12 +37,7 @@ export const organizationDescription: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all organization',
-			},
-			{
-				name: 'Search',
-				value: 'search', // TODO combine with get
-				description: 'Get data of an organization',
+				description: 'Retrieve all organizations',
 			},
 			{
 				name: 'Update',
@@ -57,7 +52,7 @@ export const organizationDescription: INodeProperties[] = [
 	//             fields
 	// ----------------------------------
 	{
-		displayName: 'Name',
+		displayName: 'Organization Name',
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -76,18 +71,62 @@ export const organizationDescription: INodeProperties[] = [
 	{
 		displayName: 'Organization ID',
 		name: 'id',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadOrganizations',
+		},
+		description: 'Organization to update. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-					'get',
-					'delete',
-				],
 				resource: [
 					'organization',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Organization ID',
+		name: 'id',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadOrganizations',
+		},
+		description: 'Organization to delete. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Organization ID',
+		name: 'id',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadOrganizations',
+		},
+		description: 'Organization to retrieve. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'get',
 				],
 			},
 		},
@@ -116,6 +155,41 @@ export const organizationDescription: INodeProperties[] = [
 				default: false,
 			},
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: '',
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldPairs',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'name',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadOrganizationCustomFields',
+								},
+								default: '',
+								description: 'Name of the custom field to set',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set on the custom field',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Notes',
 				name: 'note',
 				type: 'string',
@@ -123,12 +197,6 @@ export const organizationDescription: INodeProperties[] = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-			},
-			{
-				displayName: 'Shared',
-				name: 'shared',
-				type: 'boolean',
-				default: false,
 			},
 		],
 	},
@@ -156,7 +224,42 @@ export const organizationDescription: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Name',
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: '',
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldPairs',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'name',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadOrganizationCustomFields',
+								},
+								default: '',
+								description: 'Name of the custom field to set',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set on the custom field',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Organization Name',
 				name: 'name',
 				type: 'string',
 				default: '',
@@ -170,27 +273,21 @@ export const organizationDescription: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 			},
-			{
-				displayName: 'Shared',
-				name: 'shared',
-				type: 'boolean',
-				default: false,
-			},
 		],
 	},
 	{
-		displayName: 'Query',
-		name: 'query',
-		type: 'string',
-		default: '',
-		required: true,
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
 				resource: [
 					'organization',
+				],
+				operation: [
+					'getAll',
 				],
 			},
 		},
@@ -200,61 +297,89 @@ export const organizationDescription: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
 				resource: [
 					'organization',
 				],
-			},
-		},
-		description: 'Max number of results to return',
-	},
-	{
-		displayName: 'Sort By',
-		name: 'sort_by',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
 				operation: [
-					'search',
+					'getAll',
 				],
-				resource: [
-					'organization',
+				returnAll: [
+					false,
 				],
 			},
 		},
 	},
 	{
-		displayName: 'Sort Order',
-		name: 'order_by',
-		type: 'options',
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
 				resource: [
 					'organization',
 				],
+				operation: [
+					'getAll',
+				],
 			},
 		},
+		default: {},
+		placeholder: 'Add Filter',
 		options: [
 			{
-				name: 'Ascending',
-				value: 'asc',
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'Query to filter results by',
+				placeholder: 'organization.name:n8n',
 			},
 			{
-				name: 'Descending',
-				value: 'desc',
+				displayName: 'Sort',
+				name: 'sortUi',
+				type: 'fixedCollection',
+				placeholder: 'Add Sort Options',
+				default: {},
+				options: [
+					{
+						displayName: 'Sort Options',
+						name: 'sortDetails',
+						values: [
+							{
+								displayName: 'Sort Key',
+								name: 'sort_by',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadOrganizationFields',
+								},
+								default: '',
+							},
+							{
+								displayName: 'Sort Order',
+								name: 'order_by',
+								type: 'options',
+								options: [
+									{
+										name: 'Ascending',
+										value: 'asc',
+									},
+									{
+										name: 'Descending',
+										value: 'desc',
+									},
+								],
+								default: 'asc',
+							},
+						],
+					},
+				],
 			},
 		],
-		default: 'asc',
 	},
 ];

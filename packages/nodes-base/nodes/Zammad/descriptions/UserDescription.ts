@@ -94,7 +94,7 @@ export const userDescription: INodeProperties[] = [
 			},
 		},
 	},
-		{
+	{
 		displayName: 'User ID',
 		name: 'id',
 		type: 'options',
@@ -385,6 +385,41 @@ export const userDescription: INodeProperties[] = [
 				],
 			},
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: '',
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldPairs',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'name',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadUserCustomFields',
+								},
+								default: '',
+								description: 'Name of the custom field to set',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set on the custom field',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Department',
 				name: 'department',
 				type: 'string',
@@ -574,7 +609,7 @@ export const userDescription: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Query to filter results by',
-				placeholder: 'organization.name:n8n',
+				placeholder: 'user.firstname:john',
 			},
 			{
 				displayName: 'Sort',

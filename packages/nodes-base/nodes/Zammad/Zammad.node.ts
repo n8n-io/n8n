@@ -13,24 +13,23 @@ import {
 import {
 	groupDescription,
 	organizationDescription,
-	priorityDescription,
 	tagDescription,
 	ticketDescription,
 	userDescription,
 } from './descriptions';
 
 import {
-	populateCustomFields,
-	prettifyDisplayName,
+	fieldToLoadOption,
+	getAllFields,
+	isGroupField,
+	isOrganizationCustomField,
+	isOrganizationField,
+	isUserCustomField,
+	isUserField,
 	throwOnEmptyUpdate,
 	zammadApiRequest,
 	zammadApiRequestAllItems,
 } from './GenericFunctions';
-
-import {
-	CustomFields,
-	ZammadTicketCreatePayload,
-} from './types';
 
 import type { Zammad as ZammadTypes } from './types';
 
@@ -96,14 +95,17 @@ export class Zammad implements INodeType {
 					{
 						name: 'Basic Authentication',
 						value: 'basicAuth',
+						// testedBy: 'zammadBasicAuthApiTest', // TODO
 					},
 					{
 						name: 'OAuth2 Authentication',
 						value: 'oAuth2',
+						// testedBy: 'zammadOAuth2AuthApiTest', // TODO
 					},
 					{
 						name: 'Token Authentication',
 						value: 'tokenAuth',
+						// testedBy: 'zammadTokenAuthApiTest', // TODO
 					},
 				],
 				default: 'basicAuth',
@@ -120,10 +122,6 @@ export class Zammad implements INodeType {
 					{
 						name: 'Organization',
 						value: 'organization',
-					},
-					{
-						name: 'Priority',
-						value: 'priority',
 					},
 					{
 						name: 'Tag',
@@ -143,7 +141,6 @@ export class Zammad implements INodeType {
 
 			...groupDescription,
 			...organizationDescription,
-			...priorityDescription,
 			...tagDescription,
 			...ticketDescription,
 			...userDescription,
@@ -152,35 +149,60 @@ export class Zammad implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async loadUserCustomFields(this: ILoadOptionsFunctions) {
-				const customFields = await zammadApiRequest.call(
+			// ----------------------------------
+			//          custom fields
+			// ----------------------------------
+
+			async loadOrganizationCustomFields(this: ILoadOptionsFunctions) {
+				const allFields = await zammadApiRequest.call(
 					this, 'GET', '/object_manager_attributes',
-				) as ZammadTypes.CustomField[];
+				) as ZammadTypes.Field[];
 
-				// TODO find better way to check for custom field than `i.created_by_id !== 1`
-				const isCustomField = (i: ZammadTypes.CustomField) => i.object === 'User' && i.created_by_id !== 1;
+				return allFields.filter(isOrganizationCustomField).map(fieldToLoadOption);
+			},
 
-				return customFields.filter(isCustomField).map(i => ({ name: i.display, value: i.name }));
+			async loadUserCustomFields(this: ILoadOptionsFunctions) {
+				const allFields = await zammadApiRequest.call(
+					this, 'GET', '/object_manager_attributes',
+				) as ZammadTypes.Field[];
+
+				return allFields.filter(isUserCustomField).map(fieldToLoadOption);
+			},
+
+			// ----------------------------------
+			//          built-in fields
+			// ----------------------------------
+
+			async loadGroupFields(this: ILoadOptionsFunctions) {
+				const allFields = await getAllFields.call(this);
+
+				return allFields.filter(isGroupField).map(fieldToLoadOption);
+			},
+
+			async loadOrganizationFields(this: ILoadOptionsFunctions) {
+				const allFields = await getAllFields.call(this);
+
+				return allFields.filter(isOrganizationField).map(fieldToLoadOption);
 			},
 
 			async loadUserFields(this: ILoadOptionsFunctions) {
-				const userFields = await zammadApiRequest.call(
-					this, 'GET', '/object_manager_attributes',
-				) as ZammadTypes.CustomField[];
+				const allFields = await getAllFields.call(this);
 
-				const sortableUserFields = ['email', 'firstname', 'lastname', 'department'];
-				const isSortableUserField = (i: ZammadTypes.CustomField) => sortableUserFields.includes(i.name);
+				return allFields.filter(isUserField).map(fieldToLoadOption);
+			},
 
-				return userFields.filter(isSortableUserField).map(i => {
-					return { name: prettifyDisplayName(i.display), value: i.name };
-				});
+			// ----------------------------------
+			//             resources
+			// ----------------------------------
+
+			async loadGroups(this: ILoadOptionsFunctions) {
+				const groups = await zammadApiRequest.call(this, 'GET', '/groups') as ZammadTypes.Organization[];
+
+				return groups.map(i => ({ name: i.name, value: i.id }));
 			},
 
 			async loadOrganizations(this: ILoadOptionsFunctions) {
-				const orgs = await zammadApiRequest.call(
-					this, 'GET', '/organizations',
-				) as ZammadTypes.Organization[];
-
+				const orgs = await zammadApiRequest.call(this, 'GET', '/organizations') as ZammadTypes.Organization[];
 				const isRelevant = (i: ZammadTypes.Organization) => i.name !== 'Zammad Foundation';
 
 				return orgs.filter(isRelevant).map(i => ({ name: i.name, value: i.id }));
@@ -223,7 +245,7 @@ export class Zammad implements INodeType {
 						// https://docs.zammad.org/en/latest/api/user.html#create
 
 						const body: IDataObject = {
-							email: this.getNodeParameter('email', i)
+							email: this.getNodeParameter('email', i),
 						};
 
 						const {
@@ -252,7 +274,7 @@ export class Zammad implements INodeType {
 
 						const id = this.getNodeParameter('id', i);
 
-						let body: IDataObject = {};
+						const body: IDataObject = {};
 
 						const updateFields = this.getNodeParameter('updateFields', i) as ZammadTypes.UserUpdateFields;
 
@@ -282,7 +304,9 @@ export class Zammad implements INodeType {
 
 						const id = this.getNodeParameter('id', i) as string;
 
-						responseData = await zammadApiRequest.call(this, 'DELETE', `/users/${id}`);
+						await zammadApiRequest.call(this, 'DELETE', `/users/${id}`);
+
+						responseData = { success: true };
 
 					} else if (operation === 'get') {
 
@@ -353,10 +377,20 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/organization.html#create
 
-						let body = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const customFields = this.getNodeParameter('customFields', i) as CustomFields;
-						body = populateCustomFields(body, customFields);
-						body.name = this.getNodeParameter('name', i);
+						const body: IDataObject = {
+							name: this.getNodeParameter('name', i),
+						};
+
+						const {
+							customFieldsUi,
+							...rest
+						} = this.getNodeParameter('additionalFields', i) as ZammadTypes.UserAdditionalFields;
+
+						customFieldsUi?.customFieldPairs.forEach((pair) => {
+							body[pair['name']] = pair['value'];
+						});
+
+						Object.assign(body, rest);
 
 						responseData = await zammadApiRequest.call(this, 'POST', '/organizations', body);
 
@@ -368,11 +402,23 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/organization.html#update
 
-						let body = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const customFields = this.getNodeParameter('customFields', i) as CustomFields;
-						body = populateCustomFields(body, customFields);
-						body.name = this.getNodeParameter('name', i);
 						const id = this.getNodeParameter('id', i);
+
+						const body: IDataObject = {};
+
+						const updateFields = this.getNodeParameter('updateFields', i) as ZammadTypes.UserUpdateFields;
+
+						if (!Object.keys(updateFields).length) {
+							throwOnEmptyUpdate.call(this, resource);
+						}
+
+						const { customFieldsUi, ...rest } = updateFields;
+
+						customFieldsUi?.customFieldPairs.forEach((pair) => {
+							body[pair['name']] = pair['value'];
+						});
+
+						Object.assign(body, rest);
 
 						responseData = await zammadApiRequest.call(this, 'PUT', `/organizations/${id}`, body);
 
@@ -386,7 +432,9 @@ export class Zammad implements INodeType {
 
 						const id = this.getNodeParameter('id', i) as string;
 
-						responseData = await zammadApiRequest.call(this, 'DELETE', `/organizations/${id}`);
+						await zammadApiRequest.call(this, 'DELETE', `/organizations/${id}`);
+
+						responseData = { success: true };
 
 					} else if (operation === 'get') {
 
@@ -407,31 +455,26 @@ export class Zammad implements INodeType {
 						// ----------------------------------
 
 						// https://docs.zammad.org/en/latest/api/organization.html#list
-
-						responseData = await zammadApiRequest.call(this, 'GET', '/organizations');
-
-					} else if (operation === 'search') {
-
-						// ----------------------------------
-						//        organization:search
-						// ----------------------------------
-
 						// https://docs.zammad.org/en/latest/api/organization.html#search
 
 						const qs: IDataObject = {};
 
-						qs.query = this.getNodeParameter('query', i) as string;
-						qs.limit = this.getNodeParameter('limit', i)?.toString() as string;
-						const sortBy = this.getNodeParameter('sort_by', i) as string;
-						if (!(sortBy === '')) {
-							qs.sort_by = sortBy;
-						}
-						const orderBy = this.getNodeParameter('order_by', i) as string[];
-						if (orderBy.length !== 0) {
-							qs.order_by = orderBy;
-						}
+						const { sortUi, ...rest } = this.getNodeParameter('filters', i) as ZammadTypes.UserFilterFields;
 
-						responseData = await zammadApiRequest.call(this, 'GET', '/organizations/search', {}, qs);
+						Object.assign(qs, sortUi?.sortDetails);
+
+						Object.assign(qs, rest);
+
+						qs.query ||= ''; // otherwise triggers 500
+
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i) as number;
+
+						// TODO: Returning zero results
+						responseData = await zammadApiRequestAllItems.call(
+							this, 'GET', '/organizations/search', {}, qs, limit,
+						);
 
 					}
 
@@ -449,8 +492,13 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#create
 
-						const body = this.getNodeParameter('additionalFields', i) as IDataObject;
-						body.name = this.getNodeParameter('name', i) as string;
+						const body = {
+							name: this.getNodeParameter('name', i) as string,
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						Object.assign(body, additionalFields);
 
 						responseData = await zammadApiRequest.call(this, 'POST', '/groups', body);
 
@@ -462,10 +510,17 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#update
 
-						const id = this.getNodeParameter('groupId', i) as string;
-						const body = this.getNodeParameter('updateFields', i) as IDataObject;
+						const id = this.getNodeParameter('id', i) as string;
 
-						throwOnEmptyUpdate.call(this, resource);
+						const body: IDataObject = {};
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						if (!Object.keys(updateFields).length) {
+							throwOnEmptyUpdate.call(this, resource);
+						}
+
+						Object.assign(body, updateFields);
 
 						responseData = await zammadApiRequest.call(this, 'PUT', `/groups/${id}`, body);
 
@@ -477,7 +532,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#delete
 
-						const id = this.getNodeParameter('groupId', i) as string;
+						const id = this.getNodeParameter('id', i) as string;
 
 						responseData = await zammadApiRequest.call(this, 'DELETE', `/groups/${id}`);
 
@@ -489,7 +544,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#show
 
-						const id = this.getNodeParameter('groupId', i) as string;
+						const id = this.getNodeParameter('id', i) as string;
 
 						responseData = await zammadApiRequest.call(this, 'GET', `/groups/${id}`);
 
@@ -501,7 +556,13 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#list
 
-						responseData = await zammadApiRequest.call(this, 'GET', '/groups');
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i) as number;
+
+						responseData = await zammadApiRequestAllItems.call(
+							this, 'GET', '/groups', {}, {}, limit,
+						);
 
 					}
 
@@ -519,16 +580,16 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#create
 
-						let body = this.getNodeParameter('additionalFields', i) as ZammadTicketCreatePayload;
-						body.group = this.getNodeParameter('group', i) as string;
-						body.title = this.getNodeParameter('title', i) as string;
-						body.customer_id = this.getNodeParameter('customerId', i) as string;
-						body.article = this.getNodeParameter('additionalFieldsArticle', i) as IDataObject;
-						body.article.body = this.getNodeParameter('body', i) as string;
-						const customFields = this.getNodeParameter('customFields', i) as CustomFields;
-						body = populateCustomFields(body, customFields);
+						// let body = this.getNodeParameter('additionalFields', i) as ZammadTicketCreatePayload;
+						// body.group = this.getNodeParameter('group', i) as string;
+						// body.title = this.getNodeParameter('title', i) as string;
+						// body.customer_id = this.getNodeParameter('customerId', i) as string;
+						// body.article = this.getNodeParameter('additionalFieldsArticle', i) as IDataObject;
+						// body.article.body = this.getNodeParameter('body', i) as string;
+						// const customFields = this.getNodeParameter('customFields', i) as CustomFields;
+						// body = populateCustomFields(body, customFields);
 
-						responseData = await zammadApiRequest.call(this, 'POST', '/tickets', body);
+						// responseData = await zammadApiRequest.call(this, 'POST', '/tickets', body);
 
 					} else if (operation === 'update') {
 
@@ -538,17 +599,17 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#update
 
-						const ticketId = this.getNodeParameter('id', i) as string;
-						let body = this.getNodeParameter('additionalFields', i) as ZammadTicketCreatePayload;
-						body.group = this.getNodeParameter('group', i) as string;
-						body.title = this.getNodeParameter('title', i) as string;
-						body.customer_id = this.getNodeParameter('customerId', i) as string;
-						body.article = this.getNodeParameter('additionalFieldsArticle', i) as IDataObject;
-						body.article.body = this.getNodeParameter('body', i) as string;
-						const customFields = this.getNodeParameter('customFields', i) as CustomFields;
-						body = populateCustomFields(body, customFields);
+						// const ticketId = this.getNodeParameter('id', i) as string;
+						// let body = this.getNodeParameter('additionalFields', i) as ZammadTicketCreatePayload;
+						// body.group = this.getNodeParameter('group', i) as string;
+						// body.title = this.getNodeParameter('title', i) as string;
+						// body.customer_id = this.getNodeParameter('customerId', i) as string;
+						// body.article = this.getNodeParameter('additionalFieldsArticle', i) as IDataObject;
+						// body.article.body = this.getNodeParameter('body', i) as string;
+						// const customFields = this.getNodeParameter('customFields', i) as CustomFields;
+						// body = populateCustomFields(body, customFields);
 
-						responseData = await zammadApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, body);
+						// responseData = await zammadApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, body);
 
 					} else if (operation === 'delete') {
 
@@ -581,30 +642,9 @@ export class Zammad implements INodeType {
 						// ----------------------------------
 
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#list
-
-						responseData = await zammadApiRequest.call(this, 'GET', '/tickets');
-
-					} else if (operation === 'search') {
-
-						// ----------------------------------
-						//           ticket:search
-						// ----------------------------------
-
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#search
 
-						const qs: IDataObject = {};
-						qs.query = this.getNodeParameter('query', i) as string;
-						qs.limit = this.getNodeParameter('limit', i)?.toString() as string;
-						const sortBy = this.getNodeParameter('sort_by', i) as string;
-						if (!(sortBy === '')) {
-							qs.sort_by = sortBy;
-						}
-						const orderBy = this.getNodeParameter('order_by', i) as string[];
-						if (orderBy.length !== 0) {
-							qs.order_by = orderBy;
-						}
-
-						responseData = await zammadApiRequest.call(this, 'GET', '/tickets/search', {}, qs);
+						// responseData = await zammadApiRequest.call(this, 'GET', '/tickets/search');
 
 					}
 
@@ -622,13 +662,13 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/ticket/tags.html#add
 
-						const body: IDataObject = {};
+						// const body: IDataObject = {};
 
-						body.item = this.getNodeParameter('item', i) as string;
-						body.object = this.getNodeParameter('object', i) as string;
-						body.o_id = this.getNodeParameter('o_id', i) as string;
+						// body.item = this.getNodeParameter('item', i) as string;
+						// body.object = this.getNodeParameter('object', i) as string;
+						// body.o_id = this.getNodeParameter('o_id', i) as string;
 
-						responseData = await zammadApiRequest.call(this, 'POST', '/tags/add', body);
+						// responseData = await zammadApiRequest.call(this, 'POST', '/tags/add', body);
 
 					} else if (operation === 'remove') {
 
@@ -638,13 +678,13 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/ticket/tags.html#remove
 
-						const body: IDataObject = {};
+						// const body: IDataObject = {};
 
-						body.item = this.getNodeParameter('item', i) as string;
-						body.object = this.getNodeParameter('object', i) as string;
-						body.o_id = this.getNodeParameter('o_id', i) as string;
+						// body.item = this.getNodeParameter('item', i) as string;
+						// body.object = this.getNodeParameter('object', i) as string;
+						// body.o_id = this.getNodeParameter('o_id', i) as string;
 
-						responseData = await zammadApiRequest.call(this, 'DELETE', '/tags/remove', body);
+						// responseData = await zammadApiRequest.call(this, 'DELETE', '/tags/remove', body);
 
 					} else if (operation === 'getAll') {
 
@@ -654,12 +694,12 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/ticket/tags.html#list
 
-						const qs: IDataObject = {};
+						// const qs: IDataObject = {};
 
-						qs.object = this.getNodeParameter('object', i) as string;
-						qs.o_id = this.getNodeParameter('o_id', i) as string;
+						// qs.object = this.getNodeParameter('object', i) as string;
+						// qs.o_id = this.getNodeParameter('o_id', i) as string;
 
-						responseData = await zammadApiRequest.call(this, 'GET', '/tags', {}, qs);
+						// responseData = await zammadApiRequest.call(this, 'GET', '/tags', {}, qs);
 
 
 					} else if (operation === 'search') {
@@ -670,80 +710,10 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/ticket/tags.html#search
 
-						const qs: IDataObject = {};
-						qs.term = this.getNodeParameter('term', i) as string;
+						// const qs: IDataObject = {};
+						// qs.term = this.getNodeParameter('term', i) as string;
 
-						responseData = await zammadApiRequest.call(this, 'GET', '/tag_search', {}, qs);
-					}
-
-				} else if (resource === 'priority') {
-
-					// **********************************************************************
-					//                               priority
-					// **********************************************************************
-
-					if (operation === 'create') {
-
-						// ----------------------------------
-						//          priority:create
-						// ----------------------------------
-
-						// https://docs.zammad.org/en/latest/api/ticket/priorities.html#create
-
-						const body = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						body.name = this.getNodeParameter('name', i) as string;
-
-						responseData = await zammadApiRequest.call(this, 'POST', '/ticket_priorities', body);
-
-					} else if (operation === 'update') {
-
-						// ----------------------------------
-						//         priority:update
-						// ----------------------------------
-
-						// https://docs.zammad.org/en/latest/api/ticket/priorities.html#update
-
-						const id = this.getNodeParameter('id', i) as string;
-						const body = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						body.name = this.getNodeParameter('name', i) as string;
-
-						responseData = await zammadApiRequest.call(this, 'PUT', `/ticket_priorities/${id}`, body);
-
-					} else if (operation === 'delete') {
-
-						// ----------------------------------
-						//         priority:delete
-						// ----------------------------------
-
-						// https://docs.zammad.org/en/latest/api/ticket/priorities.html#delete
-
-						const id = this.getNodeParameter('id', i) as string;
-
-						responseData = await zammadApiRequest.call(this, 'DELETE', `/ticket_priorities/${id}`);
-
-					} else if (operation === 'get') {
-
-						// ----------------------------------
-						//           priority:get
-						// ----------------------------------
-
-						// https://docs.zammad.org/en/latest/api/ticket/priorities.html#show
-
-						const id = this.getNodeParameter('id', i) as string;
-
-						responseData = await zammadApiRequest.call(this, 'GET', `/ticket_priorities/${id}`);
-
-					} else if (operation === 'getAll') {
-
-						// ----------------------------------
-						//         priority:getAll
-						// ----------------------------------
-
-						// https://docs.zammad.org/en/latest/api/ticket/priorities.html#list
-
-						responseData = await zammadApiRequest.call(this, 'GET', '/ticket_priorities');
+						// responseData = await zammadApiRequest.call(this, 'GET', '/tag_search', {}, qs);
 
 					}
 

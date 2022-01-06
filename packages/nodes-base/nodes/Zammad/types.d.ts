@@ -32,7 +32,7 @@ export declare namespace Zammad {
 		email: string;
 	};
 
-	export type CustomField = {
+	export type Field = {
 		display: string;
 		name: string;
 		object: string;
@@ -70,28 +70,3 @@ export declare namespace Zammad {
 		}
 	}
 }
-
-export type CustomFields = {
-	fields: Array<{
-		[key: string]: string;
-	}>;
-};
-
-export type Permissions = {
-	fields: Array<{
-		[permission: string]: string;
-	}>;
-};
-
-export type Field = {
-	[name: string]: string;
-};
-
-export type ZammadTicketCreatePayload = {
-	group?: string;
-	title?: string;
-	customer_id?: string;
-	article?: IDataObject & { body?: string };
-}
-
-export type ZammadTicketUpdatePayload = ZammadTicketCreatePayload;
