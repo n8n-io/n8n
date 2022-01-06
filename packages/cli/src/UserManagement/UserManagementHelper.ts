@@ -108,7 +108,7 @@ export function generatePublicUserData(user: User): PublicUserData {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User) {
-	const { password, resetPasswordToken, ...rest } = user;
+	const { password, resetPasswordToken, ...sanitized } = user;
 
-	return rest;
+	return sanitized;
 }
