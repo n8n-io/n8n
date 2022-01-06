@@ -174,9 +174,8 @@ export async function logout(context: IRestApiContext): Promise<void> {
 
 export async function setupOwner(context: IRestApiContext, params: { firstName: string; lastName: string; email: string; password: string;}): Promise<IUser> {
 	log(context, 'POST', '/owner-setup', params as unknown as IDataObject);
-	window.localStorage.setItem('mock.settings.isInstanceSetup', 'true');
-	const newUser: IUser = {...params, id: getRandomId(), "globalRole": {name: 'owner', id: '1'}};
-	window.localStorage.setItem('mock.users.currentUserId', newUser.id);
+	removeUser('0');
+	const newUser: IUser = {...params, id: '0', "globalRole": {name: 'owner', id: '1'}};
 	addUser(newUser);
 
 	return await Promise.resolve(newUser);
@@ -204,7 +203,6 @@ export async function signup(context: IRestApiContext, params: {token: string; f
 
 	log(context, 'POST', '/user', params as unknown as IDataObject);
 
-	window.localStorage.setItem('mock.settings.isInstanceSetup', 'true');
 	const newUser: IUser = {...params, email: `${params.firstName}@n8n.io`, id: getRandomId(), "globalRole": {name: 'member', id: '2'}};
 	window.localStorage.setItem('mock.users.currentUserId', newUser.id);
 	addUser(newUser);
