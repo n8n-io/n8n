@@ -67,13 +67,13 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/resolve-password-token`,
 		ResponseHelper.send(async (req: PasswordResetRequest.Credentials) => {
-			const { t, u } = req.query;
+			const { t: resetPasswordToken, u: id } = req.query;
 
-			if (!t || !u) {
+			if (!resetPasswordToken || !id) {
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
-			const user = await Db.collections.User!.findOne({ resetPasswordToken: t, id: u });
+			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
 
 			if (!user) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
@@ -87,13 +87,13 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/change-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.NewPassword, res: express.Response) => {
-			const { token, id, password } = req.body;
+			const { token: resetPasswordToken, id, password } = req.body;
 
-			if (!token || !id) {
+			if (!resetPasswordToken || !id) {
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
-			const user = await Db.collections.User!.findOne({ resetPasswordToken: token, id });
+			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
 
 			if (!user) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
