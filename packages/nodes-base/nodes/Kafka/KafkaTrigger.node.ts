@@ -67,7 +67,7 @@ export class KafkaTrigger implements INodeType {
 						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-						description: 'Allow sending message to a previously non exisiting topic .',
+						description: 'Allow sending message to a previously non existing topic .',
 					},
 					{
 						displayName: 'Read messages from beginning',
@@ -96,6 +96,13 @@ export class KafkaTrigger implements INodeType {
 						},
 						default: false,
 						description: 'Returns only the message property.',
+					},
+					{
+						displayName: 'Use Raw Message',
+						name: 'useRawMessage',
+						type: 'boolean',
+						default: false,
+						description: 'Use the raw message instead of string representation',
 					},
 					{
 						displayName: 'Session Timeout',
@@ -158,11 +165,17 @@ export class KafkaTrigger implements INodeType {
 				eachMessage: async ({ topic, message }) => {
 
 					let data: IDataObject = {};
-					let value = message.value?.toString() as string;
+					let value: string | Buffer = message.value?.toString() as string;
 
 					if (options.jsonParseMessage) {
 						try {
 							value = JSON.parse(value);
+						} catch (error) { }
+					}
+
+					if (options.useRawMessage) {
+						try {
+							value = message.value as Buffer;
 						} catch (error) { }
 					}
 
