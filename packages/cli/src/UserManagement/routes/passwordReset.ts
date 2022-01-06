@@ -101,7 +101,6 @@ export function addPasswordResetNamespace(this: N8nApp): void {
 
 			const validPassword = validatePassword(password);
 			req.user.password = hashSync(validPassword, genSaltSync(10));
-			// @ts-ignore
 			req.user.resetPasswordToken = null;
 
 			await Db.collections.User!.save(req.user);
