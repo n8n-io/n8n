@@ -16,7 +16,7 @@ import config = require('../../../config');
 import { Db, GenericHelpers, ResponseHelper } from '../..';
 import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
-import { generatePublicUserData, isEmailSetup, isValidEmail } from '../UserManagementHelper';
+import { sanitizeUser, isEmailSetup, isValidEmail } from '../UserManagementHelper';
 import { issueJWT } from '../auth/jwt';
 import { addMeNamespace } from './me';
 import { addUsersMethods } from './users';
@@ -183,7 +183,7 @@ export async function addRoutes(
 
 			const userData = await issueJWT(owner);
 			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
-			return generatePublicUserData(owner);
+			return sanitizeUser(owner);
 		}),
 	);
 }

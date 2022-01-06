@@ -6,7 +6,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import { Db, GenericHelpers, ICredentialsResponse, ResponseHelper } from '../..';
 import { N8nApp, PublicUserData } from '../Interfaces';
-import { generatePublicUserData, isEmailSetup, isValidEmail } from '../UserManagementHelper';
+import { sanitizeUser, isEmailSetup, isValidEmail } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
 import { issueJWT } from '../auth/jwt';
@@ -76,7 +76,7 @@ export function addUsersMethods(this: N8nApp): void {
 				} as User;
 				// eslint-disable-next-line no-await-in-loop
 				const newUser = await Db.collections.User!.save(newUserInfo);
-				createdUsers.push(generatePublicUserData(newUser));
+				createdUsers.push(sanitizeUser(newUser));
 
 				let inviteAcceptUrl = GenericHelpers.getBaseUrl();
 				const domain = inviteAcceptUrl;
@@ -190,7 +190,7 @@ export function addUsersMethods(this: N8nApp): void {
 
 			const userData = await issueJWT(updatedUser);
 			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
-			return generatePublicUserData(updatedUser);
+			return sanitizeUser(updatedUser);
 		}),
 	);
 
@@ -199,7 +199,7 @@ export function addUsersMethods(this: N8nApp): void {
 		ResponseHelper.send(async () => {
 			const users = await Db.collections.User!.find();
 
-			return users.map((user) => generatePublicUserData(user));
+			return users.map((user) => sanitizeUser(user));
 		}),
 	);
 
@@ -324,9 +324,9 @@ export function addUsersMethods(this: N8nApp): void {
 			});
 
 			if (result.success) {
-				throw new ResponseHelper.ResponseError('Unable to send email', undefined, 500);
+				return { success: false };
 			}
-			return { success: false };
+			throw new ResponseHelper.ResponseError('Unable to send email', undefined, 500);
 		}),
 	);
 }

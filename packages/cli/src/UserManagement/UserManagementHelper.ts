@@ -65,7 +65,7 @@ export function isValidPassword(password: string) {
 	return password.length >= 8 && password.length <= 64;
 }
 
-export function generatePublicUserData(user: User): PublicUserData {
+export function sanitizeUser(user: User): PublicUserData {
 	const { id, email, firstName, lastName, personalizationAnswers } = user;
 	const returnedUser = {
 		id,
