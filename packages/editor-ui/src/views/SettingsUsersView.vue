@@ -4,10 +4,21 @@
 			<div>
 				<n8n-heading size="2xlarge">Users</n8n-heading>
 			</div>
-			<div :class="$style.buttonContainer">
-					<n8n-button label="Invite new user" icon="plus-square" @click="onInvite" size="large" />
+			<div v-if="isDefaultUser" :class="$style.setupInfoContainer">
+				<n8n-action-box
+					emoji="😿"
+					heading="You’re missing out on user management"
+					description="Set up an owner account in order to invite other users. Once set up, each user will need to use a password to access this instance."
+					buttonText="Set up my owner account"
+					:onClick="redirectToSetup"
+				/>
 			</div>
-			<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
+			<div v-else>
+				<div :class="$style.buttonContainer">
+						<n8n-button label="Invite new user" icon="plus-square" @click="onInvite" size="large" />
+				</div>
+				<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
+			</div>
 		</div>
 	</SettingsView>
 </template>
@@ -32,9 +43,12 @@ export default mixins(showMessage).extend({
 		await this.$store.dispatch('users/fetchUsers');
 	},
 	computed: {
-		...mapGetters('users', ['allUsers', 'currentUserId']),
+		...mapGetters('users', ['allUsers', 'currentUserId', 'isDefaultUser']),
 	},
 	methods: {
+		redirectToSetup() {
+			this.$router.push({name: 'SetupView'});
+		},
 		onInvite() {
 			this.$store.dispatch('ui/openModal', INVITE_USER_MODAL_KEY);
 		},
@@ -98,6 +112,10 @@ export default mixins(showMessage).extend({
 .buttonContainer {
 	display: flex;
 	justify-content: right;
+}
+
+.setupInfoContainer {
+	max-width: 728px;
 }
 
 </style>

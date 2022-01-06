@@ -1,5 +1,6 @@
-import N8nAvatar from './N8nAvatar';
+import N8nActionBox from './N8nActionBox';
 import N8nActionToggle from './N8nActionToggle';
+import N8nAvatar from './N8nAvatar';
 import N8nBadge from './N8nBadge';
 import N8nButton from './N8nButton';
 import N8nFormBox from './N8nFormBox';
@@ -25,6 +26,7 @@ import N8nUsersList from './N8nUsersList';
 import N8nUserSelect from './N8nUserSelect';
 
 export {
+	N8nActionBox,
 	N8nActionToggle,
 	N8nAvatar,
 	N8nBadge,
