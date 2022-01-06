@@ -296,14 +296,14 @@ export function addUsersMethods(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ id: req.params.id });
 
 			if (!user) {
-				throw new ResponseHelper.ResponseError('User not found', undefined, 403);
+				throw new ResponseHelper.ResponseError('User not found', undefined, 404);
 			}
 
 			if (user.password) {
 				throw new ResponseHelper.ResponseError(
 					'User has already accepted the invite',
 					undefined,
-					403,
+					400,
 				);
 			}
 
@@ -324,7 +324,7 @@ export function addUsersMethods(this: N8nApp): void {
 			});
 
 			if (result.success) {
-				return { success: true };
+				throw new ResponseHelper.ResponseError('Unable to send email', undefined, 500);
 			}
 			return { success: false };
 		}),
