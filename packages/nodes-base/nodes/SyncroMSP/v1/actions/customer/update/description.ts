@@ -25,7 +25,7 @@ export const customerUpdateDescription: CustomerProperties = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'additionalFields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {

@@ -25,7 +25,7 @@ export const contactUpdateDescription: ContactProperties = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'additionalFields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {

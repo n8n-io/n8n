@@ -22,7 +22,7 @@ export const ticketUpdateDescription: TicketProperties = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'additionalFields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {
