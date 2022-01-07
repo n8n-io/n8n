@@ -181,9 +181,9 @@ export async function setupOwner(context: IRestApiContext, params: { firstName: 
 	return await Promise.resolve(newUser);
 }
 
-export async function validateSignupToken(context: IRestApiContext, params: {token: string}): Promise<{inviter: {firstName: string, lastName: string}}> {
-	if (params.token !== '1234') {
-		throw new Error('invalid token. try query ?token=1234');
+export async function validateSignupToken(context: IRestApiContext, params: {inviteeId: string, inviterId: string}): Promise<{inviter: {firstName: string, lastName: string}}> {
+	if (params.inviterId !== '123' || params.inviteeId !== '345') {
+		throw new Error('invalid token. try query ?inviterId=123&inviteeId=345');
 	}
 
 	log(context, 'GET', '/resolve-signup-token', params);
@@ -196,9 +196,9 @@ export async function validateSignupToken(context: IRestApiContext, params: {tok
 	});
 }
 
-export async function signup(context: IRestApiContext, params: {token: string; firstName: string; lastName: string; password: string}): Promise<IUser> {
-	if (params.token !== '1234') {
-		throw new Error('invalid token. try query ?token=1234');
+export async function signup(context: IRestApiContext, params: {inviterId: string; inviteeId: string;  firstName: string; lastName: string; password: string}): Promise<IUser> {
+	if (params.inviterId !== '123' || params.inviteeId !== '345') {
+		throw new Error('invalid token. try query ?inviterId=123&inviteeId=345');
 	}
 
 	log(context, 'POST', '/user', params as unknown as IDataObject);

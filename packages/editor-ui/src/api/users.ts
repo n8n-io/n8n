@@ -22,11 +22,11 @@ export async function setupOwner(context: IRestApiContext, params: { firstName: 
 	return await makeRestApiRequest(context, 'POST', '/owner-setup', params as unknown as IDataObject);
 }
 
-export async function validateSignupToken(context: IRestApiContext, params: {token: string}): Promise<{inviter: {firstName: string, lastName: string}}> {
+export async function validateSignupToken(context: IRestApiContext, params: {inviterId: string; inviteeId: string}): Promise<{inviter: {firstName: string, lastName: string}}> {
 	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
 }
 
-export async function signup(context: IRestApiContext, params:  {token: string; firstName: string; lastName: string; password: string}): Promise<IUser> {
+export async function signup(context: IRestApiContext, params:  {inviterId: string; inviteeId: string; firstName: string; lastName: string; password: string}): Promise<IUser> {
 	return await makeRestApiRequest(context, 'POST', '/user', params as unknown as IDataObject);
 }
 

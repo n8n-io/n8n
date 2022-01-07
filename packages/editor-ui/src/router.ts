@@ -12,7 +12,6 @@ import SettingsUsersView from './views/SettingsUsersView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
-import { LOGIN_STATUS, ROLE } from './constants';
 
 Vue.use(Router);
 

@@ -65,14 +65,15 @@ export default mixins(
 		};
 	},
 	async mounted() {
-		const token = this.$route.query.token;
+		const inviterId = this.$route.query.inviterId;
+		const inviteeId = this.$route.query.inviteeId;
 		try {
-			if (!token) {
+			if (!inviterId || !inviteeId) {
 				throw new Error('Missing invite token');
 			}
 
-			const invite = await this.$store.dispatch('users/validateSignupToken', {token});
-			this.inviter = invite.inviter;
+			const invite = await this.$store.dispatch('users/validateSignupToken', {inviterId, inviteeId});
+			this.inviter = invite.inviter as {firstName: string, lastName: string};
 		} catch (e) {
 			this.$showError(e, 'Issue validating invite token');
 		}
@@ -90,7 +91,9 @@ export default mixins(
 		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/signup', {...values, token: this.$route.query.token});
+				const inviterId = this.$route.query.inviterId;
+				const inviteeId = this.$route.query.inviteeId;
+				await this.$store.dispatch('users/signup', {...values, inviterId, inviteeId});
 
 				await this.$router.push({ name: 'SigninView' });
 			} catch (error) {

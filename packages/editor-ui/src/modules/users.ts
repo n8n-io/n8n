@@ -148,10 +148,10 @@ const module: Module<IUsersState, IRootState> = {
 				context.commit('setCurrentUserId', user.id);
 			}
 		},
-		async validateSignupToken(context: ActionContext<IUsersState, IRootState>, params: {token: string}): Promise<{ inviter: { firstName: string, lastName: string } }> {
+		async validateSignupToken(context: ActionContext<IUsersState, IRootState>, params: {inviteeId: string, inviterId: string}): Promise<{ inviter: { firstName: string, lastName: string } }> {
 			return await validateSignupToken(context.rootGetters.getRestApiContext, params);
 		},
-		async signup(context: ActionContext<IUsersState, IRootState>, params: { token: string; firstName: string; lastName: string; password: string;}) {
+		async signup(context: ActionContext<IUsersState, IRootState>, params: { inviteeId: string; inviterId: string; firstName: string; lastName: string; password: string;}) {
 			const user = await signup(context.rootGetters.getRestApiContext, params);
 			if (user) {
 				context.commit('addUsers', [user]);
