@@ -105,18 +105,19 @@ export default mixins(showMessage).extend({
 
 				const emails = this.emails.split(',')
 					.map((email) => email.trim())
-					.filter((email) => !!email);
+					.filter((email) => !!email)
+					.map((email: string) => ({email}));
 
 				if (emails.length === 0) {
 					throw new Error('No users to invite');
 				}
 
-				await this.$store.dispatch('users/inviteUsers', {emails, role: ROLE.Member});
+				await this.$store.dispatch('users/inviteUsers', emails);
 
 				this.$showMessage({
 					type: 'success',
 					title: `User${emails.length > 1 ? 's' : ''} invited successfully`,
-					message: `An invite email was sent to ${emails.join(',')}`,
+					message: `An invite email was sent to ${this.emails}`,
 				});
 
 				this.modalBus.$emit('close');

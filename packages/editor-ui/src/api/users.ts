@@ -58,8 +58,8 @@ export async function getUsers(context: IRestApiContext): Promise<IUser[]> {
 	return await makeRestApiRequest(context, 'GET', '/users');
 }
 
-export async function inviteUsers(context: IRestApiContext, params: {emails: string[], role: string}): Promise<IUser[]> {
-	return await makeRestApiRequest(context, 'POST', '/invite', params);
+export async function inviteUsers(context: IRestApiContext, params: {email: string}[]): Promise<IUser[]> {
+	return await makeRestApiRequest(context, 'POST', '/users', params);
 }
 
 export async function reinvite(context: IRestApiContext, params: {id: string}): Promise<void> {

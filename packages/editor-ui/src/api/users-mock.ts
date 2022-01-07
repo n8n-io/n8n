@@ -258,10 +258,10 @@ export async function getUsers(context: IRestApiContext): Promise<IUser[]> {
 	return Promise.resolve(getAllUsers());
 }
 
-export async function inviteUsers(context: IRestApiContext, params: {emails: string[], role: string}): Promise<IUser[]> {
-	log(context, 'POST', '/invite', params);
+export async function inviteUsers(context: IRestApiContext, params: {email: string}[]): Promise<IUser[]> {
+	log(context, 'POST', '/users', params);
 
-	const users: IUser[] = params.emails.map((email: string) => ({
+	const users: IUser[] = params.map(({email}: {email: string}) => ({
 		id: getRandomId(),
 		email,
 		globalRole: {
