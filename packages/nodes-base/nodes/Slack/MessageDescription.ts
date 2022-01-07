@@ -603,12 +603,10 @@ export const messageFields: INodeProperties[] = [
 							{
 								name: 'Actions',
 								value: 'actions',
-								description: 'i18n TODO DELETE Some description',
 							},
 							{
 								name: 'Section',
 								value: 'section',
-								description: 'i18n TODO DELETE Some description',
 							},
 						],
 						default: 'actions',
@@ -656,7 +654,6 @@ export const messageFields: INodeProperties[] = [
 											{
 												name: 'Button',
 												value: 'button',
-												description: 'i18n TODO DELETE Some description',
 											},
 										],
 										default: 'button',
@@ -675,7 +672,6 @@ export const messageFields: INodeProperties[] = [
 										},
 										default: '',
 										description: 'The text for the block.',
-										placeholder: 'i18n TODO DELETE Sample placeholder',
 									},
 									{
 										displayName: 'Emoji',

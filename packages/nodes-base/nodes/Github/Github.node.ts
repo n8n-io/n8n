@@ -538,7 +538,6 @@ export class Github implements INodeType {
 								type: 'string',
 								default: '',
 								description: 'The name of the author of the commit.',
-								placeholder: 'i18n TODO DELETE Sample name',
 							},
 							{
 								displayName: 'Email',
@@ -546,7 +545,6 @@ export class Github implements INodeType {
 								type: 'string',
 								default: '',
 								description: 'The email of the author of the commit.',
-								placeholder: 'i18n TODO DELETE  Sample placeholder',
 							},
 						],
 					},
@@ -701,7 +699,6 @@ export class Github implements INodeType {
 						displayName: 'Label',
 						name: 'label',
 						type: 'string',
-						placeholder: 'i18n TODO DELETE Sample placeholder',
 						default: '',
 						description: 'Label to add to issue.',
 					},
