@@ -3,18 +3,19 @@ import {
 } from 'n8n-workflow';
 
 export declare namespace Zammad {
-	export type Resource = 'group' | 'organization' | 'priority' | 'tag' | 'ticket' | 'user';
+	export type Resource = 'group' | 'organization' | 'ticket' | 'user';
 
-	export type AuthMethod = 'basicAuth' | 'tokenAuth' | 'oAuth2';
+	export type AuthMethod = 'basicAuth' | 'tokenAuth';
 
 	type CredentialsBase = {
 		baseUrl: string;
 		allowUnauthorizedCerts: boolean;
 	}
 
-	export type BasicAuthCredentials = CredentialsBase & { username: string; password: string; };
-	export type TokenAuthCredentials = CredentialsBase & { apiKey: string; };
-	export type OAuth2Credentials = CredentialsBase;
+	export type BasicAuthCredentials = CredentialsBase & { authType: 'basicAuth'; username: string; password: string; };
+	export type TokenAuthCredentials = CredentialsBase & { authType: 'tokenAuth'; accessToken: string; };
+
+	export type Credentials = BasicAuthCredentials | TokenAuthCredentials;
 
 	export type UserAdditionalFields = IDataObject & Zammad.CustomFieldsUi & Zammad.AddressUi;
 	export type UserUpdateFields = UserAdditionalFields;
@@ -25,11 +26,14 @@ export declare namespace Zammad {
 		name: string;
 	};
 
+	export type Group = Organization;
+
 	export type User = {
 		id: number;
 		login: string;
 		lastname: string;
 		email: string;
+		role_ids: number[];
 	};
 
 	export type Field = {
@@ -67,6 +71,15 @@ export declare namespace Zammad {
 				street: string;
 				zip: string;
 			};
-		}
-	}
+		};
+	};
+
+	export type Article = {
+		articleDetails: {
+			visibility: 'external' | 'internal',
+			subject: string,
+			body: string,
+			type: 'chat' | 'email' | 'fax' | 'note' | 'phone' | 'sms',
+		};
+	};
 }

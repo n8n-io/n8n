@@ -40,10 +40,6 @@ export const ticketDescription: INodeProperties[] = [
 				description: 'Retrieve all tickets',
 			},
 			{
-				name: 'Search',
-				value: 'search', // TODO combine with get
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a ticket',
@@ -56,55 +52,63 @@ export const ticketDescription: INodeProperties[] = [
 	//             fields
 	// ----------------------------------
 	{
-		displayName: 'Group',
-		name: 'group',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				resource: [
-					'ticket',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Title',
 		name: 'title',
 		type: 'string',
+		description: 'Title of the ticket to create',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
 				resource: [
 					'ticket',
+				],
+				operation: [
+					'create',
 				],
 			},
 		},
 	},
 	{
-		displayName: 'Customer ID',
-		name: 'customerId',
-		type: 'string', // TODO: loadOptions
+		displayName: 'Group',
+		name: 'group',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadGroupNames',
+		},
+		placeholder: 'First-Level Helpdesk',
+		description: 'Group that will own the ticket to create. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
 				resource: [
 					'ticket',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Customer Email',
+		name: 'customerEmail',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadCustomers',
+		},
+		description: 'Email address of the customer concerned in the ticket to create. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		default: '',
+		placeholder: 'hello@n8n.io',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'create',
 				],
 			},
 		},
@@ -117,16 +121,140 @@ export const ticketDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-					'get',
-					'delete',
-				],
 				resource: [
 					'ticket',
 				],
+				operation: [
+					'update',
+				],
 			},
 		},
+	},
+	{
+		displayName: 'Ticket ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Ticket ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Article',
+		name: 'article',
+		type: 'fixedCollection',
+		placeholder: 'Add Article',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Article Details',
+				name: 'articleDetails',
+				values: [
+					{
+						displayName: 'Subject',
+						name: 'subject',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Body',
+						name: 'body',
+						type: 'string',
+						default: '',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+					},
+					{
+						displayName: 'Visibility',
+						name: 'visibility',
+						type: 'options',
+						default: 'internal',
+						options: [
+							{
+								name: 'External',
+								value: 'external',
+								description: 'Visible to customers',
+							},
+							{
+								name: 'Internal',
+								value: 'internal',
+								description: 'Visible to help desk',
+							}
+						],
+					},
+					{
+						displayName: 'Article Type',
+						name: 'type',
+						type: 'options',
+						// https://docs.zammad.org/en/latest/api/ticket/articles.html
+						options: [
+							{
+								name: 'Chat',
+								value: 'chat',
+							},
+							{
+								name: 'Email',
+								value: 'email',
+							},
+							{
+								name: 'Fax',
+								value: 'fax',
+							},
+							{
+								name: 'Note',
+								value: 'note',
+							},
+							{
+								name: 'Phone',
+								value: 'phone',
+							},
+							{
+								name: 'SMS',
+								value: 'sms',
+							},
+						],
+						default: 'note',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Additional Fields',
@@ -134,11 +262,11 @@ export const ticketDescription: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
 				resource: [
 					'ticket',
+				],
+				operation: [
+					'create',
 				],
 			},
 		},
@@ -146,97 +274,170 @@ export const ticketDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Close Time',
-				name: 'close_at',
-				type: 'dateTime',
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
 				default: '',
-				description: 'Date and time when the ticket was closed',
-			},
-			{
-				displayName: 'Customer Email',
-				name: 'customer',
-				type: 'string',
-				default: '',
-				description: 'Email address of the customer who opened the ticket',
-			},
-			{
-				displayName: 'Escalation Time',
-				name: 'escalation_at',
-				type: 'dateTime',
-				default: '',
-				description: 'Date and time when the ticket was escalated',
-			},
-			{
-				displayName: 'First Response Escalation Time',
-				name: 'first_response_escalation_at',
-				type: 'dateTime',
-				default: '',
-				description: 'Date and time when an escalated ticket was first responded to',
-			},
-			{
-				displayName: 'First Response Time',
-				name: 'first_response_at',
-				type: 'dateTime',
-				default: '',
-				description: 'Date and time when the ticket was first responded to',
-			},
-			{
-				displayName: 'Group ID',
-				name: 'group_id',
-				type: 'string', // TODO loadOptions
-				default: '',
-			},
-			{
-				displayName: 'Notes',
-				name: 'note',
-				type: 'string',
-				default: '',
+				placeholder: 'Add Custom Field',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					multipleValues: true,
 				},
-			},
-			{
-				displayName: 'Owner ID',
-				name: 'owner_id',
-				type: 'string', // TODO loadOptions
-				default: '',
-			},
-			{
-				displayName: 'Priority ID',
-				name: 'priority_id',
-				type: 'string', // TODO loadOptions
-				default: '',
-			},
-			{
-				displayName: 'State ID',
-				name: 'state_id',
-				type: 'string', // TODO loadOptions
-				default: '',
-			},
-			{
-				displayName: 'Ticket Type',
-				name: 'type',
-				type: 'string', // TODO loadOptions
-				default: '',
+				options: [
+					{
+						name: 'customFieldPairs',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'name',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadUserCustomFields',
+								},
+								default: '',
+								description: 'Name of the custom field to set',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set on the custom field',
+							},
+						],
+					},
+				],
 			},
 		],
 	},
 	{
-		displayName: 'Article Body',
-		name: 'body',
-		type: 'string',
-		default: '',
-		required: true,
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
 				resource: [
 					'ticket',
 				],
+				operation: [
+					'update',
+				],
 			},
 		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Group',
+				name: 'group',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadGroupNames',
+				},
+				placeholder: 'First-Level Helpdesk',
+				description: 'Group that will own the ticket to create. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				default: '',
+			},
+			{
+				displayName: 'Customer Email',
+				name: 'customerEmail',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadCustomers',
+				},
+				description: 'Email address of the customer concerned in the ticket to create. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				default: '',
+				placeholder: 'hello@n8n.io',
+			},
+			{
+				displayName: 'Article',
+				name: 'articleUi',
+				type: 'fixedCollection',
+				placeholder: 'Add Article',
+				required: true,
+				default: {},
+				options: [
+					{
+						displayName: 'Article Details',
+						name: 'articleDetails',
+						values: [
+							{
+								displayName: 'Subject',
+								name: 'subject',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Body',
+								name: 'body',
+								type: 'string',
+								default: '',
+								typeOptions: {
+									alwaysOpenEditWindow: true,
+								},
+							},
+							{
+								displayName: 'Visibility',
+								name: 'visibility',
+								type: 'options',
+								default: 'internal',
+								options: [
+									{
+										name: 'External',
+										value: 'external',
+										description: 'Visible to customers',
+									},
+									{
+										name: 'Internal',
+										value: 'internal',
+										description: 'Visible to help desk',
+									}
+								],
+							},
+							{
+								displayName: 'Article Type',
+								name: 'type',
+								type: 'options',
+								// https://docs.zammad.org/en/latest/api/ticket/articles.html
+								options: [
+									{
+										name: 'Chat',
+										value: 'chat',
+									},
+									{
+										name: 'Email',
+										value: 'email',
+									},
+									{
+										name: 'Fax',
+										value: 'fax',
+									},
+									{
+										name: 'Note',
+										value: 'note',
+									},
+									{
+										name: 'Phone',
+										value: 'phone',
+									},
+									{
+										name: 'SMS',
+										value: 'sms',
+									},
+								],
+								default: 'note',
+							},
+						],
+					},
+				],
+			},
+		],
 	},
 	// {
 	// 	displayName: 'Article Additional Fields',
@@ -327,19 +528,36 @@ export const ticketDescription: INodeProperties[] = [
 	// 		},
 	// 	],
 	// },
+	// {
+	// 	displayName: 'Query',
+	// 	name: 'query',
+	// 	type: 'string',
+	// 	default: '',
+	// 	required: true,
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'ticket',
+	// 			],
+	// 			operation: [
+	// 				'getAll',
+	// 			],
+	// 		},
+	// 	},
+	// },
 	{
-		displayName: 'Query',
-		name: 'query',
-		type: 'string',
-		default: '',
-		required: true,
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
 				resource: [
 					'ticket',
+				],
+				operation: [
+					'getAll',
 				],
 			},
 		},
@@ -349,62 +567,89 @@ export const ticketDescription: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
 				resource: [
 					'ticket',
 				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
 			},
 		},
-		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Sort By',
-		name: 'sort_by',
-		type: 'string',
-		default: '',
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
 				resource: [
 					'ticket',
 				],
-			},
-		},
-		description: 'How to sort the tickets',
-	},
-	{
-		displayName: 'Sort Order',
-		name: 'order_by',
-		type: 'options',
-		displayOptions: {
-			show: {
 				operation: [
-					'search',
-				],
-				resource: [
-					'ticket',
+					'getAll',
 				],
 			},
 		},
+		default: {},
+		placeholder: 'Add Filter',
 		options: [
 			{
-				name: 'Ascending',
-				value: 'asc',
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'Query to filter results by',
+				placeholder: 'user.firstname:john',
 			},
 			{
-				name: 'Descending',
-				value: 'desc',
+				displayName: 'Sort',
+				name: 'sortUi',
+				type: 'fixedCollection',
+				placeholder: 'Add Sort Options',
+				default: {},
+				options: [
+					{
+						displayName: 'Sort Options',
+						name: 'sortDetails',
+						values: [
+							{
+								displayName: 'Sort Key',
+								name: 'sort_by',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadTicketFields',
+								},
+								default: '',
+							},
+							{
+								displayName: 'Sort Order',
+								name: 'order_by',
+								type: 'options',
+								options: [
+									{
+										name: 'Ascending',
+										value: 'asc',
+									},
+									{
+										name: 'Descending',
+										value: 'desc',
+									},
+								],
+								default: 'asc',
+							},
+						],
+					},
+				],
 			},
 		],
-		default: 'asc',
 	},
 ];
