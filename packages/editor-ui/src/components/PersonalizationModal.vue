@@ -20,27 +20,27 @@
 				<n8n-input-label :label="$locale.baseText('personalizationModal.howAreYourCodingSkills')">
 					<n8n-select :value="values[CODING_SKILL_KEY]" :placeholder="$locale.baseText('personalizationModal.select')" @change="(value) => values[CODING_SKILL_KEY] = value">
 						<n8n-option
-							:label="baseText('personalizationModal.neverCoded')"
+							:label="$locale.baseText('personalizationModal.neverCoded')"
 							value="0"
 						/>
 						<n8n-option
-							:label="baseText('personalizationModal.iGetStuckTooQuicklyToAchieveMuch')"
+							:label="$locale.baseText('personalizationModal.iGetStuckTooQuicklyToAchieveMuch')"
 							value="1"
 						/>
 						<n8n-option
-							:label="baseText('personalizationModal.iCanCodeSomeUsefulThingsBut')"
+							:label="$locale.baseText('personalizationModal.iCanCodeSomeUsefulThingsBut')"
 							value="2"
 						/>
 						<n8n-option
-							:label="baseText('personalizationModal.iKnowEnoughToBeDangerousBut')"
+							:label="$locale.baseText('personalizationModal.iKnowEnoughToBeDangerousBut')"
 							value="3"
 						/>
 						<n8n-option
-							:label="baseText('personalizationModal.iCanFigureMostThingsOut')"
+							:label="$locale.baseText('personalizationModal.iCanFigureMostThingsOut')"
 							value="4"
 						/>
 						<n8n-option
-							:label="baseText('personalizationModal.iCanDoAlmostAnythingIWant')"
+							:label="$locale.baseText('personalizationModal.iCanDoAlmostAnythingIWant')"
 							value="5"
 						/>
 					</n8n-select>
