@@ -1,4 +1,4 @@
-import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
+import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
 import { LOGIN_STATUS, PERMISSIONS, ROLE } from '@/constants';
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
@@ -168,7 +168,7 @@ const module: Module<IUsersState, IRootState> = {
 			await changePassword(context.rootGetters.getRestApiContext, params);
 		},
 		async updateUser(context: ActionContext<IUsersState, IRootState>, params: IUser) {
-			const user = await updateUser(context.rootGetters.getRestApiContext, params);
+			const user = await updateCurrentUser(context.rootGetters.getRestApiContext, params);
 			context.commit('addUsers', [user]);
 		},
 		async updateCurrentUserPassword(context: ActionContext<IUsersState, IRootState>, params: {password: string}) {

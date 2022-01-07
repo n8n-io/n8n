@@ -230,8 +230,8 @@ export async function changePassword(context: IRestApiContext, params: {token: s
 	log(context, 'POST', '/change-password', params);
 }
 
-export async function updateUser(context: IRestApiContext, params: IUser): Promise<IUser> {
-	log(context, 'PATCH', `/user/${params.id}`, params as unknown as IDataObject);
+export async function updateCurrentUser(context: IRestApiContext, params: IUser): Promise<IUser> {
+	log(context, 'PATCH', `/me`, params as unknown as IDataObject);
 	const user = getCurrUser();
 	removeUser(params.id);
 	const newUser = {

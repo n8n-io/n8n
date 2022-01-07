@@ -42,8 +42,8 @@ export async function changePassword(context: IRestApiContext, params: {token: s
 	await makeRestApiRequest(context, 'POST', '/change-password', params);
 }
 
-export async function updateUser(context: IRestApiContext, params: IUser): Promise<IUser> {
-	return await makeRestApiRequest(context, 'PATCH', `/user/${params.id}`, params as unknown as IDataObject);
+export async function updateCurrentUser(context: IRestApiContext, params: IUser): Promise<IUser> {
+	return await makeRestApiRequest(context, 'PATCH', `/me`, params as unknown as IDataObject);
 }
 
 export async function updateCurrentUserPassword(context: IRestApiContext, params: {password: string}): Promise<void> {
