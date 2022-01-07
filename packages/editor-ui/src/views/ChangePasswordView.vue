@@ -91,12 +91,12 @@ export default mixins(
 				this.password = e.value;
 			}
 		},
-		async onSubmit(values: {[key: string]: string}) {
+		async onSubmit() {
 			try {
 				this.loading = true;
 				const token = this.$route.query.token;
 				const userId = this.$route.query.userId;
-				await this.$store.dispatch('users/changePassword', {...values, token, userId});
+				await this.$store.dispatch('users/changePassword', {token, userId, password: this.password});
 
 				this.$showMessage({
 					type: 'success',
