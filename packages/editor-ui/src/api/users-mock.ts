@@ -214,17 +214,17 @@ export async function sendForgotPasswordEmail(context: IRestApiContext, params: 
 	log(context, 'POST', '/forgot-password', params);
 }
 
-export async function validatePasswordToken(context: IRestApiContext, params: {token: string}): Promise<void> {
+export async function validatePasswordToken(context: IRestApiContext, params: {token: string, userId: string}): Promise<void> {
 	log(context, 'GET', '/resolve-password-token', params);
 
-	if (params.token !== '1234') {
-		throw new Error('invalid token. try query ?token=1234');
+	if (params.token !== '123' && params.userId !== '345') {
+		throw new Error('invalid token. try query ?token=123&userId=345');
 	}
 }
 
-export async function changePassword(context: IRestApiContext, params: {token: string, password: string}): Promise<void> {
-	if (params.token !== '1234') {
-		throw new Error('invalid token. try query ?token=1234');
+export async function changePassword(context: IRestApiContext, params: {token: string, password: string, userId: string}): Promise<void> {
+	if (params.token !== '123' && params.userId !== '345') {
+		throw new Error('invalid token. try query ?token=123&userId=345');
 	}
 
 	log(context, 'POST', '/change-password', params);

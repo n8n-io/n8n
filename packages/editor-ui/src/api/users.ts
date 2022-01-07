@@ -34,11 +34,11 @@ export async function sendForgotPasswordEmail(context: IRestApiContext, params: 
 	await makeRestApiRequest(context, 'POST', '/forgot-password', params);
 }
 
-export async function validatePasswordToken(context: IRestApiContext, params: {token: string}): Promise<void> {
+export async function validatePasswordToken(context: IRestApiContext, params: {token: string, userId: string}): Promise<void> {
 	await makeRestApiRequest(context, 'GET', '/resolve-password-token', params);
 }
 
-export async function changePassword(context: IRestApiContext, params: {token: string, password: string}): Promise<void> {
+export async function changePassword(context: IRestApiContext, params: {token: string, password: string, userId: string}): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/change-password', params);
 }
 

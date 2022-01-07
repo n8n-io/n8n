@@ -66,12 +66,16 @@ export default mixins(
 		};
 
 		const token = this.$route.query.token;
+		const userId = this.$route.query.userId;
 		try {
 			if (!token) {
 				throw new Error('Missing token');
 			}
+			if (!userId) {
+				throw new Error('Missing userId');
+			}
 
-			await this.$store.dispatch('users/validatePasswordToken', {token});
+			await this.$store.dispatch('users/validatePasswordToken', {token, userId});
 		} catch (e) {
 			this.$showError(e, 'Issue validating token');
 		}
@@ -90,7 +94,9 @@ export default mixins(
 		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/changePassword', {...values, token: this.$route.query.token});
+				const token = this.$route.query.token;
+				const userId = this.$route.query.userId;
+				await this.$store.dispatch('users/changePassword', {...values, token, userId});
 
 				this.$showMessage({
 					type: 'success',

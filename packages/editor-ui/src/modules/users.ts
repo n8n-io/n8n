@@ -161,10 +161,10 @@ const module: Module<IUsersState, IRootState> = {
 		async sendForgotPasswordEmail(context: ActionContext<IUsersState, IRootState>, params: {email: string}) {
 			await sendForgotPasswordEmail(context.rootGetters.getRestApiContext, params);
 		},
-		async validatePasswordToken(context: ActionContext<IUsersState, IRootState>, params: {token: string}) {
+		async validatePasswordToken(context: ActionContext<IUsersState, IRootState>, params: {token: string, userId: string}) {
 			await validatePasswordToken(context.rootGetters.getRestApiContext, params);
 		},
-		async changePassword(context: ActionContext<IUsersState, IRootState>, params: {token: string, password: string}) {
+		async changePassword(context: ActionContext<IUsersState, IRootState>, params: {token: string, password: string, userId: string}) {
 			await changePassword(context.rootGetters.getRestApiContext, params);
 		},
 		async updateUser(context: ActionContext<IUsersState, IRootState>, params: IUser) {
