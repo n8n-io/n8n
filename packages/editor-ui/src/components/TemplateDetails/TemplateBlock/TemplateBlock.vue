@@ -22,7 +22,7 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .block {
-	padding-bottom: 36px;
+	padding-bottom: var(--spacing-xl);
 }
 
 .header {

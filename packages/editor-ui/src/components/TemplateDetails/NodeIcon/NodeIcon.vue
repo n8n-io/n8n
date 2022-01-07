@@ -145,7 +145,7 @@ export default Vue.extend({
 .wrapper {
   width: 24px;
 	height: 24px;
-	margin-right: 13px;
+	margin-right: var(--spacing-xs);
 	border-radius: var(--border-radius-small);
 	line-height: var(--font-line-height-xloose);
 	font-size: var(--font-size-l);

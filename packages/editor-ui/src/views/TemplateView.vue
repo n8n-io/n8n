@@ -106,7 +106,7 @@ export default mixins(workflowHelpers).extend({
 	width: 100%;
 	display: flex;
 	justify-content: center;
-	background-color: $--node-creator-no-results-background-color;
+	background-color: var(--color-background-light);
 }
 
 .container {
@@ -114,14 +114,14 @@ export default mixins(workflowHelpers).extend({
 
 	@media (max-width: $--breakpoint-md) {
 		max-width: 900px;
-		margin: 0 48px 0 113px;
-		padding: 48px 0 48px;
+		margin: 0 var(--spacing-2xl) 0 113px;
+		padding: var(--spacing-2xl) 0 var(--spacing-2xl);
 	}
 
 	@media (min-width: $--breakpoint-md) {
 		max-width: 1024px;
-		margin: 0 64px 0 129px;
-		padding: 64px 0 64px;
+		margin: 0 var(--spacing-3xl) 0 129px;
+		padding: var(--spacing-3xl) 0 var(--spacing-3xl);
 	}
 }
 
@@ -136,7 +136,7 @@ export default mixins(workflowHelpers).extend({
 }
 
 .wrapper {
-	padding: 16px 0 0;
+	padding: var(--spacing-s) 0 0;
 	display: flex;
 	justify-content: space-between;
 }
