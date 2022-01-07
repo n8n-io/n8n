@@ -5,7 +5,7 @@ import { In } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import { Db, GenericHelpers, ICredentialsResponse, ResponseHelper } from '../..';
-import { N8nApp, PublicUser } from '../Interfaces';
+import { AuthenticatedRequest, N8nApp, PublicUser } from '../Interfaces';
 import { isEmailSetup, isValidEmail, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
@@ -14,7 +14,7 @@ import { issueJWT } from '../auth/jwt';
 export function addUsersMethods(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
-		ResponseHelper.send(async (req: Request, res: Response) => {
+		ResponseHelper.send(async (req: AuthenticatedRequest, res: Response) => {
 			if (!isEmailSetup()) {
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
@@ -84,7 +84,7 @@ export function addUsersMethods(this: N8nApp): void {
 					inviteAcceptUrl += '/';
 				}
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-				inviteAcceptUrl += `signup/inviterId=${(req.user as User).id}&inviteeId=${newUser.id}`;
+				inviteAcceptUrl += `signup/inviterId=${req.user.id}&inviteeId=${newUser.id}`;
 
 				const mailer = getInstance();
 				// eslint-disable-next-line no-await-in-loop
@@ -143,7 +143,7 @@ export function addUsersMethods(this: N8nApp): void {
 
 	this.app.post(
 		`/${this.restEndpoint}/user`,
-		ResponseHelper.send(async (req: Request, res: Response) => {
+		ResponseHelper.send(async (req: AuthenticatedRequest, res: Response) => {
 			if (req.user) {
 				throw new ResponseHelper.ResponseError(
 					'Please logout before accepting another invite.',
@@ -205,8 +205,8 @@ export function addUsersMethods(this: N8nApp): void {
 
 	this.app.delete(
 		`/${this.restEndpoint}/users/:id`,
-		ResponseHelper.send(async (req: Request) => {
-			if ((req.user as User).id === req.params.id) {
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+			if (req.user.id === req.params.id) {
 				throw new ResponseHelper.ResponseError('You cannot delete your own user', undefined, 403);
 			}
 
@@ -284,7 +284,7 @@ export function addUsersMethods(this: N8nApp): void {
 
 	this.app.post(
 		`/${this.restEndpoint}/users/:id/reinvite`,
-		ResponseHelper.send(async (req: Request) => {
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
 			if (!isEmailSetup()) {
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
@@ -313,7 +313,7 @@ export function addUsersMethods(this: N8nApp): void {
 				inviteAcceptUrl += '/';
 			}
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-			inviteAcceptUrl += `signup/inviterId=${(req.user as User).id}&inviteeId${user.id}`;
+			inviteAcceptUrl += `signup/inviterId=${req.user.id}&inviteeId${user.id}`;
 
 			const mailer = getInstance();
 			// eslint-disable-next-line no-await-in-loop
