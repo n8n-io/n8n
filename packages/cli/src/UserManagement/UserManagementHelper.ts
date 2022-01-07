@@ -66,26 +66,6 @@ export function isValidPassword(password: string) {
 }
 
 export function sanitizeUser(user: User): PublicUserData {
-	const { id, email, firstName, lastName, personalizationAnswers } = user;
-	const returnedUser = {
-		id,
-	} as PublicUserData;
-
-	if (email) {
-		returnedUser.email = email;
-	}
-
-	if (firstName) {
-		returnedUser.firstName = firstName;
-	}
-
-	if (lastName) {
-		returnedUser.lastName = lastName;
-	}
-
-	if (personalizationAnswers) {
-		returnedUser.personalizationAnswers = personalizationAnswers;
-	}
-
-	return returnedUser;
+	const { password, resetPasswordToken, createdAt, updatedAt, ...sanitizedUser } = user;
+	return sanitizedUser;
 }

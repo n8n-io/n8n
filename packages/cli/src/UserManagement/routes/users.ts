@@ -229,42 +229,42 @@ export function addUsersMethods(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Could not find user', undefined, 404);
 			}
 
-			const deletedUser = users.find((user) => user.id === req.params.id) as User;
+			const deleteUser = users.find((user) => user.id === req.params.id) as User;
 
 			if (transferId) {
 				const transferUser = users.find((user) => user.id === transferId) as User;
-				await Db.collections.SharedWorkflow!.update({ user: deletedUser }, { user: transferUser });
+				await Db.collections.SharedWorkflow!.update({ user: deleteUser }, { user: transferUser });
 				await Db.collections.SharedCredentials!.update(
-					{ user: deletedUser },
+					{ user: deleteUser },
 					{ user: transferUser },
 				);
 			} else {
 				const ownedWorkflows = await Db.collections.SharedWorkflow!.find({
 					relations: ['workflow'],
-					where: { user: deletedUser },
+					where: { user: deleteUser },
 				});
 				if (ownedWorkflows.length) {
 					await Db.collections.Workflow!.delete({
 						id: In(ownedWorkflows.map((ownedWorkflow) => ownedWorkflow.workflow.id)),
 					});
-					await Db.collections.SharedWorkflow!.delete({ user: deletedUser });
+					await Db.collections.SharedWorkflow!.delete({ user: deleteUser });
 				}
 
 				const ownedCredentials = await Db.collections.SharedCredentials!.find({
 					relations: ['credentials'],
-					where: { user: deletedUser },
+					where: { user: deleteUser },
 				});
 				if (ownedCredentials.length) {
 					await Db.collections.Credentials!.delete({
 						id: In(ownedCredentials.map((ownedCredential) => ownedCredential.credentials.id)),
 					});
-					await Db.collections.SharedWorkflow!.delete({ user: deletedUser });
+					await Db.collections.SharedWorkflow!.delete({ user: deleteUser });
 				}
 
 				const queryBuilderCredentials = Db.collections.Credentials!.createQueryBuilder('c');
 				queryBuilderCredentials.innerJoin('c.shared', 'shared');
 				queryBuilderCredentials.andWhere('shared.userId = :userId', {
-					userId: deletedUser.id,
+					userId: deleteUser.id,
 				});
 
 				queryBuilderCredentials.select(['c.id']);
@@ -274,10 +274,10 @@ export function addUsersMethods(this: N8nApp): void {
 
 				if (credentials.length) {
 					await Db.collections.Credentials!.remove(credentials);
-					await Db.collections.SharedCredentials!.delete({ user: deletedUser });
+					await Db.collections.SharedCredentials!.delete({ user: deleteUser });
 				}
 			}
-			await Db.collections.User!.delete({ id: deletedUser.id });
+			await Db.collections.User!.delete({ id: deleteUser.id });
 			return { success: true };
 		}),
 	);
