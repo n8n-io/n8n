@@ -501,9 +501,22 @@ export default mixins(
 					if (data.id && typeof data.id === 'string') {
 						data.id = parseInt(data.id, 10);
 					}
-					const blob = new Blob([JSON.stringify(data, null, 2)], {
+
+					// Add tag info
+					const exportData: IWorkflowDataUpdate = {
+						...data,
+						tags: (tags||[]).map(tagId => {
+							return {
+								...this.$store.getters["tags/getTagById"](tagId),
+								usageCount: undefined,
+							};
+						}),
+					};
+
+					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});
+
 
 					let workflowName = this.$store.getters.workflowName || 'unsaved_workflow';
 

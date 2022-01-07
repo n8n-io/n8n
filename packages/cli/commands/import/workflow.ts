@@ -10,7 +10,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Command, flags } from '@oclif/command';
 
-import { INode, INodeCredentialsDetails, LoggerProxy } from 'n8n-workflow';
+import { INode, INodeCredentialsDetails, ITag, LoggerProxy, setTagsForImport } from 'n8n-workflow';
 
 import * as fs from 'fs';
 import * as glob from 'fast-glob';
@@ -22,6 +22,7 @@ import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import { Role } from '../../src/databases/entities/Role';
 import { User } from '../../src/databases/entities/User';
+import { TagEntity } from '../../src/databases/entities/TagEntity';
 
 const FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -83,6 +84,7 @@ export class ImportWorkflowsCommand extends Command {
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
 			const credentials = (await Db.collections.Credentials?.find()) ?? [];
+			const tags = (await Db.collections.Tag?.find()) ?? [];
 
 			let totalImported = 0;
 
@@ -110,6 +112,17 @@ export class ImportWorkflowsCommand extends Command {
 								this.transformCredentials(node, credentials);
 							});
 						}
+
+						// Import tags
+						await setTagsForImport(
+							workflow as { tags: ITag[] },
+							tags as ITag[],
+							async (name: string): Promise<ITag> => {
+								const tag = new TagEntity();
+								tag.name = name;
+								return this.transactionManager.save<TagEntity>(tag);
+							},
+						);
 
 						await this.storeWorkflow(workflow, user);
 					}

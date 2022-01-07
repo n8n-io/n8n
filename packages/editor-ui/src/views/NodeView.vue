@@ -177,6 +177,8 @@ import {
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
+import { setTagsForImport } from "n8n-workflow/dist/src/WorkflowHelpers";
+import { createTag, getTags } from "@/api/tags";
 
 export default mixins(
 	copyPaste,
@@ -1213,6 +1215,17 @@ export default mixins(
 							this.nodeSelectedByName(node.name);
 						});
 					});
+
+					if (workflowData.tags) {
+						await setTagsForImport(workflowData as { tags: ITag[] }, await getTags(this.$store.getters.getRestApiContext), (name: string) => {
+							return createTag(this.$store.getters.getRestApiContext, {
+								name,
+							});
+						});
+						const tagIds = workflowData.tags.map((tag) => typeof tag === "string" ? tag : tag.id);
+						this.$store.commit('setWorkflowTagIds', tagIds || []);
+					}
+
 				} catch (error) {
 					this.$showError(
 						error,
