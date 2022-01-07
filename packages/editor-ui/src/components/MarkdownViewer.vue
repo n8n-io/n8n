@@ -130,11 +130,15 @@ export default Vue.extend({
 		margin-bottom: var(--spacing-s);
 	}
 
+	h3, h4 {
+		font-weight: var(--font-weight-bold);;
+	}
+
 	p,
 	span {
 		margin-bottom: var(--spacing-s);
-		font-size: var(--font-size-s);
-		line-height: var(--font-line-height-loose);
+		font-size: var(--font-size-m);
+		line-height: var(--font-line-height-xloose);
 	}
 
 	ul, ol {
@@ -150,7 +154,9 @@ export default Vue.extend({
 	}
 
 	code {
-		padding: 1rem;
+		margin: var(--spacing-2xl) 0 var(--spacing-l);
+		padding: var(--spacing-s);
+		background-color: $--node-creator-subcategory-panel-header-bacground-color;
 	}
 
 	.label {
