@@ -132,6 +132,10 @@ export default mixins(restApi).extend({
 
 		this.$store.commit('setActiveCredentialType', this.credentialType.name);
 
+		const key = `n8n-nodes-base.credentials.${this.credentialType.name}`;
+
+		if (this.$locale.exists(key)) return;
+
 		const credTranslation = await this.restApi().getCredentialTranslation(this.credentialType.name);
 
 		addCredentialTranslation(
@@ -144,6 +148,8 @@ export default mixins(restApi).extend({
 			if (!this.credentialType) {
 				return '';
 			}
+
+
 
 			const appName = getAppNameFromCredType(
 				(this.credentialType as ICredentialType).displayName,
