@@ -132,7 +132,6 @@ export class Salesforce implements INodeType {
 		description: 'Consume Salesforce API',
 		defaults: {
 			name: 'Salesforce',
-			color: '#429fd9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1744,8 +1743,8 @@ export class Salesforce implements INodeType {
 						if (additionalFields.type !== undefined) {
 							body.Type = additionalFields.type as string;
 						}
-						if (additionalFields.ammount !== undefined) {
-							body.Amount = additionalFields.ammount as number;
+						if (additionalFields.amount !== undefined) {
+							body.Amount = additionalFields.amount as number;
 						}
 						if (additionalFields.owner !== undefined) {
 							body.OwnerId = additionalFields.owner as string;
@@ -1813,8 +1812,8 @@ export class Salesforce implements INodeType {
 						if (updateFields.type !== undefined) {
 							body.Type = updateFields.type as string;
 						}
-						if (updateFields.ammount !== undefined) {
-							body.Amount = updateFields.ammount as number;
+						if (updateFields.amount !== undefined) {
+							body.Amount = updateFields.amount as number;
 						}
 						if (updateFields.owner !== undefined) {
 							body.OwnerId = updateFields.owner as string;

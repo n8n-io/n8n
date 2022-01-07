@@ -7,10 +7,10 @@
 			class="execute-node-button"
 		>
 			<n8n-button
-				:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
+				:title="$locale.baseText('runData.executesThisNodeAfterExecuting', { interpolate: { nodeName: node.name } })"
 				:loading="workflowRunning"
 				icon="play-circle"
-				label="Execute Node"
+				:label="$locale.baseText('runData.executeNode')"
 				@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 			/>
 		</div>
@@ -18,10 +18,10 @@
 		<div class="header">
 			<div class="title-text">
 				<n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
-					Items: {{ dataCount }}
+					{{ $locale.baseText('runData.items') }}: {{ dataCount }}
 				</n8n-text>
 				<div v-else class="title-text">
-					<n8n-text :bold="true">Items:</n8n-text>
+					<n8n-text :bold="true">{{ $locale.baseText('runData.items') }}:</n8n-text>
 					<span class="opts">
 						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
 							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
@@ -34,13 +34,13 @@
 					placement="right"
 				>
 					<div slot="content">
-						<n8n-text :bold="true" size="small">Start Time:</n8n-text> {{runMetadata.startTime}}<br/>
-						<n8n-text :bold="true" size="small">Execution Time:</n8n-text> {{runMetadata.executionTime}} ms
+						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
+						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $locale.baseText('runData.ms') }}
 					</div>
 					<font-awesome-icon icon="info-circle" class="primary-color" />
 				</n8n-tooltip>
 				<n8n-text :bold="true" v-if="maxOutputIndex > 0">
-					| Output:
+					| {{ $locale.baseText('runData.output') }}:
 				</n8n-text>
 				<span class="opts" v-if="maxOutputIndex > 0" >
 					<n8n-select size="mini" v-model="outputIndex" @click.stop>
@@ -50,7 +50,7 @@
 				</span>
 
 				<n8n-text :bold="true" v-if="maxRunIndex > 0">
-					| Data of Execution:
+					| {{ $locale.baseText('runData.dataOfExecution') }}:
 				</n8n-text>
 				<span class="opts">
 					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
@@ -62,20 +62,26 @@
 			</div>
 			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
 				<el-radio-group v-model="displayMode" size="mini">
-					<el-radio-button label="JSON" :disabled="showData === false"></el-radio-button>
-					<el-radio-button label="Table"></el-radio-button>
-					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
+					<el-radio-button :label="$locale.baseText('runData.json')" :disabled="showData === false"></el-radio-button>
+					<el-radio-button :label="$locale.baseText('runData.table')"></el-radio-button>
+					<el-radio-button :label="$locale.baseText('runData.binary')" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder" class="select-button">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === $locale.baseText('runData.json') && state.path !== deselectedPlaceholder" class="select-button">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
-						<n8n-icon-button title="Copy to Clipboard" icon="copy" />
+						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" />
 					</span>
 					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'itemPath'}">Copy Item Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">Copy Parameter Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'itemPath'}">
+							{{ $locale.baseText('runData.copyItemPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">
+							{{ $locale.baseText('runData.copyParameterPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">
+							{{ $locale.baseText('runData.copyValue') }}
+						</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
 			</div>
@@ -88,29 +94,33 @@
 				<span v-else>
 					<div v-if="showData === false" class="too-much-data">
 						<h3>
-							Node returned a large amount of data
+							{{ $locale.baseText('runData.nodeReturnedALargeAmountOfData') }}
 						</h3>
 
 						<div class="text">
-							The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />
-							Displaying it could cause problems!<br />
-							<br />
-							If you do decide to display it, avoid the JSON view!
+							{{ $locale.baseText(
+								'runData.theNodeContains',
+								{
+									interpolate: {
+										numberOfKb: parseInt(dataSize/1024).toLocaleString()
+									}
+								}
+							)}}
 						</div>
 
 						<n8n-button
 							icon="eye"
-							label="Display Data Anyway"
-							@click="displayMode = 'Table';showData = true;"
+							:label="$locale.baseText('runData.displayDataAnyway')"
+							@click="displayMode = $locale.baseText('runData.table');showData = true;"
 						/>
 					</div>
-					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
+					<div v-else-if="[$locale.baseText('runData.json'), $locale.baseText('runData.table')].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
-							No text data found
+							{{ $locale.baseText('runData.noTextDataFound') }}
 						</div>
-						<div v-else-if="displayMode === 'Table'">
+						<div v-else-if="displayMode === $locale.baseText('runData.table')">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
-								Entries exist but they do not contain any JSON data.
+								{{ $locale.baseText('runData.entriesExistButThey') }}
 							</div>
 							<table v-else-if="tableData !== null">
 								<tr>
@@ -122,7 +132,7 @@
 							</table>
 						</div>
 						<vue-json-pretty
-							v-else-if="displayMode === 'JSON'"
+							v-else-if="displayMode === $locale.baseText('runData.json')"
 							:data="jsonData"
 							:deep="10"
 							v-model="state.path"
@@ -136,9 +146,9 @@
 							class="json-data"
 						/>
 					</div>
-					<div v-else-if="displayMode === 'Binary'">
+					<div v-else-if="displayMode === $locale.baseText('runData.binary')">
 						<div v-if="binaryData.length === 0" class="no-data">
-							No binary data found
+							{{ $locale.baseText('runData.noBinaryDataFound') }}
 						</div>
 
 						<div v-else>
@@ -156,24 +166,24 @@
 												{{key}}
 											</div>
 											<div v-if="binaryData.fileName">
-												<div class="label">File Name: </div>
+												<div class="label">{{ $locale.baseText('runData.fileName') }}: </div>
 												<div class="value">{{binaryData.fileName}}</div>
 											</div>
 											<div v-if="binaryData.directory">
-												<div class="label">Directory: </div>
+												<div class="label">{{ $locale.baseText('runData.directory') }}: </div>
 												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
-												<div class="label">File Extension:</div>
+												<div class="label">{{ $locale.baseText('runData.fileExtension') }}:</div>
 												<div class="value">{{binaryData.fileExtension}}</div>
 											</div>
 											<div v-if="binaryData.mimeType">
-												<div class="label">Mime Type: </div>
+												<div class="label">{{ $locale.baseText('runData.mimeType') }}: </div>
 												<div class="value">{{binaryData.mimeType}}</div>
 											</div>
 
 											<div class="binary-data-show-data-button-wrapper">
-												<n8n-button size="small" label="Show Binary Data" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+												<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
 											</div>
 
 										</div>
@@ -186,9 +196,9 @@
 			</span>
 			<div v-else class="message">
 				<div>
-					<n8n-text :bold="true">No data</n8n-text ><br />
+					<n8n-text :bold="true">{{ $locale.baseText('runData.noData') }}</n8n-text ><br />
 					<br />
-					Data returned by this node will display here<br />
+					{{ $locale.baseText('runData.dataReturnedByThisNodeWillDisplayHere') }}<br />
 				</div>
 			</div>
 		</div>
@@ -222,7 +232,7 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
-import NodeErrorView from '@/components/Error/NodeViewError.vue';
+import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from "@/components/mixins/externalHooks";
@@ -254,7 +264,7 @@ export default mixins(
 				binaryDataPreviewActive: false,
 				dataSize: 0,
 				deselectedPlaceholder,
-				displayMode: 'Table',
+				displayMode: this.$locale.baseText('runData.table'),
 				state: {
 					value: '' as object | number | string,
 					path: deselectedPlaceholder,
@@ -431,10 +441,10 @@ export default mixins(
 				this.outputIndex = 0;
 				this.maxDisplayItems = 25;
 				this.refreshDataSize();
-				if (this.displayMode === 'Binary') {
+				if (this.displayMode === this.$locale.baseText('runData.binary')) {
 					this.closeBinaryDataDisplay();
 					if (this.binaryData.length === 0) {
-						this.displayMode = 'Table';
+						this.displayMode = this.$locale.baseText('runData.table');
 					}
 				}
 			},

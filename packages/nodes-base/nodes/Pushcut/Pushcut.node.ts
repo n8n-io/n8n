@@ -26,7 +26,6 @@ export class Pushcut implements INodeType {
 		description: 'Consume Pushcut API',
 		defaults: {
 			name: 'Pushcut',
-			color: '#1f2957',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

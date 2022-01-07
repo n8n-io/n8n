@@ -29,7 +29,6 @@ export class JiraTrigger implements INodeType {
 		description: 'Starts the workflow when Jira events occur',
 		defaults: {
 			name: 'Jira Trigger',
-			color: '#4185f7',
 		},
 		inputs: [],
 		outputs: ['main'],

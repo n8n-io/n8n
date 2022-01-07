@@ -30,6 +30,7 @@ export class FunctionItem implements INodeType {
 				name: 'functionCode',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
+					codeAutocomplete: 'functionItem',
 					editor: 'code',
 					rows: 10,
 				},
@@ -56,6 +57,21 @@ return item;`,
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length as unknown as number;
 		let item: INodeExecutionData;
+
+		const cleanupData = (inputData: IDataObject): IDataObject => {
+			Object.keys(inputData).map(key => {
+				if (inputData[key] !== null && typeof inputData[key] === 'object') {
+					if (inputData[key]!.constructor.name === 'Object') {
+						// Is regular node.js object so check its data
+						inputData[key] = cleanupData(inputData[key] as IDataObject);
+					} else {
+						// Is some special object like a Date so stringify
+						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+					}
+				}
+			});
+			return inputData;
+		};
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
@@ -113,12 +129,27 @@ return item;`,
 				let jsonData: IDataObject;
 				try {
 					// Execute the function code
-					jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
+					jsonData = await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({json:{ error: error.message }});
 						continue;
 					} else {
+						// Try to find the line number which contains the error and attach to error message
+						const stackLines = error.stack.split('\n');
+						if (stackLines.length > 0) {
+							const lineParts = stackLines[1].split(':');
+							if (lineParts.length > 2) {
+								const lineNumber = lineParts.splice(-2, 1);
+								if (!isNaN(lineNumber)) {
+									error.message = `${error.message} [Line ${lineNumber} | Item Index: ${itemIndex}]`;
+									return Promise.reject(error);
+								}
+							}
+						}
+
+						error.message = `${error.message} [Item Index: ${itemIndex}]`;
+
 						return Promise.reject(error);
 					}
 				}
@@ -129,7 +160,7 @@ return item;`,
 				}
 
 				const returnItem: INodeExecutionData = {
-					json: jsonData,
+					json: cleanupData(jsonData),
 				};
 
 				if (item.binary) {

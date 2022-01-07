@@ -22,7 +22,7 @@
 					</span>
 				</div>
 
-				<div class="node-executing-info" title="Node is executing">
+				<div class="node-executing-info" :title="$locale.baseText('node.nodeIsExecuting')">
 					<font-awesome-icon icon="sync-alt" spin />
 				</div>
 
@@ -37,31 +37,36 @@
 			</div>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
-				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
+				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
+
 					<font-awesome-icon icon="trash" />
 				</div>
-				<div v-touch:tap="disableNode" class="option" title="Activate/Deactivate Node" >
+				<div v-touch:tap="disableNode" class="option" :title="$locale.baseText('node.activateDeactivateNode')">
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
-				<div v-touch:tap="duplicateNode" class="option" title="Duplicate Node" >
+				<div v-touch:tap="duplicateNode" class="option" :title="$locale.baseText('node.duplicateNode')">
 					<font-awesome-icon icon="clone" />
 				</div>
-				<div v-touch:tap="setNodeActive" class="option touch" title="Edit Node" v-if="!isReadOnly">
+				<div v-touch:tap="setNodeActive" class="option touch" :title="$locale.baseText('node.editNode')" v-if="!isReadOnly">
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
-				<div v-touch:tap="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
+				<div v-touch:tap="executeNode" class="option" :title="$locale.baseText('node.executeNode')" v-if="!isReadOnly && !workflowRunning">
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
 			<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
 		</div>
 		<div class="node-description">
-			<div class="node-name" :title="data.name">
-				<p>{{ nodeTitle }}</p>
-				<p v-if="data.disabled">(Disabled)</p>
+			<div class="node-name" :title="nodeTitle">
+				<p>
+					{{ nodeTitle }}
+				</p>
+				<p v-if="data.disabled">
+					({{ $locale.baseText('node.disabled') }})
+				</p>
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
-				{{nodeSubtitle}}
+				{{ nodeSubtitle }}
 			</div>
 		</div>
 	</div>
@@ -118,10 +123,22 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		getTriggerNodeTooltip (): string | undefined {
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
-				return this.nodeType.eventTriggerDescription;
+				const nodeName = this.$locale.shortNodeType(this.nodeType.name);
+				const { eventTriggerDescription } = this.nodeType;
+				return this.$locale.nodeText().eventTriggerDescription(nodeName, eventTriggerDescription);
 			} else {
-				return `Waiting for you to create an event in ${this.nodeType && this.nodeType.displayName.replace(/Trigger/, "")}`;
+				return this.$locale.baseText(
+					'node.waitingForYouToCreateAnEventIn',
+					{
+						interpolate: {
+							nodeType: this.nodeType && this.nodeType.displayName.replace(/Trigger/, ""),
+						},
+					},
+				);
 			}
+		},
+		isPollingTypeNode (): boolean {
+			return !!(this.nodeType && this.nodeType.polling);
 		},
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
@@ -163,7 +180,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			const nodeIssues = NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
 
-			return 'Issues:<br />&nbsp;&nbsp;- ' + nodeIssues.join('<br />&nbsp;&nbsp;- ');
+			return `${this.$locale.baseText('node.issues')}:<br />&nbsp;&nbsp;- ` + nodeIssues.join('<br />&nbsp;&nbsp;- ');
 		},
 		nodeDisabledIcon (): string {
 			if (this.data.disabled === false) {
@@ -188,7 +205,17 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
+		shortNodeType (): string {
+			return this.$locale.shortNodeType(this.data.type);
+		},
 		nodeTitle (): string {
+			if (this.data.name === 'Start') {
+				return this.$locale.headerText({
+					key: `headers.start.displayName`,
+					fallback: 'Start',
+				});
+			}
+
 			return this.data.name;
 		},
 		waiting (): string | undefined {
@@ -199,9 +226,17 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				if (this.name === lastNodeExecuted) {
 					const waitDate = new Date(workflowExecution.waitTill);
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-						return 'The node is waiting indefinitely for an incoming webhook call.';
+						return this.$locale.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
 					}
-					return `Node is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}`;
+					return this.$locale.baseText(
+						'node.nodeIsWaitingTill',
+						{
+							interpolate: {
+								date: waitDate.toLocaleDateString(),
+								time: waitDate.toLocaleTimeString(),
+						 	},
+						},
+					);
 				}
 			}
 
@@ -243,7 +278,16 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
 		},
 		shouldShowTriggerTooltip () : boolean {
-			return !!this.node && this.workflowRunning && this.workflowDataItems === 0 && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.dragging;
+			return !!this.node &&
+				this.isTriggerNode &&
+				!this.isPollingTypeNode &&
+				!this.isNodeDisabled &&
+				this.workflowRunning &&
+				this.workflowDataItems === 0  &&
+				this.isSingleActiveTriggerNode &&
+				!this.isTriggerNodeTooltipEmpty &&
+				!this.hasIssues &&
+				!this.dragging;
 		},
  	},
 	watch: {
@@ -293,14 +337,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		disableNode () {
 			this.disableNodes([this.data]);
-			this.$telemetry.track('User set node enabled status', { node_type: this.data.type, is_enabled: !this.data.disabled, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.$store.getters.workflowId });
 		},
 		executeNode () {
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'execute', workflow_id: this.$store.getters.workflowId });
 		},
 		deleteNode () {
-			this.$externalHooks().run('node.deleteNode', { node: this.data});
-			this.$telemetry.track('User deleted node', { node_type: this.data.type, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'delete', workflow_id: this.$store.getters.workflowId });
 
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
@@ -308,11 +352,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			});
 		},
 		duplicateNode () {
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'duplicate', workflow_id: this.$store.getters.workflowId });
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
 			});
 		},
+
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
 		},
@@ -454,7 +500,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			top: -25px;
 			left: -10px;
 			width: 120px;
-			height: 24px;
+			height: 26px;
 			font-size: 0.9em;
 			text-align: left;
 			z-index: 10;
