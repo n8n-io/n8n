@@ -386,7 +386,8 @@
 		"issues": "Issues",
 		"nodeIsExecuting": "Node is executing",
 		"nodeIsWaitingTill": "Node is waiting till {date} {time}",
-		"theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall": "The node is waiting indefinitely for an incoming webhook call."
+		"theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall": "The node is waiting indefinitely for an incoming webhook call.",
+		"waitingForYouToCreateAnEventIn": "Waiting for you to create an event in {nodeType}"
 	},
 	"nodeCreator": {
 		"categoryNames": {
