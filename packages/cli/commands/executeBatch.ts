@@ -9,7 +9,7 @@
 import * as fs from 'fs';
 import { Command, flags } from '@oclif/command';
 
-import { UserSettings } from 'n8n-core';
+import { BinaryDataManager, IBinaryDataConfig, UserSettings } from 'n8n-core';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { INode, ITaskData, LoggerProxy } from 'n8n-workflow';
@@ -36,6 +36,7 @@ import {
 	NodeTypes,
 	WorkflowRunner,
 } from '../src';
+import config = require('../config');
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -190,6 +191,8 @@ export class ExecuteBatch extends Command {
 
 		const logger = getLogger();
 		LoggerProxy.init(logger);
+		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		await BinaryDataManager.init(binaryDataConfig, true);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);
