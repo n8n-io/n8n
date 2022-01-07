@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuid } from 'uuid';
 
 export class CreateUserManagement1636626154932 implements MigrationInterface {
 	name = 'CreateUserManagement1636626154932';
@@ -54,7 +54,7 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 
 		await queryRunner.query(`
 			INSERT INTO user(id, firstName, lastName, createdAt, updatedAt, globalRoleId) values
-			('${uuidv4()}', 'default', 'default', DateTime('now'), DateTime('now'), ${insertedOwnerRole[0].insertId})
+			('${uuid()}', 'default', 'default', DateTime('now'), DateTime('now'), ${insertedOwnerRole[0].insertId})
 		`);
 
 		await queryRunner.query(`

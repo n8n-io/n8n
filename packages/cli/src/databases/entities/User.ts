@@ -68,8 +68,8 @@ export class User {
 	@Column({ nullable: true })
 	password?: string;
 
-	@Column({ nullable: true })
-	resetPasswordToken?: string;
+	@Column({ type: String, nullable: true })
+	resetPasswordToken?: string | null;
 
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
