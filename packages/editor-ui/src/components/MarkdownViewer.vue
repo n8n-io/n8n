@@ -123,8 +123,8 @@ export default Vue.extend({
 <style lang="scss" module>
 .markdown {
 	color: var(--color-text-base);
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-loose);
+	font-size: var(--font-size-m);
+	line-height: var(--font-line-height-xloose);
 
 	h1, h2, h3, h4 {
 		margin-bottom: var(--spacing-s);
@@ -138,19 +138,24 @@ export default Vue.extend({
 	span {
 		margin-bottom: var(--spacing-s);
 		font-size: var(--font-size-m);
-		line-height: var(--font-line-height-xloose);
+	line-height: var(--font-line-height-xloose);
 	}
 
 	ul, ol {
 		margin-bottom: var(--spacing-s);
 		padding: var(--spacing-4xs);
 		padding-left: var(--spacing-m);
-		font-size: var(--font-size-s);
-		line-height: var(--font-line-height-loose);
+		font-size: var(--font-size-m);
+		line-height: var(--font-line-height-xloose);
 
 		li {
 			margin-top: 0.25em;
 		}
+	}
+
+	a {
+		font-size: var(--font-size-m);
+		line-height: var(--font-line-height-xloose);
 	}
 
 	code {
@@ -160,6 +165,8 @@ export default Vue.extend({
 	}
 
 	.label {
+		font-size: var(--font-size-m);
+	  line-height: var(--font-line-height-xloose);
     color: var(--color-text-base);
 	}
 
