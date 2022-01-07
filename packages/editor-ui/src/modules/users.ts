@@ -1,4 +1,4 @@
-import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateUser, updateUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
+import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
 import { LOGIN_STATUS, PERMISSIONS, ROLE } from '@/constants';
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
@@ -123,7 +123,7 @@ const module: Module<IUsersState, IRootState> = {
 				context.commit('setCurrentUserId', user.id);
 			}
 		},
-		async fetchCurrentUser(context: ActionContext<IUsersState, IRootState>) {
+		async getCurrentUser(context: ActionContext<IUsersState, IRootState>) {
 			const user = await getCurrentUser(context.rootGetters.getRestApiContext);
 			if (user) {
 				context.commit('addUsers', [user]);
@@ -172,7 +172,7 @@ const module: Module<IUsersState, IRootState> = {
 			context.commit('addUsers', [user]);
 		},
 		async updateCurrentUserPassword(context: ActionContext<IUsersState, IRootState>, params: {password: string}) {
-			await updateUserPassword(context.rootGetters.getRestApiContext, {password: params.password, id: context.getters.currentUserId});
+			await updateCurrentUserPassword(context.rootGetters.getRestApiContext, {password: params.password});
 		},
 		async deleteUser(context: ActionContext<IUsersState, IRootState>, params: { id: string, transferId?: string}) {
 			await deleteUser(context.rootGetters.getRestApiContext, params);

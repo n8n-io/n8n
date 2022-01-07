@@ -149,7 +149,7 @@ export async function loginCurrentUser(context: IRestApiContext): Promise<IUser 
 }
 
 export async function getCurrentUser(context: IRestApiContext): Promise<IUser | null> {
-	log(context, 'GET', '/user');
+	log(context, 'GET', '/me');
 
 	return await Promise.resolve(getCurrUser());
 }
@@ -243,8 +243,8 @@ export async function updateUser(context: IRestApiContext, params: IUser): Promi
 	return await Promise.resolve(newUser);
 }
 
-export async function updateUserPassword(context: IRestApiContext, params: {id: string, password: string}): Promise<void> {
-	log(context, 'PATCH', `/user/${params.id}/password`, {password: params.password});
+export async function updateCurrentUserPassword(context: IRestApiContext, params: {password: string}): Promise<void> {
+	log(context, 'PATCH', `/me/password`, {password: params.password});
 }
 
 export async function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<void> {

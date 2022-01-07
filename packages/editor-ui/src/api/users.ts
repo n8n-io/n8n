@@ -7,7 +7,7 @@ export async function loginCurrentUser(context: IRestApiContext): Promise<IUser 
 }
 
 export async function getCurrentUser(context: IRestApiContext): Promise<IUser | null> {
-	return await makeRestApiRequest(context, 'GET', '/user');
+	return await makeRestApiRequest(context, 'GET', '/me');
 }
 
 export async function login(context: IRestApiContext, params: {email: string, password: string}): Promise<IUser> {
@@ -46,8 +46,8 @@ export async function updateUser(context: IRestApiContext, params: IUser): Promi
 	return await makeRestApiRequest(context, 'PATCH', `/user/${params.id}`, params as unknown as IDataObject);
 }
 
-export async function updateUserPassword(context: IRestApiContext, params: {id: string, password: string}): Promise<void> {
-	return await makeRestApiRequest(context, 'PATCH', `/user/${params.id}/password`, params);
+export async function updateCurrentUserPassword(context: IRestApiContext, params: {password: string}): Promise<void> {
+	return await makeRestApiRequest(context, 'PATCH', `/me/password`, params);
 }
 
 export async function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<void> {
