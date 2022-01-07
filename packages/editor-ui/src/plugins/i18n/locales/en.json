@@ -704,7 +704,7 @@
 		"thanks": "Thanks!",
 		"theseQuestionsHelpUs": "These questions help us tailor n8n to you",
 		"whichIndustriesIsYourCompanyIn": "Which industries is your company in?",
-		"whichOfTheseAreasDoYouMainlyWorkIn": "Which areas do you mainly work in?"
+		"whichAreasDoYouMainlyWorkIn": "Which areas do you mainly work in?"
 	},
 	"pushConnection": {
 		"showMessage": {
