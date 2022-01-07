@@ -11,7 +11,7 @@ import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
 import { issueJWT } from '../auth/jwt';
 
-export function addUsersMethods(this: N8nApp): void {
+export function usersNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: AuthenticatedRequest, res: Response) => {

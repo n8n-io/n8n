@@ -11,16 +11,16 @@ import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { addAuthenticationMethods } from './auth';
+import { authenticationMethods } from './auth';
 import config = require('../../../config');
 import { Db, GenericHelpers, ResponseHelper } from '../..';
 import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
 import { sanitizeUser, isEmailSetup, isValidEmail } from '../UserManagementHelper';
 import { issueJWT } from '../auth/jwt';
-import { addMeNamespace } from './me';
-import { addUsersMethods } from './users';
-import { addPasswordResetNamespace } from './passwordReset';
+import { meNamespace } from './me';
+import { usersNamespace } from './users';
+import { passwordResetNamespace } from './passwordReset';
 
 export async function addRoutes(
 	this: N8nApp,
@@ -119,10 +119,10 @@ export async function addRoutes(
 		next();
 	});
 
-	addAuthenticationMethods.apply(this);
-	addMeNamespace.apply(this);
-	addPasswordResetNamespace.apply(this);
-	addUsersMethods.apply(this);
+	authenticationMethods.apply(this);
+	meNamespace.apply(this);
+	passwordResetNamespace.apply(this);
+	usersNamespace.apply(this);
 
 	// ----------------------------------------
 	// Temporary code below - must be refactored
