@@ -51,7 +51,7 @@ export async function updateCurrentUserPassword(context: IRestApiContext, params
 }
 
 export async function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<void> {
-	await makeRestApiRequest(context, 'DELETE', `/user/${id}`, transferId ? { transferId } : {});
+	await makeRestApiRequest(context, 'DELETE', `/users/${id}`, transferId ? { transferId } : {});
 }
 
 export async function getUsers(context: IRestApiContext): Promise<IUser[]> {
@@ -62,6 +62,6 @@ export async function inviteUsers(context: IRestApiContext, params: {email: stri
 	return await makeRestApiRequest(context, 'POST', '/users', params);
 }
 
-export async function reinvite(context: IRestApiContext, params: {id: string}): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/reinvite', params);
+export async function reinvite(context: IRestApiContext, {id}: {id: string}): Promise<void> {
+	await makeRestApiRequest(context, 'POST', `/users/${id}/reinvite`);
 }

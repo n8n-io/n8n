@@ -248,7 +248,7 @@ export async function updateCurrentUserPassword(context: IRestApiContext, params
 }
 
 export async function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<void> {
-	log(context, 'DELETE', `/user/${id}`, transferId ? { transferId } : {});
+	log(context, 'DELETE', `/users/${id}`, transferId ? { transferId } : {});
 	removeUser(id);
 }
 
@@ -274,7 +274,7 @@ export async function inviteUsers(context: IRestApiContext, params: {email: stri
 	return await Promise.resolve(users);
 }
 
-export async function reinvite(context: IRestApiContext, params: {id: string}): Promise<void> {
-	log(context, 'POST', '/reinvite', params);
+export async function reinvite(context: IRestApiContext, {id}: {id: string}): Promise<void> {
+	log(context, 'POST', `/users/${id}/reinvite`);
 }
 
