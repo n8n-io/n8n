@@ -20,11 +20,8 @@
 			</div>
 		</div>
 		<div>
-			<div v-show="!loading" :class="$style.image">
+			<div :class="$style.image">
 				<n8n-image :images="template.mainImage" />
-			</div>
-			<div v-show="loading" :class="$style.image">
-				<n8n-loading :animated="true" :loading="loading" :rows="1" variant="image" />
 			</div>
 			<div :class="$style.content">
 				<div :class="$style.markdown">
@@ -90,9 +87,7 @@ export default mixins(workflowHelpers).extend({
 				this.$router.go(-1);
 			}, 2000);
 		}
-		setTimeout(() => {
-			this.loading = false;
-		}, 2000);
+		this.loading = false;
 	},
 });
 </script>

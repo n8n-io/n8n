@@ -1,10 +1,17 @@
-<template functional>
+<template>
 	<div :class="$style.wrapper">
-		<img :class="$style.image" :srcset="$options.methods.getSrcset(props.images)" />
+		<div v-show="imageIsLoaded">
+			<img :class="$style.image" :srcset="getSrcset(images)" @load="imageIsLoaded = true"/>
+		</div>
+		<div>
+			<n8n-loading :animated="true" :loading="!imageIsLoaded" :rows="1" variant="image" />
+		</div>
 	</div>
 </template>
 
 <script lang="ts">
+import N8nLoading from '../N8nLoading';
+
 interface IProps {
 	url: string;
 	metadata: IMetadata;
@@ -21,6 +28,14 @@ export default {
 			type: Array,
 		},
 	},
+	components: {
+		N8nLoading,
+	},
+	data() {
+		return {
+			imageIsLoaded: false,
+		};
+	},
 	methods: {
 		getSrcset(images: IProps[]): string {
 			let srcset = '';
@@ -36,6 +51,9 @@ export default {
 			}
 			return srcset;
 		},
+		onLoad() {
+			this.imageIsLoaded = true;
+		}
 	},
 };
 </script>
