@@ -145,7 +145,7 @@ export class WorkflowRunnerProcess {
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
 		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli);
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 		await BinaryDataManager.init(binaryDataConfig);
