@@ -1,6 +1,8 @@
 <template>
 	<div class="template-details">
-		<template-block :title="$locale.baseText('template.details.appsInTheWorkflow')">
+		<n8n-loading :animated="true" :loading="loading" :rows="5" variant="p" />
+
+		<template-block v-if="!loading" :title="$locale.baseText('template.details.appsInTheWorkflow')">
 			<template v-slot:content>
 				<div :class="$style.icons">
 					<NodeIcon
@@ -13,13 +15,13 @@
 			</template>
 		</template-block>
 
-		<template-block :title="$locale.baseText('template.details.categories')">
+		<template-block v-if="!loading" :title="$locale.baseText('template.details.categories')">
 			<template v-slot:content>
 				<n8n-tags :tags="template.categories" />
 			</template>
 		</template-block>
 
-		<template-block :title="$locale.baseText('template.details.details')">
+		<template-block v-if="!loading" :title="$locale.baseText('template.details.details')">
 			<template v-slot:content>
 				<div :class="$style.text">
 					<n8n-text v-if="template.user" size="small" color="text-base">
@@ -38,6 +40,7 @@
 				</div>
 			</template>
 		</template-block>
+
 	</div>
 </template>
 <script lang="ts">
@@ -49,6 +52,9 @@ import { abbreviateNumber } from '../helpers';
 
 export default Vue.extend({
 	props: {
+		loading: {
+			type: Boolean,
+		},
 		template: {
 			type: Object,
 		},

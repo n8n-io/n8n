@@ -29,17 +29,13 @@
 			<div :class="$style.content">
 				<div :class="$style.markdown">
 					<markdown-viewer
-						v-if="!loading"
 						:content="template.description"
 						:images="template.image"
+						:loading="loading"
 					/>
-					<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
-					<div v-if="loading" :class="$style.spacer" />
-					<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
 				</div>
 				<div :class="$style.details">
-					<template-details v-if="!loading" :template="template" />
-					<n8n-loading :animated="true" :loading="loading" :rows="5" variant="p" />
+					<template-details :loading="loading" :template="template" />
 				</div>
 			</div>
 		</div>
@@ -111,17 +107,14 @@ export default mixins(workflowHelpers).extend({
 
 .container {
 	width: 100%;
+	max-width: 1024px;
+	margin: 0 var(--spacing-3xl) 0 129px;
+	padding: var(--spacing-3xl) 0 var(--spacing-3xl);
 
 	@media (max-width: $--breakpoint-md) {
 		max-width: 900px;
 		margin: 0 var(--spacing-2xl) 0 113px;
 		padding: var(--spacing-2xl) 0 var(--spacing-2xl);
-	}
-
-	@media (min-width: $--breakpoint-md) {
-		max-width: 1024px;
-		margin: 0 var(--spacing-3xl) 0 129px;
-		padding: var(--spacing-3xl) 0 var(--spacing-3xl);
 	}
 }
 
@@ -164,6 +157,7 @@ export default mixins(workflowHelpers).extend({
 }
 
 .markdown {
+	width: 100%;
 	padding-right: var(--spacing-2xl);
 }
 
@@ -172,6 +166,10 @@ export default mixins(workflowHelpers).extend({
 }
 
 .details {
-	min-width: 180px;
+	width: 180px;
+
+	@media (max-width: $--breakpoint-xs) {
+		width: auto;
+	}
 }
 </style>

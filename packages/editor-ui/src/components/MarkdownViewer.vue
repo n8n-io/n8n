@@ -1,5 +1,13 @@
 <template>
-	<div ref="editor" :class="$style.markdown" v-html="getContent" />
+  <div>
+		<div v-if="!loading" ref="editor" :class="$style.markdown" v-html="getContent" />
+
+		<div v-if="loading">
+			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
+			<div :class="$style.spacer" />
+			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
+		</div>
+	</div>
 </template>
 
 <script lang="ts">
@@ -49,6 +57,9 @@ export default Vue.extend({
 		},
 		images: {
 			type: Array,
+		},
+		loading: {
+			type: Boolean,
 		},
 		options: {
 			type: Object,
@@ -174,6 +185,10 @@ export default Vue.extend({
 		width: 100%;
 		border: 1px solid $--node-creator-border-color;
 		border-radius: var(--border-radius-large);
+	}
+
+	.spacer {
+		margin: 56px;
 	}
 }
 </style>
