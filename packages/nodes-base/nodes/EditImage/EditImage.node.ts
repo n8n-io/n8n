@@ -1184,6 +1184,11 @@ export class EditImage implements INodeType {
 					gmInstance = gmInstance.background('transparent');
 				}
 
+				const newItem: INodeExecutionData = {
+					json: item.json,
+					binary: {},
+				};
+
 				if (operation === 'information') {
 					// Just return the information
 					const imageData = await new Promise<IDataObject>((resolve, reject) => {
@@ -1196,8 +1201,7 @@ export class EditImage implements INodeType {
 						});
 					});
 
-					item.json = imageData;
-					returnData.push(item);
+					newItem.json = imageData;
 				}
 
 				for (let i = 0; i < operations.length; i++) {
@@ -1307,11 +1311,6 @@ export class EditImage implements INodeType {
 							.drawText(operationData.positionX as number, operationData.positionY as number, renderText);
 					}
 				}
-
-				const newItem: INodeExecutionData = {
-					json: item.json,
-					binary: {},
-				};
 
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old
