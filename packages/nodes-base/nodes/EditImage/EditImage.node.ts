@@ -76,6 +76,11 @@ const nodeOperations: INodePropertyOptions[] = [
 		value: 'text',
 		description: 'Adds text to image',
 	},
+	{
+		name: 'Transparent',
+		value: 'transparent',
+		description: 'Make a color in image transparent',
+	},
 ];
 
 
@@ -822,6 +827,25 @@ const nodeOperationOptions: INodeProperties[] = [
 		},
 		description: 'Y (vertical) shear degrees.',
 	},
+
+
+	// ----------------------------------
+	//         transparent
+	// ----------------------------------
+	{
+		displayName: 'Color',
+		name: 'color',
+		type: 'color',
+		default: '#ff0000',
+		displayOptions: {
+			show: {
+				operation: [
+					'transparent',
+				],
+			},
+		},
+		description: 'The color to make transparent',
+	},
 ];
 
 
@@ -1309,7 +1333,9 @@ export class EditImage implements INodeType {
 							.fill(operationData.fontColor as string)
 							.fontSize(operationData.fontSize as number)
 							.drawText(operationData.positionX as number, operationData.positionY as number, renderText);
-					}
+						} else if (operationData.operation === 'transparent') {
+							gmInstance = gmInstance!.transparent(operationData.color as string);
+						}
 				}
 
 				if (item.binary !== undefined) {
