@@ -11,7 +11,10 @@
 				</div>
 			</div>
 			<div>
-				<div :class="$style.sectionTitle">
+				<div :class="$style.sectionHeader">
+					<SmtpAlert />
+				</div>
+				<div :class="$style.sectionHeader">
 					<n8n-heading size="large">Basic information</n8n-heading>
 				</div>
 				<n8n-form-inputs
@@ -24,7 +27,7 @@
 				/>
 			</div>
 			<div>
-				<div :class="$style.sectionTitle">
+				<div :class="$style.sectionHeader">
 					<n8n-heading size="large">Security</n8n-heading>
 				</div>
 				<div>
@@ -48,8 +51,7 @@ import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
-
-
+import SmtpAlert from '../components/SmtpAlert.vue';
 
 export default mixins(
 	showMessage,
@@ -57,6 +59,7 @@ export default mixins(
 	name: 'SettingsPersonalView',
 	components: {
 		SettingsView,
+		SmtpAlert,
 	},
 	data() {
 		return {
@@ -178,7 +181,7 @@ export default mixins(
 	}
 }
 
-.sectionTitle {
+.sectionHeader {
 	margin-bottom: var(--spacing-s);
 }
 </style>

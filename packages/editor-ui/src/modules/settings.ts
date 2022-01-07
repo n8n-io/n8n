@@ -21,6 +21,7 @@ const module: Module<ISettingsState, IRootState> = {
 		userManagement: {
 			enabled: false,
 			showSetupOnFirstLoad: false,
+			smtpSetup: false,
 		},
 	},
 	getters: {
@@ -44,12 +45,16 @@ const module: Module<ISettingsState, IRootState> = {
 		getPromptsData(state: ISettingsState) {
 			return state.promptsData;
 		},
+		isSmtpSetup(state: ISettingsState) {
+			return state.userManagement.smtpSetup;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
 			state.settings = settings;
 			state.userManagement.enabled = settings.userManagement.enabled;
 			state.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
+			state.userManagement.smtpSetup = settings.userManagement.smtpSetup;
 		},
 		setPersonalizationAnswers(state: ISettingsState, answers: IPersonalizationSurveyAnswers) {
 			Vue.set(state.settings, 'personalizationSurvey', {

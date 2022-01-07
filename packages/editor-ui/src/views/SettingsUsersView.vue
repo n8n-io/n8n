@@ -13,7 +13,8 @@
 					@click="redirectToSetup"
 				/>
 			</div>
-			<div v-else>
+			<div :class="$style.usersContainer" v-else>
+				<SmtpAlert />
 				<div :class="$style.buttonContainer">
 						<n8n-button label="Invite new user" icon="plus-square" @click="onInvite" size="large" />
 				</div>
@@ -28,6 +29,7 @@ import { INVITE_USER_MODAL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
 
 import SettingsView from './SettingsView.vue';
+import SmtpAlert from '../components/SmtpAlert.vue';
 import { N8nUsersList } from 'n8n-design-system';
 import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
@@ -38,12 +40,14 @@ export default mixins(showMessage).extend({
 	components: {
 		SettingsView,
 		'n8n-users-list': N8nUsersList,
+		SmtpAlert,
 	},
 	async mounted() {
 		await this.$store.dispatch('users/fetchUsers');
 	},
 	computed: {
 		...mapGetters('users', ['allUsers', 'currentUserId', 'showUMSetupWarning']),
+		...mapGetters('settings', ['isSmtpSetup']),
 	},
 	methods: {
 		redirectToSetup() {
@@ -109,9 +113,14 @@ export default mixins(showMessage).extend({
 	}
 }
 
+.usersContainer > * {
+	margin-bottom: var(--spacing-2xs);
+}
+
 .buttonContainer {
 	display: flex;
 	justify-content: right;
+	margin-bottom: var(--spacing-2xs);
 }
 
 .setupInfoContainer {

@@ -44,6 +44,7 @@ import lang from 'element-ui/lib/locale/lang/en';
 import locale from 'element-ui/lib/locale';
 
 import {
+	N8nAlert,
 	N8nActionBox,
 	N8nAvatar,
 	N8nActionToggle,
@@ -73,6 +74,7 @@ import { ElMessageBoxOptions } from "element-ui/types/message-box";
 Vue.use(Fragment.Plugin);
 
 // n8n design system
+Vue.use(N8nAlert);
 Vue.use(N8nActionBox);
 Vue.use(N8nActionToggle);
 Vue.use(N8nAvatar);

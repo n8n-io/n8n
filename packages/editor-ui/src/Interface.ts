@@ -515,6 +515,7 @@ export interface IN8nPromptResponse {
 export interface IUserManagementConfig {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
+	smtpSetup: boolean;
 }
 
 export interface IPermissionGroup {
