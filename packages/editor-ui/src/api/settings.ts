@@ -11,15 +11,15 @@ export async function submitPersonalizationSurvey(context: IRestApiContext, para
 	await makeRestApiRequest(context, 'POST', '/user-survey', params as unknown as IDataObject);
 }
 
-export async function getPromptsData(instanceId: string): Promise<IN8nPrompts> {
-	return await get(TEMPLATES_BASE_URL, '/prompts', {}, {'n8n-instance-id': instanceId});
+export async function getPromptsData(instanceId: string, userId: string): Promise<IN8nPrompts> {
+	return await get(TEMPLATES_BASE_URL, '/prompts', {}, {'n8n-instance-id': instanceId, 'n8n-user-id': userId});
 }
 
-export async function submitContactInfo(instanceId: string, email: string): Promise<void> {
-	return await post(TEMPLATES_BASE_URL, '/prompt', { email }, {'n8n-instance-id': instanceId});
+export async function submitContactInfo(instanceId: string, userId: string, email: string): Promise<void> {
+	return await post(TEMPLATES_BASE_URL, '/prompt', { email }, {'n8n-instance-id': instanceId, 'n8n-user-id': userId});
 }
 
-export async function submitValueSurvey(instanceId: string, params: IN8nValueSurveyData): Promise<IN8nPrompts> {
-	return await post(TEMPLATES_BASE_URL, '/value-survey', params, {'n8n-instance-id': instanceId});
+export async function submitValueSurvey(instanceId: string, userId: string, params: IN8nValueSurveyData): Promise<IN8nPrompts> {
+	return await post(TEMPLATES_BASE_URL, '/value-survey', params, {'n8n-instance-id': instanceId, 'n8n-user-id': userId});
 }
 

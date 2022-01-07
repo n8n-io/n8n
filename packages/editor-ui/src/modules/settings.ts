@@ -109,7 +109,9 @@ const module: Module<ISettingsState, IRootState> = {
 			}
 
 			try {
-				const promptsData: IN8nPrompts = await getPromptsData(context.state.settings.instanceId);
+				const instanceId = context.state.settings.instanceId;
+				const userId = context.rootGetters['users/currentUserId'];
+				const promptsData: IN8nPrompts = await getPromptsData(instanceId, userId);
 
 				if (promptsData && promptsData.showContactPrompt) {
 					context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
@@ -125,14 +127,18 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		async submitContactInfo(context: ActionContext<ISettingsState, IRootState>, email: string) {
 			try {
-				return await submitContactInfo(context.state.settings.instanceId, email);
+				const instanceId = context.state.settings.instanceId;
+				const userId = context.rootGetters['users/currentUserId'];
+				return await submitContactInfo(instanceId, userId, email);
 			} catch (e) {
 				return e;
 			}
 		},
 		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IN8nValueSurveyData) {
 			try {
-				return await submitValueSurvey(context.state.settings.instanceId, params);
+				const instanceId = context.state.settings.instanceId;
+				const userId = context.rootGetters['users/currentUserId'];
+				return await submitValueSurvey(instanceId, userId, params);
 			} catch (e) {
 				return e;
 			}
