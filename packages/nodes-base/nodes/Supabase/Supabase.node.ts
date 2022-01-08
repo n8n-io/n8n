@@ -181,7 +181,7 @@ export class Supabase implements INodeType {
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 
 						if (!keys.length) {
-							throw new NodeOperationError(this.getNode(), 'At least one filter must be defined');
+							throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined');
 						}
 
 						if (matchType === 'allFilters') {
@@ -218,13 +218,13 @@ export class Supabase implements INodeType {
 				const endpoint = `/${tableId}`;
 
 				for (let i = 0; i < length; i++) {
-					const primaryKey = this.getNodeParameter('primaryKey.data', i, []) as IDataObject[];
-					const data = primaryKey.reduce((obj, value) => buildGetQuery(obj, value), {});
+					const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
+					const data = keys.reduce((obj, value) => buildGetQuery(obj, value), {});
 					Object.assign(qs, data);
 					let rows;
 
-					if (!primaryKey.length) {
-						throw new NodeOperationError(this.getNode(), 'The primary key has to be defined');
+					if (!keys.length) {
+						throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined');
 					}
 
 					try {
@@ -296,7 +296,7 @@ export class Supabase implements INodeType {
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 
 						if (!keys.length) {
-							throw new NodeOperationError(this.getNode(), 'At least one filter must be defined');
+							throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined');
 						}
 
 						if (matchType === 'allFilters') {

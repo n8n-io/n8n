@@ -227,7 +227,7 @@ export const rowFields: INodeProperties[] = [
 	/*                                row:get                                     */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Row Primary Key',
+		displayName: 'Select Conditions',
 		name: 'primaryKey',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -244,11 +244,11 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		placeholder: 'Add Primary Key Column',
+		placeholder: 'Add Condition',
 		options: [
 			{
-				displayName: 'Primary Key Column',
-				name: 'data',
+				displayName: 'Conditions',
+				name: 'conditions',
 				values: [
 					{
 						displayName: 'Name',
