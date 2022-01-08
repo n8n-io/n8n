@@ -6,6 +6,8 @@ import {
 	TopicMessages,
 } from 'kafkajs';
 
+import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -72,6 +74,44 @@ export class Kafka implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
+			},
+			{
+				displayName: 'Use Schema Registry',
+				name: 'useSchemaRegistry',
+				type: 'boolean',
+				default: false,
+				description: 'Use Confluent Schema Registry.',
+			},
+			{
+				displayName: 'Schema Registry URL',
+				name: 'schemaRegistryUrl',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [
+							true,
+						],
+					},
+				},
+				placeholder: 'https://schema-registry-domain:8081',
+				default: '',
+				description: 'URL of the schema registry.',
+			},
+			{
+				displayName: 'Event Name',
+				name: 'eventName',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [
+							true,
+						],
+					},
+				},
+				default: '',
+				description: 'Namespace and Name of Schema in Schema Registry (namespace.name).',
 			},
 			{
 				displayName: 'Headers',
@@ -170,6 +210,8 @@ export class Kafka implements INodeType {
 			const options = this.getNodeParameter('options', 0) as IDataObject;
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
+			const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
+
 			const timeout = options.timeout as number;
 
 			let compression = CompressionTypes.None;
@@ -211,13 +253,27 @@ export class Kafka implements INodeType {
 
 			await producer.connect();
 
-			let message: string;
+			let message: string | Buffer;
 
 			for (let i = 0; i < length; i++) {
 				if (sendInputData === true) {
 					message = JSON.stringify(items[i].json);
 				} else {
 					message = this.getNodeParameter('message', i) as string;
+				}
+
+				if (useSchemaRegistry) {
+					try {
+						const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
+						const eventName = this.getNodeParameter('eventName', 0) as string;
+
+						const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+						const id = await registry.getLatestSchemaId(eventName);
+
+						message = await registry.encode(id, JSON.parse(message));
+					} catch (exception) {
+						throw new NodeOperationError(this.getNode(), 'Verify your Schema Registry configuration');
+					}
 				}
 
 				const topic = this.getNodeParameter('topic', i) as string;
