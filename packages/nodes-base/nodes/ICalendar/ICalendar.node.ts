@@ -313,9 +313,9 @@ export class ICalendar implements INodeType {
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 				let fileName = 'event.ics';
 
-				let eventStart = moment(start).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray;
+				const eventStart = moment(start).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray;
 				eventStart[1]++;
-				let eventEnd = moment(end).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray;
+				const eventEnd = moment(end).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray;
 				eventEnd[1]++;
 
 				if (additionalFields.fileName) {
