@@ -564,7 +564,7 @@ export const schema = {
 					throw new TypeError(`The Nodes to include is not a valid Array of strings.`);
 				}
 			},
-			default: '[]',
+			default: undefined,
 			env: 'NODES_INCLUDE',
 		},
 		exclude: {

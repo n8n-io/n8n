@@ -62,13 +62,19 @@ type ToReturnType<T extends ConfigOptionPath | ExceptionPath> = T extends Numeri
 	? boolean
 	: T extends StringLiteralArrayPath
 	? StringLiteralMap[T]
-	: T extends 'binaryDataManager'
-	? IBinaryDataConfig
-	: T extends 'queue.bull.redis'
-	? object
+	: T extends ExceptionPath
+	? HandleExceptionPath<T>
 	: T extends StringPath
 	? string
 	: unknown;
+
+type HandleExceptionPath<T> = T extends 'binaryDataManager'
+	? IBinaryDataConfig
+	: T extends 'queue.bull.redis'
+	? object
+	: T extends 'nodes.include'
+	? undefined
+	: T;
 
 // -----------------------------------
 //        string literals map
@@ -114,7 +120,7 @@ type RemoveExcess<T> = T extends [...infer Path, 'format' | 'default']
 //        module augmentation
 // -----------------------------------
 
-type ExceptionPath = 'queue.bull.redis' | 'binaryDataManager';
+type ExceptionPath = 'queue.bull.redis' | 'binaryDataManager' | 'nodes.include';
 
 declare module 'convict' {
 	interface Config<T> {
