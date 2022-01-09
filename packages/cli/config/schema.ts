@@ -8,7 +8,7 @@ export const schema = {
 	database: {
 		type: {
 			doc: 'Type of database to use',
-			format: ['sqlite', 'mariadb', 'mysqldb', 'postgresdb'],
+			format: ['sqlite', 'mariadb', 'mysqldb', 'postgresdb'] as const,
 			default: 'sqlite',
 			env: 'DB_TYPE',
 		},
@@ -167,14 +167,14 @@ export const schema = {
 		// main-process instead.
 		process: {
 			doc: 'In what process workflows should be executed',
-			format: ['main', 'own'],
+			format: ['main', 'own'] as const,
 			default: 'own',
 			env: 'EXECUTIONS_PROCESS',
 		},
 
 		mode: {
 			doc: 'If it should run executions directly or via queue',
-			format: ['regular', 'queue'],
+			format: ['regular', 'queue'] as const,
 			default: 'regular',
 			env: 'EXECUTIONS_MODE',
 		},
@@ -211,13 +211,13 @@ export const schema = {
 		// save behaviour can be set.
 		saveDataOnError: {
 			doc: 'What workflow execution data to save on error',
-			format: ['all', 'none'],
+			format: ['all', 'none'] as const,
 			default: 'all',
 			env: 'EXECUTIONS_DATA_SAVE_ON_ERROR',
 		},
 		saveDataOnSuccess: {
 			doc: 'What workflow execution data to save on success',
-			format: ['all', 'none'],
+			format: ['all', 'none'] as const,
 			default: 'all',
 			env: 'EXECUTIONS_DATA_SAVE_ON_SUCCESS',
 		},
@@ -355,7 +355,7 @@ export const schema = {
 		doc: 'IP address n8n should listen on',
 	},
 	protocol: {
-		format: ['http', 'https'],
+		format: ['http', 'https'] as const,
 		default: 'http',
 		env: 'N8N_PROTOCOL',
 		doc: 'HTTP Protocol via which n8n can be reached',
