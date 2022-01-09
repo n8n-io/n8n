@@ -118,6 +118,6 @@ type ExceptionPath = 'queue.bull.redis' | 'binaryDataManager';
 
 declare module 'convict' {
 	interface Config<T> {
-		get<Path extends ConfigOptionPath | ExceptionPath>(path: Path): ToReturnType<Path>;
+		getEnv<Path extends ConfigOptionPath | ExceptionPath>(path: Path): ToReturnType<Path>;
 	}
 }

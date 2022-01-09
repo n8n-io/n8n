@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable no-console */
 
 import * as convict from 'convict';
@@ -7,6 +8,8 @@ import { schema } from './schema';
 dotenv.config();
 
 const config = convict(schema);
+
+config.getEnv = config.get;
 
 // Overwrite default configuration with settings which got defined in
 // optional configuration files
