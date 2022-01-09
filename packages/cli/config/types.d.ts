@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
+import { IBinaryDataConfig } from '../../core/dist/src';
 import { schema } from './schema';
 
 // -----------------------------------
@@ -55,12 +56,16 @@ type StringPath = CollectPathsByType<string>;
 
 type ConfigOptionPath = NumericPath | BooleanPath | StringPath | StringLiteralArrayPath;
 
-type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
+type ToReturnType<T extends ConfigOptionPath | ExceptionPath> = T extends NumericPath
 	? number
 	: T extends BooleanPath
 	? boolean
 	: T extends StringLiteralArrayPath
 	? StringLiteralMap[T]
+	: T extends 'binaryDataManager'
+	? IBinaryDataConfig
+	: T extends 'queue.bull.redis'
+	? object
 	: T extends StringPath
 	? string
 	: unknown;
@@ -109,8 +114,10 @@ type RemoveExcess<T> = T extends [...infer Path, 'format' | 'default']
 //        module augmentation
 // -----------------------------------
 
+type ExceptionPath = 'queue.bull.redis' | 'binaryDataManager';
+
 declare module 'convict' {
 	interface Config<T> {
-		get<Path extends ConfigOptionPath>(path: Path): ToReturnType<Path>;
+		get<Path extends ConfigOptionPath | ExceptionPath>(path: Path): ToReturnType<Path>;
 	}
 }
