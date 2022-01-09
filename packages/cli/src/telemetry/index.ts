@@ -57,9 +57,9 @@ export class Telemetry {
 		this.instanceId = instanceId;
 		this.versionCli = versionCli;
 
-		const enabled = config.get('diagnostics.enabled') as boolean;
+		const enabled = config.get('diagnostics.enabled');
 		if (enabled) {
-			const conf = config.get('diagnostics.config.backend') as string;
+			const conf = config.get('diagnostics.config.backend');
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {

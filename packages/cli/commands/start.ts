@@ -99,7 +99,7 @@ export class Start extends Command {
 
 			const skipWebhookDeregistration = config.get(
 				'endpoints.skipWebhoooksDeregistrationOnShutdown',
-			) as boolean;
+			);
 
 			const removePromises = [];
 			if (activeWorkflowRunner !== undefined && !skipWebhookDeregistration) {

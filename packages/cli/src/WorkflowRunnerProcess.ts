@@ -175,27 +175,27 @@ export class WorkflowRunnerProcess {
 		} else if (
 			inputData.workflowData.settings !== undefined &&
 			inputData.workflowData.settings.saveExecutionProgress !== false &&
-			(config.get('executions.saveExecutionProgress') as boolean)
+			config.get('executions.saveExecutionProgress')
 		) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		} else if (
 			inputData.workflowData.settings === undefined &&
-			(config.get('executions.saveExecutionProgress') as boolean)
+			config.get('executions.saveExecutionProgress')
 		) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		}
 
 		// Start timeout for the execution
-		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.get('executions.timeout'); // initialize with default
 		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 		if (this.data.workflowData.settings && this.data.workflowData.settings.executionTimeout) {
 			workflowTimeout = this.data.workflowData.settings.executionTimeout as number; // preference on workflow setting
 		}
 
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
+			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout'));
 		}
 
 		this.workflow = new Workflow({

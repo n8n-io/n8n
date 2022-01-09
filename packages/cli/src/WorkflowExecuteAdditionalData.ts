@@ -61,7 +61,7 @@ import {
 	WorkflowHelpers,
 } from '.';
 
-const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
+const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType');
 
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
@@ -149,8 +149,8 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		Logger.verbose('Pruning execution data from database');
 
 		throttling = true;
-		const timeout = config.get('executions.pruneDataTimeout') as number; // in seconds
-		const maxAge = config.get('executions.pruneDataMaxAge') as number; // in h
+		const timeout = config.get('executions.pruneDataTimeout'); // in seconds
+		const maxAge = config.get('executions.pruneDataMaxAge'); // in h
 		const date = new Date(); // today
 		date.setHours(date.getHours() - maxAge);
 
@@ -470,7 +470,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						}
 					}
 
-					let saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+					let saveManualExecutions = config.get('executions.saveDataManualExecutions');
 					if (
 						this.workflowData.settings !== undefined &&
 						this.workflowData.settings.saveManualExecutions !== undefined
@@ -974,7 +974,7 @@ export async function getBase(
 ): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
-	const timezone = config.get('generic.timezone') as string;
+	const timezone = config.get('generic.timezone');
 	const webhookBaseUrl = urlBaseWebhook + config.get('endpoints.webhook');
 	const webhookWaitingBaseUrl = urlBaseWebhook + config.get('endpoints.webhookWaiting');
 	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest');

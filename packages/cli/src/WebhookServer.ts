@@ -308,15 +308,15 @@ class App {
 	constructor() {
 		this.app = express();
 
-		this.endpointWebhook = config.get('endpoints.webhook') as string;
-		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting') as string;
+		this.endpointWebhook = config.get('endpoints.webhook');
+		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting');
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
-		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
-		this.executionTimeout = config.get('executions.timeout') as number;
-		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
-		this.timezone = config.get('generic.timezone') as string;
-		this.restEndpoint = config.get('endpoints.rest') as string;
+		this.saveManualExecutions = config.get('executions.saveDataManualExecutions');
+		this.executionTimeout = config.get('executions.timeout');
+		this.maxExecutionTimeout = config.get('executions.maxTimeout');
+		this.timezone = config.get('generic.timezone');
+		this.restEndpoint = config.get('endpoints.rest');
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 
@@ -329,7 +329,7 @@ class App {
 		this.externalHooks = ExternalHooks();
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
+		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint');
 	}
 
 	/**

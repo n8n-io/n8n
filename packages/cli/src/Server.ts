@@ -212,21 +212,21 @@ class App {
 	constructor() {
 		this.app = express();
 
-		this.endpointWebhook = config.get('endpoints.webhook') as string;
-		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting') as string;
-		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
+		this.endpointWebhook = config.get('endpoints.webhook');
+		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting');
+		this.endpointWebhookTest = config.get('endpoints.webhookTest');
 
-		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
-		this.defaultCredentialsName = config.get('credentials.defaultName') as string;
+		this.defaultWorkflowName = config.get('workflows.defaultName');
+		this.defaultCredentialsName = config.get('credentials.defaultName');
 
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
-		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
-		this.executionTimeout = config.get('executions.timeout') as number;
-		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
-		this.payloadSizeMax = config.get('endpoints.payloadSizeMax') as number;
-		this.timezone = config.get('generic.timezone') as string;
-		this.restEndpoint = config.get('endpoints.rest') as string;
+		this.saveManualExecutions = config.get('executions.saveDataManualExecutions');
+		this.executionTimeout = config.get('executions.timeout');
+		this.maxExecutionTimeout = config.get('executions.maxTimeout');
+		this.payloadSizeMax = config.get('endpoints.payloadSizeMax');
+		this.timezone = config.get('generic.timezone');
+		this.restEndpoint = config.get('endpoints.rest');
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
@@ -242,16 +242,16 @@ class App {
 		this.externalHooks = ExternalHooks();
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
+		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint');
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 		const telemetrySettings: ITelemetrySettings = {
-			enabled: config.get('diagnostics.enabled') as boolean,
+			enabled: config.get('diagnostics.enabled'),
 		};
 
 		if (telemetrySettings.enabled) {
-			const conf = config.get('diagnostics.config.frontend') as string;
+			const conf = config.get('diagnostics.config.frontend');
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
@@ -302,11 +302,11 @@ class App {
 	}
 
 	async config(): Promise<void> {
-		const enableMetrics = config.get('endpoints.metrics.enable') as boolean;
+		const enableMetrics = config.get('endpoints.metrics.enable');
 		let register: Registry;
 
 		if (enableMetrics) {
-			const prefix = config.get('endpoints.metrics.prefix') as string;
+			const prefix = config.get('endpoints.metrics.prefix');
 			register = new promClient.Registry();
 			register.setDefaultLabels({ prefix });
 			promClient.collectDefaultMetrics({ register });
@@ -322,7 +322,7 @@ class App {
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
-		const excludeEndpoints = config.get('security.excludeEndpoints') as string;
+		const excludeEndpoints = config.get('security.excludeEndpoints');
 
 		const ignoredEndpoints = [
 			'healthz',
@@ -338,7 +338,7 @@ class App {
 		const authIgnoreRegex = new RegExp(`^\/(${_(ignoredEndpoints).compact().join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
-		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
+		const basicAuthActive = config.get('security.basicAuth.active');
 		if (basicAuthActive) {
 			const basicAuthUser = (await GenericHelpers.getConfigValue(
 				'security.basicAuth.user',
@@ -408,7 +408,7 @@ class App {
 		}
 
 		// Check for and validate JWT if configured
-		const jwtAuthActive = config.get('security.jwtAuth.active') as boolean;
+		const jwtAuthActive = config.get('security.jwtAuth.active');
 		if (jwtAuthActive) {
 			const jwtAuthHeader = (await GenericHelpers.getConfigValue(
 				'security.jwtAuth.jwtHeader',
@@ -2752,7 +2752,7 @@ class App {
 		// Webhooks
 		// ----------------------------------------
 
-		if (config.get('endpoints.disableProductionWebhooksOnMainProcess') !== true) {
+		if (!config.get('endpoints.disableProductionWebhooksOnMainProcess')) {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
 
@@ -2909,7 +2909,7 @@ class App {
 			);
 		}
 
-		if (config.get('endpoints.disableUi') !== true) {
+		if (!config.get('endpoints.disableUi')) {
 			// Read the index file and replace the path placeholder
 			const editorUiPath = require.resolve('n8n-editor-ui');
 			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
@@ -2980,11 +2980,12 @@ export async function start(): Promise<void> {
 		const cpus = os.cpus();
 		const binarDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 		const diagnosticInfo: IDiagnosticInfo = {
-			basicAuthActive: config.get('security.basicAuth.active') as boolean,
+			basicAuthActive: config.get('security.basicAuth.active'),
 			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
-			disableProductionWebhooksOnMainProcess:
-				config.get('endpoints.disableProductionWebhooksOnMainProcess') === true,
-			notificationsEnabled: config.get('versionNotifications.enabled') === true,
+			disableProductionWebhooksOnMainProcess: config.get(
+				'endpoints.disableProductionWebhooksOnMainProcess',
+			),
+			notificationsEnabled: config.get('versionNotifications.enabled'),
 			versionCli: versions.cli,
 			systemInfo: {
 				os: {

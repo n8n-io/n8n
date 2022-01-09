@@ -14,7 +14,10 @@ class Logger implements ILogger {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const level = config.get('logs.level');
 		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const output = (config.get('logs.output') as string).split(',').map((output) => output.trim());
+		const output = config
+			.get('logs.output')
+			.split(',')
+			.map((output) => output.trim());
 
 		this.logger = winston.createLogger({
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -57,7 +60,7 @@ class Logger implements ILogger {
 				new winston.transports.File({
 					filename: config.get('logs.file.location'),
 					format: fileLogFormat,
-					maxsize: (config.get('logs.file.fileSizeMax') as number) * 1048576, // config * 1mb
+					maxsize: config.get('logs.file.fileSizeMax') * 1048576, // config * 1mb
 					maxFiles: config.get('logs.file.fileCountMax'),
 				}),
 			);

@@ -138,7 +138,7 @@ export class Worker extends Command {
 			staticData = workflowData.staticData;
 		}
 
-		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.get('executions.timeout'); // initialize with default
 		if (
 			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 			currentExecutionDb.workflowData.settings &&
@@ -149,7 +149,7 @@ export class Worker extends Command {
 
 		let executionTimeoutTimestamp: number | undefined;
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
+			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout'));
 			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
 		}
 
