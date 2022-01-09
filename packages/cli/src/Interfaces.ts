@@ -307,7 +307,7 @@ export interface IDiagnosticInfo {
 		};
 	};
 	executionVariables: {
-		[key: string]: string | number | undefined;
+		[key: string]: string | number | boolean | undefined;
 	};
 	deploymentType: string;
 	binaryDataMode: string;

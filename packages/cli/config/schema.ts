@@ -585,7 +585,7 @@ export const schema = {
 					throw new TypeError(`The Nodes to exclude is not a valid Array of strings.`);
 				}
 			},
-			default: '[]',
+			default: undefined,
 			env: 'NODES_EXCLUDE',
 		},
 		errorTriggerType: {

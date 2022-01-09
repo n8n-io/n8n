@@ -177,9 +177,9 @@ class App {
 
 	defaultCredentialsName: string;
 
-	saveDataErrorExecution: string;
+	saveDataErrorExecution: 'all' | 'none';
 
-	saveDataSuccessExecution: string;
+	saveDataSuccessExecution: 'all' | 'none';
 
 	saveManualExecutions: boolean;
 
@@ -219,8 +219,8 @@ class App {
 		this.defaultWorkflowName = config.get('workflows.defaultName');
 		this.defaultCredentialsName = config.get('credentials.defaultName');
 
-		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
-		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
+		this.saveDataErrorExecution = config.get('executions.saveDataOnError');
+		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess');
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions');
 		this.executionTimeout = config.get('executions.timeout');
 		this.maxExecutionTimeout = config.get('executions.maxTimeout');
