@@ -44,7 +44,7 @@ export async function preparePersonalizationSurvey(): Promise<IPersonalizationSu
 		return survey;
 	}
 
-	const enabled = config.get('personalization.enabled') && config.get('diagnostics.enabled');
+	const enabled = config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled');
 
 	if (!enabled) {
 		return survey;

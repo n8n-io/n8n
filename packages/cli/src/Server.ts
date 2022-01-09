@@ -212,21 +212,21 @@ class App {
 	constructor() {
 		this.app = express();
 
-		this.endpointWebhook = config.get('endpoints.webhook');
-		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting');
-		this.endpointWebhookTest = config.get('endpoints.webhookTest');
+		this.endpointWebhook = config.getEnv('endpoints.webhook');
+		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
+		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 
-		this.defaultWorkflowName = config.get('workflows.defaultName');
-		this.defaultCredentialsName = config.get('credentials.defaultName');
+		this.defaultWorkflowName = config.getEnv('workflows.defaultName');
+		this.defaultCredentialsName = config.getEnv('credentials.defaultName');
 
-		this.saveDataErrorExecution = config.get('executions.saveDataOnError');
-		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess');
-		this.saveManualExecutions = config.get('executions.saveDataManualExecutions');
-		this.executionTimeout = config.get('executions.timeout');
-		this.maxExecutionTimeout = config.get('executions.maxTimeout');
-		this.payloadSizeMax = config.get('endpoints.payloadSizeMax');
-		this.timezone = config.get('generic.timezone');
-		this.restEndpoint = config.get('endpoints.rest');
+		this.saveDataErrorExecution = config.getEnv('executions.saveDataOnError');
+		this.saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess');
+		this.saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
+		this.executionTimeout = config.getEnv('executions.timeout');
+		this.maxExecutionTimeout = config.getEnv('executions.maxTimeout');
+		this.payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
+		this.timezone = config.getEnv('generic.timezone');
+		this.restEndpoint = config.getEnv('endpoints.rest');
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
@@ -235,23 +235,23 @@ class App {
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
 
-		this.protocol = config.get('protocol');
-		this.sslKey = config.get('ssl_key');
-		this.sslCert = config.get('ssl_cert');
+		this.protocol = config.getEnv('protocol');
+		this.sslKey = config.getEnv('ssl_key');
+		this.sslCert = config.getEnv('ssl_cert');
 
 		this.externalHooks = ExternalHooks();
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint');
+		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 		const telemetrySettings: ITelemetrySettings = {
-			enabled: config.get('diagnostics.enabled'),
+			enabled: config.getEnv('diagnostics.enabled'),
 		};
 
 		if (telemetrySettings.enabled) {
-			const conf = config.get('diagnostics.config.frontend');
+			const conf = config.getEnv('diagnostics.config.frontend');
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
@@ -278,16 +278,16 @@ class App {
 				oauth2: `${urlBaseWebhook}${this.restEndpoint}/oauth2-credential/callback`,
 			},
 			versionNotifications: {
-				enabled: config.get('versionNotifications.enabled'),
-				endpoint: config.get('versionNotifications.endpoint'),
-				infoUrl: config.get('versionNotifications.infoUrl'),
+				enabled: config.getEnv('versionNotifications.enabled'),
+				endpoint: config.getEnv('versionNotifications.endpoint'),
+				infoUrl: config.getEnv('versionNotifications.infoUrl'),
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
 			personalizationSurvey: {
 				shouldShow: false,
 			},
-			defaultLocale: config.get('defaultLocale'),
+			defaultLocale: config.getEnv('defaultLocale'),
 		};
 	}
 
@@ -302,11 +302,11 @@ class App {
 	}
 
 	async config(): Promise<void> {
-		const enableMetrics = config.get('endpoints.metrics.enable');
+		const enableMetrics = config.getEnv('endpoints.metrics.enable');
 		let register: Registry;
 
 		if (enableMetrics) {
-			const prefix = config.get('endpoints.metrics.prefix');
+			const prefix = config.getEnv('endpoints.metrics.prefix');
 			register = new promClient.Registry();
 			register.setDefaultLabels({ prefix });
 			promClient.collectDefaultMetrics({ register });
@@ -322,7 +322,7 @@ class App {
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
-		const excludeEndpoints = config.get('security.excludeEndpoints');
+		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
 		const ignoredEndpoints = [
 			'healthz',
@@ -338,7 +338,7 @@ class App {
 		const authIgnoreRegex = new RegExp(`^\/(${_(ignoredEndpoints).compact().join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
-		const basicAuthActive = config.get('security.basicAuth.active');
+		const basicAuthActive = config.getEnv('security.basicAuth.active');
 		if (basicAuthActive) {
 			const basicAuthUser = (await GenericHelpers.getConfigValue(
 				'security.basicAuth.user',
@@ -408,7 +408,7 @@ class App {
 		}
 
 		// Check for and validate JWT if configured
-		const jwtAuthActive = config.get('security.jwtAuth.active');
+		const jwtAuthActive = config.getEnv('security.jwtAuth.active');
 		if (jwtAuthActive) {
 			const jwtAuthHeader = (await GenericHelpers.getConfigValue(
 				'security.jwtAuth.jwtHeader',
@@ -866,7 +866,7 @@ class App {
 						.catch(WorkflowHelpers.throwDuplicateEntryError);
 
 					if (tags) {
-						const tablePrefix = config.get('database.tablePrefix');
+						const tablePrefix = config.getEnv('database.tablePrefix');
 						await TagHelpers.removeRelations(req.params.id, tablePrefix);
 
 						if (tags.length) {
@@ -1020,7 +1020,7 @@ class App {
 					res: express.Response,
 				): Promise<TagEntity[] | ITagWithCountDb[]> => {
 					if (req.query.withUsageCount === 'true') {
-						const tablePrefix = config.get('database.tablePrefix');
+						const tablePrefix = config.getEnv('database.tablePrefix');
 						return TagHelpers.getTagsWithCountDb(tablePrefix);
 					}
 
@@ -2240,7 +2240,7 @@ class App {
 
 					const executingWorkflowIds: string[] = [];
 
-					if (config.get('executions.mode') === 'queue') {
+					if (config.getEnv('executions.mode') === 'queue') {
 						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 						executingWorkflowIds.push(
 							...(currentJobs.map((job) => job.data.executionId) as string[]),
@@ -2514,7 +2514,7 @@ class App {
 			`/${this.restEndpoint}/executions-current`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IExecutionsSummary[]> => {
-					if (config.get('executions.mode') === 'queue') {
+					if (config.getEnv('executions.mode') === 'queue') {
 						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
 						const currentlyRunningQueueIds = currentJobs.map((job) => job.data.executionId);
@@ -2598,7 +2598,7 @@ class App {
 			`/${this.restEndpoint}/executions-current/:id/stop`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IExecutionsStopData> => {
-					if (config.get('executions.mode') === 'queue') {
+					if (config.getEnv('executions.mode') === 'queue') {
 						// Manual executions should still be stoppable, so
 						// try notifying the `activeExecutions` to stop it.
 						const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
@@ -2752,7 +2752,7 @@ class App {
 		// Webhooks
 		// ----------------------------------------
 
-		if (!config.get('endpoints.disableProductionWebhooksOnMainProcess')) {
+		if (!config.getEnv('endpoints.disableProductionWebhooksOnMainProcess')) {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
 
@@ -2909,11 +2909,11 @@ class App {
 			);
 		}
 
-		if (!config.get('endpoints.disableUi')) {
+		if (!config.getEnv('endpoints.disableUi')) {
 			// Read the index file and replace the path placeholder
 			const editorUiPath = require.resolve('n8n-editor-ui');
 			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
-			const n8nPath = config.get('path');
+			const n8nPath = config.getEnv('path');
 
 			let readIndexFile = readFileSync(filePath, 'utf8');
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
@@ -2945,8 +2945,8 @@ class App {
 }
 
 export async function start(): Promise<void> {
-	const PORT = config.get('port');
-	const ADDRESS = config.get('listen_address');
+	const PORT = config.getEnv('port');
+	const ADDRESS = config.getEnv('listen_address');
 
 	const app = new App();
 
@@ -2970,7 +2970,7 @@ export async function start(): Promise<void> {
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 
-		const defaultLocale = config.get('defaultLocale');
+		const defaultLocale = config.getEnv('defaultLocale');
 
 		if (defaultLocale !== 'en') {
 			console.log(`Locale: ${defaultLocale}`);
@@ -2978,14 +2978,14 @@ export async function start(): Promise<void> {
 
 		await app.externalHooks.run('n8n.ready', [app]);
 		const cpus = os.cpus();
-		const binarDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		const binarDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
-			basicAuthActive: config.get('security.basicAuth.active'),
+			basicAuthActive: config.getEnv('security.basicAuth.active'),
 			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
-			disableProductionWebhooksOnMainProcess: config.get(
+			disableProductionWebhooksOnMainProcess: config.getEnv(
 				'endpoints.disableProductionWebhooksOnMainProcess',
 			),
-			notificationsEnabled: config.get('versionNotifications.enabled'),
+			notificationsEnabled: config.getEnv('versionNotifications.enabled'),
 			versionCli: versions.cli,
 			systemInfo: {
 				os: {
@@ -3000,19 +3000,21 @@ export async function start(): Promise<void> {
 				},
 			},
 			executionVariables: {
-				executions_process: config.get('executions.process'),
-				executions_mode: config.get('executions.mode'),
-				executions_timeout: config.get('executions.timeout'),
-				executions_timeout_max: config.get('executions.maxTimeout'),
-				executions_data_save_on_error: config.get('executions.saveDataOnError'),
-				executions_data_save_on_success: config.get('executions.saveDataOnSuccess'),
-				executions_data_save_on_progress: config.get('executions.saveExecutionProgress'),
-				executions_data_save_manual_executions: config.get('executions.saveDataManualExecutions'),
-				executions_data_prune: config.get('executions.pruneData'),
-				executions_data_max_age: config.get('executions.pruneDataMaxAge'),
-				executions_data_prune_timeout: config.get('executions.pruneDataTimeout'),
+				executions_process: config.getEnv('executions.process'),
+				executions_mode: config.getEnv('executions.mode'),
+				executions_timeout: config.getEnv('executions.timeout'),
+				executions_timeout_max: config.getEnv('executions.maxTimeout'),
+				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
+				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.getEnv(
+					'executions.saveDataManualExecutions',
+				),
+				executions_data_prune: config.getEnv('executions.pruneData'),
+				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
 			},
-			deploymentType: config.get('deployment.type'),
+			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binarDataConfig.mode,
 		};
 

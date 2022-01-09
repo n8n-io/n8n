@@ -5,7 +5,7 @@ export class UniqueWorkflowNames1620821879465 implements MigrationInterface {
 		name = 'UniqueWorkflowNames1620821879465';
 
 		async up(queryRunner: QueryRunner): Promise<void> {
-			const tablePrefix = config.get('database.tablePrefix');
+			const tablePrefix = config.getEnv('database.tablePrefix');
 
 			const workflowNames = await queryRunner.query(`
 				SELECT name
@@ -40,7 +40,7 @@ export class UniqueWorkflowNames1620821879465 implements MigrationInterface {
 		}
 
 		async down(queryRunner: QueryRunner): Promise<void> {
-			const tablePrefix = config.get('database.tablePrefix');
+			const tablePrefix = config.getEnv('database.tablePrefix');
 			await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}943d8f922be094eb507cb9a7f9"`);
 		}
 

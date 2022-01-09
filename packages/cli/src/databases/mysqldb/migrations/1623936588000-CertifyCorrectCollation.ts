@@ -5,8 +5,8 @@ export class CertifyCorrectCollation1623936588000 implements MigrationInterface 
 	name = 'CertifyCorrectCollation1623936588000';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
-		const databaseType = config.get('database.type');
+		const tablePrefix = config.getEnv('database.tablePrefix');
+		const databaseType = config.getEnv('database.type');
 
 		if (databaseType === 'mariadb') {
 			// This applies to MySQL only.
@@ -19,7 +19,7 @@ export class CertifyCorrectCollation1623936588000 implements MigrationInterface 
 			collation = 'utf8mb4_0900_ai_ci';
 		}
 
-		const databaseName = config.get(`database.mysqldb.database`);
+		const databaseName = config.getEnv(`database.mysqldb.database`);
 
 		await queryRunner.query(`ALTER DATABASE \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE ${collation};`);
 

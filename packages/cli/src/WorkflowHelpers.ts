@@ -41,7 +41,7 @@ import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
-const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType');
+const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
 /**
  * Returns the data of the last executed node

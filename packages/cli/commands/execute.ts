@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
-import { BinaryDataManager, IBinaryDataConfig, UserSettings } from 'n8n-core';
+import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { INode, LoggerProxy } from 'n8n-workflow';
 
 import {
@@ -46,7 +46,7 @@ export class Execute extends Command {
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
-		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig, true);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow

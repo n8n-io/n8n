@@ -12,11 +12,10 @@ class Logger implements ILogger {
 	private logger: winston.Logger;
 
 	constructor() {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const level = config.get('logs.level');
-		// eslint-disable-next-line @typescript-eslint/no-shadow
+		const level = config.getEnv('logs.level');
+
 		const output = config
-			.get('logs.output')
+			.getEnv('logs.output')
 			.split(',')
 			.map((output) => output.trim());
 
@@ -59,10 +58,10 @@ class Logger implements ILogger {
 			);
 			this.logger.add(
 				new winston.transports.File({
-					filename: config.get('logs.file.location'),
+					filename: config.getEnv('logs.file.location'),
 					format: fileLogFormat,
-					maxsize: config.get('logs.file.fileSizeMax') * 1048576, // config * 1mb
-					maxFiles: config.get('logs.file.fileCountMax'),
+					maxsize: config.getEnv('logs.file.fileSizeMax') * 1048576, // config * 1mb
+					maxFiles: config.getEnv('logs.file.fileCountMax'),
 				}),
 			);
 		}

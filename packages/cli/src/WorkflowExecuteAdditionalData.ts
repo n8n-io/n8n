@@ -61,7 +61,7 @@ import {
 	WorkflowHelpers,
 } from '.';
 
-const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType');
+const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
@@ -149,8 +149,8 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		Logger.verbose('Pruning execution data from database');
 
 		throttling = true;
-		const timeout = config.get('executions.pruneDataTimeout'); // in seconds
-		const maxAge = config.get('executions.pruneDataMaxAge'); // in h
+		const timeout = config.getEnv('executions.pruneDataTimeout'); // in seconds
+		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const date = new Date(); // today
 		date.setHours(date.getHours() - maxAge);
 
@@ -335,11 +335,11 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					}
 					if (
 						this.workflowData.settings.saveExecutionProgress !== true &&
-						!config.get('executions.saveExecutionProgress')
+						!config.getEnv('executions.saveExecutionProgress')
 					) {
 						return;
 					}
-				} else if (!config.get('executions.saveExecutionProgress')) {
+				} else if (!config.getEnv('executions.saveExecutionProgress')) {
 					return;
 				}
 
@@ -444,7 +444,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				});
 
 				// Prune old execution data
-				if (config.get('executions.pruneData')) {
+				if (config.getEnv('executions.pruneData')) {
 					pruneExecutionData.call(this);
 				}
 
@@ -470,7 +470,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						}
 					}
 
-					let saveManualExecutions = config.get('executions.saveDataManualExecutions');
+					let saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
 					if (
 						this.workflowData.settings !== undefined &&
 						this.workflowData.settings.saveManualExecutions !== undefined
@@ -490,8 +490,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					// Check config to know if execution should be saved or not
-					let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
-					let saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
+					let saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
+					let saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
 					if (this.workflowData.settings !== undefined) {
 						saveDataErrorExecution =
 							(this.workflowData.settings.saveDataErrorExecution as string) ||
@@ -974,10 +974,10 @@ export async function getBase(
 ): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
-	const timezone = config.get('generic.timezone');
-	const webhookBaseUrl = urlBaseWebhook + config.get('endpoints.webhook');
-	const webhookWaitingBaseUrl = urlBaseWebhook + config.get('endpoints.webhookWaiting');
-	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest');
+	const timezone = config.getEnv('generic.timezone');
+	const webhookBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhook');
+	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
+	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
 	if (encryptionKey === undefined) {
@@ -988,7 +988,7 @@ export async function getBase(
 		credentialsHelper: new CredentialsHelper(encryptionKey),
 		encryptionKey,
 		executeWorkflow,
-		restApiUrl: urlBaseWebhook + config.get('endpoints.rest'),
+		restApiUrl: urlBaseWebhook + config.getEnv('endpoints.rest'),
 		timezone,
 		webhookBaseUrl,
 		webhookWaitingBaseUrl,

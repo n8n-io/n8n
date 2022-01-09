@@ -11,8 +11,8 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		console.log('Start migration', this.name);
 		console.time(this.name);
-		let tablePrefix = config.get('database.tablePrefix');
-		const schema = config.get('database.postgresdb.schema');
+		let tablePrefix = config.getEnv('database.tablePrefix');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
@@ -155,8 +155,8 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
-		const schema = config.get('database.postgresdb.schema');
+		let tablePrefix = config.getEnv('database.tablePrefix');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}

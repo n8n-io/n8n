@@ -308,28 +308,28 @@ class App {
 	constructor() {
 		this.app = express();
 
-		this.endpointWebhook = config.get('endpoints.webhook');
-		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting');
-		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
-		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
-		this.saveManualExecutions = config.get('executions.saveDataManualExecutions');
-		this.executionTimeout = config.get('executions.timeout');
-		this.maxExecutionTimeout = config.get('executions.maxTimeout');
-		this.timezone = config.get('generic.timezone');
-		this.restEndpoint = config.get('endpoints.rest');
+		this.endpointWebhook = config.getEnv('endpoints.webhook');
+		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
+		this.saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
+		this.saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
+		this.saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
+		this.executionTimeout = config.getEnv('executions.timeout');
+		this.maxExecutionTimeout = config.getEnv('executions.maxTimeout');
+		this.timezone = config.getEnv('generic.timezone');
+		this.restEndpoint = config.getEnv('endpoints.rest');
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 
-		this.protocol = config.get('protocol');
-		this.sslKey = config.get('ssl_key');
-		this.sslCert = config.get('ssl_cert');
+		this.protocol = config.getEnv('protocol');
+		this.sslKey = config.getEnv('ssl_key');
+		this.sslCert = config.getEnv('ssl_cert');
 
 		this.externalHooks = ExternalHooks();
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint');
+		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 	}
 
 	/**
@@ -457,8 +457,8 @@ class App {
 }
 
 export async function start(): Promise<void> {
-	const PORT = config.get('port');
-	const ADDRESS = config.get('listen_address');
+	const PORT = config.getEnv('port');
+	const ADDRESS = config.getEnv('listen_address');
 
 	const app = new App();
 
