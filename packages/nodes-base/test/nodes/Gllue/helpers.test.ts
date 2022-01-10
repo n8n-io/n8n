@@ -66,7 +66,7 @@ const PAGE = 2;
 const FIELDS = 'id,name';
 const GQL = 'type__s=prospect,client';
 const GQL_MULTIPLE = `${GQL}&keyword__eq=right`;
-const BASE_URL = `${HOST}\\rest\\${RESOURCE}\\${OPTION}`;
+const BASE_URL = `${HOST}\/rest\/${RESOURCE}\/${OPTION}`;
 const DEFAULT_PARAMS = `fields=id&paginate_by=25&ordering=-id&page=1&private_token=${TOKEN}`;
 
 describe('Gllue url parameters builder', () => {
@@ -82,7 +82,7 @@ describe('Gllue url parameters builder', () => {
 			`${BASE_URL}?gql=&${DEFAULT_PARAMS}`);
 	});
 	it('should build with fields', () => {
-		const urlParams = new UrlParams('', FIELDS, TOKEN, PAGINATION, ORDERING, PAGE );
+		const urlParams = new UrlParams('', FIELDS, TOKEN, PAGINATION, PAGE, ORDERING );
 		const url = helpers.gllueUrlBuilder(HOST, RESOURCE, OPTION, urlParams);
 		expect(url).toEqual(
 			`${BASE_URL}?gql=&fields=id,name&paginate_by=10&ordering=id&page=2&private_token=${TOKEN}`);

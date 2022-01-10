@@ -6,6 +6,8 @@ import {getResponseByUri, UrlParams} from './helpers';
 import {cityFields, cityOperations} from './CityDescription';
 import {industryFields, industryOperations} from './IndustryDescription';
 import {contractFields, contractOperations} from './ContractDescription';
+import {userFields, userOperations} from './UserDescriptions';
+import {DEFAULT_PAGE, DEFAULT_PAGINATE_BY} from './constants';
 
 const helpers = require('./helpers');
 
@@ -50,6 +52,10 @@ export class Gllue implements INodeType {
 						value: 'industry',
 					},
 					{
+						name: 'User',
+						value: 'user',
+					},
+					{
 						name: 'Contract',
 						value: 'clientcontract',
 					},
@@ -66,6 +72,8 @@ export class Gllue implements INodeType {
 			...industryFields,
 			...contractOperations,
 			...contractFields,
+			...userOperations,
+			...userFields,
 		],
 	};
 
@@ -75,11 +83,13 @@ export class Gllue implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		// tslint:disable-next-line:no-any
 		const filters = this.getNodeParameter('filters', 0, {fields: 'id'}) as any;
+		const paginateBy = this.getNodeParameter('paginateBy', 0, DEFAULT_PAGINATE_BY) as number;
+		const page = this.getNodeParameter('page', 0, DEFAULT_PAGE) as number;
 		const credentials = await this.getCredentials('gllueApi') as IDataObject;
 
 		const timestamp = helpers.getCurrentTimeStamp();
 		const token = helpers.generateTokenWithAESKey(timestamp, credentials.apiUsername, credentials.apiAesKey);
-		const urlParams = new UrlParams(filters.query, filters.fields, token);
+		const urlParams = new UrlParams(filters.query, filters.fields, token, paginateBy,page);
 		const uriGenerated = helpers.gllueUrlBuilder(credentials.apiHost, resource, operation, urlParams);
 
 		if (resource === 'client') {
@@ -90,16 +100,20 @@ export class Gllue implements INodeType {
 			if (operation === 'simple_list_with_ids') {
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
 			}
-		} else if (resource === 'industry') {
-			if (operation === 'simple_list_with_ids'){
+		} else if (resource === 'user') {
+			if (operation === 'simple_list_with_ids') {
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
 			}
-		} else if (resource === 'clientcontract'){
-			if (operation === 'delete'){
+		} else if (resource === 'industry') {
+			if (operation === 'simple_list_with_ids') {
+				responseData = await getResponseByUri(uriGenerated, this.helpers.request);
+			}
+		} else if (resource === 'clientcontract') {
+			if (operation === 'delete') {
 				const contractIds = this.getInputData().map(
 					(item, index) => this.getNodeParameter('id', index),
 				);
-				const body = { ids: contractIds, count: contractIds.length };
+				const body = {ids: contractIds, count: contractIds.length};
 				responseData = await getResponseByUri(uriGenerated, this.helpers.request, 'POST', body);
 			}
 		}

@@ -46,8 +46,9 @@ export class UrlParams {
 		public fields = 'id',
 		public token = '',
 		public paginateBy = 25,
-		public orderBy = '-id',
 		public page = 1,
+		public orderBy = '-id',
+
 	) {
 	}
 }

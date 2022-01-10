@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const clientOperations: INodeProperties[] = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const clientOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'client',
+					'user',
 				],
 			},
 		},
@@ -26,52 +26,10 @@ export const clientOperations: INodeProperties[] = [
 	},
 ];
 
-export const clientFields: INodeProperties[] = [
+export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 client:getAll                             */
+	/*                                 user:simple list with ids                  */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Page',
-		name: 'page',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'simple_list_with_ids',
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 255,
-		},
-		default: 1,
-		description: 'page index in pages',
-	},
-	{
-		displayName: 'Rows per Page',
-		name: 'paginateBy',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'simple_list_with_ids',
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 25,
-		},
-		default: 10,
-		description: 'How many results to return in one page',
-	},
 	{
 		displayName: 'Filters',
 		name: 'filters',
@@ -81,7 +39,7 @@ export const clientFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'client',
+					'user',
 				],
 				operation: [
 					'simple_list_with_ids',
@@ -94,7 +52,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'The query field accepts with gql syntax，type__s=prospect,client&id=1089924&keyword__eq=sony',
+				description: 'The query field accepts with gql syntax，id__s=1699,1698',
 			},
 			{
 				displayName: 'Fields',
