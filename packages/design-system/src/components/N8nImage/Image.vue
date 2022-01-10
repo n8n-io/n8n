@@ -60,7 +60,7 @@ export default {
 
 <style lang="scss" module>
 .image {
-	border: 1px solid $--node-creator-border-color;
+	border: 1px solid #dbdfe7;
 	border-radius: var(--border-radius-large);
 }
 </style>
