@@ -20,7 +20,7 @@ export class Redis implements INodeType {
 		icon: 'file:redis.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Get, send and update data in Redis',
+		description: 'Get, send, update and publish data in Redis',
 		defaults: {
 			name: 'Redis',
 		},
@@ -67,6 +67,11 @@ export class Redis implements INodeType {
 						name: 'Set',
 						value: 'set',
 						description: 'Set the value of a key in redis.',
+					},
+					{
+						name: 'Publish',
+						value: 'publish',
+						description: 'Publish data to redis channel.',
 					},
 				],
 				default: 'info',
@@ -370,6 +375,43 @@ export class Redis implements INodeType {
 				default: 60,
 				description: 'Number of seconds before key expiration.',
 			},
+
+			// ----------------------------------
+			//         publish
+			// ----------------------------------
+			{
+				displayName: 'Channel',
+				name: 'channel',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'publish',
+						],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Channel name.',
+			},
+			{
+				displayName: 'Data',
+				name: 'data',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'publish',
+						],
+					},
+				},
+				typeOptions: {
+					rows: 10,
+				},
+				default: '',
+				required: true,
+				description: 'Data to publish.',
+			},
 		],
 	};
 
@@ -476,7 +518,6 @@ export class Redis implements INodeType {
 			return;
 		};
 
-
 		return new Promise(async (resolve, reject) => {
 			// TODO: For array and object fields it should not have a "value" field it should
 			//       have a parameter field for a path. Because it is not possible to set
@@ -491,6 +532,7 @@ export class Redis implements INodeType {
 			const redisOptions: redis.ClientOpts = {
 				host: credentials.host as string,
 				port: credentials.port as number,
+				db: credentials.database as number
 			};
 
 			if (credentials.password) {
@@ -515,7 +557,7 @@ export class Redis implements INodeType {
 						resolve(this.prepareOutputData([{ json: convertInfoToObject(result as unknown as string) }]));
 						client.quit();
 
-					} else if (['delete', 'get', 'keys', 'set', 'incr'].includes(operation)) {
+					} else if (['delete', 'get', 'keys', 'set', 'incr', 'publish'].includes(operation)) {
 						const items = this.getInputData();
 						const returnItems: INodeExecutionData[] = [];
 
@@ -586,6 +628,15 @@ export class Redis implements INodeType {
 									await clientExpire(keyIncr, ttl);
 								}
 								returnItems.push({json: {[keyIncr]: incrementVal}});
+							} else if (operation === 'publish'){
+								const channel = this.getNodeParameter('channel',itemIndex) as string;
+								let data = this.getNodeParameter('data',itemIndex) as any;
+								const clientPublish = util.promisify(client.publish).bind(client);
+								if(data instanceof Object){
+									data = JSON.stringify(data)
+								}
+								await clientPublish(channel, data);
+								returnItems.push(items[itemIndex]);
 							}
 						}
 
