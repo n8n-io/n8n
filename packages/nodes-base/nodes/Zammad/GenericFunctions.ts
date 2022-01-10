@@ -70,7 +70,6 @@ export async function zammadApiRequest(
 	}
 
 	try {
-		// console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.error.error === 'Object already exists!') {
@@ -107,34 +106,6 @@ export async function zammadApiRequestAllItems(
 
 		qs.page++;
 	} while (responseData.length);
-
-	return returnData;
-}
-
-export async function zammadApiRequestAllTickets(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
-	endpoint: string,
-	body: IDataObject = {},
-	qs: IDataObject = {},
-	limit = 0,
-) {
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-	qs.per_page = 20;
-	qs.page = 1;
-
-	do {
-		responseData = await zammadApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push(...responseData.tickets);
-
-		if (limit && returnData.length > limit) {
-			return returnData.slice(0, limit);
-		}
-
-		qs.page++;
-	} while (responseData.tickets_count);
 
 	return returnData;
 }

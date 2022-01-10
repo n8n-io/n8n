@@ -28,7 +28,6 @@ import {
 import {
 	fieldToLoadOption,
 	getAllFields,
-	isCustomer,
 	getGroupFields,
 	getOrganizationCustomFields,
 	getOrganizationFields,
@@ -36,13 +35,13 @@ import {
 	getTicketFields,
 	getUserCustomFields,
 	getUserFields,
+	isCustomer,
 	throwOnEmptyUpdate,
 	tolerateTrailingSlash,
-	zammadApiRequest,
 	zammadApiRequestAllItems,
-	zammadApiRequestAllTickets,
-	isRelevantOrg,
+	zammadApiRequest,
 	isRelevantGroup,
+	isRelevantOrg,
 } from './GenericFunctions';
 
 import type { Zammad as ZammadTypes } from './types';
@@ -69,7 +68,7 @@ export class Zammad implements INodeType {
 			{
 				name: 'zammadApi',
 				required: true,
-				testedBy: 'zammadApiTest',
+				// testedBy: 'zammadApiTest',
 			},
 		],
 		properties: [
@@ -507,24 +506,14 @@ export class Zammad implements INodeType {
 						// ----------------------------------
 
 						// https://docs.zammad.org/en/latest/api/organization.html#list
-						// https://docs.zammad.org/en/latest/api/organization.html#search
-
-						const qs: IDataObject = {};
-
-						const { sortUi, ...rest } = this.getNodeParameter('filters', i) as ZammadTypes.UserFilterFields;
-
-						Object.assign(qs, sortUi?.sortDetails);
-
-						Object.assign(qs, rest);
-
-						qs.query ||= ''; // otherwise triggers 500
+						// https://docs.zammad.org/en/latest/api/organization.html#search - returning empty always
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						const limit = returnAll ? 0 : this.getNodeParameter('limit', i) as number;
 
 						responseData = await zammadApiRequestAllItems.call(
-							this, 'GET', '/organizations/search', {}, qs, limit,
+							this, 'GET', '/organizations', {}, {}, limit,
 						);
 
 					}
@@ -659,7 +648,7 @@ export class Zammad implements INodeType {
 
 						const { id } = responseData;
 
-						responseData.articles = await zammadApiRequest.call(this, 'GET', `/ticket_articles/by_ticket/${id}`)
+						responseData.articles = await zammadApiRequest.call(this, 'GET', `/ticket_articles/by_ticket/${id}`);
 
 					} else if (operation === 'update') {
 
@@ -698,7 +687,7 @@ export class Zammad implements INodeType {
 
 						responseData = await zammadApiRequest.call(this, 'PUT', `/tickets/${id}`, body);
 
-						responseData.articles = await zammadApiRequest.call(this, 'GET', `/ticket_articles/by_ticket/${id}`)
+						responseData.articles = await zammadApiRequest.call(this, 'GET', `/ticket_articles/by_ticket/${id}`);
 
 					} else if (operation === 'delete') {
 
@@ -725,7 +714,7 @@ export class Zammad implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 
 						responseData = await zammadApiRequest.call(this, 'GET', `/tickets/${id}`);
-						responseData.articles = await zammadApiRequest.call(this, 'GET', `/ticket_articles/by_ticket/${id}`)
+						responseData.articles = await zammadApiRequest.call(this, 'GET', `/ticket_articles/by_ticket/${id}`);
 
 					} else if (operation === 'getAll') {
 
@@ -734,18 +723,14 @@ export class Zammad implements INodeType {
 						// ----------------------------------
 
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#list
-						// https://docs.zammad.org/en/latest/api/ticket/index.html#search
-
-						const qs: IDataObject = {};
-
-						qs.query ||= ''; // otherwise triggers 500
+						// https://docs.zammad.org/en/latest/api/ticket/index.html#search - returning empty always
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						const limit = returnAll ? 0 : this.getNodeParameter('limit', i) as number;
 
-						responseData = await zammadApiRequestAllTickets.call(
-							this, 'GET', '/tickets/search', {}, qs, limit,
+						responseData = await zammadApiRequestAllItems.call(
+							this, 'GET', '/tickets', {}, {}, limit,
 						);
 
 					}

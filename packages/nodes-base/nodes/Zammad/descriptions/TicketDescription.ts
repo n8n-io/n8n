@@ -216,7 +216,7 @@ export const ticketDescription: INodeProperties[] = [
 								name: 'Internal',
 								value: 'internal',
 								description: 'Visible to help desk',
-							}
+							},
 						],
 					},
 					{
@@ -397,7 +397,7 @@ export const ticketDescription: INodeProperties[] = [
 										name: 'Internal',
 										value: 'internal',
 										description: 'Visible to help desk',
-									}
+									},
 								],
 							},
 							{
@@ -584,72 +584,5 @@ export const ticketDescription: INodeProperties[] = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Filters',
-		name: 'filters',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: {},
-		placeholder: 'Add Filter',
-		options: [
-			{
-				displayName: 'Query',
-				name: 'query',
-				type: 'string',
-				default: '',
-				description: 'Query to filter results by',
-				placeholder: 'user.firstname:john',
-			},
-			{
-				displayName: 'Sort',
-				name: 'sortUi',
-				type: 'fixedCollection',
-				placeholder: 'Add Sort Options',
-				default: {},
-				options: [
-					{
-						displayName: 'Sort Options',
-						name: 'sortDetails',
-						values: [
-							{
-								displayName: 'Sort Key',
-								name: 'sort_by',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'loadTicketFields',
-								},
-								default: '',
-							},
-							{
-								displayName: 'Sort Order',
-								name: 'order_by',
-								type: 'options',
-								options: [
-									{
-										name: 'Ascending',
-										value: 'asc',
-									},
-									{
-										name: 'Descending',
-										value: 'desc',
-									},
-								],
-								default: 'asc',
-							},
-						],
-					},
-				],
-			},
-		],
 	},
 ];
