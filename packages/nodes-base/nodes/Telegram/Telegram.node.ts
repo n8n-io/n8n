@@ -32,7 +32,6 @@ export class Telegram implements INodeType {
 		description: 'Sends data to Telegram',
 		defaults: {
 			name: 'Telegram',
-			color: '#0088cc',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -320,7 +319,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername).',
+				description: 'Unique identifier for the target chat or username of the target channel (in the format @channelusername).',
 			},
 
 			// ----------------------------------
@@ -740,7 +739,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername). To find your chat id ask @get_id_bot.',
+				description: 'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat id ask @get_id_bot.',
 			},
 			// ----------------------------------
 			//         message:sendAnimation/sendAudio/sendDocument/sendPhoto/sendSticker/sendVideo
@@ -890,7 +889,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get an animation from the Internet',
+				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get an animation from the Internet',
 			},
 
 
@@ -916,7 +915,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet',
+				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet',
 			},
 
 
@@ -981,7 +980,7 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'typing',
-				description: 'Type of action to broadcast. Choose one, depending on what the user is about to receive.<br />The status is set for 5 seconds or less (when a message arrives from your bot).',
+				description: 'Type of action to broadcast. Choose one, depending on what the user is about to receive. The status is set for 5 seconds or less (when a message arrives from your bot).',
 			},
 
 
@@ -1007,7 +1006,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet',
+				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet',
 			},
 
 
@@ -1110,7 +1109,7 @@ export class Telegram implements INodeType {
 								name: 'media',
 								type: 'string',
 								default: '',
-								description: 'Media to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+								description: 'Media to send. Pass a file_id to send a file that exists on the Telegram servers (recommended) or pass an HTTP URL for Telegram to get a file from the Internet.',
 							},
 							{
 								displayName: 'Additional Fields',
@@ -1202,7 +1201,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a photo from the Internet',
+				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a photo from the Internet',
 			},
 
 
@@ -1227,7 +1226,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a .webp file from the Internet',
+				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a .webp file from the Internet',
 			},
 
 
@@ -1252,7 +1251,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet',
+				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet',
 			},
 
 			// ----------------------------------
@@ -1414,14 +1413,14 @@ export class Telegram implements INodeType {
 														name: 'switch_inline_query_current_chat',
 														type: 'string',
 														default: '',
-														description: 'If set, pressing the button will insert the bot‘s username and the specified<br />inline query in the current chat\'s input field.Can be empty, in which case only the<br />bot’s username will be inserted.',
+														description: 'If set, pressing the button will insert the bot‘s username and the specified inline query in the current chat\'s input field.Can be empty, in which case only the bot’s username will be inserted.',
 													},
 													{
 														displayName: 'Switch Inline Query',
 														name: 'switch_inline_query',
 														type: 'string',
 														default: '',
-														description: 'If set, pressing the button will prompt the user to select one of their chats<br />, open that chat and insert the bot‘s username and the specified inline query in the<br />input field. Can be empty, in which case just the bot’s username will be inserted.',
+														description: 'If set, pressing the button will prompt the user to select one of their chats, open that chat and insert the bot‘s username and the specified inline query in the input field. Can be empty, in which case just the bot’s username will be inserted.',
 													},
 													{
 														displayName: 'URL',
@@ -1788,7 +1787,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Thumbnail of the file sent; can be ignored if thumbnail generation<br />for the file is supported server-side. The thumbnail should be in<br />JPEG format and less than 200 kB in size. A thumbnail‘s<br />width and height should not exceed 320.',
+						description: 'Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side. The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail‘s width and height should not exceed 320.',
 					},
 					{
 						displayName: 'Width',

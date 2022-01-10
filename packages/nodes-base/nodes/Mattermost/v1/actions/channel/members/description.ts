@@ -65,7 +65,7 @@ export const channelMembersDescription: ChannelProperties = [
 			},
 		},
 		default: true,
-		description: 'By default the response only contain the ID of the user.<br />If this option gets activated it will resolve the user automatically.',
+		description: 'By default the response only contain the ID of the user. If this option gets activated, it will resolve the user automatically.',
 	},
 	{
 		displayName: 'Return All',

@@ -24,7 +24,6 @@ export class QuestDb implements INodeType {
 		description: 'Get, add and update data in QuestDB',
 		defaults: {
 			name: 'QuestDB',
-			color: '#2C4A79',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -170,11 +169,7 @@ export class QuestDb implements INodeType {
 							},
 						],
 						default: 'independently',
-						description: [
-							'The way queries should be sent to database.',
-							'Can be used in conjunction with <b>Continue on Fail</b>.',
-							'See the docs for more examples',
-						].join('<br>'),
+						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.questDb/">the docs</a> for more examples.',
 					},
 					{
 						displayName: 'Query Parameters',

@@ -57,7 +57,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 					multipleValueButtonText: 'Add Poll Time',
 				},
 				default: {},
-				description: 'Time at which polling should occur.',
+				description: 'Time at which polling should occur',
 				placeholder: 'Add Poll Time',
 				options: [
 					{
@@ -115,7 +115,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 									},
 								},
 								default: 14,
-								description: 'The hour of the day to trigger (24h format).',
+								description: 'The hour of the day to trigger (24h format)',
 							},
 							{
 								displayName: 'Minute',
@@ -131,7 +131,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 									},
 								},
 								default: 0,
-								description: 'The minute of the day to trigger.',
+								description: 'The minute of the day to trigger',
 							},
 							{
 								displayName: 'Day of Month',
@@ -147,7 +147,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 									maxValue: 31,
 								},
 								default: 1,
-								description: 'The day of the month to trigger.',
+								description: 'The day of the month to trigger',
 							},
 							{
 								displayName: 'Weekday',
@@ -189,7 +189,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 									},
 								],
 								default: '1',
-								description: 'The weekday to trigger.',
+								description: 'The weekday to trigger',
 							},
 							{
 								displayName: 'Cron Expression',
@@ -218,7 +218,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 									},
 								},
 								default: 2,
-								description: 'All how many X minutes/hours it should trigger.',
+								description: 'All how many X minutes/hours it should trigger',
 							},
 							{
 								displayName: 'Unit',
@@ -240,7 +240,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 									},
 								],
 								default: 'hours',
-								description: 'If it should trigger all X minutes or hours.',
+								description: 'If it should trigger all X minutes or hours',
 							},
 						],
 					},
@@ -1390,7 +1390,7 @@ export function mergeNodeProperties(
 	}
 }
 
-export function getVersionedTypeNode(
+export function getVersionedNodeType(
 	object: INodeVersionedType | INodeType,
 	version?: number,
 ): INodeType {
@@ -1400,7 +1400,7 @@ export function getVersionedTypeNode(
 	return object as INodeType;
 }
 
-export function getVersionedTypeNodeAll(object: INodeVersionedType | INodeType): INodeType[] {
+export function getVersionedNodeTypeAll(object: INodeVersionedType | INodeType): INodeType[] {
 	if (isNodeTypeVersioned(object)) {
 		return Object.values((object as INodeVersionedType).nodeVersions).map((element) => {
 			element.description.name = object.description.name;

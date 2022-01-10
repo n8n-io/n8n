@@ -34,7 +34,6 @@ export class JotFormTrigger implements INodeType {
 		description: 'Handle JotForm events via webhooks',
 		defaults: {
 			name: 'JotForm Trigger',
-			color: '#fa8900',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -69,7 +68,7 @@ export class JotFormTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default does the webhook-data use internal keys instead of the names.<br />If this option gets activated it will resolve the keys automatically to the actual names.',
+				description: 'By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names.',
 			},
 			{
 				displayName: 'Only Answers',

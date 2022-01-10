@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const opportunityOperations = [
+export const opportunityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -59,9 +59,9 @@ export const opportunityOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const opportunityFields = [
+export const opportunityFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                opportunity:create                          */
@@ -325,11 +325,11 @@ export const opportunityFields = [
 				options: [
 					{
 						name: 'Business',
-						valie: 'Business',
+						value: 'Business',
 					},
 					{
 						name: 'New Business',
-						valie: 'New Business',
+						value: 'New Business',
 					},
 				],
 				description: 'Type of opportunity. For example, Existing Business or New Business. Label is Opportunity Type.',
@@ -538,11 +538,11 @@ export const opportunityFields = [
 				options: [
 					{
 						name: 'Business',
-						valie: 'Business',
+						value: 'Business',
 					},
 					{
 						name: 'New Business',
-						valie: 'New Business',
+						value: 'New Business',
 					},
 				],
 				description: 'Type of opportunity. For example, Existing Business or New Business. Label is Opportunity Type.',
@@ -813,4 +813,4 @@ export const opportunityFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

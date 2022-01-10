@@ -18,7 +18,7 @@ export default {
 		size: {
 			control: {
 				type: 'select',
-				options: ['small', 'medium', 'large'],
+				options: ['mini', 'small', 'medium', 'large', 'xlarge'],
 			},
 		},
 		loading: {
@@ -29,12 +29,6 @@ export default {
 		icon: {
 			control: {
 				type: 'text',
-			},
-		},
-		iconSize: {
-			control: {
-				type: 'select',
-				options: ['small', 'medium', 'large'],
 			},
 		},
 		circle: {
