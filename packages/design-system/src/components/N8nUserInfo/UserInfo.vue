@@ -3,7 +3,7 @@
 		<div :class="$style.avatarContainer">
 			<n8n-avatar v-if="user.firstName" :firstName="user.firstName" :lastName="user.lastName" />
 			<div v-else>
-				<n8n-icon icon="user-clock" size="large" />
+				<n8n-icon icon="user-clock" size="xlarge" />
 			</div>
 		</div>
 		<div v-if="user.firstName" :class="$style.infoContainer">
