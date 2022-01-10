@@ -71,3 +71,20 @@ export declare namespace PasswordResetRequest {
 	export type Credentials = AuthenticatedRequest<{}, PasswordResetQuery.Credentials>;
 	export type NewPassword = AuthenticatedRequest<PasswordResetPayload.NewPassword>;
 }
+
+// ----------------------------------
+//      users requests
+// ----------------------------------
+
+declare namespace UserPayload {
+	type Invitations = Array<{ email: string }>;
+}
+
+declare namespace UserSignupQuery {
+	type Users = { inviterId?: string; inviteeId?: string };
+}
+
+export declare namespace UserRequest {
+	export type Invites = AuthenticatedRequest<UserPayload.Invitations>;
+	export type Signup = AuthenticatedRequest<{}, UserSignupQuery.Users>;
+}

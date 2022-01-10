@@ -5,7 +5,7 @@ import { In } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import { Db, GenericHelpers, ICredentialsResponse, ResponseHelper } from '../..';
-import { AuthenticatedRequest, N8nApp, PublicUser } from '../Interfaces';
+import { N8nApp, PublicUser, UserRequest } from '../Interfaces';
 import { isEmailSetup, isValidEmail, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
@@ -14,7 +14,7 @@ import { issueJWT } from '../auth/jwt';
 export function usersNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
-		ResponseHelper.send(async (req: AuthenticatedRequest, res: Response) => {
+		ResponseHelper.send(async (req: UserRequest.Invites) => {
 			if (!isEmailSetup()) {
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
@@ -23,10 +23,10 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const invitations = req.body as Array<{ email: string }>;
+			const invitations = req.body;
 
 			if (!Array.isArray(invitations)) {
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
 			// Validate payload
@@ -35,21 +35,22 @@ export function usersNamespace(this: N8nApp): void {
 					throw new ResponseHelper.ResponseError(
 						`Invalid email address ${invitation.email}`,
 						undefined,
-						500,
+						400,
 					);
 				}
 			});
 
-			const existingUsers = await Db.collections.User!.find({
+			const inviteEmailAddresses = invitations.map((invitation) => invitation.email);
+			const alreadyInvited = await Db.collections.User!.find({
 				where: {
-					email: In(invitations.map((invitation) => invitation.email)),
+					email: In(inviteEmailAddresses),
 				},
 			});
 
-			if (existingUsers.length) {
-				const existingEmails = existingUsers.map((existingUser) => existingUser.email);
+			if (alreadyInvited.length) {
+				const existingEmails = alreadyInvited.map((userShell) => userShell.email).join(', ');
 				throw new ResponseHelper.ResponseError(
-					`One or more emails already invited: ${existingEmails.join(', ')}`,
+					`One or more emails already invited: ${existingEmails}`,
 					undefined,
 					400,
 				);
@@ -65,43 +66,32 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			let successfulBatch = true;
-			const createdUsers: PublicUser[] = [];
-
-			// eslint-disable-next-line no-restricted-syntax
-			for (const invited of invitations) {
-				const newUserInfo = {
-					email: invited.email,
-					globalRole: role,
-				} as User;
-				// eslint-disable-next-line no-await-in-loop
-				const newUser = await Db.collections.User!.save(newUserInfo);
-				createdUsers.push(sanitizeUser(newUser));
-
-				let inviteAcceptUrl = GenericHelpers.getBaseUrl();
-				const domain = inviteAcceptUrl;
-				if (!inviteAcceptUrl.endsWith('/')) {
-					inviteAcceptUrl += '/';
-				}
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-				inviteAcceptUrl += `signup/inviterId=${req.user.id}&inviteeId=${newUser.id}`;
-
-				const mailer = getInstance();
-				// eslint-disable-next-line no-await-in-loop
-				const result = await mailer.invite({
-					email: invited.email,
-					inviteAcceptUrl,
-					domain,
-				});
-				if (!result.success) {
-					successfulBatch = false;
-				}
+			let domain = GenericHelpers.getBaseUrl();
+			if (domain.endsWith('/')) {
+				domain = domain.slice(0, domain.length - 1);
 			}
+			return Promise.all(
+				invitations.map(async ({ email }) => {
+					const newUserInfo = {
+						email,
+						globalRole: role,
+					} as User;
+					const newUser = await Db.collections.User!.save(newUserInfo);
 
-			if (!successfulBatch) {
-				ResponseHelper.sendErrorResponse(res, new Error('One or more emails could not be sent'));
-			}
-			return { success: true, newUsers: createdUsers };
+					const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${newUser.id}`;
+
+					const mailer = getInstance();
+					const result = await mailer.invite({
+						email,
+						inviteAcceptUrl,
+						domain,
+					});
+					if (!result.success) {
+						throw new ResponseHelper.ResponseError('One or more emails could not be sent');
+					}
+					return sanitizeUser(newUser);
+				}),
+			);
 		}),
 	);
 
