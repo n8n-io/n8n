@@ -35,7 +35,6 @@ export class Egoi implements INodeType {
 		description: 'Consume E-goi API',
 		defaults: {
 			name: 'E-goi',
-			color: '#4cacd6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -154,7 +153,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default the response just includes the contact id. If this option gets activated it<br />will resolve the data automatically.',
+				description: 'By default the response just includes the contact id. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Additional Fields',

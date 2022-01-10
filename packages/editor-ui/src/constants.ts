@@ -11,6 +11,7 @@ export const DEFAULT_NEW_WORKFLOW_NAME = 'My workflow';
 export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
 export const DUPLICATE_POSTFFIX = ' copy';
+export const NODE_OUTPUT_DEFAULT_KEY = '_NODE_OUTPUT_DEFAULT_KEY_';
 
 // tags
 export const MAX_TAG_NAME_LENGTH = 24;
@@ -25,6 +26,8 @@ export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
+export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
+export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
@@ -71,7 +74,7 @@ export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const SUBCATEGORY_DESCRIPTIONS: {
 	[category: string]: { [subcategory: string]: string };
 } = {
-	'Core Nodes': {
+	'Core Nodes': { // this - all subkeys are set from codex
 		Flow: 'Branches, core triggers, merge data',
 		Files:  'Work with CSV, XML, text, images etc.',
 		'Data Transformation': 'Manipulate data fields, run code',
@@ -83,7 +86,7 @@ export const TRIGGER_NODE_FILTER = 'Trigger';
 export const ALL_NODE_FILTER = 'All';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
-export const PERSONALIZED_CATEGORY = 'Suggested Nodes ✨';
+export const PERSONALIZED_CATEGORY = 'Suggested Nodes';
 export const HIDDEN_NODES = [START_NODE_TYPE];
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
@@ -93,7 +96,6 @@ export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 export const WORK_AREA_KEY = 'workArea';
-export const AUTOMATION_CONSULTING_WORK_AREA = 'automationConsulting';
 export const FINANCE_WORK_AREA = 'finance';
 export const HR_WORK_AREA = 'HR';
 export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
@@ -104,7 +106,21 @@ export const SALES_BUSINESSDEV_WORK_AREA = 'sales-businessDevelopment';
 export const SECURITY_WORK_AREA = 'security';
 export const SUPPORT_WORK_AREA = 'support';
 export const OPS_WORK_AREA = 'ops';
+export const EXECUTIVE_WORK_AREA = 'executive';
 export const OTHER_WORK_AREA_OPTION = 'other';
+export const NOT_APPLICABLE_WORK_AREA = 'n/a';
+
+export const COMPANY_INDUSTRY_KEY = 'companyIndustry';
+export const E_COMMERCE_INDUSTRY = 'e-commerce';
+export const AUTOMATION_CONSULTING_INDUSTRY = 'automation-consulting';
+export const SYSTEM_INTEGRATION_INDUSTRY = 'systems-integration';
+export const GOVERNMENT_INDUSTRY = 'government';
+export const LEGAL_INDUSTRY = 'legal-industry';
+export const HEALTHCARE_INDUSTRY= 'healthcare';
+export const FINANCE_INDUSTRY = 'finance-industry';
+export const SECURITY_INDUSTRY = 'security-industry';
+export const SAAS_INDUSTRY = 'saas';
+export const OTHER_INDUSTRY_OPTION= 'other';
 
 export const COMPANY_SIZE_KEY = 'companySize';
 export const COMPANY_SIZE_20_OR_LESS = '<20';
@@ -116,3 +132,7 @@ export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
 
 export const CODING_SKILL_KEY = 'codingSkill';
 export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
+export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
+
+export const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+

@@ -2,10 +2,10 @@
 	<div @keydown.stop class="collection-parameter">
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
-				Currently no properties exist
+				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
-			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" @valueChanged="valueChanged" />
+			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" @valueChanged="valueChanged" />
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
@@ -19,7 +19,7 @@
 						<n8n-option
 							v-for="item in parameterOptions"
 							:key="item.name"
-							:label="item.displayName"
+							:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
 							:value="item.name">
 						</n8n-option>
 					</n8n-select>
@@ -67,7 +67,8 @@ export default mixins(
 		},
 		computed: {
 			getPlaceholderText (): string {
-				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose Option To Add';
+				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
+				return placeholder ? placeholder : this.$locale.baseText('collectionParameter.choose');
 			},
 			getProperties (): INodeProperties[] {
 				const returnProperties = [];
@@ -184,14 +185,14 @@ export default mixins(
 <style lang="scss">
 
 .collection-parameter {
-	padding-left: 2em;
+	padding-left: var(--spacing-s);
 
 	.param-options {
-		padding-top: 0.5em;
+		margin-top: var(--spacing-xs);
 	}
 
 	.no-items-exist {
-		margin: 0.8em 0 0.4em 0;
+		margin: var(--spacing-xs) 0;
 	}
 	.option {
 		position: relative;

@@ -8,11 +8,11 @@
 			<template v-slot:header>
 				<div class="workflows-header">
 					<n8n-heading tag="h1" size="xlarge" class="title">
-						Open Workflow
+						{{ $locale.baseText('workflowOpen.openWorkflow') }}
 					</n8n-heading>
 					<div class="tags-filter">
 						<TagsDropdown
-							placeholder="Filter by tags..."
+							:placeholder="$locale.baseText('workflowOpen.openWorkflow')"
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
@@ -21,7 +21,7 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<n8n-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
+						<n8n-input :placeholder="$locale.baseText('workflowOpen.searchWorkflows')" ref="inputFieldFilter" v-model="filterText">
 							<font-awesome-icon slot="prefix" icon="search"></font-awesome-icon>
 						</n8n-input>
 					</div>
@@ -30,7 +30,7 @@
 
 			<template v-slot:content>
 				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
-					<el-table-column property="name" label="Name" class-name="clickable" sortable>
+					<el-table-column property="name" :label="$locale.baseText('workflowOpen.name')" class-name="clickable" sortable>
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
@@ -38,9 +38,9 @@
 							</div>
 						</template>
 					</el-table-column>
-					<el-table-column property="createdAt" label="Created" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column label="Active" width="75">
+					<el-table-column property="createdAt" :label="$locale.baseText('workflowOpen.created')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column property="updatedAt" :label="$locale.baseText('workflowOpen.updated')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column :label="$locale.baseText('workflowOpen.active')" width="75">
 						<template slot-scope="scope">
 							<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
 						</template>
@@ -134,15 +134,22 @@ export default mixins(
 				this.filterTagIds.push(tagId);
 			}
 		},
-		async openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
+		async openWorkflow (data: IWorkflowShortResponse, column: any, cell: any, e: PointerEvent) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {
 
 				const currentWorkflowId = this.$store.getters.workflowId;
 
+				if (e.metaKey || e.ctrlKey) {
+					const route = this.$router.resolve({name: 'NodeViewExisting', params: {name: data.id}});
+					window.open(route.href, '_blank');
+
+					return;
+				}
+
 				if (data.id === currentWorkflowId) {
 					this.$showMessage({
-						title: 'Already open',
-						message: 'This is the current workflow',
+						title: this.$locale.baseText('workflowOpen.showMessage.title'),
+						message: this.$locale.baseText('workflowOpen.showMessage.message'),
 						type: 'error',
 						duration: 1500,
 					});
@@ -152,7 +159,13 @@ export default mixins(
 
 				const result = this.$store.getters.getStateIsDirty;
 				if(result) {
-					const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+					const importConfirm = await this.confirmMessage(
+						this.$locale.baseText('workflowOpen.confirmMessage.message'),
+						this.$locale.baseText('workflowOpen.confirmMessage.headline'),
+						'warning',
+						this.$locale.baseText('workflowOpen.confirmMessage.confirmButtonText'),
+						this.$locale.baseText('workflowOpen.confirmMessage.cancelButtonText'),
+					);
 					if (importConfirm === false) {
 						return;
 					} else {
@@ -189,7 +202,11 @@ export default mixins(
 				)
 				.catch(
 					(error: Error) => {
-						this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+						this.$showError(
+							error,
+							this.$locale.baseText('workflowOpen.showError.title'),
+							this.$locale.baseText('workflowOpen.showError.message') + ':',
+						);
 						this.isDataLoading = false;
 					},
 				);

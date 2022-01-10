@@ -8,13 +8,22 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
 
 import * as jwt from 'jsonwebtoken';
+
+interface IGoogleAuthCredentials {
+	delegatedEmail?: string;
+	email: string;
+	inpersonate: boolean;
+	privateKey: string;
+}
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -45,8 +54,13 @@ export async function googleApiRequest(
 
 	try {
 		if (authenticationMethod === 'serviceAccount') {
-			const credentials = await this.getCredentials('googleApi') as { access_token: string, email: string, privateKey: string };
-			const { access_token } = await getAccessToken.call(this, credentials);
+			const credentials = await this.getCredentials('googleApi');
+
+			if (credentials === undefined) {
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+			}
+
+			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 			options.headers.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request!(options);
 
@@ -64,7 +78,7 @@ export async function googleApiRequest(
 
 function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	{ email, privateKey }: { email: string, privateKey: string },
+	credentials: IGoogleAuthCredentials,
 ) {
 	// https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
@@ -75,10 +89,13 @@ function getAccessToken(
 
 	const now = moment().unix();
 
+	credentials.email = credentials.email.trim();
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+
 	const signature = jwt.sign(
 		{
-			iss: email,
-			sub: email,
+			iss: credentials.email,
+			sub: credentials.email,
 			scope: scopes.join(' '),
 			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,

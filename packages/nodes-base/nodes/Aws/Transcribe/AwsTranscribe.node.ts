@@ -25,7 +25,6 @@ export class AwsTranscribe implements INodeType {
 		description: 'Sends data to AWS Transcribe',
 		defaults: {
 			name: 'AWS Transcribe',
-			color: '#5aa08d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -203,10 +202,7 @@ export class AwsTranscribe implements INodeType {
 						name: 'channelIdentification',
 						type: 'boolean',
 						default: false,
-						description: `Instructs Amazon Transcribe to process each audiochannel separately</br>
-						 and then merge the transcription output of each channel into a single transcription.
-						 You can't set both Max Speaker Labels and Channel Identification in the same request.
-						 If you set both, your request returns a BadRequestException.`,
+						description: `Instructs Amazon Transcribe to process each audiochannel separately and then merge the transcription output of each channel into a single transcription. You can't set both Max Speaker Labels and Channel Identification in the same request. If you set both, your request returns a BadRequestException.`,
 					},
 					{
 						displayName: 'Max Alternatives',
@@ -228,9 +224,7 @@ export class AwsTranscribe implements INodeType {
 							minValue: 2,
 							maxValue: 10,
 						},
-						description: `The maximum number of speakers to identify in the input audio.</br>
-						If there are more speakers in the audio than this number, multiple speakers are</br>
-						identified as a single speaker.`,
+						description: `The maximum number of speakers to identify in the input audio. If there are more speakers in the audio than this number, multiple speakers are identified as a single speaker.`,
 					},
 					{
 						displayName: 'Vocabulary Name',
@@ -244,8 +238,7 @@ export class AwsTranscribe implements INodeType {
 						name: 'vocabularyFilterName',
 						type: 'string',
 						default: '',
-						description: `The name of the vocabulary filter to use when transcribing the audio.</br>
-						The filter that you specify must have the same language code as the transcription job.`,
+						description: `The name of the vocabulary filter to use when transcribing the audio. The filter that you specify must have the same language code as the transcription job.`,
 					},
 					{
 						displayName: 'Vocabulary Filter Method',
@@ -267,9 +260,7 @@ export class AwsTranscribe implements INodeType {
 
 						],
 						default: 'remove',
-						description: `Set to mask to remove filtered text from the transcript and replace it with three asterisks ("***") as placeholder text.</br>
-						Set to remove to remove filtered text from the transcript without using placeholder text. Set to tag to mark the word in the transcription</br>
-						output that matches the vocabulary filter. When you set the filter method to tag, the words matching your vocabulary filter are not masked or removed.`,
+						description: `<p>Set to mask to remove filtered text from the transcript and replace it with three asterisks ("***") as placeholder text.</p><p>Set to remove to remove filtered text from the transcript without using placeholder text. Set to tag to mark the word in the transcription output that matches the vocabulary filter. When you set the filter method to tag, the words matching your vocabulary filter are not masked or removed.</p>`,
 					},
 				],
 			},
@@ -288,7 +279,7 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
-				description: 'By default, the response only contains metadata about the transcript.<br>Enable this option to retrieve the transcript instead.',
+				description: 'By default, the response only contains metadata about the transcript. Enable this option to retrieve the transcript instead.',
 			},
 			{
 				displayName: 'Simple',
@@ -444,7 +435,7 @@ export class AwsTranscribe implements INodeType {
 								ShowAlternatives: true,
 								MaxAlternatives: options.maxAlternatives,
 							});
-						} 
+						}
 
 						if (options.maxSpeakerLabels) {
 							Object.assign(body.Settings, {

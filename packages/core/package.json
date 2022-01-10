@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "0.89.0",
+  "version": "0.100.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -33,7 +33,7 @@
     "@types/jest": "^26.0.13",
     "@types/lodash.get": "^4.4.6",
     "@types/mime-types": "^2.1.0",
-    "@types/node": "^14.14.40",
+    "@types/node": "14.17.27",
     "@types/request-promise-native": "~1.0.15",
     "jest": "^26.4.2",
     "source-map-support": "^0.5.9",
@@ -47,15 +47,17 @@
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",
     "file-type": "^14.6.2",
+    "flatted": "^3.2.4",
     "form-data": "^4.0.0",
     "lodash.get": "^4.4.2",
     "mime-types": "^2.1.27",
-    "n8n-workflow": "~0.72.0",
+    "n8n-workflow": "~0.82.0",
     "oauth-1.0a": "^2.2.6",
     "p-cancelable": "^2.0.0",
     "qs": "^6.10.1",
     "request": "^2.88.2",
-    "request-promise-native": "^1.0.7"
+    "request-promise-native": "^1.0.7",
+    "uuid": "^8.3.2"
   },
   "jest": {
     "transform": {

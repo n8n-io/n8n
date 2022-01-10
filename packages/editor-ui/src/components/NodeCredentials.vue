@@ -1,51 +1,53 @@
 <template>
-	<div v-if="credentialTypesNodeDescriptionDisplayed.length" class="node-credentials">
-		<div class="headline">
-			Credentials
-		</div>
+	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
+		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
+			<n8n-input-label
+				:label="$locale.baseText(
+					'nodeCredentials.credentialFor',
+					{
+						interpolate: {
+							credentialType: credentialTypeNames[credentialTypeDescription.name]
+						}
+					}
+				)"
+				:bold="false"
+				size="small"
 
-		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name" class="credential-data">
-			<el-row class="credential-parameter-wrapper">
-				<el-col :span="10" class="parameter-name">
-					{{credentialTypeNames[credentialTypeDescription.name]}}:
-				</el-col>
+				:set="issues = getIssues(credentialTypeDescription.name)"
+			>
+				<div v-if="isReadOnly">
+					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
+				</div>
 
-				<el-col v-if="!isReadOnly" :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
-					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
-							<n8n-option
-								v-for="(item) in credentialOptions[credentialTypeDescription.name]"
-								:key="item.id"
-								:label="item.name"
-								:value="item.id">
-							</n8n-option>
-							<n8n-option
-								:key="NEW_CREDENTIALS_TEXT"
-								:value="NEW_CREDENTIALS_TEXT"
-								:label="NEW_CREDENTIALS_TEXT"
-							>
-							</n8n-option>
-						</n8n-select>
-					</div>
+				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
+					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$locale.baseText('nodeCredentials.selectCredential')" size="small">
+						<n8n-option
+							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
+							:key="item.id"
+							:label="item.name"
+							:value="item.id">
+						</n8n-option>
+						<n8n-option
+							:key="NEW_CREDENTIALS_TEXT"
+							:value="NEW_CREDENTIALS_TEXT"
+							:label="NEW_CREDENTIALS_TEXT"
+						>
+						</n8n-option>
+					</n8n-select>
 
-					<div class="credential-issues">
+					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues(credentialTypeDescription.name).join('<br />&nbsp;&nbsp;- ')"></div>
+							<div slot="content" v-html="`${$locale.baseText('nodeCredentials.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
-				</el-col>
-				<el-col v-if="!isReadOnly" :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="isCredentialExisting(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
-				</el-col>
 
-				<el-col v-if="isReadOnly" :span="14" class="readonly-container" >
-					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
-				</el-col>
-
-			</el-row>
+					<div :class="$style.edit" v-if="selected[credentialTypeDescription.name] && isCredentialExisting(credentialTypeDescription.name)">
+						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" :title="$locale.baseText('nodeCredentials.updateCredential')" />
+					</div>
+				</div>
+			</n8n-input-label>
 		</div>
-
 	</div>
 </template>
 
@@ -71,8 +73,6 @@ import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
 
-const NEW_CREDENTIALS_TEXT = '- Create New -';
-
 export default mixins(
 	genericHelpers,
 	nodeHelpers,
@@ -85,7 +85,7 @@ export default mixins(
 	],
 	data () {
 		return {
-			NEW_CREDENTIALS_TEXT,
+			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
 			newCredentialUnsubscribe: null as null | (() => void),
 		};
 	},
@@ -106,7 +106,7 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			const activeNodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
+			const activeNodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;
 			}
@@ -191,7 +191,7 @@ export default mixins(
 		},
 
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
-			if (credentialId === NEW_CREDENTIALS_TEXT) {
+			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
 				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
 				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.$store.getters.workflowId });
@@ -215,8 +215,16 @@ export default mixins(
 				});
 				this.updateNodesCredentialsIssues();
 				this.$showMessage({
-					title: 'Node credentials updated',
-					message: `Nodes that used credentials "${oldCredentials.name}" have been updated to use "${selected.name}"`,
+					title: this.$locale.baseText('nodeCredentials.showMessage.title'),
+					message: this.$locale.baseText(
+						'nodeCredentials.showMessage.message',
+						{
+							interpolate: {
+								oldCredentialName: oldCredentials.name,
+								newCredentialName: selected.name,
+							},
+						},
+					),
 					type: 'success',
 				});
 			}
@@ -285,62 +293,39 @@ export default mixins(
 });
 </script>
 
-<style lang="scss">
+<style lang="scss" module>
+.container {
+	margin: var(--spacing-xs) 0;
 
-.node-credentials {
-	padding-bottom: 1em;
-	margin: 0.5em;
-	border-bottom: 1px solid #ccc;
-
-	.credential-issues {
-		display: none;
-		width: 20px;
-		text-align: right;
-		float: right;
-		color: #ff8080;
-		font-size: 1.2em;
-		margin-top: 3px;
-	}
-
-	.credential-data + .credential-data {
-		margin-top: 1em;
-	}
-
-	.has-issues {
-		.credential-issues {
-			display: inline-block;
-		}
-	}
-
-	.headline {
-		font-weight: bold;
-		margin-bottom: 0.7em;
-	}
-
-	.credential-parameter-wrapper {
-		display: flex;
-		align-items: center;
-	}
-
-	.parameter-name {
-		font-weight: 400;
-	}
-
-	.parameter-value {
-		display: flex;
-		align-items: center;
-	}
-
-	.credential-action {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		color: var(--color-text-base);
-	}
-
-	.readonly-container {
-		padding-right: 0.5em;
+	> * {
+		margin-bottom: var(--spacing-xs);
 	}
 }
 
+.warning {
+	min-width: 20px;
+	margin-left: 5px;
+	color: #ff8080;
+	font-size: var(--font-size-s);
+}
+
+.edit {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: var(--color-text-base);
+	min-width: 20px;
+	margin-left: 5px;
+	font-size: var(--font-size-s);
+}
+
+.input {
+	display: flex;
+	align-items: center;
+}
+
+.hasIssues {
+	composes: input;
+	--input-border-color: var(--color-danger);
+}
 </style>

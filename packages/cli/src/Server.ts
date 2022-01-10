@@ -24,19 +24,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable import/no-dynamic-require */
+/* eslint-disable no-await-in-loop */
+
 import * as express from 'express';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import {
-	FindManyOptions,
-	FindOneOptions,
-	getConnectionManager,
-	In,
-	IsNull,
-	LessThanOrEqual,
-	Like,
-	Not,
-} from 'typeorm';
+import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
 import * as os from 'os';
@@ -47,14 +42,16 @@ import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
-import { createHash, createHmac } from 'crypto';
+import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
 import {
+	BinaryDataManager,
 	Credentials,
+	IBinaryDataConfig,
 	ICredentialTestFunctions,
 	LoadNodeParameterOptions,
 	NodeExecuteFunctions,
@@ -63,7 +60,6 @@ import {
 
 import {
 	ICredentialsDecrypted,
-	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
@@ -73,17 +69,15 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	IRunData,
 	INodeVersionedType,
-	ITelemetryClientConfig,
 	ITelemetrySettings,
 	IWorkflowBase,
-	IWorkflowCredentials,
 	LoggerProxy,
 	NodeCredentialTestRequest,
 	NodeCredentialTestResult,
 	NodeHelpers,
 	Workflow,
+	ICredentialsEncrypted,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -134,7 +128,6 @@ import {
 	IWorkflowExecutionDataProcess,
 	IWorkflowResponse,
 	IPersonalizationSurveyAnswers,
-	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
 	ResponseHelper,
@@ -157,6 +150,7 @@ import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
+import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -293,6 +287,7 @@ class App {
 			personalizationSurvey: {
 				shouldShow: false,
 			},
+			defaultLocale: config.get('defaultLocale'),
 		};
 	}
 
@@ -324,8 +319,6 @@ class App {
 
 		this.frontendSettings.personalizationSurvey =
 			await PersonalizationSurvey.preparePersonalizationSurvey();
-
-		InternalHooksManager.init(this.frontendSettings.instanceId);
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -694,6 +687,7 @@ class App {
 
 					// @ts-ignore
 					savedWorkflow.id = savedWorkflow.id.toString();
+					await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 					void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow as IWorkflowBase);
 					return savedWorkflow;
 				},
@@ -897,7 +891,7 @@ class App {
 					}
 
 					await this.externalHooks.run('workflow.afterUpdate', [workflow]);
-					void InternalHooksManager.getInstance().onWorkflowSaved(workflow as IWorkflowBase);
+					void InternalHooksManager.getInstance().onWorkflowSaved(workflow);
 
 					if (workflow.active) {
 						// When the workflow is supposed to be active add it again
@@ -1165,13 +1159,13 @@ class App {
 
 					if (onlyLatest) {
 						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedTypeNode(nodeData);
+							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
 							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
 							returnData.push(nodeInfo);
 						});
 					} else {
 						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedTypeNodeAll(nodeData);
+							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
 							allNodeTypes.forEach((element) => {
 								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
 								returnData.push(nodeInfo);
@@ -1184,23 +1178,91 @@ class App {
 			),
 		);
 
+		this.app.get(
+			`/${this.restEndpoint}/credential-translation`,
+			ResponseHelper.send(
+				async (
+					req: express.Request & { query: { credentialType: string } },
+					res: express.Response,
+				): Promise<object | null> => {
+					const translationPath = getCredentialTranslationPath({
+						locale: this.frontendSettings.defaultLocale,
+						credentialType: req.query.credentialType,
+					});
+
+					try {
+						return require(translationPath);
+					} catch (error) {
+						return null;
+					}
+				},
+			),
+		);
+
 		// Returns node information based on node names and versions
 		this.app.post(
 			`/${this.restEndpoint}/node-types`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
 					const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
-					const nodeTypes = NodeTypes();
 
-					const returnData: INodeTypeDescription[] = [];
-					nodeInfos.forEach((nodeInfo) => {
-						const nodeType = nodeTypes.getByNameAndVersion(nodeInfo.name, nodeInfo.version);
-						if (nodeType?.description) {
-							returnData.push(nodeType.description);
+					const { defaultLocale } = this.frontendSettings;
+
+					if (defaultLocale === 'en') {
+						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
+							const { description } = NodeTypes().getByNameAndVersion(name, version);
+							acc.push(description);
+							return acc;
+						}, []);
+					}
+
+					async function populateTranslation(
+						name: string,
+						version: number,
+						nodeTypes: INodeTypeDescription[],
+					) {
+						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
+						const translationPath = await getNodeTranslationPath({
+							nodeSourcePath: sourcePath,
+							longNodeType: description.name,
+							locale: defaultLocale,
+						});
+
+						try {
+							const translation = await readFile(translationPath, 'utf8');
+							description.translation = JSON.parse(translation);
+						} catch (error) {
+							// ignore - no translation exists at path
 						}
-					});
 
-					return returnData;
+						nodeTypes.push(description);
+					}
+
+					const nodeTypes: INodeTypeDescription[] = [];
+
+					const promises = nodeInfos.map(async ({ name, version }) =>
+						populateTranslation(name, version, nodeTypes),
+					);
+
+					await Promise.all(promises);
+
+					return nodeTypes;
+				},
+			),
+		);
+
+		// Returns node information based on node names and versions
+		this.app.get(
+			`/${this.restEndpoint}/node-translation-headers`,
+			ResponseHelper.send(
+				async (req: express.Request, res: express.Response): Promise<object | void> => {
+					const packagesPath = pathJoin(__dirname, '..', '..', '..');
+					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
+					try {
+						return require(headersPath);
+					} catch (error) {
+						res.status(500).send('Failed to find headers file');
+					}
 				},
 			),
 		);
@@ -1399,7 +1461,7 @@ class App {
 									const testFunctionSearch =
 										credential.name === credentialType && !!credential.testedBy;
 									if (testFunctionSearch) {
-										foundTestFunction = (node as unknown as INodeType).methods!.credentialTest![
+										foundTestFunction = (nodeType as unknown as INodeType).methods!.credentialTest![
 											credential.testedBy!
 										];
 									}
@@ -1593,12 +1655,13 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse[]> => {
 					const findQuery = {} as FindManyOptions;
 					if (req.query.filter) {
-						findQuery.where = JSON.parse(req.query.filter as string);
-						if ((findQuery.where! as IDataObject).id !== undefined) {
+						findQuery.where = JSON.parse(req.query.filter as string) as IDataObject;
+						if (findQuery.where.id !== undefined) {
 							// No idea if multiple where parameters make db search
 							// slower but to be sure that that is not the case we
 							// remove all unnecessary fields in case the id is defined.
-							findQuery.where = { id: (findQuery.where! as IDataObject).id };
+							// @ts-ignore
+							findQuery.where = { id: findQuery.where.id };
 						}
 					}
 
@@ -1832,12 +1895,6 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					// Decrypt the currently saved credentials
-					const workflowCredentials: IWorkflowCredentials = {
-						[result.type]: {
-							[result.id.toString()]: result as ICredentialsEncrypted,
-						},
-					};
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
@@ -2055,13 +2112,6 @@ class App {
 						);
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
-
-					// Decrypt the currently saved credentials
-					const workflowCredentials: IWorkflowCredentials = {
-						[result.type]: {
-							[result.id.toString()]: result as ICredentialsEncrypted,
-						},
-					};
 
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
@@ -2426,12 +2476,27 @@ class App {
 					const filters = {
 						startedAt: LessThanOrEqual(deleteData.deleteBefore),
 					};
+
 					if (deleteData.filters !== undefined) {
 						Object.assign(filters, deleteData.filters);
 					}
 
+					const execs = await Db.collections.Execution!.find({ ...filters, select: ['id'] });
+
+					await Promise.all(
+						execs.map(async (item) =>
+							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(item.id.toString()),
+						),
+					);
+
 					await Db.collections.Execution!.delete(filters);
 				} else if (deleteData.ids !== undefined) {
+					await Promise.all(
+						deleteData.ids.map(async (id) =>
+							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id),
+						),
+					);
+
 					// Deletes all executions with the given ids
 					await Db.collections.Execution!.delete(deleteData.ids);
 				} else {
@@ -2628,6 +2693,23 @@ class App {
 		);
 
 		// ----------------------------------------
+		// Binary data
+		// ----------------------------------------
+
+		// Returns binary buffer
+		this.app.get(
+			`/${this.restEndpoint}/data/:path`,
+			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+				const dataPath = req.params.path;
+				return BinaryDataManager.getInstance()
+					.retrieveBinaryDataByIdentifier(dataPath)
+					.then((buffer: Buffer) => {
+						return buffer.toString('base64');
+					});
+			}),
+		);
+
+		// ----------------------------------------
 		// Settings
 		// ----------------------------------------
 
@@ -2696,7 +2778,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
@@ -2747,7 +2835,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
@@ -2773,7 +2867,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
@@ -2795,15 +2895,9 @@ class App {
 							return;
 						}
 
-						const loadNodesAndCredentials = LoadNodesAndCredentials();
-
 						const credentialsOverwrites = CredentialsOverwrites();
 
 						await credentialsOverwrites.init(body);
-
-						const credentialTypes = CredentialTypes();
-
-						await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 						this.presetCredentialsLoaded = true;
 
@@ -2815,36 +2909,38 @@ class App {
 			);
 		}
 
-		// Read the index file and replace the path placeholder
-		const editorUiPath = require.resolve('n8n-editor-ui');
-		const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
-		const n8nPath = config.get('path');
+		if (config.get('endpoints.disableUi') !== true) {
+			// Read the index file and replace the path placeholder
+			const editorUiPath = require.resolve('n8n-editor-ui');
+			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
+			const n8nPath = config.get('path');
 
-		let readIndexFile = readFileSync(filePath, 'utf8');
-		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
-		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
+			let readIndexFile = readFileSync(filePath, 'utf8');
+			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
-		// Serve the altered index.html file separately
-		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
-			res.send(readIndexFile);
-		});
+			// Serve the altered index.html file separately
+			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
+				res.send(readIndexFile);
+			});
 
-		// Serve the website
+			// Serve the website
+			this.app.use(
+				'/',
+				express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
+					index: 'index.html',
+					setHeaders: (res, path) => {
+						if (res.req && res.req.url === '/index.html') {
+							// Set last modified date manually to n8n start time so
+							// that it hopefully refreshes the page when a new version
+							// got used
+							res.setHeader('Last-Modified', startTime);
+						}
+					},
+				}),
+			);
+		}
 		const startTime = new Date().toUTCString();
-		this.app.use(
-			'/',
-			express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
-				index: 'index.html',
-				setHeaders: (res, path) => {
-					if (res.req && res.req.url === '/index.html') {
-						// Set last modified date manually to n8n start time so
-						// that it hopefully refreshes the page when a new version
-						// got used
-						res.setHeader('Last-Modified', startTime);
-					}
-				},
-			}),
-		);
 	}
 }
 
@@ -2874,8 +2970,15 @@ export async function start(): Promise<void> {
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 
+		const defaultLocale = config.get('defaultLocale');
+
+		if (defaultLocale !== 'en') {
+			console.log(`Locale: ${defaultLocale}`);
+		}
+
 		await app.externalHooks.run('n8n.ready', [app]);
 		const cpus = os.cpus();
+		const binarDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 		const diagnosticInfo: IDiagnosticInfo = {
 			basicAuthActive: config.get('security.basicAuth.active') as boolean,
 			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
@@ -2909,9 +3012,26 @@ export async function start(): Promise<void> {
 				executions_data_prune_timeout: config.get('executions.pruneDataTimeout'),
 			},
 			deploymentType: config.get('deployment.type'),
+			binaryDataMode: binarDataConfig.mode,
 		};
 
-		void InternalHooksManager.getInstance().onServerStarted(diagnosticInfo);
+		void Db.collections
+			.Workflow!.findOne({
+				select: ['createdAt'],
+				order: { createdAt: 'ASC' },
+			})
+			.then(async (workflow) =>
+				InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
+			);
+	});
+
+	server.on('error', (error: Error & { code: string }) => {
+		if (error.code === 'EADDRINUSE') {
+			console.log(
+				`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
+			);
+			process.exit(1);
+		}
 	});
 }
 

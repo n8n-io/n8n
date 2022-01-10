@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
@@ -48,7 +47,6 @@ export class Zulip implements INodeType {
 		description: 'Consume Zulip API',
 		defaults: {
 			name: 'Zulip',
-			color: '#156742',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -218,10 +216,12 @@ export class Zulip implements INodeType {
 						if (items[i].binary[binaryProperty] === undefined) {
 							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
 						}
+
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 						const formData = {
 							file: {
 								//@ts-ignore
-								value: Buffer.from(items[i].binary[binaryProperty].data, BINARY_ENCODING),
+								value: binaryDataBuffer,
 								options: {
 									//@ts-ignore
 									filename: items[i].binary[binaryProperty].fileName,
@@ -430,6 +430,9 @@ export class Zulip implements INodeType {
 						}
 						if (additionalFields.isGuest) {
 							body.is_guest = additionalFields.isGuest as boolean;
+						}
+						if (additionalFields.role) {
+							body.role = additionalFields.role as number;
 						}
 						if (additionalFields.profileData) {
 							//@ts-ignore

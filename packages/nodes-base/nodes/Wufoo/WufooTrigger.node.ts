@@ -36,7 +36,6 @@ export class WufooTrigger implements INodeType {
 		description: 'Handle Wufoo events via webhooks',
 		defaults: {
 			name: 'Wufoo Trigger',
-			color: '#c35948',
 		},
 		inputs: [],
 		outputs: ['main'],

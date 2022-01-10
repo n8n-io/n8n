@@ -25,7 +25,6 @@ export class FlowTrigger implements INodeType {
 		description: 'Handle Flow events via webhooks',
 		defaults: {
 			name: 'Flow Trigger',
-			color: '#559922',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -80,7 +79,7 @@ export class FlowTrigger implements INodeType {
 						],
 					},
 				},
-				description: `Lists ids, perhaps known better as "Projects" separated by ,`,
+				description: `Lists ids, perhaps known better as "Projects" separated by a comma (,)`,
 			},
 			{
 				displayName: 'Task ID',
@@ -100,7 +99,7 @@ export class FlowTrigger implements INodeType {
 						],
 					},
 				},
-				description: `Task ids separated by ,`,
+				description: `Task ids separated by a comma (,)`,
 			},
 		],
 
