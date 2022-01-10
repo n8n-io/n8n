@@ -244,6 +244,32 @@ export const mailFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Custom Args',
+		name: 'customArgs',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'mail',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Track ID',
+				name: 'trackId',
+				type: 'string',
+				default: '',
+				description: 'a uuid4 format to track',
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -353,6 +379,7 @@ export type SendMailBody = {
 		bcc?: EmailName[],
 		dynamic_template_data?: { [key: string]: string },
 		send_at?: number,
+		custom_args?: {[key: string]: string},
 	}>,
 	ip_pool_name?: string;
 	from: EmailName,

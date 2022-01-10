@@ -268,7 +268,7 @@ export class SendGrid implements INodeType {
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.message });
-					} else {	
+					} else {
 						throw error;
 					}
 				}
@@ -408,6 +408,10 @@ export class SendGrid implements INodeType {
 							ipPoolName: string;
 						};
 
+						const {trackId} = this.getNodeParameter('customArgs', i) as {
+							trackId: string;
+						};
+
 						const body: SendMailBody = {
 							personalizations: [{
 								to: parsedToEmail,
@@ -422,6 +426,11 @@ export class SendGrid implements INodeType {
 								},
 							},
 						};
+
+						// custom Args
+						if(trackId){
+							body.personalizations[0].custom_args = {'trackId': trackId};
+						}
 
 						const dynamicTemplateEnabled = this.getNodeParameter('dynamicTemplate', i);
 
