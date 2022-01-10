@@ -36,12 +36,12 @@ import {
 	getUserCustomFields,
 	getUserFields,
 	isCustomer,
-	throwOnEmptyUpdate,
-	tolerateTrailingSlash,
-	zammadApiRequestAllItems,
-	zammadApiRequest,
 	isRelevantGroup,
 	isRelevantOrg,
+	throwOnEmptyUpdate,
+	tolerateTrailingSlash,
+	zammadApiRequest,
+	zammadApiRequestAllItems,
 } from './GenericFunctions';
 
 import type { Zammad as ZammadTypes } from './types';
