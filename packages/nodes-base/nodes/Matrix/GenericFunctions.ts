@@ -5,7 +5,6 @@ import {
 import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
@@ -69,7 +68,7 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, item: IDataObject, index: number, resource: string, operation: string): Promise<any> { // tslint:disable-line:no-any
+export async function handleMatrixCall(this: IExecuteFunctions, item: IDataObject, index: number, resource: string, operation: string): Promise<any> { // tslint:disable-line:no-any
 
 	if (resource === 'account') {
 		if (operation === 'me') {
@@ -193,13 +192,12 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 				throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 			}
 
-			//@ts-ignore
+			// @ts-ignore
 			qs.filename = item.binary[binaryPropertyName].fileName;
 			//@ts-ignore
 			filename = item.binary[binaryPropertyName].fileName;
 
-			//@ts-ignore
-			body = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 			//@ts-ignore
 			headers['Content-Type'] = item.binary[binaryPropertyName].mimeType;
 			headers['accept'] = 'application/json,text/*;q=0.99';
