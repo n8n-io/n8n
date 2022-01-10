@@ -7,21 +7,30 @@ export declare namespace Zammad {
 
 	export type AuthMethod = 'basicAuth' | 'tokenAuth';
 
+	export type Credentials = BasicAuthCredentials | TokenAuthCredentials;
+
 	type CredentialsBase = {
 		baseUrl: string;
 		allowUnauthorizedCerts: boolean;
 	}
 
-	export type BasicAuthCredentials = CredentialsBase & { authType: 'basicAuth'; username: string; password: string; };
-	export type TokenAuthCredentials = CredentialsBase & { authType: 'tokenAuth'; accessToken: string; };
+	export type BasicAuthCredentials = CredentialsBase & {
+		authType: 'basicAuth';
+		username: string;
+		password: string;
+	};
 
-	export type Credentials = BasicAuthCredentials | TokenAuthCredentials;
+	export type TokenAuthCredentials = CredentialsBase & {
+		authType: 'tokenAuth';
+		accessToken: string;
+	};
 
 	export type UserAdditionalFields = IDataObject & Zammad.CustomFieldsUi & Zammad.AddressUi;
 	export type UserUpdateFields = UserAdditionalFields;
 	export type UserFilterFields = IDataObject & Zammad.SortUi;
 
 	export type Organization = {
+		active: boolean;
 		id: number;
 		name: string;
 	};
@@ -37,6 +46,7 @@ export declare namespace Zammad {
 	};
 
 	export type Field = {
+		id: number,
 		display: string;
 		name: string;
 		object: string;

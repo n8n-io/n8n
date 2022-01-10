@@ -29,18 +29,20 @@ import {
 	fieldToLoadOption,
 	getAllFields,
 	isCustomer,
-	isGroupField,
-	isOrganizationCustomField,
-	isOrganizationField,
-	isTicketCustomField,
-	isTicketField,
-	isUserCustomField,
-	isUserField,
+	getGroupFields,
+	getOrganizationCustomFields,
+	getOrganizationFields,
+	getTicketCustomFields,
+	getTicketFields,
+	getUserCustomFields,
+	getUserFields,
 	throwOnEmptyUpdate,
 	tolerateTrailingSlash,
 	zammadApiRequest,
 	zammadApiRequestAllItems,
 	zammadApiRequestAllTickets,
+	isRelevantOrg,
+	isRelevantGroup,
 } from './GenericFunctions';
 
 import type { Zammad as ZammadTypes } from './types';
@@ -113,19 +115,19 @@ export class Zammad implements INodeType {
 			async loadOrganizationCustomFields(this: ILoadOptionsFunctions) {
 				const allFields = await getAllFields.call(this);
 
-				return allFields.filter(isOrganizationCustomField).map(fieldToLoadOption);
+				return getOrganizationCustomFields(allFields).map(fieldToLoadOption);
 			},
 
 			async loadUserCustomFields(this: ILoadOptionsFunctions) {
 				const allFields = await getAllFields.call(this);
 
-				return allFields.filter(isUserCustomField).map(fieldToLoadOption);
+				return getUserCustomFields(allFields).map(fieldToLoadOption);
 			},
 
 			async loadTicketCustomFields(this: ILoadOptionsFunctions) {
 				const allFields = await getAllFields.call(this);
 
-				return allFields.filter(isTicketCustomField).map(fieldToLoadOption);
+				return getTicketCustomFields(allFields).map((i) => ({ name: i.name, value: i.id }));
 			},
 
 			// ----------------------------------
@@ -135,57 +137,72 @@ export class Zammad implements INodeType {
 			async loadGroupFields(this: ILoadOptionsFunctions) {
 				const allFields = await getAllFields.call(this);
 
-				return allFields.filter(isGroupField).map(fieldToLoadOption);
+				return getGroupFields(allFields).map(fieldToLoadOption);
 			},
 
 			async loadOrganizationFields(this: ILoadOptionsFunctions) {
 				const allFields = await getAllFields.call(this);
 
-				return allFields.filter(isOrganizationField).map(fieldToLoadOption);
+				return getOrganizationFields(allFields).map(fieldToLoadOption);
 			},
 
 			async loadTicketFields(this: ILoadOptionsFunctions) {
 				const allFields = await getAllFields.call(this);
 
-				return allFields.filter(isTicketField).map(fieldToLoadOption);
+				return getTicketFields(allFields).map(fieldToLoadOption);
 			},
 
 			async loadUserFields(this: ILoadOptionsFunctions) {
 				const allFields = await getAllFields.call(this);
 
-				return allFields.filter(isUserField).map(fieldToLoadOption);
+				return getUserFields(allFields).map(fieldToLoadOption);
 			},
 
 			// ----------------------------------
 			//             resources
 			// ----------------------------------
 
-			async loadCustomers(this: ILoadOptionsFunctions) {
-				const users = await zammadApiRequest.call(this, 'GET', '/users') as ZammadTypes.User[];
-
-				return users.filter(isCustomer).map(i => ({ name: i.email, value: i.id.toString() }));
-			},
-
-			async loadGroups(this: ILoadOptionsFunctions) {
-				const groups = await zammadApiRequest.call(this, 'GET', '/groups') as ZammadTypes.Group[];
-
-				return groups.map(i => ({ name: i.name, value: i.id }));
-			},
+			// by non-ID attribute
 
 			/**
-			 * POST /tickets requires group name instead of with group ID.
+			 * POST /tickets requires group name instead of group ID.
 			 */
 			async loadGroupNames(this: ILoadOptionsFunctions) {
 				const groups = await zammadApiRequest.call(this, 'GET', '/groups') as ZammadTypes.Group[];
 
-				return groups.map(i => ({ name: i.name, value: i.name }));
+				return groups.filter(isRelevantGroup).map(i => ({ name: i.name, value: i.name }));
+			},
+
+			/**
+			 * PUT /users requires organization name instead of organization ID.
+			 */
+			async loadOrganizationNames(this: ILoadOptionsFunctions) {
+				const orgs = await zammadApiRequest.call(this, 'GET', '/organizations') as ZammadTypes.Group[];
+
+				return orgs.filter(isRelevantOrg).map(i => ({ name: i.name, value: i.name }));
+			},
+
+			/**
+			 * POST & PUT /tickets requires customer email instead of customer ID.
+			 */
+			async loadCustomerEmails(this: ILoadOptionsFunctions) {
+				const users = await zammadApiRequest.call(this, 'GET', '/users') as ZammadTypes.User[];
+
+				return users.filter(isCustomer).map(i => ({ name: i.email, value: i.email }));
+			},
+
+			// by ID
+
+			async loadGroups(this: ILoadOptionsFunctions) {
+				const groups = await zammadApiRequest.call(this, 'GET', '/groups') as ZammadTypes.Group[];
+
+				return groups.filter(isRelevantGroup).map(i => ({ name: i.name, value: i.id }));
 			},
 
 			async loadOrganizations(this: ILoadOptionsFunctions) {
 				const orgs = await zammadApiRequest.call(this, 'GET', '/organizations') as ZammadTypes.Organization[];
-				const isRelevant = (i: ZammadTypes.Organization) => i.name !== 'Zammad Foundation';
 
-				return orgs.filter(isRelevant).map(i => ({ name: i.name, value: i.id }));
+				return orgs.filter(isRelevantOrg).map(i => ({ name: i.name, value: i.id }));
 			},
 
 			async loadUsers(this: ILoadOptionsFunctions) {
@@ -210,8 +227,6 @@ export class Zammad implements INodeType {
 					uri: `${baseUrl}/api/v1/users/me`,
 					json: true,
 				};
-
-				console.log(credential.data);
 
 				if (credentials.authType === 'basicAuth') {
 
@@ -239,7 +254,6 @@ export class Zammad implements INodeType {
 				}
 
 				try {
-					console.log(options);
 					await this.helpers.request(options);
 					return {
 						status: 'OK',
@@ -410,7 +424,7 @@ export class Zammad implements INodeType {
 					if (operation === 'create') {
 
 						// ----------------------------------
-						//         organization:create
+						//        organization:create
 						// ----------------------------------
 
 						// https://docs.zammad.org/en/latest/api/organization.html#create
@@ -664,8 +678,6 @@ export class Zammad implements INodeType {
 						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this, resource);
 						}
-
-						console.log(updateFields);
 
 						const { articleUi } = updateFields;
 

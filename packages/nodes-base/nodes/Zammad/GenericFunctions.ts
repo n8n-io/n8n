@@ -5,7 +5,6 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -15,7 +14,7 @@ import {
 } from 'request';
 
 import {
-	flow
+	flow,
 } from 'lodash';
 
 import type { Zammad } from './types';
@@ -71,7 +70,7 @@ export async function zammadApiRequest(
 	}
 
 	try {
-		console.log(options);
+		// console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.error.error === 'Object already exists!') {
@@ -163,23 +162,27 @@ export const fieldToLoadOption = (i: Zammad.Field) => {
 
 export const prettifyDisplayName = (fieldName: string) => fieldName.replace('name', ' Name');
 
-export const isCustomer = (user: Zammad.User) => user.role_ids.includes(3); // TODO: Find better check
+export const isCustomer = (user: Zammad.User) =>
+	user.role_ids.includes(3) && !user.email.endsWith('@zammad.org');
 
 export async function getAllFields(this: ILoadOptionsFunctions) {
 	return await zammadApiRequest.call(this, 'GET', '/object_manager_attributes') as Zammad.Field[];
 }
 
 const isTypeField = (resource: 'Group' | 'Organization' | 'Ticket' | 'User') =>
-	(i: Zammad.Field) => i.object === resource;
+	(arr: Zammad.Field[]) => arr.filter(i => i.object === resource);
 
-export const isGroupField = isTypeField('Group');
-export const isOrganizationField = isTypeField('Organization');
-export const isUserField = isTypeField('User');
-export const isTicketField = isTypeField('Ticket');
+export const getGroupFields = isTypeField('Group');
+export const getOrganizationFields = isTypeField('Organization');
+export const getUserFields = isTypeField('User');
+export const getTicketFields = isTypeField('Ticket');
 
-const isCustomField = (i: Zammad.Field) => i.created_by_id !== 1; // TODO: Find better check
+const getCustomFields = (arr: Zammad.Field[]) => arr.filter(i => i.created_by_id !== 1);
 
-export const isGroupCustomField = flow(isGroupField, isCustomField);
-export const isOrganizationCustomField = flow(isOrganizationField, isCustomField);
-export const isUserCustomField = flow(isUserField, isCustomField);
-export const isTicketCustomField = flow(isTicketField, isCustomField);
+export const getGroupCustomFields = flow(getGroupFields, getCustomFields);
+export const getOrganizationCustomFields = flow(getOrganizationFields, getCustomFields);
+export const getUserCustomFields = flow(getUserFields, getCustomFields);
+export const getTicketCustomFields = flow(getTicketFields, getCustomFields);
+
+export const isRelevantOrg = (i: Zammad.Organization) => i.name !== 'Zammad Foundation' && i.active;
+export const isRelevantGroup = (i: Zammad.Organization) => i.active;

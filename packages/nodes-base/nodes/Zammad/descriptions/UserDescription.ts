@@ -74,7 +74,7 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User ID',
+		displayName: 'User Name/ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {
@@ -95,7 +95,7 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User ID',
+		displayName: 'User Name/ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {
@@ -116,7 +116,7 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User ID',
+		displayName: 'User Name/ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {
@@ -274,9 +274,10 @@ export const userDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Organization',
+				displayName: 'Organization Name/ID',
 				name: 'organization',
 				type: 'options',
+				description: 'Name of the organization to assign to the user. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'loadOrganizations',
@@ -464,12 +465,13 @@ export const userDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Organization',
+				displayName: 'Organization Name/ID',
 				name: 'organization',
 				type: 'options',
+				description: 'Name of the organization to assign to the user. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: 'loadOrganizations',
+					loadOptionsMethod: 'loadOrganizationNames',
 				},
 			},
 			{

@@ -70,7 +70,7 @@ export const ticketDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group',
+		displayName: 'Group Name/ID',
 		name: 'group',
 		type: 'options',
 		typeOptions: {
@@ -96,9 +96,9 @@ export const ticketDescription: INodeProperties[] = [
 		name: 'customerEmail',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'loadCustomers',
+			loadOptionsMethod: 'loadCustomerEmails',
 		},
-		description: 'Email address of the customer concerned in the ticket to create. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Email address of the customer concerned in the ticket to create. Choose from the list or specify an email using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		placeholder: 'hello@n8n.io',
 		required: true,
@@ -292,7 +292,7 @@ export const ticketDescription: INodeProperties[] = [
 								name: 'name',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'loadUserCustomFields',
+									loadOptionsMethod: 'loadTicketCustomFields',
 								},
 								default: '',
 								description: 'Name of the custom field to set',
@@ -334,7 +334,7 @@ export const ticketDescription: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name/ID',
 				name: 'group',
 				type: 'options',
 				typeOptions: {
@@ -349,9 +349,9 @@ export const ticketDescription: INodeProperties[] = [
 				name: 'customerEmail',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'loadCustomers',
+					loadOptionsMethod: 'loadCustomerEmails',
 				},
-				description: 'Email address of the customer concerned in the ticket to create. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Email address of the customer concerned in the ticket to create. Choose from the list or specify an email using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				placeholder: 'hello@n8n.io',
 			},

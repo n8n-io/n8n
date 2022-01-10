@@ -69,7 +69,7 @@ export const groupDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name/ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {
@@ -90,7 +90,7 @@ export const groupDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name/ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {
@@ -111,7 +111,7 @@ export const groupDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name/ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {

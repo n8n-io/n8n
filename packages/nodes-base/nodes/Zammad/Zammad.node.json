@@ -2,9 +2,9 @@
 	"node": "n8n-nodes-base.zammad",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"details": "Zammad is a helpdesk application. It can be cloud or self hosted.",
-
-	"categories": ["Communication"],
+	"categories": [
+		"Communication"
+	],
 	"resources": {
 		"credentialDocumentation": [
 			{
