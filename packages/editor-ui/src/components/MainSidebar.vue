@@ -146,7 +146,7 @@
 							<n8n-action-toggle
 								v-if="!isCollapsed"
 								:actions="[{
-									label: 'Logout',
+									label: 'Sign out',
 									value: 'logout'
 								}]"
 								:focusHighlight="false"
@@ -325,7 +325,7 @@ export default mixins(
 
 					this.$router.push({name: 'SigninView'});
 				} catch (e) {
-					this.$showError(e, 'Could not log out');
+					this.$showError(e, 'Could not sign out');
 				}
 			},
 			toggleCollapse () {
