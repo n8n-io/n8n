@@ -25,6 +25,5 @@
     "run-script-os": "^1.0.7"
   },
   "postcss": {},
-  "dependencies": {
-  }
+  "dependencies": {}
 }
