@@ -284,7 +284,7 @@ export class Merge implements INodeType {
 					}
 
 					for (const key of Object.keys(dataInput2[i].binary!)) {
-						newItem.binary[key] = dataInput2[i].binary![key];
+						newItem.binary[key] = dataInput2[i].binary![key] ?? newItem.binary[key];
 					}
 				}
 
