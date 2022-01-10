@@ -2807,6 +2807,7 @@ export default mixins(
 	left: 0;
 	top: 0;
 	overflow: hidden;
+	background-color: var(--color-canvas-background);
 }
 
 .node-view-wrapper {
