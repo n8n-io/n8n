@@ -36,7 +36,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['personalizedNodeTypes']),
+		...mapGetters('users', ['personalizedNodeTypes']),
 		nodeTypes(): INodeTypeDescription[] {
 			return this.$store.getters.allNodeTypes;
 		},

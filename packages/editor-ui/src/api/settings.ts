@@ -1,14 +1,9 @@
-import { IDataObject } from 'n8n-workflow';
-import { IRestApiContext, IN8nPrompts, IN8nValueSurveyData, IN8nUISettings, IPersonalizationSurveyAnswers } from '../Interface';
+import { IRestApiContext, IN8nPrompts, IN8nValueSurveyData, IN8nUISettings } from '../Interface';
 import { makeRestApiRequest, get, post } from './helpers';
 import { TEMPLATES_BASE_URL } from '@/constants';
 
 export async function getSettings(context: IRestApiContext): Promise<IN8nUISettings> {
 	return await makeRestApiRequest(context, 'GET', '/settings');
-}
-
-export async function submitPersonalizationSurvey(context: IRestApiContext, params: IPersonalizationSurveyAnswers): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/user-survey', params as unknown as IDataObject);
 }
 
 export async function getPromptsData(instanceId: string, userId: string): Promise<IN8nPrompts> {

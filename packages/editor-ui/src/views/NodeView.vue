@@ -114,7 +114,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PERSONALIZATION_MODAL_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -166,6 +166,7 @@ import {
 	ITag,
 	IWorkflowTemplate,
 	IExecutionsSummary,
+	IUser,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
@@ -2747,6 +2748,7 @@ export default mixins(
 				this.stopLoading();
 
 				setTimeout(() => {
+					this.$store.dispatch('users/showPersonalizationSurvey');
 					this.checkForNewVersions();
 				}, 0);
 			});

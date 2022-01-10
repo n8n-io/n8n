@@ -493,11 +493,6 @@ export type IPersonalizationSurveyAnswers = {
 	workArea: string[] | string | null;
 };
 
-export interface IPersonalizationSurvey {
-	answers?: IPersonalizationSurveyAnswers;
-	shouldShow: boolean;
-}
-
 export interface IN8nPrompts {
 	message: string;
 	title: string;
@@ -556,7 +551,7 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
-	personalizationSurvey?: IPersonalizationSurvey;
+	personalizationSurveyEnabled: boolean;
 	telemetry: ITelemetrySettings;
 	userManagement: IUserManagementConfig;
 	defaultLocale: string;
@@ -793,6 +788,7 @@ export interface IUser {
 		name: IRole;
 		id: string;
 	};
+	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
 }
 
 type IValidationRule = {

@@ -1,4 +1,4 @@
-import { IRestApiContext, IUser } from '@/Interface';
+import { IPersonalizationSurveyAnswers, IRestApiContext, IUser } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 
 const users = [
@@ -278,3 +278,14 @@ export async function reinvite(context: IRestApiContext, {id}: {id: string}): Pr
 	log(context, 'POST', `/users/${id}/reinvite`);
 }
 
+export async function submitPersonalizationSurvey(context: IRestApiContext, params: IPersonalizationSurveyAnswers): Promise<void> {
+	log(context, 'POST', `/me/survey`, params);
+	const user = getCurrUser();
+	removeUser(user.id);
+	const newUser = {
+		...user,
+		personalizationAnswers: params,
+	};
+	addUser(newUser);
+	return Promise.resolve();
+}

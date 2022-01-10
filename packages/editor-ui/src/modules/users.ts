@@ -1,14 +1,15 @@
-import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
-import { LOGIN_STATUS, PERMISSIONS, ROLE } from '@/constants';
+import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
+import { LOGIN_STATUS, PERMISSIONS, PERSONALIZATION_MODAL_KEY, ROLE } from '@/constants';
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
 import {
 	IPermissions,
-	IRole,
+	IPersonalizationSurveyAnswers,
 	IRootState,
 	IUser,
 	IUsersState,
 } from '../Interface';
+import { getPersonalizedNodeTypes } from './helper';
 
 const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {currentUser: IUser | null, isUMEnabled: boolean}): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
@@ -70,6 +71,18 @@ const module: Module<IUsersState, IRootState> = {
 		deleteUser: (state: IUsersState, userId: string) => {
 			Vue.delete(state.users, userId);
 		},
+		setPersonalizationAnswers(state: IUsersState, answers: IPersonalizationSurveyAnswers) {
+			if (!state.currentUserId) {
+				return;
+			}
+
+			const user = state.users[state.currentUserId] as IUser | null;
+			if (!user) {
+				return;
+			}
+
+			Vue.set(user, 'personalizationAnswers', answers);
+		},
 	},
 	getters: {
 		allUsers(state: IUsersState): IUser[] {
@@ -106,13 +119,26 @@ const module: Module<IUsersState, IRootState> = {
 		showUMSetupWarning(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, getters);
 		},
-		isDefaultUser(state: IUsersState, getter: any): boolean { // tslint:disable-line:no-any
-			const user = getter.currentUser as IUser | null;
+		isDefaultUser(state: IUsersState, getters: any): boolean { // tslint:disable-line:no-any
+			const user = getters.currentUser as IUser | null;
 
 			return user ? !user.email : false;
 		},
 		isUMEnabled(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any): boolean { // tslint:disable-line:no-any
 			return rootGetters['settings/isUserManagementEnabled'];
+		},
+		personalizedNodeTypes(state: IUsersState, getters: any): string[] { // tslint:disable-line:no-any
+			const user = getters.currentUser as IUser | null;
+			if (!user) {
+				return [];
+			}
+
+			const answers = user.personalizationAnswers;
+			if (!answers) {
+				return [];
+			}
+
+			return getPersonalizedNodeTypes(answers);
 		},
 	},
 	actions: {
@@ -188,6 +214,18 @@ const module: Module<IUsersState, IRootState> = {
 		},
 		async reinviteUser(context: ActionContext<IUsersState, IRootState>, params: {id: string}) {
 			await reinvite(context.rootGetters.getRestApiContext, params);
+		},
+		async submitPersonalizationSurvey(context: ActionContext<IUsersState, IRootState>, results: IPersonalizationSurveyAnswers) {
+			await submitPersonalizationSurvey(context.rootGetters.getRestApiContext, results);
+
+			context.commit('setPersonalizationAnswers', results);
+		},
+		async showPersonalizationSurvey(context: ActionContext<IUsersState, IRootState>) {
+			const surveyEnabled = context.rootGetters['settings/isPersonalizationSurveyEnabled'] as boolean;
+			const currentUser = context.getters.currentUser as IUser | null;
+			if (surveyEnabled && currentUser && !currentUser.personalizationAnswers) {
+				context.dispatch('ui/openModal', PERSONALIZATION_MODAL_KEY, {root: true});
+			}
 		},
 	},
 };
