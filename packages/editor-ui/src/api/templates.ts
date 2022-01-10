@@ -7,21 +7,21 @@ const stagingHost = 'https://api-staging.n8n.io';
 export async function getTemplates(
 	limit: number,
 	skip: number,
-	category: number | null,
+	category: number[] | null,
 	search: string | null,
 	allData = true,
 	searchQuery = false,
 ): Promise<ISearchPayload> {
-	const categoryWorkflow = undefined;
 	const query = `query {
 		categories(sort:"name") @include(if: ${allData}) @skip(if: ${searchQuery}){
 			id
 			name
 		}
-		collections: getFilteredCollection(rows: 10,
+		collections: getFilteredCollection(
+			rows: ${limit},
 			skip: ${skip},
-			search: "${search},"
-			category: ${category}) @include(if: ${allData}){
+			search: "${search}"
+			category: ${category ? "[" + category + "]" : null}) @include(if: ${allData}){
 			id
 			name
 			nodes{
@@ -37,11 +37,11 @@ export async function getTemplates(
 			}
 			totalViews: views
 		}
-		totalworkflow: getWorkflowCount(search: "${search}", category: ${category})
+		totalworkflow: getWorkflowCount(search: "${search}", category: ${category ? "[" + category + "]" : null})
 		workflows(
 			limit: ${limit},
 			start: ${skip},
-			where:{nodes:{name_contains:"${search}"},categories:{id:${categoryWorkflow}}},
+			where:{nodes:{name_contains:"${search}"},categories:{id: ${category ? "[" + category + "]" : undefined}}},
 			sort:"views:DESC,created_at:DESC"){
 			id
 			name
@@ -61,5 +61,6 @@ export async function getTemplates(
 			created_at
 		}
 	}`;
+	console.log(query);
 	return await post(stagingHost, `/graphql`, { query });
 }

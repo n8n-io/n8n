@@ -2,7 +2,7 @@
 	<div class="view-root">
 		<div class="view-wrapper">
 			<div class="filters">
-				<TemplateFilters/>
+				<TemplateFilters :setCategories="setCategories"/>
 			</div>
 			<div class="search">
 
@@ -51,21 +51,47 @@ export default mixins(
 	data () {
 		return {
 			search: '',
-			categories: [],
+			categories: [] as number[],
  		};
 	},
 	async created() {
-		await this.$store.dispatch('templates/getSearchResults');
-		if (typeof this.$route.query.search === 'string') {
+		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
 			this.search = this.$route.query.search;
 		}
+		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
+			this.categories = this.$route.query.categories.split(',').map((id) => Number(id));
+		}
+		const category = this.categories.length ? this.categories : null;
+		await this.$store.dispatch('templates/getSearchResults', {search: this.search, category });
 	},
 	methods: {
 		async onSearchInput(value: string) {
+			await this.doSearch();
+		},
+		updatQueryParam(search: string, category: string) {
 			const query = Object.assign({}, this.$route.query);
-			query.search = value;
+			if (category.length) {
+				query.categories = category;
+			} else {
+				delete query.categories;
+			}
+			if (search.length) {
+				query.search = search;
+			} else {
+				delete query.search;
+			}
 			this.$router.replace({ query });
-			await this.$store.dispatch('templates/getSearchResults', value);
+		},
+		async doSearch() {
+			const category = this.categories.join(',');
+			console.log(category);
+			const search = this.search;
+			this.updatQueryParam(search, category);
+			await this.$store.dispatch('templates/getSearchResults', { search, category });
+		},
+		async setCategories(selected: number[]) {
+			this.categories = selected;
+			await this.doSearch();
 		},
 	},
 });

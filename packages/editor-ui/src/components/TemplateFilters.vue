@@ -35,6 +35,9 @@ export default mixins(
 	genericHelpers,
 ).extend({
 	name: 'TemplateFilters',
+	props: {
+		setCategories: { type: Function },
+	},
 	data() {
 		return {
 			allSelected: true,
@@ -83,18 +86,6 @@ export default mixins(
 			});
 			return selectedCategories.concat(notSelectedCategories);
 		},
-		updatQueryParam(cats: ITemplateCategory[]) {
-			const query = Object.assign({}, this.$route.query);
-			this.selected = cats.filter(({ selected }) => selected).map(({ id }) => id);
-			if (this.selected.length) {
-				const categories = this.selected.join(',');
-				query.categories = categories;
-			} else {
-				delete query.categories;
-			}
-			this.$router.replace({ query });
-
-		},
 		resetCategories(value: boolean) {
 			if (value) {
 				this.categories.forEach((category: ITemplateCategory) => {
@@ -104,7 +95,7 @@ export default mixins(
 				this.sortedCategories = this.categories;
 			}
 			this.allSelected = true;
-			this.updatQueryParam([]);
+			this.setCategories([]);
 		},
 		handleCheckboxChanged(value: boolean, selectedCategory: ITemplateCategory) {
 			if (value) {
@@ -112,7 +103,8 @@ export default mixins(
 			}
 			selectedCategory.selected = value;
 			this.sortedCategories = this.sortCategories(this.categories);
-			this.updatQueryParam(this.sortedCategories);
+			const strippedCategories = this.sortedCategories.filter(({ selected }) => selected).map(({ id }) => id);
+			this.setCategories(strippedCategories);
 		},
 		collapseAction() {
 			this.collapsed = false;

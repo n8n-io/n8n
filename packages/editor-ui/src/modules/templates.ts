@@ -48,15 +48,19 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 	},
 	actions: {
-		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, search = '') {
+		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { search , category }) {
+			const allData = search.length || category ? false: true;
+			const searchQuery = !allData;
 			try {
-				const payload: ISearchPayload = await getTemplates(10, 0, null, search);
+				const payload: ISearchPayload = await getTemplates(10, 0, category, search, allData, searchQuery);
 				const results : ISearchResults = payload.data;
-				const categories = results.categories.map((category: ITemplateCategory) => {
-					category.selected = false;
-					return category;
-				});
-				context.commit('setCategories', categories);
+				if (!search.length) {
+					const categories = results.categories.map((category: ITemplateCategory) => {
+						category.selected = false;
+						return category;
+					});
+					context.commit('setCategories', categories);
+				}
 				context.commit('setCollections', results.collections);
 				context.commit('setWorkflows', results.workflows);
 				return results;
