@@ -4,7 +4,7 @@
 		append-to-body
 		:close-on-click-modal="false"
 		width="80%"
-		:title="`${$locale.baseText('codeEdit.edit')} ${$locale.nodeText().topParameterDisplayName(parameter)}`"
+		:title="`${$locale.baseText('codeEdit.edit')} ${$locale.nodeText().inputLabelDisplayName(parameter, path)}`"
 		:before-close="closeDialog"
 	>
 		<div class="text-editor-wrapper ignore-key-press">
@@ -39,7 +39,7 @@ export default mixins(
 	workflowHelpers,
 ).extend({
 	name: 'CodeEdit',
-	props: ['codeAutocomplete', 'parameter', 'type', 'value'],
+	props: ['codeAutocomplete', 'parameter', 'path', 'type', 'value'],
 	data() {
 		return {
 			monacoInstance: null as monaco.editor.IStandaloneCodeEditor | null,
