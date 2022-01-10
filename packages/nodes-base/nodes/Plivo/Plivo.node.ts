@@ -39,7 +39,6 @@ export class Plivo implements INodeType {
 		description: 'Send SMS/MMS messages or make phone calls',
 		defaults: {
 			name: 'Plivo',
-			color: '#43A046',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

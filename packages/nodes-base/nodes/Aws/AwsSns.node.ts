@@ -23,7 +23,6 @@ export class AwsSns implements INodeType {
 		description: 'Sends data to AWS SNS',
 		defaults: {
 			name: 'AWS SNS',
-			color: '#FF9900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

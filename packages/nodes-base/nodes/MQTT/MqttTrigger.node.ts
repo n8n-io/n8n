@@ -26,7 +26,6 @@ export class MqttTrigger implements INodeType {
 		description: 'Listens to MQTT events',
 		defaults: {
 			name: 'MQTT Trigger',
-			color: '#9b27af',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -42,10 +41,7 @@ export class MqttTrigger implements INodeType {
 				name: 'topics',
 				type: 'string',
 				default: '',
-				description: `Topics to subscribe to, multiple can be defined with comma.<br/>
-				wildcard characters are supported (+ - for single level and # - for multi level)<br>
-				By default all subscription used QoS=0. To set a different QoS, write the QoS desired<br>
-				after the topic preceded by a colom. For Example: topicA:1,topicB:2`,
+				description: `Topics to subscribe to, multiple can be defined with comma. Wildcard characters are supported (+ - for single level and # - for multi level). By default all subscription used QoS=0. To set a different QoS, write the QoS desired after the topic preceded by a colom. For Example: topicA:1,topicB:2`,
 			},
 			{
 				displayName: 'Options',
@@ -132,7 +128,7 @@ export class MqttTrigger implements INodeType {
 				ca,
 				cert,
 				key,
-				rejectUnauthorized,	
+				rejectUnauthorized,
 			};
 			if (credentials.username && credentials.password) {
 				clientOptions.username = credentials.username as string;

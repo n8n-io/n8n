@@ -1,15 +1,20 @@
+import { OptionsWithUri } from 'request';
+
 import {
 	IHookFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -27,7 +32,6 @@ export class BitbucketTrigger implements INodeType {
 		description: 'Handle Bitbucket events via webhooks',
 		defaults: {
 			name: 'Bitbucket Trigger',
-			color: '#0052cc',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -35,6 +39,7 @@ export class BitbucketTrigger implements INodeType {
 			{
 				name: 'bitbucketApi',
 				required: true,
+				testedBy: 'bitbucketApiTest',
 			},
 		],
 		webhooks: [
@@ -53,57 +58,35 @@ export class BitbucketTrigger implements INodeType {
 				required: true,
 				options: [
 					{
-						name: 'User',
-						value: 'user',
-					},
-					{
-						name: 'Team',
-						value: 'team',
-					},
-					{
 						name: 'Repository',
 						value: 'repository',
 					},
+					{
+						name: 'Workspace',
+						value: 'workspace',
+					},
 				],
-				default: 'user',
+				default: 'workspace',
 				description: 'The resource to operate on.',
 			},
 			{
-				displayName: 'Events',
-				name: 'events',
-				type: 'multiOptions',
-				displayOptions: {
-					show: {
-						resource: [
-							'user',
-						],
-					},
-				},
-				typeOptions: {
-					loadOptionsMethod: 'getUsersEvents',
-				},
-				options: [],
-				required: true,
-				default: [],
-				description: 'The events to listen to.',
-			},
-			{
-				displayName: 'Team',
-				name: 'team',
+				displayName: 'Workspace',
+				name: 'workspace',
 				type: 'options',
 				displayOptions: {
 					show: {
 						resource: [
-							'team',
+							'workspace',
+							'repository',
 						],
 					},
 				},
 				typeOptions: {
-					loadOptionsMethod: 'getTeams',
+					loadOptionsMethod: 'getWorkspaces',
 				},
 				required: true,
 				default: '',
-				description: 'The team of which to listen to the events.',
+				description: 'The repository of which to listen to the events.',
 			},
 			{
 				displayName: 'Events',
@@ -112,12 +95,12 @@ export class BitbucketTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'team',
+							'workspace',
 						],
 					},
 				},
 				typeOptions: {
-					loadOptionsMethod: 'getTeamEvents',
+					loadOptionsMethod: 'getWorkspaceEvents',
 				},
 				options: [],
 				required: true,
@@ -137,6 +120,9 @@ export class BitbucketTrigger implements INodeType {
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getRepositories',
+					loadOptionsDependsOn: [
+						'workspace',
+					],
 				},
 				required: true,
 				default: '',
@@ -166,90 +152,86 @@ export class BitbucketTrigger implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async bitbucketApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+
+				const options: OptionsWithUri = {
+					method: 'GET',
+					auth: {
+						user: credentials!.username as string,
+						password: credentials!.appPassword as string,
+					},
+					uri: 'https://api.bitbucket.org/2.0/user',
+					json: true,
+					timeout: 5000,
+				};
+
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.username) {
+						return {
+							status: 'Error',
+							message: `Token is not valid: ${response.error}`,
+						};
+					}
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Settings are not valid: ${error}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 		loadOptions: {
-			// Get all the events to display them to user so that he can
-			// select them easily
-			async getUsersEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getWorkspaceEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const events = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', '/hook_events/user');
+				const events = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', '/hook_events/workspace');
 				for (const event of events) {
-					const eventName = event.event;
-					const eventId = event.event;
-					const eventDescription = event.description;
 					returnData.push({
-						name: eventName,
-						value: eventId,
-						description: eventDescription,
+						name: event.event,
+						value: event.event,
+						description: event.description,
 					});
 				}
 				return returnData;
 			},
-			// Get all the events to display them to user so that he can
-			// select them easily
-			async getTeamEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const events = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', '/hook_events/team');
-				for (const event of events) {
-					const eventName = event.event;
-					const eventId = event.event;
-					const eventDescription = event.description;
-					returnData.push({
-						name: eventName,
-						value: eventId,
-						description: eventDescription,
-					});
-				}
-				return returnData;
-			},
-			// Get all the events to display them to user so that he can
-			// select them easily
 			async getRepositoriesEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const events = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', '/hook_events/repository');
 				for (const event of events) {
-					const eventName = event.event;
-					const eventId = event.event;
-					const eventDescription = event.description;
 					returnData.push({
-						name: eventName,
-						value: eventId,
-						description: eventDescription,
+						name: event.event,
+						value: event.event,
+						description: event.description,
 					});
 				}
 				return returnData;
 			},
-			// Get all the repositories to display them to user so that he can
-			// select them easily
 			async getRepositories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = await this.getCredentials('bitbucketApi');
 				const returnData: INodePropertyOptions[] = [];
-				const repositories = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', `/repositories/${credentials!.username}`);
+				const workspace = this.getCurrentNodeParameter('workspace') as string;
+				const repositories = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', `/repositories/${workspace}`);
 				for (const repository of repositories) {
-					const repositoryName = repository.slug;
-					const repositoryId = repository.slug;
-					const repositoryDescription = repository.description;
 					returnData.push({
-						name: repositoryName,
-						value: repositoryId,
-						description: repositoryDescription,
+						name: repository.slug,
+						value: repository.slug,
+						description: repository.description,
 					});
 				}
 				return returnData;
 			},
-			// Get all the teams to display them to user so that he can
-			// select them easily
-			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const qs: IDataObject = {
-					role: 'member',
-				};
-				const teams = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', '/teams', {}, qs);
-				for (const team of teams) {
-					const teamName = team.display_name;
-					const teamId = team.username;
+				const workspaces = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', `/workspaces`);
+				for (const workspace of workspaces) {
 					returnData.push({
-						name: teamName,
-						value: teamId,
+						name: workspace.name,
+						value: workspace.slug,
 					});
 				}
 				return returnData;
@@ -261,29 +243,25 @@ export class BitbucketTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				let endpoint = '';
-				const credentials = await this.getCredentials('bitbucketApi');
 				const resource = this.getNodeParameter('resource', 0) as string;
+				const workspace = this.getNodeParameter('workspace', 0) as string;
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				if (webhookData.webhookId === undefined) {
-					return false;
-				}
-				if (resource === 'user') {
-					endpoint = `/users/${credentials!.username}/hooks/${webhookData.webhookId}`;
-				}
-				if (resource === 'team') {
-					const team = this.getNodeParameter('team', 0) as string;
-					endpoint = `/teams/${team}/hooks/${webhookData.webhookId}`;
+				if (resource === 'workspace') {
+					endpoint = `/workspaces/${workspace}/hooks`;
 				}
 				if (resource === 'repository') {
 					const repository = this.getNodeParameter('repository', 0) as string;
-					endpoint = `/repositories/${credentials!.username}/${repository}/hooks/${webhookData.webhookId}`;
+					endpoint = `/repositories/${workspace}/${repository}/hooks`;
 				}
-				try {
-					await bitbucketApiRequest.call(this, 'GET', endpoint);
-				} catch (error) {
-					return false;
+				const { values: hooks } = await bitbucketApiRequest.call(this, 'GET', endpoint);
+				for (const hook of hooks) {
+					if (webhookUrl === hook.url && hook.active === true) {
+						webhookData.webhookId = hook.uuid.replace('{', '').replace('}', '');
+						return true;
+					}
 				}
-				return true;
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				let responseData;
@@ -292,18 +270,14 @@ export class BitbucketTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
 				const resource = this.getNodeParameter('resource', 0) as string;
-				const credentials = await this.getCredentials('bitbucketApi');
+				const workspace = this.getNodeParameter('workspace', 0) as string;
 
-				if (resource === 'user') {
-					endpoint = `/users/${credentials!.username}/hooks`;
-				}
-				if (resource === 'team') {
-					const team = this.getNodeParameter('team', 0) as string;
-					endpoint = `/teams/${team}/hooks`;
+				if (resource === 'workspace') {
+					endpoint = `/workspaces/${workspace}/hooks`;
 				}
 				if (resource === 'repository') {
 					const repository = this.getNodeParameter('repository', 0) as string;
-					endpoint = `/repositories/${credentials!.username}/${repository}/hooks`;
+					endpoint = `/repositories/${workspace}/${repository}/hooks`;
 				}
 				const body: IDataObject = {
 					description: 'n8n webhook',
@@ -318,22 +292,18 @@ export class BitbucketTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				let endpoint = '';
 				const webhookData = this.getWorkflowStaticData('node');
-				const credentials = await this.getCredentials('bitbucketApi');
+				const workspace = this.getNodeParameter('workspace', 0) as string;
 				const resource = this.getNodeParameter('resource', 0) as string;
-				if (resource === 'user') {
-					endpoint = `/users/${credentials!.username}/hooks/${webhookData.webhookId}`;
-				}
-				if (resource === 'team') {
-					const team = this.getNodeParameter('team', 0) as string;
-					endpoint = `/teams/${team}/hooks/${webhookData.webhookId}`;
+				if (resource === 'workspace') {
+					endpoint = `/workspaces/${workspace}/hooks/${webhookData.webhookId}`;
 				}
 				if (resource === 'repository') {
 					const repository = this.getNodeParameter('repository', 0) as string;
-					endpoint = `/repositories/${credentials!.username}/${repository}/hooks/${webhookData.webhookId}`;
+					endpoint = `/repositories/${workspace}/${repository}/hooks/${webhookData.webhookId}`;
 				}
 				try {
 					await bitbucketApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;

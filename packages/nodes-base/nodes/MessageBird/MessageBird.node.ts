@@ -25,7 +25,6 @@ export class MessageBird implements INodeType {
 		description: 'Sends SMS via MessageBird',
 		defaults: {
 			name: 'MessageBird',
-			color: '#2481d7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -245,7 +244,7 @@ export class MessageBird implements INodeType {
 						name: 'reportUrl',
 						type: 'string',
 						default: '',
-						description: 'The status report URL to be used on a per-message basis.<br /> Reference is required for a status report webhook to be sent.',
+						description: 'The status report URL to be used on a per-message basis. Reference is required for a status report webhook to be sent.',
 					},
 					{
 						displayName: 'Scheduled Date-time',
@@ -273,14 +272,14 @@ export class MessageBird implements INodeType {
 							},
 						],
 						default: '',
-						description: 'The type of message.<br /> Values can be: sms, binary, or flash.',
+						description: 'The type of message. Values can be: sms, binary, or flash.',
 					},
 					{
 						displayName: 'Type Details',
 						name: 'typeDetails',
 						type: 'string',
 						default: '',
-						description: 'A hash with extra information.<br /> Is only used when a binary message is sent.',
+						description: 'A hash with extra information. Is only used when a binary message is sent.',
 					},
 					{
 						displayName: 'Validity',

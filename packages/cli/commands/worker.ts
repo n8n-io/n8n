@@ -10,23 +10,14 @@
 import * as PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
-import { UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, IBinaryDataConfig, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeTypes,
-	IRun,
-	IWorkflowExecuteHooks,
-	Workflow,
-	WorkflowHooks,
-	LoggerProxy,
-} from 'n8n-workflow';
+import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
 
 import { FindOneOptions } from 'typeorm';
 
 import * as Bull from 'bull';
 import {
-	ActiveExecutions,
 	CredentialsOverwrites,
 	CredentialTypes,
 	Db,
@@ -34,12 +25,13 @@ import {
 	GenericHelpers,
 	IBullJobData,
 	IBullJobResponse,
+	IBullWebhookResponse,
 	IExecutionFlattedDb,
-	IExecutionResponse,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	ResponseHelper,
-	WorkflowCredentials,
+	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 } from '../src';
 
@@ -182,6 +174,16 @@ export class Worker extends Command {
 			currentExecutionDb.workflowData,
 			{ retryOf: currentExecutionDb.retryOf as string },
 		);
+
+		additionalData.hooks.hookFunctions.sendResponse = [
+			async (response: IExecuteResponsePromiseData): Promise<void> => {
+				await job.progress({
+					executionId: job.data.executionId as string,
+					response: WebhookHelpers.encodeWebhookResponse(response),
+				} as IBullWebhookResponse);
+			},
+		];
+
 		additionalData.executionId = jobData.executionId;
 
 		let workflowExecute: WorkflowExecute;
@@ -203,7 +205,7 @@ export class Worker extends Command {
 		Worker.runningJobs[job.id] = workflowRun;
 
 		// Wait till the execution is finished
-		const runData = await workflowRun;
+		await workflowRun;
 
 		delete Worker.runningJobs[job.id];
 
@@ -270,6 +272,12 @@ export class Worker extends Command {
 				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
 
 				const versions = await GenericHelpers.getVersions();
+				const instanceId = await UserSettings.getInstanceId();
+
+				InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
+
+				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				await BinaryDataManager.init(binaryDataConfig);
 
 				console.info('\nn8n worker is now ready');
 				console.info(` * Version: ${versions.cli}`);

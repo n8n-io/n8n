@@ -26,7 +26,6 @@ export class Airtable implements INodeType {
 		description: 'Read, update, write and delete data from Airtable',
 		defaults: {
 			name: 'Airtable',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -256,7 +255,7 @@ export class Airtable implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'NOT({Name} = \'\')',
-						description: 'A formula used to filter records. The formula will be evaluated for each<br />record, and if the result is not 0, false, "", NaN, [], or #Error!<br />the record will be included in the response.',
+						description: 'A formula used to filter records. The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response.',
 					},
 					{
 						displayName: 'Sort',
@@ -309,7 +308,7 @@ export class Airtable implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'All Stories',
-						description: 'The name or ID of a view in the Stories table. If set,<br />only the records in that view will be returned. The records<br />will be sorted according to the order of the view.',
+						description: 'The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.',
 					},
 				],
 			},

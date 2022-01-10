@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const listEntryOperations = [
+export const listEntryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const listEntryOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const listEntryFields = [
+export const listEntryFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                listEntry:create                            */
@@ -107,8 +107,7 @@ export const listEntryFields = [
 				name: 'creator_id',
 				type: 'string',
 				default: '',
-				description: `The id of a Person resource who should be recorded as adding the entry to the list. <br/>
-				Must be a person who can access Affinity. If not provided the creator defaults to the owner of the API key.`,
+				description: `The id of a Person resource who should be recorded as adding the entry to the list. Must be a person who can access Affinity. If not provided the creator defaults to the owner of the API key.`,
 			},
 		],
 	},
@@ -260,4 +259,4 @@ export const listEntryFields = [
 		},
 		description: 'The unique id of the list entry object to be deleted.',
 	},
-] as INodeProperties[];
+];
