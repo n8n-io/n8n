@@ -25,10 +25,10 @@
 			</div>
 			<div :class="$style.content">
 				<div :class="$style.markdown">
-					<markdown-viewer
+					<n8n-markdown
 						:content="template.description"
 						:images="template.image"
-						:loading="loading"
+						:loadingState="loading"
 					/>
 				</div>
 				<div :class="$style.details">
@@ -42,17 +42,19 @@
 
 <script lang="ts">
 import GoBackButton from '../components/GoBackButton.vue';
-import MarkdownViewer from '../components/MarkdownViewer.vue';
 import TemplateDetails from '../components/TemplateDetails/TemplateDetails.vue';
 
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import {
+	IN8nTemplate,
+} from '../Interface';
+
 import mixins from 'vue-typed-mixins';
 
 export default mixins(workflowHelpers).extend({
 	name: 'TemplateView',
 	components: {
 		GoBackButton,
-		MarkdownViewer,
 		TemplateDetails,
 	},
 	computed: {
@@ -60,7 +62,15 @@ export default mixins(workflowHelpers).extend({
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
 		template() {
-			return this.$store.getters['templates/getTemplate'];
+			let template = {} as IN8nTemplate;
+			const templates = this.$store.getters['templates/getTemplates'];
+			templates.forEach((element : IN8nTemplate) => {
+				if (element.id === this.$route.params.id) {
+					template = element;
+				}
+			});
+
+			return template;
 		},
 	},
 	data() {
@@ -107,7 +117,7 @@ export default mixins(workflowHelpers).extend({
 	padding: var(--spacing-3xl) 0 var(--spacing-3xl);
 
 	@media (max-width: $--breakpoint-md) {
-		max-width: 900px;
+		width: 900px;
 		margin: 0 var(--spacing-2xl) 0 113px;
 		padding: var(--spacing-2xl) 0 var(--spacing-2xl);
 	}
@@ -115,6 +125,10 @@ export default mixins(workflowHelpers).extend({
 
 .expanded {
 	margin-left: 248px;
+
+	@media (max-width: $--breakpoint-2xs) {
+		margin-left: 113px;
+	}
 }
 
 .header {

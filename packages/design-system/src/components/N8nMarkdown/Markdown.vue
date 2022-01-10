@@ -1,8 +1,7 @@
 <template>
   <div>
 		<div v-if="!loading" ref="editor" :class="$style.markdown" v-html="getContent" />
-
-		<div v-if="loading">
+		<div v-else>
 			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
 			<div :class="$style.spacer" />
 			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
@@ -13,13 +12,14 @@
 <script lang="ts">
 import Vue from 'vue';
 
+import N8nLoading from '../N8nLoading';
 import Markdown from 'markdown-it';
 const markdownLink = require('markdown-it-link-attributes');
 const markdownEmoji = require('markdown-it-emoji');
 const markdownTasklists = require('markdown-it-task-lists');
 
 import xss from 'xss';
-import { escapeMarkdown } from '../utils/markdown';
+import { escapeMarkdown } from '../../utils/markdown';
 
 const DEFAULT_OPTIONS_MARKDOWN = {
 	html: true,
@@ -49,8 +49,10 @@ interface IImage {
 }
 
 export default Vue.extend({
-	components: {},
-	name: 'markdown-viewer',
+	components: {
+		N8nLoading,
+	},
+	name: 'n8n-markdown',
 	props: {
 		content: {
 			type: String,
@@ -58,7 +60,7 @@ export default Vue.extend({
 		images: {
 			type: Array,
 		},
-		loading: {
+		loadingState: {
 			type: Boolean,
 		},
 		options: {
@@ -119,6 +121,9 @@ export default Vue.extend({
 				return '';
 			}
 		},
+		loading(): boolean {
+			return this.loadingState;
+		},
 	},
 	data() {
 		return {
@@ -172,7 +177,7 @@ export default Vue.extend({
 	code {
 		margin: var(--spacing-2xl) 0 var(--spacing-l);
 		padding: var(--spacing-s);
-		background-color: $--node-creator-subcategory-panel-header-bacground-color;
+		background-color: #f2f4f8;
 	}
 
 	.label {
@@ -183,7 +188,7 @@ export default Vue.extend({
 
 	img {
 		width: 100%;
-		border: 1px solid $--node-creator-border-color;
+		border: 1px solid #dbdfe7;
 		border-radius: var(--border-radius-large);
 	}
 

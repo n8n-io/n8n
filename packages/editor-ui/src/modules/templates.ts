@@ -7,21 +7,20 @@ import {
 	IN8nTemplate,
 	ITemplateState,
 } from '../Interface';
-import Vue from 'vue';
 
 const module: Module<ITemplateState, IRootState> = {
 	namespaced: true,
 	state: {
-		template: {},
+		templates: [],
 	},
 	getters: {
-		getTemplate(state: ITemplateState) {
-			return state.template;
+		getTemplates(state: ITemplateState) {
+			return state.templates;
 		},
 	},
 	mutations: {
 		setTemplate(state: ITemplateState, template: IN8nTemplate) {
-			Vue.set(state, 'template', template);
+			state.templates.push(template);
 		},
 	},
 	actions: {

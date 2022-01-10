@@ -12,10 +12,7 @@ export async function getTemplateById(templateId: string): Promise<IN8nTemplateR
 				id
 				url
 			}
-			mainImage{
-				url
-				 metadata: provider_metadata
-			}
+			mainImage
 			nodes{
 				defaults
 				name

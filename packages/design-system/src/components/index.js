@@ -8,6 +8,7 @@ import N8nInputNumber from './N8nInputNumber';
 import N8nInputLabel from './N8nInputLabel';
 import N8nLoading from './N8nLoading';
 import N8nHeading from './N8nHeading';
+import N8nMarkdown from './N8nMarkdown';
 import N8nMenu from './N8nMenu';
 import N8nMenuItem from './N8nMenuItem';
 import N8nSelect from './N8nSelect';
@@ -29,6 +30,7 @@ export {
 	N8nInputLabel,
 	N8nInputNumber,
 	N8nLoading,
+	N8nMarkdown,
 	N8nHeading,
 	N8nMenu,
 	N8nMenuItem,

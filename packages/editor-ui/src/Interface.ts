@@ -777,7 +777,7 @@ export interface ISettingsState {
 }
 
 export interface ITemplateState {
-	template: {};
+	templates: IN8nTemplate[];
 }
 
 export interface IVersionsState {
