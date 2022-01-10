@@ -10,30 +10,23 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 
-export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, uri: string, credentials: IDataObject = {}, qs: IDataObject = {}, headers: IDataObject = {}, body: any = '', option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	let generatedHeaders;
-	if (credentials.username && credentials.apiKey) {
-		const token = Buffer.from(`${credentials.username}:${credentials.apiKey}`).toString('base64');
-		generatedHeaders = {
-			'Accept': 'application/json',
-			'Authorization': `Basic ${token}`,
-			...headers,
-		};
-	} else {
-		generatedHeaders = {
-			'Accept': 'application/json',
-			...headers,
-		};
-	}
-
+export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, uri: string, qs: IDataObject = {}, body: any = '', option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const credentials = await this.getCredentials('jenkinsApi') as IDataObject;
 	let options: OptionsWithUri = {
-		headers: generatedHeaders,
+		headers: {
+			'Accept': 'application/json',
+		},
 		method,
-		uri: `${uri}`,
+		auth: {
+			username: credentials.username as string,
+			password: credentials.apiKey as string,
+		},
+		uri: `${credentials.baseUrl}${uri}`,
 		json: true,
 		qs,
 		body,

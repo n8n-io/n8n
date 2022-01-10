@@ -4,9 +4,9 @@ import {
 } from 'n8n-workflow';
 
 export class JenkinsApi implements ICredentialType {
-	name = 'JenkinsApi';
-	displayName = 'Jenkins API Token';
-	documentationUrl = 'Jenkins';
+	name = 'jenkinsApi';
+	displayName = 'Jenkins API';
+	documentationUrl = 'jenkins';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Jenking Username',
@@ -21,7 +21,7 @@ export class JenkinsApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Jenkins instance URL',
+			displayName: 'Jenkins Instance URL',
 			name: 'baseUrl',
 			type: 'string',
 			default: '',

@@ -6,7 +6,9 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
@@ -18,11 +20,6 @@ import {
 	jenkinsApiRequest,
 	tolerateTrailingSlash
 } from './GenericFunctions';
-
-import {
-	parseString,
-} from 'xml2js';
-
 
 export type JenkinsApiCredentials = {
 	username: string;
@@ -47,17 +44,9 @@ export class Jenkins implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'JenkinsApi',
+				name: 'jenkinsApi',
 				required: true,
-				testedBy: 'buildsGetApiTest',
-				displayOptions: {
-					hide: {
-						operation: [
-							'trigger',
-							'triggerParams',
-						],
-					},
-				},
+				testedBy: 'jenkinApiCredentialTest',
 			},
 		],
 		properties: [
@@ -69,7 +58,6 @@ export class Jenkins implements INodeType {
 					{
 						name: 'Build',
 						value: 'build',
-						description: 'List of builds job',
 					},
 					{
 						name: 'Instance',
@@ -83,7 +71,6 @@ export class Jenkins implements INodeType {
 					},
 				],
 				default: 'job',
-				description: 'The resource to operate on',
 				noDataExpression: true,
 			},
 			// --------------------------------------------------------------------------------------------------------
@@ -127,9 +114,28 @@ export class Jenkins implements INodeType {
 				noDataExpression: true,
 			},
 			{
+				displayName: 'Make sure the job is setup to support triggering with parameters. <a href="https://wiki.jenkins.io/display/JENKINS/Parameterized+Build" target="_blank">More info</a>',
+				name: 'triggerParamsNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						resource: [
+							'job',
+						],
+						operation: [
+							'triggerParams',
+						],
+					},
+				},
+				default: '',
+			},
+			{
 				displayName: 'Job Name',
 				name: 'job',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getJobs',
+				},
 				displayOptions: {
 					show: {
 						resource: [
@@ -149,44 +155,6 @@ export class Jenkins implements INodeType {
 			// --------------------------------------------------------------------------------------------------------
 			//         Trigger a Job
 			// --------------------------------------------------------------------------------------------------------
-			{
-				displayName: 'Job Token',
-				name: 'token',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'job',
-						],
-						operation: [
-							'trigger',
-							'triggerParams',
-						],
-					},
-				},
-				required: true,
-				default: '',
-				description: 'Job specific token',
-			},
-			{
-				displayName: 'Jenkins URL',
-				name: 'url',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'job',
-						],
-						operation: [
-							'trigger',
-							'triggerParams',
-						],
-					},
-				},
-				required: true,
-				default: '',
-				description: 'URL of an instance',
-			},
 			{
 				displayName: 'Parameters',
 				name: 'param',
@@ -215,7 +183,13 @@ export class Jenkins implements INodeType {
 							{
 								displayName: 'Name',
 								name: 'name',
-								type: 'string',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getJobParameters',
+									loadOptionsDependsOn: [
+										'job',
+									],
+								},
 								default: '',
 							},
 							{
@@ -390,15 +364,15 @@ export class Jenkins implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'Build operation',
 				noDataExpression: true,
 			},
 			{
-				displayName: 'Filters',
-				name: 'filters',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
+				displayName: 'Job Name',
+				name: 'job',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getJobs',
+				},
 				displayOptions: {
 					show: {
 						resource: [
@@ -409,43 +383,56 @@ export class Jenkins implements INodeType {
 						],
 					},
 				},
-				options: [
-					{
-						displayName: 'Depth',
-						name: 'depth',
-						type: 'number',
-						default: 1,
-						description: 'Depth parameter (type number)',
+				required: true,
+				default: '',
+				description: 'Name of the job',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						resource: [
+							'build',
+						],
+						operation: [
+							'getAll',
+						],
 					},
-					{
-						displayName: 'Exclude',
-						name: 'exclude',
-						type: 'string',
-						default: '',
-						description: 'Exclude parameter (type string)',
+				},
+				description: 'If all results should be returned or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'build',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
 					},
-					{
-						displayName: 'Tree',
-						name: 'tree',
-						type: 'string',
-						default: '',
-						description: 'Tree parameter (type string)',
-					},
-					{
-						displayName: 'Xpath',
-						name: 'xpath',
-						type: 'string',
-						default: '',
-						description: 'Xpath parameter (type string)',
-					},
-				],
+				},
+				description: 'How many results to return',
 			},
 		],
 	};
 
 	methods = {
 		credentialTest: {
-			async buildsGetApiTest(
+			async jenkinApiCredentialTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<NodeCredentialTestResult> {
@@ -453,7 +440,7 @@ export class Jenkins implements INodeType {
 				const token = Buffer.from(`${username}:${apiKey}`).toString('base64');
 
 				const url = tolerateTrailingSlash(baseUrl);
-				const endpoint = '/api/xml';
+				const endpoint = '/api/json';
 
 				const options = {
 					headers: {
@@ -480,6 +467,49 @@ export class Jenkins implements INodeType {
 				}
 			},
 		},
+		loadOptions: {
+			async getJobs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = `/api/json`;
+				const { jobs } = await jenkinsApiRequest.call(this, 'GET', endpoint);
+				for (const job of jobs) {
+					returnData.push({
+						name: job.name,
+						value: job.name,
+					});
+				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			async getJobParameters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const job = this.getCurrentNodeParameter('job') as string;
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = `/job/${job}/api/json?tree=actions[parameterDefinitions[*]]`;
+				const { actions } = await jenkinsApiRequest.call(this, 'GET', endpoint);
+				for (const { _class, parameterDefinitions } of actions) {
+					if (_class?.includes('ParametersDefinitionProperty')) {
+						for (const { name, type } of parameterDefinitions) {
+							returnData.push({
+								name: `${name} - (${type})`,
+								value: name,
+							});
+						}
+					}
+				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -494,17 +524,13 @@ export class Jenkins implements INodeType {
 			try {
 				if (resource === 'job') {
 					if (operation === 'trigger') {
-						const token = this.getNodeParameter('token', i) as string;
 						const job = this.getNodeParameter('job', i) as string;
-						const url = tolerateTrailingSlash(this.getNodeParameter('url', i) as string);
-						const endpoint = `${url}/job/${job}/build?token=${token}`;
-						await jenkinsApiRequest.call(this, 'get', endpoint);
+						const endpoint = `/job/${job}/build`;
+						await jenkinsApiRequest.call(this, 'POST', endpoint);
 						responseData = { success: true };
 					}
 					if (operation === 'triggerParams') {
-						const token = this.getNodeParameter('token', i) as string;
 						const job = this.getNodeParameter('job', i) as string;
-						const url = tolerateTrailingSlash(this.getNodeParameter('url', i) as string);
 						const params = this.getNodeParameter('param.params', i, []) as [];
 						let body = {};
 						if (params.length) {
@@ -513,8 +539,15 @@ export class Jenkins implements INodeType {
 								return body;
 							}, {});
 						}
-						const endpoint = `${url}/job/${job}/buildWithParameters?token=${token}`;
-						await jenkinsApiRequest.call(this, 'get', endpoint, {}, {}, { data: body });
+						const endpoint = `/job/${job}/buildWithParameters`;
+						await jenkinsApiRequest.call(this, 'POST', endpoint, {}, {},
+							{
+								form: body,
+								headers: {
+									'content-type': 'application/x-www-form-urlencoded',
+								},
+							},
+						);
 						responseData = { success: true };
 					}
 					if (operation === 'copy') {
@@ -524,15 +557,14 @@ export class Jenkins implements INodeType {
 						if (credentials === undefined) {
 							throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 						}
-						const { baseUrl } = credentials;
 						const queryParams = {
 							name,
 							mode: 'copy',
 							from: job,
 						};
 
-						const endpoint = `${baseUrl}/createItem`;
-						await jenkinsApiRequest.call(this, 'post', endpoint, credentials, queryParams);
+						const endpoint = `/createItem`;
+						await jenkinsApiRequest.call(this, 'POST', endpoint, credentials, queryParams);
 						responseData = { success: true };
 					}
 					if (operation === 'create') {
@@ -541,7 +573,6 @@ export class Jenkins implements INodeType {
 						if (credentials === undefined) {
 							throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 						}
-						const { baseUrl } = credentials;
 						const queryParams = {
 							name,
 						};
@@ -551,106 +582,84 @@ export class Jenkins implements INodeType {
 
 						const body = this.getNodeParameter('xml', i) as string;
 
-						const endpoint = `${baseUrl}/createItem`;
-						await jenkinsApiRequest.call(this, 'post', endpoint, credentials, queryParams, headers, body);
+						const endpoint = `/createItem`;
+						await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams, body, { headers });
 						responseData = { success: true };
 					}
 				}
-				else {
-					const credentials = await this.getCredentials('JenkinsApi') as JenkinsApiCredentials;
-					if (credentials === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-					}
-					const { baseUrl } = credentials;
 
-					if (resource === 'instance') {
-						if (operation === 'quietDown') {
-							const reason = this.getNodeParameter('reason', i) as string;
-							const { baseUrl } = credentials;
+				if (resource === 'instance') {
+					if (operation === 'quietDown') {
+						const reason = this.getNodeParameter('reason', i) as string;
 
-							let queryParams;
-							if (reason) {
-								queryParams = {
-									reason,
-								};
-							}
-
-							const endpoint = `${baseUrl}/quietDown`;
-							await jenkinsApiRequest.call(this, 'post', endpoint, credentials, queryParams);
-							responseData = { success: true };
-						}
-						if (operation === 'cancelQuietDown') {
-							const endpoint = `${baseUrl}/cancelQuietDown`;
-							await jenkinsApiRequest.call(this, 'post', endpoint, credentials);
-							responseData = { success: true };
-						}
-						if (operation === 'restart') {
-							const endpoint = `${baseUrl}/restart`;
-							try {
-								await jenkinsApiRequest.call(this, 'post', endpoint, credentials);
-							} catch (error) {
-								if (error.httpCode === '503') {
-									responseData = { success: true };
-								} else {
-									throw new NodeApiError(this.getNode(), error);
-								}
-							}
-						}
-						if (operation === 'safeRestart') {
-							const endpoint = `${baseUrl}/safeRestart`;
-							try {
-								await jenkinsApiRequest.call(this, 'post', endpoint, credentials);
-							} catch (error) {
-								if (error.httpCode === '503') {
-									responseData = { success: true };
-								} else {
-									throw new NodeApiError(this.getNode(), error);
-								}
-							}
-						}
-						if (operation === 'exit') {
-							const endpoint = `${baseUrl}/exit`;
-							await jenkinsApiRequest.call(this, 'post', endpoint, credentials);
-							responseData = { success: true };
-						}
-						if (operation === 'safeExit') {
-							const endpoint = `${baseUrl}/safeExit`;
-							await jenkinsApiRequest.call(this, 'post', endpoint, credentials);
-							responseData = { success: true };
-						}
-					}
-
-					if (resource === 'build') {
-						if (operation === 'getAll') {
-							const endpoint = `${baseUrl}/api/xml`;
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-							const tree = filters.tree as string;
-							const xpath = filters.xpath as string;
-							const exclude = filters.exclude as string;
-							const depth = filters.depth as number;
-
-							const queryParams = {
-								depth: depth ? depth : 1,
-								tree,
-								xpath,
-								exclude,
+						let queryParams;
+						if (reason) {
+							queryParams = {
+								reason,
 							};
-
-							const response = await jenkinsApiRequest.call(this, 'get', endpoint, credentials, queryParams);
-							responseData = await new Promise((resolve, reject) => {
-								parseString(response, { explicitArray: false, ignoreAttrs: true }, (err, data) => {
-									if (err) {
-										return reject(err);
-									}
-									resolve(data);
-								});
-							}) as IDataObject;
-
-							responseData = responseData.hudson;
 						}
+
+						const endpoint = `/quietDown`;
+						await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams);
+						responseData = { success: true };
+					}
+					if (operation === 'cancelQuietDown') {
+						const endpoint = `/cancelQuietDown`;
+						await jenkinsApiRequest.call(this, 'POST', endpoint);
+						responseData = { success: true };
+					}
+					if (operation === 'restart') {
+						const endpoint = `/restart`;
+						try {
+							await jenkinsApiRequest.call(this, 'POST', endpoint);
+						} catch (error) {
+							if (error.httpCode === '503') {
+								responseData = { success: true };
+							} else {
+								throw new NodeApiError(this.getNode(), error);
+							}
+						}
+					}
+					if (operation === 'safeRestart') {
+						const endpoint = `/safeRestart`;
+						try {
+							await jenkinsApiRequest.call(this, 'POST', endpoint);
+						} catch (error) {
+							if (error.httpCode === '503') {
+								responseData = { success: true };
+							} else {
+								throw new NodeApiError(this.getNode(), error);
+							}
+						}
+					}
+					if (operation === 'exit') {
+						const endpoint = `/exit`;
+						await jenkinsApiRequest.call(this, 'POST', endpoint);
+						responseData = { success: true };
+					}
+					if (operation === 'safeExit') {
+						const endpoint = `/safeExit`;
+						await jenkinsApiRequest.call(this, 'POST', endpoint);
+						responseData = { success: true };
 					}
 				}
+
+				if (resource === 'build') {
+					if (operation === 'getAll') {
+						const job = this.getNodeParameter('job', i) as string;
+						let endpoint = `/job/${job}/api/json?tree=builds[*]`;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							endpoint += `{0,${limit}}`;
+						}
+
+						responseData = await jenkinsApiRequest.call(this, 'GET', endpoint);
+						responseData = responseData.builds;
+					}
+				}
+
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else {
