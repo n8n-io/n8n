@@ -11,6 +11,7 @@
 				<n8n-badge v-if="!user.firstName" :bold="true">Pending</n8n-badge>
 				<n8n-action-toggle
 					v-if="user.globalRole.name !== 'owner'"
+					placement="bottom"
 					:actions="getActions(user)"
 					@action="(action) => onUserAction(user, action)"
 				/>
