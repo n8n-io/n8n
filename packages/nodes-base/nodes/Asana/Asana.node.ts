@@ -1494,7 +1494,7 @@ export class Asana implements INodeType {
 						description: 'Get all projects',
 					},
 					{
-						name: 'Update Project',
+						name: 'Update',
 						value: 'update',
 						description: 'Update a project',
 					},
@@ -1766,39 +1766,43 @@ export class Asana implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getWorkspaces',
 				},
+				options: [],
+				default: '',
+				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'project',
-						],
 						operation: [
 							'update',
 						],
+						resource: [
+							'project',
+						],
 					},
 				},
-				default: '',
-				description: 'The workspace to create the project in',
+				description: 'The workspace in which to get users.',
 			},
 			{
 				displayName: 'Project',
 				name: 'projectId',
-				type: 'options',
+				type: 'string',
+				options: [],
+				default: '',
+				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'project',
-						],
 						operation: [
 							'update',
 						],
+						resource: [
+							'project',
+						],
 					},
 				},
-				default: '',
 				description: 'The project to update info on.',
 			},
 			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
+				displayName: 'Update Fields',
+				name: 'updateFields',
 				type: 'collection',
 				displayOptions: {
 					show: {
@@ -1826,7 +1830,7 @@ export class Asana implements INodeType {
 						name: 'due_on',
 						type: 'dateTime',
 						default: '',
-						description: 'The day on which this project is due. This takes a date with format YYYY-MM-DD.\n',
+						description: 'The day on which this project is due. This takes a date with format YYYY-MM-DD.',
 					},
 					{
 						displayName: 'Name',
@@ -1854,6 +1858,9 @@ export class Asana implements INodeType {
 						name: 'team',
 						type: 'options',
 						typeOptions: {
+							loadOptionsDependsOn: [
+								'workspace',
+							],
 							loadOptionsMethod: 'getTeams',
 						},
 						default: '',
@@ -2531,33 +2538,30 @@ export class Asana implements INodeType {
 						//        project:update
 						// ----------------------------------
 						const projectId = this.getNodeParameter('projectId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						// request parameters
 						requestMethod = 'PUT';
 						endpoint = `/projects/${projectId}`;
 
 						// optional parameters
-						if (additionalFields.color) {
-							qs.color = additionalFields.color;
+						if (updateFields.color) {
+							qs.color = updateFields.color;
 						}
-						if (additionalFields.due_on) {
-							qs.due_on = additionalFields.due_on;
+						if (updateFields.due_on) {
+							qs.due_on = updateFields.due_on;
 						}
-						if (additionalFields.name) {
-							body.name = additionalFields.name;
+						if (updateFields.name) {
+							body.name = updateFields.name;
 						}
-						if (additionalFields.notes) {
-							qs.notes = additionalFields.notes;
+						if (updateFields.notes) {
+							qs.notes = updateFields.notes;
 						}
-						if (additionalFields.owner) {
-							body.owner = additionalFields.owner;
+						if (updateFields.owner) {
+							body.owner = updateFields.owner;
 						}
-						if (additionalFields.team) {
-							body.team = additionalFields.team;
-						}
-						if (additionalFields.workspace) {
-							body.workspace = additionalFields.workspace;
+						if (updateFields.team) {
+							body.team = updateFields.team;
 						}
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
