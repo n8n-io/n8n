@@ -165,7 +165,7 @@ export const pushConnection = mixins(
 
 				if (receivedData.type === 'sendConsoleMessage') {
 					const pushData = receivedData.data;
-					console.log(pushData.source, pushData.message); // eslint-disable-line no-console
+					console.log(pushData.source, ...pushData.messages); // eslint-disable-line no-console
 					return true;
 				}
 
@@ -263,8 +263,8 @@ export const pushConnection = mixins(
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
-							title: 'Workflow was executed',
-							message: 'Workflow was executed successfully!',
+							title: this.$locale.baseText('pushConnection.showMessage.title'),
+							message: this.$locale.baseText('pushConnection.showMessage.message'),
 							type: 'success',
 						});
 					}

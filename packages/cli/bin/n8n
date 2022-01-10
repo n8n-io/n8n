@@ -26,7 +26,7 @@ var nodeVersion = process.versions.node.split('.');
 
 if (parseInt(nodeVersion[0], 10) < 14) {
 	console.log(`\nYour Node.js version (${process.versions.node}) is too old to run n8n.\nPlease update to version 14 or later!\n`);
-	process.exit(0);
+	process.exit(1);
 }
 
 require('@oclif/command').run()

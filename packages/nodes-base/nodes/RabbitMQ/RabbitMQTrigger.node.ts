@@ -25,8 +25,7 @@ export class RabbitMQTrigger implements INodeType {
 		version: 1,
 		description: 'Listens to RabbitMQ messages',
 		defaults: {
-			name: 'RabbitMQ',
-			color: '#ff6600',
+			name: 'RabbitMQ Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],

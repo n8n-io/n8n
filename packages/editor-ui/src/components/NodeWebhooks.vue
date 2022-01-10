@@ -1,8 +1,8 @@
 <template>
 	<div v-if="webhooksNode.length" class="webhoooks">
-		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
+		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? $locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls') : $locale.baseText('nodeWebhooks.clickToHideWebhookUrls')">
 			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
-			Webhook URLs
+			{{ $locale.baseText('nodeWebhooks.webhookUrls') }}
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
@@ -10,14 +10,14 @@
 					<el-row>
 						<el-col :span="24">
 							<el-radio-group v-model="showUrlFor" size="mini">
-								<el-radio-button label="test">Test URL</el-radio-button>
-								<el-radio-button label="production">Production URL</el-radio-button>
+								<el-radio-button label="test">{{ $locale.baseText('nodeWebhooks.testUrl') }}</el-radio-button>
+								<el-radio-button label="production">{{ $locale.baseText('nodeWebhooks.productionUrl') }}</el-radio-button>
 							</el-radio-group>
 						</el-col>
 					</el-row>
 				</div>
 
-				<n8n-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item"  content="Click to copy Webhook URL" placement="left">
+				<n8n-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item"  :content="$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls')" placement="left">
 					<div class="webhook-wrapper">
 							<div class="http-field">
 								<div class="http-method">
@@ -64,7 +64,7 @@ export default mixins(
 		],
 		data () {
 			return {
-				isMinimized: this.nodeType.name !== WEBHOOK_NODE_TYPE,
+				isMinimized: this.nodeType && this.nodeType.name !== WEBHOOK_NODE_TYPE,
 				showUrlFor: 'test',
 			};
 		},
@@ -83,8 +83,8 @@ export default mixins(
 				this.copyToClipboard(webhookUrl);
 
 				this.$showMessage({
-					title: 'Copied',
-					message: `The webhook URL was successfully copied!`,
+					title: this.$locale.baseText('nodeWebhooks.showMessage.title'),
+					message: this.$locale.baseText('nodeWebhooks.showMessage.message'),
 					type: 'success',
 				});
 			},
@@ -95,7 +95,7 @@ export default mixins(
 				try {
 					return this.resolveExpression(webhookData[key] as string) as string;
 				} catch (e) {
-					return '[INVALID EXPRESSION]';
+					return this.$locale.baseText('nodeWebhooks.invalidExpression');
 				}
 			},
 			getWebhookUrl (webhookData: IWebhookDescription): string {
@@ -128,14 +128,14 @@ export default mixins(
 <style scoped lang="scss">
 
 .webhoooks {
-	padding: 0.7em;
-	font-size: 0.9em;
-	margin: 0.5em 0;
+	padding-bottom: var(--spacing-xs);
+	margin: var(--spacing-xs) 0;
 	border-bottom: 1px solid #ccc;
 
 	.headline {
 		color: $--color-primary;
 		font-weight: 600;
+		font-size: var(--font-size-2xs);
 	}
 }
 
@@ -154,8 +154,8 @@ export default mixins(
 	margin-left: 5px;
 	text-align: center;
 	border-radius: 2px;
-	font-size: 0.8em;
-	font-weight: 600;
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
 	color: #fff;
 }
 
@@ -175,11 +175,11 @@ export default mixins(
 .url-field {
 	display: inline-block;
 	width: calc(100% - 60px);
-	margin-left: 50px;
+	margin-left: 55px;
 }
 
 .url-selection {
-	margin-top: 1em;
+	margin-top: var(--spacing-xs);
 }
 
 .minimize-button {
@@ -205,12 +205,11 @@ export default mixins(
 	position: relative;
 	top: 0;
 	width: 100%;
-	font-size: 0.9em;
+	font-size: var(--font-size-2xs);
 	white-space: normal;
 	overflow: visible;
 	text-overflow: initial;
 	color: #404040;
-	padding: 0.5em;
 	text-align: left;
 	direction: ltr;
 	word-break: break-all;
@@ -219,9 +218,8 @@ export default mixins(
 .webhook-wrapper {
 	line-height: 1.5;
 	position: relative;
-	margin: 1em 0 0.5em 0;
+	margin-top: var(--spacing-xs);
 	background-color: #fff;
-	padding: 2px 0;
 	border-radius: 3px;
 }
 </style>

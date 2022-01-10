@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
-import { UserSettings } from 'n8n-core';
+import { BinaryDataManager, IBinaryDataConfig, UserSettings } from 'n8n-core';
 import { INode, LoggerProxy } from 'n8n-workflow';
 
 import {
@@ -11,17 +11,18 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
+	InternalHooksManager,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowHelpers,
 	WorkflowRunner,
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import config = require('../config');
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
@@ -45,6 +46,8 @@ export class Execute extends Command {
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
+		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		await BinaryDataManager.init(binaryDataConfig, true);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Execute);
@@ -130,6 +133,10 @@ export class Execute extends Command {
 		await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 		const credentialTypes = CredentialTypes();
 		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+		const instanceId = await UserSettings.getInstanceId();
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;

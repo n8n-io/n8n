@@ -32,7 +32,6 @@ export class Flow implements INodeType {
 		description: 'Consume Flow API',
 		defaults: {
 			name: 'Flow',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

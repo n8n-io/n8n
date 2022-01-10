@@ -8,7 +8,7 @@ import {
 	phoneNumbersFixedCollection,
 } from '../utils/sharedFields';
 
-export const leadOperations = [
+export const leadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -45,9 +45,9 @@ export const leadOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const leadFields = [
+export const leadFields: INodeProperties[] = [
 	// ----------------------------------------
 	//               lead: create
 	// ----------------------------------------
@@ -271,4 +271,4 @@ export const leadFields = [
 			phoneNumbersFixedCollection,
 		],
 	},
-] as INodeProperties[];
+];

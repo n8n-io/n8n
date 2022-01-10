@@ -343,7 +343,10 @@ export const nodeHelpers = mixins(
 						},
 					};
 
+					this.$telemetry.track('User set node enabled status', { node_type: node.type, is_enabled: node.disabled, workflow_id: this.$store.getters.workflowId });
+
 					this.$store.commit('updateNodeProperties', updateInformation);
+					this.$store.commit('clearNodeExecutionData', node.name);
 					this.updateNodeParameterIssues(node);
 					this.updateNodeCredentialIssues(node);
 				}

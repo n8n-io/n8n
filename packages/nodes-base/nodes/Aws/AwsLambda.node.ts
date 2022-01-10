@@ -23,7 +23,6 @@ export class AwsLambda implements INodeType {
 		description: 'Invoke functions on AWS Lambda',
 		defaults: {
 			name: 'AWS Lambda',
-			color: '#FF9900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

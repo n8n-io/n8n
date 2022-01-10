@@ -38,7 +38,7 @@ export default mixins(copyPaste, showMessage).extend({
 			this.copyToClipboard(this.$props.copyContent);
 
 			this.$showMessage({
-				title: 'Copied',
+				title: this.$locale.baseText('credentialEdit.credentialEdit.showMessage.title'),
 				message: this.$props.successMessage,
 				type: 'success',
 			});
@@ -53,6 +53,7 @@ export default mixins(copyPaste, showMessage).extend({
 	span {
 		font-family: Monaco, Consolas;
 		line-height: 1.5;
+		font-size: var(--font-size-s);
 	}
 
 	padding: var(--spacing-xs);

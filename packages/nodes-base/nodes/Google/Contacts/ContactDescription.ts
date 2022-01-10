@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const contactOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -888,6 +888,43 @@ export const contactFields = [
 		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
+		displayName: 'Use Query',
+		name: 'useQuery',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: false,
+		description: `Whether or not to use a query to filter the results`,
+	},
+	{
+		displayName: 'Query',
+		name: 'query',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'contact',
+				],
+				useQuery: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: `The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "nam", etc., but not "oo n".`,
+	},
+	{
 		displayName: 'RAW Data',
 		name: 'rawData',
 		type: 'boolean',
@@ -917,6 +954,9 @@ export const contactFields = [
 				],
 				resource: [
 					'contact',
+				],
+				useQuery: [
+					false,
 				],
 			},
 		},
@@ -1576,4 +1616,4 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

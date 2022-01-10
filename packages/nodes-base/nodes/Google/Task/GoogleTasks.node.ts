@@ -32,7 +32,6 @@ export class GoogleTasks implements INodeType {
 		description: 'Consume Google Tasks API',
 		defaults: {
 			name: 'Google Tasks',
-			color: '#3E87E4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -124,7 +123,7 @@ export class GoogleTasks implements INodeType {
 							body.notes = additionalFields.notes as string;
 						}
 						if (additionalFields.dueDate) {
-							body.dueDate = additionalFields.dueDate as string;
+							body.due = additionalFields.dueDate as string;
 						}
 
 						if (additionalFields.completed) {
@@ -249,7 +248,7 @@ export class GoogleTasks implements INodeType {
 						}
 
 						if (updateFields.dueDate) {
-							body.dueDate = updateFields.dueDate as string;
+							body.due = updateFields.dueDate as string;
 						}
 
 						if (updateFields.completed) {

@@ -38,7 +38,6 @@ export class UnleashedSoftware implements INodeType {
 		description: 'Consume Unleashed Software API',
 		defaults: {
 			name: 'Unleashed Software',
-			color: '#772244',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
