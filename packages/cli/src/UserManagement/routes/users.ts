@@ -152,27 +152,27 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const { inviterUuid, inviteeUuid, firstName, lastName, password } = req.body as {
-				inviterUuid: string;
-				inviteeUuid: string;
+			const { inviterId, inviteeId, firstName, lastName, password } = req.body as {
+				inviterId: string;
+				inviteeId: string;
 				firstName: string;
 				lastName: string;
 				password: string;
 			};
 
-			if (!inviterUuid || !inviteeUuid || !firstName || !lastName || !password) {
+			if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 500);
 			}
 
 			const users = await Db.collections.User!.find({
-				where: { id: In([inviterUuid, inviteeUuid]) },
+				where: { id: In([inviterId, inviteeId]) },
 			});
 
 			if (users.length !== 2) {
 				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 500);
 			}
 
-			const invitee = users.find((user) => user.id === inviteeUuid);
+			const invitee = users.find((user) => user.id === inviteeId);
 
 			if (!invitee || invitee.password) {
 				throw new ResponseHelper.ResponseError(
