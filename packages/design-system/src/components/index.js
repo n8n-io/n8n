@@ -5,6 +5,7 @@ import N8nInput from './N8nInput';
 import N8nInfoTip from './N8nInfoTip';
 import N8nInputNumber from './N8nInputNumber';
 import N8nInputLabel from './N8nInputLabel';
+import N8nLoading from './N8nLoading';
 import N8nHeading from './N8nHeading';
 import N8nMenu from './N8nMenu';
 import N8nMenuItem from './N8nMenuItem';
@@ -23,6 +24,7 @@ export {
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
+	N8nLoading,
 	N8nHeading,
 	N8nMenu,
 	N8nMenuItem,

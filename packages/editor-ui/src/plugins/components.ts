@@ -50,6 +50,7 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
+	N8nLoading,
 	N8nHeading,
 	N8nMenu,
 	N8nMenuItem,
@@ -71,6 +72,7 @@ Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
+Vue.component('n8n-loading', N8nLoading);
 Vue.use(N8nHeading);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
