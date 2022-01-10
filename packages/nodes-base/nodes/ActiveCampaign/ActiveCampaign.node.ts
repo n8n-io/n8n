@@ -116,7 +116,6 @@ export class ActiveCampaign implements INodeType {
 		description: 'Create and edit data in ActiveCampaign',
 		defaults: {
 			name: 'ActiveCampaign',
-			color: '#356ae6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

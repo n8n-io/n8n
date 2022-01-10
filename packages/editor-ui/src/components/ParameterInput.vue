@@ -13,8 +13,8 @@
 		/>
 
 		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
-			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
-			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
+			<code-edit v-if="codeEditDialogVisible" :value="value" :parameter="parameter" :type="editorType" :codeAutocomplete="codeAutocomplete" :path="path" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
+			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
 			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
@@ -94,7 +94,6 @@
 			:max="getArgument('maxValue')"
 			:min="getArgument('minValue')"
 			:precision="getArgument('numberPrecision')"
-			:step="getArgument('numberStepSize')"
 			:disabled="isReadOnly"
 			@change="valueChanged"
 			@input="onTextInputChange"
@@ -301,6 +300,9 @@ export default mixins(
 			},
 		},
 		computed: {
+			codeAutocomplete (): string | undefined {
+				return this.getArgument('codeAutocomplete') as string | undefined;
+			},
 			showExpressionAsTextInput(): boolean {
 				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
 
@@ -500,7 +502,7 @@ export default mixins(
 				return this.parameter.default === this.value;
 			},
 			isEditor (): boolean {
-				return this.getArgument('editor') === 'code';
+				return ['code', 'json'].includes(this.editorType);
 			},
 			isValueExpression () {
 				if (this.parameter.noDataExpression === true) {
@@ -510,6 +512,9 @@ export default mixins(
 					return true;
 				}
 				return false;
+			},
+			editorType (): string {
+				return this.getArgument('editor') as string;
 			},
 			parameterOptions (): INodePropertyOptions[] {
 				if (this.remoteMethod === undefined) {
@@ -571,17 +576,17 @@ export default mixins(
 			getPlaceholder(): string {
 				return this.isForCredential
 					? this.$locale.credText().placeholder(this.parameter)
-					: this.$locale.nodeText().placeholder(this.parameter);
+					: this.$locale.nodeText().placeholder(this.parameter, this.path);
 			},
 			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
 				return this.isForCredential
 					? this.$locale.credText().optionsOptionDisplayName(this.parameter, option)
-					: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option);
+					: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
 			},
 			getOptionsOptionDescription(option: { value: string; description: string }): string {
 				return this.isForCredential
 					? this.$locale.credText().optionsOptionDescription(this.parameter, option)
-					: this.$locale.nodeText().optionsOptionDescription(this.parameter, option);
+					: this.$locale.nodeText().optionsOptionDescription(this.parameter, option, this.path);
 			},
 
 			async loadRemoteParameterOptions () {

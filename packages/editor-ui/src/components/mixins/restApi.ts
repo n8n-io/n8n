@@ -79,6 +79,10 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('POST', `/executions-current/${executionId}/stop`);
 				},
 
+				getCredentialTranslation: (credentialType): Promise<object> => {
+					return self.restApi().makeRestApiRequest('GET', '/credential-translation', { credentialType });
+				},
+
 				getNodeTranslationHeaders: (): Promise<INodeTranslationHeaders> => {
 					return self.restApi().makeRestApiRequest('GET', '/node-translation-headers');
 				},
@@ -191,6 +195,11 @@ export const restApi = Vue.extend({
 				// Returns all the available timezones
 				getTimezones: (): Promise<IDataObject> => {
 					return self.restApi().makeRestApiRequest('GET', `/options/timezones`);
+				},
+
+				// Binary data
+				getBinaryBufferString: (dataPath: string): Promise<string> => {
+					return self.restApi().makeRestApiRequest('GET', `/data/${dataPath}`);
 				},
 			};
 		},
