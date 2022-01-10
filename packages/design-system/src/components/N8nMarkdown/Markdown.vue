@@ -10,8 +10,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import N8nLoading from '../N8nLoading';
 import Markdown from 'markdown-it';
 const markdownLink = require('markdown-it-link-attributes');
@@ -48,7 +46,7 @@ interface IImage {
 	url: string;
 }
 
-export default Vue.extend({
+export default {
 	components: {
 		N8nLoading,
 	},
@@ -133,7 +131,7 @@ export default Vue.extend({
 				.use(markdownTasklists, this.options.tasklists),
 		};
 	},
-});
+};
 </script>
 
 <style lang="scss" module>
