@@ -1,10 +1,17 @@
 <template>
   <div>
 		<div v-if="!loading" ref="editor" :class="$style.markdown" v-html="getContent" />
-		<div v-else>
-			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
-			<div :class="$style.spacer" />
-			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
+		<div v-else :class="$style.markdown">
+			<div v-for="(block, index) in loadingBlocks"
+				:key="'block-' + index">
+				<n8n-loading
+					:animated="loadingAnimated"
+					:loading="loading"
+					:rows="loadingRows"
+					variant="p"
+				/>
+				<div :class="$style.spacer" />
+			</div>
 		</div>
 	</div>
 </template>
@@ -58,8 +65,22 @@ export default {
 		images: {
 			type: Array,
 		},
-		loadingState: {
+		loading: {
 			type: Boolean,
+		},
+		loadingAnimated: {
+			type: Boolean,
+			default: true,
+		},
+		loadingBlocks: {
+			type: Number,
+			default: 2
+		},
+		loadingRows: {
+			type: Number,
+			default: () => {
+				return 3;
+			}
 		},
 		options: {
 			type: Object,
@@ -118,9 +139,6 @@ export default {
 			} else {
 				return '';
 			}
-		},
-		loading(): boolean {
-			return this.loadingState;
 		},
 	},
 	data() {
@@ -191,7 +209,7 @@ export default {
 	}
 
 	.spacer {
-		margin: 56px;
+		margin: 48px;
 	}
 }
 </style>

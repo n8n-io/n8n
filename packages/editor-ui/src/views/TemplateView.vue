@@ -28,7 +28,7 @@
 					<n8n-markdown
 						:content="template.description"
 						:images="template.image"
-						:loadingState="loading"
+						:loading="loading"
 					/>
 				</div>
 				<div :class="$style.details">
