@@ -105,7 +105,6 @@ export default mixins(showMessage).extend({
 <style lang="scss" module>
 .container {
 	height: 100%;
-	overflow: auto;
 	padding-right: var(--spacing-2xs);
 
 	> * {
@@ -113,8 +112,12 @@ export default mixins(showMessage).extend({
 	}
 }
 
-.usersContainer > * {
-	margin-bottom: var(--spacing-2xs);
+.usersContainer {
+	padding-bottom: 100px;
+
+	> * {
+		margin-bottom: var(--spacing-2xs);
+	}
 }
 
 .buttonContainer {
