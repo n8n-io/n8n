@@ -175,7 +175,6 @@ export default {
 
 	ul, ol {
 		margin-bottom: var(--spacing-s);
-		padding: var(--spacing-4xs);
 		padding-left: var(--spacing-m);
 		font-size: var(--font-size-m);
 		line-height: var(--font-line-height-xloose);
@@ -190,9 +189,11 @@ export default {
 		line-height: var(--font-line-height-xloose);
 	}
 
-	code {
-		margin: var(--spacing-2xl) 0 var(--spacing-l);
+	li > code,
+	p > code {
+		display: block;
 		padding: var(--spacing-s);
+		color: #555555;
 		background-color: #f2f4f8;
 	}
 

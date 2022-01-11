@@ -10,6 +10,7 @@
 						:key="node.name"
 						:nodeType="node"
 						:title="node.name"
+						:clickButton="redirectToSearchPage"
 					/>
 				</div>
 			</template>
@@ -17,7 +18,7 @@
 
 		<template-block v-if="!loading" :title="$locale.baseText('template.details.categories')">
 			<template v-slot:content>
-				<n8n-tags :tags="template.categories" />
+				<n8n-tags :tags="template.categories" :clickButton="redirectToCategory"/>
 			</template>
 		</template-block>
 
@@ -50,6 +51,15 @@ import TemplateBlock from './TemplateBlock/TemplateBlock.vue';
 import NodeIcon from './NodeIcon/NodeIcon.vue';
 import { abbreviateNumber } from '../helpers';
 
+interface ITag {
+	id: string;
+	name: string;
+}
+
+interface INode {
+	displayName: string;
+}
+
 export default Vue.extend({
 	props: {
 		loading: {
@@ -65,6 +75,12 @@ export default Vue.extend({
 	},
 	methods: {
 		abbreviateNumber,
+		redirectToCategory(tag: ITag) {
+			this.$router.push(`/templates?categoryId=${tag.id}`);
+		},
+		redirectToSearchPage(node: INode) {
+			this.$router.push(`/templates?search=${node.displayName}`);
+		},
 	},
 });
 </script>

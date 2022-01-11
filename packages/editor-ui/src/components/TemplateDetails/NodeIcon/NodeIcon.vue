@@ -4,6 +4,7 @@
 		:style="iconStyleData"
 		@mouseover="showTooltip = true"
     @mouseleave="showTooltip = false"
+		@click="clickButton(nodeType)"
 	>
 		<div :class="$style.tooltip">
 			<n8n-tooltip placement="top" :manual="true" :value="showTooltip">
@@ -51,6 +52,9 @@ export default Vue.extend({
 		circle: {
 			type: Boolean,
 			default: false,
+		},
+		clickButton: {
+			type: Function,
 		},
 		disabled: {
 			type: Boolean,
