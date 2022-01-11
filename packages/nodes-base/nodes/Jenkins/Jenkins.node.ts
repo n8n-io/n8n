@@ -13,7 +13,6 @@ import {
 	INodeTypeDescription,
 	NodeApiError,
 	NodeCredentialTestResult,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
