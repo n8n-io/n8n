@@ -174,8 +174,9 @@ export async function logout(context: IRestApiContext): Promise<void> {
 
 export async function setupOwner(context: IRestApiContext, params: { firstName: string; lastName: string; email: string; password: string;}): Promise<IUser> {
 	log(context, 'POST', '/owner-setup', params as unknown as IDataObject);
+	const user = getCurrUser();
 	removeUser('0');
-	const newUser: IUser = {...params, id: '0', "globalRole": {name: 'owner', id: '1'}};
+	const newUser: IUser = {...user, ...params};
 	addUser(newUser);
 
 	return await Promise.resolve(newUser);
