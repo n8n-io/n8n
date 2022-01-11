@@ -553,10 +553,6 @@ export class Jenkins implements INodeType {
 					if (operation === 'copy') {
 						const job = this.getNodeParameter('job', i) as string;
 						const name = this.getNodeParameter('newJob', i) as string;
-						const credentials = await this.getCredentials('JenkinsApi') as JenkinsApiCredentials;
-						if (credentials === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-						}
 						const queryParams = {
 							name,
 							mode: 'copy',
@@ -564,15 +560,19 @@ export class Jenkins implements INodeType {
 						};
 
 						const endpoint = `/createItem`;
-						await jenkinsApiRequest.call(this, 'POST', endpoint, credentials, queryParams);
-						responseData = { success: true };
+						try {
+							await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams);
+						}
+						catch (error) {
+							if (error.httpCode === '302') {
+								responseData = { success: true };
+							} else {
+								throw new NodeApiError(this.getNode(), error);
+							}
+						}
 					}
 					if (operation === 'create') {
 						const name = this.getNodeParameter('newJob', i) as string;
-						const credentials = await this.getCredentials('JenkinsApi') as JenkinsApiCredentials;
-						if (credentials === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-						}
 						const queryParams = {
 							name,
 						};
@@ -583,7 +583,7 @@ export class Jenkins implements INodeType {
 						const body = this.getNodeParameter('xml', i) as string;
 
 						const endpoint = `/createItem`;
-						await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams, body, { headers });
+						await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams, body, { headers, json: false });
 						responseData = { success: true };
 					}
 				}
