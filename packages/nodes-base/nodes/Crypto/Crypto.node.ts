@@ -332,6 +332,25 @@ export class Crypto implements INodeType {
 				default: '',
 				required: true,
 			},
+			{
+				displayName: 'Key Password',
+				name: 'keyPassword',
+				displayOptions: {
+					show: {
+						action: [
+							'sign',
+						],
+					},
+				},
+				type: 'string',
+				typeOptions: {
+					password: true,
+
+				},
+				description: 'Password to use for the private key.',
+				default: '',
+				required: false,
+			},
 		],
 	};
 
@@ -387,10 +406,11 @@ export class Crypto implements INodeType {
 					const algorithm = this.getNodeParameter('algorithm', i) as string;
 					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
 					const privateKey = this.getNodeParameter('privateKey', i) as string;
+					const keyPassword = this.getNodeParameter('keyPassword', i) as string;
 					const sign = createSign(algorithm);
 					sign.write(value as string);
 					sign.end();
-					newValue = sign.sign(privateKey, encoding);
+					newValue = sign.sign({key: privateKey, passphrase: keyPassword}, encoding);
 				}
 
 				let newItem: INodeExecutionData;
@@ -413,7 +433,7 @@ export class Crypto implements INodeType {
 				set(newItem, `json.${dataPropertyName}`, newValue);
 
 				returnData.push(newItem);
-			
+
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({json:{ error: error.message }});
