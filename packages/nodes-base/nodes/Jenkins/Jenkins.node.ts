@@ -282,7 +282,7 @@ export class Jenkins implements INodeType {
 					{
 						name: 'Quiet Down',
 						value: 'quietDown',
-						description: 'Puts Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown',
+						description: 'Put Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown',
 					},
 					{
 						name: 'Restart',
