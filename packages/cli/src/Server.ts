@@ -32,7 +32,7 @@ import * as express from 'express';
 import { readFileSync, existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
+import { getConnection, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
 import * as os from 'os';
@@ -157,6 +157,8 @@ import { getNodeTranslationPath } from './TranslationHelpers';
 import { userManagementRouter } from './UserManagement';
 import { User } from './databases/entities/User';
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
+import { WorkflowRequest } from './requests';
+import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 
 require('body-parser-xml')(bodyParser);
 
@@ -678,49 +680,66 @@ class App {
 		// Creates a new workflow
 		this.app.post(
 			`/${this.restEndpoint}/workflows`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<WorkflowEntity> => {
-					delete req.body.id; // ignore if sent by mistake
-					const incomingData = req.body;
+			ResponseHelper.send(async (req: WorkflowRequest.Create) => {
+				delete req.body.id; // ignore if sent
 
-					const newWorkflow = new WorkflowEntity();
+				const newWorkflow = new WorkflowEntity();
 
-					Object.assign(newWorkflow, incomingData);
-					newWorkflow.name = incomingData.name.trim();
+				Object.assign(newWorkflow, req.body);
 
-					const incomingTagOrder = incomingData.tags.slice();
+				await WorkflowHelpers.validateWorkflow(newWorkflow);
 
-					if (incomingData.tags.length) {
-						newWorkflow.tags = await Db.collections.Tag!.findByIds(incomingData.tags, {
-							select: ['id', 'name'],
-						});
-					}
+				await this.externalHooks.run('workflow.create', [newWorkflow]);
 
-					// check credentials for old format
-					await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
+				const { tags: tagIds } = req.body;
 
-					await this.externalHooks.run('workflow.create', [newWorkflow]);
+				if (tagIds?.length) {
+					newWorkflow.tags = await Db.collections.Tag!.findByIds(tagIds, {
+						select: ['id', 'name'],
+					});
+				}
 
-					await WorkflowHelpers.validateWorkflow(newWorkflow);
-					const savedWorkflow = (await Db.collections
-						.Workflow!.save(newWorkflow)
-						.catch(WorkflowHelpers.throwDuplicateEntryError)) as WorkflowEntity;
-					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, incomingTagOrder);
-					try {
-						await UserManagementHelpers.saveWorkflowOwnership(savedWorkflow, req.user as User);
-					} catch (error) {
-						// TODO UM: decide if this is fatal and we must rollback or
-						// log and treat it elsewhere.
-						LoggerProxy.debug('Error saving workflow ownership', { error });
-					}
+				await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
 
-					// @ts-ignore
-					savedWorkflow.id = savedWorkflow.id.toString();
-					await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-					void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow as IWorkflowBase);
-					return savedWorkflow;
-				},
-			),
+				let savedWorkflow: undefined | WorkflowEntity;
+
+				await getConnection().transaction(async (transactionManager) => {
+					savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+
+					const role = await Db.collections.Role!.findOneOrFail({
+						name: 'owner',
+						scope: 'workflow',
+					});
+
+					const newSharedWorkflow = new SharedWorkflow();
+
+					Object.assign(newSharedWorkflow, {
+						role,
+						user: req.user,
+						workflow: savedWorkflow,
+					});
+
+					await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+				});
+
+				if (!savedWorkflow) {
+					throw new Error('Failed to save workflow');
+				}
+
+				if (tagIds) {
+					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
+						incomingTagOrder: tagIds,
+					});
+				}
+
+				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+
+				void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow);
+
+				const { id, ...rest } = savedWorkflow;
+
+				return { id: id.toString(), ...rest };
+			}),
 		);
 
 		// Reads and returns workflow data from an URL
@@ -823,32 +842,32 @@ class App {
 		// Returns a specific workflow
 		this.app.get(
 			`/${this.restEndpoint}/workflows/:id`,
-			ResponseHelper.send(
-				async (
-					req: express.Request,
-					res: express.Response,
-				): Promise<WorkflowEntity | undefined> => {
-					const qb = Db.collections.Workflow!.createQueryBuilder('w');
-					qb.leftJoinAndSelect('w.tags', 't');
-					qb.andWhere('w.id = :workflowId', { workflowId: req.params.id });
+			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
+				const where: Record<string, { id: string }> = {
+					workflow: { id: req.params.id },
+				};
 
-					qb.innerJoin('w.shared', 'shared');
-					// @ts-ignore
-					qb.andWhere('shared.userId = :userId', { userId: req.user.id });
+				if (req.user.globalRole.name !== 'owner') {
+					where.user = { id: req.user.id };
+				}
 
-					const workflow = await qb.getOne();
+				const results = await Db.collections.SharedWorkflow!.find({
+					relations: ['workflow', 'workflow.tags'],
+					where,
+				});
 
-					if (workflow === undefined) {
-						return undefined;
-					}
+				if (!results.length) return {};
 
-					// @ts-ignore
-					workflow.id = workflow.id.toString();
-					// @ts-ignore
-					workflow.tags.forEach((tag) => (tag.id = tag.id.toString()));
-					return workflow;
-				},
-			),
+				const [sharing] = results;
+				const { workflow } = sharing;
+				const { id, tags, ...rest } = workflow;
+
+				return {
+					id: id.toString(),
+					...rest,
+					tags: tags?.map(({ id, ...rest }) => ({ id: id.toString(), ...rest })) ?? [],
+				};
+			}),
 		);
 
 		// Updates an existing workflow
@@ -944,7 +963,9 @@ class App {
 					}
 
 					if (tags?.length) {
-						workflow.tags = TagHelpers.sortByRequestOrder(workflow.tags, tags);
+						workflow.tags = TagHelpers.sortByRequestOrder(workflow.tags, {
+							incomingTagOrder: tags,
+						});
 					}
 
 					await this.externalHooks.run('workflow.afterUpdate', [workflow]);
