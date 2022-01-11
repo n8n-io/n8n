@@ -12,6 +12,7 @@ export async function getTemplates(
 	allData = true,
 	searchQuery = false,
 ): Promise<ISearchPayload> {
+	const queryCategory = category && category.length ? `${ '[' + category + ']'}` : null;
 	const query = `query {
 		categories(sort:"name") @include(if: ${allData}) @skip(if: ${searchQuery}){
 			id
@@ -21,7 +22,7 @@ export async function getTemplates(
 			rows: ${limit},
 			skip: ${skip},
 			search: "${search}"
-			category: ${category ? "[" + category + "]" : null}) @include(if: ${allData}){
+			category: ${queryCategory}) @include(if: ${allData}){
 			id
 			name
 			nodes{
@@ -37,11 +38,11 @@ export async function getTemplates(
 			}
 			totalViews: views
 		}
-		totalworkflow: getWorkflowCount(search: "${search}", category: ${category ? "[" + category + "]" : null})
+		totalworkflow: getWorkflowCount(search: "${search}", category: ${queryCategory})
 		workflows(
 			limit: ${limit},
 			start: ${skip},
-			where:{nodes:{name_contains:"${search}"},categories:{id: ${category ? "[" + category + "]" : undefined}}},
+			where:{nodes:{name_contains:"${search}"},categories:{id: ${queryCategory ? queryCategory : undefined}}},
 			sort:"views:DESC,created_at:DESC"){
 			id
 			name
@@ -61,6 +62,5 @@ export async function getTemplates(
 			created_at
 		}
 	}`;
-	console.log(query);
 	return await post(stagingHost, `/graphql`, { query });
 }

@@ -52,6 +52,12 @@ export default mixins(
 		return {
 			search: '',
 			categories: [] as number[],
+			lastQuery: {
+				skip: 0,
+				search: '',
+				category: [] as number[] | null,
+			},
+			searchFinished: false,
  		};
 	},
 	async created() {
@@ -62,7 +68,19 @@ export default mixins(
 			this.categories = this.$route.query.categories.split(',').map((id) => Number(id));
 		}
 		const category = this.categories.length ? this.categories : null;
-		await this.$store.dispatch('templates/getSearchResults', {search: this.search, category });
+		await this.$store.dispatch('templates/getSearchResults', {search: this.search, category, fetchCategories: true });
+		this.lastQuery = { search: this.search, category, skip: 0};
+		this.searchFinished = false;
+
+		// Detect when scrolled to bottom.
+		const templateList = document.querySelector('#infiniteList');
+		if (templateList) {
+			templateList.addEventListener('scroll', e => {
+				if(templateList.scrollTop + templateList.clientHeight >= templateList.scrollHeight) {
+					this.infiniteLoader();
+				}
+			});
+		}
 	},
 	methods: {
 		async onSearchInput(value: string) {
@@ -83,11 +101,23 @@ export default mixins(
 			this.$router.replace({ query });
 		},
 		async doSearch() {
-			const category = this.categories.join(',');
-			console.log(category);
+			this.searchFinished = false;
+			const category = this.categories;
 			const search = this.search;
-			this.updatQueryParam(search, category);
+			this.updatQueryParam(search, category.join(','));
 			await this.$store.dispatch('templates/getSearchResults', { search, category });
+			this.lastQuery = { search, category, skip: 0 };
+		},
+		async infiniteLoader() {
+			if (!this.searchFinished) {
+				const { search, category, skip } = this.lastQuery;
+				const preloaded = this.$store.getters['templates/getWorkflows'];
+				await this.$store.dispatch('templates/getSearchResults', { search, category, skip: skip + 20});
+				const newLoaded = this.$store.getters['templates/getWorkflows'];
+				if (newLoaded.length % 20 || preloaded.length === newLoaded.length) {
+					this.searchFinished = true;
+				}
+			}
 		},
 		async setCategories(selected: number[]) {
 			this.categories = selected;
@@ -129,7 +159,7 @@ export default mixins(
 		display: flex column;
 
 		.searchInput {
-			width: 100%;
+			width: calc(100% - 80px);
 		}
 
 		.searchResults {

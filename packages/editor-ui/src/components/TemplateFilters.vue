@@ -42,7 +42,7 @@ export default mixins(
 		return {
 			allSelected: true,
 			collapsed: true,
-			sortedCategories: [],
+			sortedCategories: [] as ITemplateCategory[],
 			selected: [] as string[],
 		};
 	},
@@ -54,20 +54,22 @@ export default mixins(
 	},
 	computed: {
 		categories() {
-			return this.$store.getters['templates/getCategories'];
-		},
-	},
-	watch: {
-		categories(newCategories) {
-			this.sortedCategories = newCategories;
+			const fetchedCategories = this.$store.getters['templates/getCategories'];
+			const copiedCategories = JSON.parse(JSON.stringify(fetchedCategories));
 			if (this.selected.length) {
-				this.sortedCategories.forEach((category: ITemplateCategory) => {
+				return copiedCategories.map((category: ITemplateCategory) => {
 					if (this.selected.includes(category.id)) {
 						category.selected = true;
 					}
 					return category;
 				});
 			}
+			return copiedCategories;
+		},
+	},
+	watch: {
+		categories(newCategories) {
+			this.sortedCategories = newCategories;
 		},
 		collapsed(newState) {
 			if (!this.collapsed) {

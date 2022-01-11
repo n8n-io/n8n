@@ -46,15 +46,19 @@ const module: Module<ITemplateState, IRootState> = {
 		setWorkflows(state: ITemplateState, workflows: IN8nTemplate[]) {
 			Vue.set(state, 'workflows', workflows);
 		},
+		appendWorkflows(state: ITemplateState, workflows: IN8nTemplate[]) {
+			Vue.set(state, 'workflows', state.workflows.concat(workflows));
+		},
 	},
 	actions: {
-		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { search , category }) {
-			const allData = search.length || category ? false: true;
-			const searchQuery = !allData;
+		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { search , category, skip = 0, fetchCategories = false }) {
+			const searchQuery = search.length || category ? true : false;
+			const allData = fetchCategories ? fetchCategories : !searchQuery;
 			try {
-				const payload: ISearchPayload = await getTemplates(10, 0, category, search, allData, searchQuery);
+				//todo constant pagination
+				const payload: ISearchPayload = await getTemplates(20, skip, category, search, allData, !allData);
 				const results : ISearchResults = payload.data;
-				if (!search.length) {
+				if (allData) {
 					const categories = results.categories.map((category: ITemplateCategory) => {
 						category.selected = false;
 						return category;
@@ -62,7 +66,11 @@ const module: Module<ITemplateState, IRootState> = {
 					context.commit('setCategories', categories);
 				}
 				context.commit('setCollections', results.collections);
-				context.commit('setWorkflows', results.workflows);
+				if (skip) {
+					context.commit('appendWorkflows', results.workflows);
+				} else {
+					context.commit('setWorkflows', results.workflows);
+				}
 				return results;
 			} catch(e) {
 				return;

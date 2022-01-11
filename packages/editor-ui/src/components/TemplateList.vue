@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.listContainer">
+	<div id="infiniteList"  :class="$style.listContainer">
 		<n8n-heading size="large">Workflows</n8n-heading>
 		<div :class="$style.templateList">
 			<div v-for="workflow in workflowsUI" :key="workflow.id">
@@ -48,7 +48,6 @@ export default mixins(
 	watch: {
 		workflows(newWorkflows) {
 			this.workflowsUI = newWorkflows;
-			console.log(this.workflowsUI);
 		},
 	},
 	methods: {
@@ -60,7 +59,10 @@ export default mixins(
 <style lang="scss" module>
 
 .listContainer {
+	// recalc with vars
+	height: 450px;
 	padding-top: 20px;
+	overflow-y: scroll;
 
 	.templateList {
 		border-radius: var(--border-radius-large);
