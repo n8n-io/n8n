@@ -7,11 +7,33 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { mapGetters } from 'vuex';
+import mixins from 'vue-typed-mixins';
 
-export default Vue.extend({
+import { showMessage } from './mixins/showMessage';
+import { ElMessageComponent } from 'element-ui/types/message';
+
+export default mixins(
+	showMessage,
+).extend({
 	name: 'SmtpAlert',
+	data: {
+		alert: null as null | ElMessageComponent,
+	},
+	mounted() {
+		this.alert = this.$showAlert({
+			message: `SMTP credentials are not set up. n8n cannot send emails until this is resolved. <a href="https://docs.n8n.io/reference/environment-variables.html#user-management" style="margin-right: 10px" target="_blank">More info</a>`,
+			type: 'warning',
+			duration: 0,
+			showClose: true,
+			dangerouslyUseHTMLString: true,
+		});
+	},
+	beforeDestroy() {
+		if (this.alert) {
+			this.alert.close();
+		}
+	},
 	computed: {
 		...mapGetters('settings', ['isSmtpSetup']),
 	},

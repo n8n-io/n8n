@@ -12,9 +12,6 @@
 			</div>
 			<div>
 				<div :class="$style.sectionHeader">
-					<SmtpAlert />
-				</div>
-				<div :class="$style.sectionHeader">
 					<n8n-heading size="large">Basic information</n8n-heading>
 				</div>
 				<n8n-form-inputs
