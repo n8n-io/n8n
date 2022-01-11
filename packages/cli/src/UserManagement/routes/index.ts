@@ -105,6 +105,7 @@ export async function addRoutes(
 		if (cookieAuth && req.user) {
 			const cookieContents = jwt.decode(cookieAuth) as PublicUserData & { exp: number };
 			if (cookieContents.exp * 1000 - Date.now() < 259200000) {
+				// if cookie should expire in < 3 days, renew it.
 				await issueCookie(res, req.user as User);
 			}
 		}
