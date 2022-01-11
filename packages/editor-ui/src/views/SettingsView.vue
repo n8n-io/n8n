@@ -44,5 +44,6 @@ export default Vue.extend({
 	height: 100%;
 	width: 100%;
 	max-width: 800px;
+	padding: 0 var(--spacing-2xl);
 }
 </style>
