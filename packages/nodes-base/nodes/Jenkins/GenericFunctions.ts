@@ -14,7 +14,6 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-
 export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, uri: string, qs: IDataObject = {}, body: any = '', option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('jenkinsApi') as IDataObject;
 	let options: OptionsWithUri = {
@@ -26,7 +25,7 @@ export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions
 			username: credentials.username as string,
 			password: credentials.apiKey as string,
 		},
-		uri: `${credentials.baseUrl}${uri}`,
+		uri: `${tolerateTrailingSlash(credentials.baseUrl as string)}${uri}`,
 		json: true,
 		qs,
 		body,
