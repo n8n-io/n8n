@@ -401,7 +401,7 @@ export class Jenkins implements INodeType {
 						],
 					},
 				},
-				description: 'If all results should be returned or only up to a given limit',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -424,7 +424,7 @@ export class Jenkins implements INodeType {
 						],
 					},
 				},
-				description: 'How many results to return',
+				description: 'Max number of results to return',
 			},
 		],
 	};
