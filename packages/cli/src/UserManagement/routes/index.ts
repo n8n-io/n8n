@@ -21,6 +21,7 @@ import { generatePublicUserData, isValidEmail, isValidPassword } from '../UserMa
 import { issueCookie, issueJWT } from '../auth/jwt';
 import { addMeNamespace } from './me';
 import { addUsersMethods } from './users';
+import { createHash } from 'crypto';
 
 export async function addRoutes(
 	this: N8nApp,
@@ -47,9 +48,16 @@ export async function addRoutes(
 				{ relations: ['globalRole'] },
 			);
 
+			let passwordHash = '';
+			if (user?.password) {
+				passwordHash = createHash('md5')
+					.update(user.password.slice(Math.round(user.password.length / 2)))
+					.digest('hex');
+			}
+
 			if (
 				!user ||
-				(user.password && !user.password.endsWith(jwtPayload.password!)) ||
+				(user.password && jwtPayload.password !== passwordHash) ||
 				(user.email && user.email !== jwtPayload.email)
 			) {
 				// If user has email or password in database, we check.

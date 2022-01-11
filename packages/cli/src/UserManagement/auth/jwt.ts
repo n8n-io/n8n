@@ -3,6 +3,7 @@
 
 import * as jwt from 'jsonwebtoken';
 import { Response } from 'express';
+import { createHash } from 'crypto';
 import { JwtToken, PublicUserData } from '../Interfaces';
 import { User } from '../../databases/entities/User';
 import config = require('../../../config');
@@ -20,7 +21,9 @@ export async function issueJWT(user: User): Promise<JwtToken> {
 	}
 
 	if (password) {
-		payload.password = password.slice(Math.round(password.length / 2));
+		payload.password = createHash('md5')
+			.update(password.slice(Math.round(password.length / 2)))
+			.digest('hex');
 	}
 
 	const signedToken = jwt.sign(payload, config.get('userManagement.jwtSecret'), {
