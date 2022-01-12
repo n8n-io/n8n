@@ -16,12 +16,14 @@
   "types": "dist/src/index.d.ts",
   "scripts": {
     "dev": "npm run watch",
-    "build:translations": "gulp build:translations",
 
     "build_OLD": "tsc && gulp build:icons && gulp build:translations",
 
     "build": "../../node_modules/.bin/esbuild {**/*,*/**/*,*/**/**/*,*/**/**/**/*}.ts --outdir=dist --platform=node --format=cjs && gulp build:icons && gulp build:translations",
     "clear": "rm -rf /Users/ivov/Development/n8n/packages/nodes-base/dist",
+
+    "esbuild": "find . -name '*.ts' -not -name '*.d.ts' | xargs esbuild --outdir=dist --platform=node --format=cjs && npm run gulp",
+    "gulp": "gulp build:assets && gulp build:translations",
 
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base/**/**.ts --write",
     "lint": "tslint -p tsconfig.json -c tslint.json",

@@ -5,10 +5,10 @@ const { task, src, dest } = require('gulp');
 const ALLOWED_HEADER_KEYS = ['displayName', 'description'];
 const PURPLE_ANSI_COLOR_CODE = 35;
 
-task('build:icons', copyIcons);
+task('build:assets', copyAssets);
 
-function copyIcons() {
-	src('nodes/**/*.{png,svg}').pipe(dest('dist/nodes'))
+function copyAssets() {
+	src('nodes/**/*.{png,svg,node.json}').pipe(dest('dist/nodes'))
 
 	return src('credentials/**/*.{png,svg}').pipe(dest('dist/credentials'));
 }
