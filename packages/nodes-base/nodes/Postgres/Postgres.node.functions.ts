@@ -1,6 +1,6 @@
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import pgPromise = require('pg-promise');
-import pg = require('pg-promise/typescript/pg-subset');
+// import pg = require('pg-promise/typescript/pg-subset');
 
 /**
  * Returns of a shallow copy of the items which only contains the json data and
@@ -39,11 +39,11 @@ export function getItemCopy(item: INodeExecutionData, properties: string[]): IDa
 
 /**
  * Returns a returning clause from a comma separated string
- * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
+ * @param {pgPromise.IMain<{}, any>} pgp The pgPromise instance
  * @param string returning The comma separated string
  * @returns string
  */
-export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returning: string): string {
+export function generateReturning(pgp: pgPromise.IMain<{}, any>, returning: string): string {
 	return ' RETURNING ' + returning.split(',').map(returnedField => pgp.as.name(returnedField.trim())).join(', ');
 }
 
@@ -51,15 +51,15 @@ export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returnin
  * Executes the given SQL query on the database.
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
- * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {pgPromise.IMain<{}, any>} pgp The pgPromise instance
+ * @param {pgPromise.IDatabase<{}, any>} db The pgPromise database connection
  * @param {input[]} input The Node's input data
  * @returns Promise<Array<IDataObject>>
  */
 export async function pgQuery(
 	getNodeParam: Function,
-	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	pgp: pgPromise.IMain<{}, any>,
+	db: pgPromise.IDatabase<{}, any>,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	overrideMode?: string,
@@ -120,15 +120,15 @@ export async function pgQuery(
  * Inserts the given items into the database.
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
- * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {pgPromise.IMain<{}, any>} pgp The pgPromise instance
+ * @param {pgPromise.IDatabase<{}, any>} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be inserted
  * @returns Promise<Array<IDataObject>>
  */
 export async function pgInsert(
 	getNodeParam: Function,
-	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	pgp: pgPromise.IMain<{}, any>,
+	db: pgPromise.IDatabase<{}, any>,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	overrideMode?: string,
@@ -193,15 +193,15 @@ export async function pgInsert(
  * Updates the given items in the database.
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
- * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {pgPromise.IMain<{}, any>} pgp The pgPromise instance
+ * @param {pgPromise.IDatabase<{}, any>} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be updated
  * @returns Promise<Array<IDataObject>>
  */
 export async function pgUpdate(
 	getNodeParam: Function,
-	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	pgp: pgPromise.IMain<{}, any>,
+	db: pgPromise.IDatabase<{}, any>,
 	items: INodeExecutionData[],
 	continueOnFail = false,
 ): Promise<IDataObject[]> {

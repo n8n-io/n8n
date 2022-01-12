@@ -548,10 +548,10 @@ export class Ftp implements INodeType {
 						responseData = await ftp!.get(path);
 
 						// Convert readable stream to buffer so that can be displayed properly
-						const chunks = [];
-						for await (const chunk of responseData) {
-							chunks.push(chunk);
-						}
+						const chunks: readonly Uint8Array[] = [];
+						// for await (const chunk of responseData) {
+						// 	chunks.push(chunk);
+						// }
 
 						// @ts-ignore
 						responseData = Buffer.concat(chunks);
