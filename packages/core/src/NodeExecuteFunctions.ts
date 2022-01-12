@@ -886,12 +886,12 @@ export async function requestOAuth2(
 	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
 
 	// If keep bearer is false remove the it from the authorization header
-	if (oAuth2Options?.keepBearer === false) {
-		// @ts-ignore
-		newRequestOptions?.headers?.Authorization =
-			// @ts-ignore
-			newRequestOptions?.headers?.Authorization.split(' ')[1];
-	}
+	// if (oAuth2Options?.keepBearer === false) {
+	// 	// @ts-ignore
+	// 	newRequestOptions?.headers?.Authorization =
+	// 		// @ts-ignore
+	// 		newRequestOptions?.headers?.Authorization.split(' ')[1];
+	// }
 
 	return this.helpers.request!(newRequestOptions).catch(async (error: IResponseError) => {
 		const statusCodeReturned =
