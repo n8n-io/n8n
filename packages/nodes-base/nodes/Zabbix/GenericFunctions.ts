@@ -17,7 +17,7 @@ import {
 } from 'n8n-workflow';
 
 export async function zabbixApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string, params: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+																			 method: string, params: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
 
@@ -38,7 +38,7 @@ export async function zabbixApiRequest(this: IHookFunctions | IExecuteFunctions 
 			const loginResponse = await login.call(this, credentials, id);
 
 			if (loginResponse.result === undefined) {
-				throw new NodeOperationError(this.getNode(), "Login wasn't successful.");
+				throw new NodeOperationError(this.getNode(), 'Login wasn\'t successful.');
 			}
 
 			token = loginResponse.result as string;
@@ -57,7 +57,7 @@ export async function zabbixApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 		const responseData = await this.helpers.request!(options);
 
-		if(authenticationMethod === 'credentials') {
+		if (authenticationMethod === 'credentials') {
 			const logoutResponse = await logout.call(this, credentials, token, id);
 			if (logoutResponse.result === undefined && logoutResponse.result !== true) {
 				throw new NodeOperationError(this.getNode(), logoutResponse.message as string);
@@ -71,7 +71,7 @@ export async function zabbixApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 }
 
-function getOptions(method: string, params: IDataObject, credentials: IDataObject, token: string|null = null, id: number, uri?: string) {
+function getOptions(method: string, params: IDataObject, credentials: IDataObject, token: string | null = null, id: number, uri?: string) {
 
 	const options: OptionsWithUri = {
 		method: 'POST',
@@ -79,7 +79,7 @@ function getOptions(method: string, params: IDataObject, credentials: IDataObjec
 			'Accept': 'application/json',
 		},
 		body: {
-			jsonrpc: "2.0",
+			jsonrpc: '2.0',
 			method,
 			params,
 			id,
@@ -93,14 +93,14 @@ function getOptions(method: string, params: IDataObject, credentials: IDataObjec
 }
 
 async function login(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	credentials: IDataObject, id: number): Promise<IDataObject> {
+										 credentials: IDataObject, id: number): Promise<IDataObject> {
 
 	const params: IDataObject = {
 		user: credentials.user,
 		password: credentials.password,
 	};
 
-	const options = getOptions("user.login", params, credentials, null, id);
+	const options = getOptions('user.login', params, credentials, null, id);
 
 	try {
 		return this.helpers.request!(options);
@@ -110,9 +110,9 @@ async function login(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFu
 }
 
 async function logout(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	credentials: IDataObject, token: string, id: number): Promise<IDataObject> {
+											credentials: IDataObject, token: string, id: number): Promise<IDataObject> {
 
-	const options = getOptions("user.logout",{}, credentials, token, id);
+	const options = getOptions('user.logout', {}, credentials, token, id);
 
 	try {
 		return this.helpers.request!(options);
@@ -139,11 +139,11 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
  * @returns IDataObject
  */
 export function simplify(responseData: IDataObject): IDataObject {
-	if(Object.keys(responseData.result as IDataObject).length === 0) {
+	if (Object.keys(responseData.result as IDataObject).length === 0) {
 		// if responseData.result is empty
 		return {
 			success: true,
-			message:  "No records got returned."
+			message: 'No records got returned.',
 		};
 	} else {
 		return responseData.result as IDataObject;
@@ -158,9 +158,9 @@ export function simplify(responseData: IDataObject): IDataObject {
  * @param Array<{key:string,value:string}> data
  * @returns IDataObject
  */
-export function parseArrayToObject(data: Array<{key:string,values:string|number|IDataObject[]}>): IDataObject {
+export function parseArrayToObject(data: Array<{ key: string, values: string | number | IDataObject[] }>): IDataObject {
 	const jsonData: IDataObject = {};
-	if(data) {
+	if (data) {
 		for (let i = 0; i < data.length; i++) {
 			if (data[i].key && data[i].values) {
 				// if key and value exist
@@ -179,16 +179,17 @@ export function parseArrayToObject(data: Array<{key:string,values:string|number|
 
 export function convertBooleanToNumber(input: boolean): number {
 	let value: number;
-	if (input === true  ) {
+	if (input === true) {
 		value = 1;
 	} else {
 		value = 0;
 	}
 	return value;
 }
-export function convertBooleanToFlag(input: boolean): number|null {
-	let value: number|null;
-	if (input === true ) {
+
+export function convertBooleanToFlag(input: boolean): number | null {
+	let value: number | null;
+	if (input === true) {
 		value = 1;
 	} else {
 		value = null;

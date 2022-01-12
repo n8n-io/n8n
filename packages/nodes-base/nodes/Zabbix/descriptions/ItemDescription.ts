@@ -19,6 +19,7 @@ export const itemOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -65,10 +66,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'item',
+	// 		'item',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 		},
 	// 	},
@@ -82,10 +83,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'item',
+	// 		'item',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 		},
 	// 	},
@@ -100,10 +101,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'item',
+	// 		'item',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 		},
 	// 	},
@@ -118,10 +119,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'item',
+	// 		'item',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 		},
 	// 	},
@@ -136,10 +137,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'item',
+	// 		'item',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 		},
 	// 	},
@@ -154,10 +155,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'item',
+	// 		'item',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 		},
 	// 	},
@@ -172,10 +173,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'item',
+	// 		'item',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 		},
 	// 	},
@@ -264,10 +265,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'item',
+	// 		'item',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 		},
 	// 	},
@@ -283,10 +284,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'item',
+	// 		'item',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 		},
 	// 	},
@@ -308,22 +309,22 @@ export const itemFields = [
 	// 			default: 0,
 	// 			description: 'Used only by SSH agent items or HTTP agent items.',
 	// 			options: [
-	// 				{
-	// 					name: '0 - (default) password for SHH / (default) none for HTTP',
-	// 					value: 0,
-	// 				},
-	// 				{
-	// 					name: '1 - public key for SHH / basic for HTTP',
-	// 					value: 1,
-	// 				},
-	// 				{
-	// 					name: '2 - NTLM for HTTP',
-	// 					value: 2,
-	// 				},
-	// 				{
-	// 					name: '3 - Kerberos for HTTP',
-	// 					value: 3,
-	// 				},
+	// 		{
+	// 			name: '0 - (default) password for SHH / (default) none for HTTP',
+	// 			value: 0,
+	// 		},
+	// 		{
+	// 			name: '1 - public key for SHH / basic for HTTP',
+	// 			value: 1,
+	// 		},
+	// 		{
+	// 			name: '2 - NTLM for HTTP',
+	// 			value: 2,
+	// 		},
+	// 		{
+	// 			name: '3 - Kerberos for HTTP',
+	// 			value: 3,
+	// 		},
 	// 			],
 	// 		},
 	// 		{
@@ -346,32 +347,32 @@ export const itemFields = [
 	// 			name: 'headers',
 	// 			type: 'fixedCollection',
 	// 			typeOptions: {
-	// 				multipleValues: true,
+	// 		multipleValues: true,
 	// 			},
 	// 			placeholder: 'Add Header',
 	// 			default: { header: [] },
 	// 			description: 'HTTP agent item field. Object with HTTP(S) request headers, where header name is used as key and header value as value.',
 	// 			options: [
+	// 		{
+	// 			displayName: 'Header',
+	// 			name: 'header',
+	// 			values: [
 	// 				{
-	// 					displayName: 'Header',
-	// 					name: 'header',
-	// 					values: [
-	// 						{
-	// 							displayName: 'Key',
-	// 							name: 'key',
-	// 							type: 'string',
-	// 							default: '',
-	// 							description: 'A header key.',
-	// 						},
-	// 						{
-	// 							displayName: 'Value',
-	// 							name: 'value',
-	// 							type: 'string',
-	// 							default: '',
-	// 							description: 'A header value.',
-	// 						},
-	// 					],
+	// 					displayName: 'Key',
+	// 					name: 'key',
+	// 					type: 'string',
+	// 					default: '',
+	// 					description: 'A header key.',
 	// 				},
+	// 				{
+	// 					displayName: 'Value',
+	// 					name: 'value',
+	// 					type: 'string',
+	// 					default: '',
+	// 					description: 'A header value.',
+	// 				},
+	// 			],
+	// 		},
 	// 			],
 	// 		},
 	// 		{
@@ -436,20 +437,20 @@ export const itemFields = [
 	// 			type: 'string',
 	// 			default: '',
 	// 			description: 'Additional parameters depending on the type of the item:\n' +
-	// 				'- executed script for SSH and Telnet items;\n' +
-	// 				'- SQL query for database monitor items;\n' +
-	// 				'- formula for calculated items.',
+	// 		'- executed script for SSH and Telnet items;\n' +
+	// 		'- SQL query for database monitor items;\n' +
+	// 		'- formula for calculated items.',
 	// 		},
 	// 		{
 	// 			displayName: 'Password',
 	// 			name: 'password',
 	// 			type: 'string',
 	// 			typeOptions: {
-	// 				password: true,
+	// 		password: true,
 	// 			},
 	// 			default: '',
 	// 			description: 'Password for authentication. Used by simple check, SSH, Telnet, database monitor, JMX and HTTP agent items.\n' +
-	// 				'When used by JMX, username should also be specified together with password or both properties should be left blank.',
+	// 		'When used by JMX, username should also be specified together with password or both properties should be left blank.',
 	// 		},
 	// 		{
 	// 			displayName: 'Post Type',
@@ -458,18 +459,18 @@ export const itemFields = [
 	// 			default: 0,
 	// 			description: 'HTTP agent item field. Type of post data body stored in posts property.',
 	// 			options: [
-	// 				{
-	// 					name: '0 - (default) Raw data',
-	// 					value: 0,
-	// 				},
-	// 				{
-	// 					name: '2 - JSON data',
-	// 					value: 2,
-	// 				},
-	// 				{
-	// 					name: '3 - XML data',
-	// 					value: 3,
-	// 				},
+	// 		{
+	// 			name: '0 - (default) Raw data',
+	// 			value: 0,
+	// 		},
+	// 		{
+	// 			name: '2 - JSON data',
+	// 			value: 2,
+	// 		},
+	// 		{
+	// 			name: '3 - XML data',
+	// 			value: 3,
+	// 		},
 	// 			],
 	// 		},
 	// 		{
@@ -513,10 +514,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'item',
+	// 		'item',
 	// 			],
 	// 			operation: [
-	// 				'delete',
+	// 		'delete',
 	// 			],
 	// 		},
 	// 	},
@@ -528,13 +529,13 @@ export const itemFields = [
 	// 			displayName: 'Items',
 	// 			name: 'items',
 	// 			values: [
-	// 				{
-	// 					displayName: 'Item ID',
-	// 					name: 'id',
-	// 					type: 'string',
-	// 					default: '',
-	// 					description: 'ID of the item to delete.',
-	// 				},
+	// 		{
+	// 			displayName: 'Item ID',
+	// 			name: 'id',
+	// 			type: 'string',
+	// 			default: '',
+	// 			description: 'ID of the item to delete.',
+	// 		},
 	// 			],
 	// 		},
 	//
@@ -874,7 +875,7 @@ export const itemFields = [
 			...selectApplicationsQuery,
 			...selectDiscoveryRuleQuery,
 
-			 {
+			{
 				displayName: 'Select Item Discovery',
 				name: 'selectItemDiscoveryOptions',
 				type: 'options', // type - query
@@ -1115,13 +1116,13 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'custom',
+	// 		'custom',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 			jsonParameters: [
-	// 				true,
+	// 		true,
 	// 			],
 	// 		},
 	// 	},
@@ -1139,13 +1140,13 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'custom',
+	// 		'custom',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 			jsonParameters: [
-	// 				false,
+	// 		false,
 	// 			],
 	// 		},
 	// 	},
@@ -1156,20 +1157,20 @@ export const itemFields = [
 	// 			name: 'parameter',
 	// 			displayName: 'Parameter',
 	// 			values: [
-	// 				{
-	// 					displayName: 'Name',
-	// 					name: 'name',
-	// 					type: 'string',
-	// 					default: '',
-	// 					description: 'Name of the parameter.',
-	// 				},
-	// 				{
-	// 					displayName: 'Value',
-	// 					name: 'value',
-	// 					type: 'string',
-	// 					default: '',
-	// 					description: 'Value of the parameter.',
-	// 				},
+	// 		{
+	// 			displayName: 'Name',
+	// 			name: 'name',
+	// 			type: 'string',
+	// 			default: '',
+	// 			description: 'Name of the parameter.',
+	// 		},
+	// 		{
+	// 			displayName: 'Value',
+	// 			name: 'value',
+	// 			type: 'string',
+	// 			default: '',
+	// 			description: 'Value of the parameter.',
+	// 		},
 	// 			],
 	// 		},
 	// 	],
@@ -1187,10 +1188,10 @@ export const itemFields = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'contact',
+	// 		'contact',
 	// 			],
 	// 			operation: [
-	// 				'create',
+	// 		'create',
 	// 			],
 	// 		},
 	// 	},

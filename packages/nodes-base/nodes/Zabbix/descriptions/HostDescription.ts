@@ -28,6 +28,7 @@ export const hostOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -129,10 +130,10 @@ export const hostFields = [
 		description: 'The query parameter to send.',
 		default: {},
 		options: [
-            {
-                displayName: 'Group IDs',
-                name: 'groupids',
-                type: 'collection',
+			{
+				displayName: 'Group IDs',
+				name: 'groupids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Group',
@@ -150,10 +151,10 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Application IDs',
-                name: 'applicationids',
-                type: 'collection',
+			{
+				displayName: 'Application IDs',
+				name: 'applicationids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Application',
@@ -171,10 +172,10 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Discovered Service IDs',
-                name: 'dserviceids',
-                type: 'collection',
+			{
+				displayName: 'Discovered Service IDs',
+				name: 'dserviceids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Discovered Service',
@@ -192,10 +193,10 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Graph IDs',
-                name: 'graphids',
-                type: 'collection',
+			{
+				displayName: 'Graph IDs',
+				name: 'graphids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Graph',
@@ -213,10 +214,10 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Host IDs',
-                name: 'hostids',
-                type: 'collection',
+			{
+				displayName: 'Host IDs',
+				name: 'hostids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Host',
@@ -234,10 +235,10 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'HTTP Test IDs',
-                name: 'httptestids',
-                type: 'collection',
+			{
+				displayName: 'HTTP Test IDs',
+				name: 'httptestids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add HTTP Test',
@@ -255,10 +256,10 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Interface IDs',
-                name: 'interfaceids',
-                type: 'collection',
+			{
+				displayName: 'Interface IDs',
+				name: 'interfaceids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Interface',
@@ -276,10 +277,10 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Item IDs',
-                name: 'itemids',
-                type: 'collection',
+			{
+				displayName: 'Item IDs',
+				name: 'itemids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Item',
@@ -297,10 +298,10 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Maintenance IDs',
-                name: 'maintenanceids',
-                type: 'collection',
+			{
+				displayName: 'Maintenance IDs',
+				name: 'maintenanceids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Maintenance',
@@ -318,24 +319,24 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Monitored Hosts',
-                name: 'monitored_hosts',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'Monitored Hosts',
+				name: 'monitored_hosts',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only monitored hosts.',
 			},
-            {
-                displayName: 'Proxy Hosts',
-                name: 'proxy_hosts',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'Proxy Hosts',
+				name: 'proxy_hosts',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only proxies.',
 			},
 			{
-                displayName: 'Proxy IDs',
-                name: 'proxyids',
-                type: 'collection',
+				displayName: 'Proxy IDs',
+				name: 'proxyids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Proxy',
@@ -353,17 +354,17 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Templated Hosts',
-                name: 'proxyids',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'Templated Hosts',
+				name: 'proxyids',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return both hosts and templates.',
 			},
-            {
-                displayName: 'Template IDs',
-                name: 'templateids',
-                type: 'collection',
+			{
+				displayName: 'Template IDs',
+				name: 'templateids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Template',
@@ -381,10 +382,10 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Trigger IDs',
-                name: 'triggerids',
-                type: 'collection',
+			{
+				displayName: 'Trigger IDs',
+				name: 'triggerids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Trigger',
@@ -402,97 +403,95 @@ export const hostFields = [
 					},
 				],
 			},
-            {
-                displayName: 'With Items',
-                name: 'with_items',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'With Items',
+				name: 'with_items',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return both hosts and templates.',
 			},
-            {
-                displayName: 'With Item Prototypes',
-                name: 'with_item_prototypes',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'With Item Prototypes',
+				name: 'with_item_prototypes',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only hosts that have item prototypes. Overrides the with_simple_graph_item_prototypes parameter.',
 			},
-            {
-                displayName: 'With Simple Graph Item Prototypes',
-                name: 'with_simple_graph_item_prototypes',
-                type: 'boolean', //type - flag
+			{
+				displayName: 'With Simple Graph Item Prototypes',
+				name: 'with_simple_graph_item_prototypes',
+				type: 'boolean', //type - flag
 				default: false,
 				description: 'Return only hosts that have item prototypes, which are enabled for creation and have numeric type of information.',
 			},
-            {
-                displayName: 'With Applications',
-                name: 'with_applications',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'With Applications',
+				name: 'with_applications',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only hosts that have applications.',
 			},
-            {
-                displayName: 'With Graphs',
-                name: 'with_graphs',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'With Graphs',
+				name: 'with_graphs',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only hosts that have graphs.',
 			},
-            {
-                displayName: 'With Graph Prototypes',
-                name: 'with_graph_prototypes',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'With Graph Prototypes',
+				name: 'with_graph_prototypes',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only hosts that have graph prototypes.',
 			},
-            {
-                displayName: 'With Http Tests',
-                name: 'with_httptests',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'With Http Tests',
+				name: 'with_httptests',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only hosts that have web checks. Overrides the with_monitored_httptests parameter.',
 			},
-            {
-                displayName: 'With Monitored Http Tests',
-                name: 'with_monitored_httptests',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'With Monitored Http Tests',
+				name: 'with_monitored_httptests',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only hosts that have enabled web checks.',
 			},
-            {
-                displayName: 'With Monitored Items',
-                name: 'with_monitored_items',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'With Monitored Items',
+				name: 'with_monitored_items',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only hosts that have enabled items. Overrides the with_simple_graph_items parameter.',
 			},
-            {
-                displayName: 'With Monitored Triggers',
-                name: 'with_monitored_triggers', // type - flag
-                type: 'boolean',
+			{
+				displayName: 'With Monitored Triggers',
+				name: 'with_monitored_triggers', // type - flag
+				type: 'boolean',
 				default: false,
 				description: 'Return only hosts that have enabled triggers. All of the items used in the trigger must also be enabled.',
 			},
-            {
-                displayName: 'With Simple Graph Items',
-                name: 'with_simple_graph_items',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'With Simple Graph Items',
+				name: 'with_simple_graph_items',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only hosts that have items with numeric type of information.',
 			},
-            {
-                displayName: 'With Triggers',
-                name: 'with_triggers',
-                type: 'boolean', // type - flag
+			{
+				displayName: 'With Triggers',
+				name: 'with_triggers',
+				type: 'boolean', // type - flag
 				default: false,
 				description: 'Return only hosts that have triggers. Overrides the with_monitored_triggers parameter.',
 			},
-            {
-                displayName: 'With Problems Suppressed',
-                name: 'withProblemsSuppressed',
-                type: 'options',
-				typeOptions: {
-
-				},
+			{
+				displayName: 'With Problems Suppressed',
+				name: 'withProblemsSuppressed',
+				type: 'options',
+				typeOptions: {},
 				default: '',
 				description: 'Return hosts that have suppressed problems.',
 				options: [
@@ -508,12 +507,12 @@ export const hostFields = [
 						name: 'false - only hosts with unsuppressed problems',
 						value: false,
 					},
-				]
+				],
 			},
-            {
-                displayName: 'Eval Type',
-                name: 'evaltype',
-                type: 'options',
+			{
+				displayName: 'Eval Type',
+				name: 'evaltype',
+				type: 'options',
 				default: 0,
 				description: 'Rules for tag searching.',
 				options: [
@@ -525,7 +524,7 @@ export const hostFields = [
 						name: '2 - Or',
 						value: 2,
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Severities',
@@ -556,7 +555,7 @@ export const hostFields = [
 					multipleValues: true,
 				},
 				placeholder: 'Add Tag',
-            	default: { tags: [] },
+				default: {tags: []},
 				description: 'Return only hosts with given tags. Exact match by tag and case-sensitive or case-insensitive search by tag value depending on operator value. An empty array returns all hosts.',
 				options: [
 					{
@@ -592,16 +591,16 @@ export const hostFields = [
 										name: '1 - Equal',
 										value: 1,
 									},
-								]
+								],
 							},
-						]
-					}
+						],
+					},
 				],
 			},
-            {
-                displayName: 'Inherited Tags',
-                name: 'inheritedTags',
-                type: 'boolean',
+			{
+				displayName: 'Inherited Tags',
+				name: 'inheritedTags',
+				type: 'boolean',
 				default: false,
 				description: 'Return hosts that have given tags also in all of their linked templates. Possible values: true - linked templates must also have given tags; false - (default) linked template tags are ignored.',
 			},

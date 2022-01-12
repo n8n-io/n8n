@@ -11,6 +11,7 @@ export const historyOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -112,39 +113,39 @@ export const historyFields = [
 		description: 'The query parameter to send.',
 		default: {},
 		options: [
-            {
-                displayName: 'History',
-                name: 'history',
-                type: 'options',
-                default: 3,
-                description: 'History object types to return.',
-                options: [
-                    {
-                        name: '0 - numeric float',
-                        value: 0,
-                    },
-                    {
-                        name: '1 - character',
-                        value: 1,
-                    },
-                    {
-                        name: '2 - log',
-                        value: 2,
-                    },
-                    {
-                        name: '3 - numeric unsigned',
-                        value: 3,
-                    },
-                    {
-                        name: '4 - text',
-                        value: 4,
-                    },
-                ],
-            },
-            {
-                displayName: 'Host IDs',
-                name: 'hostids',
-                type: 'collection',
+			{
+				displayName: 'History',
+				name: 'history',
+				type: 'options',
+				default: 3,
+				description: 'History object types to return.',
+				options: [
+					{
+						name: '0 - numeric float',
+						value: 0,
+					},
+					{
+						name: '1 - character',
+						value: 1,
+					},
+					{
+						name: '2 - log',
+						value: 2,
+					},
+					{
+						name: '3 - numeric unsigned',
+						value: 3,
+					},
+					{
+						name: '4 - text',
+						value: 4,
+					},
+				],
+			},
+			{
+				displayName: 'Host IDs',
+				name: 'hostids',
+				type: 'collection',
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add Host',
@@ -162,7 +163,7 @@ export const historyFields = [
 					},
 				],
 			},
-            {
+			{
 				displayName: 'Item IDs',
 				name: 'itemids',
 				type: 'collection',
@@ -183,14 +184,14 @@ export const historyFields = [
 					},
 				],
 			},
-            {
+			{
 				displayName: 'Time From',
 				name: 'time_from',
 				type: 'number',
 				default: 0,
 				description: 'Return only values that have been received after or at the given time. The format is Unix timestamp.',
 			},
-            {
+			{
 				displayName: 'Time Till',
 				name: 'time_till',
 				type: 'number',

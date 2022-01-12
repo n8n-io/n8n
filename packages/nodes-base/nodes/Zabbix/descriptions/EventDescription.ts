@@ -19,6 +19,7 @@ export const eventOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -127,71 +128,71 @@ export const eventFields = [
 			objectIds,
 
 			{
-                displayName: 'Source',
-                name: 'source',
-                type: 'options',
-                default: 0,
-                description: 'Return only events with the given type.',
-                options: [
-                    {
-                        name: '0 - event created by a trigger',
-                        value: 0,
-                    },
-                    {
-                        name: '1 - event created by a discovery rule',
-                        value: 1,
-                    },
-                    {
-                        name: '2 - event created by active agent autoregistration',
-                        value: 2,
-                    },
-                    {
-                        name: '3 - internal event',
-                        value: 3,
-                    },
-                ],
-            },
+				displayName: 'Source',
+				name: 'source',
+				type: 'options',
+				default: 0,
+				description: 'Return only events with the given type.',
+				options: [
+					{
+						name: '0 - event created by a trigger',
+						value: 0,
+					},
+					{
+						name: '1 - event created by a discovery rule',
+						value: 1,
+					},
+					{
+						name: '2 - event created by active agent autoregistration',
+						value: 2,
+					},
+					{
+						name: '3 - internal event',
+						value: 3,
+					},
+				],
+			},
 			{
-                displayName: 'Object',
-                name: 'object',
-                type: 'options',
-                default: 0,
-                description: 'Return only events created by objects of the given type.',
-                options: [
-                    {
-                        name: '0 - trigger',
-                        value: 0,
-                    },
-                    {
-                        name: '1 - discovered host',
-                        value: 1,
-                    },
-                    {
-                        name: '2 - discovered service',
-                        value: 2,
-                    },
-                    {
-                        name: '3 - auto-registered host',
-                        value: 3,
-                    },
-                    {
-                        name: '4 - item',
-                        value: 4,
-                    },
-                    {
-                        name: '5 - LLD rule',
-                        value: 5,
-                    },
-                ],
-            },
-            {
+				displayName: 'Object',
+				name: 'object',
+				type: 'options',
+				default: 0,
+				description: 'Return only events created by objects of the given type.',
+				options: [
+					{
+						name: '0 - trigger',
+						value: 0,
+					},
+					{
+						name: '1 - discovered host',
+						value: 1,
+					},
+					{
+						name: '2 - discovered service',
+						value: 2,
+					},
+					{
+						name: '3 - auto-registered host',
+						value: 3,
+					},
+					{
+						name: '4 - item',
+						value: 4,
+					},
+					{
+						name: '5 - LLD rule',
+						value: 5,
+					},
+				],
+			},
+			{
 				displayName: 'Acknowledged',
 				name: 'acknowledged',
 				type: 'boolean',
 				default: false,
 				description: 'If set to true return only acknowledged events.',
 			},
-            {
+			{
 				displayName: 'Suppressed',
 				name: 'suppressed',
 				type: 'boolean',
@@ -219,23 +220,23 @@ export const eventFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Evaluation Type',
-                name: 'evaltype',
-                type: 'options',
-                default: 0,
-                description: 'Rules for tag searching.',
-                options: [
-                    {
-                        name: '0 - (default) And/Or',
-                        value: 0,
-                    },
-                    {
-                        name: '2 - Or',
-                        value: 2,
-                    },
-                ],
-            },
+			{
+				displayName: 'Evaluation Type',
+				name: 'evaltype',
+				type: 'options',
+				default: 0,
+				description: 'Rules for tag searching.',
+				options: [
+					{
+						name: '0 - (default) And/Or',
+						value: 0,
+					},
+					{
+						name: '2 - Or',
+						value: 2,
+					},
+				],
+			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
@@ -296,48 +297,48 @@ export const eventFields = [
 										name: '5 - Not exists',
 										value: 5,
 									},
-								]
+								],
 							},
-						]
-					}
+						],
+					},
 				],
 			},
-            {
+			{
 				displayName: 'Event ID From',
 				name: 'eventid_from',
 				type: 'string',
 				default: '',
 				description: 'Return only events with IDs greater or equal to the given ID.',
 			},
-            {
+			{
 				displayName: 'Event ID Till',
 				name: 'eventid_till',
 				type: 'string',
 				default: '',
 				description: 'Return only events with IDs less or equal to the given ID.',
 			},
-            {
+			{
 				displayName: 'Time From',
 				name: 'time_from',
 				type: 'number',
 				default: 0,
 				description: 'Return only events that have been created after or at the given time. The format is Unix timestamp.',
 			},
-            {
+			{
 				displayName: 'Time Till',
 				name: 'time_till',
 				type: 'number',
 				default: 0,
 				description: 'Return only events that have been created before or at the given time. The format is Unix timestamp.',
 			},
-            {
+			{
 				displayName: 'Problem Time From',
 				name: 'problem_time_from',
 				type: 'number',
 				default: 0,
 				description: 'Returns only events that were in the problem state starting with problem_time_from. Applies only if the source is trigger event and object is trigger. Mandatory if problem_time_till is specified. The format is Unix timestamp.',
 			},
-            {
+			{
 				displayName: 'Problem Time Till',
 				name: 'problem_time_till',
 				type: 'number',
@@ -363,7 +364,7 @@ export const eventFields = [
 						default: 0,
 						description: 'The value.',
 					},
-				]
+				],
 			},
 
 			...selectHostsQuery,

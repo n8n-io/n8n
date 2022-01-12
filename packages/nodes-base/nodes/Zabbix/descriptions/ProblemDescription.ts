@@ -15,6 +15,7 @@ export const problemOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -221,52 +222,52 @@ export const problemFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Source',
-                name: 'source',
-                type: 'options',
-                default: 0,
-                description: 'Return only problems with the given type.',
-                options: [
-                    {
-                        name: '0 - event created by a trigger',
-                        value: 0,
-                    },
-                    {
-                        name: '3 - internal event',
-                        value: 3,
-                    },
-                ],
-            },
-            {
-                displayName: 'Object',
-                name: 'object',
-                type: 'options',
-                default: 0,
-                description: 'Return only problems with the given type.',
-                options: [
-                    {
-                        name: '0 - event created by a trigger',
-                        value: 0,
-                    },
-                    {
-                        name: '4 - item',
-                        value: 4,
-                    },
-                    {
-                        name: '5 - LLD rule',
-                        value: 5,
-                    },
-                ],
-            },
-            {
+			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'options',
+				default: 0,
+				description: 'Return only problems with the given type.',
+				options: [
+					{
+						name: '0 - event created by a trigger',
+						value: 0,
+					},
+					{
+						name: '3 - internal event',
+						value: 3,
+					},
+				],
+			},
+			{
+				displayName: 'Object',
+				name: 'object',
+				type: 'options',
+				default: 0,
+				description: 'Return only problems with the given type.',
+				options: [
+					{
+						name: '0 - event created by a trigger',
+						value: 0,
+					},
+					{
+						name: '4 - item',
+						value: 4,
+					},
+					{
+						name: '5 - LLD rule',
+						value: 5,
+					},
+				],
+			},
+			{
 				displayName: 'Acknowledged',
 				name: 'acknowledged',
 				type: 'boolean',
 				default: false,
 				description: 'If true, return acknowledged problems only. If false, return unacknowledged only.',
 			},
-            {
+			{
 				displayName: 'Suppressed',
 				name: 'suppressed',
 				type: 'boolean',
@@ -294,23 +295,23 @@ export const problemFields = [
 					},
 				],
 			},
-            {
-                displayName: 'Evaluation Type',
-                name: 'evaltype',
-                type: 'options',
-                default: 0,
-                description: 'Rules for tag searching.',
-                options: [
-                    {
-                        name: '0 - (default) And/Or',
-                        value: 0,
-                    },
-                    {
-                        name: '2 - Or',
-                        value: 2,
-                    },
-                ],
-            },
+			{
+				displayName: 'Evaluation Type',
+				name: 'evaltype',
+				type: 'options',
+				default: 0,
+				description: 'Rules for tag searching.',
+				options: [
+					{
+						name: '0 - (default) And/Or',
+						value: 0,
+					},
+					{
+						name: '2 - Or',
+						value: 2,
+					},
+				],
+			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
@@ -355,41 +356,41 @@ export const problemFields = [
 										name: '1 - Equal',
 										value: 1,
 									},
-								]
+								],
 							},
-						]
-					}
+						],
+					},
 				],
 			},
-            {
+			{
 				displayName: 'Recent',
 				name: 'recent',
 				type: 'boolean',
 				default: false,
 				description: 'If true, return PROBLEM and recently RESOLVED problems (depends on Display OK triggers for N seconds). If false, return UNRESOLVED problems only.',
 			},
-            {
+			{
 				displayName: 'Event ID From',
 				name: 'eventid_from',
 				type: 'string',
 				default: '',
 				description: 'Return only problems with IDs greater or equal to the given ID.',
 			},
-            {
+			{
 				displayName: 'Event ID Till',
 				name: 'eventid_till',
 				type: 'string',
 				default: '',
 				description: 'Return only problems with IDs less or equal to the given ID.',
 			},
-            {
+			{
 				displayName: 'Time From',
 				name: 'time_from',
 				type: 'number',
 				default: 0,
 				description: 'Return only problems that have been created after or at the given time. The format is Unix timestamp.',
 			},
-            {
+			{
 				displayName: 'Time Till',
 				name: 'time_till',
 				type: 'number',

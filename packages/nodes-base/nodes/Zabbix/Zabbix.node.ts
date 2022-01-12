@@ -42,8 +42,8 @@ export class Zabbix implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Zabbix API',
 		defaults: {
-				name: 'Zabbix',
-				color: '#d40000',
+			name: 'Zabbix',
+			color: '#d40000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -92,6 +92,7 @@ export class Zabbix implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Event',
@@ -152,9 +153,9 @@ export class Zabbix implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						let params: IDataObject;
-						if(jsonParameters) {
+						if (jsonParameters) {
 							const parametersJson = this.getNodeParameter('parametersJson', i);
-							
+
 							if (parametersJson instanceof Object) {
 								// if it is an object
 								params = parametersJson as IDataObject;
@@ -166,42 +167,42 @@ export class Zabbix implements INodeType {
 									throw new NodeOperationError(this.getNode(), 'Parameters JSON must be a valid json');
 								}
 							}
-							
+
 						} else {
 							params = this.getNodeParameter('parametersUi', i) as IDataObject;
 
-							if(params.eventids) {
+							if (params.eventids) {
 								// type - string/array
 								params.eventids = (params.eventids as IDataObject[]).map(a => a.id);
 							}
-							if(params.graphids) {
+							if (params.graphids) {
 								// type - string/array
 								params.graphids = (params.graphids as IDataObject[]).map(a => a.id);
 							}
-							if(params.hostids) {
+							if (params.hostids) {
 								// type - string/array
 								params.hostids = (params.hostids as IDataObject[]).map(a => a.id);
 							}
-							if(params.objectids) {
+							if (params.objectids) {
 								// type - string/array
 								params.objectids = (params.objectids as IDataObject[]).map(a => a.id);
 							}
-							if(params.severities) {
+							if (params.severities) {
 								// type - integer/array
 								params.severities = (params.severities as IDataObject[]).map(a => a.severityNumber);
 							}
-							if(params.tags) {
+							if (params.tags) {
 								// type - string/array
 								params.tags = (params.tags as IDataObject).tags;
 							}
-							if(params.value) {
+							if (params.value) {
 								// type - integer/array
 								params.value = (params.value as IDataObject).value;
 							}
 
-							if(params.selectHostsOptions) {
+							if (params.selectHostsOptions) {
 								// type - query
-								if(params.selectHostsOptions === 'propertyNames') {
+								if (params.selectHostsOptions === 'propertyNames') {
 									params.selectHosts = params.hostPropertyNames;
 									delete params.hostPropertyNames;
 								} else {
@@ -211,11 +212,11 @@ export class Zabbix implements INodeType {
 							}
 
 							// Adjusting common properties
-							if(params.filter) {
-								params.filter = parseArrayToObject((params.filter as IDataObject).filter as Array<{key:string,values:IDataObject[]}>);
+							if (params.filter) {
+								params.filter = parseArrayToObject((params.filter as IDataObject).filter as Array<{ key: string, values: IDataObject[] }>);
 							}
-							if(params.outputOptions) {
-								if(params.outputOptions === 'propertyNames') {
+							if (params.outputOptions) {
+								if (params.outputOptions === 'propertyNames') {
 									params.output = (params.outputPropertyNames as IDataObject[]).map(a => a.value);
 									delete params.outputPropertyNames;
 								} else {
@@ -223,10 +224,10 @@ export class Zabbix implements INodeType {
 								}
 								delete params.outputOptions;
 							}
-							if(params.search) {
-								params.search = parseArrayToObject((params.search as IDataObject).search as Array<{key:string,values:IDataObject[]}>);
+							if (params.search) {
+								params.search = parseArrayToObject((params.search as IDataObject).search as Array<{ key: string, values: IDataObject[] }>);
 							}
-							if(params.sortorder) {
+							if (params.sortorder) {
 								params.sortorder = (params.sortorder as IDataObject[]).map(a => a.sortorder);
 							}
 						}
@@ -236,7 +237,7 @@ export class Zabbix implements INodeType {
 							'event.get',
 							params,
 						);
-						if(responseData.error) {
+						if (responseData.error) {
 							throw new NodeOperationError(this.getNode(), responseData.error);
 						}
 						responseData = simplify(responseData);
@@ -254,7 +255,7 @@ export class Zabbix implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						let params: IDataObject;
-						if(jsonParameters) {
+						if (jsonParameters) {
 							const parametersJson = this.getNodeParameter('parametersJson', i);
 
 							if (parametersJson instanceof Object) {
@@ -272,19 +273,19 @@ export class Zabbix implements INodeType {
 						} else {
 							params = this.getNodeParameter('parametersUi', i) as IDataObject;
 
-							if(params.hostids) {
+							if (params.hostids) {
 								params.hostids = (params.hostids as IDataObject[]).map(a => a.id);
 							}
-							if(params.itemids) {
+							if (params.itemids) {
 								params.itemids = (params.itemids as IDataObject[]).map(a => a.id);
 							}
 
 							// Adjusting common properties
-							if(params.filter) {
-								params.filter = parseArrayToObject((params.filter as IDataObject).filter as Array<{key:string,values:IDataObject[]}>);
+							if (params.filter) {
+								params.filter = parseArrayToObject((params.filter as IDataObject).filter as Array<{ key: string, values: IDataObject[] }>);
 							}
-							if(params.outputOptions) {
-								if(params.outputOptions === 'propertyNames') {
+							if (params.outputOptions) {
+								if (params.outputOptions === 'propertyNames') {
 									params.output = (params.outputPropertyNames as IDataObject[]).map(a => a.value);
 									delete params.outputPropertyNames;
 								} else {
@@ -292,11 +293,11 @@ export class Zabbix implements INodeType {
 								}
 								delete params.outputOptions;
 							}
-							if(params.search) {
-								params.search = parseArrayToObject((params.search as IDataObject).search as Array<{key:string,values:IDataObject[]}>);
+							if (params.search) {
+								params.search = parseArrayToObject((params.search as IDataObject).search as Array<{ key: string, values: IDataObject[] }>);
 
 							}
-							if(params.sortorder) {
+							if (params.sortorder) {
 								params.sortorder = (params.sortorder as IDataObject[]).map(a => a.sortorder);
 							}
 						}
@@ -306,7 +307,7 @@ export class Zabbix implements INodeType {
 							'history.get',
 							params,
 						);
-						if(responseData.error) {
+						if (responseData.error) {
 							throw new NodeOperationError(this.getNode(), responseData.error);
 						}
 						responseData = simplify(responseData);
@@ -324,7 +325,7 @@ export class Zabbix implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						let params: IDataObject;
-						if(jsonParameters) {
+						if (jsonParameters) {
 							const parametersJson = this.getNodeParameter('parametersJson', i);
 
 							if (parametersJson instanceof Object) {
@@ -343,98 +344,98 @@ export class Zabbix implements INodeType {
 							params = this.getNodeParameter('parametersUi', i) as IDataObject;
 
 							// Adjust properties
-							if(params.groupids) {
+							if (params.groupids) {
 								params.groupids = (params.groupids as IDataObject[]).map(a => a.id);
 							}
-							if(params.applicationids) {
+							if (params.applicationids) {
 								params.applicationids = (params.applicationids as IDataObject[]).map(a => a.id);
 							}
-							if(params.dserviceids) {
+							if (params.dserviceids) {
 								params.dserviceids = (params.dserviceids as IDataObject[]).map(a => a.id);
 							}
-							if(params.graphids) {
+							if (params.graphids) {
 								params.graphids = (params.graphids as IDataObject[]).map(a => a.id);
 							}
-							if(params.hostids) {
+							if (params.hostids) {
 								params.hostids = (params.hostids as IDataObject[]).map(a => a.id);
 							}
-							if(params.httptestids) {
+							if (params.httptestids) {
 								params.httptestids = (params.httptestids as IDataObject[]).map(a => a.id);
 							}
-							if(params.interfaceids) {
+							if (params.interfaceids) {
 								params.interfaceids = (params.interfaceids as IDataObject[]).map(a => a.id);
 							}
-							if(params.itemids) {
+							if (params.itemids) {
 								params.itemids = (params.itemids as IDataObject[]).map(a => a.id);
 							}
-							if(params.maintenanceids) {
+							if (params.maintenanceids) {
 								params.maintenanceids = (params.maintenanceids as IDataObject[]).map(a => a.id);
 							}
-							if(params.monitored_hosts !== undefined) {
+							if (params.monitored_hosts !== undefined) {
 								params.monitored_hosts = convertBooleanToFlag(params.monitored_hosts as boolean);
 							}
-							if(params.proxy_hosts !== undefined) {
+							if (params.proxy_hosts !== undefined) {
 								params.proxy_hosts = convertBooleanToFlag(params.proxy_hosts as boolean);
 							}
-							if(params.proxyids) {
+							if (params.proxyids) {
 								params.proxyids = (params.proxyids as IDataObject[]).map(a => a.id);
 							}
-							if(params.proxyids !== undefined) {
+							if (params.proxyids !== undefined) {
 								params.proxyids = convertBooleanToFlag(params.proxyids as boolean);
 							}
-							if(params.templateids) {
+							if (params.templateids) {
 								params.templateids = (params.templateids as IDataObject[]).map(a => a.id);
 							}
-							if(params.triggerids) {
+							if (params.triggerids) {
 								params.triggerids = (params.triggerids as IDataObject[]).map(a => a.id);
 							}
-							if(params.with_items !== undefined) {
+							if (params.with_items !== undefined) {
 								params.with_items = convertBooleanToFlag(params.with_items as boolean);
 							}
-							if(params.with_item_prototypes !== undefined) {
+							if (params.with_item_prototypes !== undefined) {
 								params.with_item_prototypes = convertBooleanToFlag(params.with_item_prototypes as boolean);
 							}
-							if(params.with_simple_graph_item_prototypes !== undefined) {
+							if (params.with_simple_graph_item_prototypes !== undefined) {
 								params.with_simple_graph_item_prototypes = convertBooleanToFlag(params.with_simple_graph_item_prototypes as boolean);
 							}
-							if(params.with_applications !== undefined) {
+							if (params.with_applications !== undefined) {
 								params.with_applications = convertBooleanToFlag(params.with_applications as boolean);
 							}
-							if(params.with_graphs !== undefined) {
+							if (params.with_graphs !== undefined) {
 								params.with_graphs = convertBooleanToFlag(params.with_graphs as boolean);
 							}
-							if(params.with_graph_prototypes !== undefined) {
+							if (params.with_graph_prototypes !== undefined) {
 								params.with_graph_prototypes = convertBooleanToFlag(params.with_graph_prototypes as boolean);
 							}
-							if(params.with_httptests !== undefined) {
+							if (params.with_httptests !== undefined) {
 								params.with_httptests = convertBooleanToFlag(params.with_httptests as boolean);
 							}
-							if(params.with_monitored_httptests !== undefined) {
+							if (params.with_monitored_httptests !== undefined) {
 								params.with_monitored_httptests = convertBooleanToFlag(params.with_monitored_httptests as boolean);
 							}
-							if(params.with_monitored_items !== undefined) {
+							if (params.with_monitored_items !== undefined) {
 								params.with_monitored_items = convertBooleanToFlag(params.with_monitored_items as boolean);
 							}
-							if(params.with_monitored_triggers !== undefined) {
+							if (params.with_monitored_triggers !== undefined) {
 								params.with_monitored_triggers = convertBooleanToFlag(params.with_monitored_triggers as boolean);
 							}
-							if(params.with_simple_graph_items !== undefined) {
+							if (params.with_simple_graph_items !== undefined) {
 								params.with_simple_graph_items = convertBooleanToFlag(params.with_simple_graph_items as boolean);
 							}
-							if(params.with_triggers !== undefined) {
+							if (params.with_triggers !== undefined) {
 								params.with_triggers = convertBooleanToFlag(params.with_triggers as boolean);
 							}
-							if(params.withProblemsSuppressed === '') {
+							if (params.withProblemsSuppressed === '') {
 								params.withProblemsSuppressed = null;
 							}
-							if(params.severities) {
+							if (params.severities) {
 								params.severities = (params.severities as IDataObject[]).map(a => a.severityNumber);
 							}
-							if(params.tags) {
+							if (params.tags) {
 								params.tags = (params.tags as IDataObject).tags;
 							}
-							if(params.selectApplicationsOptions) {
-								if(params.selectApplicationsOptions === 'propertyNames') {
+							if (params.selectApplicationsOptions) {
+								if (params.selectApplicationsOptions === 'propertyNames') {
 									params.selectApplications = params.applicationPropertyNames;
 									delete params.applicationPropertyNames;
 								} else {
@@ -442,8 +443,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectApplicationsOptions;
 							}
-							if(params.selectDiscoveriesOptions) {
-								if(params.selectDiscoveriesOptions === 'propertyNames') {
+							if (params.selectDiscoveriesOptions) {
+								if (params.selectDiscoveriesOptions === 'propertyNames') {
 									params.selectDiscoveries = params.discoveryPropertyNames;
 									delete params.discoveryPropertyNames;
 								} else {
@@ -451,8 +452,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectDiscoveriesOptions;
 							}
-							if(params.selectDiscoveryRuleOptions) {
-								if(params.selectDiscoveryRuleOptions === 'propertyNames') {
+							if (params.selectDiscoveryRuleOptions) {
+								if (params.selectDiscoveryRuleOptions === 'propertyNames') {
 									params.selectDiscoveryRule = params.discoveryRulePropertyNames;
 									delete params.discoveryRulePropertyNames;
 								} else {
@@ -460,8 +461,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectDiscoveryRuleOptions;
 							}
-							if(params.selectGraphsOptions) {
-								if(params.selectGraphsOptions === 'propertyNames') {
+							if (params.selectGraphsOptions) {
+								if (params.selectGraphsOptions === 'propertyNames') {
 									params.selectGraphs = params.graphPropertyNames;
 									delete params.graphPropertyNames;
 								} else {
@@ -469,8 +470,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectGraphsOptions;
 							}
-							if(params.selectGroupsOptions) {
-								if(params.selectGroupsOptions === 'propertyNames') {
+							if (params.selectGroupsOptions) {
+								if (params.selectGroupsOptions === 'propertyNames') {
 									params.selectGroups = params.groupPropertyNames;
 									delete params.groupPropertyNames;
 								} else {
@@ -478,8 +479,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectGroupsOptions;
 							}
-							if(params.selectHostDiscoveryOptions) {
-								if(params.DiscoveryOptions === 'propertyNames') {
+							if (params.selectHostDiscoveryOptions) {
+								if (params.DiscoveryOptions === 'propertyNames') {
 									params.selectHostDiscovery = params.hostDiscoveryPropertyNames;
 									delete params.hostDiscoveryPropertyNames;
 								} else {
@@ -487,8 +488,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectHostDiscoveryOptions;
 							}
-							if(params.selectHttpTestsOptions) {
-								if(params.selectHttpTestsOptions === 'propertyNames') {
+							if (params.selectHttpTestsOptions) {
+								if (params.selectHttpTestsOptions === 'propertyNames') {
 									params.selectHttpTests = params.httpTestsPropertyNames;
 									delete params.httpTestsPropertyNames;
 								} else {
@@ -496,8 +497,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectHttpTestsOptions;
 							}
-							if(params.selectInterfacesOptions) {
-								if(params.selectInterfacesOptions === 'propertyNames') {
+							if (params.selectInterfacesOptions) {
+								if (params.selectInterfacesOptions === 'propertyNames') {
 									params.selectInterfaces = params.interfacePropertyNames;
 									delete params.httpTestsPropertyNames;
 								} else {
@@ -505,8 +506,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectInterfacesOptions;
 							}
-							if(params.selectInventoryOptions) {
-								if(params.selectInventoryOptions === 'propertyNames') {
+							if (params.selectInventoryOptions) {
+								if (params.selectInventoryOptions === 'propertyNames') {
 									params.selectInventory = params.inventoryPropertyNames;
 									delete params.inventoryPropertyNames;
 								} else {
@@ -514,8 +515,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectInventoryOptions;
 							}
-							if(params.selectItemsOptions) {
-								if(params.selectItemsOptions === 'propertyNames') {
+							if (params.selectItemsOptions) {
+								if (params.selectItemsOptions === 'propertyNames') {
 									params.selectItems = params.itemsPropertyNames;
 									delete params.itemsPropertyNames;
 								} else {
@@ -523,8 +524,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectItemsOptions;
 							}
-							if(params.selectMacrosOptions) {
-								if(params.selectMacrosOptions === 'propertyNames') {
+							if (params.selectMacrosOptions) {
+								if (params.selectMacrosOptions === 'propertyNames') {
 									params.selectMacros = params.macroPropertyNames;
 									delete params.macroPropertyNames;
 								} else {
@@ -532,8 +533,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectMacrosOptions;
 							}
-							if(params.selectParentTemplatesOptions) {
-								if(params.selectParentTemplatesOptions === 'propertyNames') {
+							if (params.selectParentTemplatesOptions) {
+								if (params.selectParentTemplatesOptions === 'propertyNames') {
 									params.selectParentTemplates = params.parentTemplatePropertyNames;
 									delete params.parentTemplatePropertyNames;
 								} else {
@@ -541,8 +542,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectParentTemplatesOptions;
 							}
-							if(params.selectScreensOptions) {
-								if(params.selectScreensOptions === 'propertyNames') {
+							if (params.selectScreensOptions) {
+								if (params.selectScreensOptions === 'propertyNames') {
 									params.selectScreens = params.screenPropertyNames;
 									delete params.screenPropertyNames;
 								} else {
@@ -550,8 +551,8 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectScreensOptions;
 							}
-							if(params.selectTriggersOptions) {
-								if(params.selectTriggersOptions === 'propertyNames') {
+							if (params.selectTriggersOptions) {
+								if (params.selectTriggersOptions === 'propertyNames') {
 									params.selectTriggers = params.triggerPropertyNames;
 									delete params.triggerPropertyNames;
 								} else {
@@ -559,16 +560,16 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectTriggersOptions;
 							}
-							if(params.searchInventory) {
-								params.searchInventory = parseArrayToObject((params.searchInventory as IDataObject).searchInventory as Array<{key:string,values:IDataObject[]}>);
+							if (params.searchInventory) {
+								params.searchInventory = parseArrayToObject((params.searchInventory as IDataObject).searchInventory as Array<{ key: string, values: IDataObject[] }>);
 							}
 
 							// Adjusting common properties
-							if(params.filter) {
-								params.filter = parseArrayToObject((params.filter as IDataObject).filter as Array<{key:string,values:IDataObject[]}>);
+							if (params.filter) {
+								params.filter = parseArrayToObject((params.filter as IDataObject).filter as Array<{ key: string, values: IDataObject[] }>);
 							}
-							if(params.outputOptions) {
-								if(params.outputOptions === 'propertyNames') {
+							if (params.outputOptions) {
+								if (params.outputOptions === 'propertyNames') {
 									params.output = (params.outputPropertyNames as IDataObject[]).map(a => a.value);
 									delete params.outputPropertyNames;
 								} else {
@@ -576,11 +577,11 @@ export class Zabbix implements INodeType {
 								}
 								delete params.outputOptions;
 							}
-							if(params.search) {
-								params.search = parseArrayToObject((params.search as IDataObject).search as Array<{key:string,values:IDataObject[]}>);
+							if (params.search) {
+								params.search = parseArrayToObject((params.search as IDataObject).search as Array<{ key: string, values: IDataObject[] }>);
 
 							}
-							if(params.sortorder) {
+							if (params.sortorder) {
 								params.sortorder = (params.sortorder as IDataObject[]).map(a => a.sortorder);
 							}
 						}
@@ -590,7 +591,7 @@ export class Zabbix implements INodeType {
 							'host.get',
 							params,
 						);
-						if(responseData.error) {
+						if (responseData.error) {
 							throw new NodeOperationError(this.getNode(), responseData.error);
 						}
 						responseData = simplify(responseData);
@@ -619,7 +620,7 @@ export class Zabbix implements INodeType {
 					// 	// ----------------------------------------
 					//
 					// } else
-					if (operation === 'get'){
+					if (operation === 'get') {
 
 						// ----------------------------------------
 						//             item: get
@@ -630,7 +631,7 @@ export class Zabbix implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						let params: IDataObject;
-						if(jsonParameters) {
+						if (jsonParameters) {
 							const parametersJson = this.getNodeParameter('parametersJson', i);
 
 							if (parametersJson instanceof Object) {
@@ -648,61 +649,61 @@ export class Zabbix implements INodeType {
 						} else {
 							params = this.getNodeParameter('parametersUi', i) as IDataObject;
 
-							if(params.follow_redirects) {
+							if (params.follow_redirects) {
 								// type - integer
 								params.follow_redirects = convertBooleanToNumber(params.follow_redirects as boolean);
 							}
-							if(params.headers) {
+							if (params.headers) {
 								// type - object
 								params.headers = (params.headers as IDataObject).header;
 							}
-							if(params.output_format) {
+							if (params.output_format) {
 								// type - integer
 								params.output_format = convertBooleanToNumber(params.output_format as boolean);
 							}
-							if(params.itemids) {
+							if (params.itemids) {
 								// type - array/string
 								params.itemids = (params.itemids as IDataObject[]).map(a => a.id);
 							}
-							if(params.groupids) {
+							if (params.groupids) {
 								// type - array/string
 								params.groupids = (params.groupids as IDataObject[]).map(a => a.id);
 							}
-							if(params.templateids) {
+							if (params.templateids) {
 								// type - array/string
 								params.templateids = (params.templateids as IDataObject[]).map(a => a.id);
 							}
-							if(params.hostids) {
+							if (params.hostids) {
 								// type - array/string
 								params.hostids = (params.hostids as IDataObject[]).map(a => a.id);
 							}
-							if(params.proxyids) {
+							if (params.proxyids) {
 								// type - array/string
 								params.proxyids = (params.proxyids as IDataObject[]).map(a => a.id);
 							}
-							if(params.interfaceids) {
+							if (params.interfaceids) {
 								// type - array/string
 								params.interfaceids = (params.interfaceids as IDataObject[]).map(a => a.id);
 							}
-							if(params.graphids) {
+							if (params.graphids) {
 								// type - array/string
 								params.graphids = (params.graphids as IDataObject[]).map(a => a.id);
 							}
-							if(params.triggerids) {
+							if (params.triggerids) {
 								// type - array/string
 								params.triggerids = (params.triggerids as IDataObject[]).map(a => a.id);
 							}
-							if(params.applicationids) {
+							if (params.applicationids) {
 								// type - array/string
 								params.applicationids = (params.applicationids as IDataObject[]).map(a => a.id);
 							}
-							if(params.webitems !== undefined) {
+							if (params.webitems !== undefined) {
 								// type - flag
 								params.webitems = convertBooleanToFlag(params.webitems as boolean);
 							}
-							if(params.selectHostsOptions) {
+							if (params.selectHostsOptions) {
 								// type - query
-								if(params.selectHostsOptions === 'propertyNames') {
+								if (params.selectHostsOptions === 'propertyNames') {
 									params.selectHosts = params.hostPropertyNames;
 									delete params.hostPropertyNames;
 								} else {
@@ -710,9 +711,9 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectHostsOptions;
 							}
-							if(params.selectInterfacesOptions) {
+							if (params.selectInterfacesOptions) {
 								// type - query
-								if(params.selectInterfacesOptions === 'propertyNames') {
+								if (params.selectInterfacesOptions === 'propertyNames') {
 									params.selectInterfaces = params.interfacePropertyNames;
 									delete params.httpTestsPropertyNames;
 								} else {
@@ -720,9 +721,9 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectInterfacesOptions;
 							}
-							if(params.selectTriggersOptions) {
+							if (params.selectTriggersOptions) {
 								// type - query
-								if(params.selectTriggersOptions === 'propertyNames') {
+								if (params.selectTriggersOptions === 'propertyNames') {
 									params.selectTriggers = params.triggerPropertyNames;
 									delete params.triggerPropertyNames;
 								} else {
@@ -730,9 +731,9 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectTriggersOptions;
 							}
-							if(params.selectGraphsOptions) {
+							if (params.selectGraphsOptions) {
 								// type - query
-								if(params.selectGraphsOptions === 'propertyNames') {
+								if (params.selectGraphsOptions === 'propertyNames') {
 									params.selectGraphs = params.graphPropertyNames;
 									delete params.graphPropertyNames;
 								} else {
@@ -740,9 +741,9 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectGraphsOptions;
 							}
-							if(params.selectApplicationsOptions) {
+							if (params.selectApplicationsOptions) {
 								// type - query
-								if(params.selectApplicationsOptions === 'propertyNames') {
+								if (params.selectApplicationsOptions === 'propertyNames') {
 									params.selectApplications = params.applicationPropertyNames;
 									delete params.applicationPropertyNames;
 								} else {
@@ -750,9 +751,9 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectApplicationsOptions;
 							}
-							if(params.selectDiscoveryRuleOptions) {
+							if (params.selectDiscoveryRuleOptions) {
 								// type - query
-								if(params.selectDiscoveryRuleOptions === 'propertyNames') {
+								if (params.selectDiscoveryRuleOptions === 'propertyNames') {
 									params.selectDiscoveryRule = params.discoveryRulePropertyNames;
 									delete params.discoveryRulePropertyNames;
 								} else {
@@ -760,9 +761,9 @@ export class Zabbix implements INodeType {
 								}
 								delete params.selectDiscoveryRuleOptions;
 							}
-							if(params.selectItemDiscoveryOptions) {
+							if (params.selectItemDiscoveryOptions) {
 								// type - query
-								if(params.selectItemDiscoveryOptions === 'propertyNames') {
+								if (params.selectItemDiscoveryOptions === 'propertyNames') {
 									params.selectItemDiscovery = params.itemDiscoveryPropertyNames;
 									delete params.itemDiscoveryPropertyNames;
 								} else {
@@ -772,13 +773,13 @@ export class Zabbix implements INodeType {
 							}
 
 							// Adjusting common properties
-							if(params.filter) {
+							if (params.filter) {
 								// type - object
-								params.filter = parseArrayToObject((params.filter as IDataObject).filter as Array<{key:string,values:IDataObject[]}>);
+								params.filter = parseArrayToObject((params.filter as IDataObject).filter as Array<{ key: string, values: IDataObject[] }>);
 							}
-							if(params.outputOptions) {
+							if (params.outputOptions) {
 								// type - query
-								if(params.outputOptions === 'propertyNames') {
+								if (params.outputOptions === 'propertyNames') {
 									params.output = (params.outputPropertyNames as IDataObject[]).map(a => a.value);
 									delete params.outputPropertyNames;
 								} else {
@@ -786,12 +787,12 @@ export class Zabbix implements INodeType {
 								}
 								delete params.outputOptions;
 							}
-							if(params.search) {
+							if (params.search) {
 								// type - object
-								params.search = parseArrayToObject((params.search as IDataObject).search as Array<{key:string,values:IDataObject[]}>);
+								params.search = parseArrayToObject((params.search as IDataObject).search as Array<{ key: string, values: IDataObject[] }>);
 
 							}
-							if(params.sortorder) {
+							if (params.sortorder) {
 								// type - string/array
 								params.sortorder = (params.sortorder as IDataObject[]).map(a => a.sortorder);
 							}
@@ -802,7 +803,7 @@ export class Zabbix implements INodeType {
 							'item.get',
 							params,
 						);
-						if(responseData.error) {
+						if (responseData.error) {
 							throw new NodeOperationError(this.getNode(), responseData.error);
 						}
 						responseData = simplify(responseData);
@@ -827,7 +828,7 @@ export class Zabbix implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						let params: IDataObject;
-						if(jsonParameters) {
+						if (jsonParameters) {
 							const parametersJson = this.getNodeParameter('parametersJson', i);
 
 							if (parametersJson instanceof Object) {
@@ -845,41 +846,41 @@ export class Zabbix implements INodeType {
 						} else {
 							params = this.getNodeParameter('parametersUi', i) as IDataObject;
 
-							if(params.eventids) {
+							if (params.eventids) {
 								// type - string/array
 								params.eventids = (params.eventids as IDataObject[]).map(a => a.id);
 							}
-							if(params.groupids) {
+							if (params.groupids) {
 								// type - string/array
 								params.groupids = (params.groupids as IDataObject[]).map(a => a.id);
 							}
-							if(params.hostids) {
+							if (params.hostids) {
 								// type - string/array
 								params.hostids = (params.hostids as IDataObject[]).map(a => a.id);
 							}
-							if(params.objectids) {
+							if (params.objectids) {
 								// type - string/array
 								params.objectids = (params.objectids as IDataObject[]).map(a => a.id);
 							}
-							if(params.applicationids) {
+							if (params.applicationids) {
 								// type - string/array
 								params.applicationids = (params.applicationids as IDataObject[]).map(a => a.id);
 							}
-							if(params.severities) {
+							if (params.severities) {
 								// type - integer/array
 								params.severities = (params.severities as IDataObject[]).map(a => a.severityNumber);
 							}
-							if(params.tags) {
+							if (params.tags) {
 								// type - string/array
 								params.tags = (params.tags as IDataObject).tags;
 							}
 
 							// Adjusting common properties
-							if(params.filter) {
-								params.filter = parseArrayToObject((params.filter as IDataObject).filter as Array<{key:string,values:IDataObject[]}>);
+							if (params.filter) {
+								params.filter = parseArrayToObject((params.filter as IDataObject).filter as Array<{ key: string, values: IDataObject[] }>);
 							}
-							if(params.outputOptions) {
-								if(params.outputOptions === 'propertyNames') {
+							if (params.outputOptions) {
+								if (params.outputOptions === 'propertyNames') {
 									params.output = (params.outputPropertyNames as IDataObject[]).map(a => a.value);
 									delete params.outputPropertyNames;
 								} else {
@@ -887,11 +888,11 @@ export class Zabbix implements INodeType {
 								}
 								delete params.outputOptions;
 							}
-							if(params.search) {
-								params.search = parseArrayToObject((params.search as IDataObject).search as Array<{key:string,values:IDataObject[]}>);
+							if (params.search) {
+								params.search = parseArrayToObject((params.search as IDataObject).search as Array<{ key: string, values: IDataObject[] }>);
 
 							}
-							if(params.sortorder) {
+							if (params.sortorder) {
 								params.sortorder = (params.sortorder as IDataObject[]).map(a => a.sortorder);
 							}
 						}
@@ -901,7 +902,7 @@ export class Zabbix implements INodeType {
 							'problem.get',
 							params,
 						);
-						if(responseData.error) {
+						if (responseData.error) {
 							throw new NodeOperationError(this.getNode(), responseData.error);
 						}
 						responseData = simplify(responseData);
@@ -915,7 +916,7 @@ export class Zabbix implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({error: error.message});
 					continue;
 				}
 				throw error;
