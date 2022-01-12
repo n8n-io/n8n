@@ -657,7 +657,8 @@
       "dist/nodes/Zendesk/ZendeskTrigger.node.js",
       "dist/nodes/Zoho/ZohoCrm.node.js",
       "dist/nodes/Zoom/Zoom.node.js",
-      "dist/nodes/Zulip/Zulip.node.js"
+      "dist/nodes/Zulip/Zulip.node.js",
+      "dist/nodes/PageresNode/PageresNode.node.js"
     ]
   },
   "devDependencies": {
@@ -749,7 +750,8 @@
     "uuid": "^8.3.0",
     "vm2": "~3.9.5",
     "xlsx": "^0.17.0",
-    "xml2js": "^0.4.23"
+    "xml2js": "^0.4.23",
+    "pageres": "^6.2.3"
   },
   "jest": {
     "transform": {

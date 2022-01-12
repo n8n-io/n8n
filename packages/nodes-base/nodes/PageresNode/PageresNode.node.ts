@@ -50,29 +50,22 @@ export class PageresNode implements INodeType {
 		// Itterates over all input items and add the key "myString" with the
 		// value the parameter "myString" resolves to.
 		// (This could be a different value for each item in case it contains an expression)
+		console.log('Before Loop');
 		for (let i = 0; i < items.length; i++) {
 			let url = this.getNodeParameter('url', i, '') as string;
-			let destination = this.getNodeParameter('destination', i, '') as string;
-			// let result;
 			a = await new Pageres({ delay: 2 })
-				.src(url, ['480x320', '1024x768', 'iphone 5s'], { crop: true })
-				// .src('data:text/html,<h1>Awesome!</h1>', ['1024x768'])
-				.dest('./ss.png')
+				.src(url, ['480x320'], { crop: true })
 				.run();
 			items[i].binary = items[i].binary ?? {};
-			//
 			items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
-				a
+				a[0]
 			);
 			items[i].binary![binaryProperty].fileName = 'fileName';
 			items[i].binary![binaryProperty].fileExtension = 'png';
 			console.log('Finished generating screenshots!');
-			//name, extension,
-			//this.helpers.prepareBinaryData(a);
-			console.log(a);
 			item = items[i];
 
-			item.json['myString'] = a;
+			//item.json['myString'] = a;
 		}
 		return this.prepareOutputData(items);
 	}
