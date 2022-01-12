@@ -36,6 +36,28 @@ export class GraphQL implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'oAuth1Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth1',
+						],
+					},
+				},
+			},
+			{
+				name: 'oAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -46,6 +68,14 @@ export class GraphQL implements INodeType {
 					{
 						name: 'Header Auth',
 						value: 'headerAuth',
+					},
+					{
+						name: 'OAuth1',
+						value: 'oAuth1',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
 					},
 					{
 						name: 'None',
@@ -230,6 +260,8 @@ export class GraphQL implements INodeType {
 
 		const items = this.getInputData();
 		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+		const oAuth1Api = await this.getCredentials('oAuth1Api');
+		const oAuth2Api = await this.getCredentials('oAuth2Api');
 
 		let requestOptions: OptionsWithUri & RequestPromiseOptions;
 
@@ -292,7 +324,15 @@ export class GraphQL implements INodeType {
 					}
 				}
 
-				const response = await this.helpers.request(requestOptions);
+				let response;
+				// Now that the options are all set make the actual http request
+				if (oAuth1Api !== undefined) {
+					response = await this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
+				} else if (oAuth2Api !== undefined) {
+					response = await this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, { tokenType: 'Bearer' });
+				} else {
+					response = await this.helpers.request(requestOptions);
+				}
 				if (responseFormat === 'string') {
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 
