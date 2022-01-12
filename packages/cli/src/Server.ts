@@ -1,3 +1,6 @@
+/* eslint-disable no-else-return */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable max-classes-per-file */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable new-cap */
@@ -81,8 +84,6 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { NodeVersionedType } from 'n8n-nodes-base';
-
 import * as basicAuth from 'basic-auth';
 import * as compression from 'compression';
 import * as jwt from 'jsonwebtoken';
@@ -153,6 +154,32 @@ import { NameRequest } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 
 require('body-parser-xml')(bodyParser);
+
+export class NodeVersionedType implements INodeVersionedType {
+	currentVersion: number;
+
+	nodeVersions: any;
+
+	description: any;
+
+	constructor(nodeVersions: any, description: any) {
+		this.nodeVersions = nodeVersions;
+		this.currentVersion = description.defaultVersion ?? this.getLatestVersion();
+		this.description = description;
+	}
+
+	getLatestVersion() {
+		return Math.max(...Object.keys(this.nodeVersions).map(Number));
+	}
+
+	getNodeType(version?: number): INodeType {
+		if (version) {
+			return this.nodeVersions[version];
+		} else {
+			return this.nodeVersions[this.currentVersion];
+		}
+	}
+}
 
 class App {
 	app: express.Application;
