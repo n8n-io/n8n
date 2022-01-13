@@ -551,6 +551,30 @@ export function whereClause({
 }
 
 /**
+ * Build a `where` clause for a TypeORM entity search,
+ * checking for member access if the user is not an owner.
+ */
+export function buildPermissionClause({
+	user,
+	entityType,
+	entityId,
+}: {
+	entityId: string;
+	user: User;
+	entityType: 'workflow';
+}): WhereClause {
+	const where: WhereClause = {
+		[entityType]: { id: entityId },
+	};
+
+	if (user.globalRole.name !== 'owner') {
+		where.user = { id: user.id };
+	}
+
+	return where;
+}
+
+/**
  * Get the IDs of the workflows that have been shared with the user.
  */
 export async function getSharedWorkflowIds(user: User): Promise<number[]> {
