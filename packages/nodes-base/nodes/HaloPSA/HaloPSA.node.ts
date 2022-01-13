@@ -93,14 +93,14 @@ export class HaloPSA implements INodeType {
 					// },
 					{
 						name: 'Ticket',
-						value: 'tickets',
+						value: 'ticket',
 					},
 					{
-						name: 'Users',
-						value: 'users',
+						name: 'User',
+						value: 'user',
 					},
 				],
-				default: 'tickets',
+				default: 'ticket',
 				required: true,
 				description: 'Resource to consume',
 			},
@@ -172,7 +172,7 @@ export class HaloPSA implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create'],
-						resource: ['client', 'users'],
+						resource: ['client', 'user'],
 					},
 				},
 			},
@@ -368,45 +368,45 @@ export class HaloPSA implements INodeType {
 			try {
 				// Create ----------------------------------------------------
 				if (operation === 'create') {
-					const data = this.getNodeParameter('fieldsToCreateOrUpdate', 0) as IDataObject;
+					const data = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
 					const item = processFields(data) || {};
 
-					if (resource === 'tickets') {
-						const summary = this.getNodeParameter('summary', 0) as string;
+					if (resource === 'ticket') {
+						const summary = this.getNodeParameter('summary', i) as string;
 						item[summary] = summary;
-						const details = this.getNodeParameter('details', 0) as string;
+						const details = this.getNodeParameter('details', i) as string;
 						item[details] = details;
 					}
 
 					if (resource === 'client') {
-						const name = this.getNodeParameter('clientName', 0) as string;
+						const name = this.getNodeParameter('clientName', i) as string;
 						item['name'] = name;
-						const clientIsVip = this.getNodeParameter('clientIsVip', 0) as boolean;
+						const clientIsVip = this.getNodeParameter('clientIsVip', i) as boolean;
 						item['is_vip'] = clientIsVip;
-						const clientRef = this.getNodeParameter('clientRef', 0) as string;
+						const clientRef = this.getNodeParameter('clientRef', i) as string;
 						item['ref'] = clientRef;
-						const site = this.getNodeParameter('sitesList', 0) as string;
+						const site = this.getNodeParameter('sitesList', i) as string;
 						item['website'] = site;
 					}
 
-					if (resource === 'users') {
-						const name = this.getNodeParameter('userName', 0) as string;
+					if (resource === 'user') {
+						const name = this.getNodeParameter('userName', i) as string;
 						item['name'] = name;
-						const site = this.getNodeParameter('sitesList', 0) as string;
+						const site = this.getNodeParameter('sitesList', i) as string;
 						item['site_id'] = site;
 					}
 
 					if (resource === 'site') {
-						const siteName = this.getNodeParameter('siteName', 0) as string;
+						const siteName = this.getNodeParameter('siteName', i) as string;
 						item['name'] = siteName;
-						const client = this.getNodeParameter('clientsList', 0) as number;
+						const client = this.getNodeParameter('clientsList', i) as number;
 						item['client_id'] = client;
 					}
 
 					if (resource === 'invoice') {
-						const client = this.getNodeParameter('clientsList', 0) as number;
+						const client = this.getNodeParameter('clientsList', i) as number;
 						item['client_id'] = client;
-						const invoiceDate = this.getNodeParameter('invoiceDate', 0) as number;
+						const invoiceDate = this.getNodeParameter('invoiceDate', i) as number;
 						item['invoice_date'] = invoiceDate;
 					}
 
@@ -423,8 +423,8 @@ export class HaloPSA implements INodeType {
 				}
 				// Delete ----------------------------------------------------
 				if (operation === 'delete') {
-					const itemID = this.getNodeParameter('item_id', 0) as string;
-					const reasonForDeletion = this.getNodeParameter('reasonForDeletion', 0) as string;
+					const itemID = this.getNodeParameter('item_id', i) as string;
+					const reasonForDeletion = this.getNodeParameter('reasonForDeletion', i) as string;
 					responseData = await haloPSAApiRequest.call(
 						this,
 						resourceApiUrl,
@@ -438,7 +438,7 @@ export class HaloPSA implements INodeType {
 				}
 				// Get -------------------------------------------------------
 				if (operation === 'get') {
-					const itemID = this.getNodeParameter('item_id', 0) as string;
+					const itemID = this.getNodeParameter('item_id', i) as string;
 					responseData = await haloPSAApiRequest.call(
 						this,
 						resourceApiUrl,
@@ -451,11 +451,11 @@ export class HaloPSA implements INodeType {
 				// Get All ---------------------------------------------------
 				if (operation === 'getAll') {
 					let count;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll) {
 						count = {};
 					} else {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit', i) as number;
 						count = { count: limit };
 					}
 					responseData = await haloPSAApiRequest.call(
@@ -471,8 +471,8 @@ export class HaloPSA implements INodeType {
 				}
 				// Update ----------------------------------------------------
 				if (operation === 'update') {
-					const itemID = this.getNodeParameter('item_id', 0) as string;
-					const data = this.getNodeParameter('fieldsToCreateOrUpdate', 0) as IDataObject;
+					const itemID = this.getNodeParameter('item_id', i) as string;
+					const data = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
 					const body = [{ id: +itemID, ...processFields(data) }];
 					responseData = await haloPSAApiRequest.call(
 						this,

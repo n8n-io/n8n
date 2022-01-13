@@ -37,6 +37,8 @@ const pluralResource: { [key: string]: string } = {
 	report: 'reports',
 	site: 'sites',
 	supplier: 'suppliers',
+	ticket: 'tickets',
+	user: 'users'
 };
 
 // API Requests ---------------------------------------------------------------------
