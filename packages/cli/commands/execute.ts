@@ -128,15 +128,15 @@ export class Execute extends Command {
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
-		const instanceId = await UserSettings.getInstanceId();
-		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli);
-
 		// Add the found types to an instance other parts of the application can use
 		const nodeTypes = NodeTypes();
 		await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 		const credentialTypes = CredentialTypes();
 		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+		const instanceId = await UserSettings.getInstanceId();
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;

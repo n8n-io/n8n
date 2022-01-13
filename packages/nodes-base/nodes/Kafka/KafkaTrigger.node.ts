@@ -5,6 +5,8 @@ import {
 	SASLOptions,
 } from 'kafkajs';
 
+import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+
 import {
 	ITriggerFunctions,
 } from 'n8n-core';
@@ -54,6 +56,29 @@ export class KafkaTrigger implements INodeType {
 				required: true,
 				placeholder: 'n8n-kafka',
 				description: 'ID of the consumer group.',
+			},
+			{
+				displayName: 'Use Schema Registry',
+				name: 'useSchemaRegistry',
+				type: 'boolean',
+				default: false,
+				description: 'Use Confluent Schema Registry.',
+			},
+			{
+				displayName: 'Schema Registry URL',
+				name: 'schemaRegistryUrl',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [
+							true,
+						],
+					},
+				},
+				placeholder: 'https://schema-registry-domain:8081',
+				default: '',
+				description: 'URL of the schema registry.',
 			},
 			{
 				displayName: 'Options',
@@ -111,6 +136,13 @@ export class KafkaTrigger implements INodeType {
 						default: 30000,
 						description: 'The time to await a response in ms.',
 					},
+					{
+						displayName: 'Return headers',
+						name: 'returnHeaders',
+						type: 'boolean',
+						default: false,
+						description: 'Return the headers received from Kafka',
+					},
 				],
 			},
 		],
@@ -160,6 +192,10 @@ export class KafkaTrigger implements INodeType {
 
 		const self = this;
 
+		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
+
+		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
+
 		const startConsumer = async () => {
 			await consumer.run({
 				eachMessage: async ({ topic, message }) => {
@@ -177,6 +213,23 @@ export class KafkaTrigger implements INodeType {
 						try {
 							value = message.value as Buffer;
 						} catch (error) { }
+					}
+
+					if (useSchemaRegistry) {
+						try {
+							const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+							value = await registry.decode(message.value as Buffer);
+						} catch (error) { }
+					}
+
+					if (options.returnHeaders && message.headers) {
+						const headers: {[key: string]: string} = {};
+						for (const key of Object.keys(message.headers)) {
+							const header = message.headers[key];
+							headers[key] = header?.toString('utf8') || '';
+						}
+
+						data.headers = headers;
 					}
 
 					data.message = value;

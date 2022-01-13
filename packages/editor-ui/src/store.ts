@@ -46,9 +46,9 @@ const state: IRootState = {
 	activeWorkflows: [],
 	activeActions: [],
 	activeNode: null,
+	activeCredentialType: null,
 	// @ts-ignore
 	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
-	credentialTextRenderKeys: null,
 	defaultLocale: 'en',
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
@@ -560,8 +560,8 @@ export const store = new Vuex.Store({
 		setActiveNode (state, nodeName: string) {
 			state.activeNode = nodeName;
 		},
-		setCredentialTextRenderKeys (state, renderKeys: { nodeType: string; credentialType: string; }) {
-			state.credentialTextRenderKeys = renderKeys;
+		setActiveCredentialType (state, activeCredentialType: string) {
+			state.activeCredentialType = activeCredentialType;
 		},
 
 		setLastSelectedNode (state, nodeName: string) {
@@ -647,6 +647,9 @@ export const store = new Vuex.Store({
 		},
 	},
 	getters: {
+		activeCredentialType: (state): string | null => {
+			return state.activeCredentialType;
+		},
 
 		isActionActive: (state) => (action: string): boolean => {
 			return state.activeActions.includes(action);
@@ -666,10 +669,6 @@ export const store = new Vuex.Store({
 
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
 			return state.activeExecutions;
-		},
-
-		credentialTextRenderKeys: (state): object | null => {
-			return state.credentialTextRenderKeys;
 		},
 
 		getBaseUrl: (state): string => {
