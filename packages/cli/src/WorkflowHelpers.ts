@@ -33,6 +33,7 @@ import {
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	ResponseHelper,
+	WhereClause,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	WorkflowCredentials,
 	WorkflowRunner,
@@ -41,7 +42,6 @@ import {
 import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { WhereClause } from './requests';
 import { User } from './databases/entities/User';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
