@@ -996,7 +996,7 @@ class App {
 						// If workflow could not be activated set it again to inactive
 						updateData.active = false;
 						// @ts-ignore
-						await Db.collections.Workflow!.update(id, updateData);
+						await Db.collections.Workflow!.update(req.params.id, updateData);
 
 						// Also set it in the returned data
 						updatedWorkflow.active = false;
