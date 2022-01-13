@@ -1,6 +1,6 @@
 <template>
 		<div :class="$style.collectionCard">
-			<n8n-heading :bold="true" size="medium">{{title}}</n8n-heading>
+			<n8n-heading :bold="true" size="medium">{{shortTitle}}</n8n-heading>
 			<footer :class="$style.cardFooter">
 				<slot name="footer"></slot>
 			</footer>
@@ -19,7 +19,14 @@ export default mixins(
 	props: {
 		title: String,
 	},
-	components: {
+	computed: {
+		shortTitle() {
+			// todo decide the length
+			if (this.title.length > 90) {
+				return this.title.slice(0, 87) + '...';
+			}
+			return this.title;
+		},
 	},
 	methods: {
 	},

@@ -6,12 +6,16 @@
 				<TemplateCard :title="workflow.name">
 					<template v-slot:footer>
 						<div>
+							<span v-if="workflow.totalViews">
+									<n8n-text size="small" color="text-light">
+										<font-awesome-icon icon="eye"></font-awesome-icon>
+										{{truncate(workflow.totalViews)}}
+									</n8n-text>
+									<n8n-text size="small" color="text-light">|</n8n-text>
+							</span>
 							<n8n-text size="small" color="text-light">
-								<font-awesome-icon icon="eye"></font-awesome-icon>
-								{{workflow.totalViews}}
-							</n8n-text>
-							<n8n-text size="small" color="text-light">|</n8n-text>
-							<n8n-text size="small" color="text-light">{{workflow.created_at}}</n8n-text>
+								<TimeAgo :date="workflow.created_at" />
+								</n8n-text>
 							<n8n-text size="small" color="text-light">|</n8n-text>
 							<n8n-text size="small" color="text-light">By {{workflow.user.username}}</n8n-text>
 						</div>
@@ -57,7 +61,12 @@ export default mixins(
 		},
 	},
 	methods: {
-
+		truncate(views: number) {
+			return new Intl.NumberFormat('en-GB', {
+				notation: "compact",
+				compactDisplay: "short",
+			}).format(views);
+		},
 	},
 });
 </script>
