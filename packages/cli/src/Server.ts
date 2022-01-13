@@ -151,7 +151,7 @@ import * as UserManagementHelpers from './UserManagement/UserManagementHelper';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { NameRequest } from './WorkflowHelpers';
+import { buildPermissionClause, NameRequest } from './WorkflowHelpers';
 import { getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
@@ -843,23 +843,20 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/workflows/:id`,
 			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
-				const where: Record<string, { id: string }> = {
-					workflow: { id: req.params.id },
-				};
+				const shared = await Db.collections
+					.SharedWorkflow!.findOne({
+						relations: ['workflow', 'workflow.tags'],
+						where: buildPermissionClause({
+							user: req.user,
+							entityType: 'workflow',
+							entityId: req.params.id,
+						}),
+					})
+					.catch(WorkflowHelpers.throwDuplicateEntryError);
 
-				if (req.user.globalRole.name !== 'owner') {
-					where.user = { id: req.user.id };
-				}
+				if (!shared) return {};
 
-				const results = await Db.collections.SharedWorkflow!.find({
-					relations: ['workflow', 'workflow.tags'],
-					where,
-				});
-
-				if (!results.length) return {};
-
-				const [sharing] = results;
-				const { workflow } = sharing;
+				const { workflow } = shared;
 				const { id, tags, ...rest } = workflow;
 
 				return {
@@ -873,128 +870,140 @@ class App {
 		// Updates an existing workflow
 		this.app.patch(
 			`/${this.restEndpoint}/workflows/:id`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<WorkflowEntity> => {
-					const { tags, ...updateData } = req.body;
+			ResponseHelper.send(async (req: WorkflowRequest.Update) => {
+				const updateData = new WorkflowEntity();
+				const { tags, ...rest } = req.body;
+				Object.assign(updateData, rest);
+				updateData.id = parseInt(req.params.id, 10);
 
-					const { id } = req.params;
-					updateData.id = id;
+				let isActive = false;
 
-					let isActive = false;
-					const qb = Db.collections.Workflow!.createQueryBuilder('w');
-					qb.andWhere('w.id = :workflowId', { workflowId: req.params.id });
-					qb.innerJoin('w.shared', 'shared');
-					// @ts-ignore
-					qb.andWhere('shared.userId = :userId', { userId: req.user.id });
-					const workflowSearch = await qb.getOne();
-					if (workflowSearch) {
-						isActive = workflowSearch.active;
-					} else {
-						throw new ResponseHelper.ResponseError(
-							`Workflow with id "${id}" could not be found to be updated.`,
-							undefined,
-							404,
-						);
+				const shared = await Db.collections.SharedWorkflow!.findOne({
+					relations: ['workflow'],
+					where: buildPermissionClause({
+						user: req.user,
+						entityType: 'workflow',
+						entityId: req.params.id,
+					}),
+				});
+
+				if (!shared) return {};
+
+				const { workflow } = shared;
+
+				if (workflow) {
+					isActive = workflow.active;
+				} else {
+					throw new ResponseHelper.ResponseError(
+						`Workflow with ID "${req.params.id}" could not be found to be updated.`,
+						undefined,
+						404,
+					);
+				}
+
+				// check credentials for old format
+				await WorkflowHelpers.replaceInvalidCredentials(updateData);
+
+				await this.externalHooks.run('workflow.update', [updateData]);
+
+				if (isActive) {
+					// When workflow gets saved always remove it as the triggers could have been
+					// changed and so the changes would not take effect
+					await this.activeWorkflowRunner.remove(req.params.id);
+				}
+
+				if (updateData.settings) {
+					if (updateData.settings.timezone === 'DEFAULT') {
+						// Do not save the default timezone
+						delete updateData.settings.timezone;
 					}
-
-					// check credentials for old format
-					await WorkflowHelpers.replaceInvalidCredentials(updateData as WorkflowEntity);
-
-					await this.externalHooks.run('workflow.update', [updateData]);
-
-					if (isActive) {
-						// When workflow gets saved always remove it as the triggers could have been
-						// changed and so the changes would not take effect
-						await this.activeWorkflowRunner.remove(id);
+					if (updateData.settings.saveDataErrorExecution === 'DEFAULT') {
+						// Do not save when default got set
+						delete updateData.settings.saveDataErrorExecution;
 					}
-
-					if (updateData.settings) {
-						if (updateData.settings.timezone === 'DEFAULT') {
-							// Do not save the default timezone
-							delete updateData.settings.timezone;
-						}
-						if (updateData.settings.saveDataErrorExecution === 'DEFAULT') {
-							// Do not save when default got set
-							delete updateData.settings.saveDataErrorExecution;
-						}
-						if (updateData.settings.saveDataSuccessExecution === 'DEFAULT') {
-							// Do not save when default got set
-							delete updateData.settings.saveDataSuccessExecution;
-						}
-						if (updateData.settings.saveManualExecutions === 'DEFAULT') {
-							// Do not save when default got set
-							delete updateData.settings.saveManualExecutions;
-						}
-						if (
-							parseInt(updateData.settings.executionTimeout as string, 10) === this.executionTimeout
-						) {
-							// Do not save when default got set
-							delete updateData.settings.executionTimeout;
-						}
+					if (updateData.settings.saveDataSuccessExecution === 'DEFAULT') {
+						// Do not save when default got set
+						delete updateData.settings.saveDataSuccessExecution;
 					}
-
-					// required due to atomic update
-					updateData.updatedAt = this.getCurrentDate();
-
-					await WorkflowHelpers.validateWorkflow(updateData);
-					await Db.collections
-						.Workflow!.update(id, updateData)
-						.catch(WorkflowHelpers.throwDuplicateEntryError);
-
-					if (tags) {
-						const tablePrefix = config.get('database.tablePrefix');
-						await TagHelpers.removeRelations(req.params.id, tablePrefix);
-
-						if (tags.length) {
-							await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
-						}
+					if (updateData.settings.saveManualExecutions === 'DEFAULT') {
+						// Do not save when default got set
+						delete updateData.settings.saveManualExecutions;
 					}
-
-					// We sadly get nothing back from "update". Neither if it updated a record
-					// nor the new value. So query now the hopefully updated entry.
-					const workflow = await Db.collections.Workflow!.findOne(id, { relations: ['tags'] });
-
-					if (workflow === undefined) {
-						throw new ResponseHelper.ResponseError(
-							`Workflow with id "${id}" could not be found to be updated.`,
-							undefined,
-							400,
-						);
+					if (
+						parseInt(updateData.settings.executionTimeout as string, 10) === this.executionTimeout
+					) {
+						// Do not save when default got set
+						delete updateData.settings.executionTimeout;
 					}
+				}
 
-					if (tags?.length) {
-						workflow.tags = TagHelpers.sortByRequestOrder(workflow.tags, {
-							incomingTagOrder: tags,
-						});
+				// required due to atomic update
+				updateData.updatedAt = this.getCurrentDate();
+
+				await WorkflowHelpers.validateWorkflow(updateData);
+
+				await Db.collections
+					.Workflow!.update(req.params.id, updateData)
+					.catch(WorkflowHelpers.throwDuplicateEntryError);
+
+				if (tags) {
+					const tablePrefix = config.get('database.tablePrefix');
+					await TagHelpers.removeRelations(req.params.id, tablePrefix);
+
+					if (tags.length) {
+						await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
 					}
+				}
 
-					await this.externalHooks.run('workflow.afterUpdate', [workflow]);
-					void InternalHooksManager.getInstance().onWorkflowSaved(workflow as IWorkflowBase);
+				// We sadly get nothing back from "update". Neither if it updated a record
+				// nor the new value. So query now the hopefully updated entry.
+				const updatedWorkflow = await Db.collections.Workflow!.findOne(req.params.id, {
+					relations: ['tags'],
+				});
 
-					if (workflow.active) {
-						// When the workflow is supposed to be active add it again
-						try {
-							await this.externalHooks.run('workflow.activate', [workflow]);
-							await this.activeWorkflowRunner.add(id, isActive ? 'update' : 'activate');
-						} catch (error) {
-							// If workflow could not be activated set it again to inactive
-							updateData.active = false;
-							// @ts-ignore
-							await Db.collections.Workflow!.update(id, updateData);
+				if (updatedWorkflow === undefined) {
+					throw new ResponseHelper.ResponseError(
+						`Workflow with ID "${req.params.id}" could not be found to be updated.`,
+						undefined,
+						400,
+					);
+				}
 
-							// Also set it in the returned data
-							workflow.active = false;
+				if (req.body.tags?.length) {
+					updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
+						incomingTagOrder: req.body.tags,
+					});
+				}
 
-							// Now return the original error for UI to display
-							throw error;
-						}
+				await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+				void InternalHooksManager.getInstance().onWorkflowSaved(updatedWorkflow as IWorkflowBase);
+
+				if (updatedWorkflow.active) {
+					// When the workflow is supposed to be active add it again
+					try {
+						await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
+						await this.activeWorkflowRunner.add(req.params.id, isActive ? 'update' : 'activate');
+					} catch (error) {
+						// If workflow could not be activated set it again to inactive
+						updateData.active = false;
+						// @ts-ignore
+						await Db.collections.Workflow!.update(id, updateData);
+
+						// Also set it in the returned data
+						updatedWorkflow.active = false;
+
+						// Now return the original error for UI to display
+						throw error;
 					}
+				}
 
-					// @ts-ignore
-					workflow.id = workflow.id.toString();
-					return workflow;
-				},
-			),
+				const { id, ...remainder } = updatedWorkflow;
+
+				return {
+					id: id.toString(),
+					...remainder,
+				};
+			}),
 		);
 
 		// Deletes a specific workflow
@@ -1247,6 +1256,7 @@ class App {
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
 					// TODO UM: restrict user access to credentials he cannot use.
+					// @ts-ignore
 					additionalData.userId = (req.user as User).id;
 
 					return loadDataInstance.getOptions(methodName, additionalData);
