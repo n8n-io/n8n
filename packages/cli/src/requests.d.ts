@@ -39,4 +39,6 @@ export declare namespace WorkflowRequest {
 	type NewName = express.Request<{}, {}, {}, { name?: string }>;
 
 	type GetAll = express.Request<{}, {}, {}, Record<string, string>> & { user: User };
+
+	type GetAllActive = express.Request & { user: User };
 }

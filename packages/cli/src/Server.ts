@@ -1435,14 +1435,11 @@ class App {
 		// Returns the active workflow ids
 		this.app.get(
 			`/${this.restEndpoint}/active`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<string[]> => {
-					const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(
-						(req.user as User).id,
-					);
-					return activeWorkflows.map((workflow) => workflow.id.toString());
-				},
-			),
+			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
+				const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(req.user);
+
+				return activeWorkflows.map(({ id }) => id.toString());
+			}),
 		);
 
 		// Returns if the workflow with the given id had any activation errors
