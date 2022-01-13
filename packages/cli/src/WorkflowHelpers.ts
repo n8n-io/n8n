@@ -535,15 +535,13 @@ export type NameRequest = Express.Request & {
 export function buildPermissionClause({
 	user,
 	entityType,
-	entityId,
+	entityId = '',
 }: {
-	entityId: string;
+	entityId?: string;
 	user: User;
 	entityType: 'workflow';
 }): WhereClause {
-	const where: WhereClause = {
-		[entityType]: { id: entityId },
-	};
+	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
 	if (user.globalRole.name !== 'owner') {
 		where.user = { id: user.id };

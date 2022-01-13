@@ -798,32 +798,47 @@ class App {
 		// Returns workflows
 		this.app.get(
 			`/${this.restEndpoint}/workflows`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response) => {
-				const queryBuilder = Db.collections.Workflow!.createQueryBuilder('w');
-				queryBuilder.select(['w.id', 'w.name', 'w.active', 'w.createdAt', 'w.updatedAt']);
-				queryBuilder.leftJoinAndSelect('w.tags', 't');
+			ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
+				let workflows: WorkflowEntity[] = [];
 
-				if (req.query.filter) {
-					const jsonFilters = JSON.parse(req.query.filter as string);
-					const keys = Object.keys(jsonFilters);
-					keys.forEach((key) => {
-						queryBuilder.andWhere(`w.${key} = :${key}`, { [key]: jsonFilters[key] });
+				if (req.user.globalRole.name === 'owner') {
+					workflows = await Db.collections.Workflow!.find({
+						select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
+						relations: ['tags'],
+						where: req.query,
+					});
+				} else {
+					const shared = await Db.collections.SharedWorkflow!.find({
+						relations: ['workflow', 'workflow.tags'],
+						where: buildPermissionClause({
+							user: req.user,
+							entityType: 'workflow',
+						}),
+					});
+
+					if (!shared.length) {
+						throw new ResponseHelper.ResponseError('No workflows found', undefined, 404);
+					}
+
+					workflows = await Db.collections.Workflow!.find({
+						relations: ['tags'],
+						select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
+						where: {
+							id: In(shared.map(({ workflow }) => workflow.id)),
+							...req.query,
+						},
 					});
 				}
-				// Simplified checks for now. Get only
-				// workflows I have access to.
-				queryBuilder.innerJoin('w.shared', 'shared');
-				queryBuilder.andWhere('shared.userId = :userId', { userId: (req.user as User).id });
 
-				const workflows = await queryBuilder.getMany();
+				return workflows.map((workflow) => {
+					const { id, tags, ...rest } = workflow;
 
-				workflows.forEach((workflow) => {
-					// @ts-ignore
-					workflow.id = workflow.id.toString();
-					// @ts-ignore
-					workflow.tags = workflow.tags.map(({ id, name }) => ({ id: id.toString(), name }));
+					return {
+						id: id.toString(),
+						...rest,
+						tags: tags?.map(({ id, ...rest }) => ({ id: id.toString(), ...rest })) ?? [],
+					};
 				});
-				return workflows;
 			}),
 		);
 
