@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
 import { IExecutionDeleteFilter } from '.';
+import { IConnections, INode, IWorkflowSettings } from '../../workflow/dist/src';
 import { User } from './databases/entities/User';
 
 export type AuthenticatedRequest<
@@ -34,21 +35,23 @@ export declare namespace ExecutionRequest {
 //      requests to /workflows
 // ----------------------------------
 
-type Node = {
-	parameters: object;
-	name: string;
-	type: string;
-	typeVersion: number;
-	position: [number, number];
-};
-
 type CreateWorkflowPayload = Partial<{
 	id: string; // delete if sent
 	name: string;
-	nodes: Node[];
+	nodes: INode[];
 	connections: object;
 	active: boolean;
 	settings: object;
+	tags: string[];
+}>;
+
+type UpdateWorkflowPayload = Partial<{
+	id: string;
+	name: string;
+	nodes: INode[];
+	connections: IConnections;
+	settings: IWorkflowSettings;
+	active: boolean;
 	tags: string[];
 }>;
 
@@ -56,4 +59,6 @@ export declare namespace WorkflowRequest {
 	type Create = express.Request<{}, {}, CreateWorkflowPayload> & { user: User };
 
 	type Get = express.Request<{ id: string }> & { user: User };
+
+	type Update = express.Request<{ id: string }, {}, UpdateWorkflowPayload> & { user: User };
 }
