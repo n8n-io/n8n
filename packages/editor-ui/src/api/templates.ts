@@ -14,15 +14,16 @@ export async function getTemplates(
 ): Promise<ISearchPayload> {
 	const queryCategory = category && category.length ? `${ '[' + category + ']'}` : null;
 	const query = `query {
-		categories(sort:"name") @include(if: ${allData}) @skip(if: ${searchQuery}){
+		categories: getTemplateCategories @include(if: ${allData}) @skip(if: ${searchQuery}){
 			id
 			name
 		}
-		collections: getFilteredCollection(
-			rows: ${limit},
+		collections: searchCollection(rows: ${limit},
 			skip: ${skip},
-			search: "${search}"
-			category: ${queryCategory}) @include(if: ${allData}){
+			# search parameter in string,default: null
+			search: "${search}",
+			# array of category id eg: [1,2] ,default: null
+			category: ${category}) @include(if: ${allData}){
 			id
 			name
 			nodes{
@@ -39,11 +40,12 @@ export async function getTemplates(
 			totalViews: views
 		}
 		totalworkflow: getWorkflowCount(search: "${search}", category: ${queryCategory})
-		workflows(
-			limit: ${limit},
-			start: ${skip},
-			where:{nodes:{name_contains:"${search}"},categories:{id: ${queryCategory ? queryCategory : undefined}}},
-			sort:"views:DESC,created_at:DESC"){
+		workflows: searchWorkflow(rows: ${limit},
+			skip: ${skip},
+			# search parameter in string,default: null
+			search: "${search}",
+			# array of category id eg: [1,2] ,default: null
+			category: ${category}){
 			id
 			name
 			description
