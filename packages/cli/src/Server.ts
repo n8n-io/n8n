@@ -899,13 +899,7 @@ class App {
 					}),
 				});
 
-				if (!shared) return {};
-
-				const { workflow } = shared;
-
-				if (workflow) {
-					isActive = workflow.active;
-				} else {
+				if (!shared) {
 					throw new ResponseHelper.ResponseError(
 						`Workflow with ID "${req.params.id}" could not be found to be updated.`,
 						undefined,
@@ -913,12 +907,14 @@ class App {
 					);
 				}
 
+				const { workflow } = shared;
+
 				// check credentials for old format
 				await WorkflowHelpers.replaceInvalidCredentials(updateData);
 
 				await this.externalHooks.run('workflow.update', [updateData]);
 
-				if (isActive) {
+				if (workflow.active) {
 					// When workflow gets saved always remove it as the triggers could have been
 					// changed and so the changes would not take effect
 					await this.activeWorkflowRunner.remove(req.params.id);
