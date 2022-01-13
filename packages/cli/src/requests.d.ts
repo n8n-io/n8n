@@ -65,4 +65,6 @@ export declare namespace WorkflowRequest {
 	type Update = express.Request<{ id: string }, {}, UpdateWorkflowPayload> & { user: User };
 
 	type NewName = express.Request<{}, {}, {}, { name?: string }>;
+
+	type GetAll = express.Request<{}, {}, {}, Record<string, string>> & { user: User };
 }
