@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -40,6 +41,8 @@ import {
 import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { WhereClause } from './requests';
+import { User } from './databases/entities/User';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -524,3 +527,27 @@ export type NameRequest = Express.Request & {
 		name?: string;
 	};
 };
+
+/**
+ * Build a `where` clause for a TypeORM entity search,
+ * checking for member access if the user is not an owner.
+ */
+export function buildPermissionClause({
+	user,
+	entityType,
+	entityId,
+}: {
+	entityId: string;
+	user: User;
+	entityType: 'workflow';
+}): WhereClause {
+	const where: WhereClause = {
+		[entityType]: { id: entityId },
+	};
+
+	if (user.globalRole.name !== 'owner') {
+		where.user = { id: user.id };
+	}
+
+	return where;
+}
