@@ -58,6 +58,8 @@ type UpdateWorkflowPayload = Partial<{
 export declare namespace WorkflowRequest {
 	type Create = express.Request<{}, {}, CreateWorkflowPayload> & { user: User };
 
+	type Delete = express.Request<{ id: string }> & { user: User };
+
 	type Get = express.Request<{ id: string }> & { user: User };
 
 	type Update = express.Request<{ id: string }, {}, UpdateWorkflowPayload> & { user: User };
