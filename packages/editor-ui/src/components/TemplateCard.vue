@@ -40,6 +40,8 @@ export default mixins(
 		bottom: 16px;
 		width: 100%;
 		display: flex;
+		justify-content: space-between;
+		right: 24px;
 	}
 }
 

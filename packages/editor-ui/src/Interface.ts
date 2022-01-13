@@ -783,10 +783,10 @@ export interface ITemplateNode {
 	defaults: {
 		color: string;
 	};
-	// iconData: {
-	// 	fileBuffer: string,
-	// 	type: string,
-	// }
+	iconData: {
+		fileBuffer: string,
+		type: string,
+	};
 
 }
 

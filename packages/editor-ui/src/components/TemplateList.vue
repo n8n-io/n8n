@@ -5,14 +5,18 @@
 			<div v-for="workflow in workflowsUI" :key="workflow.id">
 				<TemplateCard :title="workflow.name">
 					<template v-slot:footer>
-						<n8n-text size="small" color="text-light">
-							<font-awesome-icon icon="eye"></font-awesome-icon>
-							{{workflow.totalViews}}
-						</n8n-text>
-						<n8n-text size="small" color="text-light">|</n8n-text>
-						<n8n-text size="small" color="text-light">{{workflow.created_at}}</n8n-text>
-						<n8n-text size="small" color="text-light">|</n8n-text>
-						<n8n-text size="small" color="text-light">By {{workflow.user.username}}</n8n-text>
+						<div>
+							<n8n-text size="small" color="text-light">
+								<font-awesome-icon icon="eye"></font-awesome-icon>
+								{{workflow.totalViews}}
+							</n8n-text>
+							<n8n-text size="small" color="text-light">|</n8n-text>
+							<n8n-text size="small" color="text-light">{{workflow.created_at}}</n8n-text>
+							<n8n-text size="small" color="text-light">|</n8n-text>
+							<n8n-text size="small" color="text-light">By {{workflow.user.username}}</n8n-text>
+						</div>
+
+						<NodeList :nodes=workflow.nodes :showMore="true"/>
 					</template>
 				</TemplateCard>
 			</div>
@@ -27,6 +31,7 @@
 import mixins from 'vue-typed-mixins';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import TemplateCard from '@/components/TemplateCard.vue';
+import NodeList from '@/components/NodeList.vue';
 
 export default mixins(
 	genericHelpers,
@@ -34,6 +39,7 @@ export default mixins(
 	name: 'TemplateList',
 	components: {
 		TemplateCard,
+		NodeList,
 	},
 	data() {
 		return {
@@ -75,7 +81,6 @@ export default mixins(
 			margin-left: 5px;
 		}
 	}
-
 }
 
 

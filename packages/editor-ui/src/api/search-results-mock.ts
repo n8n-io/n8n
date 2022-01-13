@@ -470,6 +470,6 @@ const searchResults = {
 	],
 };
 
-export async function getSearchResults(): Promise<ISearchResults> {
-	return searchResults;
-}
+// export async function getSearchResults(): Promise<ISearchResults> {
+// 	return searchResults;
+// }

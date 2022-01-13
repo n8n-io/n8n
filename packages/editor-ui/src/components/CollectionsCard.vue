@@ -38,10 +38,11 @@ export default mixins(
 	padding: 16px;
 
 	.cardFooter {
+		width: 212px;
 		position: absolute;
 		bottom: 16px;
-		width: 100%;
 		display: flex;
+		justify-content: space-between;
 	}
 }
 

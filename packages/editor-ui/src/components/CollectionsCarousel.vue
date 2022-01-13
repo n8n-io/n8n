@@ -4,9 +4,10 @@
 
 		<agile :slidesToShow="3" :navButtons="true" :dots="false" :infinite="false">
 
-			<CollectionsCard v-for="collection in fakeCollections" :key="collection.id" :title="collection.name">
+			<CollectionsCard v-for="collection in collectionsUI" :key="collection.id" :title="collection.name">
 			  <template v-slot:footer>
 					<n8n-text size="small" color="text-light">{{collection.workflows.length}} Workflows</n8n-text>
+					<NodeList :nodes=collection.nodes :showMore="false"/>
 				</template>
 			</CollectionsCard>
 
@@ -35,6 +36,8 @@ import mixins from 'vue-typed-mixins';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import CollectionsCard from '@/components/CollectionsCard.vue';
 import VueAgile from 'vue-agile';
+import NodeList from '@/components/NodeList.vue';
+
 
 export default mixins(
 	genericHelpers,
@@ -43,6 +46,7 @@ export default mixins(
 	components: {
 		CollectionsCard,
 		VueAgile,
+		NodeList,
 	},
 	data() {
 		return {
@@ -266,7 +270,7 @@ export default mixins(
 	},
 	watch: {
 		collections(newCollections) {
-			// this.collectionsUI = newCollections;
+			this.collectionsUI = newCollections;
 			// console.log(this.collectionsUI);
 		},
 	},
