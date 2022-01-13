@@ -20,7 +20,8 @@
   },
   "scripts": {
     "dev": "npm run watch",
-    "build": "tsc",
+    "build": "",
+    "build-node-dev": "tsc",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/node-dev/**/**.ts --write",
     "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/node-dev",
     "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/node-dev --fix",
