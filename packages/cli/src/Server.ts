@@ -829,14 +829,12 @@ class App {
 
 		this.app.get(
 			`/${this.restEndpoint}/workflows/new`,
-			ResponseHelper.send(
-				async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
-					const requestedName =
-						req.query.name && req.query.name !== '' ? req.query.name : this.defaultWorkflowName;
+			ResponseHelper.send(async (req: WorkflowRequest.NewName) => {
+				const requestedName =
+					req.query.name && req.query.name !== '' ? req.query.name : this.defaultWorkflowName;
 
-					return await GenericHelpers.generateUniqueName(requestedName, 'workflow');
-				},
-			),
+				return await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+			}),
 		);
 
 		// Returns a specific workflow
