@@ -1007,36 +1007,39 @@ class App {
 		// Deletes a specific workflow
 		this.app.delete(
 			`/${this.restEndpoint}/workflows/:id`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-				const { id } = req.params;
+			ResponseHelper.send(async (req: WorkflowRequest.Delete) => {
+				const { id: workflowId } = req.params;
 
-				await this.externalHooks.run('workflow.delete', [id]);
+				await this.externalHooks.run('workflow.delete', [workflowId]);
 
-				let isActive = false;
-				const qb = Db.collections.Workflow!.createQueryBuilder('w');
-				qb.andWhere('w.id = :workflowId', { workflowId: req.params.id });
-				qb.innerJoin('w.shared', 'shared');
-				// @ts-ignore
-				qb.andWhere('shared.userId', { userId: req.user.id });
-				const workflow = await qb.getOne();
-				if (workflow) {
-					isActive = workflow.active;
-				} else {
+				const shared = await Db.collections.SharedWorkflow!.findOne({
+					relations: ['workflow'],
+					where: buildPermissionClause({
+						user: req.user,
+						entityType: 'workflow',
+						entityId: workflowId,
+					}),
+				});
+
+				if (!shared) {
 					throw new ResponseHelper.ResponseError(
-						`Workflow with id "${id}" could not be found to be deleted.`,
+						`Workflow with ID "${workflowId}" could not be found to be deleted.`,
 						undefined,
 						400,
 					);
 				}
 
-				if (isActive) {
-					// Before deleting a workflow deactivate it
-					await this.activeWorkflowRunner.remove(id);
+				const { workflow } = shared;
+
+				if (workflow.active) {
+					// deactivate before deleting
+					await this.activeWorkflowRunner.remove(workflowId);
 				}
 
-				await Db.collections.Workflow!.delete(id);
-				void InternalHooksManager.getInstance().onWorkflowDeleted(id);
-				await this.externalHooks.run('workflow.afterDelete', [id]);
+				await Db.collections.Workflow!.delete(workflowId);
+
+				void InternalHooksManager.getInstance().onWorkflowDeleted(workflowId);
+				await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 				return true;
 			}),
