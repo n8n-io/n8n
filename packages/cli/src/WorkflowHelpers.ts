@@ -496,7 +496,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 	return workflow;
 }
 
-// TODO: Deduplicate `validateWorkflow` and `throwDuplicateEntryError` with TagHelpers?
+// TODO: Deduplicate `validateWorkflow` with TagHelpers?
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function validateWorkflow(newWorkflow: WorkflowEntity) {
@@ -506,20 +506,6 @@ export async function validateWorkflow(newWorkflow: WorkflowEntity) {
 		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
 		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
 	}
-}
-
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export function throwDuplicateEntryError(error: Error) {
-	const errorMessage = error.message.toLowerCase();
-	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError(
-			'There is already a workflow with this name',
-			undefined,
-			400,
-		);
-	}
-
-	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
 }
 
 export type NameRequest = Express.Request & {

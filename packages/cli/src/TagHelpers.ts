@@ -48,15 +48,6 @@ export async function validateTag(newTag: TagEntity) {
 	}
 }
 
-export function throwDuplicateEntryError(error: Error) {
-	const errorMessage = error.message.toLowerCase();
-	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
-	}
-
-	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
-}
-
 // ----------------------------------
 //             queries
 // ----------------------------------
