@@ -554,7 +554,7 @@ export function whereClause({
  * Build a `where` clause for a TypeORM entity search,
  * checking for member access if the user is not an owner.
  */
-export function buildPermissionClause({
+export function buildWhereClause({
 	user,
 	entityType,
 	entityId = '',

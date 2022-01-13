@@ -163,7 +163,7 @@ import * as UserManagementHelpers from './UserManagement/UserManagementHelper';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { buildPermissionClause, getSharedWorkflowIds, NameRequest } from './WorkflowHelpers';
+import { buildWhereClause, getSharedWorkflowIds, NameRequest } from './WorkflowHelpers';
 import { getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
@@ -824,7 +824,7 @@ class App {
 				} else {
 					const shared = await Db.collections.SharedWorkflow!.find({
 						relations: ['workflow', 'workflow.tags'],
-						where: buildPermissionClause({
+						where: buildWhereClause({
 							user: req.user,
 							entityType: 'workflow',
 						}),
@@ -873,7 +873,7 @@ class App {
 				const shared = await Db.collections
 					.SharedWorkflow!.findOne({
 						relations: ['workflow', 'workflow.tags'],
-						where: buildPermissionClause({
+						where: buildWhereClause({
 							user: req.user,
 							entityType: 'workflow',
 							entityId: req.params.id,
@@ -907,7 +907,7 @@ class App {
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow'],
-					where: buildPermissionClause({
+					where: buildWhereClause({
 						user: req.user,
 						entityType: 'workflow',
 						entityId: req.params.id,
@@ -1039,7 +1039,7 @@ class App {
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow'],
-					where: buildPermissionClause({
+					where: buildWhereClause({
 						user: req.user,
 						entityType: 'workflow',
 						entityId: workflowId,
@@ -1459,28 +1459,28 @@ class App {
 		// Returns if the workflow with the given id had any activation errors
 		this.app.get(
 			`/${this.restEndpoint}/active/error/:id`,
-			ResponseHelper.send(
-				async (
-					req: express.Request,
-					res: express.Response,
-				): Promise<IActivationError | undefined> => {
-					const { id } = req.params;
+			ResponseHelper.send(async (req: WorkflowRequest.GetAllActivationErrors) => {
+				const { id: workflowId } = req.params;
 
-					const qb = Db.collections.Workflow!.createQueryBuilder('w');
-					qb.andWhere('w.id = :id', { id });
+				const shared = await Db.collections.SharedWorkflow!.findOne({
+					relations: ['workflow'],
+					where: buildWhereClause({
+						user: req.user,
+						entityType: 'workflow',
+						entityId: workflowId,
+					}),
+				});
 
-					qb.innerJoin('w.shared', 'shared');
-					qb.andWhere('shared.userId = :userId', { userId: (req.user as User).id });
+				if (!shared) {
+					throw new ResponseHelper.ResponseError(
+						`Workflow with ID "${workflowId}" could not be found.`,
+						undefined,
+						400,
+					);
+				}
 
-					const workflow = await qb.getOne();
-
-					if (workflow === undefined) {
-						return undefined;
-					}
-
-					return this.activeWorkflowRunner.getActivationError(id);
-				},
-			),
+				return this.activeWorkflowRunner.getActivationError(workflowId);
+			}),
 		);
 
 		// ----------------------------------------
