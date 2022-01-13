@@ -1,9 +1,15 @@
 <template>
-		<div :class="$style.templateCard">
-			<n8n-heading :bold="true" size="medium">{{shortTitle}}</n8n-heading>
-			<footer :class="$style.cardFooter">
-				<slot name="footer"></slot>
-			</footer>
+		<div :class="$style.templateCard" @mouseover="hover = true" @mouseleave="hover = false">
+			<div :class="$style.cardBody">
+				<n8n-heading :bold="true" size="medium">{{shortTitle}}</n8n-heading>
+				<footer :class="$style.cardFooter">
+					<slot name="footer"></slot>
+				</footer>
+			</div>
+			<aside :class="$style.rightSlot">
+				<slot v-if="!hover" name="right"></slot>
+				<slot v-if="hover" name="rightHover"></slot>
+			</aside>
 		</div>
 </template>
 
@@ -19,7 +25,10 @@ export default mixins(
 	props: {
 		title: String,
 	},
-	components: {
+	data() {
+		return {
+			hover: false,
+		};
 	},
 	computed: {
 		shortTitle() {
@@ -37,17 +46,27 @@ export default mixins(
 
 .templateCard {
 	width: 100%;
-	min-height: 60px;
+	height: 68px;
 	height: auto;
 	border-bottom: 1px solid #DBDFE7;
 	margin-right: 8px;
 	padding: 16px;
+	display: flex;
+	justify-content: space-between;
 
+
+	.cardBody {
+		display: flex;
+		flex-direction: column;
+		justify-content: space-around;
+
+		.rightSlot {
+			top: 10px;
+		}
+	}
 	.cardFooter {
 		bottom: 16px;
 		width: 100%;
-		display: flex;
-		justify-content: space-between;
 		right: 24px;
 	}
 }

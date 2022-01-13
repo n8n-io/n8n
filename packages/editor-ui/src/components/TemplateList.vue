@@ -1,32 +1,44 @@
 <template>
-	<div id="infiniteList"  :class="$style.listContainer">
+	<div :class="$style.listWrapper">
 		<n8n-heading size="large">Workflows</n8n-heading>
-		<div :class="$style.templateList">
-			<div v-for="workflow in workflowsUI" :key="workflow.id">
-				<TemplateCard :title="workflow.name">
+			<div id="infiniteList" :class="$style.listContainer">
+			<div :class="$style.templateList">
+				<div v-for="workflow in workflowsUI" :key="workflow.id">
+					<TemplateCard :title="workflow.name">
+
+					<template v-slot:right>
+						<div :class="$style.nodesContainer">
+							<NodeList :nodes=workflow.nodes :showMore="true"/>
+						</div>
+					</template>
+
+					<template v-slot:rightHover>
+						<n8n-button type="outline" label="Use workflow"></n8n-button>
+					</template>
+
 					<template v-slot:footer>
 						<div>
 							<span v-if="workflow.totalViews">
-									<n8n-text size="small" color="text-light">
-										<font-awesome-icon icon="eye"></font-awesome-icon>
-										{{truncate(workflow.totalViews)}}
-									</n8n-text>
-									<n8n-text size="small" color="text-light">|</n8n-text>
+								<n8n-text size="small" color="text-light">
+									<font-awesome-icon icon="eye"></font-awesome-icon>
+									{{truncate(workflow.totalViews)}}
+								</n8n-text>
+								<n8n-text size="small" color="text-light">|</n8n-text>
 							</span>
 							<n8n-text size="small" color="text-light">
 								<TimeAgo :date="workflow.created_at" />
-								</n8n-text>
+							</n8n-text>
 							<n8n-text size="small" color="text-light">|</n8n-text>
 							<n8n-text size="small" color="text-light">By {{workflow.user.username}}</n8n-text>
 						</div>
-
-						<NodeList :nodes=workflow.nodes :showMore="true"/>
 					</template>
 				</TemplateCard>
+
+				</div>
+
 			</div>
 
 		</div>
-
 	</div>
 </template>
 
@@ -48,6 +60,7 @@ export default mixins(
 	data() {
 		return {
 			workflowsUI: [],
+			hover: false,
 		};
 	},
 	computed: {
@@ -73,23 +86,36 @@ export default mixins(
 
 <style lang="scss" module>
 
-.listContainer {
+.listWrapper {
+	// recalc with vars
+	height: 450px;
+	padding-top: 20px;
+
+	.listContainer {
 	// recalc with vars
 	height: 450px;
 	padding-top: 20px;
 	overflow-y: scroll;
 
-	.templateList {
-		border-radius: var(--border-radius-large);
-		border: 1px solid #DBDFE7;
-		background-color: #FFFFFF;
-		overflow: auto;
-		height: auto;
+		.templateList {
+			border-radius: var(--border-radius-large);
+			border: 1px solid #DBDFE7;
+			background-color: #FFFFFF;
+			overflow: auto;
+			height: auto;
 
-		span {
-			margin-left: 5px;
+			.nodesContainer {
+				padding-top: 10px;
+			}
+
+			footer {
+				>span {
+					margin-right: 5px;
+				}
+			}
 		}
 	}
+
 }
 
 
