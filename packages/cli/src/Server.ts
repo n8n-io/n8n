@@ -856,16 +856,14 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/workflows/:id`,
 			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
-				const shared = await Db.collections
-					.SharedWorkflow!.findOne({
-						relations: ['workflow', 'workflow.tags'],
-						where: buildWhereClause({
-							user: req.user,
-							entityType: 'workflow',
-							entityId: req.params.id,
-						}),
-					})
-					.catch(WorkflowHelpers.throwDuplicateEntryError);
+				const shared = await Db.collections.SharedWorkflow!.findOne({
+					relations: ['workflow', 'workflow.tags'],
+					where: buildWhereClause({
+						user: req.user,
+						entityType: 'workflow',
+						entityId: req.params.id,
+					}),
+				});
 
 				if (!shared) return {};
 
@@ -951,9 +949,7 @@ class App {
 
 				await WorkflowHelpers.validateWorkflow(updateData);
 
-				await Db.collections
-					.Workflow!.update(req.params.id, updateData)
-					.catch(WorkflowHelpers.throwDuplicateEntryError);
+				await Db.collections.Workflow!.update(req.params.id, updateData);
 
 				if (tags) {
 					const tablePrefix = config.get('database.tablePrefix');
@@ -1168,9 +1164,7 @@ class App {
 					await this.externalHooks.run('tag.beforeCreate', [newTag]);
 
 					await TagHelpers.validateTag(newTag);
-					const tag = await Db.collections
-						.Tag!.save(newTag)
-						.catch(TagHelpers.throwDuplicateEntryError);
+					const tag = await Db.collections.Tag!.save(newTag);
 
 					await this.externalHooks.run('tag.afterCreate', [tag]);
 
@@ -1196,9 +1190,7 @@ class App {
 					await this.externalHooks.run('tag.beforeUpdate', [newTag]);
 
 					await TagHelpers.validateTag(newTag);
-					const tag = await Db.collections
-						.Tag!.save(newTag)
-						.catch(TagHelpers.throwDuplicateEntryError);
+					const tag = await Db.collections.Tag!.save(newTag);
 
 					await this.externalHooks.run('tag.afterUpdate', [tag]);
 
