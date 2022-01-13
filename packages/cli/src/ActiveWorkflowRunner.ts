@@ -49,7 +49,7 @@ import {
 } from '.';
 import config = require('../config');
 import { User } from './databases/entities/User';
-import { buildPermissionClause } from './WorkflowHelpers';
+import { buildWhereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT = `The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)`;
@@ -348,7 +348,7 @@ export class ActiveWorkflowRunner {
 		} else {
 			const shared = await Db.collections.SharedWorkflow!.find({
 				relations: ['workflow'],
-				where: buildPermissionClause({
+				where: buildWhereClause({
 					user,
 					entityType: 'workflow',
 				}),

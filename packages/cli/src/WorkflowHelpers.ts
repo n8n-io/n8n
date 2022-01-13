@@ -529,10 +529,10 @@ export type NameRequest = Express.Request & {
 };
 
 /**
- * Build a `where` clause for a TypeORM entity search,
- * checking for member access if the user is not an owner.
+ * Build a `where` clause for a search for one or many entities,
+ * restricted by `member` access if the user is not an `owner`.
  */
-export function buildPermissionClause({
+export function buildWhereClause({
 	user,
 	entityType,
 	entityId = '',
