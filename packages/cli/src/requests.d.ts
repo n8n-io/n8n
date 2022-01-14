@@ -56,9 +56,11 @@ export declare namespace CredentialRequest {
 
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
+	type Delete = Get;
+
 	type GetAll = WorkflowRequest.GetAll;
 
-	type Update = WorkflowRequest.Update;
+	type Update = AuthenticatedRequest<{ id: string }, {}, Payload>;
 
 	type NewName = WorkflowRequest.NewName;
 }

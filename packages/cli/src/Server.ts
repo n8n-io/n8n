@@ -855,12 +855,14 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/workflows/:id`,
 			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
+				const { id: workflowId } = req.params;
+
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow', 'workflow.tags'],
 					where: whereClause({
 						user: req.user,
 						entityType: 'workflow',
-						entityId: req.params.id,
+						entityId: workflowId,
 					}),
 				});
 
@@ -1477,22 +1479,29 @@ class App {
 		// Deletes a specific credential
 		this.app.delete(
 			`/${this.restEndpoint}/credentials/:id`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-				const { id } = req.params;
+			ResponseHelper.send(async (req: CredentialRequest.Delete) => {
+				const { id: credentialId } = req.params;
 
-				const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-				queryBuilder.andWhere('c.id = :id', { id });
-				queryBuilder.innerJoin('c.shared', 'shared', 'shared.userId = :userId', {
-					userId: (req.user as User).id,
+				const shared = await Db.collections.SharedCredentials!.findOne({
+					relations: ['credentials'],
+					where: whereClause({
+						user: req.user,
+						entityType: 'credentials',
+						entityId: credentialId,
+					}),
 				});
-				const credential = await queryBuilder.getOne();
-				if (!credential) {
-					return false;
+
+				if (!shared) {
+					throw new ResponseHelper.ResponseError(
+						`Credential with ID "${credentialId}" could not be found to be deleted.`,
+						undefined,
+						404,
+					);
 				}
 
-				await this.externalHooks.run('credentials.delete', [id]);
+				await this.externalHooks.run('credentials.delete', [credentialId]);
 
-				await Db.collections.Credentials!.delete({ id });
+				await Db.collections.Credentials!.delete(credentialId);
 
 				return true;
 			}),
@@ -1677,7 +1686,7 @@ class App {
 					where: whereClause({
 						user: req.user,
 						entityType: 'credentials',
-						entityId: req.params.id,
+						entityId: credentialId,
 					}),
 				});
 
@@ -1722,7 +1731,7 @@ class App {
 
 				// Encrypt the data
 				const credentials = new Credentials(
-					{ id: req.params.id, name: updateData.name },
+					{ id: credentialId, name: updateData.name },
 					updateData.type,
 					updateData.nodesAccess,
 				);
@@ -1766,12 +1775,14 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/credentials/:id`,
 			ResponseHelper.send(async (req: CredentialRequest.Get) => {
+				const { id: credentialId } = req.params;
+
 				const shared = await Db.collections.SharedCredentials!.findOne({
 					relations: ['credentials'],
 					where: whereClause({
 						user: req.user,
 						entityType: 'credentials',
-						entityId: req.params.id,
+						entityId: credentialId,
 					}),
 				});
 
