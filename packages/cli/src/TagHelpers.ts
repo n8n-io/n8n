@@ -15,20 +15,18 @@ import { ITagWithCountDb } from './Interfaces';
 // ----------------------------------
 
 /**
- * Sort a `TagEntity[]` by the order of the tag IDs in the incoming request.
+ * Sort tags based on the order of the tag IDs in the request.
  */
 export function sortByRequestOrder(
-	tagsDb: TagEntity[],
-	{ incomingTagOrder }: { incomingTagOrder: string[] },
+	tags: TagEntity[],
+	{ requestOrder }: { requestOrder: string[] },
 ) {
-	const tagMap = tagsDb.reduce((acc, tag) => {
-		// @ts-ignore
-		tag.id = tag.id.toString();
-		acc[tag.id] = tag;
+	const tagMap = tags.reduce<Record<string, TagEntity>>((acc, tag) => {
+		acc[tag.id.toString()] = tag;
 		return acc;
-	}, {} as { [key: string]: TagEntity });
+	}, {});
 
-	return incomingTagOrder.map((tagId) => tagMap[tagId]);
+	return requestOrder.map((tagId) => tagMap[tagId]);
 }
 
 // ----------------------------------
