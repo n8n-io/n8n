@@ -152,7 +152,7 @@ import * as UserManagementHelpers from './UserManagement/UserManagementHelper';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { buildWhereClause } from './WorkflowHelpers';
+import { whereClause } from './WorkflowHelpers';
 import { getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
@@ -811,7 +811,7 @@ class App {
 				} else {
 					const shared = await Db.collections.SharedWorkflow!.find({
 						relations: ['workflow', 'workflow.tags'],
-						where: buildWhereClause({
+						where: whereClause({
 							user: req.user,
 							entityType: 'workflow',
 						}),
@@ -857,7 +857,7 @@ class App {
 			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow', 'workflow.tags'],
-					where: buildWhereClause({
+					where: whereClause({
 						user: req.user,
 						entityType: 'workflow',
 						entityId: req.params.id,
@@ -891,7 +891,7 @@ class App {
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow'],
-					where: buildWhereClause({
+					where: whereClause({
 						user: req.user,
 						entityType: 'workflow',
 						entityId: workflowId,
@@ -1021,7 +1021,7 @@ class App {
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow'],
-					where: buildWhereClause({
+					where: whereClause({
 						user: req.user,
 						entityType: 'workflow',
 						entityId: workflowId,
@@ -1442,7 +1442,7 @@ class App {
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow'],
-					where: buildWhereClause({
+					where: whereClause({
 						user: req.user,
 						entityType: 'workflow',
 						entityId: workflowId,
@@ -1760,60 +1760,52 @@ class App {
 		// Returns specific credentials
 		this.app.get(
 			`/${this.restEndpoint}/credentials/:id`,
-			ResponseHelper.send(
-				async (
-					req: express.Request,
-					res: express.Response,
-				): Promise<ICredentialsDecryptedResponse | ICredentialsResponse | undefined> => {
-					const { id } = req.params;
-					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-					queryBuilder.andWhere('c.id = :id', { id });
-					queryBuilder.innerJoin('c.shared', 'shared');
-					queryBuilder.andWhere('shared.userId = :userId', {
-						userId: (req.user as User).id,
-					});
+			ResponseHelper.send(async (req: CredentialRequest.Get) => {
+				const shared = await Db.collections.SharedCredentials!.findOne({
+					relations: ['credentials'],
+					where: whereClause({
+						user: req.user,
+						entityType: 'credentials',
+						entityId: req.params.id,
+					}),
+				});
 
-					// Make sure the variable has an expected value
-					const includeData = ['true', true].includes(req.query.includeData as string);
+				if (!shared) return {};
 
-					if (!includeData) {
-						queryBuilder.select([
-							'c.id',
-							'c.name',
-							'c.type',
-							'c.nodesAccess',
-							'c.createdAt',
-							'c.updatedAt',
-						]);
-					}
+				const { credentials: credential } = shared;
 
-					const result = (await queryBuilder.getOne()) as ICredentialsDb;
+				const includeData = ['true', true].includes(req.query.includeData);
 
-					if (result === undefined) {
-						return result;
-					}
+				if (!includeData) {
+					const { data, id, ...rest } = credential;
 
-					let encryptionKey;
-					if (includeData) {
-						encryptionKey = await UserSettings.getEncryptionKey();
-						if (encryptionKey === undefined) {
-							throw new Error('No encryption key got found to decrypt the credentials!');
-						}
+					return {
+						id: id.toString(),
+						...rest,
+					};
+				}
 
-						const credentials = new Credentials(
-							result as INodeCredentialsDetails,
-							result.type,
-							result.nodesAccess,
-							result.data,
-						);
-						(result as ICredentialsDecryptedDb).data = credentials.getData(encryptionKey);
-					}
+				const { data, id, ...rest } = credential;
 
-					(result as ICredentialsDecryptedResponse).id = result.id.toString();
+				const encryptionKey = await UserSettings.getEncryptionKey();
 
-					return result as ICredentialsDecryptedResponse;
-				},
-			),
+				if (!encryptionKey) {
+					throw new Error('No encryption key was found to decrypt the credentials!');
+				}
+
+				const coreCredential = new Credentials(
+					{ id: credential.id.toString(), name: credential.name },
+					credential.type,
+					credential.nodesAccess,
+					credential.data,
+				);
+
+				return {
+					id: id.toString(),
+					data: coreCredential.getData(encryptionKey),
+					...rest,
+				};
+			}),
 		);
 
 		// Returns all the saved credentials
@@ -1831,9 +1823,9 @@ class App {
 					} else {
 						const shared = await Db.collections.SharedCredentials!.find({
 							relations: ['credentials'],
-							where: buildWhereClause({
+							where: whereClause({
 								user: req.user,
-								entityType: 'credential',
+								entityType: 'credentials',
 							}),
 						});
 

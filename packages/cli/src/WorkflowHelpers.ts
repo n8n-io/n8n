@@ -509,20 +509,21 @@ export async function validateWorkflow(newWorkflow: WorkflowEntity) {
 }
 
 /**
- * Build a `where` clause for a search for one or many entities,
- * restricted by `member` access if the user is not an `owner`.
+ * Build a `where` clause for a `find()` or `findOne()` operation
+ * in the `shared_workflow` or `shared_credentials` tables.
  */
-export function buildWhereClause({
+export function whereClause({
 	user,
 	entityType,
 	entityId = '',
 }: {
-	entityId?: string;
 	user: User;
-	entityType: 'workflow' | 'credential';
+	entityType: 'workflow' | 'credentials';
+	entityId?: string;
 }): WhereClause {
 	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
+	// TODO: Decide if owner access should be restricted
 	if (user.globalRole.name !== 'owner') {
 		where.user = { id: user.id };
 	}
