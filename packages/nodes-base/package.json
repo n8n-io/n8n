@@ -563,6 +563,7 @@
       "dist/nodes/RabbitMQ/RabbitMQ.node.js",
       "dist/nodes/RabbitMQ/RabbitMQTrigger.node.js",
       "dist/nodes/Raindrop/Raindrop.node.js",
+      "dist/nodes/Raindrop/RaindropTrigger.node.js",
       "dist/nodes/ReadBinaryFile/ReadBinaryFile.node.js",
       "dist/nodes/ReadBinaryFiles/ReadBinaryFiles.node.js",
       "dist/nodes/ReadPdf/ReadPdf.node.js",

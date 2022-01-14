@@ -6,6 +6,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -17,7 +18,7 @@ import {
  * Make an authenticated API request to Raindrop.
  */
 export async function raindropApiRequest(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
