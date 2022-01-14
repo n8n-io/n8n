@@ -20,7 +20,7 @@ export default mixins(
 		title: String,
 	},
 	computed: {
-		shortTitle() {
+		shortTitle(): string {
 			// todo decide the length
 			if (this.title.length > 90) {
 				return this.title.slice(0, 87) + '...';

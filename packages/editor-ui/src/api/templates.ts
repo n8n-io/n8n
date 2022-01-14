@@ -8,7 +8,7 @@ export async function getTemplates(
 	limit: number,
 	skip: number,
 	category: number[] | null,
-	search: string | null,
+	search: string,
 	allData = true,
 	searchQuery = false,
 ): Promise<ISearchPayload> {
@@ -23,7 +23,7 @@ export async function getTemplates(
 			# search parameter in string,default: null
 			search: "${search}",
 			# array of category id eg: [1,2] ,default: null
-			category: ${category}) @include(if: ${allData}){
+			category: ${queryCategory}) @include(if: ${allData}){
 			id
 			name
 			nodes{
@@ -34,9 +34,7 @@ export async function getTemplates(
 				iconData
 				typeVersion: version
 			}
-			workflows{
-				id
-			}
+			workflows
 			totalViews: views
 		}
 		totalworkflow: getWorkflowCount(search: "${search}", category: ${queryCategory})
@@ -45,7 +43,7 @@ export async function getTemplates(
 			# search parameter in string,default: null
 			search: "${search}",
 			# array of category id eg: [1,2] ,default: null
-			category: ${category}){
+			category: ${queryCategory}){
 			id
 			name
 			description
@@ -64,5 +62,6 @@ export async function getTemplates(
 			created_at
 		}
 	}`;
+	console.log(query);
 	return await post(stagingHost, `/graphql`, { query });
 }

@@ -1,8 +1,8 @@
 <template>
 	<div>
-		<n8n-heading size="large">Collections</n8n-heading>
+		<n8n-heading size="large">Collections ({{collectionsUI.length}})</n8n-heading>
 
-		<agile :slidesToShow="3" :navButtons="true" :dots="false" :infinite="false">
+		<agile v-if="collectionsUI.length" :slidesToShow="3" :navButtons="true" :dots="false" :infinite="false">
 
 			<CollectionsCard v-for="collection in collectionsUI" :key="collection.id" :title="collection.name">
 			  <template v-slot:footer>
@@ -26,6 +26,10 @@
 				</div>
 			</template>
 		</agile>
+
+		<div v-else class="emptyText">
+			<n8n-text>No collections found. Try adjusting your search to see more.</n8n-text>
+		</div>
 
 	</div>
 </template>
@@ -269,9 +273,13 @@ export default mixins(
 		},
 	},
 	watch: {
-		collections(newCollections) {
-			this.collectionsUI = newCollections;
-			// console.log(this.collectionsUI);
+		collections(newCollections): void {
+			if (newCollections) {
+				this.$data.collectionsUI = newCollections;
+			} else {
+				this.$data.collectionsUI = [];
+
+			}
 		},
 	},
 	methods: {
@@ -284,10 +292,10 @@ export default mixins(
 .agile {
 	padding-top: 8px;
 
-	// .agile__slides {
-	// 	width: 260px;
+	.agile__slide {
+		width: 260px;
 	// 	height: 140px;
-	// }
+	}
 
 		&__nav-button {
 			background: transparent;
@@ -318,6 +326,10 @@ export default mixins(
 			}
 		}
 
+}
+
+.emptyText {
+	padding-top: 12px;
 }
 
 </style>

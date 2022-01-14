@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.listWrapper">
-		<n8n-heading size="large">Workflows</n8n-heading>
-			<div id="infiniteList" :class="$style.listContainer">
+		<n8n-heading size="large">Workflows ({{workflowsUI.length}})</n8n-heading>
+		<div v-if="workflowsUI.length" id="infiniteList" :class="$style.listContainer">
 			<div :class="$style.templateList">
 				<div v-for="workflow in workflowsUI" :key="workflow.id">
 					<TemplateCard :title="workflow.name">
@@ -39,6 +39,11 @@
 			</div>
 
 		</div>
+
+		<div v-else class="emptyText">
+			<n8n-text>No workflows found. Try adjusting your search to see more.</n8n-text>
+		</div>
+
 	</div>
 </template>
 
@@ -74,7 +79,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		truncate(views: number) {
+		truncate(views: number): string {
 			return new Intl.NumberFormat('en-GB', {
 				notation: "compact",
 				compactDisplay: "short",

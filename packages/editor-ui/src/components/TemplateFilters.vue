@@ -18,7 +18,7 @@
 			</li>
 		</ul>
 
-		<div v-if="sortedCategories.length > 4 && collapsed">
+		<div :class="$style.expandButton" v-if="sortedCategories.length > 4 && collapsed">
 			<n8n-button icon="plus" type="text" float="left" :label="`${sortedCategories.length - 4} more`" @click="collapseAction"></n8n-button>
 		</div>
 
@@ -124,11 +124,11 @@ export default mixins(
 	li {
 		margin-top: 8px;
 	}
-
-	button {
-		padding-left: 0px;
-	}
 }
 
+.expandButton {
+	margin-left: -12px;
+	height: auto;
+}
 
 </style>
