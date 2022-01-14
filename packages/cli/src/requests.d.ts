@@ -65,4 +65,6 @@ type CreateCredentialPayload = Partial<{
 
 export declare namespace CredentialRequest {
 	type Create = express.Request<{}, {}, CreateCredentialPayload> & { user: User };
+
+	type GetAll = express.Request<{}, {}, {}, Record<string, string>> & { user: User };
 }

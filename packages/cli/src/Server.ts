@@ -1822,44 +1822,47 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/credentials`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse[]> => {
-					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-					queryBuilder.innerJoin('c.shared', 'shared');
-					queryBuilder.andWhere('shared.userId = :userId', {
-						userId: (req.user as User).id,
-					});
+				async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
+					let credentials: ICredentialsDb[] = [];
 
-					if (req.query.filter) {
-						queryBuilder.andWhere(JSON.parse(req.query.filter as string));
+					if (req.user.globalRole.name === 'owner') {
+						credentials = await Db.collections.Credentials!.find({
+							select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
+							where: req.query,
+						});
+					} else {
+						const shared = await Db.collections.SharedCredentials!.find({
+							relations: ['credentials'],
+							where: buildWhereClause({
+								user: req.user,
+								entityType: 'credential',
+							}),
+						});
+
+						if (!shared.length) return [];
+
+						credentials = await Db.collections.Credentials!.find({
+							select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
+							where: {
+								id: In(shared.map(({ credentials }) => credentials.id)),
+								...req.query,
+							},
+						});
 					}
-
-					queryBuilder.select([
-						'c.id',
-						'c.name',
-						'c.type',
-						'c.nodesAccess',
-						'c.createdAt',
-						'c.updatedAt',
-					]);
-
-					const results = (await queryBuilder.getMany()) as unknown as ICredentialsResponse[];
 
 					let encryptionKey;
 
-					const includeData = ['true', true].includes(req.query.includeData as string);
+					const includeData = ['true', true].includes(req.query.includeData);
+
 					if (includeData) {
 						encryptionKey = await UserSettings.getEncryptionKey();
+
 						if (encryptionKey === undefined) {
-							throw new Error('No encryption key got found to decrypt the credentials!');
+							throw new Error('No encryption key was found to decrypt the credentials!');
 						}
 					}
 
-					let result;
-					for (result of results) {
-						(result as ICredentialsDecryptedResponse).id = result.id.toString();
-					}
-
-					return results;
+					return credentials.map(({ id, ...rest }) => ({ id: id.toString(), ...rest }));
 				},
 			),
 		);

@@ -525,7 +525,7 @@ export function buildWhereClause({
 }: {
 	entityId?: string;
 	user: User;
-	entityType: 'workflow';
+	entityType: 'workflow' | 'credential';
 }): WhereClause {
 	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
