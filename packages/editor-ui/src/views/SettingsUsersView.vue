@@ -123,7 +123,7 @@ export default mixins(showMessage).extend({
 .buttonContainer {
 	display: flex;
 	justify-content: right;
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing-l);
 }
 
 .setupInfoContainer {
