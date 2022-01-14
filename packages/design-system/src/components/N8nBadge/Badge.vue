@@ -2,7 +2,7 @@
 	<span
 		:class="$style[props.theme]"
 	>
-		<component :is="$options.components.N8nText" :size="props.size" :bold="props.bold">
+		<component :is="$options.components.N8nText" :size="props.size" :bold="props.bold" :compact="true">
 			<slot></slot>
 		</component>
 	</span>
