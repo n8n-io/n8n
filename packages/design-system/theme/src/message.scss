@@ -55,6 +55,10 @@
 		.el-message__content {
 			color: var.$message-warning-font-color;
 		}
+
+		@include mixins.e(closeBtn) {
+			color: var(--color-warning);
+		}
 	}
 
 	@include mixins.m(error) {
