@@ -16,35 +16,23 @@ export type AuthenticatedRequest<
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & { user: User };
 
 export declare namespace WorkflowRequest {
-	namespace Payload {
-		type Create = Partial<{
-			id: string; // delete if sent
-			name: string;
-			nodes: INode[];
-			connections: object;
-			active: boolean;
-			settings: object;
-			tags: string[];
-		}>;
+	type Payload = Partial<{
+		id: string; // delete if sent in body
+		name: string;
+		nodes: INode[];
+		connections: IConnections;
+		settings: IWorkflowSettings;
+		active: boolean;
+		tags: string[];
+	}>;
 
-		type Update = Partial<{
-			id: string;
-			name: string;
-			nodes: INode[];
-			connections: IConnections;
-			settings: IWorkflowSettings;
-			active: boolean;
-			tags: string[];
-		}>;
-	}
-
-	type Create = AuthenticatedRequest<{}, {}, Payload.Create>;
+	type Create = AuthenticatedRequest<{}, {}, Payload>;
 
 	type Get = AuthenticatedRequest<{ id: string }>;
 
 	type Delete = Get;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, Payload.Update>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, Payload>;
 
 	type NewName = express.Request<{}, {}, {}, { name?: string }>;
 
@@ -56,21 +44,21 @@ export declare namespace WorkflowRequest {
 }
 
 export declare namespace CredentialRequest {
-	namespace Payload {
-		type Create = Partial<{
-			id: string; // delete if sent
-			name: string;
-			type: string;
-			nodesAccess: ICredentialNodeAccess[];
-			data: ICredentialDataDecryptedObject;
-		}>;
-	}
+	type Payload = Partial<{
+		id: string; // delete if sent in body
+		name: string;
+		type: string;
+		nodesAccess: ICredentialNodeAccess[];
+		data: ICredentialDataDecryptedObject;
+	}>;
 
-	type Create = AuthenticatedRequest<{}, {}, Payload.Create>;
+	type Create = AuthenticatedRequest<{}, {}, Payload>;
 
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
 	type GetAll = WorkflowRequest.GetAll;
+
+	type Update = WorkflowRequest.Update;
 
 	type NewName = WorkflowRequest.NewName;
 }

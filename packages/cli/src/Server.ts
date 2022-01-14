@@ -887,7 +887,6 @@ class App {
 				const updateData = new WorkflowEntity();
 				const { tags, ...rest } = req.body;
 				Object.assign(updateData, rest);
-				updateData.id = parseInt(workflowId, 10);
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow'],
@@ -1527,20 +1526,20 @@ class App {
 				}
 
 				// Encrypt the data
-				const credentials = new Credentials(
+				const coreCredential = new Credentials(
 					{ id: null, name: newCredential.name },
 					newCredential.type,
 					newCredential.nodesAccess,
 				);
 
 				// @ts-ignore
-				credentials.setData(newCredential.data, encryptionKey);
+				coreCredential.setData(newCredential.data, encryptionKey);
 
-				const newCredentialData = credentials.getDataToSave() as CredentialsEntity;
+				const encryptedData = coreCredential.getDataToSave() as ICredentialsDb;
 
-				Object.assign(newCredential, newCredentialData);
+				Object.assign(newCredential, encryptedData);
 
-				await this.externalHooks.run('credentials.create', [newCredentialData]);
+				await this.externalHooks.run('credentials.create', [encryptedData]);
 
 				let savedCredential: undefined | CredentialsEntity;
 
@@ -1667,94 +1666,100 @@ class App {
 		// Updates existing credentials
 		this.app.patch(
 			`/${this.restEndpoint}/credentials/:id`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse> => {
-					const incomingData = req.body;
+			ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsResponse> => {
+				const { id: credentialId } = req.params;
 
-					const { id } = req.params;
+				const updateData = new CredentialsEntity();
+				Object.assign(updateData, req.body);
 
-					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-					queryBuilder.andWhere('c.id = :id', { id });
-					queryBuilder.innerJoin('c.shared', 'shared');
-					queryBuilder.andWhere('shared.userId = :userId', {
-						userId: (req.user as User).id,
-					});
-					const result = (await queryBuilder.getOne()) as ICredentialsDb;
-					if (!result) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with the id "${id}" do not exist.`,
-							undefined,
-							400,
-						);
-					}
+				const shared = await Db.collections.SharedCredentials!.findOne({
+					relations: ['credentials'],
+					where: whereClause({
+						user: req.user,
+						entityType: 'credentials',
+						entityId: req.params.id,
+					}),
+				});
 
-					if (incomingData.name === '') {
-						throw new Error('Credentials have to have a name set!');
-					}
-
-					// Add the date for newly added node access permissions
-					for (const nodeAccess of incomingData.nodesAccess) {
-						if (!nodeAccess.date) {
-							nodeAccess.date = this.getCurrentDate();
-						}
-					}
-
-					const encryptionKey = await UserSettings.getEncryptionKey();
-					if (encryptionKey === undefined) {
-						throw new Error('No encryption key got found to encrypt the credentials!');
-					}
-
-					const currentlySavedCredentials = new Credentials(
-						result as INodeCredentialsDetails,
-						result.type,
-						result.nodesAccess,
-						result.data,
+				if (!shared) {
+					throw new ResponseHelper.ResponseError(
+						`Credential with ID "${credentialId}" could not be found to be updated.`,
+						undefined,
+						404,
 					);
-					const decryptedData = currentlySavedCredentials.getData(encryptionKey);
+				}
 
-					// Do not overwrite the oauth data else data like the access or refresh token would get lost
-					// everytime anybody changes anything on the credentials even if it is just the name.
-					if (decryptedData.oauthTokenData) {
-						incomingData.data.oauthTokenData = decryptedData.oauthTokenData;
+				const { credentials: credential } = shared;
+
+				// Add the date for newly added node access permissions
+				for (const nodeAccess of updateData.nodesAccess) {
+					if (!nodeAccess.date) {
+						nodeAccess.date = this.getCurrentDate();
 					}
+				}
 
-					// Encrypt the data
-					const credentials = new Credentials(
-						{ id, name: incomingData.name },
-						incomingData.type,
-						incomingData.nodesAccess,
+				const encryptionKey = await UserSettings.getEncryptionKey();
+
+				if (!encryptionKey) {
+					throw new Error('No encryption key was found to encrypt the credential!');
+				}
+
+				const coreCredential = new Credentials(
+					{ id: credential.id.toString(), name: credential.name },
+					credential.type,
+					credential.nodesAccess,
+					credential.data,
+				);
+
+				const decryptedData = coreCredential.getData(encryptionKey);
+
+				// Do not overwrite the oauth data else data like the access or refresh token would get lost
+				// everytime anybody changes anything on the credentials even if it is just the name.
+				if (decryptedData.oauthTokenData) {
+					// @ts-ignore
+					updateData.data.oauthTokenData = decryptedData.oauthTokenData;
+				}
+
+				// Encrypt the data
+				const credentials = new Credentials(
+					{ id: req.params.id, name: updateData.name },
+					updateData.type,
+					updateData.nodesAccess,
+				);
+
+				// @ts-ignore
+				credentials.setData(updateData.data, encryptionKey);
+
+				const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
+
+				// Add special database related data
+				newCredentialData.updatedAt = this.getCurrentDate();
+
+				await this.externalHooks.run('credentials.update', [newCredentialData]);
+
+				// Update the credentials in DB
+				await Db.collections.Credentials!.update(credentialId, newCredentialData);
+
+				// We sadly get nothing back from "update". Neither if it updated a record
+				// nor the new value. So query now the hopefully updated entry.
+				const responseData = await Db.collections.Credentials!.findOne(credentialId);
+
+				if (responseData === undefined) {
+					throw new ResponseHelper.ResponseError(
+						`Credential with ID "${credentialId}" could not be found to be updated.`,
+						undefined,
+						400,
 					);
-					credentials.setData(incomingData.data, encryptionKey);
-					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
+				}
 
-					// Add special database related data
-					newCredentialsData.updatedAt = this.getCurrentDate();
+				// Remove the encrypted data as it is not needed in the frontend
+				const { id, data, ...rest } = responseData;
 
-					await this.externalHooks.run('credentials.update', [newCredentialsData]);
-
-					// Update the credentials in DB
-					await Db.collections.Credentials!.update(id, newCredentialsData);
-
-					// We sadly get nothing back from "update". Neither if it updated a record
-					// nor the new value. So query now the hopefully updated entry.
-					const responseData = await Db.collections.Credentials!.findOne(id);
-
-					if (responseData === undefined) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with id "${id}" could not be found to be updated.`,
-							undefined,
-							400,
-						);
-					}
-
-					// Remove the encrypted data as it is not needed in the frontend
-					responseData.data = '';
-
-					// Convert to response format in which the id is a string
-					(responseData as unknown as ICredentialsResponse).id = responseData.id.toString();
-					return responseData as unknown as ICredentialsResponse;
-				},
-			),
+				return {
+					id: id.toString(),
+					...rest,
+				};
+			}),
 		);
 
 		// Returns specific credentials
@@ -1847,7 +1852,7 @@ class App {
 					if (includeData) {
 						encryptionKey = await UserSettings.getEncryptionKey();
 
-						if (encryptionKey === undefined) {
+						if (!encryptionKey) {
 							throw new Error('No encryption key was found to decrypt the credentials!');
 						}
 					}
