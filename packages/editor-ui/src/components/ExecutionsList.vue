@@ -3,7 +3,7 @@
 		:name="EXECUTIONS_MODAL_KEY"
 		width="80%"
 		:title="`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`"
-		:closeDialog="closeDialog"
+		:eventBus="modalBus"
 	>
 		<template v-slot:content>
 
@@ -237,6 +237,7 @@ export default mixins(
 
 			stoppingExecutions: [] as string[],
 			workflows: [] as IWorkflowShortResponse[],
+			modalBus: new Vue(),
 			EXECUTIONS_MODAL_KEY,
 		};
 	},
@@ -251,6 +252,12 @@ export default mixins(
 
 		this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
+	},
+	beforeDestroy() {
+		if (this.autoRefreshInterval) {
+			clearInterval(this.autoRefreshInterval);
+			this.autoRefreshInterval = undefined;
+		}
 	},
 	computed: {
 		statuses () {
@@ -333,12 +340,8 @@ export default mixins(
 		},
 	},
 	methods: {
-		closeDialog () {
-			if (this.autoRefreshInterval) {
-				clearInterval(this.autoRefreshInterval);
-				this.autoRefreshInterval = undefined;
-			}
-			return false;
+		closeDialog() {
+			this.modalBus.$emit('close');
 		},
 		convertToDisplayDate,
 		displayExecution (execution: IExecutionShortResponse, e: PointerEvent) {
