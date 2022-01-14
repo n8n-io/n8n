@@ -140,6 +140,7 @@ import {
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 	WorkflowRunner,
+	validateCredential,
 } from '.';
 
 import * as config from '../config';
@@ -157,8 +158,9 @@ import { getNodeTranslationPath } from './TranslationHelpers';
 import { userManagementRouter } from './UserManagement';
 import { User } from './databases/entities/User';
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
-import { WorkflowRequest } from './requests';
+import type { CredentialRequest, WorkflowRequest } from './requests';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import { SharedCredentials } from './databases/entities/SharedCredentials';
 
 require('body-parser-xml')(bodyParser);
 
@@ -681,7 +683,7 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/workflows`,
 			ResponseHelper.send(async (req: WorkflowRequest.Create) => {
-				delete req.body.id; // ignore if sent
+				delete req.body.id; // delete if sent
 
 				const newWorkflow = new WorkflowEntity();
 
@@ -1502,61 +1504,77 @@ class App {
 		// Creates new credentials
 		this.app.post(
 			`/${this.restEndpoint}/credentials`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse> => {
-					const incomingData = req.body;
+			ResponseHelper.send(async (req: CredentialRequest.Create) => {
+				delete req.body.id; // delete if sent
 
-					if (!incomingData.name || incomingData.name.length < 3) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials name must be at least 3 characters long.`,
-							undefined,
-							400,
-						);
-					}
+				const newCredential = new CredentialsEntity();
 
-					// Add the added date for node access permissions
-					for (const nodeAccess of incomingData.nodesAccess) {
-						nodeAccess.date = this.getCurrentDate();
-					}
+				Object.assign(newCredential, req.body);
 
-					const encryptionKey = await UserSettings.getEncryptionKey();
-					if (encryptionKey === undefined) {
-						throw new Error('No encryption key got found to encrypt the credentials!');
-					}
+				const validationErrorMessage = await validateCredential(newCredential);
 
-					if (incomingData.name === '') {
-						throw new Error('Credentials have to have a name set!');
-					}
+				if (validationErrorMessage) {
+					throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
+				}
 
-					// Encrypt the data
-					const credentials = new Credentials(
-						{ id: null, name: incomingData.name },
-						incomingData.type,
-						incomingData.nodesAccess,
-					);
-					credentials.setData(incomingData.data, encryptionKey);
-					const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
+				// Add the added date for node access permissions
+				for (const nodeAccess of newCredential.nodesAccess) {
+					nodeAccess.date = this.getCurrentDate();
+				}
 
-					await this.externalHooks.run('credentials.create', [newCredentialsData]);
+				const encryptionKey = await UserSettings.getEncryptionKey();
 
-					// Save the credentials in DB
-					const result = await Db.collections.Credentials!.save(newCredentialsData);
-					result.data = incomingData.data;
+				if (!encryptionKey) {
+					throw new Error('No encryption key was found to encrypt the credential!');
+				}
 
-					try {
-						await UserManagementHelpers.saveCredentialOwnership(
-							result as CredentialsEntity,
-							req.user as User,
-						);
-					} catch (error) {
-						LoggerProxy.error('Failed saving credential ownership.');
-					}
+				// Encrypt the data
+				const credentials = new Credentials(
+					{ id: null, name: newCredential.name },
+					newCredential.type,
+					newCredential.nodesAccess,
+				);
 
-					// Convert to response format in which the id is a string
-					(result as unknown as ICredentialsResponse).id = result.id.toString();
-					return result as unknown as ICredentialsResponse;
-				},
-			),
+				// @ts-ignore
+				credentials.setData(newCredential.data, encryptionKey);
+
+				const newCredentialData = credentials.getDataToSave() as CredentialsEntity;
+
+				Object.assign(newCredential, newCredentialData);
+
+				await this.externalHooks.run('credentials.create', [newCredentialData]);
+
+				let savedCredential: undefined | CredentialsEntity;
+
+				await getConnection().transaction(async (transactionManager) => {
+					savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
+
+					savedCredential.data = newCredential.data;
+
+					const role = await Db.collections.Role!.findOneOrFail({
+						name: 'owner',
+						scope: 'credential',
+					});
+
+					const newSharedCredential = new SharedCredentials();
+
+					Object.assign(newSharedCredential, {
+						role,
+						user: req.user,
+						credentials: savedCredential,
+					});
+
+					await transactionManager.save<SharedCredentials>(newSharedCredential);
+				});
+
+				if (!savedCredential) {
+					throw new ResponseHelper.ResponseError('Failed to save credential', undefined, 500);
+				}
+
+				const { id, ...rest } = savedCredential;
+
+				return { id: id.toString(), ...rest };
+			}),
 		);
 
 		// Test credentials

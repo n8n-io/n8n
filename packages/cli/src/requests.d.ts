@@ -1,6 +1,12 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
-import { IConnections, INode, IWorkflowSettings } from '../../workflow/dist/src';
+import {
+	IConnections,
+	ICredentialDataDecryptedObject,
+	ICredentialNodeAccess,
+	INode,
+	IWorkflowSettings,
+} from '../../workflow/dist/src';
 import { User } from './databases/entities/User';
 
 // ----------------------------------
@@ -43,4 +49,20 @@ export declare namespace WorkflowRequest {
 	type GetAllActive = express.Request & { user: User };
 
 	type GetAllActivationErrors = Get;
+}
+
+// ----------------------------------
+//      requests to /credentials
+// ----------------------------------
+
+type CreateCredentialPayload = Partial<{
+	id: string; // delete if sent
+	name: string;
+	type: string;
+	nodesAccess: ICredentialNodeAccess[];
+	data: ICredentialDataDecryptedObject;
+}>;
+
+export declare namespace CredentialRequest {
+	type Create = express.Request<{}, {}, CreateCredentialPayload> & { user: User };
 }
