@@ -152,7 +152,7 @@ import * as UserManagementHelpers from './UserManagement/UserManagementHelper';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { buildWhereClause, NameRequest } from './WorkflowHelpers';
+import { buildWhereClause } from './WorkflowHelpers';
 import { getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
@@ -1467,14 +1467,12 @@ class App {
 
 		this.app.get(
 			`/${this.restEndpoint}/credentials/new`,
-			ResponseHelper.send(
-				async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
-					const requestedName =
-						req.query.name && req.query.name !== '' ? req.query.name : this.defaultCredentialsName;
+			ResponseHelper.send(async (req: WorkflowRequest.NewName): Promise<{ name: string }> => {
+				const requestedName =
+					req.query.name && req.query.name !== '' ? req.query.name : this.defaultCredentialsName;
 
-					return await GenericHelpers.generateUniqueName(requestedName, 'credentials');
-				},
-			),
+				return await GenericHelpers.generateUniqueName(requestedName, 'credentials');
+			}),
 		);
 
 		// Deletes a specific credential

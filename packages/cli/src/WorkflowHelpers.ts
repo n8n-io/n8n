@@ -508,12 +508,6 @@ export async function validateWorkflow(newWorkflow: WorkflowEntity) {
 	}
 }
 
-export type NameRequest = Express.Request & {
-	query: {
-		name?: string;
-	};
-};
-
 /**
  * Build a `where` clause for a search for one or many entities,
  * restricted by `member` access if the user is not an `owner`.
