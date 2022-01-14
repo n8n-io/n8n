@@ -37,7 +37,6 @@ const FORM_CONFIG: IFormBoxConfig = {
 				label: 'Password',
 				type: 'password',
 				required: true,
-				validationRules: [{name: 'MIN_LENGTH', config: {minimum: 8}}],
 				showRequiredAsterisk: false,
 				validateOnBlur: false,
 				autocomplete: 'current-password',
