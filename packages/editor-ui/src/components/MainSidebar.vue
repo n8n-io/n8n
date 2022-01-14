@@ -142,7 +142,7 @@
 						<span slot="title" class="item-title-root">
 							{{currentUser.firstName}} {{currentUser.lastName}}
 						</span>
-						<div class="toggle">
+						<div class="toggle" v-on:click.stop.prevent>
 							<n8n-action-toggle
 								v-if="!isCollapsed"
 								:actions="[{
@@ -493,6 +493,8 @@ export default mixins(
 					this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 				} else if (key === 'workflow-settings') {
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+				} else if (key === 'user') {
+					this.$router.push({name: 'PersonalSettings'});
 				} else if (key === 'workflow-new') {
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
