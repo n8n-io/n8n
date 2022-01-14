@@ -336,7 +336,6 @@ export default mixins(
 		closeDialog () {
 			// Handle the close externally as the visible parameter is an external prop
 			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
 			if (this.autoRefreshInterval) {
 				clearInterval(this.autoRefreshInterval);
 				this.autoRefreshInterval = undefined;
