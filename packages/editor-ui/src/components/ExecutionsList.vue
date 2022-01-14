@@ -648,7 +648,7 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.retryExecution.title'),
-					this.$locale.baseText('executionsList.showError.retryExecution.message') + ':',
+					this.$locale.baseText('executionsList.showError.retryExecution.message'),
 				);
 
 				this.isDataLoading = false;

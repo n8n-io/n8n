@@ -35,7 +35,6 @@ export class GoogleBigQuery implements INodeType {
 		description: 'Consume Google BigQuery API',
 		defaults: {
 			name: 'Google BigQuery',
-			color: '#3E87E4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

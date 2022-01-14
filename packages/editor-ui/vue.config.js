@@ -1,3 +1,5 @@
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+
 module.exports = {
 	chainWebpack: config => {
 		config.resolve.symlinks(false);
@@ -22,6 +24,9 @@ module.exports = {
 		devServer: {
 			disableHostCheck: true,
 		},
+		plugins: [
+			new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] }),
+		],
 	},
 	css: {
 		loaderOptions: {
@@ -32,5 +37,5 @@ module.exports = {
 			},
 		},
 	},
-	publicPath: process.env.VUE_APP_PUBLIC_PATH ? process.env.VUE_APP_PUBLIC_PATH : '/',
+	publicPath: process.env.VUE_APP_PUBLIC_PATH && process.env.VUE_APP_PUBLIC_PATH !== '/%BASE_PATH%/' ? process.env.VUE_APP_PUBLIC_PATH : '/',
 };

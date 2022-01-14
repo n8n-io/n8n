@@ -310,6 +310,7 @@ export interface IDiagnosticInfo {
 		[key: string]: string | number | undefined;
 	};
 	deploymentType: string;
+	binaryDataMode: string;
 }
 
 export interface IInternalHooksClass {
@@ -322,7 +323,11 @@ export interface IInternalHooksClass {
 	onWorkflowCreated(workflow: IWorkflowBase): Promise<void>;
 	onWorkflowDeleted(workflowId: string): Promise<void>;
 	onWorkflowSaved(workflow: IWorkflowBase): Promise<void>;
-	onWorkflowPostExecute(workflow: IWorkflowBase, runData?: IRun): Promise<void>;
+	onWorkflowPostExecute(
+		executionId: string,
+		workflow: IWorkflowBase,
+		runData?: IRun,
+	): Promise<void>;
 }
 
 export interface IN8nConfig {

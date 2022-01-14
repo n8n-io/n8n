@@ -20,6 +20,8 @@ import * as fs from 'fs';
 
 import * as formidable from 'formidable';
 
+import * as isbot from 'isbot';
+
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
 		message = 'Authorization problem!';
@@ -49,7 +51,6 @@ export class Webhook implements INodeType {
 		activationMessage: 'You can now make calls to your production webhook URL.',
 		defaults: {
 			name: 'Webhook',
-			color: '#885577',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -284,6 +285,13 @@ export class Webhook implements INodeType {
 									it will be the prefix and a number starting with 0 will be attached to it.`,
 					},
 					{
+						displayName: 'Ignore Bots',
+						name: 'ignoreBots',
+						type: 'boolean',
+						default: false,
+						description: 'Set to true to ignore requests from bots like link previewers and web crawlers',
+					},
+					{
 						displayName: 'Response Data',
 						name: 'responseData',
 						type: 'string',
@@ -392,6 +400,11 @@ export class Webhook implements INodeType {
 		const resp = this.getResponseObject();
 		const headers = this.getHeaderData();
 		const realm = 'Webhook';
+
+		const ignoreBots = options.ignoreBots as boolean;
+		if (ignoreBots && isbot((headers as IDataObject)['user-agent'] as string)) {
+			return authorizationError(resp, realm, 403);
+		}
 
 		if (authentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook

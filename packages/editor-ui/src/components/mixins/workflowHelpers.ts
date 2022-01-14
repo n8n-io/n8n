@@ -389,7 +389,6 @@ export const workflowHelpers = mixins(
 
 
 			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) {
-				const inputIndex = 0;
 				const itemIndex = 0;
 				const runIndex = 0;
 				const inputName = 'main';
@@ -397,6 +396,7 @@ export const workflowHelpers = mixins(
 				const workflow = this.getWorkflow();
 				const parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
+				const inputIndex = workflow.getNodeConnectionOutputIndex(activeNode!.name, parentNode[0]) || 0;
 				let connectionInputData = this.connectionInputData(parentNode, inputName, runIndex, inputIndex);
 
 				let runExecutionData: IRunExecutionData;
@@ -501,7 +501,7 @@ export const workflowHelpers = mixins(
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
-						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `: "${e.message}"`,
+						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `"${e.message}"`,
 						type: 'error',
 					});
 
@@ -575,7 +575,7 @@ export const workflowHelpers = mixins(
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
-						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `: "${e.message}"`,
+						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `"${e.message}"`,
 						type: 'error',
 					});
 

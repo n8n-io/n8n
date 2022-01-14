@@ -32,7 +32,6 @@ export class PhilipsHue implements INodeType {
 		description: 'Consume Philips Hue API',
 		defaults: {
 			name: 'Philips Hue',
-			color: '#063c9a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -75,25 +74,25 @@ export class PhilipsHue implements INodeType {
 				const lights = await philipsHueApiRequest.call(
 					this,
 					'GET',
-					`/bridge/${user}/lights`,
+					`/api/${user}/lights`,
 				);
-				
+
 				const groups = await philipsHueApiRequest.call(
 					this,
 					'GET',
-					`/bridge/${user}/groups`,
+					`/api/${user}/groups`,
 				);
 
 				for (const light of Object.keys(lights)) {
 					let lightName = lights[light].name;
 					const lightId = light;
-					
+
 					for (const groupId of Object.keys(groups)) {
 						if(groups[groupId].type === 'Room' && groups[groupId].lights.includes(lightId)) {
 							lightName = `${groups[groupId].name}: ${lightName}`;
 						}
 					}
-					
+
 					returnData.push({
 						name: lightName,
 						value: lightId,
@@ -145,7 +144,7 @@ export class PhilipsHue implements INodeType {
 					const data = await philipsHueApiRequest.call(
 						this,
 						'PUT',
-						`/bridge/${user}/lights/${lightId}/state`,
+						`/api/${user}/lights/${lightId}/state`,
 						body,
 					);
 
@@ -162,7 +161,7 @@ export class PhilipsHue implements INodeType {
 
 					const user = await getUser.call(this);
 
-					responseData = await philipsHueApiRequest.call(this, 'DELETE', `/bridge/${user}/lights/${lightId}`);
+					responseData = await philipsHueApiRequest.call(this, 'DELETE', `/api/${user}/lights/${lightId}`);
 
 				}
 				if (operation === 'getAll') {
@@ -170,7 +169,7 @@ export class PhilipsHue implements INodeType {
 
 					const user = await getUser.call(this);
 
-					const lights = await philipsHueApiRequest.call(this, 'GET', `/bridge/${user}/lights`);
+					const lights = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/lights`);
 
 					responseData = Object.values(lights);
 
@@ -184,7 +183,7 @@ export class PhilipsHue implements INodeType {
 
 					const user = await getUser.call(this);
 
-					responseData = await philipsHueApiRequest.call(this, 'GET', `/bridge/${user}/lights/${lightId}`);
+					responseData = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/lights/${lightId}`);
 				}
 			}
 		}
