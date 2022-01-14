@@ -54,12 +54,16 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
+body {
+	// todo
+	background-color: var(--color-background-light);
+}
+
 .container {
 	display: flex;
 	align-items: center;
 	flex-direction: column;
 	padding-top: var(--spacing-2xl);
-	background-color: var(--color-background-light);
 
 	> * {
 		margin-bottom: var(--spacing-l);
