@@ -89,25 +89,6 @@ export class ItemLists implements INodeType {
 				default: 'splitOutItems',
 			},
 			// Split out items - Fields
-
-			{
-				displayName: 'Field To Split Out',
-				name: 'fieldToSplitOut',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: [
-							'itemList',
-						],
-						operation: [
-							'splitOutItems',
-						],
-					},
-				},
-				description: 'The name of the input field to break out into separate items',
-			},
 			{
 				displayName: 'Include',
 				name: 'include',
@@ -177,6 +158,63 @@ export class ItemLists implements INodeType {
 					},
 				],
 			},
+			//====================================================================
+			{
+				displayName: 'Field To Split Out',
+				name: 'fieldToSplitOut',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'itemList',
+						],
+						operation: [
+							'splitOutItems',
+						],
+					},
+				},
+				description: 'The name of the input field to break out into separate items',
+			},
+
+			{
+				displayName: 'Fields To Split Out',
+				name: 'fieldsToSplitOut',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Field To Split Out',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'itemList',
+						],
+						operation: [
+							'splitOutItems',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: '',
+						name: 'fields',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'string',
+								default: '',
+								description: 'The name of the input fields to break out into separate items',
+							},
+						],
+					},
+				],
+			},
+			//====================================================================
+
 			{
 				displayName: 'Fields To Aggregate',
 				name: 'fieldsToAggregate',
@@ -311,7 +349,7 @@ export class ItemLists implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Field To Exclude',
+				placeholder: 'Add Field to Compare',
 				default: {},
 				displayOptions: {
 					show: {
@@ -675,6 +713,9 @@ return 0;`,
 
 				for (let i = 0; i < length; i++) {
 					const fieldToSplitOut = this.getNodeParameter('fieldToSplitOut', i) as string;
+					const fieldsToSplitOut = (this.getNodeParameter('fieldsToSplitOut', i) as IDataObject).fields as any;
+					console.log("========================================================================");
+					console.log(fieldsToSplitOut[0].fieldName);
 					const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
 					const destinationFieldName = this.getNodeParameter('options.destinationFieldName', i, '') as string;
 					const include = this.getNodeParameter('include', i) as string;
