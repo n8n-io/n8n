@@ -106,6 +106,9 @@ export default mixins(
 			selectedCategory.selected = value;
 			this.sortedCategories = this.sortCategories(this.categories);
 			const strippedCategories = this.sortedCategories.filter(({ selected }) => selected).map(({ id }) => id);
+			if (strippedCategories.length === 0) {
+				this.allSelected = true;
+			}
 			this.setCategories(strippedCategories);
 		},
 		collapseAction() {

@@ -93,14 +93,16 @@ export default mixins(
 
 .listWrapper {
 	// recalc with vars
-	height: 450px;
+	// height: 450px;
 	padding-top: 20px;
 
 	.listContainer {
-	// recalc with vars
-	height: 450px;
-	padding-top: 20px;
-	overflow-y: scroll;
+		position: absolute;
+		// recalc with vars
+		height: calc(100% - 450px);
+		width: calc(100% - 340px);
+		margin-top: 20px;
+		overflow-y: scroll;
 
 		.templateList {
 			border-radius: var(--border-radius-large);

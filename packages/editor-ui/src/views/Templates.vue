@@ -82,6 +82,15 @@ export default mixins(
 			});
 		}
 	},
+	async updated() {
+		const infiniteList = document.getElementById('infiniteList');
+		const collections = await this.$store.getters['templates/getCollections'];
+		if (infiniteList) {
+			const calcHeight = collections.length ? 450 : 350;
+
+			infiniteList.style.height =window.innerHeight - calcHeight + "px";
+		}
+	},
 	methods: {
 		async onSearchInput(value: string) {
 			await this.doSearch();
@@ -148,18 +157,18 @@ export default mixins(
 	display: flex;
 
 	.filters {
-		width: 188px;
+		min-width: 188px;
+		margin-right: 24px;
 	}
 
 	.search {
 		width: -webkit-calc(100% - 188px);
     width:    -moz-calc(100% - 188px);
     width:         calc(100% - 188px);
-		margin-left: 24px;
 		display: flex column;
 
 		.searchInput {
-			width: calc(100% - 80px);
+			width: 100%;
 		}
 
 		.searchResults {

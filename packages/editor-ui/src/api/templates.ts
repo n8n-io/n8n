@@ -18,12 +18,12 @@ export async function getTemplates(
 			id
 			name
 		}
-		collections: searchCollection(rows: ${limit},
+		collections: searchCollections(rows: ${limit},
 			skip: ${skip},
 			# search parameter in string,default: null
 			search: "${search}",
 			# array of category id eg: [1,2] ,default: null
-			category: ${queryCategory}) @include(if: ${allData}){
+			category: ${queryCategory}){
 			id
 			name
 			nodes{
@@ -38,7 +38,7 @@ export async function getTemplates(
 			totalViews: views
 		}
 		totalworkflow: getWorkflowCount(search: "${search}", category: ${queryCategory})
-		workflows: searchWorkflow(rows: ${limit},
+		workflows: searchWorkflows(rows: ${limit},
 			skip: ${skip},
 			# search parameter in string,default: null
 			search: "${search}",
@@ -62,6 +62,5 @@ export async function getTemplates(
 			created_at
 		}
 	}`;
-	console.log(query);
 	return await post(stagingHost, `/graphql`, { query });
 }
