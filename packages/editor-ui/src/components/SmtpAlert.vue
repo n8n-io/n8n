@@ -27,6 +27,8 @@ export default mixins(
 			duration: 0,
 			showClose: true,
 			dangerouslyUseHTMLString: true,
+			// @ts-ignore
+			customClass: this.$style['message'],
 		});
 	},
 	beforeDestroy() {
@@ -39,3 +41,9 @@ export default mixins(
 	},
 });
 </script>
+
+<style lang="scss" module>
+.message {
+	left: calc(50% + 100px);
+}
+</style>
