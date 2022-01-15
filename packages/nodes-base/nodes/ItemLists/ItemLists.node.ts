@@ -699,21 +699,22 @@ return 0;`,
 
 					if (disableDotNotation === false) {
 						for (const field of fieldsToSplitOut){
-							const fieldData = get(items[i].json, field);
+							let fieldData = get(items[i].json, field);
 
 							if (fieldData === undefined) {
 								throw new NodeOperationError(this.getNode(), `Couldn't find the field '${field}' in the input data`);
 							}
 
 							if (!Array.isArray(fieldData)) {
-								throw new NodeOperationError(this.getNode(), `The provided field '${field}' is not an array`);
+								// throw new NodeOperationError(this.getNode(), `The provided field '${field}' is not an array`);
+								fieldData = [fieldData];
 							}
 
 							arrayToSplit = arrayToSplit.concat(fieldData as IDataObject[]);
 						}
 					} else {
 						for (const field of fieldsToSplitOut){
-							const fieldData = items[i].json[field];
+							let fieldData = items[i].json[field];
 
 							if (fieldData === undefined) {
 								if (field.includes('.')) {
@@ -724,7 +725,7 @@ return 0;`,
 							}
 
 							if (!Array.isArray(fieldData)) {
-								throw new NodeOperationError(this.getNode(), `The provided field '${field}' is not an array`);
+								fieldData = [fieldData];
 							}
 							arrayToSplit = arrayToSplit.concat(fieldData as IDataObject[]);
 						}
