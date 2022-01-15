@@ -158,26 +158,6 @@ export class ItemLists implements INodeType {
 					},
 				],
 			},
-			//====================================================================
-			// {
-			// 	displayName: 'Field To Split Out',
-			// 	name: 'fieldToSplitOut',
-			// 	type: 'string',
-			// 	default: '',
-			// 	required: true,
-			// 	displayOptions: {
-			// 		show: {
-			// 			resource: [
-			// 				'itemList',
-			// 			],
-			// 			operation: [
-			// 				'splitOutItems',
-			// 			],
-			// 		},
-			// 	},
-			// 	description: 'The name of the input field to break out into separate items',
-			// },
-
 			{
 				displayName: 'Fields To Split Out',
 				name: 'fieldsToSplitOut',
@@ -213,8 +193,6 @@ export class ItemLists implements INodeType {
 					},
 				],
 			},
-			//====================================================================
-
 			{
 				displayName: 'Fields To Aggregate',
 				name: 'fieldsToAggregate',
@@ -712,41 +690,44 @@ return 0;`,
 			if (operation === 'splitOutItems') {
 
 				for (let i = 0; i < length; i++) {
-					// const fieldToSplitOut = this.getNodeParameter('fieldToSplitOut', i) as string;
 					const fieldsToSplitOut = ((this.getNodeParameter('fieldsToSplitOut', i) as IDataObject).fields as IDataObject[]).map(field => field.fieldName) as string[];
 					const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
 					const destinationFieldName = this.getNodeParameter('options.destinationFieldName', i, '') as string;
 					const include = this.getNodeParameter('include', i) as string;
 
-					// let arrayToSplit;
-					// if (disableDotNotation === false) {
-					// 	arrayToSplit = get(items[i].json, fieldToSplitOut);
-					// } else {
-					// 	arrayToSplit = items[i].json[fieldToSplitOut as string];
-					// }
-
 					let arrayToSplit: IDataObject[] = [];
+
 					if (disableDotNotation === false) {
 						for (const field of fieldsToSplitOut){
-							arrayToSplit = arrayToSplit.concat(get(items[i].json, field) as IDataObject[]);
+							const fieldData = get(items[i].json, field);
+
+							if (fieldData === undefined) {
+								throw new NodeOperationError(this.getNode(), `Couldn't find the field '${field}' in the input data`);
+							}
+
+							if (!Array.isArray(fieldData)) {
+								throw new NodeOperationError(this.getNode(), `The provided field '${field}' is not an array`);
+							}
+
+							arrayToSplit = arrayToSplit.concat(fieldData as IDataObject[]);
 						}
 					} else {
 						for (const field of fieldsToSplitOut){
-							arrayToSplit = arrayToSplit.concat(items[i].json[field] as IDataObject[]);
-						}
-					}
+							const fieldData = items[i].json[field];
 
-					for (const [fieldIndex, element] of arrayToSplit.entries()) {
-						if (element === undefined) {
-								if (fieldsToSplitOut[fieldIndex].includes('.') && disableDotNotation === true) {
-									throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldsToSplitOut[fieldIndex]}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+							if (fieldData === undefined) {
+								if (field.includes('.')) {
+									throw new NodeOperationError(this.getNode(), `Couldn't find the field '${field}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
 								} else {
-									throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldsToSplitOut[fieldIndex]}' in the input data`);
+									throw new NodeOperationError(this.getNode(), `Couldn't find the field '${field}' in the input data`);
 								}
+							}
+
+							if (!Array.isArray(fieldData)) {
+								throw new NodeOperationError(this.getNode(), `The provided field '${field}' is not an array`);
+							}
+							arrayToSplit = arrayToSplit.concat(fieldData as IDataObject[]);
 						}
-						// if (!Array.isArray(element)) {
-						// 	throw new NodeOperationError(this.getNode(), `The provided field '${fieldsToSplitOut[fieldIndex]}' is not an array`);
-						// }
 					}
 
 					for (const element of arrayToSplit) {
@@ -760,13 +741,8 @@ return 0;`,
 								throw new NodeOperationError(this.getNode(), 'No fields specified', { description: 'Please add a field to include' });
 							}
 
-							// const uniqueFields = new Set([])
-
 							newItem = {
 								...fieldsToInclude.reduce((prev, field) => {
-									// if (field === fieldToSplitOut) {
-									// 	return prev;
-									// }
 									if (fieldsToSplitOut.includes(field)) {
 										return prev;
 									}
@@ -806,9 +782,12 @@ return 0;`,
 						if (typeof element === 'object' && include === 'noOtherFields' && destinationFieldName === '') {
 							newItem = { ...newItem, ...element };
 						} else {
-							newItem = { ...newItem, [destinationFieldName as string || "data"]: element };
+							if(destinationFieldName){
+								newItem = { ...newItem, [destinationFieldName as string]: element };
+							} else {
+								newItem = { ...newItem, ...element };
+							}
 						}
-
 						returnData.push({ json: newItem });
 					}
 				}
