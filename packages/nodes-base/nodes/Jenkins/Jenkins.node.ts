@@ -446,7 +446,7 @@ export class Jenkins implements INodeType {
 
 				const options = {
 					auth: {
-						username: username,
+						username,
 						password: apiKey,
 					},
 					method: 'GET',
