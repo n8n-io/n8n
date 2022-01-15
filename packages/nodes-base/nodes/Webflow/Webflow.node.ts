@@ -32,7 +32,6 @@ export class Webflow implements INodeType {
 		description: 'Consume the Webflow API',
 		defaults: {
 			name: 'Webflow',
-			color: '#245bf8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

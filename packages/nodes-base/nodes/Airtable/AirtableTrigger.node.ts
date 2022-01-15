@@ -28,7 +28,6 @@ export class AirtableTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'Airtable Trigger',
-			color: '#445599',
 		},
 		credentials: [
 			{

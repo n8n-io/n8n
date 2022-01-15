@@ -26,7 +26,6 @@ export class WebflowTrigger implements INodeType {
 		description: 'Handle Webflow events via webhooks',
 		defaults: {
 			name: 'Webflow Trigger',
-			color: '#245bf8',
 		},
 		inputs: [],
 		outputs: ['main'],

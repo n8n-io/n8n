@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
@@ -771,8 +770,9 @@ export class HttpRequest implements INodeType {
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 								}
-								const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
-								requestOptions.body = Buffer.from(binaryProperty.data, BINARY_ENCODING);
+
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+								requestOptions.body = binaryDataBuffer;
 							} else if (options.bodyContentType === 'multipart-form-data') {
 								requestOptions.body = {};
 								const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
@@ -794,9 +794,10 @@ export class HttpRequest implements INodeType {
 									}
 
 									const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
+									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 
 									requestOptions.body[propertyName] = {
-										value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+										value: binaryDataBuffer,
 										options: {
 											filename: binaryProperty.fileName,
 											contentType: binaryProperty.mimeType,
