@@ -93,14 +93,14 @@ export class HaloPSA implements INodeType {
 					// },
 					{
 						name: 'Ticket',
-						value: 'ticket',
+						value: 'tickets',
 					},
 					{
 						name: 'User',
-						value: 'user',
+						value: 'users',
 					},
 				],
-				default: 'ticket',
+				default: 'tickets',
 				required: true,
 				description: 'Resource to consume',
 			},
@@ -172,7 +172,7 @@ export class HaloPSA implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create'],
-						resource: ['client', 'user'],
+						resource: ['client', 'users'],
 					},
 				},
 			},
@@ -371,7 +371,7 @@ export class HaloPSA implements INodeType {
 					const data = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
 					const item = processFields(data) || {};
 
-					if (resource === 'ticket') {
+					if (resource === 'tickets') {
 						const summary = this.getNodeParameter('summary', i) as string;
 						item[summary] = summary;
 						const details = this.getNodeParameter('details', i) as string;
@@ -389,7 +389,7 @@ export class HaloPSA implements INodeType {
 						item['website'] = site;
 					}
 
-					if (resource === 'user') {
+					if (resource === 'users') {
 						const name = this.getNodeParameter('userName', i) as string;
 						item['name'] = name;
 						const site = this.getNodeParameter('sitesList', i) as string;

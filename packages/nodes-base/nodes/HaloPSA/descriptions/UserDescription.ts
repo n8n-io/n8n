@@ -11,7 +11,7 @@ export const userDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create'],
-				resource: ['user'],
+				resource: ['users'],
 			},
 		},
 	},

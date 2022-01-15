@@ -11,7 +11,7 @@ export const ticketDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create', 'update'],
-				resource: ['ticket'],
+				resource: ['tickets'],
 			},
 		},
 	},
@@ -20,12 +20,12 @@ export const ticketDescription: INodeProperties[] = [
 		name: 'details',
 		type: 'string',
 		default: '',
-		description: 'Enter ticket\'s details',
+		description: 'Enter tickets\'s details',
 		placeholder: '',
 		displayOptions: {
 			show: {
 				operation: ['create', 'update'],
-				resource: ['ticket'],
+				resource: ['tickets'],
 			},
 		},
 	},
