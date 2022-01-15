@@ -29,7 +29,7 @@ export type JenkinsApiCredentials = {
 export class Jenkins implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jenkins',
-		name: 'Jenkins',
+		name: 'jenkins',
 		icon: 'file:jenkins.svg',
 		group: ['output'],
 		version: 1,
@@ -61,17 +61,16 @@ export class Jenkins implements INodeType {
 					{
 						name: 'Instance',
 						value: 'instance',
-						description: 'Jenkins instance',
 					},
 					{
 						name: 'Job',
 						value: 'job',
-						description: 'Jenkins job',
 					},
 				],
 				default: 'job',
 				noDataExpression: true,
 			},
+
 			// --------------------------------------------------------------------------------------------------------
 			//         Job Operations
 			// --------------------------------------------------------------------------------------------------------
@@ -151,6 +150,7 @@ export class Jenkins implements INodeType {
 				default: '',
 				description: 'Name of the job',
 			},
+
 			// --------------------------------------------------------------------------------------------------------
 			//         Trigger a Job
 			// --------------------------------------------------------------------------------------------------------
@@ -202,6 +202,7 @@ export class Jenkins implements INodeType {
 				],
 				description: 'Parameters for Jenkins job',
 			},
+
 			// --------------------------------------------------------------------------------------------------------
 			//         Copy or Create a Job
 			// --------------------------------------------------------------------------------------------------------
@@ -228,6 +229,9 @@ export class Jenkins implements INodeType {
 				displayName: 'XML',
 				name: 'xml',
 				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				displayOptions: {
 					show: {
 						resource: [
@@ -436,14 +440,14 @@ export class Jenkins implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<NodeCredentialTestResult> {
 				const { baseUrl, username, apiKey } = credential.data as JenkinsApiCredentials;
-				const token = Buffer.from(`${username}:${apiKey}`).toString('base64');
 
 				const url = tolerateTrailingSlash(baseUrl);
 				const endpoint = '/api/json';
 
 				const options = {
-					headers: {
-						Authorization: `Basic ${token}`,
+					auth: {
+						username: username,
+						password: apiKey,
 					},
 					method: 'GET',
 					body: {},
@@ -561,6 +565,7 @@ export class Jenkins implements INodeType {
 						const endpoint = `/createItem`;
 						try {
 							await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams);
+							responseData = { success: true };
 						}
 						catch (error) {
 							if (error.httpCode === '302') {
