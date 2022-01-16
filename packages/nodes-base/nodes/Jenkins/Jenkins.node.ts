@@ -7,12 +7,12 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -438,7 +438,7 @@ export class Jenkins implements INodeType {
 			async jenkinApiCredentialTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
-			): Promise<NodeCredentialTestResult> {
+			): Promise<INodeCredentialTestResult> {
 				const { baseUrl, username, apiKey } = credential.data as JenkinsApiCredentials;
 
 				const url = tolerateTrailingSlash(baseUrl);
