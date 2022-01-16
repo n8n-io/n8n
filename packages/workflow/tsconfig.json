@@ -9,11 +9,9 @@
 			"jest"
 		],
 		"module": "commonjs",
-		"noImplicitAny": true,
-		"esModuleInterop": true,
 		"removeComments": true,
-		"strictNullChecks": true,
 		"forceConsistentCasingInFileNames": true,
+		"esModuleInterop": true,
 		"noImplicitReturns": true,
 		"strict": true,
 		"noUnusedLocals": true,

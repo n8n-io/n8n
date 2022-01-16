@@ -1,6 +1,7 @@
 {
 	"compilerOptions": {
 		"lib": [
+			"dom",
 			"es2017",
 			"es2019.array"
 		],
@@ -9,9 +10,7 @@
 			"jest"
 		],
 		"module": "commonjs",
-		"noImplicitAny": true,
 		"removeComments": true,
-		"strictNullChecks": true,
 		"strict": true,
 		"preserveConstEnums": true,
 		"resolveJsonModule": true,
@@ -25,6 +24,7 @@
 		"src/**/*",
 		"nodes/**/*",
 		"nodes/**/*.json",
+		"credentials/translations/**/*.json",
 		"test/**/*"
 	],
 	"exclude": [
