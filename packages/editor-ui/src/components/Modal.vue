@@ -141,10 +141,13 @@ export default Vue.extend({
 				this.$emit('enter');
 			}
 		},
+		closeAllDialogs() {
+			this.$store.commit('ui/closeAllModals');
+		},
 		closeDialog(callback?: () => void) {
 			if (this.beforeClose) {
 				this.beforeClose(() => {
-					this.$store.commit('ui/closeTopModal');
+					this.$store.commit('ui/closeModal', this.$props.name);
 					if (typeof callback === 'function') {
 						callback();
 					}
@@ -153,7 +156,7 @@ export default Vue.extend({
 				return;
 			}
 
-			this.$store.commit('ui/closeTopModal');
+			this.$store.commit('ui/closeModal', this.$props.name);
 			if (typeof callback === 'function') {
 				callback();
 			}

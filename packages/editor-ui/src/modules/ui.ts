@@ -87,7 +87,25 @@ const module: Module<IUiState, IRootState> = {
 			Vue.set(state.modals[name], 'open', true);
 			state.modalStack = [name].concat(state.modalStack);
 		},
+		closeModal: (state: IUiState, name: string) => {
+			Vue.set(state.modals[name], 'open', false);
+			state.modalStack = state.modalStack.filter((openModalName: string) => {
+				return name !== openModalName;
+			});
+		},
+		closeAllModals: (state: IUiState) => {
+			Object.keys(state.modals).forEach((name: string) => {
+				if (state.modals[name].open) {
+					Vue.set(state.modals[name], 'open', false);
+				}
+			});
+			state.modalStack = [];
+		},
 		closeTopModal: (state: IUiState) => {
+			if (state.modalStack.length > 0) {
+				return;
+			}
+
 			const name = state.modalStack[0];
 			Vue.set(state.modals[name], 'open', false);
 			if (state.modals.mode) {
