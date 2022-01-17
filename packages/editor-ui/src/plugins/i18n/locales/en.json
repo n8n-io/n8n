@@ -1037,12 +1037,12 @@
 		"timezone": "Timezone"
 	},
 	"activationModal": {
-		"modalTitle": "Workflow activated",
-		"messageFirstChunk": "These executions will not show up immediately in the editor",
-		"messageSecondChunk": ", but you can see them in the ",
-		"messageExecutionsLink": "execution list",
-		"messageThirdChunk": " if you choose to ",
-		"messageSaveLink": "save executions",
-		"checkboxLabel": "Don't show again"
+		"workflowActivated": "Workflow activated",
+		"theseExecutionsWillNotShowUp": "These executions will not show up immediately in the editor,",
+		"butYouCanSeeThem": "but you can see them in the",
+		"executionList": "execution list",
+		"ifYouChooseTo": "if you choose to",
+		"saveExecutions": "save executions.",
+		"dontShowAgain": "Don't show again"
 	}
 }
