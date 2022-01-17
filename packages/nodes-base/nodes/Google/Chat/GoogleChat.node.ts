@@ -3,12 +3,15 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -38,6 +41,12 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
+import * as moment from 'moment-timezone';
+
+import * as jwt from 'jsonwebtoken';
+
+import { OptionsWithUri } from 'request';
+
 export class GoogleChat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Chat',
@@ -57,6 +66,7 @@ export class GoogleChat implements INodeType {
 			{
 				name: 'googleApi',
 				required: false, // not required, webhooks do not need credentials
+				testedBy: 'testGoogleTokenAuth',
 			},
 		],
 		properties: [
@@ -93,7 +103,7 @@ export class GoogleChat implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on. ',
+				description: 'The resource to operate on.',
 			},
 			...attachmentOperations,
 			...attachmentFields,
@@ -133,6 +143,70 @@ export class GoogleChat implements INodeType {
 					});
 				}
 				return returnData;
+			},
+		},
+		credentialTest: {
+			async testGoogleTokenAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+
+				const scopes = [
+					'https://www.googleapis.com/auth/chat.bot',
+				];
+
+				const now = moment().unix();
+
+				try {
+					const signature = jwt.sign(
+						{
+							'iss': credential.data!.email as string,
+							'sub': credential.data!.delegatedEmail || credential.data!.email as string,
+							'scope': scopes.join(' '),
+							'aud': `https://oauth2.googleapis.com/token`,
+							'iat': now,
+							'exp': now,
+						},
+						credential.data!.privateKey as string,
+						{
+							algorithm: 'RS256',
+							header: {
+								'kid': credential.data!.privateKey as string,
+								'typ': 'JWT',
+								'alg': 'RS256',
+							},
+						},
+					);
+
+					const options: OptionsWithUri = {
+						headers: {
+							'Content-Type': 'application/x-www-form-urlencoded',
+						},
+						method: 'POST',
+						form: {
+							grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+							assertion: signature,
+						},
+						uri: 'https://oauth2.googleapis.com/token',
+						json: true,
+					};
+
+					const response = await this.helpers.request(options);
+
+					if (!response.access_token) {
+						return {
+							status: 'Error',
+							message: JSON.stringify(response),
+						};
+					}
+				} catch (err) {
+					return {
+						status: 'Error',
+						message: `${err.message}`,
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
 			},
 		},
 	};
