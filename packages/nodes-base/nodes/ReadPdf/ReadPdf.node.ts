@@ -6,7 +6,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-const pdf = require('pdf-parse');
+import { PdfData, VerbosityLevel } from 'pdfdataextract';
 
 export class ReadPdf implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,7 +55,7 @@ export class ReadPdf implements INodeType {
 				const binaryData = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 				returnData.push({
 					binary: item.binary,
-					json: await pdf(binaryData),
+					json: await PdfData.extract(binaryData),
 				});
 
 			} catch (error) {
