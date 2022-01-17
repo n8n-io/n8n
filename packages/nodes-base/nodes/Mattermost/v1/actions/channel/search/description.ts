@@ -2,7 +2,7 @@ import {
 	ChannelProperties,
 } from '../../Interfaces';
 
-export const channelCreateDescription: ChannelProperties = [
+export const channelSearchDescription: ChannelProperties = [
 	{
 		displayName: 'Team ID',
 		name: 'teamId',
