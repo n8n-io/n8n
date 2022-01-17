@@ -437,7 +437,7 @@ export const workflowHelpers = mixins(
 				return returnData['__xxxxxxx__'];
 			},
 
-			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}): Promise<boolean> {
+			async saveCurrentWorkflow({name, tags, active}: {name?: string, tags?: string[], active?: boolean} = {}): Promise<boolean> {
 				const currentWorkflow = this.$route.params.name;
 				if (!currentWorkflow) {
 					return this.saveAsNewWorkflow({name, tags});
@@ -457,20 +457,9 @@ export const workflowHelpers = mixins(
 						workflowDataRequest.tags = tags;
 					}
 
-					// // Check if trigger was removed from active workflow
-					// let triggerIsRemoved = false;
-					// if (this.$store.getters.isActive) {
-					// 	const triggers = this.$store.getters.workflowTriggerNodes
-					// 		.filter((node: INodeUi) => {
-					// 			return !node.disabled;
-					// 		});
-					// 	triggerIsRemoved = triggers.length === 0;
-
-					// 	if (triggerIsRemoved) {
-					// 		// Only set active if trigger was removed
-					// 		workflowDataRequest.active = false;
-					// 	}
-					// }
+					if (active !== undefined) {
+						workflowDataRequest.active = active;
+					}
 
 					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
 
@@ -489,6 +478,14 @@ export const workflowHelpers = mixins(
 						const createdTags = (workflowData.tags || []) as ITag[];
 						const tagIds = createdTags.map((tag: ITag): string => tag.id);
 						this.$store.commit('setWorkflowTagIds', tagIds);
+					}
+
+
+					this.$store.commit('setActive', workflowData.active);
+					if (workflowData.active === true) {
+						this.$store.commit('setWorkflowActive', workflowData.id);
+					} else {
+						this.$store.commit('setWorkflowInactive', workflowData.id);
 					}
 
 					this.$store.commit('setStateDirty', false);
