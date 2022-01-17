@@ -81,10 +81,12 @@ export default mixins(
 					}
 					return '#13ce66';
 				},
+				isCurrentWorkflowOpen(): boolean {
+					return this.$store.getters['workflowId'] === this.workflowId;
+				},
 				disabled(): boolean {
 					const isNewWorkflow = !this.workflowId;
-					const openWorkflow = this.$store.getters['workflowId'];
-					if (isNewWorkflow || openWorkflow === this.workflowId) {
+					if (isNewWorkflow || this.isCurrentWorkflowOpen) {
 						return !this.workflowActive && !this.containsTrigger;
 					}
 
@@ -157,7 +159,7 @@ export default mixins(
 						this.$store.commit('setWorkflowActive', this.workflowId);
 
 						// Show activation dialog only for current workflow and if user hasn't deactivated it
-						if (this.isCurrentWorkflow && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
+						if (this.isCurrentWorkflowOpen && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
 							this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
 						}
 					} else {
