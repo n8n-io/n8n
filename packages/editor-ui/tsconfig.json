@@ -2,9 +2,7 @@
 	"compilerOptions": {
 		"target": "esnext",
 		"module": "esnext",
-		"noImplicitAny": true,
 		"removeComments": true,
-		"strictNullChecks": true,
 		"forceConsistentCasingInFileNames": true,
 		"noImplicitReturns": true,
 		"strict": true,
