@@ -6,7 +6,7 @@ import {
 	getPagingParameters
 } from '../GenericFunctions';
 
-export const spaceOperations = [
+export const spaceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -23,20 +23,19 @@ export const spaceOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Returns a space.',
+				description: 'Returns a space',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Lists spaces the caller is a member of.',
+				description: 'Lists spaces the caller is a member of',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const  spaceFields = [
+export const  spaceFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 space:get                              */
 	/* -------------------------------------------------------------------------- */
@@ -59,7 +58,7 @@ export const  spaceFields = [
 			},
 		},
 		default: [],
-		description: 'Resource name of the space, in the form "spaces/*".',
+		description: 'Resource name of the space, in the form "spaces/*"',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -67,5 +66,4 @@ export const  spaceFields = [
 	/* -------------------------------------------------------------------------- */
 
 	...getPagingParameters('space'),
-
-] as INodeProperties[];
+];

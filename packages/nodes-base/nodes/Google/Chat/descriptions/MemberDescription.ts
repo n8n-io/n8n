@@ -6,7 +6,7 @@ import {
 	getPagingParameters
 } from '../GenericFunctions';
 
-export const memberOperations = [
+export const memberOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -23,21 +23,20 @@ export const memberOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Returns a membership.',
+				description: 'Returns a membership',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Lists human memberships in a space.',
+				description: 'Lists human memberships in a space',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
 
-export const memberFields = [
+export const memberFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 member:get                              */
 	/* -------------------------------------------------------------------------- */
@@ -57,7 +56,7 @@ export const memberFields = [
 			},
 		},
 		default: '',
-		description: 'Member to be retrieved in the form "spaces/*/members/*".',
+		description: 'Member to be retrieved in the form "spaces/*/members/*"',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -82,10 +81,9 @@ export const memberFields = [
 			},
 		},
 		default: [],
-		description: 'The name of the space for which to retrieve members, in the form "spaces/*".',
+		description: 'The name of the space for which to retrieve members, in the form "spaces/*"',
 	},
 
 	...getPagingParameters('member'),
-
-] as INodeProperties[];
+];
 

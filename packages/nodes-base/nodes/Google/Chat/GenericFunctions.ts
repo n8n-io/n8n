@@ -12,6 +12,7 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeProperties,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -149,7 +150,7 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 }
 
 export function getPagingParameters(resource: string, operation = 'getAll') {
-	return [
+	const pagingParameters: INodeProperties [] = [
 		{
 			displayName: 'Return All',
 			name: 'returnAll',
@@ -188,4 +189,5 @@ export function getPagingParameters(resource: string, operation = 'getAll') {
 			description: 'The limit of records to return. The value is capped at 1000. Server may return fewer results than requested. If unspecified, server will default to 100.',
 		},
 	];
+	return pagingParameters;
 }

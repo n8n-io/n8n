@@ -103,7 +103,7 @@ export class GoogleChat implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			...attachmentOperations,
 			...attachmentFields,
@@ -474,28 +474,28 @@ export class GoogleChat implements INodeType {
 						let message: IMessage = {};
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 						if (jsonParameters) {
-							const messageJson = this.getNodeParameter('messageJson', i);
+							const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i);
 
-							if (messageJson instanceof Object) {
+							if (updateFieldsJson instanceof Object) {
 								// if it is an object
-								message = messageJson as IMessage;
+								message = updateFieldsJson as IMessage;
 							} else {
 								// if it is a string
-								if (validateJSON(messageJson as string) !== undefined) {
-									message = JSON.parse(messageJson as string) as IMessage;
+								if (validateJSON(updateFieldsJson as string) !== undefined) {
+									message = JSON.parse(updateFieldsJson as string) as IMessage;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Message (JSON) must be a valid json');
+									throw new NodeOperationError(this.getNode(), 'Update Fields (JSON) must be a valid json');
 								}
 							}
 
 						} else {
-							const messageUi = this.getNodeParameter('messageUi', i) as IDataObject;
-							if (messageUi.text) {
-								message.text = messageUi.text as string;
+							const updateFieldsUi = this.getNodeParameter('updateFieldsUi', i) as IDataObject;
+							if (updateFieldsUi.text) {
+								message.text = updateFieldsUi.text as string;
 							}
 							// // TODO: get cards from the UI
-							// if (messageUi.cards) {
-							// 	message.cards = messageUi.cards as IDataObject[];
+							// if (updateFieldsUi.cards) {
+							// 	message.cards = updateFieldsUi.cards as IDataObject[];
 							// }
 						}
 

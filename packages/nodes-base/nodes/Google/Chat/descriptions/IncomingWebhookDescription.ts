@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const incomingWebhookOperations = [
+export const incomingWebhookOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -19,16 +19,15 @@ export const incomingWebhookOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Creates a message through incoming webhook (no chat bot needed).',
+				description: 'Creates a message through incoming webhook (no chat bot needed)',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
 
-export const incomingWebhookFields = [
+export const incomingWebhookFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 incomingWebhook:create                     */
@@ -65,7 +64,7 @@ export const incomingWebhookFields = [
 			},
 		},
 		default: '',
-		description: 'URL for the incoming webhook.',
+		description: 'URL for the incoming webhook',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -82,7 +81,7 @@ export const incomingWebhookFields = [
 			},
 		},
 		default: false,
-		description: 'Pass message object as JSON.',
+		description: 'Whether to pass the message object as JSON',
 	},
 	{
 		displayName: 'Message',
@@ -104,14 +103,14 @@ export const incomingWebhookFields = [
 			},
 		},
 		default: {'text': ''},
-		description: 'The message object.',
+		description: 'The message object',
 		options: [
 			{
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
 				default: '',
-				description: 'The message text.',
+				description: 'The message text',
 			},
 		],
 	},
@@ -156,7 +155,7 @@ export const incomingWebhookFields = [
 			},
 		},
 		default: '',
-		description: 'Message input as JSON Object or JSON String.',
+		description: 'Message input as JSON Object or JSON String',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -180,9 +179,8 @@ export const incomingWebhookFields = [
 				name: 'threadKey',
 				type: 'string',
 				default: '',
-				description: 'Thread identifier which groups messages into a single thread. Has no effect if thread field, corresponding to an existing thread, is set in message. Example: spaces/AAAAMpdlehY/threads/MZ8fXhZXGkk',
+				description: 'Thread identifier which groups messages into a single thread. Has no effect if thread field, corresponding to an existing thread, is set in message. Example: spaces/AAAAMpdlehY/threads/MZ8fXhZXGkk.',
 			},
 		],
 	},
-
-] as INodeProperties[];
+];

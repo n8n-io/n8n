@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const mediaOperations = [
+export const mediaOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -19,15 +19,14 @@ export const mediaOperations = [
 			{
 				name: 'Download',
 				value: 'download',
-				description: 'Download media.',
+				description: 'Download media',
 			},
 		],
 		default: 'download',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const  mediaFields = [
+export const  mediaFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 media:download                             */
 	/* -------------------------------------------------------------------------- */
@@ -47,7 +46,7 @@ export const  mediaFields = [
 			},
 		},
 		default: '',
-		description: 'Name of the media that is being downloaded.',
+		description: 'Name of the media that is being downloaded',
 	},
 	{
 		displayName: 'Binary Property',
@@ -65,7 +64,6 @@ export const  mediaFields = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
-
-] as INodeProperties[];
+];
