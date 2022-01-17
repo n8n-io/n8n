@@ -137,6 +137,7 @@ In most cases, the new component is created in `/components`, e.g. `/components/
 		"credentialConfig": {
 			"accountConnected": "Account connected"
 		}
+	}
 }
 ```
 
@@ -146,6 +147,7 @@ The translation key should be the display string in camel case, cropped if too l
 {
 	"workflowActivator": {
 		"theWorkflowIsSetToBeActiveBut": "The workflow is set to be active but could not be started.<br />Click to display error message."
+	}
 }
 ```
 
@@ -159,7 +161,7 @@ As an exception, keys for toast contents should use `message` and `title`.
 			"message": "The workflow has issues. Please fix them first",
 			"title": "Workflow cannot be executed"
 		}
-	},
+	}
 }
 ```
 
