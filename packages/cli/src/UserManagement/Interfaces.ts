@@ -1,8 +1,7 @@
 /* eslint-disable import/no-cycle */
 import { Application } from 'express';
-import express = require('express');
 import { JwtFromRequestFunction } from 'passport-jwt';
-import { User } from '../databases/entities/User';
+import { AuthenticatedRequest } from '../requests';
 
 export interface JwtToken {
 	token: string;
@@ -29,13 +28,6 @@ export interface N8nApp {
 	app: Application;
 	restEndpoint: string;
 }
-
-export type AuthenticatedRequest<ReqBody = {}, ReqQuery = {}> = express.Request<
-	{},
-	{},
-	ReqBody,
-	ReqQuery
-> & { user: User };
 
 // ----------------------------------
 //         requests to /me
