@@ -119,11 +119,6 @@ export default mixins(
 
 					const activeWorkflowId = this.$store.getters.workflowId;
 					if (newActiveState === true && this.workflowId === activeWorkflowId) {
-						// If the currently active workflow gets activated save the whole
-						// workflow. If that would not happen then it could be quite confusing
-						// for people because it would activate a different version of the workflow
-						// than the one they can currently see.
-
 						// Get the current workflow data that it gets saved together with the activation
 						data = await this.getWorkflowDataToSave();
 					}
