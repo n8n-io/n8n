@@ -82,12 +82,13 @@ export default mixins(
 					return '#13ce66';
 				},
 				disabled(): boolean {
-					const isCurrentWorkflow = this.$store.getters['workflowId'] !== this.workflowId;
-					if (this.workflowId && isCurrentWorkflow) {
-						return false;
+					const isNewWorkflow = !this.workflowId;
+					const openWorkflow = this.$store.getters['workflowId'];
+					if (isNewWorkflow || openWorkflow === this.workflowId) {
+						return !this.workflowActive && !this.containsTrigger;
 					}
 
-					return !this.workflowActive && !this.containsTrigger;
+					return false;
 				},
 				containsTrigger(): boolean {
 					const foundTriggers = this.$store.getters.workflowTriggerNodes
