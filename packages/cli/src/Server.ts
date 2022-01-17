@@ -32,7 +32,16 @@ import * as express from 'express';
 import { readFileSync, existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
+import {
+	FindManyOptions,
+	getConnectionManager,
+	In,
+	IsNull,
+	LessThan,
+	LessThanOrEqual,
+	MoreThan,
+	Not,
+} from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
 import * as os from 'os';
@@ -151,12 +160,15 @@ import * as UserManagementHelpers from './UserManagement/UserManagementHelper';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { NameRequest } from './WorkflowHelpers';
+import { NameRequest, whereClause } from './WorkflowHelpers';
 import { getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
 import { User } from './databases/entities/User';
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
+import { ExecutionRequest } from './requests';
+import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from './GenericHelpers';
+import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 
 require('body-parser-xml')(bodyParser);
 
@@ -2379,110 +2391,107 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/executions`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<IExecutionsListResponse> => {
-					let filter: any = {};
+				async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
+					const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
 
-					if (req.query.filter) {
-						filter = JSON.parse(req.query.filter as string);
-					}
-
-					let limit = 20;
-					if (req.query.limit) {
-						limit = parseInt(req.query.limit as string, 10);
-					}
+					const limit = req.query.limit
+						? parseInt(req.query.limit, 10)
+						: DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
 
 					const executingWorkflowIds: string[] = [];
 
 					if (config.get('executions.mode') === 'queue') {
 						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
-						executingWorkflowIds.push(
-							...(currentJobs.map((job) => job.data.executionId) as string[]),
-						);
+						executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
 					}
+
 					// We may have manual executions even with queue so we must account for these.
 					executingWorkflowIds.push(
-						...this.activeExecutionsInstance
-							.getActiveExecutions()
-							.map((execution) => execution.id.toString()),
+						...this.activeExecutionsInstance.getActiveExecutions().map(({ id }) => id),
 					);
 
-					const countFilter = JSON.parse(JSON.stringify(filter));
-					if (countFilter.waitTill !== undefined) {
-						countFilter.waitTill = Not(IsNull());
-					}
+					const countFilter = { ...filter };
+					countFilter.waitTill &&= Not(IsNull());
 					countFilter.id = Not(In(executingWorkflowIds));
 
-					const resultsQuery = await Db.collections
-						.Execution!.createQueryBuilder('execution')
-						.select([
-							'execution.id',
-							'execution.finished',
-							'execution.mode',
-							'execution.retryOf',
-							'execution.retrySuccessId',
-							'execution.waitTill',
-							'execution.startedAt',
-							'execution.stoppedAt',
-							'execution.workflowData',
-						])
-						.orderBy('execution.id', 'DESC')
-						.take(limit);
-
-					Object.keys(filter).forEach((filterField) => {
-						if (filterField === 'waitTill') {
-							resultsQuery.andWhere(`execution.${filterField} is not null`);
-						} else if (filterField === 'finished' && filter[filterField] === false) {
-							resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {
-								[filterField]: filter[filterField],
-							});
-							resultsQuery.andWhere(`execution.waitTill is null`);
-						} else {
-							resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {
-								[filterField]: filter[filterField],
-							});
-						}
+					const sharings = await Db.collections.SharedWorkflow!.find({
+						relations: ['workflow'],
+						where: whereClause({
+							user: req.user,
+							entityType: 'workflow',
+						}),
 					});
+
+					const accessibleWorkflowIds = In(sharings.map(({ workflow }) => workflow.id));
+
+					const select: Array<keyof IExecutionFlattedDb> = [
+						'id',
+						'finished',
+						'mode',
+						'retryOf',
+						'retrySuccessId',
+						'waitTill',
+						'startedAt',
+						'stoppedAt',
+						'workflowData',
+					];
+
+					const findOptions: FindManyOptions<ExecutionEntity> = {
+						select,
+						where: { workflowId: In(accessibleWorkflowIds) },
+						order: { id: 'DESC' },
+						take: limit,
+					};
+
+					Object.entries(filter).forEach(([key, value]) => {
+						let filterToAdd = {};
+
+						if (key === 'waitTill') {
+							filterToAdd = { waitTill: !IsNull() };
+						} else if (key === 'finished' && value === false) {
+							filterToAdd = { [key]: value, waitTill: IsNull() };
+						} else {
+							filterToAdd = { [key]: value };
+						}
+
+						Object.assign(findOptions.where, filterToAdd);
+					});
+
 					if (req.query.lastId) {
-						resultsQuery.andWhere(`execution.id < :lastId`, { lastId: req.query.lastId });
+						Object.assign(findOptions.where, { id: LessThan(req.query.lastId) });
 					}
+
 					if (req.query.firstId) {
-						resultsQuery.andWhere(`execution.id > :firstId`, { firstId: req.query.firstId });
+						Object.assign(findOptions.where, { id: MoreThan(req.query.firstId) });
 					}
+
 					if (executingWorkflowIds.length > 0) {
-						resultsQuery.andWhere(`execution.id NOT IN (:...ids)`, { ids: executingWorkflowIds });
+						Object.assign(findOptions.where, { id: !In(executingWorkflowIds) });
 					}
 
-					resultsQuery.innerJoin('workflow_entity', 'w', 'w.id = execution.workflowId');
-					resultsQuery.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
-					resultsQuery.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
-					const resultsPromise = resultsQuery.getMany();
+					const executions = await Db.collections.Execution!.find(findOptions);
 
-					const countPromise = getExecutionsCount(countFilter, req.user as User);
+					const { count, estimate: estimated } = await getExecutionsCount(countFilter, req.user);
 
-					const results: IExecutionFlattedDb[] = await resultsPromise;
-					const countedObjects = await countPromise;
-
-					const returnResults: IExecutionsSummary[] = [];
-
-					for (const result of results) {
-						returnResults.push({
-							id: result.id.toString(),
-							finished: result.finished,
-							mode: result.mode,
-							retryOf: result.retryOf ? result.retryOf.toString() : undefined,
-							retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : undefined,
-							waitTill: result.waitTill as Date | undefined,
-							startedAt: result.startedAt,
-							stoppedAt: result.stoppedAt,
-							workflowId: result.workflowData.id ? result.workflowData.id.toString() : '',
-							workflowName: result.workflowData.name,
-						});
-					}
+					const formattedExecutions = executions.map((execution) => {
+						return {
+							id: execution.id.toString(),
+							finished: execution.finished,
+							mode: execution.mode,
+							retryOf: execution.retryOf?.toString(),
+							retrySuccessId: execution?.retrySuccessId?.toString(),
+							waitTill: execution.waitTill as Date | undefined,
+							startedAt: execution.startedAt,
+							stoppedAt: execution.stoppedAt,
+							workflowId: execution.workflowData?.id?.toString() ?? '',
+							workflowName: execution.workflowData.name,
+						};
+					});
 
 					return {
-						count: countedObjects.count,
-						results: returnResults,
-						estimated: countedObjects.estimate,
+						count,
+						results: formattedExecutions,
+						estimated,
 					};
 				},
 			),
@@ -2667,11 +2676,11 @@ class App {
 						return;
 					}
 
-					const executionIds = [] as string[];
+					const executionIds = [] as number[];
 
 					await Promise.all(
 						execs.map(async (item) => {
-							executionIds.push(item.id.toString());
+							executionIds.push(item.id);
 							return BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(
 								item.id.toString(),
 							);
@@ -2688,7 +2697,7 @@ class App {
 					queryBuilder.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
 					queryBuilder.andWhere('e.id IN :ids', { ids: deleteData.ids });
 
-					const idsToDelete = (await queryBuilder.getMany()).map((row) => row.id) as string[];
+					const idsToDelete = (await queryBuilder.getMany()).map((row) => row.id) as number[];
 
 					if (idsToDelete.length === 0) {
 						return;
@@ -2696,7 +2705,7 @@ class App {
 
 					await Promise.all(
 						idsToDelete.map(async (id) =>
-							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id),
+							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id.toString()),
 						),
 					);
 
@@ -2763,7 +2772,7 @@ class App {
 
 						return results.map((result) => {
 							return {
-								id: result.id,
+								id: result.id.toString(),
 								workflowId: result.workflowId,
 								mode: result.mode,
 								retryOf: result.retryOf !== null ? result.retryOf : undefined,

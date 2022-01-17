@@ -205,7 +205,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 }
 
 export interface IExecutionFlattedDb extends IExecutionBase {
-	id: number | string;
+	id: number;
 	data: string;
 	waitTill?: Date | null;
 	workflowData: IWorkflowBase;
@@ -590,3 +590,5 @@ export interface IWorkflowExecuteProcess {
 	workflow: Workflow;
 	workflowExecute: WorkflowExecute;
 }
+
+export type WhereClause = Record<string, { id: string }>;
