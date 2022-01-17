@@ -22,6 +22,12 @@ export class ReadPdf implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		credentials: [
+			{
+				name: 'readPDF',
+				required: false,
+			},
+		],
 		properties: [
 			{
 				displayName: 'Binary Property',
@@ -36,6 +42,7 @@ export class ReadPdf implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const credentials = await this.getCredentials('readPDF');
 
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length as unknown as number;
@@ -55,7 +62,9 @@ export class ReadPdf implements INodeType {
 				const binaryData = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 				returnData.push({
 					binary: item.binary,
-					json: await PdfData.extract(binaryData),
+					json: await PdfData.extract(binaryData, {
+						password: credentials.password
+					}),
 				});
 
 			} catch (error) {
