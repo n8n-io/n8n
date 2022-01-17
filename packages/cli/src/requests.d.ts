@@ -76,7 +76,7 @@ export declare namespace WorkflowRequest {
 
 	type NewName = express.Request<{}, {}, {}, { name?: string }>;
 
-	type GetAll = AuthenticatedRequest<{}, {}, {}, Record<string, string>>;
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
 	type GetAllActive = AuthenticatedRequest;
 

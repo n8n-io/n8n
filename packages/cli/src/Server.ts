@@ -814,11 +814,13 @@ class App {
 			ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
 				let workflows: WorkflowEntity[] = [];
 
+				const filter: Record<string, string> = req.query.filter ? JSON.parse(req.query.filter) : {};
+
 				if (req.user.globalRole.name === 'owner') {
 					workflows = await Db.collections.Workflow!.find({
 						select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
 						relations: ['tags'],
-						where: req.query,
+						where: filter,
 					});
 				} else {
 					const shared = await Db.collections.SharedWorkflow!.find({
@@ -836,7 +838,7 @@ class App {
 						select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
 						where: {
 							id: In(shared.map(({ workflow }) => workflow.id)),
-							...req.query,
+							...filter,
 						},
 					});
 				}
