@@ -5,9 +5,10 @@ import { genSaltSync, hashSync } from 'bcryptjs';
 import express = require('express');
 import { Db, ResponseHelper } from '../..';
 import { issueJWT } from '../auth/jwt';
-import { AuthenticatedRequest, N8nApp, PublicUser } from '../Interfaces';
+import { N8nApp, PublicUser } from '../Interfaces';
 import { isValidEmail, validatePassword, sanitizeUser } from '../UserManagementHelper';
 import type { UpdateSelfRequest } from '../Interfaces';
+import { AuthenticatedRequest } from '../../requests';
 
 export function addMeNamespace(this: N8nApp): void {
 	/**

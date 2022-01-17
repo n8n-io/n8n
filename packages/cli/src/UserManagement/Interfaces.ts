@@ -36,13 +36,13 @@ export interface N8nApp {
 declare namespace UpdateSelfPayload {
 	type Settings = Pick<PublicUser, 'email' | 'firstName' | 'lastName'>;
 	type Password = Pick<PublicUser, 'password'>;
-	type SurveyAnswers = { [key: string]: string } | {};
+	type SurveyAnswers = Record<string, string> | {};
 }
 
 export declare namespace UpdateSelfRequest {
-	export type Settings = AuthenticatedRequest<UpdateSelfPayload.Settings>;
-	export type Password = AuthenticatedRequest<UpdateSelfPayload.Password>;
-	export type SurveyAnswers = AuthenticatedRequest<UpdateSelfPayload.SurveyAnswers>;
+	export type Settings = AuthenticatedRequest<{}, {}, UpdateSelfPayload.Settings>;
+	export type Password = AuthenticatedRequest<{}, {}, UpdateSelfPayload.Password>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, UpdateSelfPayload.SurveyAnswers>;
 }
 
 // ----------------------------------
@@ -59,7 +59,7 @@ declare namespace PasswordResetQuery {
 }
 
 export declare namespace PasswordResetRequest {
-	export type Email = AuthenticatedRequest<PasswordResetPayload.Email>;
-	export type Credentials = AuthenticatedRequest<{}, PasswordResetQuery.Credentials>;
-	export type NewPassword = AuthenticatedRequest<PasswordResetPayload.NewPassword>;
+	export type Email = AuthenticatedRequest<{}, {}, PasswordResetPayload.Email>;
+	export type Credentials = AuthenticatedRequest<{}, {}, {}, PasswordResetQuery.Credentials>;
+	export type NewPassword = AuthenticatedRequest<{}, {}, PasswordResetPayload.NewPassword>;
 }

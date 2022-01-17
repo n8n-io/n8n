@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 import express = require('express');
 import {
 	IConnections,
