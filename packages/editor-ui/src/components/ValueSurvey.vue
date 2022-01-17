@@ -122,8 +122,6 @@ export default mixins(workflowHelpers).extend({
 					email: '',
 				});
 			}
-
-			this.modalBus.$emit('close');
 		},
 		onInputChange(value: string) {
 			this.form.email = value;
