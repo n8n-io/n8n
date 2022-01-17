@@ -114,7 +114,7 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('POST', `/workflows/run`, startRunData);
 				},
 
-				// Creates new credentials
+				// Creates a new workflow
 				createNewWorkflow: (sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> => {
 					return self.restApi().makeRestApiRequest('POST', `/workflows`, sendData);
 				},
