@@ -3,44 +3,37 @@ import express = require('express');
 import { IConnections, INode, IWorkflowSettings } from '../../workflow/dist/src';
 import { User } from './databases/entities/User';
 
-// ----------------------------------
-//      requests to /workflows
-// ----------------------------------
-
-type CreateWorkflowPayload = Partial<{
-	id: string; // delete if sent
-	name: string;
-	nodes: INode[];
-	connections: object;
-	active: boolean;
-	settings: object;
-	tags: string[];
-}>;
-
-type UpdateWorkflowPayload = Partial<{
-	id: string;
-	name: string;
-	nodes: INode[];
-	connections: IConnections;
-	settings: IWorkflowSettings;
-	active: boolean;
-	tags: string[];
-}>;
+export type AuthenticatedRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & { user: User };
 
 export declare namespace WorkflowRequest {
-	type Create = express.Request<{}, {}, CreateWorkflowPayload> & { user: User };
+	type Payload = Partial<{
+		id: string; // delete if sent in body
+		name: string;
+		nodes: INode[];
+		connections: IConnections;
+		settings: IWorkflowSettings;
+		active: boolean;
+		tags: string[];
+	}>;
 
-	type Get = express.Request<{ id: string }> & { user: User };
+	type Create = AuthenticatedRequest<{}, {}, Payload>;
+
+	type Get = AuthenticatedRequest<{ id: string }>;
 
 	type Delete = Get;
 
-	type Update = express.Request<{ id: string }, {}, UpdateWorkflowPayload> & { user: User };
+	type Update = AuthenticatedRequest<{ id: string }, {}, Payload>;
 
 	type NewName = express.Request<{}, {}, {}, { name?: string }>;
 
-	type GetAll = express.Request<{}, {}, {}, Record<string, string>> & { user: User };
+	type GetAll = AuthenticatedRequest<{}, {}, {}, Record<string, string>>;
 
-	type GetAllActive = express.Request & { user: User };
+	type GetAllActive = AuthenticatedRequest;
 
 	type GetAllActivationErrors = Get;
 }
