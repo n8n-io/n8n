@@ -171,7 +171,7 @@ import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Modal from '@/components/Modal.vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { WAIT_TIME_UNLIMITED } from '@/constants';
+import { WAIT_TIME_UNLIMITED, EXECUTIONS_MODAL_KEY } from '@/constants';
 
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -198,9 +198,6 @@ import {
 } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-
-import { EXECUTIONS_MODAL_KEY } from '@/constants';
-
 
 export default mixins(
 	externalHooks,
