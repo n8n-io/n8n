@@ -116,6 +116,10 @@ export default Vue.extend({
 			this.$props.eventBus.$on('close', () => {
 				this.closeDialog();
 			});
+
+			this.$props.eventBus.$on('closeAll', () => {
+				this.closeAllDialogs();
+			});
 		}
 
 		const activeElement = document.activeElement as HTMLElement;

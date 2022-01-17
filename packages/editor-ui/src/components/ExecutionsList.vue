@@ -356,7 +356,7 @@ export default mixins(
 				name: 'ExecutionById',
 				params: { id: execution.id },
 			});
-			this.closeDialog();
+			this.modalBus.$emit('closeAll');
 		},
 		handleAutoRefreshToggle () {
 			if (this.autoRefreshInterval) {
