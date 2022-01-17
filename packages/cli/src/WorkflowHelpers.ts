@@ -22,7 +22,6 @@ import {
 	LoggerProxy as Logger,
 	Workflow,
 } from 'n8n-workflow';
-import { validate } from 'class-validator';
 // eslint-disable-next-line import/no-cycle
 import {
 	CredentialTypes,
@@ -32,7 +31,6 @@ import {
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
-	ResponseHelper,
 	WhereClause,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	WorkflowCredentials,
@@ -494,18 +492,6 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 	}
 	/* eslint-enable no-await-in-loop */
 	return workflow;
-}
-
-// TODO: Deduplicate `validateWorkflow` with TagHelpers?
-
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function validateWorkflow(newWorkflow: WorkflowEntity) {
-	const errors = await validate(newWorkflow);
-
-	if (errors.length) {
-		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
-		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
-	}
 }
 
 /**

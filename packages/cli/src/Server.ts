@@ -137,7 +137,6 @@ import {
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 	WorkflowRunner,
-	validateCredential,
 } from '.';
 
 import * as config from '../config';
@@ -157,6 +156,7 @@ import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 import type { CredentialRequest, WorkflowRequest } from './requests';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { SharedCredentials } from './databases/entities/SharedCredentials';
+import { validateEntity } from './GenericHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -685,7 +685,7 @@ class App {
 
 				Object.assign(newWorkflow, req.body);
 
-				await WorkflowHelpers.validateWorkflow(newWorkflow);
+				await validateEntity(newWorkflow);
 
 				await this.externalHooks.run('workflow.create', [newWorkflow]);
 
@@ -944,7 +944,7 @@ class App {
 				// required due to atomic update
 				updateData.updatedAt = this.getCurrentDate();
 
-				await WorkflowHelpers.validateWorkflow(updateData);
+				await validateEntity(updateData);
 
 				await Db.collections.Workflow!.update(workflowId, updateData);
 
@@ -1160,7 +1160,7 @@ class App {
 
 					await this.externalHooks.run('tag.beforeCreate', [newTag]);
 
-					await TagHelpers.validateTag(newTag);
+					await validateEntity(newTag);
 					const tag = await Db.collections.Tag!.save(newTag);
 
 					await this.externalHooks.run('tag.afterCreate', [tag]);
@@ -1186,7 +1186,7 @@ class App {
 
 					await this.externalHooks.run('tag.beforeUpdate', [newTag]);
 
-					await TagHelpers.validateTag(newTag);
+					await validateEntity(newTag);
 					const tag = await Db.collections.Tag!.save(newTag);
 
 					await this.externalHooks.run('tag.afterUpdate', [tag]);
@@ -1513,11 +1513,7 @@ class App {
 
 				Object.assign(newCredential, req.body);
 
-				const validationErrorMessage = await validateCredential(newCredential);
-
-				if (validationErrorMessage) {
-					throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
-				}
+				await validateEntity(newCredential);
 
 				// Add the added date for node access permissions
 				for (const nodeAccess of newCredential.nodesAccess) {

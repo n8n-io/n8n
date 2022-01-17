@@ -1,6 +1,4 @@
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { validate } from 'class-validator';
 import { Credentials } from 'n8n-core';
 
 import {
@@ -20,7 +18,6 @@ import {
 } from 'n8n-workflow';
 
 import { CredentialsOverwrites, CredentialTypes, Db, ICredentialsDb } from '.';
-import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {},
@@ -272,16 +269,4 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
 	}
-}
-
-export async function validateCredential(credential: CredentialsEntity) {
-	const errors = await validate(credential);
-
-	return errors
-		.reduce<string[]>((acc, cur) => {
-			if (!cur.constraints) return acc;
-			acc.push(...Object.values(cur.constraints));
-			return acc;
-		}, [])
-		.join(' | ');
 }
