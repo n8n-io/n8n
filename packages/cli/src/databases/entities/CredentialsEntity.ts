@@ -55,7 +55,9 @@ export class CredentialsEntity implements ICredentialsDb {
 	id: number;
 
 	@Column({ length: 128 })
-	@Length(3, 128, { message: 'Credential name must be 3 to 128 characters long.' })
+	@Length(3, 128, {
+		message: 'Credential name must be $constraint1 to $constraint1 characters long.',
+	})
 	name: string;
 
 	@Column('text')
