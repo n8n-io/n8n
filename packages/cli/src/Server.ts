@@ -906,9 +906,6 @@ class App {
 
 							// Also set it in the returned data
 							workflow.active = false;
-
-							// Now return the original error for UI to display
-							throw error;
 						}
 					}
 

@@ -457,29 +457,29 @@ export const workflowHelpers = mixins(
 						workflowDataRequest.tags = tags;
 					}
 
-					// Check if trigger was removed from active workflow
-					let triggerIsRemoved = false;
-					if (this.$store.getters.isActive) {
-						const triggers = this.$store.getters.workflowTriggerNodes
-							.filter((node: INodeUi) => {
-								return !node.disabled;
-							});
-						triggerIsRemoved = triggers.length === 0;
+					// // Check if trigger was removed from active workflow
+					// let triggerIsRemoved = false;
+					// if (this.$store.getters.isActive) {
+					// 	const triggers = this.$store.getters.workflowTriggerNodes
+					// 		.filter((node: INodeUi) => {
+					// 			return !node.disabled;
+					// 		});
+					// 	triggerIsRemoved = triggers.length === 0;
 
-						if (triggerIsRemoved) {
-							// Only set active if trigger was removed
-							workflowDataRequest.active = false;
-						}
-					}
+					// 	if (triggerIsRemoved) {
+					// 		// Only set active if trigger was removed
+					// 		workflowDataRequest.active = false;
+					// 	}
+					// }
 
 					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
 
 					// Explicitly commit active state change
-					if (triggerIsRemoved) {
-						this.$store.commit('setActive', false);
-						this.$store.commit('setWorkflowInactive', workflowData.id);
-						this.$externalHooks().run('workflow.activeChangeCurrent', { workflowId: workflowData.id, active: false });
-					}
+					// if (triggerIsRemoved) {
+					// 	this.$store.commit('setActive', false);
+					// 	this.$store.commit('setWorkflowInactive', workflowData.id);
+					// 	this.$externalHooks().run('workflow.activeChangeCurrent', { workflowId: workflowData.id, active: false });
+					// }
 
 					if (name) {
 						this.$store.commit('setWorkflowName', {newName: workflowData.name});
