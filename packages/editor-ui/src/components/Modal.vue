@@ -144,22 +144,15 @@ export default Vue.extend({
 		closeAllDialogs() {
 			this.$store.commit('ui/closeAllModals');
 		},
-		closeDialog(callback?: () => void) {
+		async closeDialog() {
 			if (this.beforeClose) {
-				this.beforeClose(() => {
-					this.$store.commit('ui/closeModal', this.$props.name);
-					if (typeof callback === 'function') {
-						callback();
-					}
-				});
-
-				return;
+				const shouldClose = await this.beforeClose();
+				if (shouldClose === false) {
+					return;
+				}
 			}
 
 			this.$store.commit('ui/closeModal', this.$props.name);
-			if (typeof callback === 'function') {
-				callback();
-			}
 		},
 		getCustomClass() {
 			let classes = this.$props.customClass || '';
