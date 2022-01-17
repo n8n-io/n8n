@@ -101,22 +101,6 @@ const module: Module<IUiState, IRootState> = {
 			});
 			state.modalStack = [];
 		},
-		closeTopModal: (state: IUiState) => {
-			if (state.modalStack.length > 0) {
-				return;
-			}
-
-			const name = state.modalStack[0];
-			Vue.set(state.modals[name], 'open', false);
-			if (state.modals.mode) {
-				Vue.set(state.modals[name], 'mode', '');
-			}
-			if (state.modals.activeId) {
-				Vue.set(state.modals[name], 'activeId', '');
-			}
-
-			state.modalStack = state.modalStack.slice(1);
-		},
 		toggleSidebarMenuCollapse: (state: IUiState) => {
 			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;
 		},

@@ -183,7 +183,7 @@ export default mixins(
 						params: { name: data.id },
 					});
 				}
-				this.$store.commit('ui/closeTopModal');
+				this.$store.commit('ui/closeAllModals');
 			}
 		},
 		openDialog () {

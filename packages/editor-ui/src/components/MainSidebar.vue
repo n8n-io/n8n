@@ -340,7 +340,7 @@ export default mixins(
 					params: { name: workflowId },
 				});
 
-				this.$store.commit('ui/closeTopModal');
+				this.$store.commit('ui/closeAllModals');
 			},
 			async handleFileImport () {
 				const reader = new FileReader();
