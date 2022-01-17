@@ -239,10 +239,6 @@ export default mixins(
 		};
 	},
 	async created() {
-		Vue.set(this, 'selectedItems', {});
-		this.filter.workflowId = 'ALL';
-		this.checkAll = false;
-
 		await this.loadWorkflows();
 		await this.refreshData();
 		this.handleAutoRefreshToggle();
