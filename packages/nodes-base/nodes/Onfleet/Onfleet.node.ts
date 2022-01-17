@@ -16,9 +16,11 @@ import {
 	OnfleetTask,
 	OnfleetTaskComplete,
 	OnfleetTaskUpdate,
+	OnfleetTeamAutoDispatch,
 	OnfleetTeams,
 	OnfleetWebhook,
 	OnfleetWorker,
+	OnfleetWorkerEstimates,
 	OnfleetWorkerFilter,
 	OnfleetWorkerSchedule
 } from './interfaces';
@@ -525,7 +527,7 @@ export class Onfleet implements INodeType {
 	 * @param operation Current team opration
 	 * @returns {OnfleetTeams} Team information
 	 */
-	 static getTeamFields(this: IExecuteFunctions, item: number, operation: string): OnfleetTeams | null {
+	 static getTeamFields(this: IExecuteFunctions, item: number, operation: string): OnfleetTeams | OnfleetWorkerEstimates | OnfleetTeamAutoDispatch | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                         Get fields to create a team                        */
@@ -555,6 +557,47 @@ export class Onfleet implements INodeType {
 			}
 			Object.assign(teamData, additionalFields);
 			return teamData;
+		} else if (operation === 'getTimeEstimates') {
+			/* -------------------------------------------------------------------------- */
+			/*      Get driver time estimates for tasks that haven't been created yet     */
+			/* -------------------------------------------------------------------------- */
+			const dropoff = this.getNodeParameter('dropoff', item) as boolean;
+			const pickup = this.getNodeParameter('pickup', item) as boolean;
+			if (!dropoff && !pickup) throw new Error('At least 1 of dropoffLocation or pickupLocation must be selected');
+			const longitudeField = `${dropoff ? 'dropoff' : 'pickup'}Longitude`;
+			const latitudeField = `${dropoff ? 'dropoff' : 'pickup'}Latitude`;
+			const longitude = this.getNodeParameter(longitudeField, item) as string;
+			const latitude = this.getNodeParameter(latitudeField, item) as string;
+
+			const wokrerTimeEstimates = {} as OnfleetWorkerEstimates;
+			if (pickup) {
+				wokrerTimeEstimates.pickupLocation = `${longitude},${latitude}`;
+				wokrerTimeEstimates.pickupTime = (new Date(this.getNodeParameter('pickupTime', item) as Date)).getTime() / 1000;
+			}
+			if(dropoff) {
+				wokrerTimeEstimates.dropoffLocation = `${longitude},${latitude}`;
+			}
+
+			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
+			Object.assign(wokrerTimeEstimates, additionalFields);
+			return wokrerTimeEstimates;
+		} else if (operation === 'autoDispatch') {
+			/* -------------------------------------------------------------------------- */
+			/*                  Dynamically dispatching tasks on the fly                  */
+			/* -------------------------------------------------------------------------- */
+			const teamAutoDispatch = {} as OnfleetTeamAutoDispatch;
+			const {
+				taskTimeWindow, scheduleTimeWindow, ...additionalFields
+			} = this.getNodeParameter('additionalFields', item) as IDataObject;
+			if (taskTimeWindow) {
+				teamAutoDispatch.taskTimeWindow= JSON.parse((taskTimeWindow as string));
+			}
+			if (scheduleTimeWindow) {
+				teamAutoDispatch.scheduleTimeWindow= JSON.parse((scheduleTimeWindow as string));
+			}
+
+			Object.assign(teamAutoDispatch, additionalFields);
+			return teamAutoDispatch;
 		}
 		return null;
 	}
@@ -1176,6 +1219,22 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'DELETE', encodedApiKey, path));
+				} else if (operation === 'getTimeEstimates') {
+					/* -------------------------------------------------------------------------- */
+					/*      Get driver time estimates for tasks that haven't been created yet     */
+					/* -------------------------------------------------------------------------- */
+					const id = this.getNodeParameter('id', index) as string;
+					const workerTimeEstimates = Onfleet.getTeamFields.call(this, index, operation) as OnfleetWorkerSchedule;
+					const path = `${resource}/${id}/estimate`;
+					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path, {}, workerTimeEstimates));
+				} else if (operation === 'autoDispatch') {
+					/* -------------------------------------------------------------------------- */
+					/*                  Dynamically dispatching tasks on the fly                  */
+					/* -------------------------------------------------------------------------- */
+					const id = this.getNodeParameter('id', index) as string;
+					const teamAutoDispatch = Onfleet.getTeamFields.call(this, index, operation) as OnfleetWorkerSchedule;
+					const path = `${resource}/${id}/dispatch`;
+					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, path, teamAutoDispatch));
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
