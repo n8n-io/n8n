@@ -515,8 +515,8 @@ export type NameRequest = Express.Request & {
 };
 
 /**
- * Build a `where` clause for a `find()` or `findOne()` operation
- * in the `shared_workflow` or `shared_credentials` tables.
+ * Build a `where` clause for a TypeORM entity search,
+ * checking for member access if the user is not an owner.
  */
 export function whereClause({
 	user,
@@ -529,28 +529,7 @@ export function whereClause({
 }): WhereClause {
 	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
-	if (user.globalRole.name !== 'owner') {
-		where.user = { id: user.id };
-	}
-
-	return where;
-}
-
-/**
- * Build a `where` clause for a TypeORM entity search,
- * checking for member access if the user is not an owner.
- */
-export function buildWhereClause({
-	user,
-	entityType,
-	entityId = '',
-}: {
-	entityId?: string;
-	user: User;
-	entityType: 'workflow';
-}): WhereClause {
-	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
-
+	// TODO: Decide if owner access should be restricted
 	if (user.globalRole.name !== 'owner') {
 		where.user = { id: user.id };
 	}

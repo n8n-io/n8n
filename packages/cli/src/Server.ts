@@ -163,7 +163,7 @@ import * as UserManagementHelpers from './UserManagement/UserManagementHelper';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { buildWhereClause, getSharedWorkflowIds, NameRequest } from './WorkflowHelpers';
+import { getSharedWorkflowIds, whereClause, NameRequest } from './WorkflowHelpers';
 import { getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
@@ -695,7 +695,7 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/workflows`,
 			ResponseHelper.send(async (req: WorkflowRequest.Create) => {
-				delete req.body.id; // ignore if sent
+				delete req.body.id; // delete if sent
 
 				const newWorkflow = new WorkflowEntity();
 
@@ -823,7 +823,7 @@ class App {
 				} else {
 					const shared = await Db.collections.SharedWorkflow!.find({
 						relations: ['workflow', 'workflow.tags'],
-						where: buildWhereClause({
+						where: whereClause({
 							user: req.user,
 							entityType: 'workflow',
 						}),
@@ -867,12 +867,14 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/workflows/:id`,
 			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
+				const { id: workflowId } = req.params;
+
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow', 'workflow.tags'],
-					where: buildWhereClause({
+					where: whereClause({
 						user: req.user,
 						entityType: 'workflow',
-						entityId: req.params.id,
+						entityId: workflowId,
 					}),
 				});
 
@@ -899,11 +901,10 @@ class App {
 				const updateData = new WorkflowEntity();
 				const { tags, ...rest } = req.body;
 				Object.assign(updateData, rest);
-				updateData.id = parseInt(workflowId, 10);
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow'],
-					where: buildWhereClause({
+					where: whereClause({
 						user: req.user,
 						entityType: 'workflow',
 						entityId: workflowId,
@@ -1033,7 +1034,7 @@ class App {
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow'],
-					where: buildWhereClause({
+					where: whereClause({
 						user: req.user,
 						entityType: 'workflow',
 						entityId: workflowId,
@@ -1454,7 +1455,7 @@ class App {
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
 					relations: ['workflow'],
-					where: buildWhereClause({
+					where: whereClause({
 						user: req.user,
 						entityType: 'workflow',
 						entityId: workflowId,
