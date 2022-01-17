@@ -915,7 +915,7 @@
 			}
 		},
 		"theWorkflowIsSetToBeActiveBut": "The workflow is set to be active but could not be started.<br />Click to display error message.",
-		"hasNoTriggerNodes": "This workflow has no trigger nodes that require activation"
+		"thisWorkflowHasNoTriggerNodes": "This workflow has no trigger nodes that require activation"
 	},
 	"workflowDetails": {
 		"active": "Active",
