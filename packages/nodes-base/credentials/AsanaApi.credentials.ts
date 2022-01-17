@@ -41,7 +41,7 @@ export class AsanaApi implements ICredentialType {
 		type: 'headerAuth',
 		properties: {
 			name: 'Authorization',
-			value: '=Bearer {{credentials.accessToken}}',
+			value: '=Bearer {{$credentials.accessToken}}',
 		},
 	} as IAuthenticateHeaderAuth;
 

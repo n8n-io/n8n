@@ -131,7 +131,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					const key = this.resolveValue(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						authenticate.properties.name,
-						{ credentials },
+						{ $credentials: credentials },
 						workflow,
 						node,
 					);
@@ -139,7 +139,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					const value = this.resolveValue(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						authenticate.properties.value,
-						{ credentials },
+						{ $credentials: credentials },
 						workflow,
 						node,
 					);
