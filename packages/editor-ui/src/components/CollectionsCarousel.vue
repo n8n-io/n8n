@@ -2,7 +2,17 @@
 	<div>
 		<n8n-heading size="large">Collections ({{collectionsUI.length}})</n8n-heading>
 
-		<agile v-if="collectionsUI.length" :slidesToShow="3" :navButtons="true" :dots="false" :infinite="false">
+
+		<agile v-if="loading" :slidesToShow="3" :navButtons="true" :dots="false" :infinite="false">
+
+			<CollectionsCard :loading="loading" />
+			<CollectionsCard :loading="loading" />
+			<CollectionsCard :loading="loading" />
+			<CollectionsCard :loading="loading" />
+
+		</agile>
+
+		<agile v-else-if="collectionsUI.length" :slidesToShow="3" :navButtons="true" :dots="false" :infinite="false">
 
 			<CollectionsCard v-for="collection in collectionsUI" :key="collection.id" :title="collection.name">
 			  <template v-slot:footer>
@@ -55,6 +65,7 @@ export default mixins(
 	data() {
 		return {
 			collectionsUI: [],
+			loading: true,
 		};
 	},
 	computed: {
@@ -276,9 +287,9 @@ export default mixins(
 		collections(newCollections): void {
 			if (newCollections) {
 				this.$data.collectionsUI = newCollections;
+				this.$data.loading = false;
 			} else {
 				this.$data.collectionsUI = [];
-
 			}
 		},
 	},

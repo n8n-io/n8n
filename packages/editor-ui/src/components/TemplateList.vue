@@ -1,10 +1,20 @@
 <template>
 	<div :class="$style.listWrapper">
 		<n8n-heading size="large">Workflows ({{workflowsUI.length}})</n8n-heading>
-		<div v-if="workflowsUI.length" id="infiniteList" :class="$style.listContainer">
+		<div v-if="loading" id="infiniteList" :class="$style.listContainer">
+			<div :class="$style.templateList">
+				<TemplateCard :loading="loading" title="" />
+				<TemplateCard :loading="loading" title="" />
+				<TemplateCard :loading="loading" title="" />
+				<TemplateCard :loading="loading" title="" />
+
+			</div>
+
+		</div>
+		<div v-else-if="workflowsUI.length" id="infiniteList" :class="$style.listContainer">
 			<div :class="$style.templateList">
 				<div v-for="workflow in workflowsUI" :key="workflow.id">
-					<TemplateCard :title="workflow.name">
+					<TemplateCard :title="workflow.name" :loading="false">
 
 					<template v-slot:right>
 						<div :class="$style.nodesContainer">
@@ -66,6 +76,7 @@ export default mixins(
 		return {
 			workflowsUI: [],
 			hover: false,
+			loading: true,
 		};
 	},
 	computed: {
@@ -76,6 +87,7 @@ export default mixins(
 	watch: {
 		workflows(newWorkflows) {
 			this.workflowsUI = newWorkflows;
+			this.loading = false;
 		},
 	},
 	methods: {

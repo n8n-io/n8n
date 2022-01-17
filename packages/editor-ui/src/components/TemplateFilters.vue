@@ -1,7 +1,20 @@
 <template>
 	<div>
 		<n8n-heading size="small">{{$locale.baseText('templates.categoriesHeading')}}</n8n-heading>
-		<ul :class="$style.categoriesList">
+		<div v-if="loading" :class="$style.loadingList">
+			<el-skeleton :loading="loading" animated>
+				<template slot="template">
+					<el-skeleton-item variant="text" />
+					<el-skeleton-item variant="text" />
+					<el-skeleton-item variant="text" />
+					<el-skeleton-item variant="text" />
+					<el-skeleton-item variant="text" />
+				</template>
+			</el-skeleton>
+
+
+		</div>
+		<ul v-else :class="$style.categoriesList">
 			<li>
 				<el-checkbox
 					label="All Categories"
@@ -30,11 +43,17 @@
 import { ITemplateCategory } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import ElSkeleton from 'element-ui/lib/skeleton';
+import ElSkeletonItem from 'element-ui/lib/skeleton-item';
 
 export default mixins(
 	genericHelpers,
 ).extend({
 	name: 'TemplateFilters',
+	components: {
+		ElSkeleton,
+		ElSkeletonItem,
+	},
 	props: {
 		setCategories: { type: Function },
 	},
@@ -44,6 +63,7 @@ export default mixins(
 			collapsed: true,
 			sortedCategories: [] as ITemplateCategory[],
 			selected: [] as string[],
+			loading: true,
 		};
 	},
 	created() {
@@ -70,6 +90,7 @@ export default mixins(
 	watch: {
 		categories(newCategories) {
 			this.sortedCategories = newCategories;
+			this.loading = false;
 		},
 		collapsed(newState) {
 			if (!this.collapsed) {
@@ -132,6 +153,14 @@ export default mixins(
 .expandButton {
 	margin-left: -12px;
 	height: auto;
+}
+
+.loadingList {
+	padding-top: 12px;
+
+	 div {
+		margin-top: 8px;
+	}
 }
 
 </style>
