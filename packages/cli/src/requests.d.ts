@@ -56,19 +56,29 @@ type UpdateWorkflowPayload = Partial<{
 }>;
 
 export declare namespace WorkflowRequest {
-	type Create = express.Request<{}, {}, CreateWorkflowPayload> & { user: User };
+	type Payload = Partial<{
+		id: string; // delete if sent in body
+		name: string;
+		nodes: INode[];
+		connections: IConnections;
+		settings: IWorkflowSettings;
+		active: boolean;
+		tags: string[];
+	}>;
 
-	type Get = express.Request<{ id: string }> & { user: User };
+	type Create = AuthenticatedRequest<{}, {}, Payload>;
+
+	type Get = AuthenticatedRequest<{ id: string }>;
 
 	type Delete = Get;
 
-	type Update = express.Request<{ id: string }, {}, UpdateWorkflowPayload> & { user: User };
+	type Update = AuthenticatedRequest<{ id: string }, {}, Payload>;
 
 	type NewName = express.Request<{}, {}, {}, { name?: string }>;
 
-	type GetAll = express.Request<{}, {}, {}, Record<string, string>> & { user: User };
+	type GetAll = AuthenticatedRequest<{}, {}, {}, Record<string, string>>;
 
-	type GetAllActive = express.Request & { user: User };
+	type GetAllActive = AuthenticatedRequest;
 
 	type GetAllActivationErrors = Get;
 }
