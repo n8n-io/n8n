@@ -38,6 +38,7 @@ import { mapGetters } from "vuex";
 import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	LOCAL_STORAGE_ACTIVATION_FLAG,
+	ERROR_TRIGGER_NODE_TYPE,
 } from '@/constants';
 
 
@@ -81,21 +82,20 @@ export default mixins(
 					return '#13ce66';
 				},
 				disabled(): boolean {
-					// Switch should be enabled if workflow is currently active and should always be enabled for workflows not currently in editor
-					return this.isCurrentWorkflow && !this.workflowActive && !this.containsTrigger;
-				},
-				isCurrentWorkflow(): boolean {
-					return this.workflowId ? this.$store.state.workflow.id === this.workflowId : true;
+					const isCurrentWorkflow = this.$store.getters['workflowId'] !== this.workflowId;
+					if (this.workflowId && isCurrentWorkflow) {
+						return false;
+					}
+
+					return !this.workflowActive && !this.containsTrigger;
 				},
 				containsTrigger(): boolean {
 					const foundTriggers = this.$store.getters.workflowTriggerNodes
 						.filter((node: INodeUi) => {
-							return !node.disabled;
-						})
-						// Error Trigger does not behave like other triggers and workflows using it can not be activated
-						.filter(({ type }: INodeUi) => {
-							return type !== 'n8n-nodes-base.errorTrigger';
+							// Error Trigger does not behave like other triggers and workflows using it can not be activated
+							return !node.disabled && node.type !== ERROR_TRIGGER_NODE_TYPE;
 						});
+
 					return foundTriggers.length > 0;
 				},
 			},
