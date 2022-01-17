@@ -105,10 +105,7 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
-	IActivationError,
 	ICredentialsDb,
-	ICredentialsDecryptedDb,
-	ICredentialsDecryptedResponse,
 	ICredentialsOverwrite,
 	ICredentialsResponse,
 	ICustomRequest,
@@ -147,7 +144,6 @@ import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
 import * as PersonalizationSurvey from './PersonalizationSurvey';
-import * as UserManagementHelpers from './UserManagement/UserManagementHelper';
 
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
