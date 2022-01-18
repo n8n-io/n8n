@@ -75,7 +75,7 @@ if (!localStorage.getItem('N8N_FUZZY_SEARCH_CONFIG')) {
 	localStorage.setItem('N8N_FUZZY_SEARCH_CONFIG', JSON.stringify(FUZZY_SEARCH_OPTIONS));
 }
 
-const search_config = JSON.parse(localStorage.getItem('N8N_FUZZY_SEARCH_CONFIG') || '');
+const searchConfig = JSON.parse(localStorage.getItem('N8N_FUZZY_SEARCH_CONFIG') || '');
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
