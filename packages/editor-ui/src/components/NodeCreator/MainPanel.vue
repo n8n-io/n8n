@@ -99,7 +99,7 @@ export default mixins(externalHooks).extend({
 			REGULAR_NODE_FILTER,
 			TRIGGER_NODE_FILTER,
 			ALL_NODE_FILTER,
-			fuzzySearch: new Fuse<INodeCreateElement>(this.searchItems, search_config),
+			fuzzySearch: new Fuse<INodeCreateElement>(this.searchItems, searchConfig),
 		};
 	},
 	computed: {
