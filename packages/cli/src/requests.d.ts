@@ -21,4 +21,5 @@ export declare namespace ExecutionRequest {
 	type GetAll = AuthenticatedRequest<{}, {}, {}, GetAllQsParam>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { unflattedResponse: 'true' | 'false' }>;
 	type Delete = AuthenticatedRequest<{}, {}, IExecutionDeleteFilter>;
+	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow: boolean }, {}>;
 }

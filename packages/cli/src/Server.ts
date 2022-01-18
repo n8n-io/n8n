@@ -2528,28 +2528,32 @@ class App {
 		// Retries a failed execution
 		this.app.post(
 			`/${this.restEndpoint}/executions/:id/retry`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-				const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
-				queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
-				queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
-				queryBuilder.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
-				queryBuilder.andWhere('e.id = :id', { id: req.params.id });
+			ResponseHelper.send(async (req: ExecutionRequest.Retry): Promise<boolean> => {
+				const { id: executionId } = req.params;
 
-				// Get the data to execute
-				const fullExecutionDataFlatted = await queryBuilder.getOne();
+				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
-				if (fullExecutionDataFlatted === undefined) {
+				if (!sharedWorkflowIds.length) return false;
+
+				const execution = await Db.collections.Execution!.findOne({
+					where: {
+						id: parseInt(executionId, 10),
+						workflowId: In(sharedWorkflowIds),
+					},
+				});
+
+				if (!execution) {
 					throw new ResponseHelper.ResponseError(
-						`The execution with the id "${req.params.id}" does not exist.`,
+						`The execution with the ID "${executionId}" does not exist.`,
 						404,
 						404,
 					);
 				}
 
-				const fullExecutionData = ResponseHelper.unflattenExecutionData(fullExecutionDataFlatted);
+				const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
 
 				if (fullExecutionData.finished) {
-					throw new Error('The execution did succeed and can so not be retried.');
+					throw new Error('The execution succeeded, so it cannot be retried.');
 				}
 
 				const executionMode = 'retry';
@@ -2581,7 +2585,7 @@ class App {
 					}
 				}
 
-				if (req.body.loadWorkflow === true) {
+				if (req.body.loadWorkflow) {
 					// Loads the currently saved workflow to execute instead of the
 					// one saved at the time of the execution.
 					const workflowId = fullExecutionData.workflowData.id;
@@ -2624,13 +2628,13 @@ class App {
 				}
 
 				const workflowRunner = new WorkflowRunner();
-				const executionId = await workflowRunner.run(data);
+				const retriedExecutionId = await workflowRunner.run(data);
 
 				const executionData = await this.activeExecutionsInstance.getPostExecutePromise(
-					executionId,
+					retriedExecutionId,
 				);
 
-				if (executionData === undefined) {
+				if (!executionData) {
 					throw new Error('The retry did not start for an unknown reason.');
 				}
 
