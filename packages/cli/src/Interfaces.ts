@@ -205,7 +205,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 }
 
 export interface IExecutionFlattedDb extends IExecutionBase {
-	id: number;
+	id: number | string;
 	data: string;
 	waitTill?: Date | null;
 	workflowData: IWorkflowBase;
