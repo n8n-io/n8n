@@ -38,8 +38,8 @@ import { mapGetters } from "vuex";
 import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	LOCAL_STORAGE_ACTIVATION_FLAG,
-	ERROR_TRIGGER_NODE_TYPE,
 } from '@/constants';
+import { getActivatableTriggerNodes } from './helpers';
 
 
 export default mixins(
@@ -93,12 +93,7 @@ export default mixins(
 					return false;
 				},
 				containsTrigger(): boolean {
-					const foundTriggers = this.$store.getters.workflowTriggerNodes
-						.filter((node: INodeUi) => {
-							// Error Trigger does not behave like other triggers and workflows using it can not be activated
-							return !node.disabled && node.type !== ERROR_TRIGGER_NODE_TYPE;
-						});
-
+					const foundTriggers = getActivatableTriggerNodes(this.$store.getters.workflowTriggerNodes);
 					return foundTriggers.length > 0;
 				},
 			},

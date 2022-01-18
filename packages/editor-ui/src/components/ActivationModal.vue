@@ -39,9 +39,8 @@
 import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
-import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG, ERROR_TRIGGER_NODE_TYPE } from '../constants';
-import { INodeUi } from '../Interface';
-import { getTriggerNodeServiceName } from './helpers';
+import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
+import { getActivatableTriggerNodes, getTriggerNodeServiceName } from './helpers';
 
 export default Vue.extend({
 	name: 'ActivationModal',
@@ -71,11 +70,7 @@ export default Vue.extend({
 	},
 	computed: {
 		triggerContent (): string {
-			const foundTriggers = this.$store.getters.workflowTriggerNodes
-				.filter((node: INodeUi) => {
-					return !node.disabled && node.type !== ERROR_TRIGGER_NODE_TYPE;
-				});
-
+			const foundTriggers = getActivatableTriggerNodes(this.$store.getters.workflowTriggerNodes);
 			if (!foundTriggers.length) {
 				return '';
 			}

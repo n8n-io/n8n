@@ -1,3 +1,5 @@
+import { ERROR_TRIGGER_NODE_TYPE } from '@/constants';
+import { INodeUi } from '@/Interface';
 import dateformat from 'dateformat';
 
 const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
@@ -21,4 +23,11 @@ export function getStyleTokenValue(name: string): string {
 
 export function getTriggerNodeServiceName(nodeName: string) {
 	return nodeName.replace(/ trigger/i, '');
+}
+
+export function getActivatableTriggerNodes(nodes: INodeUi[]) {
+	return nodes.filter((node: INodeUi) => {
+		// Error Trigger does not behave like other triggers and workflows using it can not be activated
+		return !node.disabled && node.type !== ERROR_TRIGGER_NODE_TYPE;
+	});
 }
