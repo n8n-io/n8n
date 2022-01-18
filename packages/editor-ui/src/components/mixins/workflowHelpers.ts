@@ -453,7 +453,7 @@ export const workflowHelpers = mixins(
 
 				if (isCurrentWorkflow) {
 					this.$store.commit('setActive', !!workflow.active);
-					// this.$store.commit('setStateDirty', false);
+					this.$store.commit('setStateDirty', false);
 				}
 
 				if (workflow.active) {
