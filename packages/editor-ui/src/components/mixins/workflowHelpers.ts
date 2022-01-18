@@ -440,7 +440,7 @@ export const workflowHelpers = mixins(
 			async saveCurrentWorkflow({name, tags, active}: {name?: string, tags?: string[], active?: boolean} = {}): Promise<boolean> {
 				const currentWorkflow = this.$route.params.name;
 				if (!currentWorkflow) {
-					return this.saveAsNewWorkflow({name, tags});
+					return this.saveAsNewWorkflow({name, tags, active});
 				}
 
 				// Workflow exists already so update it
@@ -499,7 +499,7 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}): Promise<boolean> {
+			async saveAsNewWorkflow ({name, tags, active, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], active?: boolean, resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
@@ -524,6 +524,11 @@ export const workflowHelpers = mixins(
 					if (tags) {
 						workflowDataRequest.tags = tags;
 					}
+
+					if (active !== undefined) {
+						workflowDataRequest.active = active;
+					}
+
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 					if (openInNewWindow) {
 						const routeData = this.$router.resolve({name: 'NodeViewExisting', params: {name: workflowData.id}});
@@ -533,6 +538,12 @@ export const workflowHelpers = mixins(
 					}
 
 					this.$store.commit('setActive', workflowData.active || false);
+					if (workflowData.active === true) {
+						this.$store.commit('setWorkflowActive', workflowData.id);
+					} else {
+						this.$store.commit('setWorkflowInactive', workflowData.id);
+					}
+
 					this.$store.commit('setWorkflowId', workflowData.id);
 					this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
 					this.$store.commit('setWorkflowSettings', workflowData.settings || {});
