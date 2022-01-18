@@ -28,7 +28,7 @@
 		<template v-slot:footer="{ close }">
 			<div :class="$style.footer">
 				<el-checkbox :value="checked" @change="handleCheckboxChange">{{ $locale.baseText('activationModal.dontShowAgain') }}</el-checkbox>
-				<n8n-button @click="close" label="Got it"/>
+				<n8n-button @click="close" :label="$locale.baseText('activationModal.gotIt')" />
 			</div>
 		</template>
 	</Modal>

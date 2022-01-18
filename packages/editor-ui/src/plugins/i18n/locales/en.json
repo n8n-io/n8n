@@ -1047,6 +1047,7 @@
 		"yourTriggersWillNowFire": "Your triggers will now fire production executions automatically.",
 		"yourTriggerWillNowFire": "Your trigger will now fire production executions automatically.",
 		"yourWorkflowWillNowRegularlyCheck": "Your workflow will now regularly check {serviceName} for events and trigger executions for them.",
-		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from ${serviceName} and trigger executions."
+		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from ${serviceName} and trigger executions.",
+		"gotIt": "Got it"
 	}
 }
