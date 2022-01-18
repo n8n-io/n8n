@@ -31,6 +31,7 @@
 import * as express from 'express';
 import { readFileSync, existsSync } from 'fs';
 import { readFile } from 'fs/promises';
+import { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
 	FindManyOptions,
@@ -2410,11 +2411,11 @@ class App {
 						...this.activeExecutionsInstance.getActiveExecutions().map(({ id }) => id),
 					);
 
-					const countFilter = { ...filter };
+					const countFilter = cloneDeep(filter);
 					countFilter.waitTill &&= Not(IsNull());
 					countFilter.id = Not(In(executingWorkflowIds));
 
-					const sharings = await Db.collections.SharedWorkflow!.find({
+					const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
 						relations: ['workflow'],
 						where: whereClause({
 							user: req.user,
@@ -2422,7 +2423,7 @@ class App {
 						}),
 					});
 
-					const accessibleWorkflowIds = In(sharings.map(({ workflow }) => workflow.id));
+					const sharedWorkflowIds = sharedWorkflows.map(({ workflow }) => workflow.id);
 
 					const select: Array<keyof IExecutionFlattedDb> = [
 						'id',
@@ -2438,7 +2439,7 @@ class App {
 
 					const findOptions: FindManyOptions<ExecutionEntity> = {
 						select,
-						where: { workflowId: In(accessibleWorkflowIds) },
+						where: { workflowId: In(sharedWorkflowIds) },
 						order: { id: 'DESC' },
 						take: limit,
 					};
@@ -2676,11 +2677,11 @@ class App {
 						return;
 					}
 
-					const executionIds = [] as number[];
+					const executionIds = [] as string[];
 
 					await Promise.all(
 						execs.map(async (item) => {
-							executionIds.push(item.id);
+							executionIds.push(item.id.toString());
 							return BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(
 								item.id.toString(),
 							);
@@ -2697,7 +2698,7 @@ class App {
 					queryBuilder.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
 					queryBuilder.andWhere('e.id IN :ids', { ids: deleteData.ids });
 
-					const idsToDelete = (await queryBuilder.getMany()).map((row) => row.id) as number[];
+					const idsToDelete = (await queryBuilder.getMany()).map((row) => row.id) as string[];
 
 					if (idsToDelete.length === 0) {
 						return;
@@ -2705,7 +2706,7 @@ class App {
 
 					await Promise.all(
 						idsToDelete.map(async (id) =>
-							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id.toString()),
+							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id),
 						),
 					);
 
@@ -2772,7 +2773,7 @@ class App {
 
 						return results.map((result) => {
 							return {
-								id: result.id.toString(),
+								id: result.id,
 								workflowId: result.workflowId,
 								mode: result.mode,
 								retryOf: result.retryOf !== null ? result.retryOf : undefined,
@@ -3296,18 +3297,20 @@ async function getExecutionsCount(
 		filteredFields.length > 0 ||
 		config.get('userManagement.hasOwner') === true
 	) {
-		const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
-		queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
-		queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
-		queryBuilder.andWhere('sw.userId = :userId', { userId: user.id });
-		const fields = Object.keys(countFilter);
-		fields.forEach((field) => {
-			queryBuilder.andWhere(`e.${field} = :${field}_value`, {
-				[`${field}_value`]: countFilter[field] as string,
-			});
+		const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
+			relations: ['workflow'],
+			where: whereClause({
+				user,
+				entityType: 'workflow',
+			}),
 		});
 
-		const count = await queryBuilder.getCount();
+		const sharedWorkflowIds = sharedWorkflows.map(({ workflow }) => workflow.id);
+
+		const count = await Db.collections.Execution!.count({
+			where: { workflowId: In(sharedWorkflowIds) },
+		});
+
 		return { count, estimate: false };
 	}
 
@@ -3321,13 +3324,13 @@ async function getExecutionsCount(
 
 		const estimate = parseInt(rows[0].n_live_tup, 10);
 		// If over 100k, return just an estimate.
-		if (estimate > 100000) {
+		if (estimate > 100_000) {
 			// if less than 100k, we get the real count as even a full
 			// table scan should not take so long.
 			return { count: estimate, estimate: true };
 		}
-	} catch (err) {
-		LoggerProxy.warn(`Unable to get executions count from postgres: ${err}`);
+	} catch (error) {
+		LoggerProxy.warn(`Failed to get executions count from Postgres: ${error}`);
 	}
 
 	const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
