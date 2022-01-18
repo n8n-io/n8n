@@ -111,3 +111,10 @@ export async function getResponseByUri(uriGenerated: string, requestMethod: any,
 	return await requestMethod(options);
 }
 
+export function prepareGllueApiUpdateData(id: number|string, updateData: IDataObject): IDataObject {
+	let result = Object.assign({}, updateData);
+	if (!Object.keys(result).includes('id')){
+		result = Object.assign(result, updateData, {id:(typeof id === 'string')? parseInt(id, 10) : id});
+	}
+	return {data: JSON.stringify(result)};
+}

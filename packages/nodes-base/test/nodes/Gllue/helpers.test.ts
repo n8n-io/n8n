@@ -107,3 +107,11 @@ describe('Gllue url parameters builder', () => {
 			`${BASE_URL}?gql=&${DEFAULT_PARAMS}`);
 	});
 });
+
+describe('prepareGllueApiUpdateData', () => {
+	it('should build proper gllue update payload', () => {
+		const data = helpers.prepareGllueApiUpdateData(123, {name: 'Name'});
+		expect(Object.keys(data)).toEqual(['data']);
+		expect(data).toEqual({data:'{"name":"Name","id":123}'});
+	});
+});
