@@ -1,12 +1,11 @@
 <template>
-	<div class="view-root">
-		<div class="view-wrapper">
-			<div class="filters">
-				<TemplateFilters :setCategories="setCategories"/>
+	<div :class="$style.templates">
+		<div :class="$style.wrapper">
+			<div :class="$style.filters">
+				<TemplateFilters :setCategories="setCategories" />
 			</div>
-			<div class="search">
-
-				<div class="searchInput">
+			<div :class="$style.search">
+				<div :class="$style.input">
 					<n8n-input
 						v-model="search"
 						@input="onSearchInput"
@@ -14,20 +13,14 @@
 						:placeholder="$locale.baseText('templates.searchPlaceholder')"
 					>
 						<font-awesome-icon icon="search" slot="prefix" />
-
 					</n8n-input>
 				</div>
-				<div class="searchResults">
-
-					<CollectionsCarousel/>
-
-					<TemplateList/>
-
+				<div :class="$style.carousel">
+					<CollectionsCarousel />
+					<TemplateList />
 				</div>
-
 			</div>
 		</div>
-
 	</div>
 </template>
 
@@ -35,20 +28,19 @@
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
 import TemplateList from '@/components/TemplateList.vue';
+
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(
-	genericHelpers,
-).extend({
+export default mixins(genericHelpers).extend({
 	name: 'Templates',
 	components: {
-		TemplateFilters,
 		CollectionsCarousel,
+		TemplateFilters,
 		TemplateList,
 	},
-	data () {
+	data() {
 		return {
 			search: '',
 			categories: [] as number[],
@@ -58,7 +50,7 @@ export default mixins(
 				category: [] as number[] | null,
 			},
 			searchFinished: false,
- 		};
+		};
 	},
 	async created() {
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
@@ -68,15 +60,19 @@ export default mixins(
 			this.categories = this.$route.query.categories.split(',').map((id) => Number(id));
 		}
 		const category = this.categories.length ? this.categories : null;
-		await this.$store.dispatch('templates/getSearchResults', {search: this.search, category, fetchCategories: true });
-		this.lastQuery = { search: this.search, category, skip: 0};
+		await this.$store.dispatch('templates/getSearchResults', {
+			search: this.search,
+			category,
+			fetchCategories: true,
+		});
+		this.lastQuery = { search: this.search, category, skip: 0 };
 		this.searchFinished = false;
 
 		// Detect when scrolled to bottom.
 		const templateList = document.querySelector('#infiniteList');
 		if (templateList) {
-			templateList.addEventListener('scroll', e => {
-				if(templateList.scrollTop + templateList.clientHeight >= templateList.scrollHeight) {
+			templateList.addEventListener('scroll', (e) => {
+				if (templateList.scrollTop + templateList.clientHeight >= templateList.scrollHeight) {
 					this.infiniteLoader();
 				}
 			});
@@ -88,11 +84,38 @@ export default mixins(
 		if (infiniteList) {
 			const calcHeight = collections.length ? 450 : 350;
 
-			infiniteList.style.height =window.innerHeight - calcHeight + "px";
+			infiniteList.style.height = window.innerHeight - calcHeight + 'px';
 		}
 	},
 	methods: {
-		async onSearchInput(value: string) {
+		async doSearch() {
+			this.searchFinished = false;
+			const category = this.categories;
+			const search = this.search;
+			this.updatQueryParam(search, category.join(','));
+			await this.$store.dispatch('templates/getSearchResults', { search, category });
+			this.lastQuery = { search, category, skip: 0 };
+		},
+		async infiniteLoader() {
+			if (!this.searchFinished) {
+				const { search, category, skip } = this.lastQuery;
+				const preloaded = this.$store.getters['templates/getWorkflows'];
+				await this.$store.dispatch('templates/getSearchResults', {
+					search,
+					category,
+					skip: skip + 20,
+				});
+				const newLoaded = this.$store.getters['templates/getWorkflows'];
+				if (newLoaded.length % 20 || preloaded.length === newLoaded.length) {
+					this.searchFinished = true;
+				}
+			}
+		},
+		async onSearchInput() {
+			await this.doSearch();
+		},
+		async setCategories(selected: number[]) {
+			this.categories = selected;
 			await this.doSearch();
 		},
 		updatQueryParam(search: string, category: string) {
@@ -109,74 +132,47 @@ export default mixins(
 			}
 			this.$router.replace({ query });
 		},
-		async doSearch() {
-			this.searchFinished = false;
-			const category = this.categories;
-			const search = this.search;
-			this.updatQueryParam(search, category.join(','));
-			await this.$store.dispatch('templates/getSearchResults', { search, category });
-			this.lastQuery = { search, category, skip: 0 };
-		},
-		async infiniteLoader() {
-			if (!this.searchFinished) {
-				const { search, category, skip } = this.lastQuery;
-				const preloaded = this.$store.getters['templates/getWorkflows'];
-				await this.$store.dispatch('templates/getSearchResults', { search, category, skip: skip + 20});
-				const newLoaded = this.$store.getters['templates/getWorkflows'];
-				if (newLoaded.length % 20 || preloaded.length === newLoaded.length) {
-					this.searchFinished = true;
-				}
-			}
-		},
-		async setCategories(selected: number[]) {
-			this.categories = selected;
-			await this.doSearch();
-		},
 	},
 });
-
 </script>
 
-<style lang="scss">
-
-.view-root {
-	position: fixed;
+<style lang="scss" module>
+.templates {
 	width: 100%;
 	height: 100%;
 	padding-left: $--sidebar-width;
-	left: 0;
 	top: 0;
+	left: 0;
+	position: fixed;
 	overflow: hidden;
 }
 
-.view-wrapper {
-	margin-top: 120px;
-	padding: 0 48px;
+.wrapper {
 	width: 100%;
 	height: 100%;
+	margin-top: 120px;
+	padding: 0 48px;
 	display: flex;
-
-	.filters {
-		min-width: 188px;
-		margin-right: 24px;
-	}
-
-	.search {
-		width: -webkit-calc(100% - 188px);
-    width:    -moz-calc(100% - 188px);
-    width:         calc(100% - 188px);
-		display: flex column;
-
-		.searchInput {
-			width: 100%;
-		}
-
-		.searchResults {
-			width: 100%;
-			padding-top: 16px;
-		}
-	}
-
 }
 
+.filters {
+	min-width: 188px;
+	margin-right: 24px;
+}
+
+.search {
+	width: -webkit-calc(100% - 188px);
+	width: -moz-calc(100% - 188px);
+	width: calc(100% - 188px);
+	display: flex column;
+}
+
+.input {
+	width: 100%;
+}
+
+.carousel {
+	width: 100%;
+	padding-top: 16px;
+}
 </style>
