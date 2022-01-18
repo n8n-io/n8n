@@ -18,9 +18,14 @@ export declare namespace ExecutionRequest {
 		firstId: string;
 	};
 
+	type GetAllCurrentQsParam = {
+		filter: string; // '{ workflowId: string }'
+	};
+
 	type GetAll = AuthenticatedRequest<{}, {}, {}, GetAllQsParam>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { unflattedResponse: 'true' | 'false' }>;
 	type Delete = AuthenticatedRequest<{}, {}, IExecutionDeleteFilter>;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow: boolean }, {}>;
 	type Stop = AuthenticatedRequest<{ id: string }>;
+	type GetAllCurrent = AuthenticatedRequest<{}, {}, {}, GetAllCurrentQsParam>;
 }

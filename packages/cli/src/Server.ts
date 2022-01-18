@@ -34,6 +34,7 @@ import { readFile } from 'fs/promises';
 import { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
+	FindConditions,
 	FindManyOptions,
 	getConnectionManager,
 	In,
@@ -2725,7 +2726,7 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/executions-current`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<IExecutionsSummary[]> => {
+				async (req: ExecutionRequest.GetAllCurrent): Promise<IExecutionsSummary[]> => {
 					if (config.get('executions.mode') === 'queue') {
 						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
@@ -2740,37 +2741,32 @@ class App {
 						const currentlyRunningExecutionIds =
 							currentlyRunningQueueIds.concat(manualExecutionIds);
 
-						if (currentlyRunningExecutionIds.length === 0) {
-							return [];
-						}
+						if (currentlyRunningExecutionIds.length === 0) return [];
 
-						const resultsQuery = await Db.collections
-							.Execution!.createQueryBuilder('execution')
-							.select([
-								'execution.id',
-								'execution.workflowId',
-								'execution.mode',
-								'execution.retryOf',
-								'execution.startedAt',
-							])
-							.orderBy('execution.id', 'DESC')
-							.andWhere(`execution.id IN (:...ids)`, { ids: currentlyRunningExecutionIds })
-							.innerJoin('workflow', 'w', 'w.id = execution.workflowId')
-							.innerJoin('shared_workflow', 'sw', 'w.id = sw.workflowId')
-							.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
+						const findOptions: FindManyOptions<ExecutionEntity> = {
+							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt'],
+							order: { id: 'DESC' },
+							where: {
+								id: In(currentlyRunningExecutionIds),
+							},
+						};
+
+						const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+
+						if (!sharedWorkflowIds.length) return [];
 
 						if (req.query.filter) {
-							const filter = JSON.parse(req.query.filter as string);
-							if (filter.workflowId !== undefined) {
-								resultsQuery.andWhere('execution.workflowId = :workflowId', {
-									workflowId: filter.workflowId,
-								});
+							const { workflowId } = JSON.parse(req.query.filter);
+							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
+								Object.assign(findOptions.where, { workflowId });
 							}
+						} else {
+							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 						}
 
-						const results = await resultsQuery.getMany();
+						const executions = await Db.collections.Execution!.find(findOptions);
 
-						return results.map((result) => {
+						return executions.map((result) => {
 							return {
 								id: result.id,
 								workflowId: result.workflowId,
@@ -2780,34 +2776,25 @@ class App {
 							} as IExecutionsSummary;
 						});
 					}
+
 					const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
 
 					const returnData: IExecutionsSummary[] = [];
 
-					let filter: any = {};
-					if (req.query.filter) {
-						filter = JSON.parse(req.query.filter as string);
-					}
+					const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
 
-					// Get the ID of all workflows I have access to and use it to filter the current executions
-					const queryBuilder = Db.collections.Workflow!.createQueryBuilder('w');
-					queryBuilder.innerJoin('w.shared', 'shared');
-					queryBuilder.andWhere('shared.userId = :userId', { userId: (req.user as User).id });
-					queryBuilder.select(['w.id']);
-
-					const myWorkflows = await queryBuilder.getMany();
-					const workflowsMap = {} as IDataObject;
-					myWorkflows.forEach((workflow) => {
-						workflowsMap[workflow.id.toString()] = 1;
-					});
+					const sharedWorkflowIds = await getSharedWorkflowIds(req.user).then((ids) =>
+						ids.map((id) => id.toString()),
+					);
 
 					for (const data of executingWorkflows) {
 						if (
 							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-							workflowsMap[data.workflowId.toString()]
+							!sharedWorkflowIds.includes(data.workflowId)
 						) {
 							continue;
 						}
+
 						returnData.push({
 							id: data.id.toString(),
 							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
@@ -2816,6 +2803,7 @@ class App {
 							startedAt: new Date(data.startedAt),
 						});
 					}
+
 					returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
 
 					return returnData;
