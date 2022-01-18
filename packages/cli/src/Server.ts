@@ -1782,9 +1782,7 @@ class App {
 
 				const { credentials: credential } = shared;
 
-				const includeData = ['true', true].includes(req.query.includeData);
-
-				if (!includeData) {
+				if (req.query.includeData !== 'true') {
 					const { data, id, ...rest } = credential;
 
 					return {
@@ -1823,10 +1821,14 @@ class App {
 				async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
 					let credentials: ICredentialsDb[] = [];
 
+					const filter: Record<string, string> = req.query.filter
+						? JSON.parse(req.query.filter)
+						: {};
+
 					if (req.user.globalRole.name === 'owner') {
 						credentials = await Db.collections.Credentials!.find({
 							select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
-							where: req.query,
+							where: filter,
 						});
 					} else {
 						const shared = await Db.collections.SharedCredentials!.find({
@@ -1843,16 +1845,14 @@ class App {
 							select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
 							where: {
 								id: In(shared.map(({ credentials }) => credentials.id)),
-								...req.query,
+								...filter,
 							},
 						});
 					}
 
 					let encryptionKey;
 
-					const includeData = ['true', true].includes(req.query.includeData);
-
-					if (includeData) {
+					if (req.query.includeData === 'true') {
 						encryptionKey = await UserSettings.getEncryptionKey();
 
 						if (!encryptionKey) {

@@ -37,7 +37,7 @@ export declare namespace WorkflowRequest {
 
 	type NewName = express.Request<{}, {}, {}, { name?: string }>;
 
-	type GetAll = AuthenticatedRequest<{}, {}, {}, Record<string, string>>;
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
 	type GetAllActive = AuthenticatedRequest;
 
@@ -59,7 +59,7 @@ export declare namespace CredentialRequest {
 
 	type Delete = Get;
 
-	type GetAll = WorkflowRequest.GetAll;
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string; includeData: string }>;
 
 	type Update = AuthenticatedRequest<{ id: string }, {}, Payload>;
 
