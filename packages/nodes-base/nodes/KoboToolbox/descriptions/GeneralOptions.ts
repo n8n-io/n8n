@@ -5,7 +5,7 @@ import {
 export const generalOptions = [
 	{
 		displayName: 'Form ID',
-		name: 'asset_uid',
+		name: 'assetUid',
 		type: 'string',
 		required: true,
 		default:'',

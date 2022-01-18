@@ -5,17 +5,18 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	LoggerProxy as Logger,
+	// LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import {
+	downloadAttachments,
 	formatSubmission,
 	koboToolboxApiRequest,
 	parseStringList
 } from './GenericFunctions';
 
 import {
-	formattingOptions,
+	options,
 } from './descriptions';
 
 export class KoboToolboxTrigger implements INodeType {
@@ -49,13 +50,27 @@ export class KoboToolboxTrigger implements INodeType {
 		properties: [
 			{
 				displayName: 'Form ID',
-				name: 'asset_uid',
+				name: 'assetUid',
 				type: 'string',
 				required: true,
 				default:'',
 				description:'Form id (e.g. aSAvYreNzVEkrWg5Gdcvg)',
 			},
-			{...formattingOptions},
+			{
+				displayName: 'Trigger On',
+				name: 'triggerOn',
+				type: 'options',
+				required: true,
+				default:'formSubmission',
+				options: [
+					{
+						name: 'On Form Submission',
+						value: 'formSubmission',
+					},
+				],
+				description:'When to call the trigger',
+			},
+			{...options},
 		],
 	};
 
@@ -65,9 +80,9 @@ export class KoboToolboxTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const asset_uid = this.getNodeParameter('asset_uid') as string; //tslint:disable-line:variable-name
+				const assetUid = this.getNodeParameter('assetUid') as string; //tslint:disable-line:variable-name
 				const {results: webhooks} = await koboToolboxApiRequest.call(this, {
-					url: `/api/v2/assets/${asset_uid}/hooks/`,
+					url: `/api/v2/assets/${assetUid}/hooks/`,
 				});
 				for (const webhook of webhooks || []) {
 					if (webhook.endpoint === webhookUrl && webhook.active === true) {
@@ -81,40 +96,20 @@ export class KoboToolboxTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const asset_uid = this.getNodeParameter('asset_uid') as string; //tslint:disable-line:variable-name
+				const assetUid = this.getNodeParameter('assetUid') as string; //tslint:disable-line:variable-name
 
-				// First check if one exists but is inactive
-				const { results: webhooks } = await koboToolboxApiRequest.call(this, {
-					url: `/api/v2/assets/${asset_uid}/hooks`,
-				});
-				for (const webhook of webhooks) {
-					if (webhook.endpoint === webhookUrl) {
-						await koboToolboxApiRequest.call(this, {
-							method: 'PATCH',
-							url: `/api/v2/assets/${asset_uid}/hooks/${webhook.uid}`,
-							body: {
-								active: true,
-							},
-						});
-						webhookData.webhookId = webhook.uid;
-						return true;
-					}
-				}
-
-				// No existing hook found, create one
 				const response = await koboToolboxApiRequest.call(this, {
 					method: 'POST',
-					url: `/api/v2/assets/${asset_uid}/hooks/`,
+					url: `/api/v2/assets/${assetUid}/hooks/`,
 					body: {
 						name: `n8n Automatic Webhook`,
 						endpoint: webhookUrl,
 						email_notification: true,
 					},
 				});
-				Logger.debug('KoboToolboxTriggerCreate', response);
+				// Logger.debug('KoboToolboxTriggerCreate', response);
 
 				if (response.uid) {
-					webhookData.webhookId = response.uid;
 					webhookData.webhookId = response.uid;
 					return true;
 				}
@@ -124,11 +119,11 @@ export class KoboToolboxTrigger implements INodeType {
 
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const asset_uid = this.getNodeParameter('asset_uid') as string; //tslint:disable-line:variable-name
+				const assetUid = this.getNodeParameter('assetUid') as string; //tslint:disable-line:variable-name
 				try {
 					await koboToolboxApiRequest.call(this, {
 						method: 'DELETE',
-						url: `/api/v2/assets/${asset_uid}/hooks/${webhookData.webhookId}`,
+						url: `/api/v2/assets/${assetUid}/hooks/${webhookData.webhookId}`,
 					});
 				} catch (error) {
 					return false;
@@ -143,16 +138,26 @@ export class KoboToolboxTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const formatOptions = this.getNodeParameter('formatOptions') as IDataObject;
 
-		Logger.debug('KoboToolboxTriggerReceived', req.body);
+		// Logger.debug('KoboToolboxTriggerReceived', req.body);
 
-		const response = formatOptions.reformat
-			? formatSubmission(req.body, parseStringList(formatOptions.select_mask as string), parseStringList(formatOptions.number_mask as string))
+		const responseData = formatOptions.reformat
+			? formatSubmission(req.body, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
 			: req.body;
 
-		return {
-			workflowData: [
-				this.helpers.returnJsonArray(response),
-			],
-		};
+		if(formatOptions.download) {
+			// Download related attachments
+			return {
+				workflowData: [
+					[await downloadAttachments.call(this, responseData, formatOptions)],
+				],
+			};
+		}
+		else {
+			return {
+				workflowData: [
+					this.helpers.returnJsonArray([responseData]),
+				],
+			};
+		}
 	}
 }

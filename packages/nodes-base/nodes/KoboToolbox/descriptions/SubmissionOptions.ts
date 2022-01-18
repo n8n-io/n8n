@@ -12,14 +12,12 @@ export const submissionOptions = [
 			show: {
 				resource: [
 					'submission',
-					'attachment',
 				],
 				operation: [
 					'get',
 					'delete',
-					'download',
-					'get_validation',
-					'set_validation',
+					'getValidation',
+					'setValidation',
 				],
 			},
 		},
@@ -37,7 +35,7 @@ export const submissionOptions = [
 					'submission',
 				],
 				operation: [
-					'set_validation',
+					'setValidation',
 				],
 			},
 		},

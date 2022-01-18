@@ -1,4 +1,0 @@
-POST https://d1pnnlob56nbnuii6z2xr6ed.hooks.n8n.cloud/webhook-test/0e88a4a3-cc37-4f1b-9e90-c63293eea857/webhook
-Accept: 'application/json'
-Content-Type: 'application/json'
-

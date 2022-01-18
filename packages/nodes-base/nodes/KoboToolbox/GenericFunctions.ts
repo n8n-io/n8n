@@ -7,11 +7,14 @@ import {
 	IDataObject,
 	IHookFunctions,
 	IHttpRequestOptions,
+	INodeExecutionData,
 	IWebhookFunctions,
-	LoggerProxy as Logger,
+	// LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import * as _ from 'lodash';
+
+import axios from 'axios';
 
 export async function koboToolboxApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('koboToolboxApi') as IDataObject;
@@ -31,10 +34,8 @@ export async function koboToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 		options.url = credentials.URL + options.url;
 	}
 
-	Logger.debug('KoboToolboxApiRequest', options);
-	const response = await this.helpers.httpRequest(options);
-	Logger.debug('KoboToolboxApiResponse', response);
-	return response;
+	// Logger.debug('KoboToolboxApiRequest', options);
+	return await this.helpers.httpRequest(options);
 }
 
 function parseGeoPoint(geoPoint: string): null | number[] {
@@ -104,12 +105,12 @@ const formatValue = (value: any, format: string): any => { //tslint:disable-line
 export function formatSubmission(submission: IDataObject, selectMasks: string[] = [], numberMasks: string[] = []): IDataObject {
 	// Create a shallow copy of the submission
 	const response = {} as IDataObject;
-	Logger.debug('KoboToolboxFormatSubmission', submission);
+	// Logger.debug('KoboToolboxFormatSubmission', submission);
 
 
 	for (const key of Object.keys(submission)) {
 		let value = _.clone(submission[key]);
-		Logger.debug(`Formatting ${key} : ${value}`);
+		// Logger.debug(`Formatting ${key} : ${value}`);
 		// Sanitize key names: split by group, trim _
 		const sanitizedKey = key.split('/').map(k => _.trim(k,' _')).join('.');
 		const leafKey = sanitizedKey.split('.').pop() || '';
@@ -123,7 +124,7 @@ export function formatSubmission(submission: IDataObject, selectMasks: string[] 
 
 		value = formatValue(value, format);
 
-		Logger.debug(`Formatted to ${sanitizedKey} : ${value}`);
+		// Logger.debug(`Formatted to ${sanitizedKey} : ${value}`);
 		_.set(response, sanitizedKey, value);
 	}
 
@@ -135,6 +136,71 @@ export function formatSubmission(submission: IDataObject, selectMasks: string[] 
 		};
 	}
 
-	Logger.debug('KoboToolboxFormatSubmission', response);
+	// Logger.debug('KoboToolboxFormatSubmission', response);
 	return response;
+}
+
+export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunctions , submission: IDataObject, options: IDataObject): Promise<INodeExecutionData> {
+	// Initialize return object with the original submission JSON content
+	const binaryItem: INodeExecutionData = {
+		json: {
+			...submission,
+		},
+		binary: {},
+	};
+
+	const credentials = await this.getCredentials('koboToolboxApi') as IDataObject;
+
+	// Look for attachment links - there can be more than one
+	const attachmentList = (submission['_attachments'] || submission['attachments']) as any[];  // tslint:disable-line:no-any
+	if(attachmentList && attachmentList.length) {
+		for (const attachment of attachmentList) {
+			// look for the question name linked to this attachment
+			const filename = attachment.filename;
+			let relatedQuestion = '';
+			// Logger.debug(`Found attachment ${filename}`);
+			Object.keys(submission).forEach(question => {
+				if(filename.endsWith('/' + _.toString(submission[question]).replace(/\s/g, '_'))) {
+					relatedQuestion = question;
+					// Logger.debug(`Found attachment for form question: ${relatedQuestion}`);
+				}
+			});
+
+			// Download attachment
+			// NOTE: this needs to follow redirects (possibly across domains), while keeping Authorization headers
+			// The Axios client will not propagate the Authorization header on redirects (see https://github.com/axios/axios/issues/3607), so we need to follow ourselves...
+			let response = null;
+			let attachmentUrl = attachment[options.version as string] || attachment.download_url;
+			let final = false, redir = 0;
+			const client = axios.create({
+				headers: {
+					'Authorization': 'Token ' + credentials.token,
+				},
+				validateStatus: () => true,
+				maxRedirects: 0,
+				responseType: 'arraybuffer',
+			});
+
+			while(!final && redir < 5) {
+				response = await client.get(attachmentUrl);
+				if(response && response.headers.location) {
+					// Follow redirect
+					attachmentUrl = response.headers.location;
+					redir++;
+				}
+				else {
+					final = true;
+				}
+			}
+
+			const binaryName = options.filename === 'filename' ? filename : relatedQuestion;
+			if(response && response.data) {
+				// Logger.debug(`Downloaded attachment ${filename}`);
+				binaryItem.binary![binaryName] = await this.helpers.prepareBinaryData(Buffer.from(response.data));
+			}
+		}
+	}
+
+	// Add item to final output - even if there's no attachment retrieved
+	return binaryItem;
 }

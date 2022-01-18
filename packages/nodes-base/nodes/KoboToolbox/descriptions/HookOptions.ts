@@ -4,7 +4,7 @@ import {
 
 export const hookOptions = [
 	{
-		displayName: 'Hook id',
+		displayName: 'Hook ID',
 		name: 'id',
 		type: 'string',
 		required: true,
@@ -16,17 +16,17 @@ export const hookOptions = [
 				operation: [
 					'get',
 					'logs',
-					'retry_one',
-					'retry_all',
+					'retryOne',
+					'retryAll',
 				],
 			},
 		},
 		default: '',
-		description:'Hook id (starts with h, e.g. hVehywQ2oXPYGHJHKtqth4)',
+		description:'Hook ID (starts with h, e.g. hVehywQ2oXPYGHJHKtqth4)',
 	},
 	{
-		displayName: 'Hook log id',
-		name: 'log_id',
+		displayName: 'Hook log ID',
+		name: 'logId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -35,12 +35,12 @@ export const hookOptions = [
 					'hook',
 				],
 				operation: [
-					'retry_one',
+					'retryOne',
 				],
 			},
 		},
 		default: '',
-		description:'Hook log id (starts with hl, e.g. hlSbGKaUKzTVNoWEVMYbLHe)',
+		description:'Hook log ID (starts with hl, e.g. hlSbGKaUKzTVNoWEVMYbLHe)',
 	},
 	{
 		displayName: 'Status',

@@ -21,6 +21,7 @@ export class KoboToolboxApi implements ICredentialType {
 			name: 'token',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			description: 'You can get your API token at https://[api-root]/token/?format=json (for a logged in user)',
 		},
 	];
 }
