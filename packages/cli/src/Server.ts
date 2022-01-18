@@ -2717,16 +2717,16 @@ class App {
 				// delete executions by IDs, if user may access underlying worfklows
 
 				if (executionIdsToDelete) {
-					const executions = await Db.collections.Execution!.find({
+					const sharedExecutions = await Db.collections.Execution!.find({
 						where: {
 							id: In(executionIdsToDelete),
 							workflowId: In(sharedWorkflowIds),
 						},
 					});
 
-					if (!executions.length) return;
+					if (!sharedExecutions.length) return;
 
-					const sharedExecutionIdsToDelete = executions.map(({ id }) => id.toString());
+					const sharedExecutionIdsToDelete = sharedExecutions.map(({ id }) => id.toString());
 
 					await Promise.all(
 						sharedExecutionIdsToDelete.map(async (id) =>
