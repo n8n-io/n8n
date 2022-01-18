@@ -550,3 +550,18 @@ export function whereClause({
 
 	return where;
 }
+
+/**
+ * Get the IDs of the workflows that have been shared with the user.
+ */
+export async function getSharedWorkflowIds(user: User): Promise<number[]> {
+	const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
+		relations: ['workflow'],
+		where: whereClause({
+			user,
+			entityType: 'workflow',
+		}),
+	});
+
+	return sharedWorkflows.map(({ workflow }) => workflow.id);
+}

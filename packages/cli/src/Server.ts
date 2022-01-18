@@ -161,7 +161,7 @@ import * as UserManagementHelpers from './UserManagement/UserManagementHelper';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { NameRequest, whereClause } from './WorkflowHelpers';
+import { getSharedWorkflowIds, NameRequest, whereClause } from './WorkflowHelpers';
 import { getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
@@ -2415,15 +2415,7 @@ class App {
 					countFilter.waitTill &&= Not(IsNull());
 					countFilter.id = Not(In(executingWorkflowIds));
 
-					const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
-						relations: ['workflow'],
-						where: whereClause({
-							user: req.user,
-							entityType: 'workflow',
-						}),
-					});
-
-					const sharedWorkflowIds = sharedWorkflows.map(({ workflow }) => workflow.id);
+					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 					const findOptions: FindManyOptions<ExecutionEntity> = {
 						select: [
@@ -2505,17 +2497,9 @@ class App {
 				): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
 					const { id: executionId } = req.params;
 
-					const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
-						relations: ['workflow'],
-						where: whereClause({
-							user: req.user,
-							entityType: 'workflow',
-						}),
-					});
+					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
-					if (!sharedWorkflows.length) return undefined;
-
-					const sharedWorkflowIds = sharedWorkflows.map(({ workflow }) => workflow.id);
+					if (!sharedWorkflowIds.length) return undefined;
 
 					const execution = await Db.collections.Execution!.findOne({
 						where: {
@@ -2663,20 +2647,10 @@ class App {
 				const { deleteBefore, ids: executionIdsToDelete, filters: requestFilters } = req.body;
 
 				if (!deleteBefore && !executionIdsToDelete) {
-					throw new Error(
-						'Either property "deleteBefore" or property "ids" must be present in request body',
-					);
+					throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
 				}
 
-				const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
-					relations: ['workflow'],
-					where: whereClause({
-						user: req.user,
-						entityType: 'workflow',
-					}),
-				});
-
-				const sharedWorkflowIds = sharedWorkflows.map(({ workflow }) => workflow.id);
+				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 				// delete executions by date, if user may access underlying worfklows
 
