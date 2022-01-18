@@ -31,6 +31,7 @@ import {
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
 	LoggerProxy as Logger,
+	N8nUserData,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -698,6 +699,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 export async function getRunData(
 	workflowData: IWorkflowBase,
+	user: N8nUserData,
 	inputData?: INodeExecutionData[],
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
@@ -751,27 +753,38 @@ export async function getRunData(
 		executionData: runExecutionData,
 		// @ts-ignore
 		workflowData,
+		user,
 	};
 
 	return runData;
 }
 
-export async function getWorkflowData(workflowInfo: IExecuteWorkflowInfo): Promise<IWorkflowBase> {
+export async function getWorkflowData(
+	workflowInfo: IExecuteWorkflowInfo,
+	user: N8nUserData,
+): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
 		throw new Error(
 			`No information about the workflow to execute found. Please provide either the "id" or "code"!`,
 		);
 	}
 
-	if (Db.collections.Workflow === null) {
-		// The first time executeWorkflow gets called the Database has
-		// to get initialized first
-		await Db.init();
-	}
-
 	let workflowData: IWorkflowBase | undefined;
 	if (workflowInfo.id !== undefined) {
-		workflowData = await Db.collections.Workflow!.findOne(workflowInfo.id);
+		if (Db.collections.Workflow === null) {
+			// The first time executeWorkflow gets called the Database has
+			// to get initialized first
+			await Db.init();
+		}
+		const qb = Db.collections.Workflow!.createQueryBuilder('w');
+		if (user.globalRole.name !== 'owner') {
+			qb.innerJoin('w.shared', 'shared');
+			qb.andWhere('shared.user = :userId', { userId: user.id });
+		}
+		qb.andWhere('w.id = :id', { id: workflowInfo.id });
+
+		workflowData = await qb.getOne();
+
 		if (workflowData === undefined) {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
 		}
@@ -805,7 +818,9 @@ export async function executeWorkflow(
 	const nodeTypes = NodeTypes();
 
 	const workflowData =
-		loadedWorkflowData !== undefined ? loadedWorkflowData : await getWorkflowData(workflowInfo);
+		loadedWorkflowData !== undefined
+			? loadedWorkflowData
+			: await getWorkflowData(workflowInfo, additionalData.user);
 
 	const workflowName = workflowData ? workflowData.name : undefined;
 	const workflow = new Workflow({
@@ -819,7 +834,9 @@ export async function executeWorkflow(
 	});
 
 	const runData =
-		loadedRunData !== undefined ? loadedRunData : await getRunData(workflowData, inputData);
+		loadedRunData !== undefined
+			? loadedRunData
+			: await getRunData(workflowData, additionalData.user, inputData);
 
 	let executionId;
 
@@ -836,7 +853,7 @@ export async function executeWorkflow(
 	try {
 		// Create new additionalData to have different workflow loaded and to call
 		// different webooks
-		const additionalDataIntegrated = await getBase();
+		const additionalDataIntegrated = await getBase(additionalData.user);
 		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
 			runData.executionMode,
 			executionId,
@@ -969,6 +986,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
  * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */
 export async function getBase(
+	user: N8nUserData,
 	currentNodeParameters?: INodeParameters,
 	executionTimeoutTimestamp?: number,
 ): Promise<IWorkflowExecuteAdditionalData> {
@@ -995,6 +1013,7 @@ export async function getBase(
 		webhookTestBaseUrl,
 		currentNodeParameters,
 		executionTimeoutTimestamp,
+		user,
 	};
 }
 

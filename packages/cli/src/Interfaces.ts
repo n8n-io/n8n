@@ -15,6 +15,7 @@ import {
 	ITaskData,
 	ITelemetrySettings,
 	IWorkflowBase as IWorkflowBaseWorkflow,
+	N8nUserData,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -575,7 +576,7 @@ export interface IWorkflowExecutionDataProcess {
 	sessionId?: string;
 	startNodes?: string[];
 	workflowData: IWorkflowBase;
-	userId?: string;
+	user: N8nUserData;
 }
 
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
@@ -583,6 +584,7 @@ export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExe
 	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
 	nodeTypeData: ITransferNodeTypes;
+	user: User;
 }
 
 export interface IWorkflowExecuteProcess {

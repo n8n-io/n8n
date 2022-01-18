@@ -86,6 +86,7 @@ export class WorkflowRunnerProcess {
 		LoggerProxy.init(logger);
 
 		this.data = inputData;
+		const { user } = inputData;
 
 		logger.verbose('Initializing n8n sub-process', {
 			pid: process.pid,
@@ -209,13 +210,10 @@ export class WorkflowRunnerProcess {
 			settings: this.data.workflowData.settings,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			user,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
-		if (this.data.userId) {
-			// @ts-ignore
-			additionalData.userId = this.data.userId;
-		}
 		additionalData.hooks = this.getProcessForwardHooks();
 
 		additionalData.hooks.hookFunctions.sendResponse = [
@@ -250,8 +248,12 @@ export class WorkflowRunnerProcess {
 			additionalData: IWorkflowExecuteAdditionalData,
 			inputData?: INodeExecutionData[] | undefined,
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
-			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
-			const runData = await WorkflowExecuteAdditionalData.getRunData(workflowData, inputData);
+			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo, user);
+			const runData = await WorkflowExecuteAdditionalData.getRunData(
+				workflowData,
+				additionalData.user,
+				inputData,
+			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {
 				this.executionIdCallback = (executionId: string) => {

@@ -45,6 +45,23 @@ export async function saveCredentialOwnership(
 	})) as SharedCredentials;
 }
 
+export async function getWorkflowOwner(workflowId: string) {
+	const workflowDb = await Db.collections.Workflow!.findOneOrFail(workflowId, {
+		relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+	});
+
+	return workflowDb.shared[0].user;
+}
+
+export async function getInstanceowner() {
+	const qb = Db.collections.User!.createQueryBuilder('u');
+	qb.innerJoin('u.globalRole', 'gr');
+	qb.andWhere('gr.name = :name and gr.scope = :scope', { name: 'owner', scope: 'global' });
+
+	const owner = await qb.getOneOrFail();
+	return owner;
+}
+
 export function isEmailSetup(): boolean {
 	const emailMode = config.get('userManagement.emails.mode') as string;
 	return !!emailMode;

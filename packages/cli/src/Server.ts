@@ -1093,7 +1093,7 @@ class App {
 						startNodes.length === 0 ||
 						destinationNode === undefined
 					) {
-						const additionalData = await WorkflowExecuteAdditionalData.getBase();
+						const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user as User);
 						if (this.isUserManagementEnabled) {
 							// TODO UM: test this.
 							// TODO: test this.
@@ -1138,11 +1138,8 @@ class App {
 						sessionId,
 						startNodes,
 						workflowData,
+						user: req.user as User,
 					};
-					if (this.isUserManagementEnabled) {
-						// TODO UM: test this.
-						data.userId = req.body.userId;
-					}
 					const workflowRunner = new WorkflowRunner();
 					const executionId = await workflowRunner.run(data);
 
@@ -1279,9 +1276,10 @@ class App {
 						credentials,
 					);
 
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
-
-					additionalData.userId = req.user.id;
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(
+						req.user as User,
+						currentNodeParameters,
+					);
 
 					return loadDataInstance.getOptions(methodName, additionalData);
 				},
@@ -1997,7 +1995,6 @@ class App {
 					}
 
 					const encryptionKey = await UserSettings.getEncryptionKey();
-
 					if (!encryptionKey) {
 						throw new ResponseHelper.ResponseError(
 							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
@@ -2012,8 +2009,10 @@ class App {
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
+						req.user,
 						true,
 					);
+
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 						decryptedDataOriginal,
 						credential.type,
@@ -2134,6 +2133,7 @@ class App {
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
+						req.user as User,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
@@ -2220,7 +2220,6 @@ class App {
 					}
 
 					const encryptionKey = await UserSettings.getEncryptionKey();
-
 					if (!encryptionKey) {
 						throw new ResponseHelper.ResponseError(
 							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
@@ -2235,6 +2234,7 @@ class App {
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
+						req.user as User,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
@@ -2367,6 +2367,7 @@ class App {
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
+						req.user as User,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
@@ -2648,6 +2649,7 @@ class App {
 					executionData: fullExecutionData.data,
 					retryOf: req.params.id,
 					workflowData: fullExecutionData.workflowData,
+					user: req.user as User,
 				};
 
 				const { lastNodeExecuted } = data.executionData!.resultData;
