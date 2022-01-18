@@ -538,7 +538,6 @@ export const workflowHelpers = mixins(
 					if (tags) {
 						workflowDataRequest.tags = tags;
 					}
-
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 					if (openInNewWindow) {
 						const routeData = this.$router.resolve({name: 'NodeViewExisting', params: {name: workflowData.id}});
@@ -547,6 +546,7 @@ export const workflowHelpers = mixins(
 						return true;
 					}
 
+					this.$store.commit('setActive', workflowData.active || false);
 					this.$store.commit('setWorkflowId', workflowData.id);
 					this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
 					this.$store.commit('setWorkflowSettings', workflowData.settings || {});
