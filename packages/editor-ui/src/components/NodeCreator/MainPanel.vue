@@ -54,8 +54,28 @@ import SubcategoryPanel from './SubcategoryPanel.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
-import { matchesNodeType, matchesSelectType } from './helpers';
+import { matchesSelectType } from './helpers';
+import Fuse from 'fuse.js';
 
+const FUZZY_SEARCH_OPTIONS = {
+	keys: [
+		{
+			name: 'properties.nodeType.displayName',
+			weight: 2,
+		},
+		{
+			name: 'properties.nodeType.codex.alias',
+			weight: 1,
+		},
+	],
+	threshold: 0.3,
+};
+
+if (!localStorage.getItem('N8N_FUZZY_SEARCH_CONFIG')) {
+	localStorage.setItem('N8N_FUZZY_SEARCH_CONFIG', JSON.stringify(FUZZY_SEARCH_OPTIONS));
+}
+
+const search_config = JSON.parse(localStorage.getItem('N8N_FUZZY_SEARCH_CONFIG') || '');
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
@@ -79,6 +99,7 @@ export default mixins(externalHooks).extend({
 			REGULAR_NODE_FILTER,
 			TRIGGER_NODE_FILTER,
 			ALL_NODE_FILTER,
+			fuzzySearch: new Fuse<INodeCreateElement>(this.searchItems, search_config),
 		};
 	},
 	computed: {
@@ -86,11 +107,12 @@ export default mixins(externalHooks).extend({
 			return this.nodeFilter.toLowerCase().trim();
 		},
 		filteredNodeTypes(): INodeCreateElement[] {
-			const nodeTypes: INodeCreateElement[] = this.searchItems;
 			const filter = this.searchFilter;
-			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
-				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
-			});
+			const returnData = this.fuzzySearch.search(filter)
+				.map((el) => el.item)
+				.filter((el: INodeCreateElement) => {
+					return filter && matchesSelectType(el, this.selectedType);
+				});
 
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
