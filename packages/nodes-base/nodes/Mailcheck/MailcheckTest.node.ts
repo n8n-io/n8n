@@ -78,6 +78,10 @@ export class MailcheckTest implements INodeType {
 					tempResponseData = await this.makeRoutingRequest(requestData);
 					requestData.options.qs.offset = requestData.options.qs.offset + pageSize;
 
+					tempResponseData = tempResponseData.map((item) => {
+						return { json: item };
+					});
+
 					// tempResponseData = get(
 					// 	tempResponseData[0],
 					// 	'data',

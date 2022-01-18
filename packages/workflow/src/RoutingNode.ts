@@ -191,7 +191,10 @@ export class RoutingNode {
 					nodeType.description.requestOperations,
 				);
 
-				returnData.push(...responseData);
+				// Add as INodeExecutionData[]
+				responseData.forEach((item) => {
+					returnData.push({ json: item });
+				});
 			} catch (error) {
 				if (get(this.node, 'continueOnFail', false)) {
 					returnData.push({ json: {}, error: error.message });
@@ -269,7 +272,7 @@ export class RoutingNode {
 		credentialType?: string,
 		requestOperations?: IN8nRequestOperations,
 		credentialsDecrypted?: ICredentialsDecrypted,
-	): Promise<INodeExecutionData[]> {
+	): Promise<IDataObject[]> {
 		let responseData: IDataObject[];
 		for (const preSendMethod of requestData.preSend) {
 			requestData.options = await preSendMethod.call(executeSingleFunctions, requestData.options);
@@ -358,11 +361,7 @@ export class RoutingNode {
 				credentialsDecrypted,
 			);
 		}
-
-		// Return as INodeExecutionData[]
-		return responseData.map((item) => {
-			return { json: item };
-		});
+		return responseData;
 	}
 
 	getParameterValue(

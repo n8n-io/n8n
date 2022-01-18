@@ -6,8 +6,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import {
-	IDataObject,
-	IN8nHttpResponse,
 	ILoadOptions,
 	INode,
 	INodeCredentials,
@@ -198,23 +196,40 @@ export class LoadNodeParameterOptions {
 			mode,
 		);
 
-		let responseData: IN8nHttpResponse;
+		const nodeProperties: INodePropertyOptions = {
+			name: '',
+			value: '',
+			request: options,
+		};
+
+		const requestData = routingNode.getRequestOptionsFromParameters(
+			executeSingleFunctions,
+			nodeProperties,
+			itemIndex,
+			runIndex,
+			'',
+		);
+
+		let credentialType: string | undefined;
 		if (node?.credentials && Object.keys(node.credentials).length) {
-			const credentialType = Object.keys(node?.credentials)[0];
-			responseData = await executeSingleFunctions.helpers.requestWithAuthentication.call(
-				executeSingleFunctions,
-				credentialType,
-				options,
-			);
-		} else {
-			responseData = await executeSingleFunctions.helpers.httpRequest(options);
+			[credentialType] = Object.keys(node?.credentials);
 		}
 
-		let optionsData: IDataObject[];
+		let optionsData = await routingNode.makeRoutingRequest(
+			requestData!,
+			executeSingleFunctions,
+			itemIndex,
+			runIndex,
+			credentialType,
+			nodeType.description.requestOperations,
+		);
+
+		if (optionsData.length === 0) {
+			return [];
+		}
+
 		if (loadOptions.rootProperty) {
-			optionsData = get(responseData, loadOptions.rootProperty, []);
-		} else {
-			optionsData = responseData as IDataObject[];
+			optionsData = get(optionsData[0], loadOptions.rootProperty, []);
 		}
 
 		if (!Array.isArray(optionsData)) {
