@@ -32,9 +32,14 @@ export async function getTemplates(
 				displayName
 				icon
 				iconData
-				typeVersion: version
+				typeVersion: version,
+				categories{
+					name
+				}
 			}
-			workflows
+			workflows{
+				id
+			}
 			totalViews: views
 		}
 		totalworkflow: getWorkflowCount(search: "${search}", category: ${queryCategory})
@@ -53,7 +58,10 @@ export async function getTemplates(
 				displayName
 				icon
 				iconData
-				typeVersion: version
+				typeVersion: version,
+				categories{
+					name
+				}
 			}
 			totalViews: views
 			user{
