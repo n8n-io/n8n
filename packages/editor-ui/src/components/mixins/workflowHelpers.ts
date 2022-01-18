@@ -437,10 +437,10 @@ export const workflowHelpers = mixins(
 				return returnData['__xxxxxxx__'];
 			},
 
-			async saveCurrentWorkflow({name, tags, active}: {name?: string, tags?: string[], active?: boolean} = {}): Promise<boolean> {
+			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}): Promise<boolean> {
 				const currentWorkflow = this.$route.params.name;
 				if (!currentWorkflow) {
-					return this.saveAsNewWorkflow({name, tags, active});
+					return this.saveAsNewWorkflow({name, tags});
 				}
 
 				// Workflow exists already so update it
@@ -457,10 +457,6 @@ export const workflowHelpers = mixins(
 						workflowDataRequest.tags = tags;
 					}
 
-					if (active !== undefined) {
-						workflowDataRequest.active = active;
-					}
-
 					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
 
 					if (name) {
@@ -471,14 +467,6 @@ export const workflowHelpers = mixins(
 						const createdTags = (workflowData.tags || []) as ITag[];
 						const tagIds = createdTags.map((tag: ITag): string => tag.id);
 						this.$store.commit('setWorkflowTagIds', tagIds);
-					}
-
-
-					this.$store.commit('setActive', !!workflowData.active);
-					if (workflowData.active) {
-						this.$store.commit('setWorkflowActive', workflowData.id);
-					} else {
-						this.$store.commit('setWorkflowInactive', workflowData.id);
 					}
 
 					this.$store.commit('setStateDirty', false);
@@ -499,7 +487,7 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags, active, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], active?: boolean, resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}): Promise<boolean> {
+			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
@@ -523,10 +511,6 @@ export const workflowHelpers = mixins(
 
 					if (tags) {
 						workflowDataRequest.tags = tags;
-					}
-
-					if (active !== undefined) {
-						workflowDataRequest.active = active;
 					}
 
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);

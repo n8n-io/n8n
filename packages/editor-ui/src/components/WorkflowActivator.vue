@@ -121,7 +121,7 @@ export default mixins(
 						return;
 					}
 
-					await this.saveCurrentWorkflow({active: newActiveState});
+					// await this.saveCurrentWorkflow({active: newActiveState});
 
 					if (newActiveState && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
 						this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
