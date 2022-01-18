@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -40,6 +41,7 @@ import {
 import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -110,6 +112,8 @@ export async function executeErrorWorkflow(
 			return;
 		}
 
+		const user = await getWorkflowOwner(workflowId);
+
 		const executionMode = 'error';
 		const nodeTypes = NodeTypes();
 
@@ -173,6 +177,7 @@ export async function executeErrorWorkflow(
 			executionMode,
 			executionData: runExecutionData,
 			workflowData,
+			user,
 		};
 
 		const workflowRunner = new WorkflowRunner();

@@ -39,6 +39,7 @@ import { getLogger } from '../src/Logger';
 
 import * as config from '../config';
 import * as Queue from '../src/Queue';
+import { getWorkflowOwner } from '../src/UserManagement/UserManagementHelper';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -121,6 +122,8 @@ export class Worker extends Command {
 			`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`,
 		);
 
+		const workflowOwner = await getWorkflowOwner(currentExecutionDb.workflowData.id!.toString());
+
 		let { staticData } = currentExecutionDb.workflowData;
 		if (jobData.loadStaticData) {
 			const findOptions = {
@@ -165,6 +168,7 @@ export class Worker extends Command {
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			workflowOwner,
 			undefined,
 			executionTimeoutTimestamp,
 		);

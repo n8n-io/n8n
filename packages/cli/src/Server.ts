@@ -1034,7 +1034,7 @@ class App {
 						startNodes.length === 0 ||
 						destinationNode === undefined
 					) {
-						const additionalData = await WorkflowExecuteAdditionalData.getBase();
+						const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user as User);
 						if (this.isUserManagementEnabled) {
 							// TODO UM: test this.
 							// TODO: test this.
@@ -1079,11 +1079,8 @@ class App {
 						sessionId,
 						startNodes,
 						workflowData,
+						user: req.user as User,
 					};
-					if (this.isUserManagementEnabled) {
-						// TODO UM: test this.
-						data.userId = req.body.userId;
-					}
 					const workflowRunner = new WorkflowRunner();
 					const executionId = await workflowRunner.run(data);
 
@@ -1224,9 +1221,12 @@ class App {
 						credentials,
 					);
 
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(
+						req.user as User,
+						currentNodeParameters,
+					);
 					// TODO UM: restrict user access to credentials he cannot use.
-					additionalData.userId = (req.user as User).id;
+					additionalData.user = req.user as User;
 
 					return loadDataInstance.getOptions(methodName, additionalData);
 				},
@@ -1913,6 +1913,7 @@ class App {
 					result as INodeCredentialsDetails,
 					result.type,
 					mode,
+					req.user as User,
 					true,
 				);
 				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
@@ -2040,6 +2041,7 @@ class App {
 						result as INodeCredentialsDetails,
 						result.type,
 						mode,
+						req.user as User,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
@@ -2135,6 +2137,7 @@ class App {
 					result as INodeCredentialsDetails,
 					result.type,
 					mode,
+					req.user as User,
 					true,
 				);
 				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
@@ -2272,6 +2275,7 @@ class App {
 						result as INodeCredentialsDetails,
 						result.type,
 						mode,
+						req.user as User,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
@@ -2556,6 +2560,7 @@ class App {
 					executionData: fullExecutionData.data,
 					retryOf: req.params.id,
 					workflowData: fullExecutionData.workflowData,
+					user: req.user as User,
 				};
 
 				const { lastNodeExecuted } = data.executionData!.resultData;

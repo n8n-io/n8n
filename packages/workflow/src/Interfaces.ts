@@ -138,21 +138,23 @@ export abstract class ICredentialsHelper {
 	abstract getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
+		user: N8nUserData,
 	): Promise<ICredentials>;
 
 	abstract getDecrypted(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
+		user: N8nUserData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
-		userId?: string,
 	): Promise<ICredentialDataDecryptedObject>;
 
 	abstract updateCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		user: N8nUserData,
 	): Promise<void>;
 }
 
@@ -1017,7 +1019,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
-	userId?: string; // this is a UUID - used to firewall actions in user management
+	user: N8nUserData;
 }
 
 export type WorkflowExecuteMode =
@@ -1118,4 +1120,17 @@ export interface ITelemetryClientConfig {
 export interface ITelemetrySettings {
 	enabled: boolean;
 	config?: ITelemetryClientConfig;
+}
+
+export interface N8nUserData {
+	id: string;
+	email?: string;
+	firstName?: string;
+	lastName?: string;
+	globalRole: N8nRoleData;
+}
+
+export interface N8nRoleData {
+	name: string;
+	scope: string;
 }

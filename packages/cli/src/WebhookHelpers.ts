@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
@@ -33,6 +34,7 @@ import {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	LoggerProxy as Logger,
+	N8nUserData,
 	NodeHelpers,
 	Workflow,
 	WorkflowExecuteMode,
@@ -53,6 +55,8 @@ import {
 
 // eslint-disable-next-line import/no-cycle
 import * as ActiveExecutions from './ActiveExecutions';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
@@ -213,8 +217,22 @@ export async function executeWebhook(
 		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
 
+	let user: N8nUserData;
+	if (
+		(workflowData as WorkflowEntity).shared?.length &&
+		(workflowData as WorkflowEntity).shared[0].user
+	) {
+		user = (workflowData as WorkflowEntity).shared[0].user;
+	} else {
+		try {
+			user = await getWorkflowOwner(workflowData.id.toString());
+		} catch (error) {
+			throw new ResponseHelper.ResponseError('Cannot find workflow', 500, 500);
+		}
+	}
+
 	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase();
+	const additionalData = await WorkflowExecuteAdditionalData.getBase(user);
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
@@ -389,6 +407,7 @@ export async function executeWebhook(
 			executionData: runExecutionData,
 			sessionId,
 			workflowData,
+			user,
 		};
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
