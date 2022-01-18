@@ -98,45 +98,30 @@ export default mixins(
 				},
 			},
 			methods: {
-				async changeWorkflowActivationState(newActiveState: boolean) {
-					// Set that the active state should be changed
-					const data: IWorkflowDataUpdate = {};
-					data.active = newActiveState;
-
-					await this.restApi().updateWorkflow(this.workflowId, data);
-
-					if (newActiveState === true) {
-						this.$store.commit('setWorkflowActive', this.workflowId);
-					} else {
-						this.$store.commit('setWorkflowInactive', this.workflowId);
-					}
-				},
-				async updateCurrentWorkflow(newActiveState: boolean) {
-					if (this.nodesIssuesExist === true) {
-						this.$showMessage({
-							title: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
-							message: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message'),
-							type: 'error',
-						});
-						return;
-					}
-
-					// await this.saveCurrentWorkflow({active: newActiveState});
-
-					if (newActiveState && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
-						this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
-					}
-				},
 				async activeChanged (newActiveState: boolean) {
 					this.loading = true;
 
+					if (!this.workflowId) {
+						const saved = await this.saveCurrentWorkflow();
+						if (!saved) {
+							this.loading = false;
+							return;
+						}
+					}
+
 					try {
-						if (!this.workflowId || this.isCurrentWorkflow) {
-							await this.updateCurrentWorkflow(newActiveState);
+						if (this.isCurrentWorkflow && this.nodesIssuesExist) {
+							this.$showMessage({
+								title: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
+								message: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message'),
+								type: 'error',
+							});
+
+							this.loading = false;
+							return;
 						}
-						else {
-							await this.changeWorkflowActivationState(newActiveState);
-						}
+
+						await this.updateWorkflow({workflowId: this.workflowId, active: newActiveState});
 					} catch (error) {
 						const newStateName = newActiveState === true ? 'activated' : 'deactivated';
 						this.$showError(
@@ -151,13 +136,20 @@ export default mixins(
 						return;
 					}
 
-					const activationEventName = (!this.workflowId || this.isCurrentWorkflow) ? 'workflow.activeChangeCurrent' : 'workflow.activeChange';
+					const activationEventName = this.isCurrentWorkflow ? 'workflow.activeChangeCurrent' : 'workflow.activeChange';
 					this.$externalHooks().run(activationEventName, { workflowId: this.workflowId, active: newActiveState });
 					this.$telemetry.track('User set workflow active status', { workflow_id: this.workflowId, is_active: newActiveState });
 
 					this.$emit('workflowActiveChanged', { id: this.workflowId, active: newActiveState });
 					this.loading = false;
-					this.$store.dispatch('settings/fetchPromptsData');
+
+					if (this.isCurrentWorkflow) {
+						if (newActiveState && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
+							this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
+						}
+
+						this.$store.dispatch('settings/fetchPromptsData');
+					}
 				},
 				async displayActivationError () {
 					let errorMessage: string;
