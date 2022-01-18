@@ -14,6 +14,7 @@ import merge from 'lodash.merge';
 import set from 'lodash.set';
 
 import {
+	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	INode,
 	INodeExecuteFunctions,
@@ -84,6 +85,21 @@ export class RoutingNode {
 		if (nodeType.description.credentials?.length) {
 			credentialType = nodeType.description.credentials[0].name;
 		}
+		const executeFunctions = nodeExecuteFunctions.getExecuteFunctions(
+			this.workflow,
+			this.runExecutionData,
+			runIndex,
+			this.connectionInputData,
+			inputData,
+			this.node,
+			this.additionalData,
+			this.mode,
+		);
+
+		let credentials: ICredentialDataDecryptedObject | undefined;
+		if (credentialType) {
+			credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+		}
 
 		// TODO: Think about how batching could be handled for REST APIs which support it
 		for (let i = 0; i < items.length; i++) {
@@ -112,14 +128,33 @@ export class RoutingNode {
 
 				if (nodeType.description.requestDefaults) {
 					Object.assign(requestData.options, nodeType.description.requestDefaults);
+
+					for (const key of Object.keys(nodeType.description.requestDefaults)) {
+						// @ts-ignore
+						let value = nodeType.description.requestDefaults[key];
+						// If the value is an expression resolve it
+						value = this.getParameterValue(
+							value,
+							i,
+							runIndex,
+							{ $credentials: credentials },
+							true,
+						) as string;
+						// @ts-ignore
+						requestData.options[key] = value;
+					}
 				}
 
 				for (const property of nodeType.description.properties) {
 					let value = get(this.node.parameters, property.name, []) as string | NodeParameterValue;
 					// If the value is an expression resolve it
-					value = this.getParameterValue(value, i, runIndex, {}, true) as
-						| string
-						| NodeParameterValue;
+					value = this.getParameterValue(
+						value,
+						i,
+						runIndex,
+						{ $credentials: credentials },
+						true,
+					) as string | NodeParameterValue;
 
 					const tempOptions = this.getRequestOptionsFromParameters(
 						thisArgs,
@@ -127,7 +162,7 @@ export class RoutingNode {
 						i,
 						runIndex,
 						'',
-						{ $value: value },
+						{ $credentials: credentials, $value: value },
 					);
 					if (tempOptions) {
 						requestData.pagination =
