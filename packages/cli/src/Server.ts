@@ -2659,40 +2659,49 @@ class App {
 		// with the query data getting to long
 		this.app.post(
 			`/${this.restEndpoint}/executions/delete`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<void> => {
-				const deleteData = req.body as IExecutionDeleteFilter;
+			ResponseHelper.send(async (req: ExecutionRequest.Delete): Promise<void> => {
+				const { deleteBefore, ids: executionIdsToDelete, filters: requestFilters } = req.body;
 
-				if (deleteData.deleteBefore !== undefined) {
-					const filters = {
-						startedAt: LessThanOrEqual(deleteData.deleteBefore),
-					} as IDataObject;
+				if (!deleteBefore && !executionIdsToDelete) {
+					throw new Error(
+						'Either property "deleteBefore" or property "ids" must be present in request body',
+					);
+				}
 
-					if (deleteData.filters !== undefined) {
-						Object.assign(filters, deleteData.filters);
+				const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
+					relations: ['workflow'],
+					where: whereClause({
+						user: req.user,
+						entityType: 'workflow',
+					}),
+				});
+
+				const sharedWorkflowIds = sharedWorkflows.map(({ workflow }) => workflow.id);
+
+				// delete executions by date, if user may access underlying worfklows
+
+				if (deleteBefore) {
+					const filters: IDataObject = {
+						startedAt: LessThanOrEqual(deleteBefore),
+					};
+
+					if (filters) {
+						Object.assign(filters, requestFilters);
 					}
 
-					const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
-					queryBuilder.select(['e.id']);
-					queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
-					queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
-					queryBuilder.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
-					const keys = Object.keys(filters);
-					keys.forEach((filter) => {
-						queryBuilder.andWhere(`e.${filter} = :${filter}_value`, {
-							[`${filter}_value`]: filters[filter],
-						});
+					const executions = await Db.collections.Execution!.find({
+						where: {
+							workflowId: In(sharedWorkflowIds),
+							...filters,
+						},
 					});
 
-					const execs = await queryBuilder.getMany();
+					if (!executions.length) return;
 
-					if (execs.length === 0) {
-						return;
-					}
-
-					const executionIds = [] as string[];
+					const executionIds: string[] = [];
 
 					await Promise.all(
-						execs.map(async (item) => {
+						executions.map(async (item) => {
 							executionIds.push(item.id.toString());
 							return BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(
 								item.id.toString(),
@@ -2700,32 +2709,32 @@ class App {
 						}),
 					);
 
-					// Delete only executions that I own.
 					await Db.collections.Execution!.delete({ id: In(executionIds) });
-				} else if (deleteData.ids !== undefined) {
-					const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
-					queryBuilder.select(['e.id']);
-					queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
-					queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
-					queryBuilder.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
-					queryBuilder.andWhere('e.id IN :ids', { ids: deleteData.ids });
 
-					const idsToDelete = (await queryBuilder.getMany()).map((row) => row.id) as string[];
+					return;
+				}
 
-					if (idsToDelete.length === 0) {
-						return;
-					}
+				// delete executions by IDs, if user may access underlying worfklows
+
+				if (executionIdsToDelete) {
+					const executions = await Db.collections.Execution!.find({
+						where: {
+							id: In(executionIdsToDelete),
+							workflowId: In(sharedWorkflowIds),
+						},
+					});
+
+					if (!executions.length) return;
+
+					const sharedExecutionIdsToDelete = executions.map(({ id }) => id.toString());
 
 					await Promise.all(
-						idsToDelete.map(async (id) =>
+						sharedExecutionIdsToDelete.map(async (id) =>
 							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id),
 						),
 					);
 
-					// Deletes all executions with the given ids
-					await Db.collections.Execution!.delete(idsToDelete);
-				} else {
-					throw new Error('Required body-data "ids" or "deleteBefore" is missing!');
+					await Db.collections.Execution!.delete(sharedExecutionIdsToDelete);
 				}
 			}),
 		);

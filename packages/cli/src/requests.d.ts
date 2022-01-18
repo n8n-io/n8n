@@ -1,5 +1,6 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
+import { IExecutionDeleteFilter } from '.';
 import { User } from './databases/entities/User';
 
 export type AuthenticatedRequest<
@@ -19,4 +20,5 @@ export declare namespace ExecutionRequest {
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, GetAllQsParam>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { unflattedResponse: 'true' | 'false' }>;
+	type Delete = AuthenticatedRequest<{}, {}, IExecutionDeleteFilter>;
 }
