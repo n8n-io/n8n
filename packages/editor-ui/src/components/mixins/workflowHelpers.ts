@@ -474,8 +474,8 @@ export const workflowHelpers = mixins(
 					}
 
 
-					this.$store.commit('setActive', workflowData.active);
-					if (workflowData.active === true) {
+					this.$store.commit('setActive', !!workflowData.active);
+					if (workflowData.active) {
 						this.$store.commit('setWorkflowActive', workflowData.id);
 					} else {
 						this.$store.commit('setWorkflowInactive', workflowData.id);
@@ -537,8 +537,8 @@ export const workflowHelpers = mixins(
 						return true;
 					}
 
-					this.$store.commit('setActive', workflowData.active || false);
-					if (workflowData.active === true) {
+					this.$store.commit('setActive', !!workflowData.active);
+					if (workflowData.active) {
 						this.$store.commit('setWorkflowActive', workflowData.id);
 					} else {
 						this.$store.commit('setWorkflowInactive', workflowData.id);
