@@ -22,4 +22,5 @@ export declare namespace ExecutionRequest {
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { unflattedResponse: 'true' | 'false' }>;
 	type Delete = AuthenticatedRequest<{}, {}, IExecutionDeleteFilter>;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow: boolean }, {}>;
+	type Stop = AuthenticatedRequest<{ id: string }>;
 }

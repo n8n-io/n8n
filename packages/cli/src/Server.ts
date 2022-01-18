@@ -2503,7 +2503,7 @@ class App {
 
 					const execution = await Db.collections.Execution!.findOne({
 						where: {
-							id: parseInt(executionId, 10),
+							id: executionId,
 							workflowId: In(sharedWorkflowIds),
 						},
 					});
@@ -2537,7 +2537,7 @@ class App {
 
 				const execution = await Db.collections.Execution!.findOne({
 					where: {
-						id: parseInt(executionId, 10),
+						id: executionId,
 						workflowId: In(sharedWorkflowIds),
 					},
 				});
@@ -2826,93 +2826,93 @@ class App {
 		// Forces the execution to stop
 		this.app.post(
 			`/${this.restEndpoint}/executions-current/:id/stop`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<IExecutionsStopData> => {
-					const resultsQuery = await Db.collections
-						.Execution!.createQueryBuilder('execution')
-						.select(['execution.id'])
-						.andWhere(`execution.id = :id`, { id: req.params.id })
-						.innerJoin('workflow', 'w', 'w.id = execution.workflowId')
-						.innerJoin('shared_workflow', 'sw', 'w.id = sw.workflowId')
-						.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
+			ResponseHelper.send(async (req: ExecutionRequest.Stop): Promise<IExecutionsStopData> => {
+				const { id: executionId } = req.params;
 
-					try {
-						await resultsQuery.getOneOrFail();
-					} catch (err) {
-						throw new ResponseHelper.ResponseError('Execution not found', undefined, 404);
-					}
+				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
-					if (config.get('executions.mode') === 'queue') {
-						// Manual executions should still be stoppable, so
-						// try notifying the `activeExecutions` to stop it.
-						const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
+				if (!sharedWorkflowIds.length) {
+					throw new ResponseHelper.ResponseError('Execution not found', undefined, 404);
+				}
 
-						if (result === undefined) {
-							// If active execution could not be found check if it is a waiting one
-							try {
-								return await this.waitTracker.stopExecution(req.params.id);
-							} catch (error) {
-								// Ignore, if it errors as then it is probably a currently running
-								// execution
-							}
-						} else {
-							return {
-								mode: result.mode,
-								startedAt: new Date(result.startedAt),
-								stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
-								finished: result.finished,
-							} as IExecutionsStopData;
-						}
+				const execution = await Db.collections.Execution!.findOne({
+					where: {
+						id: executionId,
+						workflowId: In(sharedWorkflowIds),
+					},
+				});
 
-						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+				if (!execution) {
+					throw new ResponseHelper.ResponseError('Execution not found', undefined, 404);
+				}
 
-						const job = currentJobs.find(
-							(job) => job.data.executionId.toString() === req.params.id,
-						);
+				if (config.get('executions.mode') === 'queue') {
+					// Manual executions should still be stoppable, so
+					// try notifying the `activeExecutions` to stop it.
+					const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
 
-						if (!job) {
-							throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
-						} else {
-							await Queue.getInstance().stopJob(job);
-						}
-
-						const executionDb = (await Db.collections.Execution?.findOne(
-							req.params.id,
-						)) as IExecutionFlattedDb;
-						const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
-
-						const returnData: IExecutionsStopData = {
-							mode: fullExecutionData.mode,
-							startedAt: new Date(fullExecutionData.startedAt),
-							stoppedAt: fullExecutionData.stoppedAt
-								? new Date(fullExecutionData.stoppedAt)
-								: undefined,
-							finished: fullExecutionData.finished,
-						};
-
-						return returnData;
-					}
-					const executionId = req.params.id;
-
-					// Stopt he execution and wait till it is done and we got the data
-					const result = await this.activeExecutionsInstance.stopExecution(executionId);
-
-					let returnData: IExecutionsStopData;
 					if (result === undefined) {
 						// If active execution could not be found check if it is a waiting one
-						returnData = await this.waitTracker.stopExecution(executionId);
+						try {
+							return await this.waitTracker.stopExecution(req.params.id);
+						} catch (error) {
+							// Ignore, if it errors as then it is probably a currently running
+							// execution
+						}
 					} else {
-						returnData = {
+						return {
 							mode: result.mode,
 							startedAt: new Date(result.startedAt),
 							stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 							finished: result.finished,
-						};
+						} as IExecutionsStopData;
 					}
 
+					const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+
+					const job = currentJobs.find((job) => job.data.executionId.toString() === req.params.id);
+
+					if (!job) {
+						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+					} else {
+						await Queue.getInstance().stopJob(job);
+					}
+
+					const executionDb = (await Db.collections.Execution?.findOne(
+						req.params.id,
+					)) as IExecutionFlattedDb;
+					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
+
+					const returnData: IExecutionsStopData = {
+						mode: fullExecutionData.mode,
+						startedAt: new Date(fullExecutionData.startedAt),
+						stoppedAt: fullExecutionData.stoppedAt
+							? new Date(fullExecutionData.stoppedAt)
+							: undefined,
+						finished: fullExecutionData.finished,
+					};
+
 					return returnData;
-				},
-			),
+				}
+
+				// Stopt he execution and wait till it is done and we got the data
+				const result = await this.activeExecutionsInstance.stopExecution(executionId);
+
+				let returnData: IExecutionsStopData;
+				if (result === undefined) {
+					// If active execution could not be found check if it is a waiting one
+					returnData = await this.waitTracker.stopExecution(executionId);
+				} else {
+					returnData = {
+						mode: result.mode,
+						startedAt: new Date(result.startedAt),
+						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
+						finished: result.finished,
+					};
+				}
+
+				return returnData;
+			}),
 		);
 
 		// Removes a test webhook
