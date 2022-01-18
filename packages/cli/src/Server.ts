@@ -2425,20 +2425,18 @@ class App {
 
 					const sharedWorkflowIds = sharedWorkflows.map(({ workflow }) => workflow.id);
 
-					const select: Array<keyof IExecutionFlattedDb> = [
-						'id',
-						'finished',
-						'mode',
-						'retryOf',
-						'retrySuccessId',
-						'waitTill',
-						'startedAt',
-						'stoppedAt',
-						'workflowData',
-					];
-
 					const findOptions: FindManyOptions<ExecutionEntity> = {
-						select,
+						select: [
+							'id',
+							'finished',
+							'mode',
+							'retryOf',
+							'retrySuccessId',
+							'waitTill',
+							'startedAt',
+							'stoppedAt',
+							'workflowData',
+						],
 						where: { workflowId: In(sharedWorkflowIds) },
 						order: { id: 'DESC' },
 						take: limit,
@@ -2503,28 +2501,42 @@ class App {
 			`/${this.restEndpoint}/executions/:id`,
 			ResponseHelper.send(
 				async (
-					req: express.Request,
-					res: express.Response,
+					req: ExecutionRequest.Get,
 				): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
-					const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
-					queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
-					queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
-					queryBuilder.andWhere('sw.userId = :userId', { userId: (req.user as User).id });
-					queryBuilder.andWhere('e.id = :id', { id: req.params.id });
+					const { id: executionId } = req.params;
 
-					const result = await queryBuilder.getOne();
+					const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
+						relations: ['workflow'],
+						where: whereClause({
+							user: req.user,
+							entityType: 'workflow',
+						}),
+					});
 
-					if (result === undefined) {
-						return undefined;
-					}
+					if (!sharedWorkflows.length) return undefined;
+
+					const sharedWorkflowIds = sharedWorkflows.map(({ workflow }) => workflow.id);
+
+					const execution = await Db.collections.Execution!.findOne({
+						where: {
+							id: parseInt(executionId, 10),
+							workflowId: In(sharedWorkflowIds),
+						},
+					});
+
+					if (!execution) return undefined;
 
 					if (req.query.unflattedResponse === 'true') {
-						const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
-						return fullExecutionData;
+						return ResponseHelper.unflattenExecutionData(execution);
 					}
-					// Convert to response format in which the id is a string
-					(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
-					return result as IExecutionFlatted as IExecutionFlattedResponse;
+
+					const { id, ...rest } = execution;
+
+					// @ts-ignore
+					return {
+						id: id.toString(),
+						...rest,
+					};
 				},
 			),
 		);

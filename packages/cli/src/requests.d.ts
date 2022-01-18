@@ -18,4 +18,5 @@ export declare namespace ExecutionRequest {
 	};
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, GetAllQsParam>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { unflattedResponse: 'true' | 'false' }>;
 }
