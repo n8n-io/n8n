@@ -76,15 +76,21 @@ export default Vue.extend({
 					return !node.disabled && node.type !== ERROR_TRIGGER_NODE_TYPE;
 				});
 
+			if (!foundTriggers.length) {
+				return '';
+			}
+
 			if (foundTriggers.length > 1) {
 				return this.$locale.baseText('activationModal.yourTriggersWillNowFire');
 			}
-			const trigger = foundTriggers[0];
-			const triggerNodeType = this.$store.getters.nodeType(trigger.type);
 
+			const trigger = foundTriggers[0];
+
+			const triggerNodeType = this.$store.getters.nodeType(trigger.type);
 			if (triggerNodeType.activationMessage) {
 				return triggerNodeType.activationMessage;
 			}
+
 			const serviceName = getTriggerNodeServiceName(triggerNodeType.displayName);
 			if (trigger.webhookId) {
 				return this.$locale.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
