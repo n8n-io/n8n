@@ -215,13 +215,20 @@ export class LoadNodeParameterOptions {
 			[credentialType] = Object.keys(node?.credentials);
 		}
 
+		let requestOperations = nodeType.description.requestOperations ?? {};
+
+		if (loadOptions.requestOperations) {
+			// If overwrites exist on loadOptions apply them
+			requestOperations = Object.assign(requestOperations, loadOptions.requestOperations);
+		}
+
 		let optionsData = await routingNode.makeRoutingRequest(
 			requestData!,
 			executeSingleFunctions,
 			itemIndex,
 			runIndex,
 			credentialType,
-			nodeType.description.requestOperations,
+			requestOperations,
 		);
 
 		if (optionsData.length === 0) {

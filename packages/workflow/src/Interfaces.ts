@@ -800,6 +800,7 @@ export type EditorTypes = 'code' | 'json';
 
 export interface ILoadOptions {
 	request: IHttpRequestOptions;
+	requestOperations?: IN8nRequestOperations;
 	rootProperty?: string; // Optional Path to option array
 	name: {
 		property: string;
