@@ -39,7 +39,7 @@
 import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
-import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
+import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG, ERROR_TRIGGER_NODE_TYPE } from '../constants';
 import { INodeUi } from '../Interface';
 import { getTriggerNodeServiceName } from './helpers';
 
@@ -73,14 +73,11 @@ export default Vue.extend({
 		triggerContent (): string {
 			const foundTriggers = this.$store.getters.workflowTriggerNodes
 				.filter((node: INodeUi) => {
-					return !node.disabled;
-				})
-				.filter(({ type }: INodeUi) => {
-					return type !== 'n8n-nodes-base.errorTrigger';
+					return !node.disabled && node.type !== ERROR_TRIGGER_NODE_TYPE;
 				});
-			// if multiple triggers
+
 			if (foundTriggers.length > 1) {
-				return 'Your triggers will now fire production executions automatically.';
+				return this.$locale.baseText('activationModal.yourTriggersWillNowFire');
 			}
 			const trigger = foundTriggers[0];
 			const triggerNodeType = this.$store.getters.nodeType(trigger.type);
@@ -89,15 +86,20 @@ export default Vue.extend({
 				return triggerNodeType.activationMessage;
 			}
 			const serviceName = getTriggerNodeServiceName(triggerNodeType.displayName);
-			//check if webhook
 			if (trigger.webhookId) {
-				return `Your workflow will now listen for events from ${serviceName} and trigger executions.`;
+				return this.$locale.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
+					interpolate: {
+						serviceName,
+					},
+				});
 			} else if (triggerNodeType.polling) {
-				//check if a polling trigger
-				return `Your workflow will now regularly check ${serviceName} for events and trigger executions for them.`;
+				return this.$locale.baseText('activationModal.yourWorkflowWillNowRegularlyCheck', {
+					interpolate: {
+						serviceName,
+					},
+				});
 			} else {
-				// default message
-				return 'Your trigger will now fire production executions automatically.';
+				return this.$locale.baseText('activationModal.yourTriggerWillNowFire');
 			}
 		},
 	},

@@ -103,25 +103,7 @@ export default mixins(
 				},
 			},
 			methods: {
-				async updateCurrentWorkflow(newActiveState: boolean) {
-					if (this.nodesIssuesExist === true) {
-						this.$showMessage({
-							title: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
-							message: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message'),
-							type: 'error',
-						});
-						return;
-					}
-
-					await this.saveCurrentWorkflow({
-						active: newActiveState,
-					});
-
-					if (newActiveState && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
-						this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
-					}
-				},
-				async activateOtherWorkflow(newActiveState: boolean) {
+				async changeWorkflowActivationState(newActiveState: boolean) {
 					// Set that the active state should be changed
 					const data: IWorkflowDataUpdate = {};
 					data.active = newActiveState;
@@ -134,6 +116,22 @@ export default mixins(
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}
 				},
+				async updateCurrentWorkflow(newActiveState: boolean) {
+					if (this.nodesIssuesExist === true) {
+						this.$showMessage({
+							title: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
+							message: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message'),
+							type: 'error',
+						});
+						return;
+					}
+
+					await this.saveCurrentWorkflow({active: newActiveState});
+
+					if (newActiveState && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
+						this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
+					}
+				},
 				async activeChanged (newActiveState: boolean) {
 					this.loading = true;
 
@@ -142,7 +140,7 @@ export default mixins(
 							await this.updateCurrentWorkflow(newActiveState);
 						}
 						else {
-							await this.activateOtherWorkflow(newActiveState);
+							await this.changeWorkflowActivationState(newActiveState);
 						}
 					} catch (error) {
 						const newStateName = newActiveState === true ? 'activated' : 'deactivated';
