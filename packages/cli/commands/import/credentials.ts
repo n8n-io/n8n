@@ -99,7 +99,7 @@ export class ImportCredentialsCommand extends Command {
 				}
 			}
 			console.info(`Successfully imported ${i} ${i === 1 ? 'credential.' : 'credentials.'}`);
-			process.exit(0);
+			process.exit();
 		} catch (error) {
 			console.error('An error occurred while importing credentials. See log messages for details.');
 			logger.error(error.message);
