@@ -149,7 +149,6 @@
 									label: 'Sign out',
 									value: 'logout'
 								}]"
-								:focusHighlight="false"
 								placement="bottom-start"
 								@action="onLogout"
 							/>

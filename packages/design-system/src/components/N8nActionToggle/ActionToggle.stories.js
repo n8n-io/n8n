@@ -5,6 +5,10 @@ export default {
 	title: 'Atoms/ActionToggle',
 	component: N8nActionToggle,
 	argTypes: {
+		placement: {
+			type: 'select',
+			options: ['bottom-start', 'bottom'],
+		},
 	},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },

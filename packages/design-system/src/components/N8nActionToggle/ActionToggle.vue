@@ -1,7 +1,7 @@
 <template>
 	<span :class="$style.container">
 		<el-dropdown :placement="placement" trigger="click" @command="onCommand">
-			<span :class="focusHighlight ? $style.focusButton : $style.button">
+			<span :class="$style.button">
 				<component :is="$options.components.N8nIcon"
 					icon="ellipsis-v"
 				/>
@@ -42,10 +42,6 @@ export default {
 			type: String,
 			default: 'bottom-end',
 		},
-		focusHighlight: {
-			type: Boolean,
-			default: true,
-		},
 	},
 	methods: {
 		onCommand(value: string) {
@@ -64,10 +60,6 @@ export default {
 	padding: var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
 	color: var(--color-text-dark);
-}
-
-.focusButton {
-	composes: button;
 
 	&:focus {
 		background-color: var(--color-background-xlight);
