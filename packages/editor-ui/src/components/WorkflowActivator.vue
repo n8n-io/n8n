@@ -16,7 +16,7 @@
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
 			<n8n-tooltip placement="top">
-				<div @click="displayActivationError" slot="content">{{ $locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut') }}</div>
+				<div @click="displayActivationError" slot="content" v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"></div>
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
 			</n8n-tooltip>
 		</div>
