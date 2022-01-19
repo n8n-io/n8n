@@ -1,3 +1,5 @@
+/* eslint-disable import/no-cycle */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Credentials } from 'n8n-core';
 
 import {
@@ -17,7 +19,8 @@ import {
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
-import { CredentialsOverwrites, CredentialTypes, Db, ICredentialsDb } from '.';
+import { CredentialsOverwrites, CredentialTypes, Db, ICredentialsDb, WhereClause } from '.';
+import { User } from './databases/entities/User';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {},
@@ -269,4 +272,47 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
 	}
+}
+
+/**
+ * Build a `where` clause for a `find()` or `findOne()` operation
+ * in the `shared_workflow` or `shared_credentials` tables.
+ */
+export function whereClause({
+	user,
+	entityType,
+	entityId = '',
+}: {
+	user: User;
+	entityType: 'workflow' | 'credentials';
+	entityId?: string;
+}): WhereClause {
+	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
+
+	if (user.globalRole.name !== 'owner') {
+		where.user = { id: user.id };
+	}
+
+	return where;
+}
+
+/**
+ * Get a credential if shared with a user.
+ */
+export async function getCredentialForUser(
+	credentialId: string,
+	user: User,
+): Promise<ICredentialsDb | null> {
+	const sharedCredential = await Db.collections.SharedCredentials!.findOne({
+		relations: ['credentials'],
+		where: whereClause({
+			user,
+			entityType: 'credentials',
+			entityId: credentialId,
+		}),
+	});
+
+	if (!sharedCredential) return null;
+
+	return sharedCredential.credentials as ICredentialsDb;
 }
