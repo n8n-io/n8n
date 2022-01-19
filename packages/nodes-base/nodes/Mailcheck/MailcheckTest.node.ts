@@ -406,6 +406,8 @@ export class MailcheckTest implements INodeType {
 							loadOptions: {
 								request: {
 									url: '/webhook/mock-option-parameters',
+									// Data from the current node can be accessed via $currentNodeParameters (only in "loadOptions")
+									// url: '=/webhook/mock-option-parameters/{{$currentNodeParameters.email}}',
 									method: 'GET',
 								},
 								// requestOperations: {

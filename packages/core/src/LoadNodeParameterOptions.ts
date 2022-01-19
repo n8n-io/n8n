@@ -31,6 +31,8 @@ const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
 
 export class LoadNodeParameterOptions {
+	currentNodeParameters: INodeParameters;
+
 	path: string;
 
 	workflow: Workflow;
@@ -46,6 +48,7 @@ export class LoadNodeParameterOptions {
 			nodeTypeNameAndVersion.name,
 			nodeTypeNameAndVersion.version,
 		);
+		this.currentNodeParameters = currentNodeParameters;
 		this.path = path;
 		if (nodeType === undefined) {
 			throw new Error(
@@ -208,6 +211,7 @@ export class LoadNodeParameterOptions {
 			itemIndex,
 			runIndex,
 			'',
+			{ $currentNodeParameters: this.currentNodeParameters },
 		);
 
 		let credentialType: string | undefined;
@@ -250,7 +254,7 @@ export class LoadNodeParameterOptions {
 				valueProperty,
 				itemIndex,
 				runIndex,
-				{},
+				{ $currentNodeParameters: this.currentNodeParameters },
 				true,
 			) as string;
 
@@ -260,7 +264,7 @@ export class LoadNodeParameterOptions {
 					loadOptions.value.value,
 					itemIndex,
 					runIndex,
-					{ $value: valueValue },
+					{ $currentNodeParameters: this.currentNodeParameters, $value: valueValue },
 					true,
 				) as string;
 			}
