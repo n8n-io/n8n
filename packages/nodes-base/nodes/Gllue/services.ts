@@ -13,8 +13,12 @@ export class GllueCandidateService {
 		this.listEndpoint = new GllueCandidateListEndpoint(apiHost, token, request);
 	}
 
-	async getCandidateById(candidateId: number, fields?: string) : Promise<IDataObject> {
-		return await this.listEndpoint.get(candidateId, fields);
+	async getCandidateById(candidateId: number, fields?: string) : Promise<IDataObject|undefined> {
+		const candidates = await this.listEndpoint.get(candidateId, fields);
+		if (candidates === undefined || !candidates.length){
+			return undefined;
+		}
+		return candidates[0];
 	}
 
 	async createOrUpdate(data: IDataObject, candidateId ? : string) : Promise<IDataObject> {
