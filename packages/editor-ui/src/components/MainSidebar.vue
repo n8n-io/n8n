@@ -760,6 +760,10 @@ export default mixins(
 .el-menu-item.user {
 	position: relative;
 
+	&:hover {
+		background-color: unset;
+	}
+
 	.avatar {
 		top: 25%;
 		left: 18px;
