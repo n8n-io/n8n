@@ -1,76 +1,79 @@
 <template>
-	<div :class="$style.listWrapper">
-		<n8n-heading size="large">Workflows ({{workflowsUI.length}})</n8n-heading>
-		<div v-if="loading" id="infiniteList" :class="$style.listContainer">
-			<div :class="$style.templateList">
+	<div :class="$style.list">
+		<n8n-heading size="large">Workflows ({{ workflowsUI.length }})</n8n-heading>
+		<div v-if="loading" :class="$style.container">
+			<div :class="$style.wrapper">
 				<TemplateCard :loading="loading" title="" />
 				<TemplateCard :loading="loading" title="" />
 				<TemplateCard :loading="loading" title="" />
 				<TemplateCard :loading="loading" title="" />
-
 			</div>
-
 		</div>
-		<div v-else-if="workflowsUI.length" id="infiniteList" :class="$style.listContainer">
-			<div :class="$style.templateList">
+		<div v-else-if="workflowsUI.length" :class="$style.container">
+			<div :class="$style.wrapper">
 				<div v-for="workflow in workflowsUI" :key="workflow.id">
 					<TemplateCard :title="workflow.name" :loading="false">
+						<template v-slot:right>
+							<div>
+								<NodeList :nodes="workflow.nodes" :showMore="true" />
+							</div>
+						</template>
 
-					<template v-slot:right>
-						<div :class="$style.nodesContainer">
-							<NodeList :nodes=workflow.nodes :showMore="true"/>
-						</div>
-					</template>
+						<template v-slot:rightHover>
+							<n8n-button type="outline" label="Use workflow" />
+						</template>
 
-					<template v-slot:rightHover>
-						<n8n-button type="outline" label="Use workflow"></n8n-button>
-					</template>
-
-					<template v-slot:footer>
-						<div>
-							<span v-if="workflow.totalViews">
+						<template v-slot:footer>
+							<div>
+								<span v-if="workflow.totalViews">
+									<n8n-text size="small" color="text-light">
+										<font-awesome-icon icon="eye" />
+										{{ truncate(workflow.totalViews) }}
+									</n8n-text>
+									<n8n-text size="small" color="text-light" />
+								</span>
 								<n8n-text size="small" color="text-light">
-									<font-awesome-icon icon="eye"></font-awesome-icon>
-									{{truncate(workflow.totalViews)}}
+									<TimeAgo :date="workflow.created_at" />
 								</n8n-text>
 								<n8n-text size="small" color="text-light">|</n8n-text>
-							</span>
-							<n8n-text size="small" color="text-light">
-								<TimeAgo :date="workflow.created_at" />
-							</n8n-text>
-							<n8n-text size="small" color="text-light">|</n8n-text>
-							<n8n-text size="small" color="text-light">By {{workflow.user.username}}</n8n-text>
-						</div>
-					</template>
-				</TemplateCard>
-
+								<n8n-text size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
+							</div>
+						</template>
+					</TemplateCard>
 				</div>
-
 			</div>
-
 		</div>
 
 		<div v-else class="emptyText">
 			<n8n-text>No workflows found. Try adjusting your search to see more.</n8n-text>
 		</div>
-
 	</div>
 </template>
 
 <script lang="ts">
+import NodeList from '@/components/NodeList.vue';
+import TemplateCard from '@/components/TemplateCard.vue';
+
+import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import TemplateCard from '@/components/TemplateCard.vue';
-import NodeList from '@/components/NodeList.vue';
 
-export default mixins(
-	genericHelpers,
-).extend({
+export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
 	components: {
-		TemplateCard,
 		NodeList,
+		TemplateCard,
+	},
+	watch: {
+		workflows(newWorkflows) {
+			this.workflowsUI = newWorkflows;
+			this.loading = false;
+		},
+	},
+	computed: {
+		workflows() {
+			return this.$store.getters['templates/getWorkflows'];
+		},
 	},
 	data() {
 		return {
@@ -79,22 +82,11 @@ export default mixins(
 			loading: true,
 		};
 	},
-	computed: {
-		workflows() {
-			return this.$store.getters['templates/getWorkflows'];
-		},
-	},
-	watch: {
-		workflows(newWorkflows) {
-			this.workflowsUI = newWorkflows;
-			this.loading = false;
-		},
-	},
 	methods: {
 		truncate(views: number): string {
 			return new Intl.NumberFormat('en-GB', {
-				notation: "compact",
-				compactDisplay: "short",
+				notation: 'compact',
+				compactDisplay: 'short',
 			}).format(views);
 		},
 	},
@@ -102,40 +94,15 @@ export default mixins(
 </script>
 
 <style lang="scss" module>
-
-.listWrapper {
-	// recalc with vars
-	// height: 450px;
-	padding-top: 20px;
-
-	.listContainer {
-		position: absolute;
-		// recalc with vars
-		height: calc(100% - 450px);
-		width: calc(100% - 340px);
-		margin-top: 20px;
-		overflow-y: scroll;
-
-		.templateList {
-			border-radius: var(--border-radius-large);
-			border: 1px solid #DBDFE7;
-			background-color: #FFFFFF;
-			overflow: auto;
-			height: auto;
-
-			.nodesContainer {
-				padding-top: 10px;
-			}
-
-			footer {
-				>span {
-					margin-right: 5px;
-				}
-			}
-		}
-	}
-
+.list {
+	padding-top: var(--spacing-m);
 }
 
-
+.wrapper {
+	height: auto;
+	background-color: var(--color-white);
+	border-radius: var(--border-radius-large);
+	border: $--version-card-border;
+	overflow: auto;
+}
 </style>

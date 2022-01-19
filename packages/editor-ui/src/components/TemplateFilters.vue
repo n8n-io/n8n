@@ -1,28 +1,29 @@
 <template>
 	<div>
-		<n8n-heading size="small">{{$locale.baseText('templates.categoriesHeading')}}</n8n-heading>
-		<div v-if="loading" :class="$style.loadingList">
-			<el-skeleton :loading="loading" animated>
-				<template slot="template">
-					<el-skeleton-item variant="text" />
-					<el-skeleton-item variant="text" />
-					<el-skeleton-item variant="text" />
-					<el-skeleton-item variant="text" />
-					<el-skeleton-item variant="text" />
-				</template>
-			</el-skeleton>
-
-
+		<n8n-heading size="small">{{ $locale.baseText('templates.categoriesHeading') }}</n8n-heading>
+		<div v-if="loading" :class="$style.list">
+			<div v-for="(block, index) in loadingBlocks" :key="'block-' + index">
+				<n8n-loading
+					:animated="loadingAnimated"
+					:loading="loading"
+					:rows="loadingRows"
+					variant="p"
+				/>
+				<div :class="$style.spacer" />
+			</div>
 		</div>
-		<ul v-else :class="$style.categoriesList">
-			<li>
+		<ul v-else :class="$style.categories">
+			<li :class="$style.item">
 				<el-checkbox
 					label="All Categories"
 					:value="allSelected"
 					@change="(value) => resetCategories(value)"
 				/>
 			</li>
-			<li v-for="category in collapsed ? sortedCategories.slice(0,4) : sortedCategories" :key="category.id">
+			<li
+				v-for="category in collapsed ? sortedCategories.slice(0, 4) : sortedCategories"
+				:key="category.id"
+			>
 				<el-checkbox
 					:label="category.name"
 					:value="category.selected"
@@ -31,24 +32,28 @@
 			</li>
 		</ul>
 
-		<div :class="$style.expandButton" v-if="sortedCategories.length > 4 && collapsed">
-			<n8n-button icon="plus" type="text" float="left" :label="`${sortedCategories.length - 4} more`" @click="collapseAction"></n8n-button>
+		<div :class="$style.button" v-if="sortedCategories.length > 4 && collapsed">
+			<n8n-button
+				icon="plus"
+				type="text"
+				float="left"
+				:label="`${sortedCategories.length - 4} more`"
+				@click="collapseAction"
+			></n8n-button>
 		</div>
-
 	</div>
 </template>
 
 <script lang="ts">
-
-import { ITemplateCategory } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import ElSkeleton from 'element-ui/lib/skeleton';
 import ElSkeletonItem from 'element-ui/lib/skeleton-item';
 
-export default mixins(
-	genericHelpers,
-).extend({
+import { ITemplateCategory } from '@/Interface';
+import { genericHelpers } from '@/components/mixins/genericHelpers';
+
+import mixins from 'vue-typed-mixins';
+
+export default mixins(genericHelpers).extend({
 	name: 'TemplateFilters',
 	components: {
 		ElSkeleton,
@@ -56,21 +61,33 @@ export default mixins(
 	},
 	props: {
 		setCategories: { type: Function },
+		loading: {
+			type: Boolean,
+		},
+		loadingAnimated: {
+			type: Boolean,
+			default: true,
+		},
+		loadingBlocks: {
+			type: Number,
+			default: 2,
+		},
+		loadingRows: {
+			type: Number,
+			default: () => {
+				return 3;
+			},
+		},
 	},
-	data() {
-		return {
-			allSelected: true,
-			collapsed: true,
-			sortedCategories: [] as ITemplateCategory[],
-			selected: [] as string[],
-			loading: true,
-		};
-	},
-	created() {
-		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.selected = this.$route.query.categories.split(',');
-			this.allSelected = this.selected.length === 0;
-		}
+	watch: {
+		categories(newCategories) {
+			this.sortedCategories = newCategories;
+		},
+		collapsed(newState) {
+			if (!this.collapsed) {
+				this.sortedCategories = this.sortCategories(this.categories);
+			}
+		},
 	},
 	computed: {
 		categories() {
@@ -87,24 +104,21 @@ export default mixins(
 			return copiedCategories;
 		},
 	},
-	watch: {
-		categories(newCategories) {
-			this.sortedCategories = newCategories;
-			this.loading = false;
-		},
-		collapsed(newState) {
-			if (!this.collapsed) {
-				this.sortedCategories = this.sortCategories(this.categories);
-			}
-		},
-
+	data() {
+		return {
+			allSelected: true,
+			collapsed: true,
+			sortedCategories: [] as ITemplateCategory[],
+			selected: [] as string[],
+			loading: true,
+		};
 	},
 	methods: {
 		sortCategories(categories: ITemplateCategory[]) {
-			const selectedCategories = this.categories.filter(({ selected }:ITemplateCategory) =>{
+			const selectedCategories = this.categories.filter(({ selected }: ITemplateCategory) => {
 				return selected;
 			});
-			const notSelectedCategories = this.categories.filter(({ selected }:ITemplateCategory) =>{
+			const notSelectedCategories = this.categories.filter(({ selected }: ITemplateCategory) => {
 				return !selected;
 			});
 			return selectedCategories.concat(notSelectedCategories);
@@ -126,7 +140,9 @@ export default mixins(
 			}
 			selectedCategory.selected = value;
 			this.sortedCategories = this.sortCategories(this.categories);
-			const strippedCategories = this.sortedCategories.filter(({ selected }) => selected).map(({ id }) => id);
+			const strippedCategories = this.sortedCategories
+				.filter(({ selected }) => selected)
+				.map(({ id }) => id);
 			if (strippedCategories.length === 0) {
 				this.allSelected = true;
 			}
@@ -136,31 +152,35 @@ export default mixins(
 			this.collapsed = false;
 		},
 	},
+	created() {
+		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
+			this.selected = this.$route.query.categories.split(',');
+			this.allSelected = this.selected.length === 0;
+		}
+	},
 });
 </script>
 
 <style lang="scss" module>
-
-.categoriesList {
-  list-style-type: none;
-	padding-top: 12px;
-
-	li {
-		margin-top: 8px;
-	}
+.list {
+	padding-top: var(--spacing-xs);
 }
 
-.expandButton {
-	margin-left: -12px;
+.spacer {
+	margin: var(--spacing-2xl);
+}
+
+.categories {
+	list-style-type: none;
+	padding-top: var(--spacing-xs);
+}
+
+.item {
+	margin-top: var(--spacing-2xs);
+}
+
+.button {
 	height: auto;
+	margin-left: -12px;
 }
-
-.loadingList {
-	padding-top: 12px;
-
-	 div {
-		margin-top: 8px;
-	}
-}
-
 </style>

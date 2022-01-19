@@ -4,7 +4,6 @@ import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import Templates from '@/views/Templates.vue';
-import TemplatesHeader from '@/components/TemplatesHeader.vue';
 
 Vue.use(Router);
 
@@ -58,7 +57,6 @@ export default new Router({
 			name: 'Templates',
 			components: {
 				default: Templates,
-				header: TemplatesHeader,
 				sidebar: MainSidebar,
 			},
 		},
