@@ -10,9 +10,7 @@
 			"jest"
 		],
 		"module": "commonjs",
-		"noImplicitAny": true,
 		"removeComments": true,
-		"strictNullChecks": true,
 		"strict": true,
 		"preserveConstEnums": true,
 		"resolveJsonModule": true,

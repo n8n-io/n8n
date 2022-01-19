@@ -552,10 +552,13 @@ async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
-	Logger.debug('Proxying request to axios', {
-		originalConfig: configObject,
-		parsedConfig: axiosConfig,
-	});
+	Logger.debug(
+		'Proxying request to axios',
+		// {
+		// 	originalConfig: configObject,
+		// 	parsedConfig: axiosConfig,
+		// }
+	);
 
 	if (configObject.auth?.sendImmediately === false) {
 		// for digest-auth
