@@ -147,8 +147,9 @@ export default mixins(
 						if (newActiveState && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
 							this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
 						}
-
-						this.$store.dispatch('settings/fetchPromptsData');
+						else {
+							this.$store.dispatch('settings/fetchPromptsData');
+						}
 					}
 				},
 				async displayActivationError () {
