@@ -2649,15 +2649,16 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/executions/delete`,
 			ResponseHelper.send(async (req: ExecutionRequest.Delete): Promise<void> => {
-				const { deleteBefore, ids: executionIdsToDelete, filters: requestFilters } = req.body;
+				const { deleteBefore, ids, filters: requestFilters } = req.body;
 
-				if (!deleteBefore && !executionIdsToDelete) {
+				if (!deleteBefore && !ids) {
 					throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
 				}
 
 				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+				const binaryDataManager = BinaryDataManager.getInstance();
 
-				// delete executions by date, if user may access underlying worfklows
+				// delete executions by date, if user may access the underyling worfklows
 
 				if (deleteBefore) {
 					const filters: IDataObject = {
@@ -2677,43 +2678,36 @@ class App {
 
 					if (!executions.length) return;
 
-					const executionIds: string[] = [];
+					const idsToDelete = executions.map(({ id }) => id.toString());
 
 					await Promise.all(
-						executions.map(async (item) => {
-							executionIds.push(item.id.toString());
-							return BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(
-								item.id.toString(),
-							);
-						}),
+						idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
 					);
 
-					await Db.collections.Execution!.delete({ id: In(executionIds) });
+					await Db.collections.Execution!.delete({ id: In(idsToDelete) });
 
 					return;
 				}
 
-				// delete executions by IDs, if user may access underlying worfklows
+				// delete executions by IDs, if user may access the underyling worfklows
 
-				if (executionIdsToDelete) {
-					const sharedExecutions = await Db.collections.Execution!.find({
+				if (ids) {
+					const executions = await Db.collections.Execution!.find({
 						where: {
-							id: In(executionIdsToDelete),
+							id: In(ids),
 							workflowId: In(sharedWorkflowIds),
 						},
 					});
 
-					if (!sharedExecutions.length) return;
+					if (!executions.length) return;
 
-					const sharedExecutionIdsToDelete = sharedExecutions.map(({ id }) => id.toString());
+					const idsToDelete = executions.map(({ id }) => id.toString());
 
 					await Promise.all(
-						sharedExecutionIdsToDelete.map(async (id) =>
-							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id),
-						),
+						idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
 					);
 
-					await Db.collections.Execution!.delete(sharedExecutionIdsToDelete);
+					await Db.collections.Execution!.delete(idsToDelete);
 				}
 			}),
 		);
@@ -2741,7 +2735,7 @@ class App {
 						const currentlyRunningExecutionIds =
 							currentlyRunningQueueIds.concat(manualExecutionIds);
 
-						if (currentlyRunningExecutionIds.length === 0) return [];
+						if (!currentlyRunningExecutionIds.length) return [];
 
 						const findOptions: FindManyOptions<ExecutionEntity> = {
 							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt'],
@@ -2766,13 +2760,15 @@ class App {
 
 						const executions = await Db.collections.Execution!.find(findOptions);
 
-						return executions.map((result) => {
+						if (!executions.length) return [];
+
+						return executions.map((execution) => {
 							return {
-								id: result.id,
-								workflowId: result.workflowId,
-								mode: result.mode,
-								retryOf: result.retryOf !== null ? result.retryOf : undefined,
-								startedAt: new Date(result.startedAt),
+								id: execution.id,
+								workflowId: execution.workflowId,
+								mode: execution.mode,
+								retryOf: execution.retryOf !== null ? execution.retryOf : undefined,
+								startedAt: new Date(execution.startedAt),
 							} as IExecutionsSummary;
 						});
 					}
@@ -2883,7 +2879,7 @@ class App {
 					return returnData;
 				}
 
-				// Stopt he execution and wait till it is done and we got the data
+				// Stop the execution and wait till it is done and we got the data
 				const result = await this.activeExecutionsInstance.stopExecution(executionId);
 
 				let returnData: IExecutionsStopData;
