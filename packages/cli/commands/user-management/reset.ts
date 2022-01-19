@@ -42,8 +42,8 @@ export class Reset extends Command {
 			// reset user to being a shell
 			await Db.collections.User!.save(
 				Object.assign(instanceOwner, {
-					firstName: null,
-					lastName: null,
+					firstName: 'default',
+					lastName: 'default',
 					email: null,
 					password: null,
 					resetPasswordToken: null,
