@@ -670,6 +670,7 @@ export interface INodeProperties {
 	typeOptions?: INodePropertyTypeOptions;
 	default: NodeParameterValue | INodeParameters | INodeParameters[] | NodeParameterValue[];
 	description?: string;
+	hint?: string;
 	displayOptions?: IDisplayOptions;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
 	placeholder?: string;

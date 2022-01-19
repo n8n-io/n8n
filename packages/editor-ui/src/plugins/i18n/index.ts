@@ -111,6 +111,25 @@ export class I18nClass {
 			},
 
 			/**
+			 * Display hint for a top-level param.
+			 */
+			 inputLabelHint(
+				{ name: parameterName, hint }: { name: string; hint: string; },
+			) {
+				if (['clientId', 'clientSecret'].includes(parameterName)) {
+					return context.dynamicRender({
+						key: `reusableDynamicText.oauth2.${parameterName}`,
+						fallback: hint,
+					});
+				}
+
+				return context.dynamicRender({
+					key: `${credentialPrefix}.${parameterName}.hint`,
+					fallback: hint,
+				});
+			},
+
+			/**
 			 * Description (tooltip text) for an input label param.
 			 */
 			inputLabelDescription(
@@ -202,6 +221,21 @@ export class I18nClass {
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.description`,
 					fallback: parameter.description,
+				});
+			},
+
+			/**
+			 * Hint (hint text) for an input, whether top-level or nested.
+			 */
+			inputLabelHint(
+				parameter: { name: string; hint: string; type: string },
+				path: string,
+			) {
+				const middleKey = deriveMiddleKey(path, parameter);
+
+				return context.dynamicRender({
+					key: `${initialKey}.${middleKey}.hint`,
+					fallback: parameter.hint,
 				});
 			},
 

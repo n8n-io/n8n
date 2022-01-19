@@ -16,6 +16,7 @@
 			@focus="focused = true"
 			@blur="focused = false"
 			inputSize="small" />
+		<input-hint :hint="$locale.nodeText().inputLabelHint(parameter, path)" />
 	</n8n-input-label>
 </template>
 
@@ -27,12 +28,14 @@ import {
 } from '@/Interface';
 
 import ParameterInput from '@/components/ParameterInput.vue';
+import InputHint from './ParameterInputHint.vue';
 
 export default Vue
 	.extend({
 		name: 'ParameterInputFull',
 		components: {
 			ParameterInput,
+			InputHint,
 		},
 		data() {
 			return {
