@@ -20,3 +20,16 @@ export declare namespace OAuthRequest {
 	>;
 	type OAuth2CredentialCallback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
 }
+
+export type NodeParameterOptionsRequest = AuthenticatedRequest<
+	{},
+	{},
+	{},
+	{
+		nodeTypeAndVersion: string;
+		methodName: string;
+		path: string;
+		currentNodeParameters: string;
+		credentials: string;
+	}
+>;

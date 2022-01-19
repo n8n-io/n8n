@@ -158,7 +158,7 @@ import { getNodeTranslationPath } from './TranslationHelpers';
 import { userManagementRouter } from './UserManagement';
 import { User } from './databases/entities/User';
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
-import { OAuthRequest } from './requests';
+import { NodeParameterOptionsRequest, OAuthRequest } from './requests';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1201,34 +1201,35 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/node-parameter-options`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
+				async (req: NodeParameterOptionsRequest): Promise<INodePropertyOptions[]> => {
 					const nodeTypeAndVersion = JSON.parse(
-						`${req.query.nodeTypeAndVersion}`,
+						req.query.nodeTypeAndVersion,
 					) as INodeTypeNameVersion;
-					const path = req.query.path as string;
-					let credentials: INodeCredentials | undefined;
+
+					const { path, methodName } = req.query;
+
 					const currentNodeParameters = JSON.parse(
-						`${req.query.currentNodeParameters}`,
+						req.query.currentNodeParameters,
 					) as INodeParameters;
-					if (req.query.credentials !== undefined) {
-						credentials = JSON.parse(req.query.credentials as string);
+
+					let credentials: INodeCredentials | undefined;
+
+					if (req.query.credentials) {
+						credentials = JSON.parse(req.query.credentials);
+						// TODO UM: restrict user access to credentials he cannot use.
 					}
-					const methodName = req.query.methodName as string;
 
-					const nodeTypes = NodeTypes();
-
-					// @ts-ignore
 					const loadDataInstance = new LoadNodeParameterOptions(
 						nodeTypeAndVersion,
-						nodeTypes,
+						NodeTypes(),
 						path,
 						currentNodeParameters,
 						credentials,
 					);
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
-					// TODO UM: restrict user access to credentials he cannot use.
-					additionalData.userId = (req.user as User).id;
+
+					additionalData.userId = req.user.id;
 
 					return loadDataInstance.getOptions(methodName, additionalData);
 				},
