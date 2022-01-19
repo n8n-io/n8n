@@ -51,7 +51,7 @@ export async function addRoutes(
 			let passwordHash = '';
 			if (user?.password) {
 				passwordHash = createHash('sha256')
-					.update(user.password.slice(Math.round(user.password.length / 2)))
+					.update(user.password.slice(Math.ceil(user.password.length / 2)))
 					.digest('hex');
 			}
 
