@@ -1,4 +1,4 @@
-import {shouldUpdateConsentStatus} from '../../../nodes/Gllue/services';
+import {shouldUpdateConsentStatus} from '../../../nodes/Gllue/GenericFunctions';
 import {CONSENT_STATUS_CONSENTED, CONSENT_STATUS_SENT} from '../../../nodes/Gllue/constants';
 
 describe('shouldUpdateConsentStatus', () => {

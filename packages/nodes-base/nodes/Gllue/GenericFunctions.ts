@@ -1,7 +1,13 @@
 import {IDataObject} from 'n8n-workflow';
-import { CONSENT_STATUS_SENT } from './constants';
+import {CONSENT_STATUS_CONSENTED, CONSENT_STATUS_SENT } from './constants';
 import {buildOptionWithUri, getResponseByUri, gllueUrlBuilder, UrlParams} from './helpers';
 
+
+export function shouldUpdateConsentStatus(currentStatus: string|undefined, newStatus: string): boolean {
+	const newStatusIsNotNull = newStatus !== undefined && newStatus !== '';
+
+	return newStatusIsNotNull && newStatus !== currentStatus && currentStatus !== CONSENT_STATUS_CONSENTED;
+}
 
 // tslint:disable-next-line:no-any
 export type N8nRequest = (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>;
