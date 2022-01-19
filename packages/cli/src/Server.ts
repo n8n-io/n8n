@@ -1991,11 +1991,11 @@ class App {
 		// Verify and store app code. Generate access tokens and store for respective credential.
 		this.app.get(
 			`/${this.restEndpoint}/oauth1-credential/callback`,
-			async (req: express.Request, res: express.Response) => {
+			async (req: OAuthRequest.OAuth1CredentialCallback, res: express.Response) => {
 				try {
-					const { oauth_verifier, oauth_token, cid } = req.query;
+					const { oauth_verifier, oauth_token, cid: credentialId } = req.query;
 
-					if (oauth_verifier === undefined || oauth_token === undefined) {
+					if (!oauth_verifier || !oauth_token) {
 						const errorResponse = new ResponseHelper.ResponseError(
 							`Insufficient parameters for OAuth1 callback. Received following query parameters: ${JSON.stringify(
 								req.query,
@@ -2006,15 +2006,9 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-					queryBuilder.andWhere('c.id = :id', { id: cid });
-					queryBuilder.innerJoin('c.shared', 'shared');
-					queryBuilder.andWhere('shared.userId = :userId', {
-						userId: (req.user as User).id,
-					});
+					const credential = await getCredentialForUser(credentialId, req.user);
 
-					const result = await queryBuilder.getOne();
-					if (result === undefined) {
+					if (!credential) {
 						const errorResponse = new ResponseHelper.ResponseError(
 							'The credential is not known.',
 							undefined,
@@ -2023,11 +2017,11 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					let encryptionKey;
-					encryptionKey = await UserSettings.getEncryptionKey();
-					if (encryptionKey === undefined) {
+					const encryptionKey = await UserSettings.getEncryptionKey();
+
+					if (!encryptionKey) {
 						const errorResponse = new ResponseHelper.ResponseError(
-							'No encryption key got found to decrypt the credentials!',
+							'No encryption key found to decrypt the credentials!',
 							undefined,
 							503,
 						);
@@ -2037,14 +2031,14 @@ class App {
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						result as INodeCredentialsDetails,
-						result.type,
+						credential as INodeCredentialsDetails,
+						credential.type,
 						mode,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 						decryptedDataOriginal,
-						result.type,
+						credential.type,
 						mode,
 					);
 
@@ -2077,16 +2071,16 @@ class App {
 					decryptedDataOriginal.oauthTokenData = oauthTokenJson;
 
 					const credentials = new Credentials(
-						result as INodeCredentialsDetails,
-						result.type,
-						result.nodesAccess,
+						credential as INodeCredentialsDetails,
+						credential.type,
+						credential.nodesAccess,
 					);
 					credentials.setData(decryptedDataOriginal, encryptionKey);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
 					newCredentialsData.updatedAt = this.getCurrentDate();
 					// Save the credentials in DB
-					await Db.collections.Credentials!.update(cid as any, newCredentialsData);
+					await Db.collections.Credentials!.update(credentialId, newCredentialsData);
 
 					res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
 				} catch (error) {
