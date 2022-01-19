@@ -57,6 +57,7 @@ export class Reset extends Command {
 			this.exit(1);
 		}
 
+		console.info('Successfully reset the database to default user state.');
 		this.exit();
 	}
 
