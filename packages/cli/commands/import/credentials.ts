@@ -19,8 +19,8 @@ export class ImportCredentialsCommand extends Command {
 	static description = 'Import credentials';
 
 	static examples = [
-		`$ n8n import:credentials --input=file.json`,
-		`$ n8n import:credentials --separate --input=backups/latest/`,
+		'$ n8n import:credentials --input=file.json',
+		'$ n8n import:credentials --separate --input=backups/latest/',
 	];
 
 	static flags = {
@@ -42,14 +42,14 @@ export class ImportCredentialsCommand extends Command {
 		const { flags } = this.parse(ImportCredentialsCommand);
 
 		if (!flags.input) {
-			console.info(`An input file or directory with --input must be provided`);
+			console.info('An input file or directory with --input must be provided');
 			return;
 		}
 
 		if (flags.separate) {
 			if (fs.existsSync(flags.input)) {
 				if (!fs.lstatSync(flags.input).isDirectory()) {
-					console.info(`The paramenter --input must be a directory`);
+					console.info('The argument to --input must be a directory');
 					return;
 				}
 			}
@@ -82,28 +82,24 @@ export class ImportCredentialsCommand extends Command {
 					await Db.collections.Credentials!.save(credential);
 				}
 			} else {
-				const fileContents = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
+				const credentials = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
 
-				if (!Array.isArray(fileContents)) {
-					throw new Error(`File does not seem to contain credentials.`);
+				if (!Array.isArray(credentials)) {
+					throw new Error('File does not seem to contain credentials.');
 				}
 
-				for (i = 0; i < fileContents.length; i++) {
-					if (typeof fileContents[i].data === 'object') {
+				for (i = 0; i < credentials.length; i++) {
+					if (typeof credentials[i].data === 'object') {
 						// plain data / decrypted input. Should be encrypted first.
-						Credentials.prototype.setData.call(
-							fileContents[i],
-							fileContents[i].data,
-							encryptionKey,
-						);
+						Credentials.prototype.setData.call(credentials[i], credentials[i].data, encryptionKey);
 					}
-					await Db.collections.Credentials!.save(fileContents[i]);
+					await Db.collections.Credentials!.save(credentials[i]);
 				}
 			}
 			console.info(`Successfully imported ${i} ${i === 1 ? 'credential.' : 'credentials.'}`);
 			process.exit(0);
 		} catch (error) {
-			console.error('An error occurred while exporting credentials. See log messages for details.');
+			console.error('An error occurred while importing credentials. See log messages for details.');
 			logger.error(error.message);
 			this.exit(1);
 		}
