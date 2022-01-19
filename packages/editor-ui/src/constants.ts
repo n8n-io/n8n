@@ -203,7 +203,7 @@ export const PERMISSIONS: IUserPermissions = {
 		},
 		SettingsRedirect: {
 			allow: {
-				role: [ROLE.Default, ROLE.Owner],
+				loginStatus: [LOGIN_STATUS.LoggedIn],
 			},
 			deny: {
 				um: false,
