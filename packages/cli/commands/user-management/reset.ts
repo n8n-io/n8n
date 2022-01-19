@@ -27,8 +27,25 @@ export class Reset extends Command {
 		try {
 			const owner = await this.getInstanceOwner();
 
-			await Db.collections.SharedWorkflow!.update({ user: Not(owner) }, { user: owner });
-			await Db.collections.SharedCredentials!.update({ user: Not(owner) }, { user: owner });
+			const ownerWorkflowRole = await Db.collections.Role!.findOneOrFail({
+				name: 'owner',
+				scope: 'workflow',
+			});
+
+			const ownerCredentialRole = await Db.collections.Role!.findOneOrFail({
+				name: 'owner',
+				scope: 'credential',
+			});
+
+			await Db.collections.SharedWorkflow!.update(
+				{ user: Not(owner) },
+				{ user: { ...owner, globalRole: ownerWorkflowRole } },
+			);
+
+			await Db.collections.SharedCredentials!.update(
+				{ user: Not(owner) },
+				{ user: { ...owner, globalRole: ownerCredentialRole } },
+			);
 
 			await Db.collections.User!.delete({ id: Not(owner.id) });
 			await Db.collections.User!.save(Object.assign(owner, this.defaultUserProps));
