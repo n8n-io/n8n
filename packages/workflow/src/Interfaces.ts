@@ -444,6 +444,7 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 		offsetParameter: string;
 		pageSize: number;
 		rootProperty?: string; // Optional Path to option array
+		type: 'body' | 'query';
 	};
 }
 

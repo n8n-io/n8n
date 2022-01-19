@@ -100,8 +100,9 @@ export class MailcheckTest implements INodeType {
 			// 		offsetParameter: 'offset',
 			// 		pageSize: 10,
 			// 		rootProperty: 'data',
+			// 		type: 'query',
 			// 	},
-			// }
+			// },
 		},
 		properties: [
 			{

@@ -311,8 +311,14 @@ export class RoutingNode {
 
 				// Different predefined pagination types
 				if (requestOperations.pagination.type === 'offset') {
-					requestData.options.qs[properties.limitParameter] = properties.pageSize;
-					requestData.options.qs[properties.offsetParameter] = 0;
+					const optionsType = properties.type === 'body' ? 'body' : 'qs';
+					if (properties.type === 'body' && !requestData.options.body) {
+						requestData.options.body = {};
+					}
+
+					(requestData.options[optionsType] as IDataObject)[properties.limitParameter] =
+						properties.pageSize;
+					(requestData.options[optionsType] as IDataObject)[properties.offsetParameter] = 0;
 					let tempResponseData: IDataObject[];
 					do {
 						if (requestData?.maxResults) {
@@ -321,10 +327,8 @@ export class RoutingNode {
 							if (resultsMissing < 1) {
 								break;
 							}
-							requestData.options.qs[properties.limitParameter] = Math.min(
-								properties.pageSize,
-								resultsMissing,
-							);
+							(requestData.options[optionsType] as IDataObject)[properties.limitParameter] =
+								Math.min(properties.pageSize, resultsMissing);
 						}
 
 						tempResponseData = await this.rawRoutingRequest(
@@ -335,8 +339,10 @@ export class RoutingNode {
 							credentialType,
 							credentialsDecrypted,
 						);
-						requestData.options.qs[properties.offsetParameter] =
-							(requestData.options.qs[properties.offsetParameter] as number) + properties.pageSize;
+						(requestData.options[optionsType] as IDataObject)[properties.offsetParameter] =
+							((requestData.options[optionsType] as IDataObject)[
+								properties.offsetParameter
+							] as number) + properties.pageSize;
 
 						if (properties.rootProperty) {
 							tempResponseData = get(
