@@ -11,7 +11,7 @@ import { getLogger } from '../../src/Logger';
 export class Reset extends Command {
 	static description = '\nResets the database to the default user state';
 
-	defaultUserProps = {
+	private defaultUserProps = {
 		firstName: 'default',
 		lastName: 'default',
 		email: null,
@@ -61,7 +61,7 @@ export class Reset extends Command {
 		this.exit();
 	}
 
-	async getInstanceOwner(): Promise<User> {
+	private async getInstanceOwner(): Promise<User> {
 		const globalRole = await Db.collections.Role!.findOneOrFail({
 			name: 'owner',
 			scope: 'global',
