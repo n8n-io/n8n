@@ -108,7 +108,7 @@ export class Onfleet implements INodeType {
 						},
 					],
 					default: 'tasks',
-					description: 'The resource to perform operations on.',
+					description: 'The resource to perform operations on',
 				},
 				// Operations
 				...adminOperations,
@@ -569,18 +569,18 @@ export class Onfleet implements INodeType {
 			const longitude = this.getNodeParameter(longitudeField, item) as string;
 			const latitude = this.getNodeParameter(latitudeField, item) as string;
 
-			const wokrerTimeEstimates = {} as OnfleetWorkerEstimates;
+			const workerTimeEstimates = {} as OnfleetWorkerEstimates;
 			if (pickup) {
-				wokrerTimeEstimates.pickupLocation = `${longitude},${latitude}`;
-				wokrerTimeEstimates.pickupTime = (new Date(this.getNodeParameter('pickupTime', item) as Date)).getTime() / 1000;
+				workerTimeEstimates.pickupLocation = `${longitude},${latitude}`;
+				workerTimeEstimates.pickupTime = (new Date(this.getNodeParameter('pickupTime', item) as Date)).getTime() / 1000;
 			}
 			if(dropoff) {
-				wokrerTimeEstimates.dropoffLocation = `${longitude},${latitude}`;
+				workerTimeEstimates.dropoffLocation = `${longitude},${latitude}`;
 			}
 
 			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
-			Object.assign(wokrerTimeEstimates, additionalFields);
-			return wokrerTimeEstimates;
+			Object.assign(workerTimeEstimates, additionalFields);
+			return workerTimeEstimates;
 		} else if (operation === 'autoDispatch') {
 			/* -------------------------------------------------------------------------- */
 			/*                  Dynamically dispatching tasks on the fly                  */

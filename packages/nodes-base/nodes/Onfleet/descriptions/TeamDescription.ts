@@ -16,37 +16,37 @@ export const teamOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new Onfleet team.',
+				description: 'Create a new Onfleet team',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an Onfleet team.',
+				description: 'Update an Onfleet team',
 			},
 			{
 				name: 'Remove',
 				value: 'delete',
-				description: 'Remove an Onfleet team.',
+				description: 'Remove an Onfleet team',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a specific Onfleet team.',
+				description: 'Get a specific Onfleet team',
 			},
 			{
 				name: 'List',
 				value: 'getAll',
-				description: 'List all Onfleet teams.',
+				description: 'List all Onfleet teams',
 			},
 			{
 				name: 'Auto-Dispatch',
 				value: 'autoDispatch',
-				description: 'Dynamically dispatching tasks on the fly.',
+				description: 'Dynamically dispatching tasks on the fly',
 			},
 			{
 				name: 'Get time estimates',
 				value: 'getTimeEstimates',
-				description: 'The Driver Time Estimates endpoint allows an API user to get estimated times for tasks that haven\'t been created yet.',
+				description: 'The Driver Time Estimates endpoint allows an API user to get estimated times for tasks that haven\'t been created yet',
 			},
 		],
 		default: 'getAll',
@@ -58,7 +58,7 @@ const nameField = {
 	name: 'name',
 	type: 'string',
 	default: '',
-	description: 'A unique name for the team.',
+	description: 'A unique name for the team',
 } as INodeProperties;
 
 const workersField = {
@@ -66,7 +66,7 @@ const workersField = {
 	name: 'workers',
 	type: 'json',
 	default: '[]',
-	description: 'An array of workers IDs.',
+	description: 'An array of workers IDs',
 } as INodeProperties;
 
 const managersField = {
@@ -74,7 +74,7 @@ const managersField = {
 	name: 'managers',
 	type: 'json',
 	default: '[]',
-	description: 'An array of managing administrator IDs.',
+	description: 'An array of managing administrator IDs',
 } as INodeProperties;
 
 const hubField = {
@@ -82,7 +82,7 @@ const hubField = {
 	name: 'hub',
 	type: 'string',
 	default: '',
-	description: 'The ID of the team\'s hub.',
+	description: 'The ID of the team\'s hub',
 } as INodeProperties;
 
 const enableSelfAssignmentField = {
@@ -90,7 +90,7 @@ const enableSelfAssignmentField = {
 	name: 'enableSelfAssignment',
 	type: 'boolean',
 	default: false,
-	description: 'This toggles Team Self-Assignment that allows Drivers to Self Assign Tasks that are in the Team unassigned container.',
+	description: 'This toggles Team Self-Assignment that allows Drivers to Self Assign Tasks that are in the Team unassigned container',
 } as INodeProperties;
 
 const maxTasksPerRouteField = {
@@ -102,7 +102,7 @@ const maxTasksPerRouteField = {
 		maxValue: 200,
 		minValue: 1,
 	},
-	description: 'Total number of tasks allowed on a route.',
+	description: 'Total number of tasks allowed on a route',
 }as INodeProperties;
 
 const taskTimeWindowField = {
@@ -121,7 +121,7 @@ const scheduleTimeWindowField = {
 	description: 'This is the Driver\'s scheduled time window. Param must be an array of length 2 in unix time in seconds precision, [start, end]',
 } as INodeProperties;
 
-const serviceTImeField = {
+const serviceTimeField = {
 	displayName: 'Service time',
 	name: 'serviceTIme',
 	type: 'number',
@@ -129,7 +129,7 @@ const serviceTImeField = {
 	typeOptions: {
 		minValue: 0,
 	},
-	description: 'The default service time to apply in Minutes to the tasks when no task service time exists.',
+	description: 'The default service time to apply in Minutes to the tasks when no task service time exists',
 } as INodeProperties;
 
 const routeEndField = {
@@ -137,7 +137,7 @@ const routeEndField = {
 	name: 'routeEnd',
 	type: 'string',
 	default: '',
-	description: 'Where the route will end.',
+	description: 'Where the route will end',
 } as INodeProperties;
 
 const maxAllowedDelayField = {
@@ -156,7 +156,7 @@ const dropoffField = {
 	name: 'dropoff',
 	type: 'boolean',
 	default: false,
-	description: 'Dropoff.',
+	description: 'Dropoff',
 } as INodeProperties;
 
 const pickupField = {
@@ -164,7 +164,7 @@ const pickupField = {
 	name: 'pickup',
 	type: 'boolean',
 	default: false,
-	description: 'Pickup.',
+	description: 'Pickup',
 } as INodeProperties;
 
 const longitudeDropoffField = {
@@ -175,7 +175,7 @@ const longitudeDropoffField = {
 		numberPrecision: 14,
 	},
 	default: '',
-	description: 'The longitude for dropoff location.',
+	description: 'The longitude for dropoff location',
 } as INodeProperties;
 
 const latitudeDropoffField = {
@@ -186,7 +186,7 @@ const latitudeDropoffField = {
 		numberPrecision: 14,
 	},
 	default: '',
-	description: 'The latitude for dropoff location.',
+	description: 'The latitude for dropoff location',
 } as INodeProperties;
 
 const longitudePickupField = {
@@ -197,7 +197,7 @@ const longitudePickupField = {
 		numberPrecision: 14,
 	},
 	default: '',
-	description: 'The longitude for pickup location.',
+	description: 'The longitude for pickup location',
 } as INodeProperties;
 
 const latitudePickupField = {
@@ -208,7 +208,7 @@ const latitudePickupField = {
 		numberPrecision: 14,
 	},
 	default: '',
-	description: 'The latitude for pickup location.',
+	description: 'The latitude for pickup location',
 } as INodeProperties;
 
 const pickupTimeField = {
@@ -216,7 +216,7 @@ const pickupTimeField = {
 	name: 'pickupTime',
 	type: 'dateTime',
 	default: Date.now(),
-	description: 'If the request includes pickupLocation pickupTime must be present if the time is fewer than 3 hours in the future.',
+	description: 'If the request includes pickupLocation pickupTime must be present if the time is fewer than 3 hours in the future',
 } as INodeProperties;
 
 const restrictedVehicleTypesField = {
@@ -242,7 +242,7 @@ const restrictedVehicleTypesField = {
 		},
 	],
 	default: 'CAR',
-	description: 'Vehicle types to ignore in the query.',
+	description: 'Vehicle types to ignore in the query',
 } as INodeProperties;
 
 const serviceTimeEstimateField = {
@@ -253,7 +253,7 @@ const serviceTimeEstimateField = {
 	typeOptions: {
 		minValue: 0,
 	},
-	description: 'The expected time a worker will take at the pickupLocation, dropoffLocation, or both (as applicable) Unit: seconds.',
+	description: 'The expected time a worker will take at the pickupLocation, dropoffLocation, or both (as applicable) Unit: seconds',
 } as INodeProperties;
 
 export const teamFields = [
@@ -275,7 +275,7 @@ export const teamFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the team object for lookup.',
+		description: 'The ID of the team object for lookup',
 	},
 	{
 		...nameField,
@@ -360,7 +360,7 @@ export const teamFields = [
 			maxTasksPerRouteField,
 			taskTimeWindowField,
 			scheduleTimeWindowField,
-			serviceTImeField,
+			serviceTimeField,
 			routeEndField,
 			maxAllowedDelayField,
 		],

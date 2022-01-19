@@ -16,42 +16,42 @@ export const taskOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new Onfleet task.',
+				description: 'Create a new Onfleet task',
 			},
 			{
 				name: 'Create multiple tasks',
 				value: 'createBatch',
-				description: 'Creating multiple tasks in batch.',
+				description: 'Creating multiple tasks in batch',
 			},
 			{
 				name: 'Clone',
 				value: 'clone',
-				description: 'Clone an Onfleet task.',
+				description: 'Clone an Onfleet task',
 			},
 			{
 				name: 'Complete',
 				value: 'complete',
-				description: 'Force-complete a started Onfleet task.',
+				description: 'Force-complete a started Onfleet task',
 			},
 			{
 				name: 'Remove',
 				value: 'delete',
-				description: 'Remove an Onfleet task.',
+				description: 'Remove an Onfleet task',
 			},
 			{
 				name: 'List',
 				value: 'getAll',
-				description: 'List Onfleet tasks.',
+				description: 'List Onfleet tasks',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a specific Onfleet task.',
+				description: 'Get a specific Onfleet task',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an Onfleet task.',
+				description: 'Update an Onfleet task',
 			},
 
 		],
@@ -64,7 +64,7 @@ const merchantIdField = {
 	name: 'merchant',
 	type: 'string',
 	default: '',
-	description: 'The ID of the organization that will be displayed to the recipient of the task.',
+	description: 'The ID of the organization that will be displayed to the recipient of the task',
 } as INodeProperties;
 
 const executorIdField = {
@@ -72,7 +72,7 @@ const executorIdField = {
 	name: 'executor',
 	type: 'string',
 	default: '',
-	description: 'The ID of the organization that will be responsible for fulfilling the task.',
+	description: 'The ID of the organization that will be responsible for fulfilling the task',
 } as INodeProperties;
 
 const completeAfterField = {
@@ -80,7 +80,7 @@ const completeAfterField = {
 	name: 'completeAfter',
 	type: 'dateTime',
 	default: null,
-	description: 'The earliest time the task should be completed.',
+	description: 'The earliest time the task should be completed',
 } as INodeProperties;
 
 const completeBeforeField = {
@@ -88,7 +88,7 @@ const completeBeforeField = {
 	name: 'completeBefore',
 	type: 'dateTime',
 	default: null,
-	description: 'The latest time the task should be completed.',
+	description: 'The latest time the task should be completed',
 } as INodeProperties;
 
 const pickupTaskField = {
@@ -96,7 +96,7 @@ const pickupTaskField = {
 	name: 'pickupTask',
 	type: 'boolean',
 	default: false,
-	description: 'Whether the task is a pickup task.',
+	description: 'Whether the task is a pickup task',
 } as INodeProperties;
 
 const notesField = {
@@ -104,7 +104,7 @@ const notesField = {
 	name: 'notes',
 	type: 'string',
 	default: '',
-	description: 'Notes for the task.',
+	description: 'Notes for the task',
 } as INodeProperties;
 
 const quantityField = {
@@ -112,7 +112,7 @@ const quantityField = {
 	name: 'quantity',
 	type: 'number',
 	default: 0,
-	description: 'The number of units to be dropped off while completing this task, for route optimization purposes.',
+	description: 'The number of units to be dropped off while completing this task, for route optimization purposes',
 } as INodeProperties;
 
 const serviceTimeField = {
@@ -120,7 +120,7 @@ const serviceTimeField = {
 	name: 'serviceTime',
 	type: 'number',
 	default: 0,
-	description: 'The number of minutes to be spent by the worker on arrival at this task\'s destination, for route optimization purposes.',
+	description: 'The number of minutes to be spent by the worker on arrival at this task\'s destination, for route optimization purposes',
 } as INodeProperties;
 
 export const taskFields = [
@@ -142,7 +142,7 @@ export const taskFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the task object for lookup.',
+		description: 'The ID of the task object for lookup',
 	},
 	{
 		displayName: 'Short ID',
@@ -155,7 +155,7 @@ export const taskFields = [
 			},
 		},
 		required: true,
-		description: 'Whether the task short ID is used for lookup.',
+		description: 'Whether the task short ID is used for lookup',
 	},
 	{
 		displayName: 'From',
@@ -167,7 +167,7 @@ export const taskFields = [
 				operation: [ 'getAll' ],
 			},
 		},
-		description: 'The starting time of the range. Tasks created or completed at or after this time will be included.',
+		description: 'The starting time of the range. Tasks created or completed at or after this time will be included',
 		required: true,
 		default: null,
 	},
@@ -181,7 +181,7 @@ export const taskFields = [
 				operation: [ 'complete' ],
 			},
 		},
-		description: 'Whether the task\'s completion was successful.',
+		description: 'Whether the task\'s completion was successful',
 		required: true,
 		default: true,
 	},
@@ -203,7 +203,7 @@ export const taskFields = [
 				name: 'to',
 				type: 'dateTime',
 				default: null,
-				description: 'The ending time of the range. Defaults to current time if not specified.',
+				description: 'The ending time of the range. Defaults to current time if not specified',
 			},
 			{
 				displayName: 'State',
@@ -228,14 +228,14 @@ export const taskFields = [
 					},
 				],
 				default: null,
-				description: 'The state of the tasks.',
+				description: 'The state of the tasks',
 			},
 			{
 				displayName: 'LastId',
 				name: 'lastId',
 				type: 'string',
 				default: null,
-				description: 'The last Id to walk the paginated response.',
+				description: 'The last Id to walk the paginated response',
 			},
 		],
 	},
@@ -319,7 +319,7 @@ export const taskFields = [
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Completion Notes.',
+				description: 'Completion Notes',
 			},
 		],
 	},
@@ -352,28 +352,28 @@ export const taskFields = [
 				name: 'recipientNameOverride',
 				type: 'string',
 				default: '',
-				description: 'Override the recipient name for this task only.',
+				description: 'Override the recipient name for this task only',
 			},
 			{
 				displayName: 'Recipient Notes Override',
 				name: 'recipientNotes',
 				type: 'string',
 				default: '',
-				description: 'Override the recipient notes for this task only.',
+				description: 'Override the recipient notes for this task only',
 			},
 			{
 				displayName: 'Recipient Skip SMS Notifications Override',
 				name: 'recipientSkipSMSNotifications',
 				type: 'boolean',
 				default: '',
-				description: 'Override the recipient notification settings for this task only.',
+				description: 'Override the recipient notification settings for this task only',
 			},
 			{
 				displayName: 'Use Merchant For Proxy Override',
 				name: 'useMerchantForProxy',
 				type: 'boolean',
 				default: '',
-				description: 'Override the organization ID to use the merchant orgID when set to true for this task only.',
+				description: 'Override the organization ID to use the merchant orgID when set to true for this task only',
 			},
 		],
 	},

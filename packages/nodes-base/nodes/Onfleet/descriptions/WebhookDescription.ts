@@ -17,17 +17,17 @@ export const webhookOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new Onfleet webhook.',
+				description: 'Create a new Onfleet webhook',
 			},
 			{
 				name: 'Remove',
 				value: 'delete',
-				description: 'Remove an Onfleet webhook.',
+				description: 'Remove an Onfleet webhook',
 			},
 			{
 				name: 'List',
 				value: 'getAll',
-				description: 'List all Onfleet webhooks.',
+				description: 'List all Onfleet webhooks',
 			},
 		],
 		default: 'getAll',
@@ -39,7 +39,7 @@ const urlField = {
 	name: 'url',
 	type: 'string',
 	default: '',
-	description: 'The URL that Onfleet should issue a request against as soon as the trigger condition is met. It must be HTTPS and have a valid certificate.',
+	description: 'The URL that Onfleet should issue a request against as soon as the trigger condition is met. It must be HTTPS and have a valid certificate',
 } as INodeProperties;
 
 const nameField = {
@@ -47,7 +47,7 @@ const nameField = {
 	name: 'name',
 	type: 'string',
 	default: '',
-	description: 'A name for the webhook for identification.',
+	description: 'A name for the webhook for identification',
 } as INodeProperties;
 
 const triggerField = {
@@ -58,7 +58,7 @@ const triggerField = {
 		return { name, value };
 	}),
 	default: '',
-	description: 'The number corresponding to the trigger condition on which the webhook should fire.',
+	description: 'The number corresponding to the trigger condition on which the webhook should fire',
 } as INodeProperties;
 
 const thresholdField = {
@@ -66,7 +66,7 @@ const thresholdField = {
 	name: 'threshold',
 	type: 'number',
 	default: '',
-	description: 'For trigger Task Eta, the time threshold in seconds; for trigger Task Arrival, the distance threshold in meters.',
+	description: 'For trigger Task Eta, the time threshold in seconds; for trigger Task Arrival, the distance threshold in meters',
 } as INodeProperties;
 
 export const webhookFields = [
@@ -82,7 +82,7 @@ export const webhookFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the webhook object for lookup.',
+		description: 'The ID of the webhook object for lookup',
 	},
 	{
 		...urlField,

@@ -16,17 +16,17 @@ export const containerOperations = [
 			{
 				name: 'Insert tasks (or append)',
 				value: 'add',
-				description: 'Insert tasks at index (or append).',
+				description: 'Insert tasks at index (or append)',
 			},
 			{
 				name: 'Update tasks',
 				value: 'update',
-				description: 'Fully replace a container\'s tasks.',
+				description: 'Fully replace a container\'s tasks',
 			},
 			{
 				name: 'Get container',
 				value: 'get',
-				description: 'Get container information.',
+				description: 'Get container information',
 			},
 		],
 		default: 'get',
@@ -52,7 +52,7 @@ const containerTypeField = {
 		},
 	],
 	default: '',
-	description: 'Container type.',
+	description: 'Container type',
 } as INodeProperties;
 
 const containerIdField = {
@@ -60,7 +60,7 @@ const containerIdField = {
 	name: 'containerId',
 	type: 'string',
 	default: '',
-	description: 'The object ID according to the container chosen.',
+	description: 'The object ID according to the container chosen',
 } as INodeProperties;
 
 const insertTypeField = {
@@ -82,7 +82,7 @@ const insertTypeField = {
 		},
 	],
 	default: '',
-	description: 'The index given indicates the position where the tasks are going to be inserted.',
+	description: 'The index given indicates the position where the tasks are going to be inserted',
 } as INodeProperties;
 
 const indexField = {
@@ -90,7 +90,7 @@ const indexField = {
 	name: 'index',
 	type: 'number',
 	default: '',
-	description: 'The index given indicates the position where the tasks are going to be inserted.',
+	description: 'The index given indicates the position where the tasks are going to be inserted',
 } as INodeProperties;
 
 const tasksField = {
@@ -98,7 +98,7 @@ const tasksField = {
 	name: 'tasks',
 	type: 'json',
 	default: '[]',
-	description: 'Array witht the task\'s ID that are going to be used in JSON format.',
+	description: 'Array witht the task\'s ID that are going to be used in JSON format',
 } as INodeProperties;
 
 const considerDependenciesField = {
@@ -106,7 +106,7 @@ const considerDependenciesField = {
 	name: 'considerDependencies',
 	type: 'boolean',
 	default: false,
-	description: 'Whether to include the target task\'s dependency family (parent and child tasks) in the resulting assignment operation.',
+	description: 'Whether to include the target task\'s dependency family (parent and child tasks) in the resulting assignment operation',
 } as INodeProperties;
 
 export const containerFields = [
