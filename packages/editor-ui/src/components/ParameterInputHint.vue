@@ -24,7 +24,7 @@ export default Vue.extend({
 	font-weight: var(--font-weight-regular);
 
 	a {
-		color: var(--color-danger);
+		color: var(--color-primary);
 		text-decoration: underline;
 	}
 }
