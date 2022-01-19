@@ -2441,7 +2441,7 @@ class App {
 						if (key === 'waitTill') {
 							filterToAdd = { waitTill: !IsNull() };
 						} else if (key === 'finished' && value === false) {
-							filterToAdd = { [key]: value, waitTill: IsNull() };
+							filterToAdd = { finished: false, waitTill: IsNull() };
 						} else {
 							filterToAdd = { [key]: value };
 						}
@@ -2463,7 +2463,7 @@ class App {
 
 					const executions = await Db.collections.Execution!.find(findOptions);
 
-					const { count, estimate: estimated } = await getExecutionsCount(countFilter, req.user);
+					const { count, estimated } = await getExecutionsCount(countFilter, req.user);
 
 					const formattedExecutions = executions.map((execution) => {
 						return {
@@ -3273,32 +3273,27 @@ export async function start(): Promise<void> {
 async function getExecutionsCount(
 	countFilter: IDataObject,
 	user: User,
-): Promise<{ count: number; estimate: boolean }> {
+): Promise<{ count: number; estimated: boolean }> {
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 	const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
 
-	// Do regular count for other databases than pgsql and
-	// if we are filtering based on workflowId or finished fields.
+	// For databases other than Postgres, do a regular count
+	// when filtering based on `workflowId` or `finished` fields.
 	if (
 		dbType !== 'postgresdb' ||
 		filteredFields.length > 0 ||
 		config.get('userManagement.hasOwner') === true
 	) {
-		const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
-			relations: ['workflow'],
-			where: whereClause({
-				user,
-				entityType: 'workflow',
-			}),
-		});
-
-		const sharedWorkflowIds = sharedWorkflows.map(({ workflow }) => workflow.id);
+		const sharedWorkflowIds = await getSharedWorkflowIds(user);
 
 		const count = await Db.collections.Execution!.count({
-			where: { workflowId: In(sharedWorkflowIds) },
+			where: {
+				workflowId: In(sharedWorkflowIds),
+				...countFilter,
+			},
 		});
 
-		return { count, estimate: false };
+		return { count, estimated: false };
 	}
 
 	try {
@@ -3314,17 +3309,19 @@ async function getExecutionsCount(
 		if (estimate > 100_000) {
 			// if less than 100k, we get the real count as even a full
 			// table scan should not take so long.
-			return { count: estimate, estimate: true };
+			return { count: estimate, estimated: true };
 		}
 	} catch (error) {
 		LoggerProxy.warn(`Failed to get executions count from Postgres: ${error}`);
 	}
 
-	const queryBuilder = Db.collections.Execution!.createQueryBuilder('e');
-	queryBuilder.innerJoin('workflow_entity', 'w', 'w.id = e.workflowId');
-	queryBuilder.innerJoin('shared_workflow', 'sw', 'sw.workflowId = w.id');
-	queryBuilder.andWhere('sw.userId = :userId', { userId: user.id });
+	const sharedWorkflowIds = await getSharedWorkflowIds(user);
 
-	const count = await queryBuilder.getCount();
-	return { count, estimate: false };
+	const count = await Db.collections.Execution!.count({
+		where: {
+			workflowId: In(sharedWorkflowIds),
+		},
+	});
+
+	return { count, estimated: false };
 }
