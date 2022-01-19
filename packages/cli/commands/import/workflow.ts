@@ -125,7 +125,9 @@ export class ImportWorkflowsCommand extends Command {
 				const workflows = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
 
 				if (!Array.isArray(workflows)) {
-					throw new Error('File does not seem to contain workflows.');
+					throw new Error(
+						'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
+					);
 				}
 
 				for (i = 0; i < workflows.length; i++) {
