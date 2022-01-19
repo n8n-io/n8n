@@ -30,8 +30,8 @@ export interface N8nApp {
 	restEndpoint: string;
 }
 
-export type AuthenticatedRequest<ReqBody = {}, ReqQuery = {}> = express.Request<
-	{},
+export type AuthenticatedRequest<ReqBody = {}, ReqQuery = {}, ReqParams = {}> = express.Request<
+	ReqParams,
 	{},
 	ReqBody,
 	ReqQuery
@@ -80,11 +80,14 @@ declare namespace UserPayload {
 	type Invitations = Array<{ email: string }>;
 }
 
-declare namespace UserSignupQuery {
-	type Users = { inviterId?: string; inviteeId?: string };
+declare namespace UserQuery {
+	type Signup = { inviterId?: string; inviteeId?: string };
+	type Deletion = { transferId?: string };
 }
 
 export declare namespace UserRequest {
 	export type Invites = AuthenticatedRequest<UserPayload.Invitations>;
-	export type Signup = AuthenticatedRequest<{}, UserSignupQuery.Users>;
+	export type Signup = AuthenticatedRequest<{}, UserQuery.Signup>;
+	export type Deletion = AuthenticatedRequest<{}, UserQuery.Deletion, { id: string }>;
+	export type Reinvite = AuthenticatedRequest<{}, {}, { id: string }>;
 }

@@ -5,7 +5,7 @@ import { In } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import { Db, GenericHelpers, ICredentialsResponse, ResponseHelper } from '../..';
-import { N8nApp, PublicUser, UserRequest } from '../Interfaces';
+import { AuthenticatedRequest, N8nApp, UserRequest } from '../Interfaces';
 import { isEmailSetup, isValidEmail, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
@@ -195,7 +195,7 @@ export function usersNamespace(this: N8nApp): void {
 
 	this.app.delete(
 		`/${this.restEndpoint}/users/:id`,
-		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+		ResponseHelper.send(async (req: UserRequest.Deletion) => {
 			if (req.user.id === req.params.id) {
 				throw new ResponseHelper.ResponseError('You cannot delete your own user', undefined, 403);
 			}
@@ -274,7 +274,7 @@ export function usersNamespace(this: N8nApp): void {
 
 	this.app.post(
 		`/${this.restEndpoint}/users/:id/reinvite`,
-		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+		ResponseHelper.send(async (req: UserRequest.Reinvite) => {
 			if (!isEmailSetup()) {
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',

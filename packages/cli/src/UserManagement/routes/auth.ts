@@ -9,10 +9,10 @@ import { Db, ResponseHelper } from '../..';
 import { issueJWT } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import config = require('../../../config');
-import { sanitizeUser, isInstanceOwnerSetup } from '../UserManagementHelper';
+import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 
-export function addAuthenticationMethods(this: N8nApp): void {
+export function authenticationMethods(this: N8nApp): void {
 	// ----------------------------------------
 	// login a user
 	// ----------------------------------------
