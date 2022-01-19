@@ -1,3 +1,6 @@
+/* eslint-disable no-await-in-loop */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
@@ -31,8 +34,7 @@ export class ImportCredentialsCommand extends Command {
 		}),
 	};
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	async run() {
+	async run(): Promise<void> {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
@@ -70,21 +72,16 @@ export class ImportCredentialsCommand extends Command {
 					`${flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep}*.json`,
 				);
 				for (i = 0; i < files.length; i++) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					const credential = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
 
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					if (typeof credential.data === 'object') {
 						// plain data / decrypted input. Should be encrypted first.
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						Credentials.prototype.setData.call(credential, credential.data, encryptionKey);
 					}
 
-					// eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-non-null-assertion
 					await Db.collections.Credentials!.save(credential);
 				}
 			} else {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const fileContents = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
 
 				if (!Array.isArray(fileContents)) {
@@ -100,7 +97,6 @@ export class ImportCredentialsCommand extends Command {
 							encryptionKey,
 						);
 					}
-					// eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-non-null-assertion
 					await Db.collections.Credentials!.save(fileContents[i]);
 				}
 			}
