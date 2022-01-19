@@ -18,4 +18,5 @@ export declare namespace OAuthRequest {
 		{},
 		{ oauth_verifier: string; oauth_token: string; cid: string }
 	>;
+	type OAuth2CredentialCallback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
 }

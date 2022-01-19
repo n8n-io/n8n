@@ -2202,12 +2202,12 @@ class App {
 		// Verify and store app code. Generate access tokens and store for respective credential.
 		this.app.get(
 			`/${this.restEndpoint}/oauth2-credential/callback`,
-			async (req: express.Request, res: express.Response) => {
+			async (req: OAuthRequest.OAuth2CredentialCallback, res: express.Response) => {
 				try {
 					// realmId it's currently just use for the quickbook OAuth2 flow
 					const { code, state: stateEncoded } = req.query;
 
-					if (code === undefined || stateEncoded === undefined) {
+					if (!code || !stateEncoded) {
 						const errorResponse = new ResponseHelper.ResponseError(
 							`Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
 								req.query,
@@ -2220,7 +2220,7 @@ class App {
 
 					let state;
 					try {
-						state = JSON.parse(Buffer.from(stateEncoded as string, 'base64').toString());
+						state = JSON.parse(Buffer.from(stateEncoded, 'base64').toString());
 					} catch (error) {
 						const errorResponse = new ResponseHelper.ResponseError(
 							'Invalid state format returned',
@@ -2230,15 +2230,9 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-					queryBuilder.andWhere('c.id = :id', { id: state.cid });
-					queryBuilder.innerJoin('c.shared', 'shared');
-					queryBuilder.andWhere('shared.userId = :userId', {
-						userId: (req.user as User).id,
-					});
+					const credential = await getCredentialForUser(state.cid, req.user);
 
-					const result = await queryBuilder.getOne();
-					if (result === undefined) {
+					if (!credential) {
 						const errorResponse = new ResponseHelper.ResponseError(
 							'The credential is not known.',
 							undefined,
@@ -2247,9 +2241,9 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					let encryptionKey;
-					encryptionKey = await UserSettings.getEncryptionKey();
-					if (encryptionKey === undefined) {
+					const encryptionKey = await UserSettings.getEncryptionKey();
+
+					if (!encryptionKey) {
 						const errorResponse = new ResponseHelper.ResponseError(
 							'No encryption key got found to decrypt the credentials!',
 							undefined,
@@ -2261,14 +2255,14 @@ class App {
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						result as INodeCredentialsDetails,
-						result.type,
+						credential as INodeCredentialsDetails,
+						credential.type,
 						mode,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 						decryptedDataOriginal,
-						result.type,
+						credential.type,
 						mode,
 					);
 
@@ -2344,9 +2338,9 @@ class App {
 					_.unset(decryptedDataOriginal, 'csrfSecret');
 
 					const credentials = new Credentials(
-						result as INodeCredentialsDetails,
-						result.type,
-						result.nodesAccess,
+						credential as INodeCredentialsDetails,
+						credential.type,
+						credential.nodesAccess,
 					);
 					credentials.setData(decryptedDataOriginal, encryptionKey);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
