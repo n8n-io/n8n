@@ -14,6 +14,8 @@ import * as glob from 'fast-glob';
 import * as path from 'path';
 import { getLogger } from '../../src/Logger';
 import { Db } from '../../src';
+import { User } from '../../src/databases/entities/User';
+import { SharedCredentials } from '../../src/databases/entities/SharedCredentials';
 
 export class ImportCredentialsCommand extends Command {
 	static description = 'Import credentials';
@@ -58,6 +60,12 @@ export class ImportCredentialsCommand extends Command {
 		try {
 			await Db.init();
 
+			const owner = await this.getInstanceOwner();
+			const ownerCredentialRole = await Db.collections.Role!.findOneOrFail({
+				name: 'owner',
+				scope: 'credential',
+			});
+
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
 			let i;
@@ -80,6 +88,16 @@ export class ImportCredentialsCommand extends Command {
 					}
 
 					await Db.collections.Credentials!.save(credential);
+
+					const sharedCredential = new SharedCredentials();
+
+					await Db.collections.SharedCredentials!.save(
+						Object.assign(sharedCredential, {
+							user: owner,
+							credentials: credential,
+							role: ownerCredentialRole,
+						}),
+					);
 				}
 			} else {
 				const credentials = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
@@ -96,14 +114,50 @@ export class ImportCredentialsCommand extends Command {
 						Credentials.prototype.setData.call(credentials[i], credentials[i].data, encryptionKey);
 					}
 					await Db.collections.Credentials!.save(credentials[i]);
+
+					const sharedCredential = new SharedCredentials();
+
+					await Db.collections.SharedCredentials!.save(
+						Object.assign(sharedCredential, {
+							user: owner,
+							credentials: credentials[i],
+							role: ownerCredentialRole,
+						}),
+					);
 				}
 			}
 			console.info(`Successfully imported ${i} ${i === 1 ? 'credential.' : 'credentials.'}`);
 			process.exit();
 		} catch (error) {
 			console.error('An error occurred while importing credentials. See log messages for details.');
-			logger.error(error.message);
+			if (error instanceof Error) logger.error(error.message);
 			this.exit(1);
 		}
+	}
+
+	private async getInstanceOwner(): Promise<User> {
+		const globalRole = await Db.collections.Role!.findOneOrFail({
+			name: 'owner',
+			scope: 'global',
+		});
+
+		const owner = await Db.collections.User!.findOne({ globalRole });
+
+		if (owner) return owner;
+
+		const user = new User();
+
+		await Db.collections.User!.save(
+			Object.assign(user, {
+				firstName: 'default',
+				lastName: 'default',
+				email: null,
+				password: null,
+				resetPasswordToken: null,
+				...globalRole,
+			}),
+		);
+
+		return Db.collections.User!.findOneOrFail({ globalRole });
 	}
 }
