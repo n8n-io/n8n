@@ -24,7 +24,7 @@ export class OnfleetTrigger implements INodeType {
 		group: [ 'trigger' ],
 		version: 1,
 		subtitle: '={{$parameter["events"]}}',
-		description: 'Starts the workflow when Onfleet events occur.',
+		description: 'Starts the workflow when Onfleet events occur',
 		defaults: {
 			name: 'Onfleet Trigger',
 			color: '#AA81F3',
@@ -142,7 +142,7 @@ export class OnfleetTrigger implements INodeType {
 						.then(responseData => {
 							if (responseData.id === undefined) {
 								// Required data is missing so was not successful
-								throw new NodeApiError(this.getNode(), responseData, { message: 'Onfleet webhook creation response did not contain the expected data.' });
+								throw new NodeApiError(this.getNode(), responseData, { message: 'Onfleet webhook creation response did not contain the expected data' });
 							}
 
 							webhookData[event] = responseData.id as string;

@@ -13,7 +13,7 @@ export const eventDisplay: INodeProperties = {
 	}),
 	required: true,
 	default: [],
-	description: 'The event to listen to.',
+	description: 'The event to listen to',
 };
 
 export const eventNameField = {
@@ -29,7 +29,7 @@ export const eventNameField = {
 			type: 'string',
 			required: false,
 			default: null,
-			description: 'A name for the webhook for identification.',
+			description: 'A name for the webhook for identification',
 		},
 	],
 } as INodeProperties;

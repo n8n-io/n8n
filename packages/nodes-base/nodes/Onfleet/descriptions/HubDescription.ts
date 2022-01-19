@@ -16,17 +16,17 @@ export const hubOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new Onfleet hub.',
+				description: 'Create a new Onfleet hub',
 			},
 			{
 				name: 'List hubs',
 				value: 'getAll',
-				description: 'List Onfleet hubs.',
+				description: 'List Onfleet hubs',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an Onfleet hub.',
+				description: 'Update an Onfleet hub',
 			},
 		],
 		default: 'get',
@@ -38,7 +38,7 @@ const nameField = {
 	name: 'name',
 	type: 'string',
 	default: '',
-	description: 'A name to identify the hub.',
+	description: 'A name to identify the hub',
 } as INodeProperties;
 
 const teamsField = {
@@ -46,7 +46,7 @@ const teamsField = {
 	name: 'teams',
 	type: 'json',
 	default: '[]',
-	description: 'This is the team ID(s) that this Hub will be assigned to.',
+	description: 'This is the team ID(s) that this Hub will be assigned to',
 } as INodeProperties;
 
 export const hubFields = [
@@ -62,7 +62,7 @@ export const hubFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the hub object for lookup.',
+		description: 'The ID of the hub object for lookup',
 	},
 	{
 		...nameField,

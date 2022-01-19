@@ -16,12 +16,12 @@ export const destinationOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new destination.',
+				description: 'Create a new destination',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a specific destination.',
+				description: 'Get a specific destination',
 			},
 
 		],
@@ -33,7 +33,7 @@ const unparsedField = {
 	displayName: 'Unparsed adress',
 	name: 'unparsed',
 	type: 'boolean',
-	description: 'Whether the address is specified in a single.',
+	description: 'Whether the address is specified in a single',
 	default: false,
 } as INodeProperties;
 
@@ -41,7 +41,7 @@ const unparsedAddressField = {
 	displayName: 'Destination address',
 	name: 'address',
 	type: 'string',
-	description: 'The destination\'s street address details.',
+	description: 'The destination\'s street address details',
 	default: null,
 } as INodeProperties;
 
@@ -49,7 +49,7 @@ const unparsedAddressNumberField = {
 	displayName: 'Number',
 	name: 'addressNumber',
 	type: 'string',
-	description: 'The number component of this address, it may also contain letters.',
+	description: 'The number component of this address, it may also contain letters',
 	default: '',
 } as INodeProperties;
 
@@ -57,7 +57,7 @@ const unparsedAddressStreetField = {
 	displayName: 'Street',
 	name: 'addressStreet',
 	type: 'string',
-	description: 'The name of the street.',
+	description: 'The name of the street',
 	default: '',
 } as INodeProperties;
 
@@ -65,7 +65,7 @@ const unparsedAddressCityField = {
 	displayName: 'City',
 	name: 'addressCity',
 	type: 'string',
-	description: 'The name of the municipality.',
+	description: 'The name of the municipality',
 	default: '',
 } as INodeProperties;
 
@@ -73,7 +73,7 @@ const unparsedAddressCountryField = {
 	displayName: 'Country',
 	name: 'addressCountry',
 	type: 'string',
-	description: 'The name of the country.',
+	description: 'The name of the country',
 	default: '',
 } as INodeProperties;
 
@@ -82,7 +82,7 @@ const addressNameField = {
 	name: 'addressName',
 	type: 'string',
 	default: '',
-	description: 'A name associated with this address.',
+	description: 'A name associated with this address',
 } as INodeProperties;
 
 const addressApartmentField = {
@@ -90,7 +90,7 @@ const addressApartmentField = {
 	name: 'addressApartment',
 	type: 'string',
 	default: '',
-	description: 'The suite or apartment number, or any additional relevant information.',
+	description: 'The suite or apartment number, or any additional relevant information',
 } as INodeProperties;
 
 const addressNoteField = {
@@ -98,7 +98,7 @@ const addressNoteField = {
 	name: 'addressNotes',
 	type: 'string',
 	default: '',
-	description: 'Notes about the destination.',
+	description: 'Notes about the destination',
 } as INodeProperties;
 
 const addressPostalCodeField = {
@@ -106,7 +106,7 @@ const addressPostalCodeField = {
 	name: 'addressPostalCode',
 	type: 'string',
 	default: '',
-	description: 'The postal or zip code.',
+	description: 'The postal or zip code',
 } as INodeProperties;
 
 export const destinationFields = [
@@ -124,7 +124,7 @@ export const destinationFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the destination object for lookup.',
+		description: 'The ID of the destination object for lookup',
 	},
 	{
 		...unparsedField,

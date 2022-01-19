@@ -155,3 +155,20 @@ export interface OnfleetWebhookMapping {
 export interface OnfleetWebhooksMapping {
 	[key: string]: OnfleetWebhookMapping;
 }
+
+export interface OnfleetWorkerEstimates {
+	dropoffLocation?: string;
+	pickupLocation?: string;
+	pickupTime?: number;
+	restrictedVehicleTypes?: string;
+	serviceTime?: number;
+}
+
+export interface OnfleetTeamAutoDispatch {
+	maxTasksPerRoute?: number;
+	taskTimeWindow?: [number, number];
+	scheduleTimeWindow?: [number, number];
+	serviceTime?: number;
+	routeEnd?: string;
+	maxAllowedDelay?: number;
+}

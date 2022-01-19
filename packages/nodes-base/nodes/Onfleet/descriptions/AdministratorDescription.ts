@@ -16,22 +16,22 @@ export const adminOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new Onfleet admin.',
+				description: 'Create a new Onfleet admin',
 			},
 			{
 				name: 'Remove',
 				value: 'delete',
-				description: 'Remove an Onfleet admin.',
+				description: 'Remove an Onfleet admin',
 			},
 			{
 				name: 'List',
 				value: 'getAll',
-				description: 'List all Onfleet admins.',
+				description: 'List all Onfleet admins',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an Onfleet admin.',
+				description: 'Update an Onfleet admin',
 			},
 		],
 		default: 'getAll',
@@ -43,7 +43,7 @@ const adminNameField = {
 	name: 'name',
 	type: 'string',
 	default: '',
-	description: 'The administrator\'s name.',
+	description: 'The administrator\'s name',
 } as INodeProperties;
 
 const adminEmailField = {
@@ -51,7 +51,7 @@ const adminEmailField = {
 	name: 'email',
 	type: 'string',
 	default: '',
-	description: 'The administrator\'s email address.',
+	description: 'The administrator\'s email address',
 } as INodeProperties;
 
 const adminPhoneField = {
@@ -59,7 +59,7 @@ const adminPhoneField = {
 	name: 'phone',
 	type: 'string',
 	default: '',
-	description: 'The administrator\'s phone number.',
+	description: 'The administrator\'s phone number',
 } as INodeProperties;
 
 const adminReadOnlyField = {
@@ -67,7 +67,7 @@ const adminReadOnlyField = {
 	name: 'isReadOnly',
 	type: 'boolean',
 	default: false,
-	description: 'Whether this administrator can perform write operations.',
+	description: 'Whether this administrator can perform write operations',
 } as INodeProperties;
 
 export const adminFields = [
@@ -88,7 +88,7 @@ export const adminFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the admin object for lookup.',
+		description: 'The ID of the admin object for lookup',
 	},
 	{
 		displayOptions: {

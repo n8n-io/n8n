@@ -16,12 +16,12 @@ export const organizationOperations = [
 			{
 				name: 'Get details',
 				value: 'get',
-				description: 'Retrieve your own organization\'s details.',
+				description: 'Retrieve your own organization\'s details',
 			},
 			{
 				name: 'Get delegatee details',
 				value: 'getDelegatee',
-				description: 'Retrieve the details of an organization with which you are connected.',
+				description: 'Retrieve the details of an organization with which you are connected',
 			},
 
 		],
@@ -42,6 +42,6 @@ export const organizationFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the delegatees for lookup.',
+		description: 'The ID of the delegatees for lookup',
 	},
 ] as INodeProperties[];

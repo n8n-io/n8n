@@ -16,17 +16,17 @@ export const recipientOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new Onfleet recipient.',
+				description: 'Create a new Onfleet recipient',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a specific Onfleet recipient.',
+				description: 'Get a specific Onfleet recipient',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an Onfleet recipient.',
+				description: 'Update an Onfleet recipient',
 			},
 		],
 		default: 'get',
@@ -39,21 +39,21 @@ const additionalRecipientFields = [
 		name: 'recipientNotes',
 		type: 'string',
 		default: '',
-		description: 'Notes for this recipient: these are global notes that should not be task- or destination-specific.',
+		description: 'Notes for this recipient: these are global notes that should not be task- or destination-specific',
 	},
 	{
 		displayName: 'Skip recipient SMS notifications',
 		name: 'recipientSkipSMSNotifications',
 		type: 'boolean',
 		default: false,
-		description: 'Whether this recipient has requested to skip SMS notifications.',
+		description: 'Whether this recipient has requested to skip SMS notifications',
 	},
 	{
 		displayName: 'Skip recipient phone number validation',
 		name: 'recipientSkipPhoneNumberValidation',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to skip validation for this recipient\'s phone number.',
+		description: 'Whether to skip validation for this recipient\'s phone number',
 	},
 ];
 
@@ -61,14 +61,14 @@ const recipientName = {
 	displayName: 'Recipient name',
 	name: 'recipientName',
 	type: 'string',
-	description: 'The recipient\'s complete name.',
+	description: 'The recipient\'s complete name',
 } as INodeProperties;
 
 const recipientPhone = {
 	displayName: 'Recipient phone',
 	name: 'recipientPhone',
 	type: 'string',
-	description: 'A unique, valid phone number as per the organization\'s country if there\'s no leading + sign. If a phone number has a leading + sign, it will disregard the organization\'s country setting.',
+	description: 'A unique, valid phone number as per the organization\'s country if there\'s no leading + sign. If a phone number has a leading + sign, it will disregard the organization\'s country setting',
 } as INodeProperties;
 
 const additionalRecipientFieldsUpdate = [
@@ -79,21 +79,21 @@ const additionalRecipientFieldsUpdate = [
 		name: 'notes',
 		type: 'string',
 		default: '',
-		description: 'Notes for this recipient: these are global notes that should not be task- or destination-specific.',
+		description: 'Notes for this recipient: these are global notes that should not be task- or destination-specific',
 	},
 	{
 		displayName: 'Skip recipient SMS notifications',
 		name: 'skipSMSNotifications',
 		type: 'boolean',
 		default: false,
-		description: 'Whether this recipient has requested to skip SMS notifications.',
+		description: 'Whether this recipient has requested to skip SMS notifications',
 	},
 	{
 		displayName: 'Skip recipient phone number validation',
 		name: 'skipPhoneNumberValidation',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to skip validation for this recipient\'s phone number.',
+		description: 'Whether to skip validation for this recipient\'s phone number',
 	},
 ];
 
@@ -122,7 +122,7 @@ export const recipientFields = [
 				value: 'name',
 			},
 		],
-		description: 'The variable that is used for looking up a recipient.',
+		description: 'The variable that is used for looking up a recipient',
 		required: true,
 		default: 'id',
 	},
@@ -139,7 +139,7 @@ export const recipientFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the recipient object for lookup.',
+		description: 'The ID of the recipient object for lookup',
 	},
 	{
 		displayName: 'ID',
@@ -153,7 +153,7 @@ export const recipientFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the recipient object for lookup.',
+		description: 'The ID of the recipient object for lookup',
 	},
 	{
 		displayName: 'Name',
@@ -168,7 +168,7 @@ export const recipientFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The name of the recipient for lookup.',
+		description: 'The name of the recipient for lookup',
 	},
 	{
 		displayName: 'Phone',
@@ -183,7 +183,7 @@ export const recipientFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The phone of the recipient for lookup.',
+		description: 'The phone of the recipient for lookup',
 	},
 	{
 		displayName: 'Recipient',
@@ -198,7 +198,7 @@ export const recipientFields = [
 				],
 			},
 		},
-		description: 'Whether the task has a recipient associated.',
+		description: 'Whether the task has a recipient associated',
 		required: true,
 		default: true,
 	},
