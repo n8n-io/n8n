@@ -13,6 +13,8 @@ import * as glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDb } from '../../src';
+import { User } from '../../src/databases/entities/User';
+import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
 
 export class ImportWorkflowsCommand extends Command {
 	static description = 'Import workflows';
@@ -83,6 +85,12 @@ export class ImportWorkflowsCommand extends Command {
 		try {
 			await Db.init();
 
+			const owner = await this.getInstanceOwner();
+			const ownerWorkflowRole = await Db.collections.Role!.findOneOrFail({
+				name: 'owner',
+				scope: 'workflow',
+			});
+
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
 			const credentialsEntities = (await Db.collections.Credentials?.find()) ?? [];
@@ -102,21 +110,41 @@ export class ImportWorkflowsCommand extends Command {
 						});
 					}
 					await Db.collections.Workflow!.save(workflow);
+
+					const sharedWorkflow = new SharedWorkflow();
+
+					await Db.collections.SharedWorkflow!.save(
+						Object.assign(sharedWorkflow, {
+							user: owner,
+							workflow,
+							role: ownerWorkflowRole,
+						}),
+					);
 				}
 			} else {
-				const fileContents = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
+				const workflows = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
 
-				if (!Array.isArray(fileContents)) {
+				if (!Array.isArray(workflows)) {
 					throw new Error('File does not seem to contain workflows.');
 				}
 
-				for (i = 0; i < fileContents.length; i++) {
+				for (i = 0; i < workflows.length; i++) {
 					if (credentialsEntities.length > 0) {
-						fileContents[i].nodes.forEach((node: INode) => {
+						workflows[i].nodes.forEach((node: INode) => {
 							this.transformCredentials(node, credentialsEntities);
 						});
 					}
-					await Db.collections.Workflow!.save(fileContents[i]);
+					await Db.collections.Workflow!.save(workflows[i]);
+
+					const sharedWorkflow = new SharedWorkflow();
+
+					await Db.collections.SharedWorkflow!.save(
+						Object.assign(sharedWorkflow, {
+							user: owner,
+							workflow: workflows[i],
+							role: ownerWorkflowRole,
+						}),
+					);
 				}
 			}
 
@@ -127,5 +155,31 @@ export class ImportWorkflowsCommand extends Command {
 			if (error instanceof Error) logger.error(error.message);
 			this.exit(1);
 		}
+	}
+
+	private async getInstanceOwner(): Promise<User> {
+		const globalRole = await Db.collections.Role!.findOneOrFail({
+			name: 'owner',
+			scope: 'global',
+		});
+
+		const owner = await Db.collections.User!.findOne({ globalRole });
+
+		if (owner) return owner;
+
+		const user = new User();
+
+		await Db.collections.User!.save(
+			Object.assign(user, {
+				firstName: 'default',
+				lastName: 'default',
+				email: null,
+				password: null,
+				resetPasswordToken: null,
+				...globalRole,
+			}),
+		);
+
+		return Db.collections.User!.findOneOrFail({ globalRole });
 	}
 }
