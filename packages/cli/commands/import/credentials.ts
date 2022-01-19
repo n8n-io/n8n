@@ -85,7 +85,9 @@ export class ImportCredentialsCommand extends Command {
 				const credentials = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
 
 				if (!Array.isArray(credentials)) {
-					throw new Error('File does not seem to contain credentials.');
+					throw new Error(
+						'File does not seem to contain credentials. Make sure the credentials are contained in an array.',
+					);
 				}
 
 				for (i = 0; i < credentials.length; i++) {
