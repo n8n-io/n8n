@@ -1,8 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 import Command from '@oclif/command';
 import { Not } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
@@ -21,7 +19,7 @@ export class Reset extends Command {
 		resetPasswordToken: null,
 	};
 
-	async run() {
+	async run(): Promise<void> {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 		await Db.init();
@@ -38,14 +36,14 @@ export class Reset extends Command {
 			await Db.collections.Settings!.update({ key: 'userManagement.hasOwner' }, { value: 'false' });
 		} catch (error) {
 			console.error('Error resetting database. See log messages for details.');
-			logger.error(error.message);
+			if (error instanceof Error) logger.error(error.message);
 			this.exit(1);
 		}
 
 		this.exit();
 	}
 
-	async getInstanceOwner() {
+	async getInstanceOwner(): Promise<User> {
 		const globalRole = await Db.collections.Role!.findOneOrFail({
 			name: 'owner',
 			scope: 'global',
