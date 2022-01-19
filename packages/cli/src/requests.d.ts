@@ -11,4 +11,5 @@ export type AuthenticatedRequest<
 
 export declare namespace OAuthRequest {
 	type OAuth1CredentialAuth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
+	type OAuth2CredentialAuth = OAuth1CredentialAuth;
 }

@@ -297,7 +297,7 @@ export function whereClause({
 }
 
 /**
- * Get a credential if shared with a user.
+ * Get a credential if it has been shared with a user.
  */
 export async function getCredentialForUser(
 	credentialId: string,

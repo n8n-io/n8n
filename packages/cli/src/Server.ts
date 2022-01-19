@@ -2103,104 +2103,102 @@ class App {
 		// Authorize OAuth Data
 		this.app.get(
 			`/${this.restEndpoint}/oauth2-credential/auth`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
-				if (req.query.id === undefined) {
-					res.status(500).send('Required credential id is missing.');
-					return '';
-				}
+			ResponseHelper.send(
+				async (req: OAuthRequest.OAuth2CredentialAuth, res: express.Response): Promise<string> => {
+					const { id: credentialId } = req.query;
 
-				const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-				queryBuilder.andWhere('c.id = :id', { id: req.query.id });
-				queryBuilder.innerJoin('c.shared', 'shared');
-				queryBuilder.andWhere('shared.userId = :userId', {
-					userId: (req.user as User).id,
-				});
+					if (!credentialId) {
+						res.status(500).send('Required credential ID is missing.');
+						return '';
+					}
 
-				const result = await queryBuilder.getOne();
-				if (result === undefined) {
-					res.status(404).send('The credential is not known.');
-					return '';
-				}
+					const credential = await getCredentialForUser(credentialId, req.user);
 
-				let encryptionKey;
-				encryptionKey = await UserSettings.getEncryptionKey();
-				if (encryptionKey === undefined) {
-					res.status(500).send('No encryption key got found to decrypt the credentials!');
-					return '';
-				}
+					if (!credential) {
+						res.status(404).send('The credential is not known.');
+						return '';
+					}
 
-				const mode: WorkflowExecuteMode = 'internal';
-				const credentialsHelper = new CredentialsHelper(encryptionKey);
-				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-					result as INodeCredentialsDetails,
-					result.type,
-					mode,
-					true,
-				);
-				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
-					decryptedDataOriginal,
-					result.type,
-					mode,
-				);
+					const encryptionKey = await UserSettings.getEncryptionKey();
 
-				const token = new csrf();
-				// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
-				const csrfSecret = token.secretSync();
-				const state = {
-					token: token.create(csrfSecret),
-					cid: req.query.id,
-				};
-				const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
+					if (!encryptionKey) {
+						res.status(500).send('No encryption key found to decrypt the credentials!');
+						return '';
+					}
 
-				const oAuthOptions: clientOAuth2.Options = {
-					clientId: _.get(oauthCredentials, 'clientId') as string,
-					clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
-					accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
-					authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-					redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${
-						this.restEndpoint
-					}/oauth2-credential/callback`,
-					scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
-					state: stateEncodedStr,
-				};
+					const mode: WorkflowExecuteMode = 'internal';
+					const credentialsHelper = new CredentialsHelper(encryptionKey);
+					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
+						credential as INodeCredentialsDetails,
+						credential.type,
+						mode,
+						true,
+					);
+					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
+						decryptedDataOriginal,
+						credential.type,
+						mode,
+					);
 
-				await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
+					const token = new csrf();
+					// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
+					const csrfSecret = token.secretSync();
+					const state = {
+						token: token.create(csrfSecret),
+						cid: req.query.id,
+					};
+					const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
 
-				const oAuthObj = new clientOAuth2(oAuthOptions);
+					const oAuthOptions: clientOAuth2.Options = {
+						clientId: _.get(oauthCredentials, 'clientId') as string,
+						clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
+						accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
+						authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
+						redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${
+							this.restEndpoint
+						}/oauth2-credential/callback`,
+						scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
+						state: stateEncodedStr,
+					};
 
-				// Encrypt the data
-				const credentials = new Credentials(
-					result as INodeCredentialsDetails,
-					result.type,
-					result.nodesAccess,
-				);
-				decryptedDataOriginal.csrfSecret = csrfSecret;
+					await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-				credentials.setData(decryptedDataOriginal, encryptionKey);
-				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
+					const oAuthObj = new clientOAuth2(oAuthOptions);
 
-				// Add special database related data
-				newCredentialsData.updatedAt = this.getCurrentDate();
+					// Encrypt the data
+					const credentials = new Credentials(
+						credential as INodeCredentialsDetails,
+						credential.type,
+						credential.nodesAccess,
+					);
+					decryptedDataOriginal.csrfSecret = csrfSecret;
 
-				// Update the credentials in DB
-				await Db.collections.Credentials!.update(req.query.id as string, newCredentialsData);
+					credentials.setData(decryptedDataOriginal, encryptionKey);
+					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
-				const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
-				let returnUri = oAuthObj.code.getUri();
+					// Add special database related data
+					newCredentialsData.updatedAt = this.getCurrentDate();
 
-				// if scope uses comma, change it as the library always return then with spaces
-				if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
-					const data = querystring.parse(returnUri.split('?')[1]);
-					data.scope = _.get(oauthCredentials, 'scope') as string;
-					returnUri = `${_.get(oauthCredentials, 'authUrl', '')}?${querystring.stringify(data)}`;
-				}
+					// Update the credentials in DB
+					await Db.collections.Credentials!.update(req.query.id as string, newCredentialsData);
 
-				if (authQueryParameters) {
-					returnUri += `&${authQueryParameters}`;
-				}
+					const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
+					let returnUri = oAuthObj.code.getUri();
 
-				return returnUri;
-			}),
+					// if scope uses comma, change it as the library always return then with spaces
+					if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
+						const data = querystring.parse(returnUri.split('?')[1]);
+						data.scope = _.get(oauthCredentials, 'scope') as string;
+						returnUri = `${_.get(oauthCredentials, 'authUrl', '')}?${querystring.stringify(data)}`;
+					}
+
+					if (authQueryParameters) {
+						returnUri += `&${authQueryParameters}`;
+					}
+
+					return returnUri;
+				},
+			),
 		);
 
 		// ----------------------------------------
