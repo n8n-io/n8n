@@ -1,15 +1,25 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import Command from '@oclif/command';
 import { Not } from 'typeorm';
-import { LoggerProxy } from '../../../workflow/dist/src';
+import { LoggerProxy } from 'n8n-workflow';
 import { Db } from '../../src';
+import { User } from '../../src/databases/entities/User';
 import { getLogger } from '../../src/Logger';
 
 export class Reset extends Command {
 	static description = '\nResets the database to the default user state';
+
+	defaultUserProps = {
+		firstName: 'default',
+		lastName: 'default',
+		email: null,
+		password: null,
+		resetPasswordToken: null,
+	};
 
 	async run() {
 		const logger = getLogger();
@@ -17,40 +27,14 @@ export class Reset extends Command {
 		await Db.init();
 
 		try {
-			const globalRole = await Db.collections.Role!.findOne({
-				name: 'owner',
-				scope: 'global',
-			});
+			const owner = await this.getInstanceOwner();
 
-			const instanceOwner = await Db.collections.User!.findOneOrFail({ globalRole });
+			await Db.collections.SharedWorkflow!.update({ user: Not(owner) }, { user: owner });
+			await Db.collections.SharedCredentials!.update({ user: Not(owner) }, { user: owner });
 
-			// switch all workflows ownership to owner
-			await Db.collections.SharedWorkflow!.update(
-				{ user: Not(instanceOwner) },
-				{ user: instanceOwner },
-			);
+			await Db.collections.User!.delete({ id: Not(owner.id) });
+			await Db.collections.User!.save(Object.assign(owner, this.defaultUserProps));
 
-			// switch all credentials ownership to owner
-			await Db.collections.SharedCredentials!.update(
-				{ user: Not(instanceOwner) },
-				{ user: instanceOwner },
-			);
-
-			// delete all users from users table except owner
-			await Db.collections.User!.delete({ id: Not(instanceOwner.id) });
-
-			// reset user to being a shell
-			await Db.collections.User!.save(
-				Object.assign(instanceOwner, {
-					firstName: 'default',
-					lastName: 'default',
-					email: null,
-					password: null,
-					resetPasswordToken: null,
-				}),
-			);
-
-			// update settings table
 			await Db.collections.Settings!.update({ key: 'userManagement.hasOwner' }, { value: 'false' });
 		} catch (error) {
 			console.error('Error resetting database. See log messages for details.');
@@ -59,5 +43,22 @@ export class Reset extends Command {
 		}
 
 		this.exit();
+	}
+
+	async getInstanceOwner() {
+		const globalRole = await Db.collections.Role!.findOneOrFail({
+			name: 'owner',
+			scope: 'global',
+		});
+
+		const owner = await Db.collections.User!.findOne({ globalRole });
+
+		if (owner) return owner;
+
+		const user = new User();
+
+		await Db.collections.User!.save(Object.assign(user, { ...this.defaultUserProps, globalRole }));
+
+		return Db.collections.User!.findOneOrFail({ globalRole });
 	}
 }
