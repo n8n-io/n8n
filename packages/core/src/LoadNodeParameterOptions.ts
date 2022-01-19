@@ -211,7 +211,7 @@ export class LoadNodeParameterOptions {
 			itemIndex,
 			runIndex,
 			'',
-			{ $currentNodeParameters: this.currentNodeParameters },
+			{ $parameters: this.currentNodeParameters },
 		);
 
 		let credentialType: string | undefined;
