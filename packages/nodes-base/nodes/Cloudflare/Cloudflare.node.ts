@@ -20,7 +20,6 @@ import {
 	certificateFields,
 	certificateOperations,
 } from './CertificateDescription';
-import { CloudflareApi } from '../../credentials/CloudflareApi.credentials';
 
 export class Cloudflare implements INodeType {
 	description: INodeTypeDescription = {
