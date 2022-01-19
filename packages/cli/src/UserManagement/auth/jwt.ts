@@ -21,7 +21,7 @@ export async function issueJWT(user: User): Promise<JwtToken> {
 	}
 
 	if (password) {
-		payload.password = createHash('md5')
+		payload.password = createHash('sha256')
 			.update(password.slice(Math.round(password.length / 2)))
 			.digest('hex');
 	}
