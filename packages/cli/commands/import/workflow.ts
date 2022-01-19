@@ -1,3 +1,7 @@
+/* eslint-disable no-await-in-loop */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Command, flags } from '@oclif/command';
@@ -55,8 +59,7 @@ export class ImportWorkflowsCommand extends Command {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	async run() {
+	async run(): Promise<void> {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
@@ -64,14 +67,14 @@ export class ImportWorkflowsCommand extends Command {
 		const { flags } = this.parse(ImportWorkflowsCommand);
 
 		if (!flags.input) {
-			console.info(`An input file or directory with --input must be provided`);
+			console.info('An input file or directory with --input must be provided');
 			return;
 		}
 
 		if (flags.separate) {
 			if (fs.existsSync(flags.input)) {
 				if (!fs.lstatSync(flags.input).isDirectory()) {
-					console.info(`The paramenter --input must be a directory`);
+					console.info('The argument to --input must be a directory');
 					return;
 				}
 			}
@@ -94,39 +97,34 @@ export class ImportWorkflowsCommand extends Command {
 				for (i = 0; i < files.length; i++) {
 					const workflow = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
 					if (credentialsEntities.length > 0) {
-						// eslint-disable-next-line
 						workflow.nodes.forEach((node: INode) => {
 							this.transformCredentials(node, credentialsEntities);
 						});
 					}
-					// eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-non-null-assertion
 					await Db.collections.Workflow!.save(workflow);
 				}
 			} else {
 				const fileContents = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
 
 				if (!Array.isArray(fileContents)) {
-					throw new Error(`File does not seem to contain workflows.`);
+					throw new Error('File does not seem to contain workflows.');
 				}
 
 				for (i = 0; i < fileContents.length; i++) {
 					if (credentialsEntities.length > 0) {
-						// eslint-disable-next-line
 						fileContents[i].nodes.forEach((node: INode) => {
 							this.transformCredentials(node, credentialsEntities);
 						});
 					}
-					// eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-non-null-assertion
 					await Db.collections.Workflow!.save(fileContents[i]);
 				}
 			}
 
 			console.info(`Successfully imported ${i} ${i === 1 ? 'workflow.' : 'workflows.'}`);
-			process.exit(0);
+			process.exit();
 		} catch (error) {
-			console.error('An error occurred while exporting workflows. See log messages for details.');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			logger.error(error.message);
+			console.error('An error occurred while importing workflows. See log messages for details.');
+			if (error instanceof Error) logger.error(error.message);
 			this.exit(1);
 		}
 	}
