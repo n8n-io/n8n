@@ -87,7 +87,7 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 	return `${baseUrl}?${params.join('&')}`;
 }
 
-function buildOptionWithUri(uriGenerated: string, method = 'GET', body: IDataObject = {}): OptionsWithUri {
+export function buildOptionWithUri(uriGenerated: string, method = 'GET', body: IDataObject = {}): OptionsWithUri {
 	const options: OptionsWithUri = {
 		headers: {
 			'Accept': 'application/json',
