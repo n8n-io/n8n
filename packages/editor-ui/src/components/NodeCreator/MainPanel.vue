@@ -54,8 +54,8 @@ import SubcategoryPanel from './SubcategoryPanel.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
-import { matchesNodeType, matchesSelectType } from './helpers';
-
+import { matchesSelectType } from './helpers';
+import fuzzysort from 'fuzzysort';
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
@@ -86,11 +86,18 @@ export default mixins(externalHooks).extend({
 			return this.nodeFilter.toLowerCase().trim();
 		},
 		filteredNodeTypes(): INodeCreateElement[] {
-			const nodeTypes: INodeCreateElement[] = this.searchItems;
 			const filter = this.searchFilter;
-			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
-				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
+			let items = this.searchItems;
+			if (this.nodeFilter !== ALL_NODE_FILTER) {
+				items = items.filter((el: INodeCreateElement) => {
+					return filter && matchesSelectType(el, this.selectedType);
+				});
+			}
+			const serachResults = fuzzysort.go<INodeCreateElement>(filter, this.searchItems, {
+				keys: ['properties.nodeType.displayName'],
 			});
+			const returnData = serachResults
+				.map((item) => item.obj);
 
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
