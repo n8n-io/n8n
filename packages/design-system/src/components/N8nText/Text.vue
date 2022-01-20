@@ -122,4 +122,19 @@ export default Vue.extend({
 	composes: body-small;
 }
 
+.body-mini {
+	font-size: var(--font-size-3xs);
+	line-height: var(--font-line-height-loose);
+}
+
+.body-mini-regular {
+	composes: regular;
+	composes: body-mini;
+}
+
+.body-mini-bold {
+	composes: bold;
+	composes: body-mini;
+}
+
 </style>

@@ -23,7 +23,7 @@
 		<div class="errors" v-if="showRequiredErrors">
 			{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }} <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $locale.baseText('parameterInputExpanded.openDocs') }}</a>
 		</div>
-		<input-hint :hint="$locale.credText().hint(parameter)" />
+		<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
 	</n8n-input-label>
 </template>
 
@@ -97,3 +97,9 @@ export default Vue.extend({
 	},
 });
 </script>
+
+<style lang="scss" module>
+	.hint {
+		margin-top: var(--spacing-4xs);
+	}
+</style>

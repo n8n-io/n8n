@@ -16,7 +16,7 @@
 			@focus="focused = true"
 			@blur="focused = false"
 			inputSize="small" />
-		<input-hint :hint="$locale.nodeText().hint(parameter, path)" />
+		<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 	</n8n-input-label>
 </template>
 
@@ -67,3 +67,9 @@ export default Vue
 		},
 	});
 </script>
+
+<style lang="scss" module>
+	.hint {
+		margin-top: var(--spacing-4xs);
+	}
+</style>
