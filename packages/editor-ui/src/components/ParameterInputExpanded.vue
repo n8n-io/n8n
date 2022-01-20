@@ -23,7 +23,7 @@
 		<div class="errors" v-if="showRequiredErrors">
 			{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }} <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $locale.baseText('parameterInputExpanded.openDocs') }}</a>
 		</div>
-		<input-hint :hint="$locale.credText().inputLabelHint(parameter)" />
+		<input-hint :hint="$locale.credText().parameterHint(parameter)" />
 	</n8n-input-label>
 </template>
 
