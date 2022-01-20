@@ -543,7 +543,6 @@ export function whereClause({
 }): WhereClause {
 	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
-	// TODO: Decide if owner access should be restricted
 	if (user.globalRole.name !== 'owner') {
 		where.user = { id: user.id };
 	}
