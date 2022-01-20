@@ -1889,22 +1889,27 @@ class App {
 					const { id: credentialId } = req.query;
 
 					if (!credentialId) {
-						res.status(500).send('Required credential ID is missing!');
-						return '';
+						throw new ResponseHelper.ResponseError(
+							'Required credential ID is missing',
+							undefined,
+							400,
+						);
 					}
 
 					const credential = await getCredentialForUser(credentialId, req.user);
 
 					if (!credential) {
-						res.status(404).send('The credential is not known.');
-						return '';
+						throw new ResponseHelper.ResponseError('The credential is not known', undefined, 404);
 					}
 
 					const encryptionKey = await UserSettings.getEncryptionKey();
 
 					if (!encryptionKey) {
-						res.status(500).send('No encryption key found to decrypt the credentials!');
-						return '';
+						throw new ResponseHelper.ResponseError(
+							'No encryption key found to decrypt the credentials',
+							undefined,
+							500,
+						);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
@@ -2103,22 +2108,27 @@ class App {
 					const { id: credentialId } = req.query;
 
 					if (!credentialId) {
-						res.status(500).send('Required credential ID is missing.');
-						return '';
+						throw new ResponseHelper.ResponseError(
+							'Required credential ID is missing',
+							undefined,
+							400,
+						);
 					}
 
 					const credential = await getCredentialForUser(credentialId, req.user);
 
 					if (!credential) {
-						res.status(404).send('The credential is not known.');
-						return '';
+						throw new ResponseHelper.ResponseError('The credential is not known', undefined, 404);
 					}
 
 					const encryptionKey = await UserSettings.getEncryptionKey();
 
 					if (!encryptionKey) {
-						res.status(500).send('No encryption key found to decrypt the credentials!');
-						return '';
+						throw new ResponseHelper.ResponseError(
+							'No encryption key found to decrypt the credentials',
+							undefined,
+							500,
+						);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
