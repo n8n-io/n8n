@@ -462,7 +462,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -483,7 +483,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -504,7 +504,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -525,7 +525,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -564,7 +564,7 @@ export class ServiceNow implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -576,7 +576,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -639,7 +639,7 @@ export class ServiceNow implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -652,7 +652,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -714,7 +714,7 @@ export class ServiceNow implements INodeType {
 						const getOption = this.getNodeParameter('getOption', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -735,7 +735,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -765,7 +765,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -786,7 +786,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
