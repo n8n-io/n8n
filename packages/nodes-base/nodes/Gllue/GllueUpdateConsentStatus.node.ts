@@ -10,7 +10,7 @@ const services = require('./services');
 
 export class GllueUpdateConsentStatus implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Gllue UpdateConsent Status Node',
+		displayName: 'Gllue Update Consent Status',
 		name: 'gllue_update_consent_status',
 		icon: 'file:gllue.svg',
 		group: ['transform'],
