@@ -151,7 +151,7 @@ export default Vue.extend({
 		async closeDialog() {
 			if (this.beforeClose) {
 				const shouldClose = await this.beforeClose();
-				if (shouldClose === false) { // must be strictly false to close modal
+				if (shouldClose === false) { // must be strictly false to stop modal from closing
 					return;
 				}
 			}

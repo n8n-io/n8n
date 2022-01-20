@@ -30,7 +30,6 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { IWorkflowDataUpdate, INodeUi } from '../Interface';
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from "vuex";

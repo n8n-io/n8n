@@ -107,11 +107,13 @@ import ActivationModal from "./ActivationModal.vue";
 export default Vue.extend({
 	name: "Modals",
 	components: {
+		ActivationModal,
 		ContactPromptModal,
 		CredentialEdit,
 		CredentialsList,
 		CredentialsSelectModal,
 		DuplicateWorkflowDialog,
+		ExecutionsList,
 		ModalRoot,
 		PersonalizationModal,
 		TagsManager,
@@ -119,8 +121,6 @@ export default Vue.extend({
 		ValueSurvey,
 		WorkflowSettings,
 		WorkflowOpen,
-		ExecutionsList,
-		ActivationModal,
 	},
 	data: () => ({
 		CONTACT_PROMPT_MODAL_KEY,
