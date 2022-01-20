@@ -16,7 +16,7 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
+			validator: (value: string): boolean => ['xsmall', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		color: {
 			type: String,
@@ -122,19 +122,19 @@ export default Vue.extend({
 	composes: body-small;
 }
 
-.body-mini {
+.body-xsmall {
 	font-size: var(--font-size-3xs);
 	line-height: var(--font-line-height-loose);
 }
 
-.body-mini-regular {
+.body-xsmall-regular {
 	composes: regular;
-	composes: body-mini;
+	composes: body-xsmall;
 }
 
-.body-mini-bold {
+.body-xsmall-bold {
 	composes: bold;
-	composes: body-mini;
+	composes: body-xsmall;
 }
 
 </style>

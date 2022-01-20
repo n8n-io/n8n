@@ -1,5 +1,5 @@
 <template>
-	<n8n-text size="mini" color="text-base" compact="true" v-if="hint">
+	<n8n-text size="xsmall" color="text-base" compact="true" v-if="hint">
 		<span ref="hint" v-html="hint"></span>
 	</n8n-text>
 
