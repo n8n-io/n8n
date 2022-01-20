@@ -87,7 +87,7 @@ export function usersNamespace(this: N8nApp): void {
 						domain,
 					});
 					if (!result.success) {
-						throw new ResponseHelper.ResponseError('One or more emails could not be sent');
+						throw new ResponseHelper.ResponseError(`Email to ${email} could not be sent`);
 					}
 					return { id, email };
 				}),
