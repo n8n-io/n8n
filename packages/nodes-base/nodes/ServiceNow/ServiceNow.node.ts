@@ -82,9 +82,44 @@ export class ServiceNow implements INodeType {
 			{
 				name: 'serviceNowOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
+			{
+				name: 'serviceNowBasicApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'basicAuth',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'oAuth2',
+				description: 'The authentication method to use',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
