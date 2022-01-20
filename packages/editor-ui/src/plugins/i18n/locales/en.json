@@ -386,7 +386,8 @@
 		"issues": "Issues",
 		"nodeIsExecuting": "Node is executing",
 		"nodeIsWaitingTill": "Node is waiting till {date} {time}",
-		"theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall": "The node is waiting indefinitely for an incoming webhook call."
+		"theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall": "The node is waiting indefinitely for an incoming webhook call.",
+		"waitingForYouToCreateAnEventIn": "Waiting for you to create an event in {nodeType}"
 	},
 	"nodeCreator": {
 		"categoryNames": {
@@ -667,13 +668,13 @@
 		"continue": "Continue",
 		"eCommerce": "eCommerce",
 		"errorWhileSubmittingResults": "Error while submitting results",
-		"executiveTeam": "Executive Team",
-		"finance": "finance",
+		"executiveTeam": "Executive team",
+		"finance": "Finance",
 		"getStarted": "Get started",
 		"government": "Government",
 		"healthcare": "Healthcare",
-		"howAreYourCodingSkills": "How are your coding skills",
-		"howBigIsYourCompany": "How big is your company",
+		"howAreYourCodingSkills": "How are your coding skills?",
+		"howBigIsYourCompany": "How big is your company?",
 		"hr": "HR",
 		"iCanCodeSomeUsefulThingsBut": "2. I can code some useful things, but I spend a lot of time stuck",
 		"iCanDoAlmostAnythingIWant": "5. I can do almost anything I want, easily (pro coder)",
@@ -682,12 +683,12 @@
 		"iKnowEnoughToBeDangerousBut": "3. I know enough to be dangerous, but I'm no expert",
 		"imNotUsingN8nForWork": "I'm not using n8n for work",
 		"itEngineering": "IT / Engineering",
-		"legal": "legal",
-		"lessThan20people": "Less than 20 people",
+		"legal": "Legal",
+		"lessThan20People": "Less than 20 people",
 		"lookOutForThingsMarked": "Look out for things marked with a ✨. They are personalized to make n8n more relevant to you.",
 		"marketing": "Marketing",
 		"neverCoded": "0 (Never coded)",
-		"operations": "operations",
+		"operations": "Operations",
 		"otherPleaseSpecify": "Other (please specify)",
 		"people": "people",
 		"proCoder": "Pro coder",
@@ -704,7 +705,7 @@
 		"thanks": "Thanks!",
 		"theseQuestionsHelpUs": "These questions help us tailor n8n to you",
 		"whichIndustriesIsYourCompanyIn": "Which industries is your company in?",
-		"whichOfTheseAreasDoYouMainlyWorkIn": "Which of these areas do you mainly work in?"
+		"whichAreasDoYouMainlyWorkIn": "Which areas do you mainly work in?"
 	},
 	"pushConnection": {
 		"showMessage": {
@@ -927,14 +928,14 @@
 		"showMessage": {
 			"message": "Please enter a name, or press 'esc' to go back to the old one.",
 			"title": "Name missing"
-		}
+		},
+		"chooseOrCreateATag": "Choose or create a tag"
 	},
 	"workflowHelpers": {
 		"showMessage": {
 			"message": "",
 			"title": "Problem saving workflow"
-		},
-		"chooseOrCreateATag": "Choose or create a tag"
+		}
 	},
 	"workflowOpen": {
 		"active": "Active",

@@ -2,7 +2,12 @@
 /* eslint-disable no-console */
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
-import { UserSettings } from 'n8n-core';
+import {
+	BinaryDataManager,
+	IBinaryDataConfig,
+	UserSettings,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from 'n8n-core';
 import { INode, LoggerProxy } from 'n8n-workflow';
 
 import {
@@ -22,6 +27,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import config = require('../config');
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
@@ -45,6 +51,8 @@ export class Execute extends Command {
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
+		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		await BinaryDataManager.init(binaryDataConfig, true);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Execute);
@@ -93,8 +101,8 @@ export class Execute extends Command {
 				console.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			workflowId = workflowData.id!.toString();
+
+			workflowId = workflowData.id ? workflowData.id.toString() : PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		}
 
 		// Wait till the database is ready
@@ -125,15 +133,15 @@ export class Execute extends Command {
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
-		const instanceId = await UserSettings.getInstanceId();
-		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli);
-
 		// Add the found types to an instance other parts of the application can use
 		const nodeTypes = NodeTypes();
 		await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 		const credentialTypes = CredentialTypes();
 		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+		const instanceId = await UserSettings.getInstanceId();
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;

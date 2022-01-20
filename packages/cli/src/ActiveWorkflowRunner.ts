@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable prefer-spread */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-param-reassign */
@@ -45,8 +46,12 @@ import {
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 	WorkflowRunner,
+	ExternalHooks,
 } from '.';
 import config = require('../config');
+import { User } from './databases/entities/User';
+import { whereClause } from './WorkflowHelpers';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT = `The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)`;
 
@@ -112,6 +117,8 @@ export class ActiveWorkflowRunner {
 			}
 			Logger.verbose('Finished initializing active workflows (startup)');
 		}
+		const externalHooks = ExternalHooks();
+		await externalHooks.run('activeWorkflows.initialized', []);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -333,20 +340,30 @@ export class ActiveWorkflowRunner {
 	 * @returns {string[]}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	async getActiveWorkflows(userId?: string): Promise<IWorkflowDb[]> {
-		// TODO UM: make userId mandatory?
-		const queryBuilder = Db.collections.Workflow!.createQueryBuilder('w');
-		queryBuilder.andWhere('active = :active', { active: true });
-		queryBuilder.select('w.id');
-		if (userId) {
-			queryBuilder.innerJoin('w.shared', 'shared');
-			queryBuilder.andWhere('shared.user = :userId', { userId });
+	async getActiveWorkflows(user?: User): Promise<IWorkflowDb[]> {
+		let activeWorkflows: WorkflowEntity[] = [];
+
+		if (!user || user.globalRole.name === 'owner') {
+			activeWorkflows = await Db.collections.Workflow!.find({
+				select: ['id'],
+				where: { active: true },
+			});
+		} else {
+			const shared = await Db.collections.SharedWorkflow!.find({
+				relations: ['workflow'],
+				where: whereClause({
+					user,
+					entityType: 'workflow',
+				}),
+			});
+
+			activeWorkflows = shared.reduce<WorkflowEntity[]>((acc, cur) => {
+				if (cur.workflow.active) acc.push(cur.workflow);
+				return acc;
+			}, []);
 		}
 
-		const activeWorkflows = (await queryBuilder.getMany()) as IWorkflowDb[];
-		return activeWorkflows.filter(
-			(workflow) => this.activationErrors[workflow.id.toString()] === undefined,
-		);
+		return activeWorkflows.filter((workflow) => this.activationErrors[workflow.id] === undefined);
 	}
 
 	/**

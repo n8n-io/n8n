@@ -7,19 +7,19 @@ import * as jwt from 'jsonwebtoken';
 import { IDataObject } from 'n8n-workflow';
 import { Db, ResponseHelper } from '../..';
 import { issueJWT } from '../auth/jwt';
-import { N8nApp, PublicUserData } from '../Interfaces';
+import { N8nApp, PublicUser } from '../Interfaces';
 import config = require('../../../config');
-import { generatePublicUserData, isInstanceOwnerSetup } from '../UserManagementHelper';
+import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 
-export function addAuthenticationMethods(this: N8nApp): void {
+export function authenticationMethods(this: N8nApp): void {
 	// ----------------------------------------
 	// login a user
 	// ----------------------------------------
 
 	this.app.post(
 		`/${this.restEndpoint}/login`,
-		ResponseHelper.send(async (req: Request, res: Response): Promise<PublicUserData> => {
+		ResponseHelper.send(async (req: Request, res: Response): Promise<PublicUser> => {
 			if (!req.body.email) {
 				throw new Error('Email is required to log in');
 			}
@@ -47,13 +47,13 @@ export function addAuthenticationMethods(this: N8nApp): void {
 			const userData = await issueJWT(user);
 			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
 
-			return generatePublicUserData(user);
+			return sanitizeUser(user);
 		}),
 	);
 
 	this.app.get(
 		`/${this.restEndpoint}/login`,
-		ResponseHelper.send(async (req: Request, res: Response): Promise<PublicUserData> => {
+		ResponseHelper.send(async (req: Request, res: Response): Promise<PublicUser> => {
 			// Manually check the existing cookie.
 
 			const cookieContents = req.cookies?.['n8n-auth'] as string | undefined;
@@ -64,7 +64,7 @@ export function addAuthenticationMethods(this: N8nApp): void {
 					const tokenInfo = jwt.verify(
 						cookieContents,
 						config.get('userManagement.jwtSecret') as string,
-					) as PublicUserData;
+					) as PublicUser;
 					return tokenInfo;
 				} catch (error) {
 					throw new Error('Invalid login information');
@@ -93,7 +93,7 @@ export function addAuthenticationMethods(this: N8nApp): void {
 
 			const userData = await issueJWT(user);
 			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
-			return generatePublicUserData(user);
+			return sanitizeUser(user);
 		}),
 	);
 

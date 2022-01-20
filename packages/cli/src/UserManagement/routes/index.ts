@@ -11,16 +11,17 @@ import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import { AuthenticatedRequest, JwtPayload, N8nApp, PublicUserData } from '../Interfaces';
-import { addAuthenticationMethods } from './auth';
+import { AuthenticatedRequest, JwtPayload, N8nApp } from '../Interfaces';
+import { authenticationMethods } from './auth';
 import config = require('../../../config');
 import { Db, GenericHelpers, ResponseHelper } from '../..';
 import { User } from '../../databases/entities/User';
 import { getInstance } from '../email/UserManagementMailer';
-import { generatePublicUserData, isValidEmail, isValidPassword } from '../UserManagementHelper';
+import { sanitizeUser, isValidEmail, isValidPassword } from '../UserManagementHelper';
 import { issueCookie, issueJWT } from '../auth/jwt';
-import { addMeNamespace } from './me';
-import { addUsersMethods } from './users';
+import { meNamespace } from './me';
+import { usersNamespace } from './users';
+import { passwordResetNamespace } from './passwordReset';
 import { createHash } from 'crypto';
 
 export async function addRoutes(
@@ -90,10 +91,38 @@ export async function addRoutes(
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
+	this.app.use((req: Request, res: Response, next: NextFunction) => {
+		// req.user is empty for public routes, so just proceed
+		// owner can do anything, so proceed as well
+		if (req.user === undefined || (req.user && (req.user as User).globalRole.name === 'owner')) {
+			next();
+			return;
+		}
+
+		// Not owner and user exists. We now protect restricted urls.
+		const postRestrictedUrls = [`/${this.restEndpoint}/users`];
+		const getRestrictedUrls = [`/${this.restEndpoint}/users`];
+		const trimmedUrl = req.url.endsWith('/') ? req.url.slice(0, -1) : req.url;
+		if (
+			(req.method === 'POST' && postRestrictedUrls.includes(trimmedUrl)) ||
+			(req.method === 'GET' && getRestrictedUrls.includes(trimmedUrl)) ||
+			(req.method === 'DELETE' &&
+				new RegExp(`/${restEndpoint}/users/[^/]+`, 'gm').test(trimmedUrl)) ||
+			(req.method === 'POST' &&
+				new RegExp(`/${restEndpoint}/users/[^/]/reinvite+`, 'gm').test(trimmedUrl))
+		) {
+			res.status(403).json({ status: 'error', message: 'Unauthorized' });
+			return;
+		}
+
+		next();
+	});
+
+	// middleware to refresh cookie before it expires
 	this.app.use(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 		const cookieAuth = options.jwtFromRequest(req);
 		if (cookieAuth && req.user) {
-			const cookieContents = jwt.decode(cookieAuth) as PublicUserData & { exp: number };
+			const cookieContents = jwt.decode(cookieAuth) as JwtPayload & { exp: number };
 			if (cookieContents.exp * 1000 - Date.now() < 259200000) {
 				// if cookie expires in < 3 days, renew it.
 				await issueCookie(res, req.user);
@@ -102,9 +131,10 @@ export async function addRoutes(
 		next();
 	});
 
-	addAuthenticationMethods.apply(this);
-	addMeNamespace.apply(this);
-	addUsersMethods.apply(this);
+	authenticationMethods.apply(this);
+	meNamespace.apply(this);
+	passwordResetNamespace.apply(this);
+	usersNamespace.apply(this);
 
 	// ----------------------------------------
 	// Temporary code below - must be refactored
@@ -167,7 +197,7 @@ export async function addRoutes(
 
 			const userData = await issueJWT(owner);
 			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
-			return generatePublicUserData(owner);
+			return sanitizeUser(owner);
 		}),
 	);
 }
