@@ -1226,6 +1226,7 @@ class App {
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
 					// TODO UM: restrict user access to credentials he cannot use.
+					// @ts-ignore
 					additionalData.userId = (req.user as User).id;
 
 					return loadDataInstance.getOptions(methodName, additionalData);

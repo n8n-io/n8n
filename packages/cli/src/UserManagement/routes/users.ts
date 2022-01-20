@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Request, Response } from 'express';
-import { In } from 'typeorm';
+import { getConnection, In } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import { Db, GenericHelpers, ICredentialsResponse, ResponseHelper } from '../..';
@@ -40,22 +40,6 @@ export function usersNamespace(this: N8nApp): void {
 				}
 			});
 
-			const inviteEmailAddresses = invitations.map((invitation) => invitation.email);
-			const alreadyInvited = await Db.collections.User!.find({
-				where: {
-					email: In(inviteEmailAddresses),
-				},
-			});
-
-			if (alreadyInvited.length) {
-				const existingEmails = alreadyInvited.map((userShell) => userShell.email).join(', ');
-				throw new ResponseHelper.ResponseError(
-					`One or more emails already invited: ${existingEmails}`,
-					undefined,
-					400,
-				);
-			}
-
 			const role = await Db.collections.Role!.findOne({ scope: 'global', name: 'member' });
 
 			if (!role) {
@@ -70,17 +54,33 @@ export function usersNamespace(this: N8nApp): void {
 			if (domain.endsWith('/')) {
 				domain = domain.slice(0, domain.length - 1);
 			}
+
+			let createdUsers = [];
+			try {
+				createdUsers = await getConnection().transaction(async (transactionManager) => {
+					return Promise.all(
+						invitations.map(async ({ email }) => {
+							const newUser = Object.assign(new User(), {
+								email,
+								globalRole: role,
+							});
+							return transactionManager.save<User>(newUser);
+						}),
+					);
+				});
+			} catch (error) {
+				throw new ResponseHelper.ResponseError(
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+					`Email address ${error.parameters[1]} already exists`,
+					undefined,
+					400,
+				);
+			}
+
+			const mailer = getInstance();
 			return Promise.all(
-				invitations.map(async ({ email }) => {
-					const newUserInfo = {
-						email,
-						globalRole: role,
-					} as User;
-					const newUser = await Db.collections.User!.save(newUserInfo);
-
-					const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${newUser.id}`;
-
-					const mailer = getInstance();
+				createdUsers.map(async ({ id, email }) => {
+					const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
 					const result = await mailer.invite({
 						email,
 						inviteAcceptUrl,
@@ -89,7 +89,7 @@ export function usersNamespace(this: N8nApp): void {
 					if (!result.success) {
 						throw new ResponseHelper.ResponseError('One or more emails could not be sent');
 					}
-					return sanitizeUser(newUser);
+					return { id, email };
 				}),
 			);
 		}),
