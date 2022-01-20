@@ -113,7 +113,7 @@ export class I18nClass {
 			/**
 			 * Hint for a top-level param.
 			 */
-			parameterHint(
+			hint(
 				{ name: parameterName, hint }: { name: string; hint: string; },
 			) {
 				return context.dynamicRender({
