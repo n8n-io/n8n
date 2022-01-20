@@ -11,18 +11,17 @@ import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
+import { createHash } from 'crypto';
 import { AuthenticatedRequest, JwtPayload, N8nApp } from '../Interfaces';
 import { authenticationMethods } from './auth';
 import config = require('../../../config');
-import { Db, GenericHelpers, ResponseHelper } from '../..';
+import { Db, ResponseHelper } from '../..';
 import { User } from '../../databases/entities/User';
-import { getInstance } from '../email/UserManagementMailer';
-import { sanitizeUser, isValidEmail, isValidPassword } from '../UserManagementHelper';
+import { isValidEmail, sanitizeUser, validatePassword } from '../UserManagementHelper';
 import { issueCookie, issueJWT } from '../auth/jwt';
 import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
-import { createHash } from 'crypto';
 
 export async function addRoutes(
 	this: N8nApp,
@@ -163,7 +162,7 @@ export async function addRoutes(
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (!req.body.password || !isValidPassword(req.body.password)) {
+			if (!req.body.password || !validatePassword(req.body.password)) {
 				throw new Error('Password does not comply to security standards');
 			}
 
