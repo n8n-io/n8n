@@ -133,6 +133,9 @@ export function sendErrorResponse(res: Response, error: ResponseError, shouldLog
 	res.status(httpStatusCode).json(response);
 }
 
+const isUniqueConstraintError = (error: Error) =>
+	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
+
 /**
  * A helper function which does not just allow to return Promises it also makes sure that
  * all the responses have the same format
@@ -148,10 +151,12 @@ export function send(processFunction: (req: Request, res: Response) => Promise<a
 		try {
 			const data = await processFunction(req, res);
 
-			// Success response
 			sendSuccessResponse(res, data);
 		} catch (error) {
-			// Error response
+			if (error instanceof Error && isUniqueConstraintError(error)) {
+				error.message = 'There is already an entry with this name';
+			}
+
 			sendErrorResponse(res, error);
 		}
 	};
