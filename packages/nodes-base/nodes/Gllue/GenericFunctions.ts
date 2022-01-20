@@ -38,7 +38,7 @@ export class GllueCandidateListEndpoint extends Gllue {
 
 	async get(resourceId: number, fields?: string) {
 		let response = await this.getDetail(this.resource, resourceId, fields);
-		if (response !== undefined && Object.keys(response).includes('result') && response.result.candidate !== null){
+		if (response !== undefined && Object.keys(response).includes('result') && response.result.candidate !== undefined){
 			response = response.result.candidate;
 		}
 		return response;
