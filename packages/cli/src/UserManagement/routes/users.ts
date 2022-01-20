@@ -8,6 +8,8 @@ import { Db, GenericHelpers, ICredentialsResponse, ResponseHelper } from '../..'
 import { AuthenticatedRequest, N8nApp, UserRequest } from '../Interfaces';
 import { isEmailSetup, isValidEmail, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
+import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
+import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import { getInstance } from '../email/UserManagementMailer';
 import { issueJWT } from '../auth/jwt';
 
@@ -197,10 +199,10 @@ export function usersNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/users/:id`,
 		ResponseHelper.send(async (req: UserRequest.Deletion) => {
 			if (req.user.id === req.params.id) {
-				throw new ResponseHelper.ResponseError('You cannot delete your own user', undefined, 403);
+				throw new ResponseHelper.ResponseError('You cannot delete your own user', undefined, 400);
 			}
 
-			const transferId = req.query.transferId as string;
+			const { transferId } = req.query;
 
 			const searchIds = [req.params.id];
 			if (transferId) {
@@ -223,51 +225,36 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (transferId) {
 				const transferUser = users.find((user) => user.id === transferId) as User;
-				await Db.collections.SharedWorkflow!.update({ user: deleteUser }, { user: transferUser });
-				await Db.collections.SharedCredentials!.update(
-					{ user: deleteUser },
-					{ user: transferUser },
-				);
+				await getConnection().transaction(async (transactionManager) => {
+					await transactionManager.update(
+						SharedWorkflow,
+						{ user: deleteUser },
+						{ user: transferUser },
+					);
+					await transactionManager.update(
+						SharedCredentials,
+						{ user: deleteUser },
+						{ user: transferUser },
+					);
+					await transactionManager.delete(User, { id: deleteUser.id });
+				});
 			} else {
-				const ownedWorkflows = await Db.collections.SharedWorkflow!.find({
-					relations: ['workflow'],
-					where: { user: deleteUser },
+				const [ownedWorkflows, ownedCredentials] = await Promise.all([
+					Db.collections.SharedWorkflow!.find({
+						relations: ['workflow'],
+						where: { user: deleteUser },
+					}),
+					Db.collections.SharedCredentials!.find({
+						relations: ['credentials'],
+						where: { user: deleteUser },
+					}),
+				]);
+				await getConnection().transaction(async (transactionManager) => {
+					await transactionManager.remove(ownedWorkflows.map(({ workflow }) => workflow));
+					await transactionManager.remove(ownedCredentials.map(({ credentials }) => credentials));
+					await transactionManager.delete(User, { id: deleteUser.id });
 				});
-				if (ownedWorkflows.length) {
-					await Db.collections.Workflow!.delete({
-						id: In(ownedWorkflows.map((ownedWorkflow) => ownedWorkflow.workflow.id)),
-					});
-					await Db.collections.SharedWorkflow!.delete({ user: deleteUser });
-				}
-
-				const ownedCredentials = await Db.collections.SharedCredentials!.find({
-					relations: ['credentials'],
-					where: { user: deleteUser },
-				});
-				if (ownedCredentials.length) {
-					await Db.collections.Credentials!.delete({
-						id: In(ownedCredentials.map((ownedCredential) => ownedCredential.credentials.id)),
-					});
-					await Db.collections.SharedWorkflow!.delete({ user: deleteUser });
-				}
-
-				const queryBuilderCredentials = Db.collections.Credentials!.createQueryBuilder('c');
-				queryBuilderCredentials.innerJoin('c.shared', 'shared');
-				queryBuilderCredentials.andWhere('shared.userId = :userId', {
-					userId: deleteUser.id,
-				});
-
-				queryBuilderCredentials.select(['c.id']);
-
-				const credentials =
-					(await queryBuilderCredentials.getMany()) as unknown as ICredentialsResponse[];
-
-				if (credentials.length) {
-					await Db.collections.Credentials!.remove(credentials);
-					await Db.collections.SharedCredentials!.delete({ user: deleteUser });
-				}
 			}
-			await Db.collections.User!.delete({ id: deleteUser.id });
 			return { success: true };
 		}),
 	);
@@ -297,26 +284,28 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			let inviteAcceptUrl = GenericHelpers.getBaseUrl();
-			const domain = inviteAcceptUrl;
-			if (!inviteAcceptUrl.endsWith('/')) {
-				inviteAcceptUrl += '/';
+			let domain = GenericHelpers.getBaseUrl();
+			if (domain.endsWith('/')) {
+				domain = domain.slice(0, domain.length - 1);
 			}
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-			inviteAcceptUrl += `signup/inviterId=${req.user.id}&inviteeId${user.id}`;
+
+			const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${user.id}`;
 
 			const mailer = getInstance();
-			// eslint-disable-next-line no-await-in-loop
 			const result = await mailer.invite({
 				email: user.email,
 				inviteAcceptUrl,
 				domain,
 			});
 
-			if (result.success) {
-				return { success: false };
+			if (!result.success) {
+				throw new ResponseHelper.ResponseError(
+					`Failed to send email to ${user.email}`,
+					undefined,
+					500,
+				);
 			}
-			throw new ResponseHelper.ResponseError('Unable to send email', undefined, 500);
+			return { success: true };
 		}),
 	);
 }
