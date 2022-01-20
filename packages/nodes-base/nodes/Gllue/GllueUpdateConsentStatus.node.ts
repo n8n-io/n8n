@@ -31,15 +31,15 @@ export class GllueUpdateConsentStatus implements INodeType {
 		properties: [
 			{
 				displayName: 'Candidate ID',
-				name: 'candidate_id',
+				name: 'candidateId',
 				type: 'string',
 				required: true,
 				default:'',
-				description:'Contract ID',
+				description:'Candidate ID',
 			},
 			{
 				displayName: 'Consent Status',
-				name: 'consent_status',
+				name: 'consentStatus',
 				type: 'string',
 				required: true,
 				default:'',
@@ -50,8 +50,8 @@ export class GllueUpdateConsentStatus implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
-		const candidateId = this.getNodeParameter('candidate_id', 0) as number;
-		const status = this.getNodeParameter('consent_status', 0) as string;
+		const candidateId = this.getNodeParameter('candidateId', 0) as number;
+		const status = this.getNodeParameter('consentStatus', 0) as string;
 		let responseData : IDataObject = {status: false, data: candidateId};
 
 		const credentials = await this.getCredentials('gllueApi') as IDataObject;
