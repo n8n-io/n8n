@@ -4,13 +4,13 @@
 			<div slot="content">{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
 			<el-switch
 				v-loading="loading"
-				element-loading-spinner="el-icon-loading"
 				:value="workflowActive"
 				@change="activeChanged"
 			  :title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
 				:disabled="disabled || loading"
 				:active-color="getActiveColor"
-				inactive-color="#8899AA">
+				inactive-color="#8899AA"
+				element-loading-spinner="el-icon-loading">
 			</el-switch>
 		</n8n-tooltip>
 

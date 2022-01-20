@@ -1,18 +1,17 @@
 <template>
 	<Modal
 		:name="WORKFLOW_ACTIVE_MODAL_KEY"
-		width="460px"
-		minWidth="350px"
 		:title="$locale.baseText('activationModal.workflowActivated')"
+		width="460px"
 	>
 		<template v-slot:content>
 			<div>
-				<n8n-text>{{triggerContent}}</n8n-text>
+				<n8n-text>{{ triggerContent }}</n8n-text>
 			</div>
 			<div :class="$style.spaced">
 				<n8n-text>
 					<n8n-text :bold="true">
-						{{$locale.baseText('activationModal.theseExecutionsWillNotShowUp')}}
+						{{ $locale.baseText('activationModal.theseExecutionsWillNotShowUp') }}
 					</n8n-text>
 					{{ $locale.baseText('activationModal.butYouCanSeeThem') }}
 					<a @click="showExecutionsList">
@@ -35,7 +34,6 @@
 </template>
 
 <script lang="ts">
-
 import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
@@ -107,9 +105,7 @@ export default Vue.extend({
 });
 </script>
 
-
 <style lang="scss" module>
-
 .spaced {
 	margin-top: var(--spacing-2xs);
 }
