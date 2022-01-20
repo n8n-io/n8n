@@ -16,6 +16,7 @@ export class ContentfulApi implements ICredentialType {
 			default: '',
 			required: true,
 			description: 'The id for the Contentful space.',
+			hint: 'Temporary credential test <b> bold me me </b> yo <a href="https://n8n.io">click me</a> very long message sjsjd dkjsfjdsk ljdsk dsj lsjd lkfdjs s',
 		},
 		{
 			displayName: 'Content Delivery API Access token',
