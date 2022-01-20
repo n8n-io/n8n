@@ -16,7 +16,7 @@
 			@focus="focused = true"
 			@blur="focused = false"
 			inputSize="small" />
-		<input-hint :hint="$locale.nodeText().inputLabelHint(parameter, path)" />
+		<input-hint :hint="$locale.nodeText().hint(parameter, path)" />
 	</n8n-input-label>
 </template>
 

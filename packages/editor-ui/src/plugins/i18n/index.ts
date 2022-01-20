@@ -220,7 +220,7 @@ export class I18nClass {
 			/**
 			 * Hint for an input, whether top-level or nested.
 			 */
-			inputLabelHint(
+			hint(
 				parameter: { name: string; hint: string; type: string },
 				path: string,
 			) {
