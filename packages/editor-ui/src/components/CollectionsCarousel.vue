@@ -1,7 +1,9 @@
 <template>
 	<div>
-		<n8n-heading v-if="!loading" size="large">Collections ({{ collectionsUI.length }})</n8n-heading>
-		<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
+		<div :class="$style.header">
+			<n8n-heading v-if="!loading" :bold="true" size="medium" color="text-light">Collections ({{ collectionsUI.length }})</n8n-heading>
+			<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
+		</div>
 
 		<div v-if="loading">
 			<agile :options="sliderOptions">
@@ -9,7 +11,7 @@
 			</agile>
 		</div>
 
-		<clients-only v-if="collectionsUI.length">
+		<clients-only v-else-if="collectionsUI.length">
 			<agile :options="sliderOptions">
 				<CollectionsCard
 					v-for="collection in collectionsUI"
@@ -42,7 +44,7 @@
 			</agile>
 		</clients-only>
 
-		<div v-if="!loading" :class="$style.text">
+		<div v-else :class="$style.text">
 			<n8n-text>No collections found. Try adjusting your search to see more.</n8n-text>
 		</div>
 	</div>
@@ -98,6 +100,10 @@ export default mixins(genericHelpers).extend({
 </script>
 
 <style lang="scss" module>
+.header {
+	padding-bottom: var(--spacing-2xs);
+}
+
 .text {
 	padding-top: var(--spacing-xs);
 }

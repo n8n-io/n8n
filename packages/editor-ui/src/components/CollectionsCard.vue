@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.card">
 		<div :class="$style.container">
-			<n8n-heading v-if="!loading" :bold="true" size="medium">{{ shortTitle }}</n8n-heading>
+			<n8n-heading v-if="!loading" :bold="true" size="small">{{ shortTitle }}</n8n-heading>
 			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
 			<div :class="$style.footer">
 				<slot name="footer"></slot>

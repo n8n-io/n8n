@@ -1,6 +1,11 @@
 <template>
 	<div :class="$style.list">
-		<n8n-heading size="large">Workflows ({{ workflowsUI.length }})</n8n-heading>
+		<div :class="$style.header">
+			<n8n-heading v-if="!loading" :bold="true" size="medium" color="text-light"
+				>Workflows ({{ workflowsUI.length }})</n8n-heading
+			>
+			<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
+		</div>
 		<div v-if="loading" :class="$style.container">
 			<div :class="$style.wrapper">
 				<TemplateCard :loading="loading" title="" />
@@ -24,18 +29,18 @@
 						</template>
 
 						<template v-slot:footer>
-							<div>
+							<div :class="$style.footer">
 								<span v-if="workflow.totalViews">
 									<n8n-text size="small" color="text-light">
 										<font-awesome-icon icon="eye" />
 										{{ truncate(workflow.totalViews) }}
 									</n8n-text>
-									<n8n-text size="small" color="text-light" />
 								</span>
+								<div v-if="workflow.totalViews" :class="$style.line" v-text="'|'" />
 								<n8n-text size="small" color="text-light">
 									<TimeAgo :date="workflow.created_at" />
 								</n8n-text>
-								<n8n-text size="small" color="text-light">|</n8n-text>
+								<div :class="$style.line" v-text="'|'" />
 								<n8n-text size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
 							</div>
 						</template>
@@ -97,6 +102,10 @@ export default mixins(genericHelpers).extend({
 </script>
 
 <style lang="scss" module>
+.header {
+	padding-bottom: var(--spacing-2xs);
+}
+
 .list {
 	padding-top: var(--spacing-m);
 }
@@ -107,5 +116,16 @@ export default mixins(genericHelpers).extend({
 	border-radius: var(--border-radius-large);
 	border: $--version-card-border;
 	overflow: auto;
+}
+
+.footer {
+	display: flex;
+	align-items: center;
+}
+
+.line {
+	padding: 0 6px;
+	color: var(--color-foreground-base);
+	font-size: var(--font-size-2xs);
 }
 </style>

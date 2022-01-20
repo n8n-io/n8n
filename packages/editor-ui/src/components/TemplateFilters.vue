@@ -1,8 +1,12 @@
 <template>
-	<div>
-		<n8n-heading v-if="!loading" size="small">{{ $locale.baseText('templates.categoriesHeading') }}</n8n-heading>
+	<div class="template-filters">
+		<div
+			:class="$style.title"
+			v-if="!loading"
+			v-text="$locale.baseText('templates.categoriesHeading')"
+		/>
 		<n8n-loading :animated="loadingAnimated" :loading="loading" :rows="1" variant="h1" />
-		<div :class="$style.list">
+		<div v-if="loading" :class="$style.list">
 			<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
 			<div v-for="(block, index) in loadingBlocks" :key="'block-' + index">
 				<n8n-loading
@@ -25,6 +29,7 @@
 			<li
 				v-for="category in collapsed ? sortedCategories.slice(0, 4) : sortedCategories"
 				:key="category.id"
+				:class="$style.item"
 			>
 				<el-checkbox
 					:label="category.name"
@@ -155,8 +160,9 @@ export default mixins(genericHelpers).extend({
 </script>
 
 <style lang="scss" module>
-.list {
-	padding-top: var(--spacing-xs);
+.title {
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-base);
 }
 
 .spacer {
@@ -164,6 +170,7 @@ export default mixins(genericHelpers).extend({
 }
 
 .categories {
+	padding-top: var(--spacing-xs);
 	list-style-type: none;
 }
 
@@ -174,5 +181,14 @@ export default mixins(genericHelpers).extend({
 .button {
 	height: auto;
 	margin-left: -12px;
+}
+</style>
+
+<style lang="scss">
+.template-filters {
+	.el-checkbox__label {
+		font-size: var(--font-size-2xs);
+		color: var(--color-text-dark);
+	}
 }
 </style>

@@ -14,7 +14,7 @@
 
 		<div v-else :class="$style.card" @mouseover="hover = true" @mouseleave="hover = false">
 			<div :class="$style.body">
-				<n8n-heading :bold="true" size="medium">{{ shortTitle }}</n8n-heading>
+				<n8n-heading :bold="true" size="small">{{ shortTitle }}</n8n-heading>
 				<div :class="$style.content">
 					<slot name="footer"></slot>
 				</div>
@@ -94,6 +94,7 @@ export default mixins(genericHelpers).extend({
 	padding: var(--spacing-s);
 	display: flex;
 	justify-content: space-between;
+	align-items: flex-end;
 }
 
 .content {
