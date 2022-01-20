@@ -30,8 +30,8 @@ export interface N8nApp {
 	restEndpoint: string;
 }
 
-export type AuthenticatedRequest<ReqBody = {}, ReqQuery = {}> = express.Request<
-	{},
+export type AuthenticatedRequest<ReqBody = {}, ReqQuery = {}, ReqParams = {}> = express.Request<
+	ReqParams,
 	{},
 	ReqBody,
 	ReqQuery
@@ -70,4 +70,24 @@ export declare namespace PasswordResetRequest {
 	export type Email = AuthenticatedRequest<PasswordResetPayload.Email>;
 	export type Credentials = AuthenticatedRequest<{}, PasswordResetQuery.Credentials>;
 	export type NewPassword = AuthenticatedRequest<PasswordResetPayload.NewPassword>;
+}
+
+// ----------------------------------
+//      users requests
+// ----------------------------------
+
+declare namespace UserPayload {
+	type Invitations = Array<{ email: string }>;
+}
+
+declare namespace UserQuery {
+	type Signup = { inviterId?: string; inviteeId?: string };
+	type Deletion = { transferId?: string };
+}
+
+export declare namespace UserRequest {
+	export type Invites = AuthenticatedRequest<UserPayload.Invitations>;
+	export type Signup = AuthenticatedRequest<{}, UserQuery.Signup>;
+	export type Deletion = AuthenticatedRequest<{}, UserQuery.Deletion, { id: string }>;
+	export type Reinvite = AuthenticatedRequest<{}, {}, { id: string }>;
 }

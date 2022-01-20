@@ -14,7 +14,7 @@ import type { PasswordResetRequest } from '../Interfaces';
 import { issueJWT } from '../auth/jwt';
 import { getBaseUrl } from '../../GenericHelpers';
 
-export function addPasswordResetNamespace(this: N8nApp): void {
+export function passwordResetNamespace(this: N8nApp): void {
 	/**
 	 * Send a password reset email.
 	 */
