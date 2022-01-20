@@ -1,7 +1,9 @@
 <template>
 	<div>
-		<n8n-heading size="small">{{ $locale.baseText('templates.categoriesHeading') }}</n8n-heading>
-		<div v-if="loading" :class="$style.list">
+		<n8n-heading v-if="!loading" size="small">{{ $locale.baseText('templates.categoriesHeading') }}</n8n-heading>
+		<n8n-loading :animated="loadingAnimated" :loading="loading" :rows="1" variant="h1" />
+		<div :class="$style.list">
+			<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
 			<div v-for="(block, index) in loadingBlocks" :key="'block-' + index">
 				<n8n-loading
 					:animated="loadingAnimated"
@@ -12,7 +14,7 @@
 				<div :class="$style.spacer" />
 			</div>
 		</div>
-		<ul v-else :class="$style.categories">
+		<ul v-if="!loading" :class="$style.categories">
 			<li :class="$style.item">
 				<el-checkbox
 					label="All Categories"
@@ -31,8 +33,7 @@
 				/>
 			</li>
 		</ul>
-
-		<div :class="$style.button" v-if="sortedCategories.length > 4 && collapsed">
+		<div :class="$style.button" v-if="sortedCategories.length > 4 && collapsed && !loading">
 			<n8n-button
 				icon="plus"
 				type="text"
@@ -45,9 +46,6 @@
 </template>
 
 <script lang="ts">
-import ElSkeleton from 'element-ui/lib/skeleton';
-import ElSkeletonItem from 'element-ui/lib/skeleton-item';
-
 import { ITemplateCategory } from '@/Interface';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
@@ -55,10 +53,6 @@ import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplateFilters',
-	components: {
-		ElSkeleton,
-		ElSkeletonItem,
-	},
 	props: {
 		setCategories: { type: Function },
 		loading: {
@@ -70,7 +64,7 @@ export default mixins(genericHelpers).extend({
 		},
 		loadingBlocks: {
 			type: Number,
-			default: 2,
+			default: 1,
 		},
 		loadingRows: {
 			type: Number,
@@ -110,7 +104,6 @@ export default mixins(genericHelpers).extend({
 			collapsed: true,
 			sortedCategories: [] as ITemplateCategory[],
 			selected: [] as string[],
-			loading: true,
 		};
 	},
 	methods: {
@@ -172,7 +165,6 @@ export default mixins(genericHelpers).extend({
 
 .categories {
 	list-style-type: none;
-	padding-top: var(--spacing-xs);
 }
 
 .item {

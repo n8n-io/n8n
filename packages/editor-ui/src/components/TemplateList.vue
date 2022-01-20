@@ -60,6 +60,11 @@ import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
+	props: {
+		loading: {
+			type: Boolean,
+		},
+	},
 	components: {
 		NodeList,
 		TemplateCard,
@@ -67,7 +72,6 @@ export default mixins(genericHelpers).extend({
 	watch: {
 		workflows(newWorkflows) {
 			this.workflowsUI = newWorkflows;
-			this.loading = false;
 		},
 	},
 	computed: {
@@ -79,7 +83,6 @@ export default mixins(genericHelpers).extend({
 		return {
 			workflowsUI: [],
 			hover: false,
-			loading: true,
 		};
 	},
 	methods: {

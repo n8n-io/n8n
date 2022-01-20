@@ -1,29 +1,26 @@
 <template>
 	<div>
-		<n8n-heading size="large">Collections ({{ collectionsUI.length }})</n8n-heading>
+		<n8n-heading v-if="!loading" size="large">Collections ({{ collectionsUI.length }})</n8n-heading>
+		<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
 
-		<clients-only v-if="loading">
-		<div>
+		<div v-if="loading">
 			<agile :options="sliderOptions">
-				<CollectionsCard :loading="loading" />
-				<CollectionsCard :loading="loading" />
-				<CollectionsCard :loading="loading" />
-				<CollectionsCard :loading="loading" />
+				<CollectionsCard v-for="n in sliderOptions.slidesToShow" :key="n" :loading="loading" />
 			</agile>
 		</div>
-		</clients-only>
 
-		<clients-only v-else-if="collectionsUI.length">
+		<clients-only v-if="collectionsUI.length">
 			<agile :options="sliderOptions">
 				<CollectionsCard
 					v-for="collection in collectionsUI"
 					:key="collection.id"
 					:title="collection.name"
+					:loading="loading"
 				>
 					<template v-slot:footer>
-						<n8n-text size="small" color="text-light"
-							>{{ collection.workflows.length }} Workflows</n8n-text
-						>
+						<n8n-text size="small" color="text-light">
+							{{ collection.workflows.length }} Workflows
+						</n8n-text>
 						<NodeList :nodes="collection.nodes" :showMore="false" />
 					</template>
 				</CollectionsCard>
@@ -45,7 +42,7 @@
 			</agile>
 		</clients-only>
 
-		<div v-else :class="$style.text">
+		<div v-if="!loading" :class="$style.text">
 			<n8n-text>No collections found. Try adjusting your search to see more.</n8n-text>
 		</div>
 	</div>
@@ -62,6 +59,11 @@ import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
 	name: 'CollectionsCarousel',
+	props: {
+		loading: {
+			type: Boolean,
+		},
+	},
 	components: {
 		CollectionsCard,
 		NodeList,
@@ -71,7 +73,6 @@ export default mixins(genericHelpers).extend({
 		collections(newCollections): void {
 			if (newCollections) {
 				this.$data.collectionsUI = newCollections;
-				this.$data.loading = false;
 			} else {
 				this.$data.collectionsUI = [];
 			}
@@ -85,7 +86,6 @@ export default mixins(genericHelpers).extend({
 	data() {
 		return {
 			collectionsUI: [],
-			loading: true,
 			sliderOptions: {
 				dots: false,
 				infinite: false,
