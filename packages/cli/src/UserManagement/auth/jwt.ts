@@ -4,25 +4,23 @@
 import * as jwt from 'jsonwebtoken';
 import { Response } from 'express';
 import { createHash } from 'crypto';
-import { JwtToken, PublicUserData } from '../Interfaces';
+import { JwtToken, JwtPayload } from '../Interfaces';
 import { User } from '../../databases/entities/User';
 import config = require('../../../config');
 
 export async function issueJWT(user: User): Promise<JwtToken> {
 	const { id, email, password } = user;
-	const expiresIn = 14 * 86400000; // 14 days
+	const expiresIn = 7 * 86400000; // 7 days
 
-	const payload = {
+	const payload: JwtPayload = {
 		id,
-	} as PublicUserData;
-
-	if (email) {
-		payload.email = email;
-	}
+		email,
+		password: password ?? null,
+	};
 
 	if (password) {
 		payload.password = createHash('sha256')
-			.update(password.slice(Math.ceil(password.length / 2)))
+			.update(password.slice(password.length / 2))
 			.digest('hex');
 	}
 
@@ -33,7 +31,6 @@ export async function issueJWT(user: User): Promise<JwtToken> {
 	return {
 		token: signedToken,
 		expiresIn,
-		validTill: Date.now() + expiresIn,
 	};
 }
 

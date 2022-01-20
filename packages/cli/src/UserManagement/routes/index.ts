@@ -11,7 +11,7 @@ import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import { N8nApp, PublicUserData } from '../Interfaces';
+import { AuthenticatedRequest, JwtPayload, N8nApp, PublicUserData } from '../Interfaces';
 import { addAuthenticationMethods } from './auth';
 import config = require('../../../config');
 import { Db, GenericHelpers, ResponseHelper } from '../..';
@@ -39,30 +39,20 @@ export async function addRoutes(
 	};
 
 	passport.use(
-		new Strategy(options, async function validateCookieContents(jwtPayload: PublicUserData, done) {
+		new Strategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
 			// We will assign the `sub` property on the JWT to the database ID of user
-			const user = await Db.collections.User!.findOne(
-				{
-					id: jwtPayload.id,
-				},
-				{ relations: ['globalRole'] },
-			);
+			const user = await Db.collections.User!.findOne(jwtPayload.id, { relations: ['globalRole'] });
 
-			let passwordHash = '';
+			let passwordHash = null;
 			if (user?.password) {
 				passwordHash = createHash('sha256')
-					.update(user.password.slice(Math.ceil(user.password.length / 2)))
+					.update(user.password.slice(user.password.length / 2))
 					.digest('hex');
 			}
 
-			if (
-				!user ||
-				(user.password && jwtPayload.password !== passwordHash) ||
-				(user.email && user.email !== jwtPayload.email)
-			) {
-				// If user has email or password in database, we check.
+			if (!user || jwtPayload.password !== passwordHash || user.email !== jwtPayload.email) {
 				// When owner hasn't been set up, the default user
-				// won't have email nor password.
+				// won't have email nor password (both equals null)
 				return done(null, false, { message: 'User not found' });
 			}
 			return done(null, user);
@@ -100,13 +90,13 @@ export async function addRoutes(
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
-	this.app.use(async (req: Request, res: Response, next: NextFunction) => {
+	this.app.use(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 		const cookieAuth = options.jwtFromRequest(req);
 		if (cookieAuth && req.user) {
 			const cookieContents = jwt.decode(cookieAuth) as PublicUserData & { exp: number };
 			if (cookieContents.exp * 1000 - Date.now() < 259200000) {
-				// if cookie should expire in < 3 days, renew it.
-				await issueCookie(res, req.user as User);
+				// if cookie expires in < 3 days, renew it.
+				await issueCookie(res, req.user);
 			}
 		}
 		next();
