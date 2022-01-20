@@ -87,7 +87,7 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 	return `${baseUrl}?${params.join('&')}`;
 }
 
-function buildOptionWithUri(uriGenerated: string, method = 'GET', body: IDataObject = {}): OptionsWithUri {
+export function buildOptionWithUri(uriGenerated: string, method = 'GET', body: IDataObject = {}): OptionsWithUri {
 	const options: OptionsWithUri = {
 		headers: {
 			'Accept': 'application/json',
@@ -111,3 +111,7 @@ export async function getResponseByUri(uriGenerated: string, requestMethod: any,
 	return await requestMethod(options);
 }
 
+export function prepareGllueApiUpdateData(id: number|string, updateData: IDataObject): IDataObject {
+	let result = Object.assign({}, updateData, {id:(typeof id === 'string')? parseInt(id, 10) : id});
+	return {data: JSON.stringify(result)};
+}
