@@ -10,7 +10,7 @@ import {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
-} from './mongo.node.types';
+} from './MongoDb.node.types';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -88,8 +88,10 @@ export function validateAndResolveMongoCredentials(
 export function getItemCopy(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
+
 	return items.map((item) => {
 		newItem = {};
+
 		for (const property of properties) {
 			if (item.json[property] === undefined) {
 				newItem[property] = null;
@@ -97,42 +99,76 @@ export function getItemCopy(items: INodeExecutionData[], properties: string[]): 
 				newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
 			}
 		}
+
 		return newItem;
 	});
 }
 
 export function handleDateFields(insertItems: IDataObject[], fields: string) {
 	const dateFields = (fields as string).split(',');
+
 	for (let i = 0; i < insertItems.length; i++) {
 		for (const key of Object.keys(insertItems[i])) {
 			if (dateFields.includes(key)) {
-				if (!insertItems[i][key]) continue
+				if (!insertItems[i][key]) continue;
 				insertItems[i][key] = new Date(insertItems[i][key] as string);
 			}
 		}
 	}
 }
 
-export function handObjectIdFields(insertItems: IDataObject[], fields: string) {
+export function handleObjectIdFields(items: IDataObject[], fields: string) {
+	// const objectIdFields = (fields as string).split(',');
+
+	for (let i = 0; i < items.length; i++) {
+		handleObjectId(items[i], fields);
+
+		// for (const key of Object.keys(items[i])) {
+		// 	if (objectIdFields.includes(key)) {
+		// 		if (!items[i][key]) continue
+
+		// 		if (Array.isArray(items[i][key])) {
+		// 			const ids = items[i][key] as string[]
+
+		// 			items[i][key] = ids?.map((id: string) => {
+		// 				return new ObjectID(id)
+		// 			})
+
+		// 			continue
+		// 		}
+
+		// 		items[i][key] = new ObjectID(items[i][key] as string);
+		// 	}
+		// }
+	}
+}
+
+export function handleObjectId(item: Record<string, any>, fields: string) {
 	const objectIdFields = (fields as string).split(',');
 
-	for (let i = 0; i < insertItems.length; i++) {
-		for (const key of Object.keys(insertItems[i])) {
-			if (objectIdFields.includes(key)) {
-				if (!insertItems[i][key]) continue
+	for (const key of Object.keys(item)) {
+		if (objectIdFields.includes(key)) {
+			if (!item[key]) continue;
 
-				if (Array.isArray(insertItems[i][key])) {
-					const ids = insertItems[i][key] as string[]
+			if (item[key].$in && Array.isArray(item[key].$in)) {
+				item[key].$in = item[key].$in.map((id: string) => {
+					return new ObjectID(id);
+				});
 
-					insertItems[i][key] = ids?.map((id: string) => {
-						return new ObjectID(id)
-					})
-
-					continue
-				}
-
-				insertItems[i][key] = new ObjectID(insertItems[i][key] as string);
+				continue;
 			}
+
+			if (Array.isArray(item[key])) {
+				const ids = item[key] || [];
+
+				item[key] = ids.map((id: string) => {
+					return new ObjectID(id);
+				});
+
+				continue;
+			}
+
+			item[key] = new ObjectID(item[key]);
 		}
 	}
 }
