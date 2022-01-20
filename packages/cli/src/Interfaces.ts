@@ -590,3 +590,5 @@ export interface IWorkflowExecuteProcess {
 	workflow: Workflow;
 	workflowExecute: WorkflowExecute;
 }
+
+export type WhereClause = Record<string, { id: string }>;
