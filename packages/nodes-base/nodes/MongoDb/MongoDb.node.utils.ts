@@ -122,24 +122,6 @@ export function handleObjectIdFields(items: IDataObject[], fields: string) {
 
 	for (let i = 0; i < items.length; i++) {
 		handleObjectId(items[i], fields);
-
-		// for (const key of Object.keys(items[i])) {
-		// 	if (objectIdFields.includes(key)) {
-		// 		if (!items[i][key]) continue
-
-		// 		if (Array.isArray(items[i][key])) {
-		// 			const ids = items[i][key] as string[]
-
-		// 			items[i][key] = ids?.map((id: string) => {
-		// 				return new ObjectID(id)
-		// 			})
-
-		// 			continue
-		// 		}
-
-		// 		items[i][key] = new ObjectID(items[i][key] as string);
-		// 	}
-		// }
 	}
 }
 
