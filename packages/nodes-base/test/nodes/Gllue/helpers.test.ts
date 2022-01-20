@@ -114,4 +114,9 @@ describe('prepareGllueApiUpdateData', () => {
 		expect(Object.keys(data)).toEqual(['data']);
 		expect(data).toEqual({data:'{"name":"Name","id":123}'});
 	});
+	it('should replace id in update date with id privided separately', () => {
+		const data = helpers.prepareGllueApiUpdateData(123, {name: 'Name', id:456});
+		expect(Object.keys(data)).toEqual(['data']);
+		expect(data).toEqual({data:'{"name":"Name","id":123}'});
+	});
 });
