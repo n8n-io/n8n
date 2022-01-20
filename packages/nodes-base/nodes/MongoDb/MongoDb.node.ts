@@ -1,28 +1,22 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	nodeDescription,
-} from './mongo.node.options';
+import { nodeDescription } from './mongo.node.options';
 
-import {
-	MongoClient,
-	ObjectID,
-} from 'mongodb';
+import { MongoClient, ObjectID } from 'mongodb';
 
 import {
 	getItemCopy,
 	handleDateFields,
-	validateAndResolveMongoCredentials
+	handObjectIdFields,
+	validateAndResolveMongoCredentials,
 } from './mongo.node.utils';
 
 export class MongoDb implements INodeType {
@@ -64,7 +58,6 @@ export class MongoDb implements INodeType {
 					throw error;
 				}
 			}
-
 		} else if (operation === 'find') {
 			// ----------------------------------
 			//         find
@@ -73,8 +66,14 @@ export class MongoDb implements INodeType {
 			try {
 				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
-				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectID(queryParameter._id);
+				if (queryParameter._id) {
+					if (typeof queryParameter._id === 'string') {
+						queryParameter._id = new ObjectID(queryParameter._id);
+					} else if (queryParameter._id.$in && Array.isArray(queryParameter._id.$in)) {
+						queryParameter._id.$in = queryParameter._id.$in.map((id: string) => {
+							return new ObjectID(id)
+						})
+					}
 				}
 
 				let query = mdb
@@ -99,7 +98,7 @@ export class MongoDb implements INodeType {
 				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message } );
+					returnItems = this.helpers.returnJsonArray({ error: error.message });
 				} else {
 					throw error;
 				}
@@ -112,14 +111,18 @@ export class MongoDb implements INodeType {
 				// Prepare the data to insert and copy it to be returned
 				const fields = (this.getNodeParameter('fields', 0) as string)
 					.split(',')
-					.map(f => f.trim())
-					.filter(f => !!f);
+					.map((f) => f.trim())
+					.filter((f) => !!f);
 
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const insertItems = getItemCopy(items, fields);
 
 				if (options.dateFields) {
 					handleDateFields(insertItems, options.dateFields as string);
+				}
+
+				if (options.objectIdFields) {
+					handObjectIdFields(insertItems, options.objectIdFields as string);
 				}
 
 				const { insertedIds } = await mdb
@@ -149,8 +152,8 @@ export class MongoDb implements INodeType {
 
 			const fields = (this.getNodeParameter('fields', 0) as string)
 				.split(',')
-				.map(f => f.trim())
-				.filter(f => !!f);
+				.map((f) => f.trim())
+				.filter((f) => !!f);
 
 			const options = this.getNodeParameter('options', 0) as IDataObject;
 
@@ -158,7 +161,8 @@ export class MongoDb implements INodeType {
 			updateKey = updateKey.trim();
 
 			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
-				? { upsert: true } : undefined;
+				? { upsert: true }
+				: undefined;
 
 			if (!fields.includes(updateKey)) {
 				fields.push(updateKey);
@@ -169,6 +173,10 @@ export class MongoDb implements INodeType {
 
 			if (options.dateFields) {
 				handleDateFields(updateItems, options.dateFields as string);
+			}
+
+			if (options.objectIdFields) {
+				handObjectIdFields(updateItems, options.objectIdFields as string);
 			}
 
 			for (const item of updateItems) {
@@ -195,11 +203,87 @@ export class MongoDb implements INodeType {
 				}
 			}
 			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
+		} else if (operation === 'bulkUpdate') {
+			// ----------------------------------
+			//         bulkUpdate
+			// ----------------------------------
+
+			try {
+				const fields = (this.getNodeParameter('fields', 0) as string)
+					.split(',')
+					.map((f) => f.trim())
+					.filter((f) => !!f);
+
+				const options = this.getNodeParameter('options', 0) as IDataObject;
+
+				let updateKey = this.getNodeParameter('updateKey', 0) as string;
+				updateKey = updateKey.trim();
+
+			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
+				? { upsert: true }
+				: undefined;
+
+				if (!fields.includes(updateKey)) {
+					fields.push(updateKey);
+				}
+
+				// Prepare the data to update and copy it to be returned
+				const updateItems = getItemCopy(items, fields);
+
+				if (options.dateFields) {
+					handleDateFields(updateItems, options.dateFields as string);
+				}
+
+				if (options.objectIdFields) {
+					handObjectIdFields(updateItems, options.objectIdFields as string);
+				}
+
+				const writeOperations = [];
+
+				for (const item of updateItems) {
+					if (item[updateKey] === undefined) {
+						continue;
+					}
+
+					const filter: { [key: string]: string | ObjectID } = {};
+					filter[updateKey] = item[updateKey] as string;
+
+					if (updateKey === '_id') {
+						filter[updateKey] = new ObjectID(filter[updateKey]);
+						delete item['_id'];
+					}
+
+					writeOperations.push({
+						updateOne: {
+							filter,
+							update: { $set: item },
+							...updateOptions,
+						},
+					});
+				}
+
+				await mdb
+					.collection(this.getNodeParameter('collection', 0) as string)
+					.bulkWrite(writeOperations);
+
+				returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems = this.helpers.returnJsonArray({ error: error.message });
+				} else {
+					throw error;
+				}
+			}
 		} else {
 			if (this.continueOnFail()) {
-				returnItems = this.helpers.returnJsonArray({ json: { error: `The operation "${operation}" is not supported!` } });
+				returnItems = this.helpers.returnJsonArray({
+					json: { error: `The operation "${operation}" is not supported!` },
+				});
 			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`The operation "${operation}" is not supported!`,
+				);
 			}
 		}
 

@@ -34,9 +34,7 @@ export interface IMongoOverrideCredentials {
 /**
  * Unified credential object type (whether params are overridden with a connection string or not)
  */
-export type IMongoCredentialsType =
-	| IMongoParametricCredentials
-	| IMongoOverrideCredentials;
+export type IMongoCredentialsType = IMongoParametricCredentials | IMongoOverrideCredentials;
 
 /**
  * Resolve the database and connection string from input credentials

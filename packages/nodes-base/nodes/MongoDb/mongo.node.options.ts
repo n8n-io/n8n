@@ -1,6 +1,4 @@
-import {
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 /**
  * Options to be displayed
@@ -49,6 +47,11 @@ export const nodeDescription: INodeTypeDescription = {
 					value: 'update',
 					description: 'Update documents.',
 				},
+				{
+					name: 'Bulk Update',
+					value: 'bulkUpdate',
+					description: 'Bulk update documents.',
+				},
 			],
 			default: 'find',
 			description: 'The operation to perform.',
@@ -75,9 +78,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			displayOptions: {
 				show: {
-					operation: [
-						'delete',
-					],
+					operation: ['delete'],
 				},
 			},
 			default: '{}',
@@ -107,7 +108,8 @@ export const nodeDescription: INodeTypeDescription = {
 					name: 'limit',
 					type: 'number',
 					default: 0,
-					description: 'Use limit to specify the maximum number of documents or 0 for unlimited documents.',
+					description:
+						'Use limit to specify the maximum number of documents or 0 for unlimited documents.',
 				},
 				{
 					displayName: 'Skip',
@@ -139,9 +141,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			displayOptions: {
 				show: {
-					operation: [
-						'find',
-					],
+					operation: ['find'],
 				},
 			},
 			default: '{}',
@@ -158,15 +158,12 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: [
-						'insert',
-					],
+					operation: ['insert'],
 				},
 			},
 			default: '',
 			placeholder: 'name,description',
-			description:
-				'Comma separated list of the fields to be included into the new document.',
+			description: 'Comma separated list of the fields to be included into the new document.',
 		},
 
 		// ----------------------------------
@@ -178,9 +175,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: [
-						'update',
-					],
+					operation: ['update', 'bulkUpdate'],
 				},
 			},
 			default: 'id',
@@ -194,15 +189,12 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: [
-						'update',
-					],
+					operation: ['update', 'bulkUpdate'],
 				},
 			},
 			default: '',
 			placeholder: 'name,description',
-			description:
-				'Comma separated list of the fields to be included into the new document.',
+			description: 'Comma separated list of the fields to be included into the new document.',
 		},
 		{
 			displayName: 'Upsert',
@@ -210,7 +202,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'boolean',
 			displayOptions: {
 				show: {
-					operation: ['update'],
+					operation: ['update', 'bulkUpdate'],
 				},
 			},
 			default: false,
@@ -222,10 +214,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'collection',
 			displayOptions: {
 				show: {
-					operation: [
-						'update',
-						'insert',
-					],
+					operation: ['update', 'insert', 'bulkUpdate'],
 				},
 			},
 			placeholder: 'Add Option',
@@ -237,6 +226,13 @@ export const nodeDescription: INodeTypeDescription = {
 					type: 'string',
 					default: '',
 					description: 'Comma separeted list of fields that will be parse as Mongo Date type.',
+				},
+				{
+					displayName: 'ObjectId Fields',
+					name: 'objectIdFields',
+					type: 'string',
+					default: '',
+					description: 'Comma separeted list of fields that will be parse as Mongo ObjectId type.',
 				},
 			],
 		},
