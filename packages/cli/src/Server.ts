@@ -164,7 +164,7 @@ import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { getSharedWorkflowIds, whereClause, NameRequest } from './WorkflowHelpers';
-import { getNodeTranslationPath } from './TranslationHelpers';
+import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
 import { User } from './databases/entities/User';
@@ -1324,6 +1324,27 @@ class App {
 			),
 		);
 
+		this.app.get(
+			`/${this.restEndpoint}/credential-translation`,
+			ResponseHelper.send(
+				async (
+					req: express.Request & { query: { credentialType: string } },
+					res: express.Response,
+				): Promise<object | null> => {
+					const translationPath = getCredentialTranslationPath({
+						locale: this.frontendSettings.defaultLocale,
+						credentialType: req.query.credentialType,
+					});
+
+					try {
+						return require(translationPath);
+					} catch (error) {
+						return null;
+					}
+				},
+			),
+		);
+
 		// Returns node information based on node names and versions
 		this.app.post(
 			`/${this.restEndpoint}/node-types`,
@@ -1347,13 +1368,17 @@ class App {
 						nodeTypes: INodeTypeDescription[],
 					) {
 						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
-						const translationPath = await getNodeTranslationPath(sourcePath, defaultLocale);
+						const translationPath = await getNodeTranslationPath({
+							nodeSourcePath: sourcePath,
+							longNodeType: description.name,
+							locale: defaultLocale,
+						});
 
 						try {
 							const translation = await readFile(translationPath, 'utf8');
 							description.translation = JSON.parse(translation);
 						} catch (error) {
-							// ignore - no translation at expected translation path
+							// ignore - no translation exists at path
 						}
 
 						nodeTypes.push(description);
@@ -1613,7 +1638,7 @@ class App {
 									const testFunctionSearch =
 										credential.name === credentialType && !!credential.testedBy;
 									if (testFunctionSearch) {
-										foundTestFunction = (node as unknown as INodeType).methods!.credentialTest![
+										foundTestFunction = (nodeType as unknown as INodeType).methods!.credentialTest![
 											credential.testedBy!
 										];
 									}
