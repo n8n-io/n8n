@@ -437,6 +437,32 @@ export const workflowHelpers = mixins(
 				return returnData['__xxxxxxx__'];
 			},
 
+			async updateWorkflow({workflowId, active}: {workflowId: string, active?: boolean}) {
+				let data: IWorkflowDataUpdate = {};
+
+				const isCurrentWorkflow = workflowId === this.$store.getters.workflowId;
+				if (isCurrentWorkflow) {
+					data = await this.getWorkflowDataToSave();
+				}
+
+				if (active !== undefined) {
+					data.active = active;
+				}
+
+				const workflow = await this.restApi().updateWorkflow(workflowId, data);
+
+				if (isCurrentWorkflow) {
+					this.$store.commit('setActive', !!workflow.active);
+					this.$store.commit('setStateDirty', false);
+				}
+
+				if (workflow.active) {
+					this.$store.commit('setWorkflowActive', workflowId);
+				} else {
+					this.$store.commit('setWorkflowInactive', workflowId);
+				}
+			},
+
 			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}): Promise<boolean> {
 				const currentWorkflow = this.$route.params.name;
 				if (!currentWorkflow) {

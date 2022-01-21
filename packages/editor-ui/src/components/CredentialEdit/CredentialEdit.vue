@@ -344,7 +344,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 	},
 	methods: {
-		async beforeClose(done: () => void) {
+		async beforeClose() {
 			let keepEditing = false;
 
 			if (this.hasUnsavedChanges) {
@@ -368,8 +368,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 
 			if (!keepEditing) {
-				done();
-				return;
+				return true;
 			}
 			else if (!this.requiredPropertiesFilled) {
 				this.showValidationWarning = true;
@@ -378,6 +377,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			else if (this.isOAuthType) {
 				this.scrollToBottom();
 			}
+
+			return false;
 		},
 
 		displayCredentialParameter(parameter: INodeProperties): boolean {
