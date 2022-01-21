@@ -63,6 +63,10 @@ export class StatusPage implements INodeType {
 							name: 'Incident',
 							value: 'incident',
 						},
+						{
+							name: 'Metric',
+							value: 'metric',
+						},
 					],
 					default: 'component',
 					required: true,
@@ -121,6 +125,27 @@ export class StatusPage implements INodeType {
 					description: 'The operation to perform.',
 				},
 				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: [
+								'metric',
+							],
+						},
+					},
+					options: [
+						{
+							name: 'Add data point',
+							value: 'addDataPoint',
+							description: 'Add a data point to a metric',
+						},
+					],
+					default: 'addDataPoint',
+					description: 'The operation to perform.',
+				},
+				{
 					displayName: 'Page Id',
 					name: 'pageId',
 					type: 'string',
@@ -132,10 +157,12 @@ export class StatusPage implements INodeType {
 								'create',
 								'patchByComponent',
 								'listUnresolved',
+								'addDataPoint',
 							],
 							resource: [
 								'component',
-								'incident'
+								'incident',
+								'metric',
 							],
 						},
 					},
@@ -380,6 +407,42 @@ export class StatusPage implements INodeType {
 					default: false,
 					description: '',
 				},
+				{
+					displayName: 'Metric Id',
+					name: 'metricId',
+					type: 'string',
+					required: true,
+					displayOptions: {
+						show: {
+							operation: [
+								'addDataPoint',
+							],
+							resource: [
+								'metric',
+							],
+						},
+					},
+					default: '',
+					description: '',
+				},
+				{
+					displayName: 'Metric Value',
+					name: 'metricValue',
+					type: 'number',
+					required: true,
+					displayOptions: {
+						show: {
+							operation: [
+								'addDataPoint',
+							],
+							resource: [
+								'metric',
+							],
+						},
+					},
+					default: 0,
+					description: '',
+				},
 			],
 	};
 
@@ -513,6 +576,31 @@ export class StatusPage implements INodeType {
 
 					responseData = await this.helpers.request(options);
 				}
+			}
+		}
+
+
+		if (resource === 'metric') {
+			if (operation === 'addDataPoint') {
+				const metricId = this.getNodeParameter('metricId', 0) as string;
+				const metricValue = this.getNodeParameter('metricValue', 0) as number;
+
+				const options: OptionsWithUri = {
+					headers: {
+						'Accept': 'application/json',
+					},
+					method: 'POST',
+					body: {
+						data: {
+							timestamp: new Date().getTime() / 1000,
+							value: metricValue,
+						}
+					},
+					uri: `https://api.statuspage.io/v1/pages/${pageId}/metrics/${metricId}/data?api_key=${credentials.apiKey}`,
+					json: true,
+				};
+
+				responseData = await this.helpers.request(options);
 			}
 		}
 
