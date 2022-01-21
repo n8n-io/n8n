@@ -6,9 +6,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	// LoggerProxy as Logger,
@@ -19,6 +17,7 @@ import {
 	downloadAttachments,
 	formatSubmission,
 	koboToolboxApiRequest,
+	loadSurveys,
 	parseStringList,
 } from './GenericFunctions';
 
@@ -138,18 +137,7 @@ export class KoboToolbox implements INodeType {
 		},
 
 		loadOptions: {
-			async loadSurveys(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const responseData = await koboToolboxApiRequest.call(this, {
-					url: '/api/v2/assets/',
-					qs: {
-						q: 'asset_type:survey',
-						ordering: 'name',
-					},
-				});
-
-				// Logger.debug('LoadSurveys', responseData);
-				return responseData.results?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];  // tslint:disable-line:no-any
-			},
+			loadSurveys,
 		},
 	};
 

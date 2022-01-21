@@ -12,6 +12,7 @@ import {
 	downloadAttachments,
 	formatSubmission,
 	koboToolboxApiRequest,
+	loadSurveys,
 	parseStringList
 } from './GenericFunctions';
 
@@ -51,10 +52,13 @@ export class KoboToolboxTrigger implements INodeType {
 			{
 				displayName: 'Form ID',
 				name: 'assetUid',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadSurveys',
+				},
 				required: true,
 				default:'',
-				description:'Form id (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+				description:'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
 			},
 			{
 				displayName: 'Trigger On',
@@ -131,6 +135,12 @@ export class KoboToolboxTrigger implements INodeType {
 				delete webhookData.webhookId;
 				return true;
 			},
+		},
+	};
+
+	methods = {
+		loadOptions: {
+			loadSurveys,
 		},
 	};
 

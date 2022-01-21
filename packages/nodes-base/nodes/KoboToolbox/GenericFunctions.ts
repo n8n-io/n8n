@@ -8,6 +8,7 @@ import {
 	IHookFunctions,
 	IHttpRequestOptions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	IWebhookFunctions,
 	// LoggerProxy as Logger,
 } from 'n8n-workflow';
@@ -203,4 +204,17 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 
 	// Add item to final output - even if there's no attachment retrieved
 	return binaryItem;
+}
+
+export async function loadSurveys(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const responseData = await koboToolboxApiRequest.call(this, {
+		url: '/api/v2/assets/',
+		qs: {
+			q: 'asset_type:survey',
+			ordering: 'name',
+		},
+	});
+
+	// Logger.debug('LoadSurveys', responseData);
+	return responseData.results?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];  // tslint:disable-line:no-any
 }
