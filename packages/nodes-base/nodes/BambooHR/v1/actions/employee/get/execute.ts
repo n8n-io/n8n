@@ -16,13 +16,14 @@ export async function get(this: IExecuteFunctions, index: number): Promise<INode
 	const requestMethod = 'GET';
 
 	//meta data
-	const id = this.getNodeParameter('id', index) as string;
+	const id = this.getNodeParameter('employeeId', index) as string;
 
 	//query parameters
-	let fields = this.getNodeParameter('options.fields', index, []) as string[];
+	let fields = this.getNodeParameter('options.fields', index, ['all']) as string[];
 
 	if (fields.includes('all')) {
-		fields = getAllFields();
+		const { fields: allFields } = await apiRequest.call(this, requestMethod, 'employees/directory', body);
+		fields = allFields.map((field: IDataObject) => field.id);
 	}
 
 	//endpoint
@@ -32,28 +33,5 @@ export async function get(this: IExecuteFunctions, index: number): Promise<INode
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
-	return this.helpers.returnJsonArray(responseData.body);
+	return this.helpers.returnJsonArray(responseData);
 }
-
-const getAllFields = () => {
-	return [
-		'displayName',
-		'firstName',
-		'lastName',
-		'preferredName',
-		'jobTitle',
-		'workPhone',
-		'mobilePhone',
-		'workEmail',
-		'department',
-		'location',
-		'division',
-		'facebook',
-		'linkedIn',
-		'twitterFeed',
-		'pronouns',
-		'workPhoneExtension',
-		'supervisor',
-		'photoUrl',
-	];
-};

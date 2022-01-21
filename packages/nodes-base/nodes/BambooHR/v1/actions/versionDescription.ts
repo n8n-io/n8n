@@ -1,10 +1,11 @@
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import * as companyFile from './companyFile';
+
+import * as file from './file';
 import * as employee from './employee';
-import * as employeeFile from './employeeFile';
-import * as report from './report';
+import * as employeeDocument from './employeeDocument';
+import * as companyReport from './companyReport';
 
 export const versionDescription: INodeTypeDescription = {
 	credentials: [
@@ -31,32 +32,28 @@ export const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
+					name: 'Company Report',
+					value: 'companyReport',
+				},
+				{
 					name: 'Employee',
 					value: 'employee',
 				},
 				{
-					name: 'Employee File',
-					value: 'employeeFile',
+					name: 'Employee Document',
+					value: 'employeeDocument',
 				},
 				{
-					name: 'Company File',
-					value: 'companyFile',
-				},
-				{
-					name: 'Company Report',
-					value: 'report',
-				},
-				{
-					name: 'Time Off',
-					value: 'timeOff',
+					name: 'File',
+					value: 'file',
 				},
 			],
 			default: 'employee',
 		},
 		...employee.descriptions,
-		...employeeFile.descriptions,
-		...companyFile.descriptions,
-		...report.descriptions,
+		...employeeDocument.descriptions,
+		...file.descriptions,
+		...companyReport.descriptions,
 	],
 	subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 	version: 1,

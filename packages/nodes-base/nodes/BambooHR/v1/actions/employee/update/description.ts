@@ -1,11 +1,12 @@
 import {
 	EmployeeProperties,
 } from '../../Interfaces';
+import { updateEmployeeSharedDescription } from './sharedDescription';
 
 export const employeeUpdateDescription: EmployeeProperties = [
 	{
 		displayName: 'Employee ID',
-		name: 'id',
+		name: 'employeeId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -19,8 +20,26 @@ export const employeeUpdateDescription: EmployeeProperties = [
 			},
 		},
 		default: '',
-		description: 'ID of the employee',
 	},
+	{
+		displayName: 'Synced with Trax Payroll',
+		name: 'synced',
+		type: 'boolean',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'employee',
+				],
+			},
+		},
+		default: false,
+		description: 'Whether the employee to create was added to a pay schedule synced with Trax Payroll',
+	},
+	...updateEmployeeSharedDescription(true),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -38,47 +57,18 @@ export const employeeUpdateDescription: EmployeeProperties = [
 			},
 		},
 		options: [
+			...updateEmployeeSharedDescription(false),
 			{
-				displayName: 'Display Name',
-				name: 'displayName',
+				displayName: 'Work Email',
+				name: 'workEmail',
 				type: 'string',
 				default: '',
-				description: 'Display Name',
-			},
-			{
-				displayName: 'First Name',
-				name: 'firstName',
-				type: 'string',
-				default: '',
-				description: 'First name of the employee',
-			},
-			{
-				displayName: 'Last Name',
-				name: 'lastName',
-				type: 'string',
-				default: '',
-				description: 'Last name of the employee',
-			},
-			{
-				displayName: 'Preferred Name',
-				name: 'preferredName',
-				type: 'string',
-				default: '',
-				description: 'Preferred Name',
 			},
 			{
 				displayName: 'Work Phone',
 				name: 'workPhone',
 				type: 'string',
 				default: '',
-				description: 'Work Phone',
-			},
-			{
-				displayName: 'Mobile Phone',
-				name: 'mobilePhone',
-				type: 'string',
-				default: '',
-				description: 'Mobile Phone',
 			},
 		],
 	},

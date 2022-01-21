@@ -5,7 +5,7 @@ import {
 export const employeeGetDescription: EmployeeProperties = [
 	{
 		displayName: 'Employee ID',
-		name: 'id',
+		name: 'employeeId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -41,88 +41,13 @@ export const employeeGetDescription: EmployeeProperties = [
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'multiOptions',
-				options: [
-					{
-						name: '[All]',
-						value: 'all',
-					},
-					{
-						name: 'Display Name',
-						value: 'displayName',
-					},
-					{
-						name: 'First Name',
-						value: 'firstName',
-					},
-					{
-						name: 'Last Name',
-						value: 'lastName',
-					},
-					{
-						name: 'Preferred Name',
-						value: 'preferredName',
-					},
-					{
-						name: 'Job Title',
-						value: 'jobTitle',
-					},
-					{
-						name: 'Work Phone',
-						value: 'workPhone',
-					},
-					{
-						name: 'Mobile Phone',
-						value: 'mobilePhone',
-					},
-					{
-						name: 'Work Email',
-						value: 'workEmail',
-					},
-					{
-						name: 'Department',
-						value: 'department',
-					},
-					{
-						name: 'Location',
-						value: 'location',
-					},
-					{
-						name: 'Division',
-						value: 'division',
-					},
-					{
-						name: 'Facebook',
-						value: 'facebook',
-					},
-					{
-						name: 'LinkedIn',
-						value: 'linkedIn',
-					},
-					{
-						name: 'Twitter Feed',
-						value: 'twitterFeed',
-					},
-					{
-						name: 'Pronouns',
-						value: 'pronouns',
-					},
-					{
-						name: 'Work Phone Extension',
-						value: 'workPhoneExtension',
-					},
-					{
-						name: 'Supervisor',
-						value: 'supervisor',
-					},
-					{
-						name: 'Photo Url',
-						value: 'photoUrl',
-					},
-				],
+				typeOptions: {
+					loadOptionsMethod: 'getEmployeeFields',
+				},
 				default: [
 					'all',
 				],
-				description: 'Set of fields to get from employee data, separated by comma',
+				description: 'Set of fields to get from employee data',
 			},
 		],
 	},

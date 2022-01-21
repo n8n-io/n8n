@@ -2,7 +2,29 @@ import {
 	EmployeeProperties,
 } from '../../Interfaces';
 
+import {
+	createEmployeeSharedDescription,
+} from './shareDescription';
+
 export const employeeCreateDescription: EmployeeProperties = [
+	{
+		displayName: 'Synced with Trax Payroll',
+		name: 'synced',
+		type: 'boolean',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'employee',
+				],
+			},
+		},
+		default: false,
+		description: 'Whether the employee to create was added to a pay schedule synced with Trax Payroll',
+	},
 	{
 		displayName: 'First Name',
 		name: 'firstName',
@@ -19,7 +41,6 @@ export const employeeCreateDescription: EmployeeProperties = [
 			},
 		},
 		default: '',
-		description: 'First name of the employee',
 	},
 	{
 		displayName: 'Last Name',
@@ -37,8 +58,8 @@ export const employeeCreateDescription: EmployeeProperties = [
 			},
 		},
 		default: '',
-		description: 'Last name of the employee',
 	},
+	...createEmployeeSharedDescription(true),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -56,40 +77,18 @@ export const employeeCreateDescription: EmployeeProperties = [
 			},
 		},
 		options: [
+			...createEmployeeSharedDescription(false),
 			{
-				displayName: 'Display Name',
-				name: 'displayName',
+				displayName: 'Work Email',
+				name: 'workEmail',
 				type: 'string',
 				default: '',
-				description: 'Display Name',
-			},
-			{
-				displayName: 'Preferred Name',
-				name: 'preferredName',
-				type: 'string',
-				default: '',
-				description: 'Preferred Name',
 			},
 			{
 				displayName: 'Work Phone',
 				name: 'workPhone',
 				type: 'string',
 				default: '',
-				description: 'Work Phone',
-			},
-			{
-				displayName: 'Mobile Phone',
-				name: 'mobilePhone',
-				type: 'string',
-				default: '',
-				description: 'Mobile Phone',
-			},
-			{
-				displayName: 'Work Email',
-				name: 'workEmail',
-				type: 'string',
-				default: '',
-				description: 'Work Email',
 			},
 		],
 	},

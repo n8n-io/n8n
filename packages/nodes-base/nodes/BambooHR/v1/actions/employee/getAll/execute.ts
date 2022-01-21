@@ -24,10 +24,10 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return limited result
-	if (!returnAll && responseData.body.employees.length > limit) {
-		return this.helpers.returnJsonArray(responseData.body.employees.slice(0, limit));
+	if (!returnAll && responseData.employees.length > limit) {
+		return this.helpers.returnJsonArray(responseData.employees.slice(0, limit));
 	}
 
 	//return all result
-	return this.helpers.returnJsonArray(responseData.body.employees);
+	return this.helpers.returnJsonArray(responseData.employees);
 }

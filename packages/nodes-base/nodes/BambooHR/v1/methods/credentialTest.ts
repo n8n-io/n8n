@@ -10,12 +10,10 @@ export async function bambooHrApiCredentialTest(this: ICredentialTestFunctions, 
 	try {
 		await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			return {
-				status: 'Error',
-				message: 'The API Key included in the request is invalid',
-			};
-		}
+		return {
+			status: 'Error',
+			message: 'The API Key included in the request is invalid',
+		};
 	}
 
 	return {

@@ -47,8 +47,6 @@ export async function apiRequest(
 			username: apiKey as string,
 			password: 'x',
 		},
-		//@ts-ignore
-		resolveWithFullResponse: true,
 		json: true,
 	};
 
@@ -63,12 +61,13 @@ export async function apiRequest(
 	if (!Object.keys(query).length) {
 		delete options.qs;
 	}
-	console.log(options);
 
 	try {
 		//@ts-ignore
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		const description = error?.response?.headers['x-bamboohr-error-messsage'] || '';
+		const message = error?.message || '';
+		throw new NodeApiError(this.getNode(), error, { message, description });
 	}
 }
