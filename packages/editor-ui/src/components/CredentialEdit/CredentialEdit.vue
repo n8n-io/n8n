@@ -198,8 +198,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		if (this.credentialType) {
 			for (const property of this.credentialType.properties) {
 				if (!this.credentialData.hasOwnProperty(property.name)) {
-					this.credentialData[property.name] =
-						property.default as CredentialInformation;
+					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
 				}
 			}
 		}
