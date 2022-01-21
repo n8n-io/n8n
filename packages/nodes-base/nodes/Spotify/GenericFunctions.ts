@@ -66,7 +66,8 @@ export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 		uri = responseData.next || responseData[propertyName.split('.')[0]].next;
 		//remove the query as the query parameters are already included in the next, else api throws error.
 		query = {};
-		if (uri?.includes('offset=1000')) {
+		if (uri?.includes('offset=1000') && endpoint === '/search') {
+			// The search endpoint has a limit of 1000 so step before it returns a 404
 			return returnData;
 		}
 	} while (
