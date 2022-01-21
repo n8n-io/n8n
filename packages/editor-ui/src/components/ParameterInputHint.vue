@@ -1,8 +1,9 @@
 <template>
-	<n8n-text size="xsmall" color="text-base" compact="true" v-if="hint">
-		<span ref="hint" v-html="hint"></span>
-	</n8n-text>
-
+	<div>
+		<n8n-text size="xsmall" color="text-base" compact="true" v-if="hint">
+			<div ref="hint" v-html="hint"></div>
+		</n8n-text>
+	</div>
 </template>
 
 <script lang="ts">
@@ -18,4 +19,3 @@ export default Vue.extend({
 	},
 });
 </script>
-
