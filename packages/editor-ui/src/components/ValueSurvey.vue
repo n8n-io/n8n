@@ -1,6 +1,7 @@
 <template>
 	<ModalDrawer
 		:name="VALUE_SURVEY_MODAL_KEY"
+		:eventBus="modalBus"
 		:beforeClose="closeDialog"
 		:modal="false"
 		:wrapperClosable="false"
@@ -60,6 +61,7 @@ import ModalDrawer from './ModalDrawer.vue';
 
 import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import Vue from 'vue';
 
 const DEFAULT_TITLE = `How likely are you to recommend n8n to a friend or colleague?`;
 const GREAT_FEEDBACK_TITLE = `Great to hear! Can we reach out to see how we can make n8n even better for you?`;
@@ -104,6 +106,7 @@ export default mixins(workflowHelpers).extend({
 			},
 			showButtons: true,
 			VALUE_SURVEY_MODAL_KEY,
+			modalBus: new Vue(),
 		};
 	},
 	methods: {
@@ -119,8 +122,6 @@ export default mixins(workflowHelpers).extend({
 					email: '',
 				});
 			}
-
-			this.$store.commit('ui/closeTopModal');
 		},
 		onInputChange(value: string) {
 			this.form.email = value;
@@ -169,7 +170,7 @@ export default mixins(workflowHelpers).extend({
 					this.form.email = '';
 					this.showButtons = true;
 				}, 1000);
-				this.$store.commit('ui/closeTopModal');
+				this.modalBus.$emit('close');
 			}
 		},
 	},
