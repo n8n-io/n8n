@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const queryOptions = [
+export const submissionQueryOptions = [
 	{
 		displayName: 'Start',
 		name: 'start',
@@ -40,7 +40,7 @@ export const queryOptions = [
 	},
 	{
 		displayName: 'Query Options',
-		name: 'queryOptions',
+		name: 'submissionQueryOptions',
 		type: 'collection',
 		displayOptions: {
 			show: {

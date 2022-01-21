@@ -20,6 +20,11 @@ export const operations = [
 				value: 'get',
 				description: 'Retrieve a form definition',
 			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Retrieve all forms',
+			},
 		],
 		default: 'get',
 	},
@@ -101,6 +106,6 @@ export const operations = [
 				description: 'Retry a specific hook',
 			},
 		],
-		default: 'list',
+		default: 'getAll',
 	},
 ] as INodeProperties[];

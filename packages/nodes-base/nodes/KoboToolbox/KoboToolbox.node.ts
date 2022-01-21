@@ -6,7 +6,9 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	// LoggerProxy as Logger,
@@ -21,12 +23,13 @@ import {
 } from './GenericFunctions';
 
 import {
+	formQueryOptions,
 	generalOptions,
 	hookOptions,
 	operations,
 	options,
-	queryOptions,
 	submissionOptions,
+	submissionQueryOptions,
 } from './descriptions';
 
 export class KoboToolbox implements INodeType {
@@ -77,8 +80,9 @@ export class KoboToolbox implements INodeType {
 			...operations,
 			...generalOptions,
 			...submissionOptions,
+			...formQueryOptions,
 			...hookOptions,
-			...queryOptions,
+			...submissionQueryOptions,
 			{
 				...options,
 				displayOptions: {
@@ -132,6 +136,21 @@ export class KoboToolbox implements INodeType {
 				}
 			},
 		},
+
+		loadOptions: {
+			async loadSurveys(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const responseData = await koboToolboxApiRequest.call(this, {
+					url: '/api/v2/assets/',
+					qs: {
+						q: 'asset_type:survey',
+						ordering: 'name',
+					},
+				});
+
+				// Logger.debug('LoadSurveys', responseData);
+				return responseData.results?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];  // tslint:disable-line:no-any
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -147,12 +166,11 @@ export class KoboToolbox implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			// tslint:disable-next-line:variable-name - to stay consistent with the Kobo API doc conventions
-			const assetUid = this.getNodeParameter('assetUid', i) as string;
-
 			if (resource === 'submission') {
 				// *********************************************************************
 				//                             Submissions
 				// *********************************************************************
+				const assetUid = this.getNodeParameter('assetUid', i) as string;
 
 				if (operation === 'query') {
 					// ----------------------------------
@@ -161,7 +179,7 @@ export class KoboToolbox implements INodeType {
 
 					const limit = this.getNodeParameter('limit', i) as number;
 					const start = this.getNodeParameter('start', i) as number;
-					const queryOptions = this.getNodeParameter('queryOptions', i) as IDataObject;
+					const submissionQueryOptions = this.getNodeParameter('submissionQueryOptions', i) as IDataObject;
 					const formatOptions = this.getNodeParameter('formatOptions', i) as IDataObject;
 
 					({results: responseData} = await koboToolboxApiRequest.call(this, {
@@ -169,9 +187,9 @@ export class KoboToolbox implements INodeType {
 						qs: {
 							start,
 							limit,
-							...(queryOptions.query   && {query:  queryOptions.query}),
-							...(queryOptions.sort    && {sort:   queryOptions.sort}),
-							...(queryOptions.fields  && {fields: JSON.stringify(parseStringList(queryOptions.fields as string))}),
+							...(submissionQueryOptions.query   && {query:  submissionQueryOptions.query}),
+							...(submissionQueryOptions.sort    && {sort:   submissionQueryOptions.sort}),
+							...(submissionQueryOptions.fields  && {fields: JSON.stringify(parseStringList(submissionQueryOptions.fields as string))}),
 						},
 					}));
 
@@ -267,13 +285,30 @@ export class KoboToolbox implements INodeType {
 					// ----------------------------------
 					//          Form: get
 					// ----------------------------------
+					const assetUid = this.getNodeParameter('assetUid', i) as string;
 					responseData = [await koboToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${assetUid}`,
 					})];
 				}
+
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//          Form: getAll
+					// ----------------------------------
+					const formQueryOptions = this.getNodeParameter('formQueryOptions', i) as IDataObject;
+
+					({results: responseData} = await koboToolboxApiRequest.call(this, {
+						url: '/api/v2/assets/',
+						qs: {
+							...(formQueryOptions.filter    && {q:     formQueryOptions.filter}),
+							...(formQueryOptions.ordering  && {ordering: (formQueryOptions.descending ? '-' : '') + formQueryOptions.ordering}),
+						},
+					}));
+				}
 			}
 
 			if (resource === 'hook') {
+				const assetUid = this.getNodeParameter('assetUid', i) as string;
 				// *********************************************************************
 				//                             Hook
 				// *********************************************************************
