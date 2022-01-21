@@ -2,6 +2,7 @@ import {
 	// IAuthenticateBasicAuth,
 	// IAuthenticateBearer,
 	IAuthenticateHeaderAuth,
+	// IAuthenticateQueryAuth,
 	// ICredentialDataDecryptedObject,
 	ICredentialType,
 	// IHttpRequestOptions,
@@ -53,4 +54,11 @@ export class AsanaApi implements ICredentialType {
 	// 	},
 	// } as IAuthenticateBasicAuth;
 
+	// authenticate = {
+	// 	type: 'queryAuth',
+	// 	properties: {
+	// 		key: 'accessToken',
+	// 		value: '={{$credentials.accessToken}}',
+	// 	},
+	// } as IAuthenticateQueryAuth;
 }

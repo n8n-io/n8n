@@ -144,6 +144,26 @@ export class CredentialsHelper extends ICredentialsHelper {
 						node,
 					);
 					requestOptions.headers[key] = value;
+				} else if (authenticate.type === 'queryAuth') {
+					const key = this.resolveValue(
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						authenticate.properties.key,
+						{ $credentials: credentials },
+						workflow,
+						node,
+					);
+
+					const value = this.resolveValue(
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						authenticate.properties.value,
+						{ $credentials: credentials },
+						workflow,
+						node,
+					);
+					if (!requestOptions.qs) {
+						requestOptions.qs = {};
+					}
+					requestOptions.qs[key] = value;
 				}
 			}
 		}

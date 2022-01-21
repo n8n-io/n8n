@@ -293,7 +293,7 @@ export class RoutingNode {
 		};
 
 		if (requestData.pagination && requestOperations?.pagination) {
-			// No pagination
+			// Has pagination
 
 			if (typeof requestOperations.pagination === 'function') {
 				// Pagination via function

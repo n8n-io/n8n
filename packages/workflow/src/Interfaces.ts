@@ -201,6 +201,14 @@ export interface IAuthenticateHeaderAuth extends IAuthenticateBase {
 	};
 }
 
+export interface IAuthenticateQueryAuth extends IAuthenticateBase {
+	type: 'queryAuth';
+	properties: {
+		key: string;
+		value: string;
+	};
+}
+
 export type IAuthenticate =
 	| ((
 			credentials: ICredentialDataDecryptedObject,
@@ -208,7 +216,8 @@ export type IAuthenticate =
 	  ) => Promise<IHttpRequestOptions>)
 	| IAuthenticateBasicAuth
 	| IAuthenticateBearer
-	| IAuthenticateHeaderAuth;
+	| IAuthenticateHeaderAuth
+	| IAuthenticateQueryAuth;
 
 export interface IAuthenticateRuleBase {
 	type: string;
