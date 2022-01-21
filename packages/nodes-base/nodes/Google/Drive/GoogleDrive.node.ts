@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -2423,7 +2420,7 @@ export class GoogleDrive implements INodeType {
 								originalFilename = item.binary[propertyNameUpload].fileName;
 							}
 
-							body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
+							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
 						} else {
 							// Is text file
 							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');

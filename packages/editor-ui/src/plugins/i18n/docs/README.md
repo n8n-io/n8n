@@ -6,251 +6,150 @@ n8n allows for internalization of the majority of UI text:
 
 - base text, e.g. menu display items in the left-hand sidebar menu,
 - node text, e.g. parameter display names and placeholders in the node view,
-- header text, e.g. node display names and descriptions in the nodes panel.
+- header text, e.g. node display names and descriptions at various spots.
 
 Currently, n8n does _not_ allow for internalization of:
 
 - messages from outside the `editor-ui` package, e.g. `No active database connection`,
+- strings in certain Vue components, e.g. date time picker
 - node subtitles, e.g. `create: user` or `getAll: post` below the node name on the canvas,
-- new version notification contents in the updates panel, e.g. `Includes node enhancements`.
+- new version notification contents in the updates panel, e.g. `Includes node enhancements`, and
+- options that rely on `loadOptionsMethod`.
+
+Pending functionality:
+- Search in nodes panel by translated node name
+- UI responsiveness to differently sized strings
+- Locale-aware number formatting
 
 ## Locale identifiers
 
-A locale identifier is a language code compatible with the [`Accept-Language` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Language), e.g. `de` (German), `es` (Spanish), `ja` (Japanese). Regional variants of locale identifiers are not supported, i.e. use `de`, not `de-AT`. For a list of all locale identifiers, refer to the [639-1 column in the ISO 639-1 codes article](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes).
+A **locale identifier** is a language code compatible with the [`Accept-Language` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Language), e.g. `de` (German), `es` (Spanish), `ja` (Japanese). Regional variants of locale identifiers, such as `-AT` in `de-AT`, are _not_ supported. For a list of all locale identifiers, see [column 639-1 in this table](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes).
 
-By default, n8n runs in the `en` (English) locale. To have it run in a different locale, set the `N8N_DEFAULT_LOCALE` environment variable. If it has been set and is not `en`, n8n will use the UI strings for that locale - for any untranslated UI strings, n8n will automatically fall back to `en`.
+By default, n8n runs in the `en` (English) locale. To have run it in a different locale, set the `N8N_DEFAULT_LOCALE` environment variable to a locale identifier. When running in a non-`en` locale, n8n will display UI strings for the selected locale and fall back to `en` for any untranslated strings.
 
-```sh
+```
 export N8N_DEFAULT_LOCALE=de
 npm run start
 ```
 
+Output:
+
+```
+Initializing n8n process
+n8n ready on 0.0.0.0, port 5678
+Version: 0.156.0
+Locale: de
+
+Editor is now accessible via:
+http://localhost:5678/
+
+Press "o" to open in Browser.
+```
+
 ## Base text
 
-Base text is directly rendered with no dependencies. Base text is supplied by the user in one file per locale in the `/editor-ui` package.
+Base text is rendered with no dependencies, i.e. base text is fixed and does not change in any circumstances. Base text is supplied by the user in one file per locale in the `/editor-ui` package.
 
 ### Locating base text
 
-Each base text file is located at `/packages/editor-ui/src/plugins/i18n/locales/{localeIdentifier}.json` and exports an object where keys are Vue component names (and their containing dirs if any) and references to parts of those Vue components.
+The base text file for each locale is located at `/packages/editor-ui/src/plugins/i18n/locales/` and is named `{localeIdentifier}.json`. Keys in the base text file can be Vue component dirs, Vue component names, and references to symbols in those Vue components. These keys are added by the team as the UI is modified or expanded.
 
 ```json
 "nodeCreator": {
 	"categoryNames": {
 		"analytics": "🇩🇪 Analytics",
 		"communication": "🇩🇪 Communication",
-		"coreNodes": "🇩🇪 Core Nodes",
+		"coreNodes": "🇩🇪 Core Nodes"
+	}
+}
 ```
 
 ### Translating base text
 
-1. For the new locale identifier, e.g. `de`, copy the `en` base text and rename it:
+1. Select a new locale identifier, e.g. `de`, copy the `en` JSON base text file with a new name:
 
-```sh
+```
 cp ./packages/editor-ui/src/plugins/i18n/locales/en.json ./packages/editor-ui/src/plugins/i18n/locales/de.json
 ```
 
-2. Check in the UI for a base text string to translate, and find it in the newly created base text file.
+2. Find in the UI a string to translate, and search for it in the newly created base text file. Alternatively, find in `/editor-ui` a call to `$locale.baseText(key)`, e.g. `$locale.baseText('workflowActivator.deactivateWorkflow')`, and take note of the key and find it in the newly created base text file.
 
 > **Note**: If you cannot find a string in the new base text file, either it does not belong to base text (i.e., the string might be part of header text, credential text, or node text), or the string might belong to the backend, where i18n is currently unsupported.
 
-3. Translate the string value - do not change the key. In the examples below, a string starting with 🇩🇪 stands for a translated string.
+3. Translate the string value - do not change the key. In the examples below, a string starting with 🇩🇪 stands for a string translated from English into German.
 
-Optionally, remove any untranslated strings from the new base text file. Untranslated strings in the new base text file will automatically fall back to the `en` base text file.
+As an optional final step, remove any untranslated strings from the new base text file. Untranslated strings in the new base text file will trigger a fallback to the `en` base text file.
 
-#### Reusable base text
-
-As a convenience, the base text file may contain the special key `reusableBaseText` to share strings between translations. For more information, refer to Vue i18n's [linked locale messages](https://kazupon.github.io/vue-i18n/guide/messages.html#linked-locale-messages).
-
-```json
-{
-	"reusableBaseText": {
-		"save": "🇩🇪 Save",
-	},
-	"duplicateWorkflowDialog": {
-		"enterWorkflowName": "🇩🇪 Enter workflow name",
-		"save": "@:reusableBaseText.save",
-	},
-	"saveButton": {
-		"save": "@:reusableBaseText.save",
-		"saving": "🇩🇪 Saving",
-		"saved": "🇩🇪 Saved",
-	},
-```
-
-<!--
-As a convenience, the base text file may also contain the special key `numberFormats` to localize numbers. For more information, refer to Vue i18n's [number localization](https://kazupon.github.io/vue-i18n/guide/number.html#number-localization).
-
-```json
-{
-	"numberFormats": {
-		"decimal": {
-			"style": "decimal",
-		},
-	},
-}
-``` -->
-
-#### Interpolation
-
-Some base text strings use [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) with a variable in curly braces, e.g. `Execution ID {activeExecutionId} was stopped`. In case of interpolation, the translated string must not modify the variable: `Die Ausführung mit der ID {activeExecutionId} wurde gestoppt`.
+> For information about **interpolation** and **reusable base text**, refer to the [Addendum](./ADDENDUM.md).
 
 ## Dynamic text
 
-Dynamic text is **text that relies on node-related data** in order to be rendered. Node-related data is supplied by the user in multiple files in the `/nodes-base` package. Dynamic text is mostly visible in the node view, i.e. the node on the canvas and the node parameters modal.
+Dynamic text relies on data specific to each node and credential:
+
+- `headerText` and `nodeText` in the **node translation file**
+- `credText` in the **credential translation file**
 
 ### Locating dynamic text
 
-Dynamic text is divided into files located in `/translations` dirs alongside the translated nodes:
+#### Locating the credential translation file
+
+A credential translation file is placed at `/nodes-base/credentials/translations/{localeIdentifier}`
 
 ```
-GitHub
-  ├── GitHub.node.ts
-  ├── GitHubTrigger.node.ts
-  └── translations
-      ├── de.json
-      ├── es.json
-      └── ja.json
+credentials
+	└── translations
+			└── de
+				├── githubApi.json
+				└── githubOAuth2Api.json
 ```
+Every credential must have its own credential translation file.
 
-Each node translation file may contain the translations for one or both (regular and trigger) nodes.
-
-For nodes in grouping dirs, e.g. `Google`, `Aws`, and `Microsoft`, locate the `/translations` dir alongside the `*.node.ts` file:
-
-```
-Google
-  └── Drive
-      ├── GoogleDrive.node.ts
-      └── translations
-          ├── de.json
-          ├── es.json
-          └── ja.json
-```
-
-For nodes in versioned dirs, locate the `/translations` dir alongside the versioned `*.node.ts` file:
-
-```
-Mattermost
-  └── Mattermost.node.ts
-      └── v1
-          ├── MattermostV1.node.ts
-          ├── actions
-          ├── methods
-          ├── transport
-          └── translations
-               ├── de.json
-               ├── es.json
-               └── ja.json
-```
-
-### Translating dynamic text
-
-> **Note**: In the examples below, the node source is located at `/packages/nodes-base/nodes/Github/GitHub.node.ts` and the node translation is located at `/packages/nodes-base/nodes/Github/translations/de.json`.
-
-Each node translation is an object with a key that matches the node's `description.name`:
-
-```ts
-export class Github implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'GitHub',
-		description: 'Consume GitHub API',
-		name: 'github', // key to use in translation
-		icon: 'file:github.svg',
-		group: ['input'],
-		version: 1,
-```
-
-```json
-{
-	"github": {}, // key from node's description.name
-	"githubTrigger": {}, // key from node's description.name
-}
-```
-
-The object inside allows for three keys: `header`, `credentialsModal` and `nodeView`. These are the _sections_ of each node translation:
-
-```json
-{
-	"github": {
-		"header": {},
-		"credentialsModal": {},
-		"nodeView": {},
-	},
-	"githubTrigger": {
-		"header": {},
-		"credentialsModal": {},
-		"nodeView": {},
-	},
-}
-```
-
-> **Note**: These three keys as well as all keys described below are optional. Remember that, in case of missing sections or missing translations, n8n will fall back to the `en` locale.
-
-#### `header` section
-
-The `header` section points to an object that may contain only two keys, `displayName` and `description`, matching the node's `description.displayName` and `description.description`. These are used in the nodes panel, in the node view and in the node credentials modal.
-
-```ts
-export class Github implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'GitHub', // key to use in translation
-		description: 'Consume GitHub API', // key to use in translation
-		name: 'github',
-		icon: 'file:github.svg',
-		group: ['input'],
-		version: 1,
-```
-
-```json
-{
-	"github": {
-		"header": {
-			"displayName": "🇩🇪 GitHub",
-			"description": "🇩🇪 Consume GitHub API",
-		},
-	},
-}
-```
-
-Header text is used wherever the node's display name and description are needed:
-
-<p align="center">
-    <img src="img/header1.png" width="400">
-    <img src="img/header2.png" width="200">
-    <img src="img/header3.png" width="400">
-</p>
-
-<p align="center">
-    <img src="img/header4.png" width="400">
-    <img src="img/header5.png" width="500">
-</p>
-
-#### `credentialsModal` section
-
-> **Note**: In the examples below, the node credential source is located at `/packages/nodes-base/credentials/GithubApi.credentials.ts`.
-
-The `credentialsModal` section points to an object containing a key that matches the node credential `name`.
+The name of the credential translation file must be sourced from the credential's `description.name` property:
 
 ```ts
 export class GithubApi implements ICredentialType {
-	name = 'githubApi'; // key to use in translation
+	name = 'githubApi'; // to use for credential translation file
 	displayName = 'Github API';
 	documentationUrl = 'github';
 	properties: INodeProperties[] = [
 ```
 
-```json
-{
-	"github": {
-		"header": {},
-		"credentialsModal": {
-			"githubApi": {} // key from node credential name
-		},
-		"nodeView": {},
-	},
-}
+#### Locating the node translation file
+
+A node translation file is placed at `/nodes-base/nodes/{node}/translations/{localeIdentifier}`
+
+```
+GitHub
+	├── GitHub.node.ts
+	├── GitHubTrigger.node.ts
+	└── translations
+			└── de
+				├── github.json
+				└── githubTrigger.json
 ```
 
-The node credential `name` key points to an object containing translation keys that match the node's credential parameter names:
+Every node must have its own node translation file.
+
+> For information about nodes in **versioned dirs** and **grouping dirs**, refer to the [Addendum](./ADDENDUM.md).
+
+The name of the node translation file must be sourced from the node's `description.name` property:
+
+```ts
+export class Github implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'GitHub',
+		name: 'github', // to use for node translation file name
+		icon: 'file:github.svg',
+		group: ['input'],
+```
+
+### Translating dynamic text
+
+#### Translating the credential translation file
+
+> **Note**: All translation keys are optional. Missing translation values trigger a fallback to the `en` locale strings.
+
+A credential translation file, e.g. `githubApi.json` is an object containing keys that match the credential parameter names:
 
 ```ts
 export class GithubApi implements ICredentialType {
@@ -281,54 +180,71 @@ export class GithubApi implements ICredentialType {
 }
 ```
 
-```json
-{
-	"github": {
-		"header": {},
-		"credentialsModal": {
-			"githubApi": {
-				"server": {} // key from node credential parameter name
-				"user": {} // key from node credential parameter name
-				"accessToken": {} // key from node credential parameter name
-			},
-		},
-		"nodeView": {},
-	},
-}
-```
-
 The object for each node credential parameter allows for the keys `displayName`, `description`, and `placeholder`.
 
 ```json
 {
-	"github": {
-		"header": {},
-		"credentialsModal": {
-			"githubApi": {
-				"server": {
-					"displayName": "🇩🇪 Github Server",
-					"description": "🇩🇪 The server to connect to. Only has to be set if Github Enterprise is used.",
-				},
-				"user": {
-					"placeholder": "🇩🇪 Hans",
-				},
-				"accessToken": {
-					"placeholder": "🇩🇪 123",
-				},
-			},
-		},
-		"nodeView": {},
+	"server": {
+		"displayName": "🇩🇪 Github Server",
+		"description": "🇩🇪 The server to connect to. Only has to be set if Github Enterprise is used.",
+	},
+	"user": {
+		"placeholder": "🇩🇪 Hans",
+	},
+	"accessToken": {
+		"placeholder": "🇩🇪 123",
 	},
 }
 ```
 
 <p align="center">
-    <img src="img/cred.png">
+	<img src="img/cred.png">
 </p>
 
-#### `nodeView` section
+Only existing parameters are translatable. If a credential parameter does not have a description in the English original, adding a translation for that non-existing parameter will not result in the translation being displayed - the parameter will need to be added in the English original first.
 
-The `nodeView` section points to an object containing translation keys that match the node's operational parameters.
+#### Translating the node translation file
+
+> **Note**: All keys are optional. Missing translations trigger a fallback to the `en` locale strings.
+
+Each node translation file is an object that allows for two keys, `header` and `nodeView`, which are the _sections_ of each node translation.
+
+The `header` section points to an object that may contain only two keys, `displayName` and `description`, matching the node's `description.displayName` and `description.description`.
+
+```ts
+export class Github implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'GitHub', // key to use in translation
+		description: 'Consume GitHub API', // key to use in translation
+		name: 'github',
+		icon: 'file:github.svg',
+		group: ['input'],
+		version: 1,
+```
+
+```json
+{
+	"header": {
+		"displayName": "🇩🇪 GitHub",
+		"description": "🇩🇪 Consume GitHub API",
+	},
+}
+```
+
+Header text is used wherever the node's display name and description are needed:
+
+<p align="center">
+		<img src="img/header1.png" width="400">
+		<img src="img/header2.png" width="200">
+		<img src="img/header3.png" width="400">
+</p>
+
+<p align="center">
+		<img src="img/header4.png" width="400">
+		<img src="img/header5.png" width="500">
+</p>
+
+In turn, the `nodeView` section points to an object containing translation keys that match the node's operational parameters, found in the `*.node.ts` and also found in `*Description.ts` files in the same dir.
 
 ```ts
 export class Github implements INodeType {
@@ -348,23 +264,19 @@ export class Github implements INodeType {
 
 ```json
 {
-	"github": {
-		"header": {},
-		"credentialsModal": {},
-		"nodeView": {
-			"resource": {}, // key from node parameter name
+	"nodeView": {
+		"resource": {
+			"displayName": "🇩🇪 Resource",
 		},
 	},
 }
 ```
 
-> **Note**: Other than in the `*.node.ts` file, operational parameters may also be found in `*Description.ts` files in the same dir, e.g. `UserDescription.ts`.
-
 A node parameter allows for different translation keys depending on parameter type.
 
 #### `string`, `number` and `boolean` parameters
 
-Allowed keys: `displayName`, `description`, and `placeholder`.
+Allowed keys: `displayName`, `description`, `placeholder`
 
 ```ts
 {
@@ -379,31 +291,27 @@ Allowed keys: `displayName`, `description`, and `placeholder`.
 
 ```json
 {
-	"github": {
-		"header": {},
-		"credentialsModal": {},
-		"nodeView": {
-			"owner": { // key from node parameter name
-				"displayName": "🇩🇪 Repository Owner",
-				"placeholder": "🇩🇪 n8n-io",
-				"description": "🇩🇪 Owner of the repository.",
-			},
+	"nodeView": {
+		"owner": {
+			"displayName": "🇩🇪 Repository Owner",
+			"placeholder": "🇩🇪 n8n-io",
+			"description": "🇩🇪 Owner of the repository",
 		},
 	},
 }
 ```
 
 <p align="center">
-    <img src="img/node1.png" width="400">
+	<img src="img/node1.png" width="400">
 </p>
 
 #### `options` parameter
 
-Allowed keys: `displayName`, `description`, and `placeholder`.
+Allowed keys: `displayName`, `description`, `placeholder`
 
 Allowed subkeys: `options.{optionName}.displayName` and `options.{optionName}.description`.
 
-```ts
+```js
 {
 	displayName: 'Resource',
 	name: 'resource',
@@ -419,26 +327,22 @@ Allowed subkeys: `options.{optionName}.displayName` and `options.{optionName}.de
 		},
 	],
 	default: 'issue',
-	description: 'The resource to operate on.',
+	description: 'Resource to operate on',
 },
 ```
 
 ```json
 {
-	"github": {
-		"header": {},
-		"credentialsModal": {},
-		"nodeView": {
-			"resource": {
-				"displayName": "🇩🇪 Resource",
-				"description": "🇩🇪 The resource to operate on.",
-				"options": {
-					"file": { // key from node parameter options name
-						"displayName": "🇩🇪 File",
-					},
-					"issue": { // key from node parameter options name
-						"displayName": "🇩🇪 Issue",
-					},
+	"nodeView": {
+		"resource": {
+			"displayName": "🇩🇪 Resource",
+			"description": "🇩🇪 Resource to operate on",
+			"options": {
+				"file": {
+					"displayName": "🇩🇪 File",
+				},
+				"issue": {
+					"displayName": "🇩🇪 Issue",
 				},
 			},
 		},
@@ -447,14 +351,16 @@ Allowed subkeys: `options.{optionName}.displayName` and `options.{optionName}.de
 ```
 
 <p align="center">
-    <img src="img/node2.png" width="400">
+	<img src="img/node2.png" width="400">
 </p>
 
 #### `collection` and `fixedCollection` parameters
 
-Allowed keys: `displayName`, `description`, `placeholder`, and `multipleValueButtonText`.
+Allowed keys: `displayName`, `description`, `placeholder`, `multipleValueButtonText`
 
-```ts
+Example of `collection` parameter:
+
+```js
 {
 	displayName: 'Labels',
 	name: 'labels', // key to use in translation
@@ -480,68 +386,112 @@ Allowed keys: `displayName`, `description`, `placeholder`, and `multipleValueBut
 			name: 'label', // key to use in translation
 			type: 'string',
 			default: '',
-			description: 'Label to add to issue.',
+			description: 'Label to add to issue',
 		},
 	],
 },
 ```
 
-To reduce nesting and to share translations, a parameter inside a collection's or fixed collection's `options` parameter sits at the same level of nesting as the containing collection in the `nodeView` section:
+```json
+{
+	"nodeView": {
+		"labels": {
+			"displayName": "🇩🇪 Labels",
+			"multipleValueButtonText": "🇩🇪 Add Label",
+			"options": {
+				"label": {
+					"displayName": "🇩🇪 Label",
+					"description": "🇩🇪 Label to add to issue",
+					"placeholder": "🇩🇪 Some placeholder"
+				}
+			}
+		}
+	}
+}
+```
+
+Example of `fixedCollection` parameter:
+
+```js
+{
+	displayName: 'Additional Parameters',
+	name: 'additionalParameters',
+	placeholder: 'Add Parameter',
+	description: 'Additional fields to add.',
+	type: 'fixedCollection',
+	default: {},
+	displayOptions: {
+		show: {
+			operation: [
+				'create',
+				'delete',
+				'edit',
+			],
+			resource: [
+				'file',
+			],
+		},
+	},
+	options: [
+		{
+			name: 'author',
+			displayName: 'Author',
+			values: [
+				{
+					displayName: 'Name',
+					name: 'name',
+					type: 'string',
+					default: '',
+					description: 'Name of the author of the commit',
+					placeholder: 'John',
+				},
+				{
+					displayName: 'Email',
+					name: 'email',
+					type: 'string',
+					default: '',
+					description: 'Email of the author of the commit',
+					placeholder: 'john@email.com',
+				},
+			],
+		},
+	],
+}
+```
 
 ```json
 {
-	"github": {
-		"header": {},
-		"credentialsModal": {},
-		"nodeView": {
-			// collection
-			"labels": {
-				"displayName": "🇩🇪 Labels",
-				"multipleValueButtonText": "🇩🇪 Add Label",
-			},
-			// collection item - same level of nesting
-			"label": {
-				"displayName": "🇩🇪 Label",
-				"description": "🇩🇪 Label to add to issue.",
-			},
-
-			// fixed collection
-			"additionalParameters": {
-				"displayName": "🇩🇪 Additional Fields",
-				"options": {
-					"author": {
-						"displayName": "🇩🇪 Author",
-					},
+	"nodeView": {
+		"additionalParameters": {
+		"displayName": "🇩🇪 Additional Parameters",
+			"placeholder": "🇩🇪 Add Field",
+			"options": {
+				"author": {
+					"displayName": "🇩🇪 Author",
+					"values": {
+						"name": {
+							"displayName": "🇩🇪 Name",
+							"description": "🇩🇪 Name of the author of the commit",
+							"placeholder": "🇩🇪 Jan"
+						},
+						"email": {
+							"displayName": "🇩🇪 Email",
+							"description": "🇩🇪 Email of the author of the commit",
+							"placeholder": "🇩🇪 jan@n8n.io"
+						}
+					}
 				},
-			},
-			// fixed collection item - same level of nesting
-			"author": {
-				"displayName": "🇩🇪 Author",
-			},
-		},
-	},
+			}
+		}
+	}
 }
 ```
 
 <p align="center">
-    <img src="img/node4.png" width="400">
+		<img src="img/node4.png" width="400">
 </p>
 
-> **Note**: In case of deep nesting, i.e. a child of a child of a `collection` and `fixedCollection` parameter, the deeply nested child in principle should be translatable at the same level of nesting as the `collection` and `fixedCollection` parameter, but this has not been fully tested for this first release.
-
-#### Reusable dynamic text
-
-The base text file may contain the special key `reusableDynamicText`, allowing for a node parameter to be translated once and reused in all other node parameter translations.
-
-Currently only the keys `oauth.clientId` and `oauth.clientSecret` are supported as a PoC - these two translations will be reused in all node credential parameters.
-
-```json
-{
-	"reusableDynamicText": {
-		"oauth2": {
-			"clientId": "🇩🇪 Client ID",
-			"clientSecret": "🇩🇪 Client Secret",
-```
+> For information on **reusable dynamic text**, refer to the [Addendum](./ADDENDUM.md).
 
 # Building translations
 
@@ -568,7 +518,7 @@ Changing the base text file will trigger a rebuild of the client at `http://loca
 
 ## Dynamic text
 
-When translating a dynamic text file at `/packages/nodes-base/nodes/{node}/translations/{localeIdentifier}.json`,
+When translating a dynamic text file at `/packages/nodes-base/nodes/{node}/translations/{localeIdentifier}/{node}.json`,
 
 1. Open a terminal:
 

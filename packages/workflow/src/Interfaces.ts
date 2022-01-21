@@ -807,6 +807,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number;
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
+	activationMessage?: string;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];
@@ -1097,6 +1098,8 @@ export interface INodeGraphItem {
 	resource?: string;
 	operation?: string;
 	domain?: string;
+	position: [number, number];
+	mode?: string;
 }
 
 export interface INodeNameIndex {
