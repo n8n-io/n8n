@@ -472,7 +472,7 @@
 		},
 		"clickOnTheQuestionMarkIcon": "Click the '?' icon to open this node on n8n.io",
 		"continueOnFail": {
-			"description": "If active, the workflow continues even if this node's <br />execution fails. When this occurs, the node passes along input data from<br />previous nodes - so your workflow should account for unexpected output data.",
+			"description": "If active, the workflow continues even if this node's execution fails. When this occurs, the node passes along input data from previous nodes - so your workflow should account for unexpected output data.",
 			"displayName": "Continue On Fail"
 		},
 		"executeOnce": {
@@ -891,12 +891,6 @@
 	},
 	"workflowActivator": {
 		"activateWorkflow": "Activate workflow",
-		"confirmMessage": {
-			"cancelButtonText": "",
-			"confirmButtonText": "Yes, activate and save!",
-			"headline": "Activate and save?",
-			"message": "When you activate the workflow all currently unsaved changes of the workflow will be saved."
-		},
 		"deactivateWorkflow": "Deactivate workflow",
 		"showError": {
 			"message": "There was a problem and the workflow could not be {newStateName}",
@@ -920,7 +914,8 @@
 				"title": "Problem activating workflow"
 			}
 		},
-		"theWorkflowIsSetToBeActiveBut": "The workflow is set to be active but could not be started.<br />Click to display error message."
+		"theWorkflowIsSetToBeActiveBut": "The workflow is set to be active but could not be started.<br />Click to display error message.",
+		"thisWorkflowHasNoTriggerNodes": "This workflow has no trigger nodes that require activation"
 	},
 	"workflowDetails": {
 		"active": "Active",
@@ -1040,5 +1035,19 @@
 		"timeoutAfter": "Timeout After",
 		"timeoutWorkflow": "Timeout Workflow",
 		"timezone": "Timezone"
+	},
+	"activationModal": {
+		"workflowActivated": "Workflow activated",
+		"theseExecutionsWillNotShowUp": "These executions will not show up immediately in the editor,",
+		"butYouCanSeeThem": "but you can see them in the",
+		"executionList": "execution list",
+		"ifYouChooseTo": "if you choose to",
+		"saveExecutions": "save executions.",
+		"dontShowAgain": "Don't show again",
+		"yourTriggersWillNowFire": "Your triggers will now fire production executions automatically.",
+		"yourTriggerWillNowFire": "Your trigger will now fire production executions automatically.",
+		"yourWorkflowWillNowRegularlyCheck": "Your workflow will now regularly check {serviceName} for events and trigger executions for them.",
+		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
+		"gotIt": "Got it"
 	}
 }
