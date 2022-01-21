@@ -30,7 +30,6 @@ export class Dropcontact implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Dropcontact',
-			color: '#0ABA9F',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

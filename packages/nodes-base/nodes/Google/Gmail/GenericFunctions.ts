@@ -3,7 +3,6 @@ import {
 } from 'request';
 
 import {
-	ParsedMail,
 	simpleParser,
 } from 'mailparser';
 
@@ -28,6 +27,13 @@ import {
 import * as moment from 'moment-timezone';
 
 import * as jwt from 'jsonwebtoken';
+
+interface IGoogleAuthCredentials {
+	delegatedEmail?: string;
+	email: string;
+	inpersonate: boolean;
+	privateKey: string;
+}
 
 const mailComposer = require('nodemailer/lib/mail-composer');
 
@@ -63,7 +69,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
-			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
+			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			//@ts-ignore
@@ -202,7 +208,7 @@ export function extractEmail(s: string) {
 	return data.substring(0, data.length - 1);
 }
 
-function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject): Promise<IDataObject> {
+function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -216,6 +222,9 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	const now = moment().unix();
 
+	credentials.email = credentials.email.trim();
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+
 	const signature = jwt.sign(
 		{
 			'iss': credentials.email as string,
@@ -225,11 +234,11 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			'iat': now,
 			'exp': now + 3600,
 		},
-		credentials.privateKey as string,
+		privateKey,
 		{
 			algorithm: 'RS256',
 			header: {
-				'kid': credentials.privateKey as string,
+				'kid': privateKey,
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},
@@ -252,4 +261,3 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	//@ts-ignore
 	return this.helpers.request(options);
 }
-

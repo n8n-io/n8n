@@ -56,7 +56,6 @@ export class Splunk implements INodeType {
 		description: 'Consume the Splunk Enterprise API',
 		defaults: {
 			name: 'Splunk',
-			color: '#e20082',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

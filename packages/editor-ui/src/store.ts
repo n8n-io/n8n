@@ -46,8 +46,10 @@ const state: IRootState = {
 	activeWorkflows: [],
 	activeActions: [],
 	activeNode: null,
+	activeCredentialType: null,
 	// @ts-ignore
 	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
+	defaultLocale: 'en',
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
 	executionId: null,
@@ -552,8 +554,14 @@ export const store = new Vuex.Store({
 		setN8nMetadata(state, metadata: IDataObject) {
 			Vue.set(state, 'n8nMetadata', metadata);
 		},
+		setDefaultLocale(state, locale: string) {
+			Vue.set(state, 'defaultLocale', locale);
+		},
 		setActiveNode (state, nodeName: string) {
 			state.activeNode = nodeName;
+		},
+		setActiveCredentialType (state, activeCredentialType: string) {
+			state.activeCredentialType = activeCredentialType;
 		},
 
 		setLastSelectedNode (state, nodeName: string) {
@@ -639,6 +647,9 @@ export const store = new Vuex.Store({
 		},
 	},
 	getters: {
+		activeCredentialType: (state): string | null => {
+			return state.activeCredentialType;
+		},
 
 		isActionActive: (state) => (action: string): boolean => {
 			return state.activeActions.includes(action);
@@ -728,6 +739,9 @@ export const store = new Vuex.Store({
 		n8nMetadata: (state): object => {
 			return state.n8nMetadata;
 		},
+		defaultLocale: (state): string => {
+			return state.defaultLocale;
+		},
 
 		// Push Connection
 		pushConnectionActive: (state): boolean => {
@@ -812,6 +826,21 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
+
+		/**
+		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
+		 */
+		nativelyNumberSuffixedDefaults: (_, getters): string[] => {
+			const { allNodeTypes } = getters as {
+				allNodeTypes: Array<INodeTypeDescription & { defaults: { name: string } }>;
+			};
+
+			return allNodeTypes.reduce<string[]>((acc, cur) => {
+				if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
+				return acc;
+			}, []);
+		},
+
 		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
 				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);

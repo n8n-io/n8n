@@ -26,7 +26,6 @@ export class Airtable implements INodeType {
 		description: 'Read, update, write and delete data from Airtable',
 		defaults: {
 			name: 'Airtable',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

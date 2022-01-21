@@ -70,7 +70,6 @@ export class HomeAssistant implements INodeType {
 		description: 'Consume Home Assistant API',
 		defaults: {
 			name: 'Home Assistant',
-			color: '#3578e5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

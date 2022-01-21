@@ -66,7 +66,6 @@ export class Jira implements INodeType {
 		description: 'Consume Jira Software API',
 		defaults: {
 			name: 'Jira',
-			color: '#4185f7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

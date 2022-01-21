@@ -1,29 +1,29 @@
-<template functional>
+<template>
 	<!-- eslint-disable-next-line vue/no-mutating-props -->
-	<a v-if="props.version" :set="version = props.version" :href="version.documentationUrl" target="_blank" :class="$style.card">
+	<a v-if="version" :set="version = version" :href="version.documentationUrl" target="_blank" :class="$style.card">
 		<div :class="$style.header">
 			<div>
 				<div :class="$style.name">
-					Version {{version.name}}
+					{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
 				</div>
 				<WarningTooltip v-if="version.hasSecurityIssue">
 					<template>
-						This version has a security issue.<br/>It is listed here for completeness.
+						{{ $locale.baseText('versionCard.thisVersionHasASecurityIssue') }}
 					</template>
 				</WarningTooltip>
 				<Badge
 					v-if="version.hasSecurityFix"
-					text="Security update"
+					:text="$locale.baseText('versionCard.securityUpdate')"
 					type="danger"
 				/>
 				<Badge
 					v-if="version.hasBreakingChange"
-					text="Breaking changes"
+					:text="$locale.baseText('versionCard.breakingChanges')"
 					type="warning"
 				/>
 			</div>
 			<div :class="$style['release-date']">
-				Released&nbsp;<TimeAgo :date="version.createdAt" />
+				{{ $locale.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
 			</div>
 		</div>
 		<div :class="$style.divider" v-if="version.description || (version.nodes && version.nodes.length)"></div>
@@ -56,11 +56,11 @@ Vue.component('WarningTooltip', WarningTooltip);
 
 export default Vue.extend({
 	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
-	name: 'UpdatesPanel',
+	name: 'VersionCard',
 	props: ['version'],
 	// @ts-ignore
 	nodeName (node: IVersionNode): string {
-		return node !== null ? node.displayName : 'unknown';
+		return node !== null ? node.displayName : this.$locale.baseText('versionCard.unknown');
 	},
 });
 </script>

@@ -24,8 +24,7 @@ export class Sms77 implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Send SMS and make text-to-speech calls',
 		defaults: {
-			name: 'Sms77',
-			color: '#00d46a',
+			name: 'sms77',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

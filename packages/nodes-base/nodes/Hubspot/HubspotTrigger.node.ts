@@ -40,7 +40,6 @@ export class HubspotTrigger implements INodeType {
 		description: 'Starts the workflow when HubSpot events occur',
 		defaults: {
 			name: 'Hubspot Trigger',
-			color: '#ff7f64',
 		},
 		inputs: [],
 		outputs: ['main'],

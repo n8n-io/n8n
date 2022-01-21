@@ -16,7 +16,7 @@ import * as express from 'express';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 
-import { BINARY_ENCODING, NodeExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING, BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
 
 import {
 	createDeferredPromise,
@@ -37,6 +37,7 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+
 // eslint-disable-next-line import/no-cycle
 import {
 	GenericHelpers,
@@ -447,7 +448,7 @@ export async function executeWebhook(
 			IExecutionDb | undefined
 		>;
 		executePromise
-			.then((data) => {
+			.then(async (data) => {
 				if (data === undefined) {
 					if (!didSendResponse) {
 						responseCallback(null, {
@@ -611,7 +612,10 @@ export async function executeWebhook(
 						if (!didSendResponse) {
 							// Send the webhook response manually
 							res.setHeader('Content-Type', binaryData.mimeType);
-							res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
+							const binaryDataBuffer = await BinaryDataManager.getInstance().retrieveBinaryData(
+								binaryData,
+							);
+							res.end(binaryDataBuffer);
 
 							responseCallback(null, {
 								noWebhookResponse: true,
