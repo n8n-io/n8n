@@ -191,6 +191,11 @@ export class RoutingNode {
 					nodeType.description.requestOperations,
 				);
 
+				if (requestData.maxResults) {
+					// Remove not needed items in case APIs return to many
+					responseData.splice(requestData.maxResults as number);
+				}
+
 				// Add as INodeExecutionData[]
 				responseData.forEach((item) => {
 					returnData.push({ json: item });
