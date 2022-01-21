@@ -111,6 +111,11 @@ export class StatusPage implements INodeType {
 							value: 'patchByComponent',
 							description: `Patch an incident from a specific incident`,
 						},
+						{
+							name: 'List unresolved',
+							value: 'listUnresolved',
+							description: `List all unresolved incidents`,
+						},
 					],
 					default: 'create',
 					description: 'The operation to perform.',
@@ -126,6 +131,7 @@ export class StatusPage implements INodeType {
 								'patch',
 								'create',
 								'patchByComponent',
+								'listUnresolved',
 							],
 							resource: [
 								'component',
@@ -384,9 +390,7 @@ export class StatusPage implements INodeType {
 		//Get credentials the user provided for this node
 		const credentials = await this.getCredentials('statusPageApi') as IDataObject;		const pageId = this.getNodeParameter('pageId', 0) as string;
 
-		const getActiveIncident: () => Promise<Incident | null> = async () => {
-			const componentId = this.getNodeParameter('componentId', 0) as string;
-
+		const getUnresolvedIncidents: () => Promise<Incident[] | null> = async () => {
 			// get the list of incidents
 			const options: OptionsWithUri = {
 				headers: {
@@ -398,8 +402,16 @@ export class StatusPage implements INodeType {
 			};
 
 			const responseData = await this.helpers.request(options);
+			return responseData;
+		}
+
+		const getActiveIncident: () => Promise<Incident | null> = async () => {
+			const componentId = this.getNodeParameter('componentId', 0) as string;
+
+			const unresolvedIncidents = await getUnresolvedIncidents()
+
 			let activeIncident: Incident | null = null
-			responseData.forEach((incident: Incident) => {
+			unresolvedIncidents?.forEach((incident: Incident) => {
 				if (incident.components?.find(component => component.id === componentId)) {
 					activeIncident = incident
 				}
@@ -432,6 +444,10 @@ export class StatusPage implements INodeType {
 		}
 
 		if (resource === 'incident') {
+			if (operation === 'listUnresolved') {
+				const unresolvedIncidents = await getUnresolvedIncidents();
+				return [this.helpers.returnJsonArray(unresolvedIncidents as any[])];
+			}
 			if (operation === 'patchByComponent') {
 				const status = this.getNodeParameter('status', 0) as string;
 
