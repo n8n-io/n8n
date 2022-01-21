@@ -1,8 +1,10 @@
 import { INodeProperties } from 'n8n-workflow';
+import * as data from './data/clientFields.json';
+import { fieldsToOptions } from '../GenericFunctions';
 
 export const clientDescription: INodeProperties[] = [
 	{
-		displayName: 'Name:',
+		displayName: 'Name',
 		name: 'clientName',
 		type: 'string',
 		default: '',
@@ -15,30 +17,49 @@ export const clientDescription: INodeProperties[] = [
 			},
 		},
 	},
+	// Additional fields =============================================================
 	{
-		displayName: 'Important Client:',
-		name: 'clientIsVip',
-		type: 'boolean',
-		default: false,
-		description: 'Whether client is important',
+		displayName: 'Add Optional Field',
+		name: 'fieldsToCreateOrUpdate',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Field',
+		},
+		default: {},
+		description: 'Add field and value',
+		placeholder: 'Add Optional Field',
 		displayOptions: {
 			show: {
-				operation: ['create'],
+				operation: ['update', 'create'],
 				resource: ['client'],
 			},
 		},
-	},
-	{
-		displayName: 'Reference:',
-		name: 'clientRef',
-		type: 'string',
-		default: '',
-		description: 'Enter reference',
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['client'],
+		options: [
+			{
+				displayName: 'Field',
+				name: 'fields',
+				values: [
+					{
+						displayName: 'Field Name',
+						name: 'fieldName',
+						type: 'options',
+						noDataExpression: true,
+						// nodelinter-ignore-next-line
+						default: 'name',
+						required: true,
+						description: 'Ticket field name',
+						options: fieldsToOptions(data),
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+				],
 			},
-		},
+		],
 	},
 ];

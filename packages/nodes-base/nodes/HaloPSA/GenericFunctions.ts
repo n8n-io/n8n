@@ -8,7 +8,6 @@ import {
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	JsonObject,
-	JsonValue,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -129,6 +128,21 @@ export function processFields(data: IDataObject): IDataObject {
 	}, {});
 }
 
+export function fieldsToOptions(data: IDataObject){
+	const result = [];
+
+	for(const key of Object.keys(data)) {
+		if(typeof data[key] !== 'object') {
+			result.push({
+				name: key as string,
+				value: key as string,
+				description: `${key}: ${data[key]}`,
+			});
+		}
+	}
+	return result.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // Validation -----------------------------------------------------------------------
 
 export async function validateCrendetials(
@@ -154,5 +168,3 @@ export async function validateCrendetials(
 
 	return (await this.helpers.request!(options)) as IHaloPSATokens;
 }
-
-// ----------------------------------------------------------------------------------

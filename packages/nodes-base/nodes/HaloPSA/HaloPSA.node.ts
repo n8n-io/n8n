@@ -59,38 +59,14 @@ export class HaloPSA implements INodeType {
 						name: 'Client',
 						value: 'client',
 					},
-					// {
-					// 	name: 'Contract',
-					// 	value: 'clientcontract',
-					// },
 					{
 						name: 'Invoice',
 						value: 'invoice',
 					},
-					// {
-					// 	name: 'Opportunitie',
-					// 	value: 'opportunities',
-					// },
-					// {
-					// 	name: 'Project',
-					// 	value: 'projects',
-					// },
-					// {
-					// 	name: 'Quotation',
-					// 	value: 'quotation',
-					// },
-					// {
-					// 	name: 'Report',
-					// 	value: 'report',
-					// },
 					{
 						name: 'Site',
 						value: 'site',
 					},
-					// {
-					// 	name: 'Supplier',
-					// 	value: 'supplier',
-					// },
 					{
 						name: 'Ticket',
 						value: 'tickets',
@@ -138,12 +114,8 @@ export class HaloPSA implements INodeType {
 			{
 				displayName: 'Item ID',
 				name: 'item_id',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-					numberStepSize: 1,
-				},
-				default: 0,
+				type: 'string',
+				default: '',
 				description: 'Specify item ID',
 				displayOptions: {
 					show: {
@@ -151,14 +123,6 @@ export class HaloPSA implements INodeType {
 					},
 				},
 			},
-
-			// Descriptions -------------------------------------------------------------
-			...ticketDescription,
-			...invoiceDescription,
-			...userDescription,
-			...clientDescription,
-			...siteDescription,
-
 			// Create, Update --------------------------------------------------------
 			{
 				displayName: 'Website',
@@ -166,6 +130,7 @@ export class HaloPSA implements INodeType {
 				type: 'options',
 				default: '',
 				noDataExpression: true,
+				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getHaloPSASites',
 				},
@@ -183,6 +148,7 @@ export class HaloPSA implements INodeType {
 				type: 'options',
 				default: '',
 				noDataExpression: true,
+				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getHaloPSAClients',
 				},
@@ -194,45 +160,12 @@ export class HaloPSA implements INodeType {
 				},
 			},
 
-			{
-				displayName: 'Add Field',
-				name: 'fieldsToCreateOrUpdate',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Field',
-				},
-				default: {},
-				description: 'Add field and value',
-				placeholder: '',
-				displayOptions: {
-					show: {
-						operation: ['update', 'create'],
-					},
-				},
-				options: [
-					{
-						displayName: 'Field:',
-						name: 'fields',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'string',
-								default: '',
-								required: true,
-							},
-							{
-								displayName: 'New Value',
-								name: 'fieldValue',
-								type: 'string',
-								default: '',
-								required: true,
-							},
-						],
-					},
-				],
-			},
+			// Descriptions -------------------------------------------------------------
+			...ticketDescription,
+			...invoiceDescription,
+			...userDescription,
+			...clientDescription,
+			...siteDescription,
 
 			// Delete ----------------------------------------------------------------
 			{
@@ -337,7 +270,7 @@ export class HaloPSA implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: 'The API Key included in the request is invalid',
+						message: 'Check your credentials',
 					};
 				}
 				return {
@@ -373,9 +306,9 @@ export class HaloPSA implements INodeType {
 
 					if (resource === 'tickets') {
 						const summary = this.getNodeParameter('summary', i) as string;
-						item[summary] = summary;
+						item['summary'] = summary;
 						const details = this.getNodeParameter('details', i) as string;
-						item[details] = details;
+						item['details'] = details;
 					}
 
 					if (resource === 'client') {
