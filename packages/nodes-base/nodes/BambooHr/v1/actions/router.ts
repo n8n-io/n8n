@@ -11,20 +11,20 @@ import * as employeeDocument from './employeeDocument';
 import * as file from './file';
 import * as companyReport from './companyReport';
 
-import { BambooHR } from './Interfaces';
+import { BambooHr } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const operationResult: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const resource = this.getNodeParameter<BambooHR>('resource', i);
+		const resource = this.getNodeParameter<BambooHr>('resource', i);
 		const operation = this.getNodeParameter('operation', i);
 
 		const bamboohr = {
 			resource,
 			operation,
-		} as BambooHR;
+		} as BambooHr;
 
 		if (bamboohr.operation === 'delete') {
 			//@ts-ignore

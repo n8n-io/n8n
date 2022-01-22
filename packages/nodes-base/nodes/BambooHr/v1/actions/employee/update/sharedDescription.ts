@@ -50,7 +50,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 							type: 'string',
 							default: '',
 							placeholder: 'United States',
-							description: 'The name of the country. Must exist in the BambooHR country list',
+							description: 'The name of the country. Must exist in the BambooHr country list',
 						},
 					],
 				},
