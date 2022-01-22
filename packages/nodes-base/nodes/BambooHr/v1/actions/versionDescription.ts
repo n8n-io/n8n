@@ -10,7 +10,7 @@ import * as companyReport from './companyReport';
 export const versionDescription: INodeTypeDescription = {
 	credentials: [
 		{
-			name: 'bambooHRApi',
+			name: 'bambooHrApi',
 			required: true,
 			testedBy: 'bambooHrApiCredentialTest',
 		},
@@ -21,9 +21,9 @@ export const versionDescription: INodeTypeDescription = {
 	description: 'Consume BambooHR API',
 	displayName: 'BambooHR',
 	group: ['transform'],
-	icon: 'file:bambooHR.png',
+	icon: 'file:bambooHr.png',
 	inputs: ['main'],
-	name: 'bambooHR',
+	name: 'bambooHr',
 	outputs: ['main'],
 	properties: [
 		{
