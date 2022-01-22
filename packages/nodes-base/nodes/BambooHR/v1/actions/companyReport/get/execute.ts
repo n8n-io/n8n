@@ -33,7 +33,8 @@ export async function get(this: IExecuteFunctions, index: number) {
 
 	const response = await apiRequest.call(this, requestMethod, endpoint, body, {} as IDataObject,
 		{ encoding: null, json: false, resolveWithFullResponse: true });
-	const mimeType = response.headers['content-type'];
+	let mimeType = response.headers['content-type'] as string | undefined;
+	mimeType = mimeType ? mimeType.split(';').find(value => value.includes('/')) : undefined;
 	const contentDisposition = response.headers['content-disposition'];
 	const fileNameRegex = /(?<=filename=").*\b/;
 	const match = fileNameRegex.exec(contentDisposition);
