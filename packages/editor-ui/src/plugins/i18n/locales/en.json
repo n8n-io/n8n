@@ -943,6 +943,7 @@
 		"created": "Created",
 		"name": "@:reusableBaseText.name",
 		"openWorkflow": "Open Workflow",
+		"filterWorkflows": "Filter by tags",
 		"searchWorkflows": "Search workflows...",
 		"showError": {
 			"message": "There was a problem loading the workflows",
