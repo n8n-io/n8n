@@ -25,7 +25,7 @@ export async function apiRequest(
 	query: IDataObject = {},
 	option: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials('bambooHRApi');
+	const credentials = await this.getCredentials('bambooHrApi');
 
 	if (!credentials) {
 		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
