@@ -13,7 +13,7 @@ import { versionDescription } from './v1/actions/versionDescription';
 import { loadOptions } from './v1/methods';
 import { credentialTest } from './v1/methods';
 
-export class BambooHR implements INodeType {
+export class BambooHr implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -23,7 +23,7 @@ export class BambooHR implements INodeType {
 		};
 	}
 
-	methods = { 
+	methods = {
 		loadOptions,
 		credentialTest,
 	};

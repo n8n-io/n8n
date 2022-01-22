@@ -3,10 +3,10 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class BambooHRApi implements ICredentialType {
-	name = 'bambooHRApi';
+export class BambooHrApi implements ICredentialType {
+	name = 'bambooHrApi';
 	displayName = 'BambooHR API';
-	documentationUrl = 'bambooHR';
+	documentationUrl = 'bambooHr';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Subdomain',
