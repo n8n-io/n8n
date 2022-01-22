@@ -8,7 +8,7 @@
 			<template v-slot:header>
 				<div class="workflows-header">
 					<n8n-heading tag="h1" size="xlarge" class="title">
-						{{ $locale.baseText('workflowOpen.openWorkflow') }}
+						{{ $locale.baseText('workflowOpen.filterWorkflows') }}
 					</n8n-heading>
 					<div class="tags-filter">
 						<TagsDropdown
