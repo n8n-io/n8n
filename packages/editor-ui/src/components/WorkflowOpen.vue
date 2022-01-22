@@ -12,7 +12,7 @@
 					</n8n-heading>
 					<div class="tags-filter">
 						<TagsDropdown
-							:placeholder="$locale.baseText('workflowOpen.openWorkflow')"
+							:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
