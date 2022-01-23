@@ -52,7 +52,7 @@ export class AirtableTrigger implements INodeType {
 				name: 'tableId',
 				type: 'string',
 				default: '',
-				description: 'The name of table to access.',
+				description: 'The ID of the table to access.',
 				required: true,
 			},
 			{
