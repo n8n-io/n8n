@@ -235,7 +235,7 @@ export class RoutingNode {
 		let responseData: IDataObject | IDataObject[] | null;
 
 		if (credentialType) {
-			responseData = (await executeSingleFunctions.helpers.requestWithAuthentication.call(
+			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
 				executeSingleFunctions,
 				credentialType,
 				requestData.options,

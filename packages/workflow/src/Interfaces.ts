@@ -134,6 +134,17 @@ export interface ICredentialsExpressionResolveValues {
 	workflow: Workflow;
 }
 
+// Simplified options of request library
+export interface IRequestOptionsSimplified {
+	auth?: {
+		username: string;
+		password: string;
+	};
+	body: IDataObject;
+	headers: IDataObject;
+	qs: IDataObject;
+}
+
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
 
@@ -146,7 +157,7 @@ export abstract class ICredentialsHelper {
 	abstract authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
-		requestOptions: IHttpRequestOptions,
+		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
 	): Promise<IHttpRequestOptions>;
@@ -501,7 +512,7 @@ export interface IExecuteFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		requestWithAuthentication(
+		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
@@ -535,7 +546,7 @@ export interface IExecuteSingleFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		requestWithAuthentication(
+		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
@@ -590,7 +601,15 @@ export interface ILoadOptionsFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		// TODO: Remove from here. Add it only now to LoadOptions as many nodes do import
+		//       from n8n-workflow instead of n8n-core
 		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: any, // tslint:disable-line:no-any
+			additionalCredentialOptions?: IAdditionalCredentialOptions,
+		): Promise<any>;
+		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
@@ -619,7 +638,7 @@ export interface IHookFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		requestWithAuthentication(
+		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
@@ -647,7 +666,7 @@ export interface IPollFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		requestWithAuthentication(
+		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
@@ -678,7 +697,7 @@ export interface ITriggerFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		requestWithAuthentication(
+		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
@@ -715,7 +734,7 @@ export interface IWebhookFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		requestWithAuthentication(
+		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,

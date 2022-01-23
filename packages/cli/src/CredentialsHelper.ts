@@ -30,6 +30,7 @@ import {
 	INodeTypes,
 	INodeVersionedType,
 	IRequestOptionsFromParameters,
+	IRequestOptionsSimplified,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeHelpers,
@@ -83,7 +84,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
-		incomingRequestOptions: IHttpRequestOptions,
+		incomingRequestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
 	): Promise<IHttpRequestOptions> {
@@ -95,7 +96,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				// Special authentication function is defined
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				return credentialType.authenticate(credentials, requestOptions);
+				return credentialType.authenticate(credentials, requestOptions as IHttpRequestOptions);
 			}
 
 			if (typeof credentialType.authenticate === 'object') {
@@ -168,7 +169,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			}
 		}
 
-		return requestOptions;
+		return requestOptions as IHttpRequestOptions;
 	}
 
 	/**

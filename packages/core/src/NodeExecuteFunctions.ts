@@ -860,10 +860,11 @@ export async function prepareBinaryData(
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions | IHttpRequestOptions,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	oAuth2Options?: IOAuth2Options,
+	isN8nRequest = false,
 ) {
 	const credentials = (await this.getCredentials(
 		credentialsType,
@@ -959,7 +960,9 @@ export async function requestOAuth2(
 
 			// Make the request again with the new token
 			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
-
+			if (isN8nRequest) {
+				return this.helpers.httpRequest(newRequestOptions);
+			}
 			return this.helpers.request!(newRequestOptions);
 		}
 
@@ -979,7 +982,12 @@ export async function requestOAuth2(
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUrl | OptionsWithUri | requestPromise.RequestPromiseOptions,
+	requestOptions:
+		| OptionsWithUrl
+		| OptionsWithUri
+		| requestPromise.RequestPromiseOptions
+		| IHttpRequestOptions,
+	isN8nRequest = false,
 ) {
 	const credentials = (await this.getCredentials(
 		credentialsType,
@@ -1027,13 +1035,17 @@ export async function requestOAuth1(
 	// @ts-ignore
 	requestOptions.headers = oauth.toHeader(oauth.authorize(requestOptions, token));
 
+	if (isN8nRequest) {
+		return this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
+	}
+
 	return this.helpers.request!(requestOptions).catch(async (error: IResponseError) => {
 		// Unknown error so simply throw it
 		throw error;
 	});
 }
 
-export async function requestWithAuthentication(
+export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
 	requestOptions: IHttpRequestOptions,
@@ -1046,7 +1058,7 @@ export async function requestWithAuthentication(
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
 		if (parentTypes.includes('oAuth1Api')) {
-			return await requestOAuth1.call(this, credentialsType, requestOptions);
+			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
 		}
 		if (parentTypes.includes('oAuth2Api')) {
 			return await requestOAuth2.call(
@@ -1056,6 +1068,7 @@ export async function requestWithAuthentication(
 				node,
 				additionalData,
 				additionalCredentialOptions?.oauth2,
+				true,
 			);
 		}
 
@@ -1106,6 +1119,62 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	});
 
 	return returnData;
+}
+
+// TODO: Move up later
+export async function requestWithAuthentication(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
+) {
+	try {
+		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
+		if (parentTypes.includes('oAuth1Api')) {
+			return await requestOAuth1.call(this, credentialsType, requestOptions, false);
+		}
+		if (parentTypes.includes('oAuth2Api')) {
+			return await requestOAuth2.call(
+				this,
+				credentialsType,
+				requestOptions,
+				node,
+				additionalData,
+				additionalCredentialOptions?.oauth2,
+				false,
+			);
+		}
+
+		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+		if (additionalCredentialOptions?.credentialsDecrypted) {
+			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
+		} else {
+			credentialsDecrypted = await this.getCredentials(credentialsType);
+		}
+
+		if (credentialsDecrypted === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+			);
+		}
+
+		requestOptions = await additionalData.credentialsHelper.authenticate(
+			credentialsDecrypted,
+			credentialsType,
+			requestOptions as IHttpRequestOptions,
+			workflow,
+			node,
+		);
+
+		return await proxyRequestToAxios(requestOptions as IDataObject);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
 }
 
 /**
@@ -1542,6 +1611,22 @@ export function getExecutePollFunctions(
 					);
 				},
 				request: proxyRequestToAxios,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -1564,13 +1649,13 @@ export function getExecutePollFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
-				async requestWithAuthentication(
+				async httpRequestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
-					return requestWithAuthentication.call(
+					return httpRequestWithAuthentication.call(
 						this,
 						credentialsType,
 						requestOptions,
@@ -1662,6 +1747,22 @@ export function getExecuteTriggerFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -1698,13 +1799,13 @@ export function getExecuteTriggerFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
-				async requestWithAuthentication(
+				async httpRequestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
-					return requestWithAuthentication.call(
+					return httpRequestWithAuthentication.call(
 						this,
 						credentialsType,
 						requestOptions,
@@ -1892,6 +1993,22 @@ export function getExecuteFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -1935,13 +2052,13 @@ export function getExecuteFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
-				async requestWithAuthentication(
+				async httpRequestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
-					return requestWithAuthentication.call(
+					return httpRequestWithAuthentication.call(
 						this,
 						credentialsType,
 						requestOptions,
@@ -2101,6 +2218,22 @@ export function getExecuteSingleFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -2137,13 +2270,13 @@ export function getExecuteSingleFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
-				async requestWithAuthentication(
+				async httpRequestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
-					return requestWithAuthentication.call(
+					return httpRequestWithAuthentication.call(
 						this,
 						credentialsType,
 						requestOptions,
@@ -2244,6 +2377,22 @@ export function getLoadOptionsFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -2267,13 +2416,13 @@ export function getLoadOptionsFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
-				async requestWithAuthentication(
+				async httpRequestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
-					return requestWithAuthentication.call(
+					return httpRequestWithAuthentication.call(
 						this,
 						credentialsType,
 						requestOptions,
@@ -2380,6 +2529,22 @@ export function getExecuteHookFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -2403,13 +2568,13 @@ export function getExecuteHookFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
-				async requestWithAuthentication(
+				async httpRequestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
-					return requestWithAuthentication.call(
+					return httpRequestWithAuthentication.call(
 						this,
 						credentialsType,
 						requestOptions,
@@ -2542,6 +2707,22 @@ export function getExecuteWebhookFunctions(
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -2578,13 +2759,13 @@ export function getExecuteWebhookFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
-				async requestWithAuthentication(
+				async httpRequestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
 					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
-					return requestWithAuthentication.call(
+					return httpRequestWithAuthentication.call(
 						this,
 						credentialsType,
 						requestOptions,

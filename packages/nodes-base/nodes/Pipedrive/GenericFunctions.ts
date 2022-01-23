@@ -1,11 +1,11 @@
 import {
 	IExecuteFunctions,
 	IHookFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	NodeApiError,
 	NodeOperationError,
@@ -67,23 +67,26 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		query = {};
 	}
 
-	let responseData;
-
+	// TODO: Test if everything works now still correctly
+	// let responseData;
 	try {
-		if (authenticationMethod === 'basicAuth' || authenticationMethod === 'apiToken' || authenticationMethod === 'none') {
+		// if (authenticationMethod === 'basicAuth' || authenticationMethod === 'apiToken' || authenticationMethod === 'none') {
 
-			const credentials = await this.getCredentials('pipedriveApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
+		// 	const credentials = await this.getCredentials('pipedriveApi');
+		// 	if (credentials === undefined) {
+		// 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+		// 	}
 
-			query.api_token = credentials.apiToken;
-			//@ts-ignore
-			responseData = await this.helpers.request(options);
+		// 	query.api_token = credentials.apiToken;
+		// 	//@ts-ignore
+		// 	responseData = await this.helpers.request(options);
 
-		} else {
-			responseData = await this.helpers.requestOAuth2!.call(this, 'pipedriveOAuth2Api', options);
-		}
+		// } else {
+		// 	responseData = await this.helpers.requestOAuth2!.call(this, 'pipedriveOAuth2Api', options);
+		// }
+
+		const credentialType = authenticationMethod === 'apiToken' ? 'pipedriveApi' : 'pipedriveOAuth2Api';
+		const responseData = await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
 		if (downloadFile === true) {
 			return {

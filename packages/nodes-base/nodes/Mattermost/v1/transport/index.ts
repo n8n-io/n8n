@@ -38,7 +38,7 @@ export async function apiRequest(
 		},
 	};
 
-	return this.helpers.requestWithAuthentication.call(this, 'mattermostApi', options);
+	return this.helpers.httpRequestWithAuthentication.call(this, 'mattermostApi', options);
 }
 
 export async function apiRequestAllItems(
