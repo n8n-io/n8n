@@ -55,6 +55,7 @@ import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Int
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
+import { search } from './sortUtils';
 
 
 export default mixins(externalHooks).extend({
@@ -86,11 +87,17 @@ export default mixins(externalHooks).extend({
 			return this.nodeFilter.toLowerCase().trim();
 		},
 		filteredNodeTypes(): INodeCreateElement[] {
-			const nodeTypes: INodeCreateElement[] = this.searchItems;
+			let nodeTypes: INodeCreateElement[] = this.searchItems;
 			const filter = this.searchFilter;
-			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
-				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
-			});
+
+			if (this.selectedType !== ALL_NODE_FILTER) {
+				nodeTypes = nodeTypes.filter((el: INodeCreateElement) => {
+					return filter && matchesSelectType(el, this.selectedType);
+				});
+			}
+
+			const searchData = search(filter, nodeTypes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
+			const returnData = searchData.map(({item}) => item);
 
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
