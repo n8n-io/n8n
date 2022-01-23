@@ -89,7 +89,7 @@ export class Airtable implements INodeType {
 				default: '',
 				placeholder: 'Stories',
 				required: true,
-				description: 'The name of table to access.',
+				description: 'The ID of the table to access.',
 			},
 
 			// ----------------------------------
