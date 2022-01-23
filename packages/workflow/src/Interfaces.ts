@@ -864,6 +864,7 @@ export interface INodeProperties {
 	isNodeSetting?: boolean;
 	noDataExpression?: boolean;
 	request?: IHttpRequestOptions;
+	requestOperations?: IN8nRequestOperations;
 	requestProperty?: INodeRequestProperty;
 	required?: boolean;
 }
@@ -872,6 +873,7 @@ export interface INodePropertyOptions {
 	value: string | number | boolean;
 	description?: string;
 	request?: IHttpRequestOptions;
+	requestOperations?: IN8nRequestOperations;
 	requestProperty?: INodeRequestProperty;
 }
 
@@ -1039,6 +1041,7 @@ export interface IRequestOptionsFromParameters {
 	options: IHttpRequestOptions;
 	pagination?: boolean | string;
 	maxResults?: number | string;
+	requestOperations?: IN8nRequestOperations;
 	preSend: Array<
 		(
 			this: IExecuteSingleFunctions,

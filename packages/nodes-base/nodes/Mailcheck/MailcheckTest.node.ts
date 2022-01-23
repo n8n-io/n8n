@@ -113,9 +113,35 @@ export class MailcheckTest implements INodeType {
 					{
 						name: 'Email',
 						value: 'email',
+						// Possible to overwrite requestOperations on option level
+						// requestOperations: {
+						// 	pagination: {
+						// 		type: 'offset',
+						// 		properties: {
+						// 			limitParameter: 'limit',
+						// 			offsetParameter: 'offset',
+						// 			pageSize: 10,
+						// 			type: 'query',
+						// 			// rootProperty: 'data',
+						// 		},
+						// 	},
+						// },
 					},
 				],
 				default: 'email',
+				// Possible to overwrite requestOperations on parameter level
+				// requestOperations: {
+				// 	pagination: {
+				// 		type: 'offset',
+				// 		properties: {
+				// 			limitParameter: 'limit',
+				// 			offsetParameter: 'offset',
+				// 			pageSize: 10,
+				// 			type: 'query',
+				// 			// rootProperty: 'data',
+				// 		},
+				// 	},
+				// },
 			},
 			{
 				displayName: 'Operation',

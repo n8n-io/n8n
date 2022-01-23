@@ -124,7 +124,12 @@ export class RoutingNode {
 					},
 					preSend: [],
 					postReceive: [],
+					requestOperations: {},
 				};
+
+				if (nodeType.description.requestOperations) {
+					requestData.requestOperations = { ...nodeType.description.requestOperations };
+				}
 
 				if (nodeType.description.requestDefaults) {
 					Object.assign(requestData.options, nodeType.description.requestDefaults);
@@ -178,6 +183,13 @@ export class RoutingNode {
 						merge(requestData.options, tempOptions.options);
 						requestData.preSend.push(...tempOptions.preSend);
 						requestData.postReceive.push(...tempOptions.postReceive);
+
+						if (tempOptions.requestOperations) {
+							requestData.requestOperations = Object.assign(
+								requestData.requestOperations,
+								tempOptions.requestOperations,
+							);
+						}
 					}
 				}
 
@@ -188,7 +200,7 @@ export class RoutingNode {
 					i,
 					runIndex,
 					credentialType,
-					nodeType.description.requestOperations,
+					requestData.requestOperations,
 				);
 
 				if (requestData.maxResults) {
@@ -417,11 +429,16 @@ export class RoutingNode {
 			},
 			preSend: [],
 			postReceive: [],
+			requestOperations: {},
 		};
 		let basePath = path ? `${path}.` : '';
 
 		if (!NodeHelpers.displayParameter(this.node.parameters, nodeProperties, this.node.parameters)) {
 			return undefined;
+		}
+
+		if (nodeProperties.requestOperations) {
+			returnData.requestOperations = { ...nodeProperties.requestOperations };
 		}
 
 		if (nodeProperties.request) {
@@ -572,6 +589,12 @@ export class RoutingNode {
 					merge(returnData.options, tempOptions.options);
 					returnData.preSend.push(...tempOptions.preSend);
 					returnData.postReceive.push(...tempOptions.postReceive);
+					if (tempOptions.requestOperations) {
+						returnData.requestOperations = Object.assign(
+							returnData.requestOperations,
+							tempOptions.requestOperations,
+						);
+					}
 				}
 			}
 		} else if (nodeProperties.type === 'collection') {
@@ -601,6 +624,12 @@ export class RoutingNode {
 						merge(returnData.options, tempOptions.options);
 						returnData.preSend.push(...tempOptions.preSend);
 						returnData.postReceive.push(...tempOptions.postReceive);
+						if (tempOptions.requestOperations) {
+							returnData.requestOperations = Object.assign(
+								returnData.requestOperations,
+								tempOptions.requestOperations,
+							);
+						}
 					}
 				}
 			}
