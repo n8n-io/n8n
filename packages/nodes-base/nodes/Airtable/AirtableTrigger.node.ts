@@ -48,7 +48,7 @@ export class AirtableTrigger implements INodeType {
 				description: 'The ID of this base.',
 			},
 			{
-				displayName: 'Table',
+				displayName: 'Table ID',
 				name: 'tableId',
 				type: 'string',
 				default: '',
