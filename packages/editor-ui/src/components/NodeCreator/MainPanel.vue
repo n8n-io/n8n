@@ -54,7 +54,7 @@ import SubcategoryPanel from './SubcategoryPanel.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
-import { matchesNodeType, matchesSelectType } from './helpers';
+import { matchesSelectType } from './helpers';
 import { search } from './sortUtils';
 
 
@@ -97,6 +97,7 @@ export default mixins(externalHooks).extend({
 			}
 
 			const searchData = search(filter, nodeTypes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
+			console.log(searchData);
 			const returnData = searchData.map(({item}) => item);
 
 			setTimeout(() => {
