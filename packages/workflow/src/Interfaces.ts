@@ -1062,6 +1062,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number;
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
+	activationMessage?: string;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];
