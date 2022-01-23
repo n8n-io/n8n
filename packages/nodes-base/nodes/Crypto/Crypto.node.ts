@@ -14,6 +14,8 @@ import {
 	createHmac,
 	createSign,
 	getHashes,
+	randomBytes,
+	randomUUID,
 } from 'crypto';
 
 export class Crypto implements INodeType {
@@ -51,6 +53,11 @@ export class Crypto implements INodeType {
 						name: 'Sign',
 						description: 'Sign a string using a private key.',
 						value: 'sign',
+					},
+					{
+						name: 'Generate',
+						description: 'Generate random data.',
+						value: 'generate',
 					},
 				],
 				default: 'hash',
@@ -332,6 +339,73 @@ export class Crypto implements INodeType {
 				default: '',
 				required: true,
 			},
+			{
+				displayName: 'Property Name',
+				name: 'dataPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						action: [
+							'generate',
+						],
+					},
+				},
+				description: 'Name of the property to which to write the random string.',
+			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				displayOptions: {
+					show: {
+						action: [
+							'generate',
+						],
+					},
+				},
+				type: 'options',
+				options: [
+					{
+						name: 'ASCII',
+						value: 'ascii',
+					},
+					{
+						name: 'Base64',
+						value: 'base64',
+					},
+					{
+						name: 'Hex',
+						value: 'hex',
+					},
+					{
+						name: 'UUID',
+						value: 'uuid',
+					},
+				],
+				default: 'uuid',
+				description: 'The random string type to generate.',
+				required: true,
+			},
+			{
+				displayName: 'Length',
+				name: 'stringLength',
+				displayOptions: {
+					show: {
+						action: [
+							'generate',
+						],
+						type: [
+							'ascii',
+							'base64',
+							'hex',
+						],
+					},
+				},
+				type: 'number',
+				default: 32,
+				description: 'Length of the random string.',
+			},
 		],
 	};
 
@@ -369,9 +443,22 @@ export class Crypto implements INodeType {
 
 				item = items[i];
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
-				const value = this.getNodeParameter('value', i) as string;
+				const value = this.getNodeParameter('value', i, '') as string;
 				let newValue;
 
+				if (action === 'generate') {
+					const type = this.getNodeParameter('type', i) as string;
+					if ( type === 'uuid') {
+						newValue = randomUUID();
+					} else {
+						const stringLength = this.getNodeParameter('stringLength', i) as number;
+						if (type === 'base64') {
+							newValue = randomBytes(stringLength).toString(type as BufferEncoding).replace(/\W/g, '').slice(0, stringLength);
+						} else {
+							newValue = randomBytes(stringLength).toString(type as BufferEncoding).slice(0, stringLength);
+						}
+					}
+				}
 				if (action === 'hash') {
 					const type = this.getNodeParameter('type', i) as string;
 					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
