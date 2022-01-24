@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-loop-func */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -11,9 +13,13 @@ import { INode, INodeCredentialsDetails, LoggerProxy } from 'n8n-workflow';
 import * as fs from 'fs';
 import * as glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
+import { getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDb } from '../../src';
 import { User } from '../../src/databases/entities/User';
+import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
+import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
+import { Role } from '../../src/databases/entities/Role';
 
 export class ImportWorkflowsCommand extends Command {
 	static description = 'Import workflows';
@@ -33,6 +39,10 @@ export class ImportWorkflowsCommand extends Command {
 			description: 'Imports *.json files from directory provided by --input',
 		}),
 	};
+
+	owner: User;
+
+	ownerWorkflowRole: Role;
 
 	private transformCredentials(node: INode, credentialsEntities: ICredentialsDb[]) {
 		if (node.credentials) {
@@ -64,7 +74,6 @@ export class ImportWorkflowsCommand extends Command {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
-		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ImportWorkflowsCommand);
 
 		if (!flags.input) {
@@ -84,16 +93,12 @@ export class ImportWorkflowsCommand extends Command {
 		try {
 			await Db.init();
 
-			const owner = await this.getInstanceOwner();
-			const ownerWorkflowRole = await Db.collections.Role!.findOneOrFail({
-				name: 'owner',
-				scope: 'workflow',
-			});
+			await this.initOwnershipFields();
 
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
 			const credentials = (await Db.collections.Credentials?.find()) ?? [];
-			let i;
+			let i: number;
 			if (flags.separate) {
 				let inputPath = flags.input;
 				if (process.platform === 'win32') {
@@ -108,13 +113,7 @@ export class ImportWorkflowsCommand extends Command {
 							this.transformCredentials(node, credentials);
 						});
 					}
-					await Db.collections.Workflow!.save(workflow);
-
-					await Db.collections.SharedWorkflow!.save({
-						user: owner,
-						workflow,
-						role: ownerWorkflowRole,
-					});
+					await this.storeWorkflow(workflow);
 				}
 			} else {
 				const workflows = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
@@ -131,13 +130,7 @@ export class ImportWorkflowsCommand extends Command {
 							this.transformCredentials(node, credentials);
 						});
 					}
-					await Db.collections.Workflow!.save(workflows[i]);
-
-					await Db.collections.SharedWorkflow!.save({
-						user: owner,
-						workflow: workflows[i],
-						role: ownerWorkflowRole,
-					});
+					await this.storeWorkflow(workflows[i]);
 				}
 			}
 
@@ -150,25 +143,46 @@ export class ImportWorkflowsCommand extends Command {
 		}
 	}
 
-	private async getInstanceOwner(): Promise<User> {
-		const globalRole = await Db.collections.Role!.findOne({
-			name: 'owner',
-			scope: 'global',
-		});
-
+	private async initOwnershipFields() {
 		const fixInstruction =
 			'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
-		if (!globalRole) {
-			throw new Error(`No global role found. ${fixInstruction}`);
+		const roles = await Db.collections.Role!.find({
+			where: ['global', 'workflow'].map((scope) => ({ name: 'owner', scope })),
+		});
+
+		if (roles.length !== 2) {
+			throw new Error(`Owner-global and owner-workflow roles not found. ${fixInstruction}`);
 		}
 
-		const owner = await Db.collections.User!.findOne({ globalRole });
+		this.ownerWorkflowRole = roles[1].scope === 'workflow' ? roles.pop()! : roles.shift()!;
+
+		const owner = await Db.collections.User!.findOne({ globalRole: roles.pop()! });
 
 		if (!owner) {
 			throw new Error(`No owner found. ${fixInstruction}`);
 		}
 
-		return owner;
+		this.owner = owner;
+	}
+
+	private async storeWorkflow(workflow: object) {
+		await getConnection().transaction(async (transactionManager) => {
+			const newWorkflow = new WorkflowEntity();
+
+			Object.assign(newWorkflow, workflow);
+
+			const savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+
+			const newSharedWorkflow = new SharedWorkflow();
+
+			Object.assign(newSharedWorkflow, {
+				workflow: savedWorkflow,
+				user: this.owner,
+				role: this.ownerWorkflowRole,
+			});
+
+			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+		});
 	}
 }
