@@ -158,7 +158,7 @@ import { getNodeTranslationPath } from './TranslationHelpers';
 import { userManagementRouter } from './UserManagement';
 import { User } from './databases/entities/User';
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
-import { NodeParameterOptionsRequest, OAuthRequest } from './requests';
+import { NodeParameterOptionsRequest, OAuthRequest, UserSurveyRequest } from './requests';
 
 require('body-parser-xml')(bodyParser);
 
@@ -2964,22 +2964,25 @@ class App {
 		// Process personalization survey responses
 		this.app.post(
 			`/${this.restEndpoint}/user-survey`,
-			async (req: express.Request, res: express.Response) => {
+			async (req: UserSurveyRequest, res: express.Response) => {
 				if (!this.frontendSettings.personalizationSurvey.shouldShow) {
 					// TODO UM: check if this needs permission check for UM
-					ResponseHelper.sendErrorResponse(
+					return ResponseHelper.sendErrorResponse(
 						res,
 						new ResponseHelper.ResponseError('User survey already submitted', undefined, 400),
 						false,
 					);
 				}
 
-				const answers = req.body as IPersonalizationSurveyAnswers;
-				await PersonalizationSurvey.writeSurveyToDisk(answers);
+				const { body: personalizationAnswers } = req;
+				await Db.collections.User!.update(req.user.id, { personalizationAnswers });
+
 				this.frontendSettings.personalizationSurvey.shouldShow = false;
-				this.frontendSettings.personalizationSurvey.answers = answers;
+				this.frontendSettings.personalizationSurvey.answers = personalizationAnswers;
 				ResponseHelper.sendSuccessResponse(res, undefined, true, 200);
-				void InternalHooksManager.getInstance().onPersonalizationSurveySubmitted(answers);
+				void InternalHooksManager.getInstance().onPersonalizationSurveySubmitted(
+					personalizationAnswers,
+				);
 			},
 		);
 

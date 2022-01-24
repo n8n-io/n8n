@@ -3,6 +3,7 @@ import { Application } from 'express';
 import express = require('express');
 import { JwtFromRequestFunction } from 'passport-jwt';
 import { User } from '../databases/entities/User';
+import { IPersonalizationSurveyAnswers } from '../Interfaces';
 
 export interface JwtToken {
 	token: string;
@@ -20,7 +21,7 @@ export interface PublicUser {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	personalizationAnswers?: { [key: string]: string } | null;
+	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
 	password?: string;
 	passwordResetToken?: string;
 }

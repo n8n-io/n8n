@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
 import { User } from './databases/entities/User';
+import { IPersonalizationSurveyAnswers } from './Interfaces';
 
 export type AuthenticatedRequest<
 	RouteParams = {},
@@ -33,3 +34,5 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 		credentials: string;
 	}
 >;
+
+export type UserSurveyRequest = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswers>;
