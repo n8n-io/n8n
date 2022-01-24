@@ -513,6 +513,29 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
+export interface IN8nTemplateResponse {
+	data: IN8nTemplateWorkflow;
+}
+
+export interface IN8nTemplateWorkflow {
+	workflow: IN8nTemplate;
+}
+
+export interface IN8nTemplate {
+	id: string;
+	categories: ITemplateCategories[];
+	createdAt: string;
+	description: string;
+	image: ITemplateImage[];
+	mainImage: ITemplateMainImage[];
+	name: string;
+	nodes: ITemplateNode[];
+	totalViews: number;
+	user: {
+		username: string;
+	};
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -545,6 +568,38 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
+}
+
+export interface ITemplateCategories {
+	id: string;
+	name: string;
+}
+
+export interface ITemplateImage {
+	id: string;
+	url: string;
+}
+
+export interface ITemplateMainImage {
+	url: string;
+	metadata: ITemplateMetadata;
+}
+
+export interface ITemplateMetadata {
+	width: string;
+}
+export interface ITemplateNode {
+	displayName: string;
+	defaults: {
+		color: string;
+	};
+	icon: string;
+	iconData?: {
+		fileBuffer?: string;
+		type?: string;
+	};
+	name: string;
+	typeVersion: number;
 }
 
 export interface ITimeoutHMS {
@@ -721,6 +776,10 @@ export interface IUiState {
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
+}
+
+export interface ITemplateState {
+	templates: IN8nTemplate[];
 }
 
 export interface IVersionsState {
