@@ -495,8 +495,8 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 }
 
 /**
- * Build a `where` clause for a `find()` or `findOne()` operation
- * in the `shared_workflow` or `shared_credentials` tables.
+ * Build a `where` clause for a TypeORM entity search,
+ * checking for member access if the user is not an owner.
  */
 export function whereClause({
 	user,
@@ -515,4 +515,19 @@ export function whereClause({
 	}
 
 	return where;
+}
+
+/**
+ * Get the IDs of the workflows that have been shared with the user.
+ */
+export async function getSharedWorkflowIds(user: User): Promise<number[]> {
+	const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
+		relations: ['workflow'],
+		where: whereClause({
+			user,
+			entityType: 'workflow',
+		}),
+	});
+
+	return sharedWorkflows.map(({ workflow }) => workflow.id);
 }

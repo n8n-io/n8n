@@ -123,9 +123,18 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		getTriggerNodeTooltip (): string | undefined {
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
-				return this.nodeType.eventTriggerDescription;
+				const nodeName = this.$locale.shortNodeType(this.nodeType.name);
+				const { eventTriggerDescription } = this.nodeType;
+				return this.$locale.nodeText().eventTriggerDescription(nodeName, eventTriggerDescription);
 			} else {
-				return `Waiting for you to create an event in ${this.nodeType && this.nodeType.displayName.replace(/Trigger/, "")}`;
+				return this.$locale.baseText(
+					'node.waitingForYouToCreateAnEventIn',
+					{
+						interpolate: {
+							nodeType: this.nodeType && this.nodeType.displayName.replace(/Trigger/, ""),
+						},
+					},
+				);
 			}
 		},
 		isPollingTypeNode (): boolean {
@@ -328,14 +337,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		disableNode () {
 			this.disableNodes([this.data]);
-			this.$telemetry.track('User set node enabled status', { node_type: this.data.type, is_enabled: !this.data.disabled, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.$store.getters.workflowId });
 		},
 		executeNode () {
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'execute', workflow_id: this.$store.getters.workflowId });
 		},
 		deleteNode () {
-			this.$externalHooks().run('node.deleteNode', { node: this.data});
-			this.$telemetry.track('User deleted node', { node_type: this.data.type, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'delete', workflow_id: this.$store.getters.workflowId });
 
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
@@ -343,6 +352,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			});
 		},
 		duplicateNode () {
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'duplicate', workflow_id: this.$store.getters.workflowId });
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);

@@ -1,11 +1,11 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$locale.baseText('textEdit.edit')} ${$locale.nodeText().topParameterDisplayName(parameter)}`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$locale.baseText('textEdit.edit')} ${$locale.nodeText().inputLabelDisplayName(parameter, path)}`" :before-close="closeDialog">
 
 			<div class="ignore-key-press">
-				<n8n-input-label :label="$locale.nodeText().topParameterDisplayName(parameter)">
+				<n8n-input-label :label="$locale.nodeText().inputLabelDisplayName(parameter, path)">
 					<div @keydown.stop @keydown.esc="closeDialog()">
-						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="$locale.nodeText().placeholder(parameter)" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
+						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="$locale.nodeText().placeholder(parameter, path)" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
 					</div>
 				</n8n-input-label>
 			</div>
@@ -22,6 +22,7 @@ export default Vue.extend({
 	props: [
 		'dialogVisible',
 		'parameter',
+		'path',
 		'value',
 	],
 	data () {

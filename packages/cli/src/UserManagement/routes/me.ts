@@ -10,7 +10,7 @@ import { isValidEmail, validatePassword, sanitizeUser } from '../UserManagementH
 import type { UpdateSelfRequest } from '../Interfaces';
 import { AuthenticatedRequest } from '../../requests';
 
-export function addMeNamespace(this: N8nApp): void {
+export function meNamespace(this: N8nApp): void {
 	/**
 	 * Return the logged-in user.
 	 */

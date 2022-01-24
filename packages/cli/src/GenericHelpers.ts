@@ -210,3 +210,5 @@ export async function validateEntity(
 		throw new ResponseHelper.ResponseError(errorMessages, undefined, 400);
 	}
 }
+
+export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;

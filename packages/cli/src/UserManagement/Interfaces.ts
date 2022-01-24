@@ -1,17 +1,22 @@
 /* eslint-disable import/no-cycle */
 import { Application } from 'express';
 import { JwtFromRequestFunction } from 'passport-jwt';
-import { AuthenticatedRequest } from '../requests';
+import type { AuthenticatedRequest } from '../requests';
 
 export interface JwtToken {
 	token: string;
 	expiresIn: number;
-	validTill: number;
 }
 
 export interface JwtOptions {
 	secretOrKey: string;
 	jwtFromRequest: JwtFromRequestFunction;
+}
+
+export interface JwtPayload {
+	id: string;
+	email: string | null;
+	password: string | null;
 }
 
 export interface PublicUser {
@@ -62,4 +67,24 @@ export declare namespace PasswordResetRequest {
 	export type Email = AuthenticatedRequest<{}, {}, PasswordResetPayload.Email>;
 	export type Credentials = AuthenticatedRequest<{}, {}, {}, PasswordResetQuery.Credentials>;
 	export type NewPassword = AuthenticatedRequest<{}, {}, PasswordResetPayload.NewPassword>;
+}
+
+// ----------------------------------
+//      users requests
+// ----------------------------------
+
+declare namespace UserPayload {
+	type Invitations = Array<{ email: string }>;
+}
+
+declare namespace UserQuery {
+	type Signup = { inviterId?: string; inviteeId?: string };
+	type Deletion = { transferId?: string };
+}
+
+export declare namespace UserRequest {
+	export type Invites = AuthenticatedRequest<UserPayload.Invitations>;
+	export type Signup = AuthenticatedRequest<{}, UserQuery.Signup>;
+	export type Deletion = AuthenticatedRequest<{}, UserQuery.Deletion, { id: string }>;
+	export type Reinvite = AuthenticatedRequest<{}, {}, { id: string }>;
 }
