@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -12,10 +14,16 @@ import { LoggerProxy } from 'n8n-workflow';
 import * as fs from 'fs';
 import * as glob from 'fast-glob';
 import * as path from 'path';
+import { getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
 import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
 import { SharedCredentials } from '../../src/databases/entities/SharedCredentials';
+import { Role } from '../../src/databases/entities/Role';
+import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
+
+const FIX_INSTRUCTION =
+	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
 export class ImportCredentialsCommand extends Command {
 	static description = 'Import credentials';
@@ -23,6 +31,8 @@ export class ImportCredentialsCommand extends Command {
 	static examples = [
 		'$ n8n import:credentials --input=file.json',
 		'$ n8n import:credentials --separate --input=backups/latest/',
+		'$ n8n import:credentials --input=file.json --id=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'$ n8n import:credentials --separate --input=backups/latest/ --id=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 	];
 
 	static flags = {
@@ -34,13 +44,17 @@ export class ImportCredentialsCommand extends Command {
 		separate: flags.boolean({
 			description: 'Imports *.json files from directory provided by --input',
 		}),
+		id: flags.string({
+			description: 'The ID of the user to assign the imported credentials to',
+		}),
 	};
+
+	ownerCredentialRole: Role;
 
 	async run(): Promise<void> {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
-		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ImportCredentialsCommand);
 
 		if (!flags.input) {
@@ -60,15 +74,12 @@ export class ImportCredentialsCommand extends Command {
 		try {
 			await Db.init();
 
-			const owner = await this.getInstanceOwner();
-			const ownerCredentialRole = await Db.collections.Role!.findOneOrFail({
-				name: 'owner',
-				scope: 'credential',
-			});
+			await this.initOwnerCredentialRole();
+			const user = flags.id ? await this.getAssignee(flags.id) : await this.getOwner();
 
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
-			let i;
+			let i: number;
 
 			const encryptionKey = await UserSettings.getEncryptionKey();
 			if (encryptionKey === undefined) {
@@ -87,17 +98,7 @@ export class ImportCredentialsCommand extends Command {
 						Credentials.prototype.setData.call(credential, credential.data, encryptionKey);
 					}
 
-					await Db.collections.Credentials!.save(credential);
-
-					const sharedCredential = new SharedCredentials();
-
-					await Db.collections.SharedCredentials!.save(
-						Object.assign(sharedCredential, {
-							user: owner,
-							credentials: credential,
-							role: ownerCredentialRole,
-						}),
-					);
+					await this.storeCredential(credential, user);
 				}
 			} else {
 				const credentials = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
@@ -113,17 +114,7 @@ export class ImportCredentialsCommand extends Command {
 						// plain data / decrypted input. Should be encrypted first.
 						Credentials.prototype.setData.call(credentials[i], credentials[i].data, encryptionKey);
 					}
-					await Db.collections.Credentials!.save(credentials[i]);
-
-					const sharedCredential = new SharedCredentials();
-
-					await Db.collections.SharedCredentials!.save(
-						Object.assign(sharedCredential, {
-							user: owner,
-							credentials: credentials[i],
-							role: ownerCredentialRole,
-						}),
-					);
+					await this.storeCredential(credentials[i], user);
 				}
 			}
 			console.info(`Successfully imported ${i} ${i === 1 ? 'credential.' : 'credentials.'}`);
@@ -135,29 +126,59 @@ export class ImportCredentialsCommand extends Command {
 		}
 	}
 
-	private async getInstanceOwner(): Promise<User> {
-		const globalRole = await Db.collections.Role!.findOneOrFail({
-			name: 'owner',
-			scope: 'global',
+	private async initOwnerCredentialRole() {
+		const ownerCredentialRole = await Db.collections.Role!.findOne({
+			where: { name: 'owner', scope: 'credential' },
 		});
 
-		const owner = await Db.collections.User!.findOne({ globalRole });
+		if (!ownerCredentialRole) {
+			throw new Error(`Owner credential role not found. ${FIX_INSTRUCTION}`);
+		}
 
-		if (owner) return owner;
+		this.ownerCredentialRole = ownerCredentialRole;
+	}
 
-		const user = new User();
+	private async storeCredential(credential: object, user: User) {
+		await getConnection().transaction(async (transactionManager) => {
+			const newCredential = new CredentialsEntity();
 
-		await Db.collections.User!.save(
-			Object.assign(user, {
-				firstName: 'default',
-				lastName: 'default',
-				email: null,
-				password: null,
-				resetPasswordToken: null,
-				...globalRole,
-			}),
-		);
+			Object.assign(newCredential, credential);
 
-		return Db.collections.User!.findOneOrFail({ globalRole });
+			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
+
+			const newSharedCredential = new SharedCredentials();
+
+			Object.assign(newSharedCredential, {
+				credentials: savedCredential,
+				user,
+				role: this.ownerCredentialRole,
+			});
+
+			await transactionManager.save<SharedCredentials>(newSharedCredential);
+		});
+	}
+
+	private async getOwner() {
+		const ownerGlobalRole = await Db.collections.Role!.findOne({
+			where: { name: 'owner', scope: 'global' },
+		});
+
+		const owner = await Db.collections.User!.findOne({ globalRole: ownerGlobalRole });
+
+		if (!owner) {
+			throw new Error(`No owner found. ${FIX_INSTRUCTION}`);
+		}
+
+		return owner;
+	}
+
+	private async getAssignee(id: string) {
+		const user = await Db.collections.User!.findOne(id);
+
+		if (!user) {
+			throw new Error(`Failed to find user with ID ${id}. Are you sure this user exists?`);
+		}
+
+		return user;
 	}
 }
