@@ -14,7 +14,6 @@ import { UserSettings } from 'n8n-core';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDb } from '../../src';
 import { User } from '../../src/databases/entities/User';
-import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
 
 export class ImportWorkflowsCommand extends Command {
 	static description = 'Import workflows';
@@ -111,15 +110,11 @@ export class ImportWorkflowsCommand extends Command {
 					}
 					await Db.collections.Workflow!.save(workflow);
 
-					const sharedWorkflow = new SharedWorkflow();
-
-					await Db.collections.SharedWorkflow!.save(
-						Object.assign(sharedWorkflow, {
-							user: owner,
-							workflow,
-							role: ownerWorkflowRole,
-						}),
-					);
+					await Db.collections.SharedWorkflow!.save({
+						user: owner,
+						workflow,
+						role: ownerWorkflowRole,
+					});
 				}
 			} else {
 				const workflows = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
@@ -138,15 +133,11 @@ export class ImportWorkflowsCommand extends Command {
 					}
 					await Db.collections.Workflow!.save(workflows[i]);
 
-					const sharedWorkflow = new SharedWorkflow();
-
-					await Db.collections.SharedWorkflow!.save(
-						Object.assign(sharedWorkflow, {
-							user: owner,
-							workflow: workflows[i],
-							role: ownerWorkflowRole,
-						}),
-					);
+					await Db.collections.SharedWorkflow!.save({
+						user: owner,
+						workflow: workflows[i],
+						role: ownerWorkflowRole,
+					});
 				}
 			}
 
