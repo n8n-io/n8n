@@ -46,7 +46,7 @@ export async function twitchApiRequest(this: IExecuteFunctions | IWebhookFunctio
 		throw errorObject;
 	}
 
-	const endpoint = 'https://api.twitch.tv/helix/eventsub/subscriptions';
+	const endpoint = 'https://api.twitch.tv/helix';
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',

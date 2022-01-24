@@ -57,12 +57,28 @@ export class TwitchTrigger implements INodeType {
 				{
 					name: 'Stream Online',
 					value: 'stream.online',
-				}
+				},
+				{
+					name: 'Stream Offline',
+					value: 'stream.offline',
+				},
+				{
+					name: 'Channel Follow',
+					value: 'channel.follow',
+				},
+				{
+					name: 'Channel Update',
+					value: 'channel.update',
+				},
+				{
+					name: 'Channel Raid',
+					value: 'channel.raid',
+				},
 			],
 		},
 		{
-			displayName: 'Broadcaster Id',
-			name: 'broadcaster_user_id',
+			displayName: 'Channel',
+			name: 'channel_name',
 			type: 'string',
 			required: true,
 			default: '',
@@ -76,9 +92,9 @@ export class TwitchTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const event = this.getNodeParameter('event') as string;
-				const { data: webhooks } = await twitchApiRequest.call(this, 'GET', '/');
+				const { data: webhooks } = await twitchApiRequest.call(this, 'GET', '/eventsub/subscriptions');
 				for (const webhook of webhooks) {
-					if (webhook.transport.callback === webhookUrl && webhook.type === snakeCase(event)) {
+					if (webhook.transport.callback === webhookUrl && webhook.type === event) {
 						webhookData.webhookId = webhook.id;
 						return true;
 					}
@@ -89,26 +105,28 @@ export class TwitchTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
-				const broadcaster_user_id = this.getNodeParameter('broadcaster_user_id') as string;
+				const channel = this.getNodeParameter('channel_name') as string;
+				const user_data = await twitchApiRequest.call(this, 'GET', '/users', {}, { login: channel});
 				const body: IDataObject = {
-					type: snakeCase(event),
-					version: 1,
+					type: event,
+					version: "1",
 					condition: {
-						broadcaster_user_id: broadcaster_user_id
+						broadcaster_user_id: user_data.data[0].id ?? ''
 					},
 					transport: {
 						method: 'webhook',
-						callback: webhookUrl
+						callback: webhookUrl,
+						secret: 'codelysecret'
 					},
 				};
-				const webhook = await twitchApiRequest.call(this, 'POST', '/', body);
+				const webhook = await twitchApiRequest.call(this, 'POST', '/eventsub/subscriptions', body);
 				webhookData.webhookId = webhook.data[0].id;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
-					await twitchApiRequest.call(this, 'DELETE', '/', {}, { id: webhookData.webhookId });
+					await twitchApiRequest.call(this, 'DELETE', '/eventsub/subscriptions', {}, { id: webhookData.webhookId });
 				} catch (error) {
 					return false;
 				}
@@ -119,7 +137,28 @@ export class TwitchTrigger implements INodeType {
 	}
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const bodyData = this.getBodyData() as IDataObject;
+		const res = this.getResponseObject();
 		const req = this.getRequestObject();
+		const event = this.getNodeParameter('event', '') as string;
+		const eventType = (bodyData.subscription as any).type;
+
+		// Check if we're getting twitch challenge request to validate the webhook that has been created.
+		if (bodyData['challenge']) {
+			res.status(200).send(bodyData['challenge']).end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
+		if (eventType === undefined) {
+			return {};
+		}
+
+		if (event != eventType) {
+			return {};
+		}
+
 		return {
 			workflowData: [
 				this.helpers.returnJsonArray(req.body),
