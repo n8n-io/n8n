@@ -160,28 +160,24 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async getInstanceOwner(): Promise<User> {
-		const globalRole = await Db.collections.Role!.findOneOrFail({
+		const globalRole = await Db.collections.Role!.findOne({
 			name: 'owner',
 			scope: 'global',
 		});
 
+		const fixInstruction =
+			'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
+
+		if (!globalRole) {
+			throw new Error(`No global role found. ${fixInstruction}`);
+		}
+
 		const owner = await Db.collections.User!.findOne({ globalRole });
 
-		if (owner) return owner;
+		if (!owner) {
+			throw new Error(`No owner found. ${fixInstruction}`);
+		}
 
-		const user = new User();
-
-		await Db.collections.User!.save(
-			Object.assign(user, {
-				firstName: 'default',
-				lastName: 'default',
-				email: null,
-				password: null,
-				resetPasswordToken: null,
-				...globalRole,
-			}),
-		);
-
-		return Db.collections.User!.findOneOrFail({ globalRole });
+		return owner;
 	}
 }
