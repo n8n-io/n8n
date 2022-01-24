@@ -60,7 +60,9 @@ export class WorkflowEntity implements IWorkflowDb {
 	id: number;
 
 	@Index({ unique: true })
-	@Length(1, 128, { message: 'Workflow name must be 1 to 128 characters long.' })
+	@Length(1, 128, {
+		message: 'Workflow name must be $constraint1 to $constraint2 characters long.',
+	})
 	@Column({ length: 128 })
 	name: string;
 

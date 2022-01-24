@@ -77,40 +77,10 @@ export function validatePassword(password?: string) {
 	return password;
 }
 
-export function generatePublicUserData(user: User): PublicUser {
-	const { id, email, firstName, lastName, personalizationAnswers, password } = user;
-	const returnedUser = {
-		id,
-	} as PublicUser;
-
-	if (email) {
-		returnedUser.email = email;
-	}
-
-	if (firstName) {
-		returnedUser.firstName = firstName;
-	}
-
-	if (lastName) {
-		returnedUser.lastName = lastName;
-	}
-
-	if (personalizationAnswers) {
-		returnedUser.personalizationAnswers = personalizationAnswers;
-	}
-
-	if (password) {
-		returnedUser.password = password.slice(Math.round(password.length / 2));
-	}
-
-	return returnedUser;
-}
-
 /**
  * Remove sensitive properties from the user to return to the client.
  */
-export function sanitizeUser(user: User) {
-	const { password, resetPasswordToken, ...sanitized } = user;
-
-	return sanitized;
+export function sanitizeUser(user: User): PublicUser {
+	const { password, resetPasswordToken, createdAt, updatedAt, ...sanitizedUser } = user;
+	return sanitizedUser;
 }
