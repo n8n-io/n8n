@@ -1,5 +1,6 @@
-import {shouldUpdateConsentStatus} from '../../../nodes/Gllue/GenericFunctions';
 import {CONSENT_STATUS_CONSENTED, CONSENT_STATUS_SENT} from '../../../nodes/Gllue/constants';
+import {shouldUpdateConsentStatus} from '../../../nodes/Gllue/services/consent';
+
 
 describe('shouldUpdateConsentStatus', () => {
 	it('should return True when current status is empty and new status is sent', () => {

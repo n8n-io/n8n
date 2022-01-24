@@ -1,11 +1,9 @@
 import {IExecuteFunctions,} from 'n8n-core';
 
 import {IDataObject, INodeExecutionData, INodeType, INodeTypeDescription, NodeOperationError,} from 'n8n-workflow';
-import { shouldUpdateConsentStatus } from './GenericFunctions';
-import { generateTokenWithAESKey, getCurrentTimeStamp } from './helpers';
-import { GllueCandidateService } from './services';
+import {generateTokenWithAESKey, getCurrentTimeStamp} from './helpers';
 
-const services = require('./services');
+import {GllueCandidateService} from './services/gllue';
 
 
 export class GllueUpdateConsentStatus implements INodeType {
@@ -17,7 +15,7 @@ export class GllueUpdateConsentStatus implements INodeType {
 		version: 1,
 		description: 'Update Candidate Consent Status in Gllue',
 		defaults: {
-			name: 'Gllue',
+			name: 'Gllue Update Consent Status',
 			color: '#1A82e2',
 		},
 		inputs: ['main'],
@@ -34,16 +32,21 @@ export class GllueUpdateConsentStatus implements INodeType {
 				name: 'candidateId',
 				type: 'string',
 				required: true,
-				default:'',
-				description:'Candidate ID',
+				default: '',
+				description: 'Candidate ID',
 			},
 			{
 				displayName: 'Consent Status',
 				name: 'consentStatus',
-				type: 'string',
+				type: 'options',
 				required: true,
-				default:'',
-				description:'Consent status to set to the candidate',
+				default: 'sent',
+				description: 'Consent status to set to the candidate',
+				options: [
+					{name: 'Sent', value: 'sent'},
+					{name: 'Consented', value: 'consented'},
+					{name: 'Initial', value: ' '},
+				],
 			},
 		],
 	};
@@ -52,20 +55,14 @@ export class GllueUpdateConsentStatus implements INodeType {
 
 		const candidateId = this.getNodeParameter('candidateId', 0) as number;
 		const status = this.getNodeParameter('consentStatus', 0) as string;
-		let responseData : IDataObject = {status: false, data: candidateId};
+		let responseData: IDataObject = {status: false, data: candidateId};
 
 		const credentials = await this.getCredentials('gllueApi') as IDataObject;
 		const token = generateTokenWithAESKey(getCurrentTimeStamp(), credentials.apiUsername as string, credentials.apiAesKey as string);
 		const candidateService = new GllueCandidateService(credentials.apiHost as string, token, this.helpers.request);
+		const updateData = {id: candidateId, gllueext_consent_status: status};
+		responseData = await candidateService.createOrUpdate(updateData);
 
-		const candidateData = await candidateService.getCandidateById(candidateId, 'id,name,englishName,gllueext_consent_status');
-		if (candidateData == undefined){
-			throw new NodeOperationError(this.getNode(), `No candidate found [ID=${candidateId}]`);
-		}
-		if (shouldUpdateConsentStatus(candidateData.gllueext_consent_status as string, status)){
-			const updateData = {id: candidateId, gllueext_consent_status: status};
-			responseData = await candidateService.createOrUpdate(updateData);
-		}
 		return [this.helpers.returnJsonArray(responseData)];
 	}
 }

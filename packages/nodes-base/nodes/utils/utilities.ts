@@ -55,3 +55,8 @@ export function flatten(nestedArray: any[][]) { // tslint:disable-line:no-any
 
 	return result;
 }
+
+export function getStageFromEnv(): string {
+	const stage = process.env.NODE_ENV as string;
+	return stage === undefined ? 'dev' : stage;
+}

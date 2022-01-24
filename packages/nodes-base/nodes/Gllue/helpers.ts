@@ -1,5 +1,8 @@
-import {OptionsWithUri} from "request";
-import {IDataObject} from "n8n-workflow";
+import {OptionsWithUri} from 'request';
+import {IDataObject} from 'n8n-workflow';
+import {GllueEvent} from './interfaces';
+import {BLUE_HOST, BLUE_TOKEN_KEY, DEV_NODE_ENV, HOST_MAPPING, TOKEN_KEY} from './constants';
+import * as moment from 'moment-timezone';
 
 const crypto = require('crypto');
 
@@ -79,7 +82,8 @@ export function gllueUrlBuilder(host: string, resource: string, option = 'simple
 	params.push(`page=${urlParams.page}`);
 
 	if (urlParams.token !== '') {
-		params.push(`private_token=${urlParams.token}`);
+		const tokenKey = host === BLUE_HOST ? BLUE_TOKEN_KEY : TOKEN_KEY;
+		params.push(`${tokenKey}=${urlParams.token}`);
 	} else {
 		throw new Error('Private Token is required');
 	}
@@ -105,13 +109,38 @@ export function buildOptionWithUri(uriGenerated: string, method = 'GET', body: I
 }
 
 // tslint:disable-next-line:no-any
-export async function getResponseByUri(uriGenerated: string, requestMethod: any, method: string = 'GET', body: IDataObject = {}) {
+export async function getResponseByUri(uriGenerated: string, requestMethod: any, method = 'GET', body: IDataObject = {}) {
 	const options = buildOptionWithUri(uriGenerated, method, body);
 	console.log(`request with ${options.uri}`);
 	return await requestMethod(options);
 }
 
+export function convertEventPayload(item: GllueEvent):IDataObject{
+	const info = JSON.parse(item.info);
+	return {
+		date: item.date,
+		info,
+		sign: item.sign,
+	};
+}
+
+export function getOffSetDate(days: number):string{
+	const date = moment().add(days, 'days');
+	return date.format('YYYY-MM-DD');
+}
+
+export function buildConsentUrl( consentId: string): string {
+	const stage = process.env.NODE_ENV || DEV_NODE_ENV;
+	const validStageNames = Object.keys(HOST_MAPPING);
+	if (!validStageNames.includes(stage)) {
+		throw new Error(`Wrong stage name "${stage}", you should provide any of [${validStageNames}]`);
+	}
+	const host = HOST_MAPPING[stage];
+	const postfix = stage === DEV_NODE_ENV ? '-test' : '';
+	return `${host}/webhook${postfix}/consent/confirm?id=${consentId}`;
+}
+
 export function prepareGllueApiUpdateData(id: number|string, updateData: IDataObject): IDataObject {
-	let result = Object.assign({}, updateData, {id:(typeof id === 'string')? parseInt(id, 10) : id});
+	const result = Object.assign({}, updateData, {id:(typeof id === 'string')? parseInt(id, 10) : id});
 	return {data: JSON.stringify(result)};
 }
