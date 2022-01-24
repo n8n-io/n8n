@@ -92,7 +92,7 @@ export class ImportWorkflowsCommand extends Command {
 
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
-			const credentialsEntities = (await Db.collections.Credentials?.find()) ?? [];
+			const credentials = (await Db.collections.Credentials?.find()) ?? [];
 			let i;
 			if (flags.separate) {
 				let inputPath = flags.input;
@@ -103,9 +103,9 @@ export class ImportWorkflowsCommand extends Command {
 				const files = await glob(`${inputPath}/*.json`);
 				for (i = 0; i < files.length; i++) {
 					const workflow = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
-					if (credentialsEntities.length > 0) {
+					if (credentials.length > 0) {
 						workflow.nodes.forEach((node: INode) => {
-							this.transformCredentials(node, credentialsEntities);
+							this.transformCredentials(node, credentials);
 						});
 					}
 					await Db.collections.Workflow!.save(workflow);
@@ -126,9 +126,9 @@ export class ImportWorkflowsCommand extends Command {
 				}
 
 				for (i = 0; i < workflows.length; i++) {
-					if (credentialsEntities.length > 0) {
+					if (credentials.length > 0) {
 						workflows[i].nodes.forEach((node: INode) => {
-							this.transformCredentials(node, credentialsEntities);
+							this.transformCredentials(node, credentials);
 						});
 					}
 					await Db.collections.Workflow!.save(workflows[i]);
