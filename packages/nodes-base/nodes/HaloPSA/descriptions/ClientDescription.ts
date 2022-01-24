@@ -1,10 +1,8 @@
 import { INodeProperties } from 'n8n-workflow';
-import * as data from './data/clientFields.json';
-import { fieldsToOptions } from '../GenericFunctions';
 
 export const clientDescription: INodeProperties[] = [
 	{
-		displayName: 'Name',
+		displayName: 'Name:',
 		name: 'clientName',
 		type: 'string',
 		default: '',
@@ -12,7 +10,7 @@ export const clientDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
+				operation: ['create', 'update'],
 				resource: ['client'],
 			},
 		},
@@ -46,10 +44,35 @@ export const clientDescription: INodeProperties[] = [
 						type: 'options',
 						noDataExpression: true,
 						// nodelinter-ignore-next-line
-						default: 'name',
+						default: '',
 						required: true,
-						description: 'Ticket field name',
-						options: fieldsToOptions(data),
+						description: 'Client field name',
+						options: [
+							{
+								name: 'Important Client',
+								value: 'is_vip',
+							},
+							{
+								name: 'Account Status',
+								value: 'inactive',
+							},
+							{
+								name: 'Reference',
+								value: 'ref',
+							},
+							{
+								name: 'Website',
+								value: 'website',
+							},
+							{
+								name: 'Next Call Date',
+								value: 'calldate',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+						],
 					},
 					{
 						displayName: 'Field Value',
@@ -57,6 +80,36 @@ export const clientDescription: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						required: true,
+						displayOptions: {
+							show: {
+								fieldName: ['ref', 'website', 'notes'],
+							},
+						},
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'boolean',
+						default: false,
+						required: true,
+						displayOptions: {
+							show: {
+								fieldName: ['is_vip', 'inactive'],
+							},
+						},
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'dateTime',
+						default: '',
+						description: 'The next call date',
+						required: true,
+						displayOptions: {
+							show: {
+								fieldName: ['calldate'],
+							},
+						},
 					},
 				],
 			},

@@ -12,7 +12,24 @@ export const userDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
+				operation: ['create', 'update'],
+				resource: ['users'],
+			},
+		},
+	},
+	{
+		displayName: 'Website',
+		name: 'sitesList',
+		type: 'options',
+		default: '',
+		noDataExpression: true,
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getHaloPSASites',
+		},
+		displayOptions: {
+			show: {
+				operation: ['create', 'update'],
 				resource: ['users'],
 			},
 		},
@@ -46,10 +63,40 @@ export const userDescription: INodeProperties[] = [
 						type: 'options',
 						noDataExpression: true,
 						// nodelinter-ignore-next-line
-						default: 'name',
+						default: '',
 						required: true,
-						description: 'Ticket field name',
-						options: fieldsToOptions(data),
+						options: [
+							{
+								name: 'Surname',
+								value: 'surname',
+							},
+							{
+								name: 'Password',
+								value: 'password',
+								description:
+									'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character.',
+							},
+							{
+								name: 'Email Address',
+								value: 'emailaddress',
+							},
+							{
+								name: 'Network Login',
+								value: 'login',
+							},
+							{
+								name: 'User is Active',
+								value: 'inactive',
+							},
+							{
+								name: 'Site Telephone Number',
+								value: 'sitephonenumber',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+						],
 					},
 					{
 						displayName: 'Field Value',
@@ -57,6 +104,30 @@ export const userDescription: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						required: true,
+						displayOptions: {
+							show: {
+								fieldName: [
+									'notes',
+									'sitephonenumber',
+									'login',
+									'emailaddress',
+									'password',
+									'surname',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'boolean',
+						default: false,
+						required: true,
+						displayOptions: {
+							show: {
+								fieldName: ['inactive'],
+							},
+						},
 					},
 				],
 			},
