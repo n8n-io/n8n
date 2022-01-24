@@ -7,13 +7,18 @@ import {
 	INodeGraphItem,
 	INodesGraphResult,
 	IWorkflowBase,
+	INodeTypes,
+	INodeType,
 } from '.';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
 	return workflow.nodes.find((node) => node.name === nodeName);
 }
 
-export function generateNodesGraph(workflow: IWorkflowBase): INodesGraphResult {
+export function generateNodesGraph(
+	workflow: IWorkflowBase,
+	nodeTypes: INodeTypes,
+): INodesGraphResult {
 	const nodesGraph: INodesGraph = {
 		node_types: [],
 		node_connections: [],
@@ -25,6 +30,7 @@ export function generateNodesGraph(workflow: IWorkflowBase): INodesGraphResult {
 		nodesGraph.node_types.push(node.type);
 		const nodeItem: INodeGraphItem = {
 			type: node.type,
+			position: node.position,
 		};
 
 		if (node.type === 'n8n-nodes-base.httpRequest') {
@@ -34,11 +40,20 @@ export function generateNodesGraph(workflow: IWorkflowBase): INodesGraphResult {
 				nodeItem.domain = node.parameters.url as string;
 			}
 		} else {
-			Object.keys(node.parameters).forEach((parameterName) => {
-				if (parameterName === 'operation' || parameterName === 'resource') {
-					nodeItem[parameterName] = node.parameters[parameterName] as string;
+			const nodeType = nodeTypes.getByName(node.type) as INodeType;
+			nodeType.description.properties.forEach((property) => {
+				if (
+					property.name === 'operation' ||
+					property.name === 'resource' ||
+					property.name === 'mode'
+				) {
+					nodeItem[property.name] = property.default ? property.default.toString() : undefined;
 				}
 			});
+
+			nodeItem.operation = node.parameters.operation?.toString() ?? nodeItem.operation;
+			nodeItem.resource = node.parameters.resource?.toString() ?? nodeItem.resource;
+			nodeItem.mode = node.parameters.mode?.toString() ?? nodeItem.mode;
 		}
 		nodesGraph.nodes[`${index}`] = nodeItem;
 		nodeNameAndIndex[node.name] = index.toString();

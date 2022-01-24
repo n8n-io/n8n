@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -32,6 +33,7 @@ import {
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	ResponseHelper,
+	WhereClause,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	WorkflowCredentials,
 	WorkflowRunner,
@@ -40,6 +42,7 @@ import {
 import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { User } from './databases/entities/User';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -493,7 +496,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 	return workflow;
 }
 
-// TODO: Deduplicate `validateWorkflow` and `throwDuplicateEntryError` with TagHelpers?
+// TODO: Deduplicate `validateWorkflow` with TagHelpers?
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function validateWorkflow(newWorkflow: WorkflowEntity) {
@@ -505,22 +508,46 @@ export async function validateWorkflow(newWorkflow: WorkflowEntity) {
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export function throwDuplicateEntryError(error: Error) {
-	const errorMessage = error.message.toLowerCase();
-	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError(
-			'There is already a workflow with this name',
-			undefined,
-			400,
-		);
-	}
-
-	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
-}
-
 export type NameRequest = Express.Request & {
 	query: {
 		name?: string;
 	};
 };
+
+/**
+ * Build a `where` clause for a TypeORM entity search,
+ * checking for member access if the user is not an owner.
+ */
+export function whereClause({
+	user,
+	entityType,
+	entityId = '',
+}: {
+	user: User;
+	entityType: 'workflow' | 'credentials';
+	entityId?: string;
+}): WhereClause {
+	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
+
+	// TODO: Decide if owner access should be restricted
+	if (user.globalRole.name !== 'owner') {
+		where.user = { id: user.id };
+	}
+
+	return where;
+}
+
+/**
+ * Get the IDs of the workflows that have been shared with the user.
+ */
+export async function getSharedWorkflowIds(user: User): Promise<number[]> {
+	const sharedWorkflows = await Db.collections.SharedWorkflow!.find({
+		relations: ['workflow'],
+		where: whereClause({
+			user,
+			entityType: 'workflow',
+		}),
+	});
+
+	return sharedWorkflows.map(({ workflow }) => workflow.id);
+}

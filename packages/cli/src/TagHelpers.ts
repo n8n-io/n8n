@@ -15,17 +15,18 @@ import { ITagWithCountDb } from './Interfaces';
 // ----------------------------------
 
 /**
- * Sort a `TagEntity[]` by the order of the tag IDs in the incoming request.
+ * Sort tags based on the order of the tag IDs in the request.
  */
-export function sortByRequestOrder(tagsDb: TagEntity[], tagIds: string[]) {
-	const tagMap = tagsDb.reduce((acc, tag) => {
-		// @ts-ignore
-		tag.id = tag.id.toString();
-		acc[tag.id] = tag;
+export function sortByRequestOrder(
+	tags: TagEntity[],
+	{ requestOrder }: { requestOrder: string[] },
+) {
+	const tagMap = tags.reduce<Record<string, TagEntity>>((acc, tag) => {
+		acc[tag.id.toString()] = tag;
 		return acc;
-	}, {} as { [key: string]: TagEntity });
+	}, {});
 
-	return tagIds.map((tagId) => tagMap[tagId]);
+	return requestOrder.map((tagId) => tagMap[tagId]);
 }
 
 // ----------------------------------
@@ -43,15 +44,6 @@ export async function validateTag(newTag: TagEntity) {
 		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
 		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
 	}
-}
-
-export function throwDuplicateEntryError(error: Error) {
-	const errorMessage = error.message.toLowerCase();
-	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
-	}
-
-	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
 }
 
 // ----------------------------------

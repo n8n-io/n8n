@@ -163,6 +163,7 @@ export interface IRestApi {
 	getPastExecutions(filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
+	getCredentialTranslation(credentialType: string): Promise<object>;
 	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
 	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
@@ -646,9 +647,9 @@ export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
 	activeActions: string[];
+	activeCredentialType: string | null;
 	activeNode: string | null;
 	baseUrl: string;
-	credentialTextRenderKeys: { nodeType: string; credentialType: string; } | null;
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;

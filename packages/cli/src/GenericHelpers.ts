@@ -188,3 +188,5 @@ export async function generateUniqueName(
 
 	return { name: `${requestedName} ${maxSuffix + 1}` };
 }
+
+export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;
