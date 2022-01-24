@@ -6,7 +6,7 @@ import {
 export class SupabaseApi implements ICredentialType {
 	name = 'supabaseApi';
 	displayName = 'Supabase API';
-	documentationUrl = 'superbase';
+	documentationUrl = 'supabase';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

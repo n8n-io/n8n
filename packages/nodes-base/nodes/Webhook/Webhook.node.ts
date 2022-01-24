@@ -48,6 +48,7 @@ export class Webhook implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
+		activationMessage: 'You can now make calls to your production webhook URL.',
 		defaults: {
 			name: 'Webhook',
 		},

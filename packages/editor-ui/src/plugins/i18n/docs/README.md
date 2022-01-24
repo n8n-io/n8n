@@ -72,7 +72,7 @@ The base text file for each locale is located at `/packages/editor-ui/src/plugin
 cp ./packages/editor-ui/src/plugins/i18n/locales/en.json ./packages/editor-ui/src/plugins/i18n/locales/de.json
 ```
 
-2. Find in the UI a string to translate, and search for it in the newly created base text file. Alternatively,find in `/editor-ui` a call to `$locale.baseText(key)`, e.g. `$locale.baseText('workflowActivator.deactivateWorkflow')`, and take note of the key and find it in the newly created base text file.
+2. Find in the UI a string to translate, and search for it in the newly created base text file. Alternatively, find in `/editor-ui` a call to `$locale.baseText(key)`, e.g. `$locale.baseText('workflowActivator.deactivateWorkflow')`, and take note of the key and find it in the newly created base text file.
 
 > **Note**: If you cannot find a string in the new base text file, either it does not belong to base text (i.e., the string might be part of header text, credential text, or node text), or the string might belong to the backend, where i18n is currently unsupported.
 
@@ -99,8 +99,8 @@ A credential translation file is placed at `/nodes-base/credentials/translations
 credentials
 	└── translations
 			└── de
-					├── githubApi.json
-					└── githubOAuth2Api.json
+				├── githubApi.json
+				└── githubOAuth2Api.json
 ```
 Every credential must have its own credential translation file.
 
@@ -124,8 +124,8 @@ GitHub
 	├── GitHubTrigger.node.ts
 	└── translations
 			└── de
-					├── github.json
-					└── githubTrigger.json
+				├── github.json
+				└── githubTrigger.json
 ```
 
 Every node must have its own node translation file.
@@ -180,14 +180,6 @@ export class GithubApi implements ICredentialType {
 }
 ```
 
-```json
-{
-	"server": {...},
-	"user": {...},
-	"accessToken": {...},
-}
-```
-
 The object for each node credential parameter allows for the keys `displayName`, `description`, and `placeholder`.
 
 ```json
@@ -215,14 +207,7 @@ Only existing parameters are translatable. If a credential parameter does not ha
 
 > **Note**: All keys are optional. Missing translations trigger a fallback to the `en` locale strings.
 
-Each node translation file is an object that allows for two keys, `header` and `nodeView`, which are the _sections_ of each node translation:
-
-```json
-{
-	"header": { ... },
-	"nodeView": { ... },
-}
-```
+Each node translation file is an object that allows for two keys, `header` and `nodeView`, which are the _sections_ of each node translation.
 
 The `header` section points to an object that may contain only two keys, `displayName` and `description`, matching the node's `description.displayName` and `description.description`.
 
@@ -280,7 +265,9 @@ export class Github implements INodeType {
 ```json
 {
 	"nodeView": {
-		"resource": {...},
+		"resource": {
+			"displayName": "🇩🇪 Resource",
+		},
 	},
 }
 ```
