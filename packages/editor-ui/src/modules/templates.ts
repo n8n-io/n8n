@@ -1,4 +1,4 @@
-import { getTemplateById } from '@/api/templates';
+import { getTemplateById } from '@/api/templates-mock';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,

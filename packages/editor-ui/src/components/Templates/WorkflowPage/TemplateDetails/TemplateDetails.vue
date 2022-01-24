@@ -49,7 +49,7 @@ import Vue from 'vue';
 
 import TemplateBlock from './TemplateBlock/TemplateBlock.vue';
 import NodeIcon from './NodeIcon/NodeIcon.vue';
-import { abbreviateNumber } from '../helpers';
+import { abbreviateNumber } from '@/components/helpers';
 
 interface ITag {
 	id: string;

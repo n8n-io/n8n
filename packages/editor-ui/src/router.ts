@@ -5,6 +5,9 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import TemplateView from '@/views/TemplateView.vue';
 
+import WorkflowPageHeader from '@/components/Templates/WorkflowPage/Layout/Header.vue';
+import WorkflowPageContent from '@/components/Templates/WorkflowPage/Layout/Content.vue';
+
 Vue.use(Router);
 
 export default new Router({
@@ -22,12 +25,38 @@ export default new Router({
 			},
 		},
 		{
-			path: '/template/:id',
+			path: '/template/',
 			name: 'TemplateView',
 			components: {
 				default: TemplateView,
 				sidebar: MainSidebar,
 			},
+			children: [
+				{
+					path: ':id',
+					components: {
+						header: WorkflowPageHeader,
+						default: WorkflowPageContent,
+					},
+				},
+			],
+		},
+		{
+			path: '/templates/',
+			name: 'TemplateView',
+			components: {
+				default: TemplateView,
+				sidebar: MainSidebar,
+			},
+			children: [
+				{
+					path: '',
+					components: {
+						header: WorkflowPageHeader,
+						default: WorkflowPageContent,
+					},
+				},
+			],
 		},
 		{
 			path: '/workflow',

@@ -2,86 +2,30 @@
 <div :class="$style.template">
 	<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
 		<div :class="$style.header">
-			<go-back-button />
-			<div :class="$style.wrapper">
-				<div :class="$style.title">
-					<n8n-heading v-if="!loading" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
-					<n8n-loading :animated="true" :loading="loading" :rows="2" variant="h1" />
-				</div>
-				<div :class="$style.button">
-					<n8n-button
-						v-if="!loading"
-						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
-						size="large"
-						@click="goToWorkflowsTemplate(template.id)"
-					/>
-					<n8n-loading :animated="true" :loading="loading" :rows="1" variant="button" />
-				</div>
-			</div>
+			<router-view name="header" :loading="loading" />
 		</div>
-		<div>
-			<div :class="$style.image">
-				<n8n-image :images="template.mainImage" />
-			</div>
-			<div :class="$style.content">
-				<div :class="$style.markdown">
-					<n8n-markdown
-						:content="template.description"
-						:images="template.image"
-						:loading="loading"
-					/>
-				</div>
-				<div :class="$style.details">
-					<template-details :loading="loading" :template="template" />
-				</div>
-			</div>
+		<div :class="$style.content">
+			<router-view :loading="loading" />
 		</div>
 	</div>
 </div>
 </template>
 
 <script lang="ts">
-import GoBackButton from '../components/GoBackButton.vue';
-import TemplateDetails from '../components/TemplateDetails/TemplateDetails.vue';
-
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import {
-	IN8nTemplate,
-} from '../Interface';
-
 import mixins from 'vue-typed-mixins';
 
 export default mixins(workflowHelpers).extend({
 	name: 'TemplateView',
-	components: {
-		GoBackButton,
-		TemplateDetails,
-	},
 	computed: {
 		isMenuCollapsed() {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
-		},
-		template() {
-			let template = {} as IN8nTemplate;
-			const templates = this.$store.getters['templates/getTemplates'];
-			templates.forEach((element : IN8nTemplate) => {
-				if (element.id === this.$route.params.id) {
-					template = element;
-				}
-			});
-
-			return template;
 		},
 	},
 	data() {
 		return {
 			loading: false,
 		};
-	},
-	methods: {
-		goToWorkflowsTemplate(templateId: string) {
-			this.$router.push(`/workflows/templates/${templateId}`);
-		},
 	},
 	async mounted() {
 		this.loading = true;
@@ -94,7 +38,7 @@ export default mixins(workflowHelpers).extend({
 				type: 'error',
 			});
 			setTimeout(() => {
-				this.$router.go(-1);
+				// this.$router.go(-1);
 			}, 2000);
 		}
 		this.loading = false;
@@ -133,52 +77,5 @@ export default mixins(workflowHelpers).extend({
 
 .header {
 	padding: 0px 0px var(--spacing-2xl);
-	display: flex;
-	flex-direction: column;
-}
-
-.wrapper {
-	padding: var(--spacing-s) 0 0;
-	display: flex;
-	justify-content: space-between;
-}
-
-.title {
-	width: 75%;
-}
-
-.button {
-	display: block;
-}
-
-.image {
-	width: 100%;
-
-	img {
-		width: 100%;
-	}
-}
-
-.content {
-	padding: var(--spacing-2xl) 0;
-	display: flex;
-	justify-content: space-between;
-}
-
-.markdown {
-	width: 100%;
-	padding-right: var(--spacing-2xl);
-}
-
-.spacer {
-	margin: 56px;
-}
-
-.details {
-	width: 180px;
-
-	@media (max-width: $--breakpoint-xs) {
-		width: auto;
-	}
 }
 </style>
