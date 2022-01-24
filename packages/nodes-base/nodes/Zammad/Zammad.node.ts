@@ -68,7 +68,7 @@ export class Zammad implements INodeType {
 			{
 				name: 'zammadApi',
 				required: true,
-				// testedBy: 'zammadApiTest',
+				testedBy: 'zammadApiTest',
 			},
 		],
 		properties: [
@@ -225,30 +225,21 @@ export class Zammad implements INodeType {
 					method: 'GET',
 					uri: `${baseUrl}/api/v1/users/me`,
 					json: true,
+					rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 				};
 
 				if (credentials.authType === 'basicAuth') {
-
-					const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
 
 					options.auth = {
 						user: credentials.username,
 						pass: credentials.password,
 					};
 
-					options.uri = `${baseUrl}/api/v1/users/me`;
-					options.rejectUnauthorized = !credentials.allowUnauthorizedCerts;
-
-				} else if (credentials.authType === 'tokenAuth') {
-
-					const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
+				} else if (credentials.accessToken) {
 
 					options.headers = {
 						Authorization: `Token token=${credentials.accessToken}`,
 					};
-
-					options.uri = `${baseUrl}/api/v1/users/me`;
-					options.rejectUnauthorized = !credentials.allowUnauthorizedCerts;
 
 				}
 
