@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div :class="$style.image">
-			<n8n-image :images="template.mainImage" />
+			<n8n-image v-if="template.mainImage" :images="template.mainImage.image.mainImage" />
 		</div>
 		<div :class="$style.content">
 			<div :class="$style.markdown">
@@ -20,8 +20,8 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { IN8nTemplate } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
+
 export default mixins(workflowHelpers).extend({
-	props: ['loading'],
 	components: {
 		TemplateDetails,
 	},
@@ -34,9 +34,28 @@ export default mixins(workflowHelpers).extend({
 					template = element;
 				}
 			});
-
 			return template;
 		},
+	},
+	data() {
+		return {
+			loading: true,
+		};
+	},
+	async mounted() {
+		const templateId = this.$route.params.id;
+		const response = await this.$store.dispatch('templates/getTemplateById', templateId);
+		if (!response) {
+			this.$showMessage({
+				title: 'Error',
+				message: 'Could not find workflow template',
+				type: 'error',
+			});
+			setTimeout(() => {
+				this.$router.go(-1);
+			}, 2000);
+		}
+		this.loading = false;
 	},
 });
 </script>

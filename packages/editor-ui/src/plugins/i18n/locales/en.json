@@ -1052,6 +1052,12 @@
 		"timeoutWorkflow": "Timeout Workflow",
 		"timezone": "Timezone"
 	},
+	"templates": {
+		"heading": "Workflow templates",
+		"newButton": "New blank workflow",
+		"searchPlaceholder": "Search workflows",
+		"categoriesHeading": "Categories"
+	},
 	"activationModal": {
 		"workflowActivated": "Workflow activated",
 		"theseExecutionsWillNotShowUp": "These executions will not show up immediately in the editor,",

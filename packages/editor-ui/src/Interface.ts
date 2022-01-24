@@ -536,6 +536,30 @@ export interface IN8nTemplate {
 	};
 }
 
+export interface ISearchPayload {
+	data: ISearchResults;
+}
+
+export interface ISearchResults{
+	categories: ITemplateCategory[];
+	collections: ITemplateCollection[];
+	totalWorkflows: number;
+	workflows: IN8nTemplate[];
+}
+
+export interface ITemplateCategory {
+	id: string;
+	name: string;
+	selected?: boolean;
+}
+
+export interface ITemplateCollection {
+	id: string;
+	name: string;
+	workflowsCount: number;
+	nodes: ITemplateNode[];
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -779,6 +803,8 @@ export interface ISettingsState {
 }
 
 export interface ITemplateState {
+	categories: ITemplateCategory[];
+	collections: ITemplateCollection[];
 	templates: IN8nTemplate[];
 }
 

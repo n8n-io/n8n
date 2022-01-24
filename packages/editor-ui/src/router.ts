@@ -5,6 +5,9 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import TemplateView from '@/views/TemplateView.vue';
 
+import SearchPageHeader from '@/components/Templates/SearchPage/Layout/Header.vue';
+import SearchPageContent from '@/components/Templates/SearchPage/Layout/Content.vue';
+
 import WorkflowPageHeader from '@/components/Templates/WorkflowPage/Layout/Header.vue';
 import WorkflowPageContent from '@/components/Templates/WorkflowPage/Layout/Content.vue';
 
@@ -52,8 +55,8 @@ export default new Router({
 				{
 					path: '',
 					components: {
-						header: WorkflowPageHeader,
-						default: WorkflowPageContent,
+						header: SearchPageHeader,
+						default: SearchPageContent,
 					},
 				},
 			],

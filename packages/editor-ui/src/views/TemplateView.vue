@@ -1,14 +1,14 @@
 <template>
-<div :class="$style.template">
-	<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
-		<div :class="$style.header">
-			<router-view name="header" :loading="loading" />
-		</div>
-		<div :class="$style.content">
-			<router-view :loading="loading" />
+	<div :class="$style.template">
+		<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
+			<div :class="$style.header">
+				<router-view name="header" />
+			</div>
+			<div :class="$style.content">
+				<router-view />
+			</div>
 		</div>
 	</div>
-</div>
 </template>
 
 <script lang="ts">
@@ -21,27 +21,6 @@ export default mixins(workflowHelpers).extend({
 		isMenuCollapsed() {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
-	},
-	data() {
-		return {
-			loading: false,
-		};
-	},
-	async mounted() {
-		this.loading = true;
-		const templateId = this.$route.params.id;
-		const response = await this.$store.dispatch('templates/getTemplateById', templateId);
-		if (!response) {
-			this.$showMessage({
-				title: 'Error',
-				message: 'Could not find workflow template',
-				type: 'error',
-			});
-			setTimeout(() => {
-				// this.$router.go(-1);
-			}, 2000);
-		}
-		this.loading = false;
 	},
 });
 </script>

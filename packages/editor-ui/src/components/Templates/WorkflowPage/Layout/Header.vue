@@ -28,7 +28,6 @@ import mixins from 'vue-typed-mixins';
 
 export default mixins(workflowHelpers).extend({
 	name: 'TemplateView',
-	props: ['loading'],
 	components: {
 		GoBackButton,
 	},
@@ -41,9 +40,13 @@ export default mixins(workflowHelpers).extend({
 					template = element;
 				}
 			});
-
 			return template;
 		},
+	},
+	data() {
+		return {
+			loading: false,
+		};
 	},
 	methods: {
 		goToWorkflowsTemplate(templateId: string) {

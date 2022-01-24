@@ -1,4 +1,4 @@
-import { IN8nTemplateResponse } from '@/Interface';
+import { IN8nTemplateResponse, ISearchPayload } from '@/Interface';
 import { post } from './helpers';
 import { TEMPLATES_BASE_URL } from '@/constants';
 
@@ -12,7 +12,10 @@ export async function getTemplateById(templateId: string): Promise<IN8nTemplateR
 				id
 				url
 			}
-			mainImage
+			mainImage {
+				image:provider_metadata
+				workflowHash: hash
+			}
 			nodes{
 				defaults
 				name
@@ -33,5 +36,74 @@ export async function getTemplateById(templateId: string): Promise<IN8nTemplateR
 		}
 	}`;
 
+	return await post(TEMPLATES_BASE_URL, `/graphql`, { query });
+}
+
+export async function getTemplates(
+	limit: number,
+	skip: number,
+	category: number[] | null,
+	search: string,
+	allData = true,
+	searchQuery = false,
+): Promise<ISearchPayload> {
+	const queryCategory = category && category.length ? `${ '[' + category + ']'}` : null;
+	const query = `query {
+		categories: getTemplateCategories @include(if: ${allData}) @skip(if: ${searchQuery}){
+			id
+			name
+		}
+		collections: searchCollections(rows: ${limit},
+			skip: ${skip},
+			# search parameter in string,default: null
+			search: "${search}",
+			# array of category id eg: [1,2] ,default: null
+			category: ${queryCategory}){
+			id
+			name
+			nodes{
+				defaults
+				name
+				displayName
+				icon
+				iconData
+				typeVersion: version,
+				categories{
+					name
+				}
+			}
+			workflows{
+				id
+			}
+			totalViews: views
+		}
+		totalworkflow: getWorkflowCount(search: "${search}", category: ${queryCategory})
+		workflows: searchWorkflows(rows: ${limit},
+			skip: ${skip},
+			# search parameter in string,default: null
+			search: "${search}",
+			# array of category id eg: [1,2] ,default: null
+			category: ${queryCategory}){
+			id
+			name
+			description
+			nodes{
+				defaults
+				name
+				displayName
+				icon
+				iconData
+				typeVersion: version,
+				categories{
+					name
+				}
+			}
+			totalViews: views
+			user{
+				username
+			}
+			created_at
+		}
+	}`;
 	return await post(TEMPLATES_BASE_URL, `/graphql`, { query });
 }

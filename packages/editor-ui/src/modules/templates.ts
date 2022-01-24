@@ -1,19 +1,34 @@
-import { getTemplateById } from '@/api/templates-mock';
+import { getTemplateById, getTemplates } from '@/api/templates';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
+	IN8nTemplate,
 	IN8nTemplateResponse,
 	IN8nTemplateWorkflow,
-	IN8nTemplate,
+	ITemplateCategory,
+	ITemplateCollection,
 	ITemplateState,
+	ISearchPayload,
+	ISearchResults,
+
 } from '../Interface';
+
+import Vue from 'vue';
 
 const module: Module<ITemplateState, IRootState> = {
 	namespaced: true,
 	state: {
+		categories: [],
+		collections: [],
 		templates: [],
 	},
 	getters: {
+		getCategories(state: ITemplateState) {
+			return state.categories;
+		},
+		getCollections(state: ITemplateState) {
+			return state.collections;
+		},
 		getTemplates(state: ITemplateState) {
 			return state.templates;
 		},
@@ -21,6 +36,18 @@ const module: Module<ITemplateState, IRootState> = {
 	mutations: {
 		setTemplate(state: ITemplateState, template: IN8nTemplate) {
 			state.templates.push(template);
+		},
+		setCategories(state: ITemplateState, categories: ITemplateCategory[]) {
+			Vue.set(state, 'categories', categories);
+		},
+		setCollections(state: ITemplateState, collections: ITemplateCollection[]) {
+			Vue.set(state, 'collections', collections);
+		},
+		setWorkflows(state: ITemplateState, templates: IN8nTemplate[]) {
+			Vue.set(state, 'templates', templates);
+		},
+		appendWorkflows(state: ITemplateState, templates: IN8nTemplate[]) {
+			Vue.set(state, 'templates', state.templates.concat(templates));
 		},
 	},
 	actions: {
@@ -32,6 +59,31 @@ const module: Module<ITemplateState, IRootState> = {
 
 				context.commit('setTemplate', template);
 				return template;
+			} catch(e) {
+				return;
+			}
+		},
+		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { search , category, skip = 0, fetchCategories = false }) {
+			const searchQuery = search.length || category ? true : false;
+			const allData = fetchCategories ? fetchCategories : !searchQuery;
+			try {
+				//todo constant pagination
+				const payload: ISearchPayload = await getTemplates(20, skip, category, search, allData, !allData);
+				const results : ISearchResults = payload.data;
+				if (allData) {
+					const categories = results.categories.map((category: ITemplateCategory) => {
+						category.selected = false;
+						return category;
+					});
+					context.commit('setCategories', categories);
+				}
+				if (skip) {
+					context.commit('appendWorkflows', results.workflows);
+				} else {
+					context.commit('setWorkflows', results.workflows);
+					context.commit('setCollections', results.collections);
+				}
+				return results;
 			} catch(e) {
 				return;
 			}
