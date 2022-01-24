@@ -763,6 +763,7 @@ export const store = new Vuex.Store({
 				return getters.nodeType(node.type).group.includes('trigger');
 			});
 		},
+
 		// Node-Index
 		getNodeIndex: (state) => (nodeName: string): number => {
 			return state.nodeIndex.indexOf(nodeName);

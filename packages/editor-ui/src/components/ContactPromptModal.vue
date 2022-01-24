@@ -80,7 +80,6 @@ export default mixins(workflowHelpers).extend({
 				instance_id: this.$store.getters.instanceId,
 				email: null,
 			});
-			this.$store.commit('ui/closeTopModal');
 		},
 		async send() {
 			if (this.isEmailValid) {
@@ -100,7 +99,7 @@ export default mixins(workflowHelpers).extend({
 						type: 'success',
 					});
 				}
-				this.$store.commit('ui/closeTopModal');
+				this.modalBus.$emit('close');
 			}
 		},
 	},

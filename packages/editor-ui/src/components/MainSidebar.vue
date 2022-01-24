@@ -1,6 +1,5 @@
 <template>
 	<div id="side-menu">
-		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
@@ -188,7 +187,7 @@ import { saveAs } from 'file-saver';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MenuItemsIterator.vue';
-import { ABOUT_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { ABOUT_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, EXECUTIONS_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -210,7 +209,6 @@ export default mixins(
 			return {
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
-				executionsListDialogVisible: false,
 				stopExecutionInProgress: false,
 			};
 		},
@@ -334,9 +332,6 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
 			},
-			closeExecutionsListOpenDialog () {
-				this.executionsListDialogVisible = false;
-			},
 			openTagManager() {
 				this.$store.dispatch('ui/openModal', TAGS_MANAGER_MODAL_KEY);
 			},
@@ -376,7 +371,7 @@ export default mixins(
 					params: { name: workflowId },
 				});
 
-				this.$store.commit('ui/closeTopModal');
+				this.$store.commit('ui/closeAllModals');
 			},
 			async handleFileImport () {
 				const reader = new FileReader();
@@ -539,7 +534,7 @@ export default mixins(
 						this.openWorkflow(this.workflowExecution.workflowId as string);
 					}
 				} else if (key === 'executions') {
-					this.executionsListDialogVisible = true;
+					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (key === 'settings') {
 					this.$router.push('/settings');
 				}

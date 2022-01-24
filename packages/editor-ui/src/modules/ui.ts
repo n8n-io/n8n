@@ -7,11 +7,13 @@ import {
 	CREDENTIAL_LIST_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
+	EXECUTIONS_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	VALUE_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
+	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
@@ -74,6 +76,12 @@ const module: Module<IUiState, IRootState> = {
 			[WORKFLOW_SETTINGS_MODAL_KEY]: {
 				open: false,
 			},
+			[EXECUTIONS_MODAL_KEY]: {
+				open: false,
+			},
+			[WORKFLOW_ACTIVE_MODAL_KEY]: {
+				open: false,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -110,17 +118,19 @@ const module: Module<IUiState, IRootState> = {
 			Vue.set(state.modals[name], 'open', true);
 			state.modalStack = [name].concat(state.modalStack);
 		},
-		closeTopModal: (state: IUiState) => {
-			const name = state.modalStack[0];
+		closeModal: (state: IUiState, name: string) => {
 			Vue.set(state.modals[name], 'open', false);
-			if (state.modals.mode) {
-				Vue.set(state.modals[name], 'mode', '');
-			}
-			if (state.modals.activeId) {
-				Vue.set(state.modals[name], 'activeId', '');
-			}
-
-			state.modalStack = state.modalStack.slice(1);
+			state.modalStack = state.modalStack.filter((openModalName: string) => {
+				return name !== openModalName;
+			});
+		},
+		closeAllModals: (state: IUiState) => {
+			Object.keys(state.modals).forEach((name: string) => {
+				if (state.modals[name].open) {
+					Vue.set(state.modals[name], 'open', false);
+				}
+			});
+			state.modalStack = [];
 		},
 		toggleSidebarMenuCollapse: (state: IUiState) => {
 			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;
