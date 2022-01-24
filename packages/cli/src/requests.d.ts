@@ -63,7 +63,7 @@ type UpdateWorkflowPayload = Partial<{
 
 export declare namespace WorkflowRequest {
 	type Payload = Partial<{
-		id: string; // delete if sent in body
+		id: string; // delete if sent
 		name: string;
 		nodes: INode[];
 		connections: IConnections;
@@ -89,9 +89,13 @@ export declare namespace WorkflowRequest {
 	type GetAllActivationErrors = Get;
 }
 
+// ----------------------------------
+//      requests to /credentials
+// ----------------------------------
+
 export declare namespace CredentialRequest {
 	type Payload = Partial<{
-		id: string; // delete if sent in body
+		id: string; // delete if sent
 		name: string;
 		type: string;
 		nodesAccess: ICredentialNodeAccess[];
