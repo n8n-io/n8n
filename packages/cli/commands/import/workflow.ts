@@ -48,8 +48,6 @@ export class ImportWorkflowsCommand extends Command {
 		}),
 	};
 
-	ownerGlobalRole: Role;
-
 	ownerWorkflowRole: Role;
 
 	private transformCredentials(node: INode, credentialsEntities: ICredentialsDb[]) {
