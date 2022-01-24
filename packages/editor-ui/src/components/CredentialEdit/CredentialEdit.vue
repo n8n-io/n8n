@@ -552,19 +552,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 				(access) => !!access,
 			) as ICredentialNodeAccess[];
 
-			// Save only the none default data
-			const data = NodeHelpers.getNodeParameters(
-				this.credentialType!.properties,
-				this.credentialData as INodeParameters,
-				false,
-				false,
-			);
-
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
-				data: data as unknown as ICredentialDataDecryptedObject,
+				data: this.credentialData,
 				nodesAccess,
 			};
 
@@ -635,6 +627,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				if (this.isCredentialTestable) {
 					this.isTesting = true;
+
+					// Add the full data including defaults for testing
+					credentialDetails.data = this.credentialData;
+
 					await this.testCredential(credentialDetails);
 					this.isTesting = false;
 				}
