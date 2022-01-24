@@ -27,6 +27,7 @@ interface IncidentCreate {
 	}
 	component_ids?: string[]
 	impact_override?: string
+	status?: string;
 }
 
 export class StatusPage implements INodeType {
@@ -553,12 +554,14 @@ export class StatusPage implements INodeType {
 					const incident: IncidentCreate = {
 						name : incidentName,
 						impact_override: impact,
+						status: 'investigating',
 					};
 					if (componentId && componentStatus) {
 						incident.components = {
 							[componentId]: componentStatus
 						}
-					} else if (componentId) {
+					}
+					if (componentId) {
 						incident.component_ids = [componentId]
 					}
 
