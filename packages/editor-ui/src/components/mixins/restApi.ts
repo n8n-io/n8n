@@ -79,6 +79,10 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('POST', `/executions-current/${executionId}/stop`);
 				},
 
+				getCredentialTranslation: (credentialType): Promise<object> => {
+					return self.restApi().makeRestApiRequest('GET', '/credential-translation', { credentialType });
+				},
+
 				getNodeTranslationHeaders: (): Promise<INodeTranslationHeaders> => {
 					return self.restApi().makeRestApiRequest('GET', '/node-translation-headers');
 				},
@@ -114,7 +118,7 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('POST', `/workflows/run`, startRunData);
 				},
 
-				// Creates new credentials
+				// Creates a new workflow
 				createNewWorkflow: (sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> => {
 					return self.restApi().makeRestApiRequest('POST', `/workflows`, sendData);
 				},

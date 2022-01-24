@@ -130,7 +130,7 @@ export class Box implements INodeType {
 
 						let mimeType: string | undefined;
 
-						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}/content`, {}, {}, undefined, { resolveWithFullResponse: true });
+						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}/content`, {}, {}, undefined, { encoding: null, resolveWithFullResponse: true });
 
 						const newItem: INodeExecutionData = {
 							json: items[i].json,
