@@ -176,7 +176,7 @@ import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 
 require('body-parser-xml')(bodyParser);
 
-class App {
+export class App {
 	app: express.Application;
 
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
