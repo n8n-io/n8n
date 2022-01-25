@@ -1583,15 +1583,15 @@ class App {
 
 				await this.externalHooks.run('credentials.create', [encryptedData]);
 
-				let savedCredential: undefined | CredentialsEntity;
+				// let savedCredential: undefined | CredentialsEntity;
 
 				const role = await Db.collections.Role!.findOneOrFail({
 					name: 'owner',
 					scope: 'credential',
 				});
 
-				await getConnection().transaction(async (transactionManager) => {
-					savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
+				const savedCredential = await getConnection().transaction(async (transactionManager) => {
+					const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
 
 					savedCredential.data = newCredential.data;
 
@@ -1604,11 +1604,9 @@ class App {
 					});
 
 					await transactionManager.save<SharedCredentials>(newSharedCredential);
-				});
 
-				if (!savedCredential) {
-					throw new ResponseHelper.ResponseError('Failed to save credential', undefined, 500);
-				}
+					return savedCredential;
+				});
 
 				const { id, ...rest } = savedCredential;
 
