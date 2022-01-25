@@ -16,8 +16,8 @@ import { IFormBoxConfig } from '@/Interface';
 
 const FORM_CONFIG: IFormBoxConfig = {
 	title: 'Set up owner account',
-	buttonText: 'Finish setup',
-	secondaryButtonText: 'Skip setup',
+	buttonText: 'Next',
+	secondaryButtonText: 'Skip setup for now',
 	inputs: [[
 		{
 			name: 'email',
