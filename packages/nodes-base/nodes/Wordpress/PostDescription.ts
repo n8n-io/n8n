@@ -773,7 +773,35 @@ export const postFields: INodeProperties[] = [
 				default: false,
 				description: 'Limit result set to items that are sticky.',
 			},
-
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Draft',
+						value: 'draft',
+					},
+					{
+						name: 'Future',
+						value: 'future',
+					},
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+					{
+						name: 'Private',
+						value: 'private',
+					},
+					{
+						name: 'Publish',
+						value: 'publish',
+					},
+				],
+				default: 'publish',
+				description: 'The status of the post.',
+			}
 		],
 	},
 /* -------------------------------------------------------------------------- */
