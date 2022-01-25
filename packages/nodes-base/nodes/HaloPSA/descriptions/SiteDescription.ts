@@ -1,5 +1,29 @@
 import { INodeProperties } from 'n8n-workflow';
 
+const siteFields: INodeProperties[] = [
+	{
+		displayName: 'Notes',
+		name: 'notes',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+	},
+	{
+		displayName: 'Main Contact',
+		name: 'maincontact_name',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Phone Number',
+		name: 'phonenumber',
+		type: 'string',
+		default: '',
+	},
+];
+
 export const siteDescription: INodeProperties[] = [
 	{
 		displayName: 'Name',
@@ -10,7 +34,7 @@ export const siteDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
+				operation: ['create'],
 				resource: ['site'],
 			},
 		},
@@ -27,7 +51,7 @@ export const siteDescription: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
+				operation: ['create'],
 				resource: ['site'],
 			},
 		},
@@ -41,32 +65,44 @@ export const siteDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['update', 'create'],
+				operation: ['create'],
+				resource: ['site'],
+			},
+		},
+		options: [...siteFields],
+	},
+	// Update fields =============================================================
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: ['update'],
 				resource: ['site'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Phone Number',
-				name: 'phonenumber',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
 				default: '',
+				description: 'Enter site name',
 			},
 			{
-				displayName: 'Main Contact',
-				name: 'maincontact_name',
-				type: 'string',
+				displayName: 'Client',
+				name: 'client_id',
+				type: 'options',
 				default: '',
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
-				type: 'string',
+				noDataExpression: true,
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					loadOptionsMethod: 'getHaloPSAClients',
 				},
-				default: '',
 			},
+			...siteFields,
 		],
 	},
 ];

@@ -1,4 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions
+} from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -13,13 +15,27 @@ import {
 	JsonObject,
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
-import { clientDescription } from './descriptions/ClientDescription';
-import { invoiceDescription } from './descriptions/InvoiceDescription';
-import { siteDescription } from './descriptions/SiteDescription';
-import { ticketDescription } from './descriptions/TicketDescription';
-import { userDescription } from './descriptions/UserDescription';
+import {
+	clientDescription
+} from './descriptions/ClientDescription';
+import {
+	invoiceDescription
+} from './descriptions/InvoiceDescription';
+import {
+	siteDescription
+} from './descriptions/SiteDescription';
+import {
+	ticketDescription
+} from './descriptions/TicketDescription';
+import {
+	userDescription
+} from './descriptions/UserDescription';
 
-import { getAccessTokens, haloPSAApiRequest, validateCrendetials } from './GenericFunctions';
+import {
+	getAccessTokens,
+	haloPSAApiRequest,
+	validateCrendetials
+} from './GenericFunctions';
 
 export class HaloPSA implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,26 +70,25 @@ export class HaloPSA implements INodeType {
 						name: 'Client',
 						value: 'client',
 					},
-					{
-						name: 'Invoice',
-						value: 'invoice',
-					},
+					// {
+					// 	name: 'Invoice',
+					// 	value: 'invoice',
+					// },
 					{
 						name: 'Site',
 						value: 'site',
 					},
 					{
 						name: 'Ticket',
-						value: 'tickets',
+						value: 'ticket',
 					},
 					{
 						name: 'User',
-						value: 'users',
+						value: 'user',
 					},
 				],
-				default: 'tickets',
+				default: 'ticket',
 				required: true,
-				description: 'Resource to consume',
 			},
 			{
 				displayName: 'Operation',
@@ -115,13 +130,20 @@ export class HaloPSA implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['get', 'update', 'delete'],
+						resource: [
+							'client',
+							'invoice',
+							'site',
+							'ticket',
+							'user',
+						],
 					},
 				},
 			},
 
 			// Descriptions -------------------------------------------------------------
 			...ticketDescription,
-			...invoiceDescription,
+			// ...invoiceDescription,
 			...userDescription,
 			...clientDescription,
 			...siteDescription,
@@ -132,6 +154,9 @@ export class HaloPSA implements INodeType {
 				name: 'reasonForDeletion',
 				type: 'string',
 				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				displayOptions: {
 					show: {
 						operation: ['delete'],
@@ -291,7 +316,14 @@ export class HaloPSA implements INodeType {
 
 		const tokens = await getAccessTokens.call(this);
 
-		const resource = this.getNodeParameter('resource', 0) as string;
+		let resource = this.getNodeParameter('resource', 0) as string;
+		if(resource === 'ticket') {
+			resource = 'tickets';
+		}
+		if(resource === 'user') {
+			resource = 'users';
+		}
+
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resourceApiUrl = ((await this.getCredentials('haloPSAApi')) as IDataObject)
 			.resourceApiUrl as string;
@@ -303,16 +335,11 @@ export class HaloPSA implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				// Create ----------------------------------------------------
-				if (operation === 'create' || operation === 'update') {
+				if (operation === 'create') {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const item: IDataObject = { ...additionalFields };
 
-					if (operation === 'update') {
-						const itemID = this.getNodeParameter('item_id', i) as string;
-						item['id'] = +itemID;
-					}
-
-					if (resource === 'tickets') {
+					if (resource === 'ticket') {
 						const summary = this.getNodeParameter('summary', i) as string;
 						item['summary'] = summary;
 						const details = this.getNodeParameter('details', i) as string;
@@ -324,7 +351,7 @@ export class HaloPSA implements INodeType {
 						item['name'] = name;
 					}
 
-					if (resource === 'users') {
+					if (resource === 'user') {
 						const name = this.getNodeParameter('userName', i) as string;
 						item['name'] = name;
 						const site = this.getNodeParameter('sitesList', i) as string;
@@ -427,6 +454,23 @@ export class HaloPSA implements INodeType {
 						'',
 						{},
 						count,
+					);
+				}
+
+				// Update ----------------------------------------------------
+				if (operation === 'update') {
+					const itemID = this.getNodeParameter('item_id', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					const body = [{ id: +itemID, ...updateFields }];
+					responseData = await haloPSAApiRequest.call(
+						this,
+						resourceApiUrl,
+						resource,
+						'POST',
+						tokens.access_token,
+						'',
+						body,
 					);
 				}
 

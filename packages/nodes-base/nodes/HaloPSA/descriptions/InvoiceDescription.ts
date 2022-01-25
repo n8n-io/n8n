@@ -1,5 +1,70 @@
 import { INodeProperties } from 'n8n-workflow';
 
+const invoiceFields: INodeProperties[] = [
+	{
+		displayName: 'Currency',
+		name: 'currency',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Date Sent',
+		name: 'datesent',
+		type: 'dateTime',
+		default: '',
+	},
+	{
+		// nodelinter-ignore-next-line
+		displayName: 'Date Paid',
+		// nodelinter-ignore-next-line
+		name: 'datepaid',
+		type: 'dateTime',
+		default: '',
+	},
+	{
+		displayName: 'Date Posted',
+		name: 'dateposted',
+		type: 'dateTime',
+		default: '',
+	},
+	{
+		displayName: 'Due Date',
+		name: 'duedate',
+		type: 'dateTime',
+		default: '',
+	},
+	{
+		displayName: 'Note',
+		name: 'notes_1',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+	},
+	{
+		displayName: 'Internal Note',
+		name: 'internal_note',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+	},
+	{
+		displayName: 'Invoice Number',
+		name: 'thirdpartyinvoicenumber',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Reference',
+		name: 'reference',
+		type: 'string',
+		default: '',
+	},
+];
+
 export const invoiceDescription: INodeProperties[] = [
 	{
 		displayName: 'Client',
@@ -13,7 +78,7 @@ export const invoiceDescription: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
+				operation: ['create'],
 				resource: ['invoice'],
 			},
 		},
@@ -27,7 +92,7 @@ export const invoiceDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
+				operation: ['create'],
 				resource: ['invoice'],
 			},
 		},
@@ -46,7 +111,7 @@ export const invoiceDescription: INodeProperties[] = [
 		placeholder: 'Add item',
 		displayOptions: {
 			show: {
-				operation: ['update', 'create'],
+				operation: ['create'],
 				resource: ['invoice'],
 			},
 		},
@@ -90,71 +155,44 @@ export const invoiceDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['update', 'create'],
+				operation: ['create'],
+				resource: ['invoice'],
+			},
+		},
+		options: [...invoiceFields],
+	},
+	// Update fields =============================================================
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: ['update'],
 				resource: ['invoice'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Invoice Number',
-				name: 'thirdpartyinvoicenumber',
-				type: 'string',
+				displayName: 'Client',
+				name: 'client_id',
+				type: 'options',
 				default: '',
-			},
-			{
-				displayName: 'Currency',
-				name: 'currency',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Reference',
-				name: 'reference',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Date Posted',
-				name: 'dateposted',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Due Date',
-				name: 'duedate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Date Sent',
-				name: 'datesent',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Date Paid',
-				name: 'datepaid',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Note',
-				name: 'notes_1',
-				type: 'string',
+				noDataExpression: true,
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					loadOptionsMethod: 'getHaloPSAClients',
 				},
-				default: '',
 			},
 			{
-				displayName: 'Internal Note',
-				name: 'internal_note',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
+				displayName: 'Date Invoiced',
+				name: 'invoice_date',
+				type: 'dateTime',
 				default: '',
+				description: 'The date and time of invoice',
 			},
+			...invoiceFields,
 		],
 	},
 ];

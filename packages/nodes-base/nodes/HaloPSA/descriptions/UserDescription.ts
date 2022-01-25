@@ -1,5 +1,55 @@
 import { INodeProperties } from 'n8n-workflow';
 
+const userFields: INodeProperties[] = [
+	{
+		displayName: 'Email Address',
+		name: 'emailaddress',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Network Login',
+		name: 'login',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Notes',
+		name: 'notes',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+	},
+	{
+		displayName: 'Site Telephone Number',
+		name: 'sitephonenumber',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Surname',
+		name: 'surname',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Password',
+		name: 'password',
+		type: 'string',
+		default: '',
+		description:
+			'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
+	},
+	{
+		displayName: 'User Is Active',
+		name: 'inactive',
+		type: 'boolean',
+		default: true,
+	},
+];
+
 export const userDescription: INodeProperties[] = [
 	{
 		displayName: 'Name',
@@ -10,8 +60,8 @@ export const userDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
-				resource: ['users'],
+				operation: ['create'],
+				resource: ['user'],
 			},
 		},
 	},
@@ -27,8 +77,8 @@ export const userDescription: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
-				resource: ['users'],
+				operation: ['create'],
+				resource: ['user'],
 			},
 		},
 	},
@@ -41,58 +91,44 @@ export const userDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['update', 'create'],
-				resource: ['users'],
+				operation: ['create'],
+				resource: ['user'],
+			},
+		},
+		options: [...userFields],
+	},
+	// Update fields =============================================================
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['user'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Surname',
-				name: 'surname',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
 				default: '',
+				description: 'Enter user name',
 			},
 			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
+				displayName: 'Website',
+				name: 'site_id',
+				type: 'options',
 				default: '',
-				description:
-					'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character.',
-			},
-			{
-				displayName: 'Email Address',
-				name: 'emailaddress',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Network Login',
-				name: 'login',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Site Telephone Number',
-				name: 'sitephonenumber',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'User is Active',
-				name: 'inactive',
-				type: 'boolean',
-				default: true,
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
-				type: 'string',
+				noDataExpression: true,
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					loadOptionsMethod: 'getHaloPSASites',
 				},
-				default: '',
 			},
+			...userFields,
 		],
 	},
 ];
