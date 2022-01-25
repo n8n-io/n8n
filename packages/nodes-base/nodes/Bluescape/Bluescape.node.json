@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.bluescape",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Collaboration", "Communication", "Productivity"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://api.apps.us.bluescape.com/docs/page/app-auth"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://api.apps.us.bluescape.com/docs/doc/us/elementary#/"
+			}
+		]
+	}
+}
