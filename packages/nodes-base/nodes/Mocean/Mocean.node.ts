@@ -171,6 +171,26 @@ export class Mocean implements INodeType {
 				},
 				description: 'The message to send',
 			},
+
+			{
+				displayName: 'Delivery Report URL',
+				name: 'dlr-url',
+				type: 'string',
+				default: '',
+				placeholder: '',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'The message to send',
+			},
 		],
 
 	};
@@ -185,6 +205,7 @@ export class Mocean implements INodeType {
 		let requesetMethod: string;
 		let resource: string;
 		let text: string;
+		let dlr_url: string
 		let dataKey: string;
 		// For Post
 		let body: IDataObject;
@@ -198,6 +219,7 @@ export class Mocean implements INodeType {
 				resource = this.getNodeParameter('resource', itemIndex, '') as string;
 				operation = this.getNodeParameter('operation',itemIndex,'') as string;
 				text = this.getNodeParameter('message', itemIndex, '') as string;
+				dlr_url = this.getNodeParameter('dlr-url',itemIndex, '') as string;
 				requesetMethod = 'POST';
 				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
 				body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
@@ -218,6 +240,10 @@ export class Mocean implements INodeType {
 				} else if(resource === 'sms') {
 					dataKey = 'messages';
 					body['mocean-text'] = text;
+					if (dlr_url != '') {
+						body['mocean-dlr-url'] = dlr_url;
+						body['mocean-dlr-mask'] = '1';
+					}
 					endpoint = '/rest/2/sms';
 				} else {
 					throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`);
