@@ -12,7 +12,7 @@
 			</div>
 			<div>
 				<div :class="$style.sectionHeader">
-					<n8n-heading size="large">Basic information</n8n-heading>
+					<n8n-heading size="large">Basic Information</n8n-heading>
 				</div>
 				<n8n-form-inputs
 					v-if="formInputs"
@@ -73,7 +73,7 @@ export default mixins(
 					name: 'firstName',
 					initialValue: this.currentUser.firstName,
 					properties: {
-						label: 'First name',
+						label: 'First Name',
 						maxlength: 32,
 						required: true,
 						autocomplete: 'given-name',
@@ -83,7 +83,7 @@ export default mixins(
 					name: 'lastName',
 					initialValue: this.currentUser.lastName,
 					properties: {
-						label: 'Last name',
+						label: 'Last Name',
 						maxlength: 32,
 						required: true,
 						autocomplete: 'family-name',
