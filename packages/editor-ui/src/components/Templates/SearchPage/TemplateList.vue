@@ -1,10 +1,10 @@
 <template>
 	<div :class="$style.list">
 		<div :class="$style.header">
-			<n8n-heading v-if="!loading" :bold="true" size="medium" color="text-light">
-				Workflows ({{ workflowsUI.length }})
+			<n8n-heading :bold="true" size="medium" color="text-light">
+				Workflows
+				<span v-if="!loading" v-text="`(${workflowsUI.length})`" />
 			</n8n-heading>
-			<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
 		</div>
 		<div v-if="loading" :class="$style.container">
 			<div :class="$style.wrapper">
@@ -93,7 +93,7 @@ export default mixins(genericHelpers).extend({
 						if (vnode.context) {
 							if (!vnode.context.$data.searchFinished) {
 								vnode.context.$data.lastQuery.page = vnode.context.$data.lastQuery.page + 1;
-								vnode.context.$data.lastQuery.skip = 7 * vnode.context.$data.lastQuery.page;
+								vnode.context.$data.lastQuery.skip = 10 * vnode.context.$data.lastQuery.page;
 
 								const { search, category, skip } = vnode.context.$data.lastQuery;
 								vnode.context.$store.dispatch('templates/getSearchResults', {

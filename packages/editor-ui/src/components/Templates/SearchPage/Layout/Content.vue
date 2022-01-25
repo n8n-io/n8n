@@ -39,7 +39,7 @@ export default mixins(genericHelpers).extend({
 		return {
 			categories: [] as number[],
 			lastQuery: {
-				numberOfResults: 7,
+				numberOfResults: 10,
 				skip: 0,
 				search: '',
 				category: [] as number[] | null,

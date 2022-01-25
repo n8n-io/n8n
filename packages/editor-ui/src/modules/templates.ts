@@ -63,7 +63,7 @@ const module: Module<ITemplateState, IRootState> = {
 				return;
 			}
 		},
-		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { numberOfResults = 7, search , category, skip = 0, fetchCategories = false }) {
+		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { numberOfResults = 10, search , category, skip = 0, fetchCategories = false }) {
 			const searchQuery = search.length || category ? true : false;
 			const allData = fetchCategories ? fetchCategories : !searchQuery;
 			try {

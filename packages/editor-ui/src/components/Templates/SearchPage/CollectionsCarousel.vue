@@ -1,19 +1,19 @@
 <template>
-	<div>
+	<div :class="$style.container">
 		<div :class="$style.header">
-			<n8n-heading v-if="!loading" :bold="true" size="medium" color="text-light">
-				Collections ({{ collectionsUI.length }})
+			<n8n-heading :bold="true" size="medium" color="text-light">
+				Collections
+				<span v-if="!loading" v-text="`(${collectionsUI.length})`" />
 			</n8n-heading>
-			<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
 		</div>
 
-		<div v-if="loading">
+		<div v-if="loading" :class="$style.slider">
 			<agile :options="sliderOptions">
 				<CollectionsCard v-for="n in 4" :key="n" :loading="loading" />
 			</agile>
 		</div>
 
-		<span v-else-if="collectionsUI.length">
+		<span :class="$style.slider" v-else-if="collectionsUI.length">
 			<agile :options="sliderOptions">
 				<CollectionsCard
 					v-for="collection in collectionsUI"
@@ -31,14 +31,14 @@
 
 				<template slot="prevButton">
 					<div>
-						<button>
+						<button >
 							<font-awesome-icon icon="chevron-left" />
 						</button>
 					</div>
 				</template>
 				<template slot="nextButton">
 					<div>
-						<button>
+						<button >
 							<font-awesome-icon icon="chevron-right" />
 						</button>
 					</div>
@@ -103,9 +103,27 @@ export default mixins(genericHelpers).extend({
 </script>
 
 <style lang="scss" module>
+.container {
+	position: relative;
+}
+
 .header {
 	padding-bottom: var(--spacing-2xs);
 }
+
+.slider {
+	&:after {
+		content: '';
+		width: 60px;
+		height: 140px;
+		top: 30px;
+		right: 0;
+		position: absolute;
+		background: linear-gradient(270deg, rgba(255, 255, 255, 0.8) 25%, rgba(250, 7, 7, 0) 100%);
+		z-index: 0;
+	}
+}
+
 .text {
 	padding-top: var(--spacing-xs);
 }
@@ -120,9 +138,11 @@ export default mixins(genericHelpers).extend({
 		position: absolute;
 		background: transparent;
 		border: none;
-		font-size: 24px;
+		font-size: var(--font-size-xl);
 		cursor: pointer;
 		transition-duration: 0.1s;
+		z-index: 1;
+
 		button {
 			width: 28px;
 			height: 37px;
@@ -131,9 +151,11 @@ export default mixins(genericHelpers).extend({
 			background-color: #fbfcfe;
 			opacity: 1;
 		}
+
 		&--prev {
 			left: 0;
 		}
+
 		&--next {
 			right: 0;
 		}
