@@ -95,8 +95,8 @@ export default mixins(showMessage).extend({
 
 					this.$showToast({
 						type: 'success',
-						title: 'Invite was sent successfully',
-						message: `${user.email} was invited again`,
+						title: 'Invite resent',
+						message: `To ${user.email}`,
 					});
 				} catch (e) {
 					this.$showError(e, 'Problem inviting user');
