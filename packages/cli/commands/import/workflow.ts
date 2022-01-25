@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-loop-func */
 /* eslint-disable no-await-in-loop */
@@ -13,7 +15,7 @@ import { INode, INodeCredentialsDetails, LoggerProxy } from 'n8n-workflow';
 import * as fs from 'fs';
 import * as glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
-import { getConnection } from 'typeorm';
+import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDb } from '../../src';
 import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
@@ -50,31 +52,7 @@ export class ImportWorkflowsCommand extends Command {
 
 	ownerWorkflowRole: Role;
 
-	private transformCredentials(node: INode, credentialsEntities: ICredentialsDb[]) {
-		if (node.credentials) {
-			const allNodeCredentials = Object.entries(node.credentials);
-			// eslint-disable-next-line no-restricted-syntax
-			for (const [type, name] of allNodeCredentials) {
-				if (typeof name === 'string') {
-					const nodeCredentials: INodeCredentialsDetails = {
-						id: null,
-						name,
-					};
-
-					const matchingCredentials = credentialsEntities.filter(
-						(credentials) => credentials.name === name && credentials.type === type,
-					);
-
-					if (matchingCredentials.length === 1) {
-						nodeCredentials.id = matchingCredentials[0].id.toString();
-					}
-
-					// eslint-disable-next-line no-param-reassign
-					node.credentials[type] = nodeCredentials;
-				}
-			}
-		}
-	}
+	transactionManager: EntityManager;
 
 	async run(): Promise<void> {
 		const logger = getLogger();
@@ -105,43 +83,67 @@ export class ImportWorkflowsCommand extends Command {
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
 			const credentials = (await Db.collections.Credentials?.find()) ?? [];
-			let i: number;
+
+			let totalImported = 0;
+
 			if (flags.separate) {
-				let inputPath = flags.input;
+				let { input: inputPath } = flags;
+
 				if (process.platform === 'win32') {
 					inputPath = inputPath.replace(/\\/g, '/');
 				}
+
 				inputPath = inputPath.replace(/\/$/g, '');
+
 				const files = await glob(`${inputPath}/*.json`);
-				for (i = 0; i < files.length; i++) {
-					const workflow = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
+
+				totalImported = files.length;
+
+				await getConnection().transaction(async (transactionManager) => {
+					this.transactionManager = transactionManager;
+
+					for (const file of files) {
+						const workflow = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
+
+						if (credentials.length > 0) {
+							workflow.nodes.forEach((node: INode) => {
+								this.transformCredentials(node, credentials);
+							});
+						}
+
+						await this.storeWorkflow(workflow, user);
+					}
+				});
+
+				this.reportSuccess(totalImported);
+				process.exit();
+			}
+
+			const workflows = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
+
+			totalImported = workflows.length;
+
+			if (!Array.isArray(workflows)) {
+				throw new Error(
+					'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
+				);
+			}
+
+			await getConnection().transaction(async (transactionManager) => {
+				this.transactionManager = transactionManager;
+
+				for (const workflow of workflows) {
 					if (credentials.length > 0) {
 						workflow.nodes.forEach((node: INode) => {
 							this.transformCredentials(node, credentials);
 						});
 					}
+
 					await this.storeWorkflow(workflow, user);
 				}
-			} else {
-				const workflows = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
+			});
 
-				if (!Array.isArray(workflows)) {
-					throw new Error(
-						'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
-					);
-				}
-
-				for (i = 0; i < workflows.length; i++) {
-					if (credentials.length > 0) {
-						workflows[i].nodes.forEach((node: INode) => {
-							this.transformCredentials(node, credentials);
-						});
-					}
-					await this.storeWorkflow(workflows[i], user);
-				}
-			}
-
-			console.info(`Successfully imported ${i} ${i === 1 ? 'workflow.' : 'workflows.'}`);
+			this.reportSuccess(totalImported);
 			process.exit();
 		} catch (error) {
 			console.error('An error occurred while importing workflows. See log messages for details.');
@@ -150,36 +152,38 @@ export class ImportWorkflowsCommand extends Command {
 		}
 	}
 
+	private reportSuccess(total: number) {
+		console.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
+	}
+
 	private async initOwnerWorkflowRole() {
 		const ownerWorkflowRole = await Db.collections.Role!.findOne({
 			where: { name: 'owner', scope: 'workflow' },
 		});
 
 		if (!ownerWorkflowRole) {
-			throw new Error(`Owner workflow role not found. ${FIX_INSTRUCTION}`);
+			throw new Error(`Failed to find owner workflow role. ${FIX_INSTRUCTION}`);
 		}
 
 		this.ownerWorkflowRole = ownerWorkflowRole;
 	}
 
 	private async storeWorkflow(workflow: object, user: User) {
-		await getConnection().transaction(async (transactionManager) => {
-			const newWorkflow = new WorkflowEntity();
+		const newWorkflow = new WorkflowEntity();
 
-			Object.assign(newWorkflow, workflow);
+		Object.assign(newWorkflow, workflow);
 
-			const savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+		const savedWorkflow = await this.transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const newSharedWorkflow = new SharedWorkflow();
+		const newSharedWorkflow = new SharedWorkflow();
 
-			Object.assign(newSharedWorkflow, {
-				workflow: savedWorkflow,
-				user,
-				role: this.ownerWorkflowRole,
-			});
-
-			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+		Object.assign(newSharedWorkflow, {
+			workflow: savedWorkflow,
+			user,
+			role: this.ownerWorkflowRole,
 		});
+
+		await this.transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 	}
 
 	private async getOwner() {
@@ -190,7 +194,7 @@ export class ImportWorkflowsCommand extends Command {
 		const owner = await Db.collections.User!.findOne({ globalRole: ownerGlobalRole });
 
 		if (!owner) {
-			throw new Error(`No owner found. ${FIX_INSTRUCTION}`);
+			throw new Error(`Failed to find owner. ${FIX_INSTRUCTION}`);
 		}
 
 		return owner;
@@ -204,5 +208,30 @@ export class ImportWorkflowsCommand extends Command {
 		}
 
 		return user;
+	}
+
+	private transformCredentials(node: INode, credentialsEntities: ICredentialsDb[]) {
+		if (node.credentials) {
+			const allNodeCredentials = Object.entries(node.credentials);
+			for (const [type, name] of allNodeCredentials) {
+				if (typeof name === 'string') {
+					const nodeCredentials: INodeCredentialsDetails = {
+						id: null,
+						name,
+					};
+
+					const matchingCredentials = credentialsEntities.filter(
+						(credentials) => credentials.name === name && credentials.type === type,
+					);
+
+					if (matchingCredentials.length === 1) {
+						nodeCredentials.id = matchingCredentials[0].id.toString();
+					}
+
+					// eslint-disable-next-line no-param-reassign
+					node.credentials[type] = nodeCredentials;
+				}
+			}
+		}
 	}
 }
