@@ -9,7 +9,7 @@
 			</n8n-menu-item>
 			<n8n-menu-item index="/settings/personal" v-if="canAccessUsersView('PersonalSettings')">
 				<i :class="$style.icon">
-					<font-awesome-icon icon="user-astronaut" />
+					<font-awesome-icon icon="user-circle" />
 				</i>
 				<span slot="title">Personal</span>
 			</n8n-menu-item>

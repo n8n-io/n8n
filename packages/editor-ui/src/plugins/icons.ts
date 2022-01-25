@@ -85,8 +85,8 @@ import {
 	faTimes,
 	faTrash,
 	faUndo,
-	faUserAstronaut,
 	faUserClock,
+	faUserCircle,
 	faUserFriends,
 	faUsers,
 } from '@fortawesome/free-solid-svg-icons';
@@ -175,8 +175,8 @@ library.add(faThLarge);
 library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);
-library.add(faUserAstronaut);
 library.add(faUserClock);
+library.add(faUserCircle);
 library.add(faUserFriends);
 library.add(faUsers);
 
