@@ -97,7 +97,6 @@ export default mixins(externalHooks).extend({
 			}
 
 			const searchData = search<INodeCreateElement>(filter, nodeTypes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
-			console.log(searchData);
 			const returnData = searchData.map(({item}) => item);
 
 			setTimeout(() => {

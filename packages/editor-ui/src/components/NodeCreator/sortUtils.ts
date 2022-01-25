@@ -37,7 +37,7 @@ function fuzzyMatchSimple(pattern: string, target: string): boolean {
  * @returns [boolean, number]       a boolean which tells if pattern was
  *                                  found or not and a search score
  */
-function fuzzyMatch(pattern: string, target: string): [boolean, number] {
+function fuzzyMatch(pattern: string, target: string): {matched: boolean, outScore: number} {
 	const recursionCount = 0;
 	const recursionLimit = 5;
 	const matches: number[] = [];
@@ -68,17 +68,17 @@ function fuzzyMatchRecursive(
 	nextMatch: number,
 	recursionCount: number,
 	recursionLimit: number,
-): [boolean, number] {
+): {matched: boolean, outScore: number} {
 	let outScore = 0;
 
 	// Return if recursion limit is reached.
 	if (++recursionCount >= recursionLimit) {
-		return [false, outScore];
+		return {matched: false, outScore};
 	}
 
 	// Return if we reached ends of strings.
 	if (patternCurIndex === pattern.length || targetCurrIndex === target.length) {
-		return [false, outScore];
+		return {matched: false, outScore};
 	}
 
 	// Recursion params
@@ -94,7 +94,7 @@ function fuzzyMatchRecursive(
 			pattern[patternCurIndex].toLowerCase() === target[targetCurrIndex].toLowerCase()
 		) {
 			if (nextMatch >= maxMatches) {
-				return [false, outScore];
+				return {matched: false, outScore};
 			}
 
 			if (firstMatch && targetMatches) {
@@ -103,7 +103,7 @@ function fuzzyMatchRecursive(
 			}
 
 			const recursiveMatches: number[] = [];
-			const [matched, recursiveScore] = fuzzyMatchRecursive(
+			const recursiveResult = fuzzyMatchRecursive(
 				pattern,
 				target,
 				patternCurIndex,
@@ -116,7 +116,8 @@ function fuzzyMatchRecursive(
 				recursionLimit,
 			);
 
-			if (matched) {
+			const recursiveScore = recursiveResult.outScore;
+			if (recursiveResult.matched) {
 				// Pick best recursive score.
 				if (!recursiveMatch || recursiveScore > bestRecursiveScore) {
 					bestRecursiveMatches = [...recursiveMatches];
@@ -185,15 +186,15 @@ function fuzzyMatchRecursive(
 			// Recursive score is better than "this"
 			matches = [...bestRecursiveMatches];
 			outScore = bestRecursiveScore;
-			return [true, outScore];
+			return {matched: true, outScore};
 		} else if (matched) {
 			// "this" score is better than recursive
-			return [true, outScore];
+			return {matched: true, outScore};
 		} else {
-			return [false, outScore];
+			return {matched: false, outScore};
 		}
 	}
-	return [false, outScore];
+	return {matched: false, outScore};
 }
 
 // prop = 'key'
@@ -205,7 +206,7 @@ function getValue<T extends object>(obj: T, prop: string): unknown {
 	}
 
 	const segments = prop.split('.');
-	let result: any = obj;
+	let result: any = obj; // tslint:disable-line:no-any
 	let i = 0;
 	while (result && i < segments.length) {
 		result = result[segments[i]];
@@ -231,17 +232,19 @@ export function search<T extends object>(filter: string, data: Readonly<T[]>, ke
 		});
 
 		// for each item, check every key and get maximum score
-		const itemMatch = values.reduce((accu: null | [boolean, number], {value, weight}: {value: string, weight: number}) => {
+		const itemMatch = values.reduce((accu: null | {matched: boolean, outScore: number}, {value, weight}: {value: string, weight: number}) => {
 			if (!fuzzyMatchSimple(filter, value)) {
 				return accu;
 			}
 
 			const match = fuzzyMatch(filter, value);
-			match[1] *= weight;
-			if (!accu && match[0]) {
+			match.outScore *= weight;
+
+			const {matched, outScore} = match;
+			if (!accu && matched) {
 				return match;
 			}
-			if (match[0] && accu && match[1] > accu[1]) {
+			if (matched && accu && outScore > accu.outScore) {
 				return match;
 			}
 			return accu;
@@ -249,7 +252,7 @@ export function search<T extends object>(filter: string, data: Readonly<T[]>, ke
 
 		if (itemMatch) {
 			accu.push({
-				score: itemMatch[1],
+				score: itemMatch.outScore,
 				item,
 			});
 		}
