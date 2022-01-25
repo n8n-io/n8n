@@ -6,7 +6,6 @@
 		<div :class="$style.search">
 			<div :class="$style.input">
 				<n8n-input
-					v-if="!loading"
 					v-model="search"
 					@input="onSearchInput"
 					clearable
@@ -14,7 +13,6 @@
 				>
 					<font-awesome-icon icon="search" slot="prefix" />
 				</n8n-input>
-				<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
 			</div>
 			<div :class="$style.carousel">
 				<CollectionsCarousel :loading="loading" />

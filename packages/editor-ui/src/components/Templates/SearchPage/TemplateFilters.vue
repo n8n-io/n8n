@@ -1,13 +1,8 @@
 <template>
 	<div class="template-filters">
-		<div
-			:class="$style.title"
-			v-if="!loading"
-			v-text="$locale.baseText('templates.categoriesHeading')"
-		/>
-		<n8n-loading :animated="loadingAnimated" :loading="loading" :rows="1" variant="h1" />
+		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
+
 		<div v-if="loading" :class="$style.list">
-			<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
 			<div v-for="(block, index) in loadingBlocks" :key="'block-' + index">
 				<n8n-loading
 					:animated="loadingAnimated"
@@ -38,14 +33,14 @@
 				/>
 			</li>
 		</ul>
-		<div :class="$style.button" v-if="sortedCategories.length > 4 && collapsed && !loading">
-			<n8n-button
-				icon="plus"
-				type="text"
-				float="left"
-				:label="`${sortedCategories.length - 4} more`"
-				@click="collapseAction"
-			></n8n-button>
+		<div
+			:class="$style.button"
+			v-if="sortedCategories.length > 4 && collapsed && !loading"
+			@click="collapseAction"
+		>
+			<n8n-text size="small" color="primary">
+				+ {{ `${sortedCategories.length - 4} more` }}
+			</n8n-text>
 		</div>
 	</div>
 </template>
@@ -73,7 +68,7 @@ export default mixins(genericHelpers).extend({
 		loadingRows: {
 			type: Number,
 			default: () => {
-				return 3;
+				return 6;
 			},
 		},
 		setCategories: { type: Function },
@@ -176,11 +171,15 @@ export default mixins(genericHelpers).extend({
 
 .item {
 	margin-top: var(--spacing-2xs);
+
+	&:nth-child(1) {
+		margin-top: 0;
+	}
 }
 
 .button {
-	height: auto;
-	margin-left: -12px;
+	padding-top: var(--spacing-2xs);
+	cursor: pointer;
 }
 </style>
 
@@ -189,6 +188,7 @@ export default mixins(genericHelpers).extend({
 	.el-checkbox__label {
 		font-size: var(--font-size-2xs);
 		color: var(--color-text-dark);
+		padding-left: var(--spacing-2xs);
 	}
 }
 </style>

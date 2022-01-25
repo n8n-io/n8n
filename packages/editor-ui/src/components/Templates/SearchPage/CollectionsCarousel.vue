@@ -1,9 +1,9 @@
 <template>
 	<div>
 		<div :class="$style.header">
-			<n8n-heading v-if="!loading" :bold="true" size="medium" color="text-light"
-				>Collections ({{ collectionsUI.length }})</n8n-heading
-			>
+			<n8n-heading v-if="!loading" :bold="true" size="medium" color="text-light">
+				Collections ({{ collectionsUI.length }})
+			</n8n-heading>
 			<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
 		</div>
 
