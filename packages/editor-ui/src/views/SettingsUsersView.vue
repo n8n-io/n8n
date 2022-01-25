@@ -16,7 +16,12 @@
 			<div :class="$style.usersContainer" v-else>
 				<SmtpAlert />
 				<div :class="$style.buttonContainer">
-						<n8n-button label="Invite user" @click="onInvite" size="large" />
+						<n8n-tooltip :disabled="isSmtpSetup" placement="top">
+							<div slot="content">Set up SMTP to invite users. <a href="https://docs.n8n.io/reference/user-management#smtp" target="_blank">Instructions</a>.</div>
+							<span>
+								<n8n-button label="Invite user" @click="onInvite" size="large" :disabled="!isSmtpSetup" />
+							</span>
+						</n8n-tooltip>
 				</div>
 				<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
 			</div>
