@@ -17,8 +17,8 @@ import * as _ from 'lodash';
 
 import axios from 'axios';
 
-export async function koboToolboxApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('koboToolboxApi') as IDataObject;
+export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const credentials = await this.getCredentials('koBoToolboxApi') as IDataObject;
 
 	const options: IHttpRequestOptions = {
 		url: '',
@@ -35,7 +35,7 @@ export async function koboToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 		options.url = credentials.URL + options.url;
 	}
 
-	// Logger.debug('KoboToolboxApiRequest', options);
+	// Logger.debug('KoBoToolboxApiRequest', options);
 	return await this.helpers.httpRequest(options);
 }
 
@@ -106,7 +106,7 @@ const formatValue = (value: any, format: string): any => { //tslint:disable-line
 export function formatSubmission(submission: IDataObject, selectMasks: string[] = [], numberMasks: string[] = []): IDataObject {
 	// Create a shallow copy of the submission
 	const response = {} as IDataObject;
-	// Logger.debug('KoboToolboxFormatSubmission', submission);
+	// Logger.debug('KoBoToolboxFormatSubmission', submission);
 
 
 	for (const key of Object.keys(submission)) {
@@ -137,7 +137,7 @@ export function formatSubmission(submission: IDataObject, selectMasks: string[] 
 		};
 	}
 
-	// Logger.debug('KoboToolboxFormatSubmission', response);
+	// Logger.debug('KoBoToolboxFormatSubmission', response);
 	return response;
 }
 
@@ -150,7 +150,7 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 		binary: {},
 	};
 
-	const credentials = await this.getCredentials('koboToolboxApi') as IDataObject;
+	const credentials = await this.getCredentials('koBoToolboxApi') as IDataObject;
 
 	// Look for attachment links - there can be more than one
 	const attachmentList = (submission['_attachments'] || submission['attachments']) as any[];  // tslint:disable-line:no-any
@@ -207,7 +207,7 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 }
 
 export async function loadSurveys(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const responseData = await koboToolboxApiRequest.call(this, {
+	const responseData = await koBoToolboxApiRequest.call(this, {
 		url: '/api/v2/assets/',
 		qs: {
 			q: 'asset_type:survey',

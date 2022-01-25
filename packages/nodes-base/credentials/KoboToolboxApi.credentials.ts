@@ -3,11 +3,11 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class KoboToolboxApi implements ICredentialType {
-	name = 'koboToolboxApi';
-	displayName = 'KoboToolbox API Token';
+export class KoBoToolboxApi implements ICredentialType {
+	name = 'koBoToolboxApi';
+	displayName = 'KoBoToolbox API Token';
 	// See https://support.kobotoolbox.org/api.html
-	documentationUrl = 'koboToolbox';
+	documentationUrl = 'koBoToolbox';
 	properties = [
 		{
 			displayName: 'API root URL (e.g. https://kf.kobotoolbox.org/)',
