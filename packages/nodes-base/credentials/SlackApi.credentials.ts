@@ -15,7 +15,6 @@ export class SlackApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			required: true,
-			hint: 'Temporary credential test <b> bold me me </b> yo <a href="https://n8n.io">click me</a>',
 		},
 	];
 }
