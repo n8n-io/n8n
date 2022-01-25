@@ -145,11 +145,14 @@
 							<n8n-action-toggle
 								v-if="!isCollapsed"
 								:actions="[{
+									label: 'Settings',
+									value: 'settings',
+								}, {
 									label: 'Sign out',
 									value: 'logout'
 								}]"
 								placement="bottom-start"
-								@action="onLogout"
+								@action="onUserActionToggle"
 							/>
 						</div>
 					</n8n-menu-item>
@@ -316,7 +319,15 @@ export default mixins(
 			trackHelpItemClick (itemType: string) {
 				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
 			},
-			async onLogout () {
+			async onUserActionToggle(action: string) {
+				if (action === 'logout') {
+					this.onLogout();
+				}
+				else {
+					this.$router.push({name: 'PersonalSettings'});
+				}
+			},
+			async onLogout() {
 				try {
 					await this.$store.dispatch('users/logout');
 
