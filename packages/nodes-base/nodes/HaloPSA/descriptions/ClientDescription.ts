@@ -17,101 +17,50 @@ export const clientDescription: INodeProperties[] = [
 	},
 	// Additional fields =============================================================
 	{
-		displayName: 'Add Optional Field',
-		name: 'fieldsToCreateOrUpdate',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add Field',
-		},
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
 		default: {},
-		description: 'Add field and value',
-		placeholder: 'Add Optional Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['update', 'create'],
-				resource: ['client'],
+				operation: [
+					'update',
+					'create',
+				],
+				resource: [
+					'client',
+				],
 			},
 		},
 		options: [
 			{
-				displayName: 'Field',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'options',
-						noDataExpression: true,
-						// nodelinter-ignore-next-line
-						default: '',
-						required: true,
-						description: 'Client field name',
-						options: [
-							{
-								name: 'Important Client',
-								value: 'is_vip',
-							},
-							{
-								name: 'Account Status',
-								value: 'inactive',
-							},
-							{
-								name: 'Reference',
-								value: 'ref',
-							},
-							{
-								name: 'Website',
-								value: 'website',
-							},
-							{
-								name: 'Next Call Date',
-								value: 'calldate',
-							},
-							{
-								name: 'Notes',
-								value: 'notes',
-							},
-						],
-					},
-					{
-						displayName: 'Field Value',
-						name: 'fieldValue',
-						type: 'string',
-						default: '',
-						required: true,
-						displayOptions: {
-							show: {
-								fieldName: ['ref', 'website', 'notes'],
-							},
-						},
-					},
-					{
-						displayName: 'Field Value',
-						name: 'fieldValue',
-						type: 'boolean',
-						default: false,
-						required: true,
-						displayOptions: {
-							show: {
-								fieldName: ['is_vip', 'inactive'],
-							},
-						},
-					},
-					{
-						displayName: 'Field Value',
-						name: 'fieldValue',
-						type: 'dateTime',
-						default: '',
-						description: 'The next call date',
-						required: true,
-						displayOptions: {
-							show: {
-								fieldName: ['calldate'],
-							},
-						},
-					},
-				],
+				displayName: 'Is VIP',
+				name: 'is_vip',
+				type: 'boolean',
+				default: true,
+				description: 'Whether the client is VIP or not',
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Reference',
+				name: 'reference',
+				type: 'string',
+				default: '',
 			},
 		],
 	},
