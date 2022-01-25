@@ -1,19 +1,19 @@
 <template>
 	<div :class="$style.container">
-		<n8n-menu :router="true" :default-active="$route.path">
-			<n8n-menu-item index="/workflow">
+		<n8n-menu :router="true" :default-active="$route.path" type="secondary">
+			<n8n-menu-item index="/workflow" :class="$style.returnButton">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="arrow-left" />
 				</i>
 				<n8n-heading slot="title" size="large" :bold="true">Settings</n8n-heading>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/personal" v-if="canAccessUsersView('PersonalSettings')">
+			<n8n-menu-item index="/settings/personal" v-if="canAccessUsersView('PersonalSettings')" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-circle" />
 				</i>
 				<span slot="title">Personal</span>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/users" v-if="canAccessUsersView('UsersSettings')">
+			<n8n-menu-item index="/settings/users" v-if="canAccessUsersView('UsersSettings')" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-friends" />
 				</i>
@@ -58,6 +58,18 @@ export default Vue.extend({
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;
+	padding: var(--spacing-s);
+}
+
+.tab {
+	padding-left: var(--spacing-4xs) !important;
+	border-radius: var(--border-radius-large) !important;
+	margin-bottom: var(--spacing-2xs);
+}
+
+.returnButton {
+	composes: tab;
+	margin-bottom: var(--spacing-xl);
 }
 
 .icon {
