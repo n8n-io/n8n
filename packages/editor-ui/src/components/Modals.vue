@@ -98,6 +98,8 @@
 					:activeId="activeId"
 				/>
 			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="EXECUTIONS_MODAL_KEY">
 			<ExecutionsList />
 		</ModalRoot>
