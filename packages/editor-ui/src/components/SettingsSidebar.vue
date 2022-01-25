@@ -62,8 +62,7 @@ export default Vue.extend({
 }
 
 .tab {
-	padding-left: var(--spacing-4xs) !important;
-	border-radius: var(--border-radius-large) !important;
+	padding-left: var(--spacing-xs) !important; //todo update here and in credentials edit
 	margin-bottom: var(--spacing-2xs);
 }
 
