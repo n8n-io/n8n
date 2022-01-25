@@ -1,6 +1,4 @@
 import { INodeProperties } from 'n8n-workflow';
-import * as data from './data/userFields.json';
-import { fieldsToOptions } from '../GenericFunctions';
 
 export const userDescription: INodeProperties[] = [
 	{

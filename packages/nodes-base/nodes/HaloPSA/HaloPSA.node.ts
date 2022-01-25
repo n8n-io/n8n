@@ -19,12 +19,7 @@ import { siteDescription } from './descriptions/SiteDescription';
 import { ticketDescription } from './descriptions/TicketDescription';
 import { userDescription } from './descriptions/UserDescription';
 
-import {
-	getAccessTokens,
-	haloPSAApiRequest,
-	processFields,
-	validateCrendetials,
-} from './GenericFunctions';
+import { getAccessTokens, haloPSAApiRequest, validateCrendetials } from './GenericFunctions';
 
 export class HaloPSA implements INodeType {
 	description: INodeTypeDescription = {
@@ -120,42 +115,6 @@ export class HaloPSA implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['get', 'update', 'delete'],
-					},
-				},
-			},
-			// Create, Update --------------------------------------------------------
-			// {
-			// 	displayName: 'Website',
-			// 	name: 'sitesList',
-			// 	type: 'options',
-			// 	default: '',
-			// 	noDataExpression: true,
-			// 	required: true,
-			// 	typeOptions: {
-			// 		loadOptionsMethod: 'getHaloPSASites',
-			// 	},
-			// 	displayOptions: {
-			// 		show: {
-			// 			operation: ['create'],
-			// 			resource: ['users'],
-			// 		},
-			// 	},
-			// },
-
-			{
-				displayName: 'Client',
-				name: 'clientsList',
-				type: 'options',
-				default: '',
-				noDataExpression: true,
-				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getHaloPSAClients',
-				},
-				displayOptions: {
-					show: {
-						operation: ['create'],
-						resource: ['site'],
 					},
 				},
 			},
@@ -262,7 +221,6 @@ export class HaloPSA implements INodeType {
 			async getHaloPSAItems(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('haloPSAApi');
 				const tokens = await getAccessTokens.call(this);
-				const itemsList = this.getNodeParameter('itemsList', 0) as IDataObject;
 
 				const responce = (await haloPSAApiRequest.call(
 					this,
@@ -276,7 +234,28 @@ export class HaloPSA implements INodeType {
 					return {
 						name: item.name as string,
 						value: item.id as number,
-						data: item,
+					};
+				});
+
+				return options.sort((a, b) => a.name.localeCompare(b.name));
+			},
+
+			async getHaloPSAAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const credentials = await this.getCredentials('haloPSAApi');
+				const tokens = await getAccessTokens.call(this);
+
+				const responce = (await haloPSAApiRequest.call(
+					this,
+					credentials?.resourceApiUrl as string,
+					'agent',
+					'GET',
+					tokens.access_token,
+				)) as IDataObject[];
+
+				const options = responce.map((agent) => {
+					return {
+						name: agent.name as string,
+						value: agent.id as number,
 					};
 				});
 
@@ -325,10 +304,8 @@ export class HaloPSA implements INodeType {
 			try {
 				// Create ----------------------------------------------------
 				if (operation === 'create' || operation === 'update') {
-					// const data = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
-					// const item = processFields(data) || {};
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const item: IDataObject = {...additionalFields};
+					const item: IDataObject = { ...additionalFields };
 
 					if (operation === 'update') {
 						const itemID = this.getNodeParameter('item_id', i) as string;
@@ -368,6 +345,7 @@ export class HaloPSA implements INodeType {
 						item['invoice_date'] = invoiceDate;
 						const itemsList = this.getNodeParameter('itemsList', i) as IDataObject;
 						const items = [];
+
 						for (const entry of itemsList.items as IDataObject[]) {
 							const response = await haloPSAApiRequest.call(
 								this,
@@ -388,10 +366,10 @@ export class HaloPSA implements INodeType {
 								calculate_price_from_assets: true,
 							});
 						}
+
 						item['lines'] = items;
 					}
 
-					console.log(item);
 					const body = [item];
 					responseData = await haloPSAApiRequest.call(
 						this,

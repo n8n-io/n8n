@@ -1,6 +1,4 @@
 import { INodeProperties } from 'n8n-workflow';
-import * as data from './data/ticketFields.json';
-import { fieldsToOptions } from '../GenericFunctions';
 
 export const ticketDescription: INodeProperties[] = [
 	{
@@ -8,7 +6,7 @@ export const ticketDescription: INodeProperties[] = [
 		name: 'summary',
 		type: 'string',
 		default: '',
-		description: 'Enter ticket\'s summary',
+		description: 'Enter summary',
 		placeholder: '',
 		required: true,
 		displayOptions: {
@@ -23,7 +21,7 @@ export const ticketDescription: INodeProperties[] = [
 		name: 'details',
 		type: 'string',
 		default: '',
-		description: 'Enter tickets\'s details',
+		description: 'Enter details',
 		placeholder: '',
 		required: true,
 		displayOptions: {
@@ -35,16 +33,11 @@ export const ticketDescription: INodeProperties[] = [
 	},
 	// Additional fields =============================================================
 	{
-		displayName: 'Add Optional Field',
-		name: 'fieldsToCreateOrUpdate',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add Field',
-		},
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
 		default: {},
-		description: 'Add field and value',
-		placeholder: 'Add Optional Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				operation: ['update', 'create'],
@@ -53,28 +46,26 @@ export const ticketDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'options',
-						noDataExpression: true,
-						// nodelinter-ignore-next-line
-						default: 'user_name',
-						required: true,
-						description: 'Ticket field name',
-						options: fieldsToOptions(data),
-					},
-					{
-						displayName: 'Field Value',
-						name: 'fieldValue',
-						type: 'string',
-						default: '',
-						required: true,
-					},
-				],
+				displayName: 'Start Date',
+				name: 'startdate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Target Date',
+				name: 'targetdate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Assigned Agent',
+				name: 'agent_id',
+				type: 'options',
+				default: '',
+				noDataExpression: true,
+				typeOptions: {
+					loadOptionsMethod: 'getHaloPSAAgents',
+				},
 			},
 		],
 	},

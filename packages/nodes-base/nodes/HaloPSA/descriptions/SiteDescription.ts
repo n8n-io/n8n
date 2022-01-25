@@ -1,6 +1,4 @@
 import { INodeProperties } from 'n8n-workflow';
-import * as data from './data/siteFields.json';
-import { fieldsToOptions } from '../GenericFunctions';
 
 export const siteDescription: INodeProperties[] = [
 	{
@@ -12,23 +10,35 @@ export const siteDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
+				operation: ['create', 'update'],
+				resource: ['site'],
+			},
+		},
+	},
+	{
+		displayName: 'Client',
+		name: 'clientsList',
+		type: 'options',
+		default: '',
+		noDataExpression: true,
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getHaloPSAClients',
+		},
+		displayOptions: {
+			show: {
+				operation: ['create', 'update'],
 				resource: ['site'],
 			},
 		},
 	},
 	// Additional fields =============================================================
 	{
-		displayName: 'Add Optional Field',
-		name: 'fieldsToCreateOrUpdate',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add Field',
-		},
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
 		default: {},
-		description: 'Add field and value',
-		placeholder: 'Add Optional Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				operation: ['update', 'create'],
@@ -37,28 +47,25 @@ export const siteDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'options',
-						noDataExpression: true,
-						// nodelinter-ignore-next-line
-						default: 'name',
-						required: true,
-						description: 'Ticket field name',
-						options: fieldsToOptions(data),
-					},
-					{
-						displayName: 'Field Value',
-						name: 'fieldValue',
-						type: 'string',
-						default: '',
-						required: true,
-					},
-				],
+				displayName: 'Phone Number',
+				name: 'phonenumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Main Contact',
+				name: 'maincontact_name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
 			},
 		],
 	},

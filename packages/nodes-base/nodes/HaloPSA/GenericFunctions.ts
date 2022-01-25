@@ -120,29 +120,6 @@ function getAuthUrl(credentials: IDataObject) {
 		: `${credentials.authUrl}/token?tenant=${credentials.tenant}`;
 }
 
-export function processFields(data: IDataObject): IDataObject {
-	return (data.fields as IDataObject[])?.reduce((acc, item) => {
-		const { fieldName, fieldValue } = item;
-		acc[fieldName as string] = fieldValue;
-		return acc;
-	}, {});
-}
-
-export function fieldsToOptions(data: IDataObject){
-	const result = [];
-
-	for(const key of Object.keys(data)) {
-		if(typeof data[key] !== 'object') {
-			result.push({
-				name: key as string,
-				value: key as string,
-				description: `${key}: ${data[key]}`,
-			});
-		}
-	}
-	return result.sort((a, b) => a.name.localeCompare(b.name));
-}
-
 // Validation -----------------------------------------------------------------------
 
 export async function validateCrendetials(
