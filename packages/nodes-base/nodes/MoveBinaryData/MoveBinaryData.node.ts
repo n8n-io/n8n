@@ -394,7 +394,10 @@ export class MoveBinaryData implements INodeType {
 				}
 
 				const encoding = (options.encoding as string) || 'utf8';
-				let convertedValue = value.data;
+
+				const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, sourceKey);
+
+				let convertedValue = Buffer.from(buffer).toString(BINARY_ENCODING);
 
 				if (setAllData === true) {
 					// Set the full data
