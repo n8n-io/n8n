@@ -155,7 +155,7 @@ function fuzzyMatchRecursive(
 
 			if (i > 0) {
 				const prevIdx = matches[i - 1];
-				if (currIdx == prevIdx + 1) {
+				if (currIdx === prevIdx + 1) {
 					outScore += SEQUENTIAL_BONUS;
 				}
 			}
@@ -171,7 +171,7 @@ function fuzzyMatchRecursive(
 				) {
 					outScore += CAMEL_BONUS;
 				}
-				const isNeighbourSeparator = neighbor == "_" || neighbor == " ";
+				const isNeighbourSeparator = neighbor === "_" || neighbor === " ";
 				if (isNeighbourSeparator) {
 					outScore += SEPARATOR_BONUS;
 				}
