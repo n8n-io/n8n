@@ -16,7 +16,7 @@
 			<div :class="$style.usersContainer" v-else>
 				<SmtpAlert />
 				<div :class="$style.buttonContainer">
-						<n8n-button label="Invite new user" icon="plus-square" @click="onInvite" size="large" />
+						<n8n-button label="Invite user" @click="onInvite" size="large" />
 				</div>
 				<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
 			</div>
