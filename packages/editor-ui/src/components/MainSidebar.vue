@@ -134,28 +134,28 @@
 						</div>
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
 					</n8n-menu-item>
-					<n8n-menu-item index="user" class="user" v-if="canUserAccessSidebarUserInfo && currentUser">
-						<div class="avatar">
-							<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
-						</div>
-						<span slot="title" class="item-title-root">
-							{{currentUser.firstName}} {{currentUser.lastName}}
-						</span>
-						<div class="toggle" v-on:click.stop.prevent>
-							<n8n-action-toggle
-								v-if="!isCollapsed"
-								:actions="[{
-									label: 'Settings',
-									value: 'settings',
-								}, {
-									label: 'Sign out',
-									value: 'logout'
-								}]"
-								placement="bottom-start"
-								@action="onUserActionToggle"
-							/>
-						</div>
-					</n8n-menu-item>
+					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" class="hello">
+						<n8n-menu-item class="user" v-if="canUserAccessSidebarUserInfo && currentUser">
+							<div class="avatar">
+								<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+							</div>
+							<span slot="title" class="item-title-root" v-if="!isCollapsed">
+								{{currentUser.firstName}} {{currentUser.lastName}}
+							</span>
+						</n8n-menu-item>
+						<el-dropdown-menu slot="dropdown">
+							<el-dropdown-item
+								command="settings"
+							>
+								Settings
+							</el-dropdown-item>
+							<el-dropdown-item
+								command="logout"
+							>
+								Sign out
+							</el-dropdown-item>
+						</el-dropdown-menu>
+				</el-dropdown>
 				</div>
 			</n8n-menu>
 
@@ -782,14 +782,9 @@ export default mixins(
 		color: var(--color-text-base);
 		font-weight: var(--font-weight-bold);
 		font-size: var(--font-size-s);
-		max-width: 100px;
+		max-width: 130px;
 		overflow: hidden;
 		text-overflow: ellipsis;
-	}
-
-	.toggle {
-		position: absolute;
-		right: 20px;
 	}
 }
 
