@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-await-in-loop */
@@ -14,7 +15,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import * as fs from 'fs';
 import * as glob from 'fast-glob';
 import * as path from 'path';
-import { getConnection } from 'typeorm';
+import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
 import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
@@ -51,6 +52,8 @@ export class ImportCredentialsCommand extends Command {
 
 	ownerCredentialRole: Role;
 
+	transactionManager: EntityManager;
+
 	async run(): Promise<void> {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
@@ -71,6 +74,8 @@ export class ImportCredentialsCommand extends Command {
 			}
 		}
 
+		let totalImported = 0;
+
 		try {
 			await Db.init();
 
@@ -79,7 +84,6 @@ export class ImportCredentialsCommand extends Command {
 
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
-			let i: number;
 
 			const encryptionKey = await UserSettings.getEncryptionKey();
 			if (encryptionKey === undefined) {
@@ -90,34 +94,49 @@ export class ImportCredentialsCommand extends Command {
 				const files = await glob(
 					`${flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep}*.json`,
 				);
-				for (i = 0; i < files.length; i++) {
-					const credential = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
 
+				totalImported = files.length;
+
+				await getConnection().transaction(async (transactionManager) => {
+					this.transactionManager = transactionManager;
+					for (const file of files) {
+						const credential = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
+
+						if (typeof credential.data === 'object') {
+							// plain data / decrypted input. Should be encrypted first.
+							Credentials.prototype.setData.call(credential, credential.data, encryptionKey);
+						}
+
+						await this.storeCredential(credential, user);
+					}
+				});
+
+				this.reportSuccess(totalImported);
+				process.exit();
+			}
+
+			const credentials = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
+
+			totalImported = credentials.length;
+
+			if (!Array.isArray(credentials)) {
+				throw new Error(
+					'File does not seem to contain credentials. Make sure the credentials are contained in an array.',
+				);
+			}
+
+			await getConnection().transaction(async (transactionManager) => {
+				this.transactionManager = transactionManager;
+				for (const credential of credentials) {
 					if (typeof credential.data === 'object') {
 						// plain data / decrypted input. Should be encrypted first.
 						Credentials.prototype.setData.call(credential, credential.data, encryptionKey);
 					}
-
 					await this.storeCredential(credential, user);
 				}
-			} else {
-				const credentials = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
+			});
 
-				if (!Array.isArray(credentials)) {
-					throw new Error(
-						'File does not seem to contain credentials. Make sure the credentials are contained in an array.',
-					);
-				}
-
-				for (i = 0; i < credentials.length; i++) {
-					if (typeof credentials[i].data === 'object') {
-						// plain data / decrypted input. Should be encrypted first.
-						Credentials.prototype.setData.call(credentials[i], credentials[i].data, encryptionKey);
-					}
-					await this.storeCredential(credentials[i], user);
-				}
-			}
-			console.info(`Successfully imported ${i} ${i === 1 ? 'credential.' : 'credentials.'}`);
+			this.reportSuccess(totalImported);
 			process.exit();
 		} catch (error) {
 			console.error('An error occurred while importing credentials. See log messages for details.');
@@ -126,36 +145,38 @@ export class ImportCredentialsCommand extends Command {
 		}
 	}
 
+	private reportSuccess(total: number) {
+		console.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
+	}
+
 	private async initOwnerCredentialRole() {
 		const ownerCredentialRole = await Db.collections.Role!.findOne({
 			where: { name: 'owner', scope: 'credential' },
 		});
 
 		if (!ownerCredentialRole) {
-			throw new Error(`Owner credential role not found. ${FIX_INSTRUCTION}`);
+			throw new Error(`Failed to find owner credential role. ${FIX_INSTRUCTION}`);
 		}
 
 		this.ownerCredentialRole = ownerCredentialRole;
 	}
 
 	private async storeCredential(credential: object, user: User) {
-		await getConnection().transaction(async (transactionManager) => {
-			const newCredential = new CredentialsEntity();
+		const newCredential = new CredentialsEntity();
 
-			Object.assign(newCredential, credential);
+		Object.assign(newCredential, credential);
 
-			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
+		const savedCredential = await this.transactionManager.save<CredentialsEntity>(newCredential);
 
-			const newSharedCredential = new SharedCredentials();
+		const newSharedCredential = new SharedCredentials();
 
-			Object.assign(newSharedCredential, {
-				credentials: savedCredential,
-				user,
-				role: this.ownerCredentialRole,
-			});
-
-			await transactionManager.save<SharedCredentials>(newSharedCredential);
+		Object.assign(newSharedCredential, {
+			credentials: savedCredential,
+			user,
+			role: this.ownerCredentialRole,
 		});
+
+		await this.transactionManager.save<SharedCredentials>(newSharedCredential);
 	}
 
 	private async getOwner() {
@@ -166,7 +187,7 @@ export class ImportCredentialsCommand extends Command {
 		const owner = await Db.collections.User!.findOne({ globalRole: ownerGlobalRole });
 
 		if (!owner) {
-			throw new Error(`No owner found. ${FIX_INSTRUCTION}`);
+			throw new Error(`Failed to find owner. ${FIX_INSTRUCTION}`);
 		}
 
 		return owner;
@@ -176,7 +197,7 @@ export class ImportCredentialsCommand extends Command {
 		const user = await Db.collections.User!.findOne(id);
 
 		if (!user) {
-			throw new Error(`Failed to find user with ID ${id}. Are you sure this user exists?`);
+			throw new Error(`Failed to find user with ID ${id}`);
 		}
 
 		return user;
