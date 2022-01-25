@@ -199,17 +199,13 @@ function fuzzyMatchRecursive(
 // prop = 'key'
 // prop = 'key1.key2'
 // prop = ['key1', 'key2']
-function getValue(obj: any, prop: string): string | string[] {
-	if (typeof obj !== 'object') {
-		return obj;
-	}
-
+function getValue<T extends object>(obj: T, prop: string): unknown {
 	if (obj.hasOwnProperty(prop)) {
-		return obj[prop];
+		return obj[prop as keyof T];
 	}
 
 	const segments = prop.split('.');
-	let result = obj;
+	let result: any = obj;
 	let i = 0;
 	while (result && i < segments.length) {
 		result = result[segments[i]];
@@ -218,27 +214,23 @@ function getValue(obj: any, prop: string): string | string[] {
 	return result;
 }
 
-type Result = {
-	score: number;
-	item: any;
-};
-
-export function search(filter: string, data: Array<object>, keys: Array<{key: string, weight: number}>) {
-	const results: Array<Result | null> = data.map((item) => {
+export function search<T extends object>(filter: string, data: Readonly<T[]>, keys: Array<{key: string, weight: number}>): Array<{score: number, item: T}> {
+	const results = data.reduce((accu: Array<{score: number, item: T}>, item: T) => {
 		let values: Array<{value: string, weight: number}> = [];
 		keys.forEach(({key, weight}) => {
 			const value = getValue(item, key);
 			if (Array.isArray(value)) {
 				values = values.concat(value.map((v) => ({value: v, weight})));
 			}
-			else if (value) {
-				values = values.concat({
+			else if (typeof value === 'string') {
+				values.push({
 					value,
 					weight,
 				});
 			}
 		});
 
+		// for each item, check every key and get maximum score
 		const itemMatch = values.reduce((accu: null | [boolean, number], {value, weight}: {value: string, weight: number}) => {
 			if (!fuzzyMatchSimple(filter, value)) {
 				return accu;
@@ -255,21 +247,19 @@ export function search(filter: string, data: Array<object>, keys: Array<{key: st
 			return accu;
 		}, null);
 
-		if (!itemMatch) {
-			return null;
+		if (itemMatch) {
+			accu.push({
+				score: itemMatch[1],
+				item,
+			});
 		}
 
-		return {
-			score: itemMatch[1],
-			item,
-		};
-	});
-	// @ts-ignore
-	const matched: Array<Result> = results.filter((item: Result | null): boolean => item !== null);
+		return accu;
+	}, []);
 
-	matched.sort((a: Result, b: Result) => {
+	results.sort((a, b) => {
 		return b.score - a.score;
 	});
 
-	return matched;
+	return results;
 }
