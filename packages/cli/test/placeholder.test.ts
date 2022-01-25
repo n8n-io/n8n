@@ -4,7 +4,7 @@ import { entities } from "../src/databases/entities";
 import { Role } from "../src/databases/entities/Role";
 import { User } from "../src/databases/entities/User";
 import { sqliteMigrations } from "../src/databases/sqlite/migrations";
-// import * as request from 'supertest';
+import * as request from 'supertest';
 import * as app from '../src/Server';
 
 // describe('Placeholder', () => {
