@@ -1,7 +1,7 @@
 <template>
 	<div>
-		<n8n-text size="xsmall" color="text-base" compact="true" v-if="hint">
-			<div ref="hint" v-html="hint"></div>
+		<n8n-text size="xsmall" color="text-base" v-if="hint">
+			<div :class="$style.hint" ref="hint" v-html="hint"></div>
 		</n8n-text>
 	</div>
 </template>
@@ -19,3 +19,9 @@ export default Vue.extend({
 	},
 });
 </script>
+
+<style lang="scss" module>
+	.hint {
+		line-height: var(--font-line-height-compact);
+	}
+</style>
