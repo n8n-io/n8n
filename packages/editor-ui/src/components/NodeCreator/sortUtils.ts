@@ -10,36 +10,34 @@ const MAX_LEADING_LETTER_PENALTY = -200; // maximum penalty for leading letters
 const UNMATCHED_LETTER_PENALTY = -5;
 
 /**
- * Returns true if each character in pattern is found sequentially within str
+ * Returns true if each character in pattern is found sequentially within target
  * @param {*} pattern string
- * @param {*} str string
+ * @param {*} target string
  */
-function fuzzyMatchSimple(pattern: string, str: string): boolean {
+function fuzzyMatchSimple(pattern: string, target: string): boolean {
 	let patternIdx = 0;
 	let strIdx = 0;
-	const patternLength = pattern.length;
-	const strLength = str.length;
 
-	while (patternIdx != patternLength && strIdx != strLength) {
+	while (patternIdx < pattern.length && strIdx < target.length) {
 		const patternChar = pattern.charAt(patternIdx).toLowerCase();
-		const strChar = str.charAt(strIdx).toLowerCase();
-		if (patternChar == strChar) ++patternIdx;
+		const targetChar = target.charAt(strIdx).toLowerCase();
+		if (patternChar === targetChar) {
+			patternIdx++;
+		}
 		++strIdx;
 	}
 
-	return patternLength != 0 && strLength != 0 && patternIdx == patternLength
-		? true
-		: false;
+	return pattern.length !== 0 && target.length !== 0 && patternIdx === pattern.length;
 }
 
 /**
  * Does a fuzzy search to find pattern inside a string.
  * @param {*} pattern string        pattern to search for
- * @param {*} str     string        string which is being searched
+ * @param {*} target     string        string which is being searched
  * @returns [boolean, number]       a boolean which tells if pattern was
  *                                  found or not and a search score
  */
-function fuzzyMatch(pattern: string, str: string): [boolean, number] {
+function fuzzyMatch(pattern: string, target: string): [boolean, number] {
 	const recursionCount = 0;
 	const recursionLimit = 5;
 	const matches: number[] = [];
@@ -47,7 +45,7 @@ function fuzzyMatch(pattern: string, str: string): [boolean, number] {
 
 	return fuzzyMatchRecursive(
 		pattern,
-		str,
+		target,
 		0 /* patternCurIndex */,
 		0 /* strCurrIndex */,
 		null /* srcMatces */,
@@ -61,10 +59,10 @@ function fuzzyMatch(pattern: string, str: string): [boolean, number] {
 
 function fuzzyMatchRecursive(
 	pattern: string,
-	str: string,
+	target: string,
 	patternCurIndex: number,
-	strCurrIndex: number,
-	srcMatces: null | number[],
+	targetCurrIndex: number,
+	targetMatches: null | number[],
 	matches: number[],
 	maxMatches: number,
 	nextMatch: number,
@@ -79,7 +77,7 @@ function fuzzyMatchRecursive(
 	}
 
 	// Return if we reached ends of strings.
-	if (patternCurIndex === pattern.length || strCurrIndex === str.length) {
+	if (patternCurIndex === pattern.length || targetCurrIndex === target.length) {
 		return [false, outScore];
 	}
 
@@ -90,26 +88,26 @@ function fuzzyMatchRecursive(
 
 	// Loop through pattern and str looking for a match.
 	let firstMatch = true;
-	while (patternCurIndex < pattern.length && strCurrIndex < str.length) {
+	while (patternCurIndex < pattern.length && targetCurrIndex < target.length) {
 		// Match found.
 		if (
-			pattern[patternCurIndex].toLowerCase() === str[strCurrIndex].toLowerCase()
+			pattern[patternCurIndex].toLowerCase() === target[targetCurrIndex].toLowerCase()
 		) {
 			if (nextMatch >= maxMatches) {
 				return [false, outScore];
 			}
 
-			if (firstMatch && srcMatces) {
-				matches = [...srcMatces];
+			if (firstMatch && targetMatches) {
+				matches = [...targetMatches];
 				firstMatch = false;
 			}
 
 			const recursiveMatches: number[] = [];
 			const [matched, recursiveScore] = fuzzyMatchRecursive(
 				pattern,
-				str,
+				target,
 				patternCurIndex,
-				strCurrIndex + 1,
+				targetCurrIndex + 1,
 				matches,
 				recursiveMatches,
 				maxMatches,
@@ -127,10 +125,10 @@ function fuzzyMatchRecursive(
 				recursiveMatch = true;
 			}
 
-			matches[nextMatch++] = strCurrIndex;
+			matches[nextMatch++] = targetCurrIndex;
 			++patternCurIndex;
 		}
-		++strCurrIndex;
+		++targetCurrIndex;
 	}
 
 	const matched = patternCurIndex === pattern.length;
@@ -147,7 +145,7 @@ function fuzzyMatchRecursive(
 		outScore += penalty;
 
 		//Apply unmatched penalty
-		const unmatched = str.length - nextMatch;
+		const unmatched = target.length - nextMatch;
 		outScore += UNMATCHED_LETTER_PENALTY * unmatched;
 
 		// Apply ordering bonuses
@@ -164,8 +162,8 @@ function fuzzyMatchRecursive(
 			// Check for bonuses based on neighbor character value.
 			if (currIdx > 0) {
 				// Camel case
-				const neighbor = str[currIdx - 1];
-				const curr = str[currIdx];
+				const neighbor = target[currIdx - 1];
+				const curr = target[currIdx];
 				if (
 					neighbor !== neighbor.toUpperCase() &&
 					curr !== curr.toLowerCase()
