@@ -83,7 +83,7 @@ export default mixins(
 	methods: {
 		passwordsMatch(value: string) {
 			if (value !== this.password) {
-				throw new Error('Two passwords must match');
+				throw new Error('Passwords must match');
 			}
 		},
 		onInput(e: {name: string, value: string}) {
