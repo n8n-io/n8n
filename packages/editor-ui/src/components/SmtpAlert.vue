@@ -17,6 +17,9 @@ export default mixins(
 		alert: null as null | ElMessageComponent,
 	},
 	mounted() {
+		if (this.isSmtpSetup) {
+			return;
+		}
 		this.alert = this.$showAlert({
 			message: `Set up SMTP before adding users (so that n8n can send them invitation emails). <a target="_blank" href="https://docs.n8n.io/reference/user-management#smtp">Instructions</a>.`,
 			type: 'warning',
