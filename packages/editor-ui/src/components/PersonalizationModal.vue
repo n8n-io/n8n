@@ -1,7 +1,7 @@
 <template>
 	<Modal
 		:name="PERSONALIZATION_MODAL_KEY"
-		:title="!submitted? $locale.baseText('personalizationModal.getStarted') : $locale.baseText('personalizationModal.thanks')"
+		:title="!submitted? $locale.baseText('personalizationModal.customizeN8n') : $locale.baseText('personalizationModal.thanks')"
 		:subtitle="!submitted? $locale.baseText('personalizationModal.theseQuestionsHelpUs') : ''"
 		:centerTitle="true"
 		:showClose="false"
