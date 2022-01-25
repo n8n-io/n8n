@@ -200,7 +200,7 @@ export class ImportWorkflowsCommand extends Command {
 		const user = await Db.collections.User!.findOne(id);
 
 		if (!user) {
-			throw new Error(`Failed to find user with ID ${id}. Are you sure this user exists?`);
+			throw new Error(`Failed to find user with ID ${id}`);
 		}
 
 		return user;
