@@ -6,7 +6,7 @@
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
 			<n8n-input-label
-				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $locale.nodeText().topParameterDisplayName(property)"
+				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $locale.nodeText().inputLabelDisplayName(property, path)"
 				:underline="true"
 				:labelHoverableOnly="true"
 				size="small"
@@ -43,7 +43,7 @@
 					<n8n-option
 						v-for="item in parameterOptions"
 						:key="item.name"
-						:label="$locale.nodeText().collectionOptionDisplayName(parameter, item)"
+						:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
 						:value="item.name">
 					</n8n-option>
 				</n8n-select>
@@ -85,7 +85,7 @@ export default mixins(genericHelpers)
 		},
 		computed: {
 			getPlaceholderText (): string {
-				const placeholder = this.$locale.nodeText().placeholder(this.parameter);
+				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
 				return placeholder ? placeholder : this.$locale.baseText('fixedCollectionParameter.choose');
 			},
 			getProperties (): INodePropertyCollection[] {

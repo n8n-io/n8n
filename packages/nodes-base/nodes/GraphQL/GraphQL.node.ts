@@ -26,12 +26,67 @@ export class GraphQL implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
+				name: 'httpBasicAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'basicAuth',
+						],
+					},
+				},
+			},
+			{
+				name: 'httpDigestAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'digestAuth',
+						],
+					},
+				},
+			},
+			{
 				name: 'httpHeaderAuth',
 				required: true,
 				displayOptions: {
 					show: {
 						authentication: [
 							'headerAuth',
+						],
+					},
+				},
+			},
+			{
+				name: 'httpQueryAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'queryAuth',
+						],
+					},
+				},
+			},
+			{
+				name: 'oAuth1Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth1',
+						],
+					},
+				},
+			},
+			{
+				name: 'oAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
 						],
 					},
 				},
@@ -44,8 +99,28 @@ export class GraphQL implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'Digest Auth',
+						value: 'digestAuth',
+					},
+					{
 						name: 'Header Auth',
 						value: 'headerAuth',
+					},
+					{
+						name: 'Query Auth',
+						value: 'queryAuth',
+					},
+					{
+						name: 'OAuth1',
+						value: 'oAuth1',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
 					},
 					{
 						name: 'None',
@@ -229,7 +304,12 @@ export class GraphQL implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const items = this.getInputData();
+		const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+		const httpDigestAuth = await this.getCredentials('httpDigestAuth');
 		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+		const httpQueryAuth = await this.getCredentials('httpQueryAuth');
+		const oAuth1Api = await this.getCredentials('oAuth1Api');
+		const oAuth2Api = await this.getCredentials('oAuth2Api');
 
 		let requestOptions: OptionsWithUri & RequestPromiseOptions;
 
@@ -260,15 +340,35 @@ export class GraphQL implements INodeType {
 				};
 
 				// Add credentials if any are set
+				if (httpBasicAuth !== undefined) {
+					requestOptions.auth = {
+						user: httpBasicAuth.user as string,
+						pass: httpBasicAuth.password as string,
+					};
+				}
 				if (httpHeaderAuth !== undefined) {
 					requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+				}
+				if (httpQueryAuth !== undefined) {
+					if (!requestOptions.qs) {
+						requestOptions.qs = {};
+					}
+					requestOptions.qs![httpQueryAuth.name as string] = httpQueryAuth.value;
+				}
+				if (httpDigestAuth !== undefined) {
+					requestOptions.auth = {
+						user: httpDigestAuth.user as string,
+						pass: httpDigestAuth.password as string,
+						sendImmediately: false,
+					};
 				}
 
 				const gqlQuery = this.getNodeParameter('query', itemIndex, '') as string;
 				if (requestMethod === 'GET') {
-					requestOptions.qs = {
-						query: gqlQuery,
-					};
+					if (!requestOptions.qs) {
+						requestOptions.qs = {};
+					}
+					requestOptions.qs.query = gqlQuery;
 				} else {
 					if (requestFormat === 'json') {
 						requestOptions.body = {
@@ -292,7 +392,15 @@ export class GraphQL implements INodeType {
 					}
 				}
 
-				const response = await this.helpers.request(requestOptions);
+				let response;
+				// Now that the options are all set make the actual http request
+				if (oAuth1Api !== undefined) {
+					response = await this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
+				} else if (oAuth2Api !== undefined) {
+					response = await this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, { tokenType: 'Bearer' });
+				} else {
+					response = await this.helpers.request(requestOptions);
+				}
 				if (responseFormat === 'string') {
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 

@@ -313,14 +313,19 @@ export class ICalendar implements INodeType {
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 				let fileName = 'event.ics';
 
+				const eventStart = moment(start).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray;
+				eventStart[1]++;
+				const eventEnd = moment(end).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray;
+				eventEnd[1]++;
+
 				if (additionalFields.fileName) {
 					fileName = additionalFields.fileName as string;
 				}
 
 				const data: ics.EventAttributes = {
 					title,
-					start: (moment(start).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray),
-					end: (moment(end).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray),
+					start: eventStart,
+					end: eventEnd,
 					startInputType: 'utc',
 					endInputType: 'utc',
 				};

@@ -507,6 +507,7 @@ export class Redis implements INodeType {
 			});
 
 			client.on('ready', async (err: Error | null) => {
+				client.select(credentials.database as number);
 				try {
 					if (operation === 'info') {
 						const clientInfo = util.promisify(client.info).bind(client);

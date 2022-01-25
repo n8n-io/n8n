@@ -145,7 +145,7 @@ export class WorkflowRunnerProcess {
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
 		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli);
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 		await BinaryDataManager.init(binaryDataConfig);
@@ -268,7 +268,7 @@ export class WorkflowRunnerProcess {
 				this.childExecutions[executionId] = executeWorkflowFunctionOutput;
 				const { workflow } = executeWorkflowFunctionOutput;
 				result = await workflowExecute.processRunExecutionData(workflow);
-				await externalHooks.run('workflow.postExecute', [result, workflowData]);
+				await externalHooks.run('workflow.postExecute', [result, workflowData, executionId]);
 				void InternalHooksManager.getInstance().onWorkflowPostExecute(
 					executionId,
 					workflowData,
