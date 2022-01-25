@@ -16,7 +16,7 @@ import { IFormBoxConfig } from '@/Interface';
 const FORM_CONFIG: IFormBoxConfig = {
 	title: 'Recover password',
 	buttonText: 'Email me a recovery link',
-	redirectText: 'Sign in',
+	redirectText: 'Back to sign in',
 	redirectLink: '/signin',
 	inputs: [[
 		{
@@ -54,7 +54,7 @@ export default mixins(
 				this.$showMessage({
 					type: 'success',
 					title: 'Recovery email sent',
-					message: 'Please click the link when you receive the email',
+					message: 'Please check your inbox (and perhaps your spam folder)',
 				});
 			} catch (error) {
 				this.$showError(error, 'Problem sending email', 'There was a problem while trying to send the email:');
