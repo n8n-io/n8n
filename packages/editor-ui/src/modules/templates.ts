@@ -63,12 +63,12 @@ const module: Module<ITemplateState, IRootState> = {
 				return;
 			}
 		},
-		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { search , category, skip = 0, fetchCategories = false }) {
+		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { numberOfResults = 7, search , category, skip = 0, fetchCategories = false }) {
 			const searchQuery = search.length || category ? true : false;
 			const allData = fetchCategories ? fetchCategories : !searchQuery;
 			try {
 				//todo constant pagination
-				const payload: ISearchPayload = await getTemplates(20, skip, category, search, allData, !allData);
+				const payload: ISearchPayload = await getTemplates(numberOfResults, skip, category, search, allData, !allData);
 				const results : ISearchResults = payload.data;
 				if (allData) {
 					const categories = results.categories.map((category: ITemplateCategory) => {

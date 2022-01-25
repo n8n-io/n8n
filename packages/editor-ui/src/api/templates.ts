@@ -53,8 +53,7 @@ export async function getTemplates(
 			id
 			name
 		}
-		collections: searchCollections(rows: ${limit},
-			skip: ${skip},
+		collections: searchCollections(
 			# search parameter in string,default: null
 			search: "${search}",
 			# array of category id eg: [1,2] ,default: null

@@ -1,9 +1,9 @@
 <template>
 	<div :class="$style.list">
 		<div :class="$style.header">
-			<n8n-heading v-if="!loading" :bold="true" size="medium" color="text-light"
-				>Workflows ({{ workflowsUI.length }})</n8n-heading
-			>
+			<n8n-heading v-if="!loading" :bold="true" size="medium" color="text-light">
+				Workflows ({{ workflowsUI.length }})
+			</n8n-heading>
 			<n8n-loading :animated="true" :loading="loading" :rows="1" variant="h1" />
 		</div>
 		<div v-if="loading" :class="$style.container">
@@ -16,7 +16,7 @@
 		</div>
 		<div v-else-if="workflowsUI.length" :class="$style.container">
 			<div :class="$style.wrapper">
-				<div v-for="workflow in workflowsUI" :key="workflow.id">
+				<div v-for="(workflow, index) in workflowsUI" :key="'workflow-' + index">
 					<TemplateCard :title="workflow.name" :loading="false">
 						<template v-slot:right>
 							<div>
@@ -46,6 +46,11 @@
 						</template>
 					</TemplateCard>
 				</div>
+				<TemplateCard :loading="true" title="" />
+				<TemplateCard :loading="true" title="" />
+				<TemplateCard :loading="true" title="" />
+				<TemplateCard :loading="true" title="" />
+				<TemplateCard v-if="!searchFinished" v-infocus  :loading="true" title="" />
 			</div>
 		</div>
 
@@ -69,6 +74,47 @@ export default mixins(genericHelpers).extend({
 		loading: {
 			type: Boolean,
 		},
+		search: {
+			type: String,
+		},
+	},
+	directives: {
+		infocus: {
+			inserted: (el, binding, vnode) => {
+				const f = () => {
+					const rect = el.getBoundingClientRect();
+					const inView =
+						rect.top >= 200 &&
+						rect.left >= 0 &&
+						rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+						rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+
+					if (inView) {
+						if (vnode.context) {
+							if (!vnode.context.$data.searchFinished) {
+								vnode.context.$data.lastQuery.page = vnode.context.$data.lastQuery.page + 1;
+								vnode.context.$data.lastQuery.skip = 7 * vnode.context.$data.lastQuery.page;
+
+								const { search, category, skip } = vnode.context.$data.lastQuery;
+								vnode.context.$store.dispatch('templates/getSearchResults', {
+									search,
+									category,
+									skip,
+								});
+
+								vnode.context.$data.searchFinished = true;
+
+								setTimeout(() => {
+									if (vnode.context) vnode.context.$data.searchFinished = false;
+								}, 1000);
+							}
+						}
+					}
+				};
+				window.addEventListener('scroll', f);
+				f();
+			},
+		},
 	},
 	components: {
 		NodeList,
@@ -86,6 +132,13 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
+			lastQuery: {
+				skip: 1,
+				page: 0,
+				search: '',
+				category: [] as number[] | null,
+			},
+			searchFinished: false,
 			workflowsUI: [],
 			hover: false,
 		};

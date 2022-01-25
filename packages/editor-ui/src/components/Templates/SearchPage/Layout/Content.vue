@@ -18,7 +18,7 @@
 			</div>
 			<div :class="$style.carousel">
 				<CollectionsCarousel :loading="loading" />
-				<TemplateList :loading="loading" />
+				<TemplateList :loading="loading" :search="lastQuery.search" />
 			</div>
 		</div>
 	</div>
@@ -41,6 +41,7 @@ export default mixins(genericHelpers).extend({
 		return {
 			categories: [] as number[],
 			lastQuery: {
+				numberOfResults: 7,
 				skip: 0,
 				search: '',
 				category: [] as number[] | null,
@@ -55,24 +56,10 @@ export default mixins(genericHelpers).extend({
 			this.searchFinished = false;
 			const category = this.categories;
 			const search = this.search;
+
 			this.updatQueryParam(search, category.join(','));
+
 			await this.$store.dispatch('templates/getSearchResults', { search, category });
-			this.lastQuery = { search, category, skip: 0 };
-		},
-		async infiniteLoader() {
-			if (!this.searchFinished) {
-				const { search, category, skip } = this.lastQuery;
-				const preloaded = this.$store.getters['templates/getTemplates'];
-				await this.$store.dispatch('templates/getSearchResults', {
-					search,
-					category,
-					skip: skip + 20,
-				});
-				const newLoaded = this.$store.getters['templates/getTemplates'];
-				if (newLoaded.length % 20 || preloaded.length === newLoaded.length) {
-					this.searchFinished = true;
-				}
-			}
 		},
 		async onSearchInput() {
 			await this.doSearch();
@@ -83,6 +70,7 @@ export default mixins(genericHelpers).extend({
 		},
 		updatQueryParam(search: string, category: string) {
 			const query = Object.assign({}, this.$route.query);
+
 			if (category.length) {
 				query.categories = category;
 			} else {
@@ -100,35 +88,21 @@ export default mixins(genericHelpers).extend({
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
 			this.search = this.$route.query.search;
 		}
+
 		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
 			this.categories = this.$route.query.categories.split(',').map((id) => Number(id));
 		}
+
 		const category = this.categories.length ? this.categories : null;
+
 		await this.$store.dispatch('templates/getSearchResults', {
+			numberOfResults: this.lastQuery.numberOfResults,
 			search: this.search,
 			category,
 			fetchCategories: true,
 		});
-		this.lastQuery = { search: this.search, category, skip: 0 };
-		this.searchFinished = false;
-		// Detect when scrolled to bottom.
-		const templateList = document.querySelector('#infiniteList');
-		if (templateList) {
-			templateList.addEventListener('scroll', (e) => {
-				if (templateList.scrollTop + templateList.clientHeight >= templateList.scrollHeight) {
-					this.infiniteLoader();
-				}
-			});
-		}
+
 		this.loading = false;
-	},
-	async updated() {
-		const infiniteList = document.getElementById('infiniteList');
-		const collections = await this.$store.getters['templates/getCollections'];
-		if (infiniteList) {
-			const calcHeight = collections.length ? 450 : 350;
-			infiniteList.style.height = window.innerHeight - calcHeight + 'px';
-		}
 	},
 });
 </script>

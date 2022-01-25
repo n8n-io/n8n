@@ -9,11 +9,11 @@
 
 		<div v-if="loading">
 			<agile :options="sliderOptions">
-				<CollectionsCard v-for="n in sliderOptions.slidesToShow" :key="n" :loading="loading" />
+				<CollectionsCard v-for="n in 4" :key="n" :loading="loading" />
 			</agile>
 		</div>
 
-		<clients-only v-else-if="collectionsUI.length">
+		<span v-else-if="collectionsUI.length">
 			<agile :options="sliderOptions">
 				<CollectionsCard
 					v-for="collection in collectionsUI"
@@ -44,7 +44,7 @@
 					</div>
 				</template>
 			</agile>
-		</clients-only>
+		</span>
 
 		<div v-else :class="$style.text">
 			<n8n-text>No collections found. Try adjusting your search to see more.</n8n-text>
@@ -95,7 +95,7 @@ export default mixins(genericHelpers).extend({
 				dots: false,
 				infinite: false,
 				navButtons: true,
-				slidesToShow: 4,
+				slidesToShow: 3.35,
 			},
 		};
 	},
