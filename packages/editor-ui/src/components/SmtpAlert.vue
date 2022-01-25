@@ -1,9 +1,5 @@
 <template>
 	<span></span>
-	<!-- <n8n-alert v-if="!isSmtpSetup" type="error" :closable="false">
-		SMTP credentials are not set up. n8n cannot send emails until this is resolved.
-		<n8n-link to="https://docs.n8n.io/reference/environment-variables.html#user-management" :newWindow="true" size="small">More info</n8n-link>
-	</n8n-alert> -->
 </template>
 
 <script lang="ts">
@@ -22,7 +18,7 @@ export default mixins(
 	},
 	mounted() {
 		this.alert = this.$showAlert({
-			message: `SMTP credentials are not set up. n8n cannot send emails until this is resolved. <a href="https://docs.n8n.io/reference/environment-variables.html#user-management" style="margin-right: 10px" target="_blank">More info</a>`,
+			message: `Set up SMTP before adding users (so that n8n can send them invitation emails). <a target="_blank" href="https://docs.n8n.io/reference/user-management#smtp">Instructions</a>.`,
 			type: 'warning',
 			duration: 0,
 			showClose: true,
