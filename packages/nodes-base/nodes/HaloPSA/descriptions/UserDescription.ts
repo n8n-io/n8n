@@ -36,16 +36,11 @@ export const userDescription: INodeProperties[] = [
 	},
 	// Additional fields =============================================================
 	{
-		displayName: 'Add Optional Field',
-		name: 'fieldsToCreateOrUpdate',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add Field',
-		},
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
 		default: {},
-		description: 'Add field and value',
-		placeholder: 'Add Optional Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				operation: ['update', 'create'],
@@ -54,82 +49,51 @@ export const userDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'options',
-						noDataExpression: true,
-						// nodelinter-ignore-next-line
-						default: '',
-						required: true,
-						options: [
-							{
-								name: 'Surname',
-								value: 'surname',
-							},
-							{
-								name: 'Password',
-								value: 'password',
-								description:
-									'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character.',
-							},
-							{
-								name: 'Email Address',
-								value: 'emailaddress',
-							},
-							{
-								name: 'Network Login',
-								value: 'login',
-							},
-							{
-								name: 'User is Active',
-								value: 'inactive',
-							},
-							{
-								name: 'Site Telephone Number',
-								value: 'sitephonenumber',
-							},
-							{
-								name: 'Notes',
-								value: 'notes',
-							},
-						],
-					},
-					{
-						displayName: 'Field Value',
-						name: 'fieldValue',
-						type: 'string',
-						default: '',
-						required: true,
-						displayOptions: {
-							show: {
-								fieldName: [
-									'notes',
-									'sitephonenumber',
-									'login',
-									'emailaddress',
-									'password',
-									'surname',
-								],
-							},
-						},
-					},
-					{
-						displayName: 'Field Value',
-						name: 'fieldValue',
-						type: 'boolean',
-						default: false,
-						required: true,
-						displayOptions: {
-							show: {
-								fieldName: ['inactive'],
-							},
-						},
-					},
-				],
+				displayName: 'Surname',
+				name: 'surname',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				default: '',
+				description:
+					'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character.',
+			},
+			{
+				displayName: 'Email Address',
+				name: 'emailaddress',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Network Login',
+				name: 'login',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Site Telephone Number',
+				name: 'sitephonenumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'User is Active',
+				name: 'inactive',
+				type: 'boolean',
+				default: true,
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
 			},
 		],
 	},

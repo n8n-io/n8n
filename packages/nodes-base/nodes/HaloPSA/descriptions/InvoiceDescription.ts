@@ -1,6 +1,4 @@
 import { INodeProperties } from 'n8n-workflow';
-import * as data from './data/invoiceFields.json';
-import { fieldsToOptions } from '../GenericFunctions';
 
 export const invoiceDescription: INodeProperties[] = [
 	{
@@ -34,7 +32,7 @@ export const invoiceDescription: INodeProperties[] = [
 			},
 		},
 	},
-
+	// Invoice Items =============================================================
 	{
 		displayName: 'Add Item',
 		name: 'itemsList',
@@ -83,19 +81,13 @@ export const invoiceDescription: INodeProperties[] = [
 			},
 		],
 	},
-
 	// Additional fields =============================================================
 	{
-		displayName: 'Add Optional Field',
-		name: 'fieldsToCreateOrUpdate',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add Field',
-		},
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
 		default: {},
-		description: 'Add field and value',
-		placeholder: 'Add Optional Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				operation: ['update', 'create'],
@@ -104,87 +96,64 @@ export const invoiceDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'options',
-						noDataExpression: true,
-						// nodelinter-ignore-next-line
-						default: '',
-						required: true,
-						options: [
-							{
-								name: 'Invoice Number',
-								value: 'thirdpartyinvoicenumber',
-							},
-							{
-								name: 'Currency',
-								value: 'currency',
-							},
-							{
-								name: 'Reference',
-								value: 'reference',
-							},
-							{
-								name: 'Date Posted',
-								value: 'dateposted',
-							},
-							{
-								name: 'Due Date',
-								value: 'duedate',
-							},
-							{
-								name: 'Date Sent',
-								value: 'datesent',
-							},
-							{
-								name: 'Date Paid',
-								value: 'datepaid',
-							},
-							{
-								name: 'Note',
-								value: 'notes_1',
-							},
-							{
-								name: 'Internal Note',
-								value: 'internal_note',
-							},
-						],
-					},
-					{
-						displayName: 'Field Value',
-						name: 'fieldValue',
-						type: 'string',
-						default: '',
-						required: true,
-						displayOptions: {
-							show: {
-								fieldName: [
-									'thirdpartyinvoicenumber',
-									'currency',
-									'reference',
-									'notes_1',
-									'internal_note',
-								],
-							},
-						},
-					},
-					{
-						displayName: 'Field Value',
-						name: 'fieldValue',
-						type: 'dateTime',
-						default: '',
-						required: true,
-						displayOptions: {
-							show: {
-								fieldName: ['dateposted', 'duedate', 'datesent', 'datepaid'],
-							},
-						},
-					},
-				],
+				displayName: 'Invoice Number',
+				name: 'thirdpartyinvoicenumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Reference',
+				name: 'reference',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Date Posted',
+				name: 'dateposted',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Due Date',
+				name: 'duedate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Date Sent',
+				name: 'datesent',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Date Paid',
+				name: 'datepaid',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Note',
+				name: 'notes_1',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Internal Note',
+				name: 'internal_note',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
 			},
 		],
 	},

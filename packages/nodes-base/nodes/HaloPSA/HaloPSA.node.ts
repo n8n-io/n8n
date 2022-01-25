@@ -325,8 +325,10 @@ export class HaloPSA implements INodeType {
 			try {
 				// Create ----------------------------------------------------
 				if (operation === 'create' || operation === 'update') {
-					const data = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
-					const item = processFields(data) || {};
+					// const data = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
+					// const item = processFields(data) || {};
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const item: IDataObject = {...additionalFields};
 
 					if (operation === 'update') {
 						const itemID = this.getNodeParameter('item_id', i) as string;
@@ -389,6 +391,7 @@ export class HaloPSA implements INodeType {
 						item['lines'] = items;
 					}
 
+					console.log(item);
 					const body = [item];
 					responseData = await haloPSAApiRequest.call(
 						this,
@@ -448,21 +451,6 @@ export class HaloPSA implements INodeType {
 						count,
 					);
 				}
-				// Update ----------------------------------------------------
-				// if (operation === 'update') {
-				// 	const itemID = this.getNodeParameter('item_id', i) as string;
-				// 	const data = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
-				// 	const body = [{ id: +itemID, ...processFields(data) }];
-				// 	responseData = await haloPSAApiRequest.call(
-				// 		this,
-				// 		resourceApiUrl,
-				// 		resource,
-				// 		'POST',
-				// 		tokens.access_token,
-				// 		'',
-				// 		body,
-				// 	);
-				// }
 
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData);

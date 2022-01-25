@@ -24,13 +24,8 @@ export const clientDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-					'create',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['update', 'create'],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -38,7 +33,7 @@ export const clientDescription: INodeProperties[] = [
 				displayName: 'Is VIP',
 				name: 'is_vip',
 				type: 'boolean',
-				default: true,
+				default: false,
 				description: 'Whether the client is VIP or not',
 			},
 			{
@@ -61,6 +56,18 @@ export const clientDescription: INodeProperties[] = [
 				name: 'reference',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Next Call Date',
+				name: 'calldate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Account Status',
+				name: 'inactive',
+				type: 'boolean',
+				default: false,
 			},
 		],
 	},
