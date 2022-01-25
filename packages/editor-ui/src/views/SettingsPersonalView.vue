@@ -127,7 +127,7 @@ export default mixins(
 				});
 				this.$showToast({
 					title: 'Updated your details',
-					message: 'Successfully updated your personal settings',
+					message: '',
 					type: 'success',
 				});
 				this.hasAnyChanges = false;
