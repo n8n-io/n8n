@@ -175,7 +175,6 @@ import type {
 	WorkflowRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
-	UserSurveyRequest,
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
@@ -3011,35 +3010,6 @@ class App {
 					return this.frontendSettings;
 				},
 			),
-		);
-
-		// ----------------------------------------
-		// User Survey
-		// ----------------------------------------
-
-		// Process personalization survey responses
-		this.app.post(
-			`/${this.restEndpoint}/user-survey`,
-			async (req: UserSurveyRequest, res: express.Response) => {
-				if (!this.frontendSettings.personalizationSurvey.shouldShow) {
-					// TODO UM: check if this needs permission check for UM
-					return ResponseHelper.sendErrorResponse(
-						res,
-						new ResponseHelper.ResponseError('User survey already submitted', undefined, 400),
-						false,
-					);
-				}
-
-				const { body: personalizationAnswers } = req;
-				await Db.collections.User!.update(req.user.id, { personalizationAnswers });
-
-				this.frontendSettings.personalizationSurvey.shouldShow = false;
-				this.frontendSettings.personalizationSurvey.answers = personalizationAnswers;
-				ResponseHelper.sendSuccessResponse(res, undefined, true, 200);
-				void InternalHooksManager.getInstance().onPersonalizationSurveySubmitted(
-					personalizationAnswers,
-				);
-			},
 		);
 
 		// ----------------------------------------

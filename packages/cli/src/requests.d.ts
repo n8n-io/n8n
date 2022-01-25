@@ -1,7 +1,6 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
 import { User } from './databases/entities/User';
-import { IPersonalizationSurveyAnswers } from './Interfaces';
 import { IExecutionDeleteFilter } from '.';
 import { IConnections, INode, IWorkflowSettings } from '../../workflow/dist/src';
 
@@ -36,8 +35,6 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 		credentials: string;
 	}
 >;
-
-export type UserSurveyRequest = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswers>;
 
 export declare namespace ExecutionRequest {
 	type GetAllQsParam = {
