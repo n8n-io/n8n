@@ -80,10 +80,10 @@ export default mixins(genericHelpers).extend({
 .card {
 	width: 100%;
 	height: 68px;
-	height: auto;
-	border-bottom: $--version-card-border;
 	margin-right: var(--spacing-2xs);
 	padding: var(--spacing-s);
+	background-color: var(--color-background-xlight);
+	border-bottom: $--version-card-border;
 	display: flex;
 	justify-content: space-between;
 	align-items: flex-end;

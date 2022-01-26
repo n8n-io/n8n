@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div :class="$style.image">
-			<n8n-image v-if="template.mainImage" :images="template.mainImage.image.mainImage" />
+			<n8n-image v-if="template.mainImage" :images="template.mainImage.image" />
 		</div>
 		<div :class="$style.content">
 			<div :class="$style.markdown">
@@ -52,7 +52,7 @@ export default mixins(workflowHelpers).extend({
 				type: 'error',
 			});
 			setTimeout(() => {
-				this.$router.go(-1);
+				// this.$router.go(-1);
 			}, 2000);
 		}
 		this.loading = false;

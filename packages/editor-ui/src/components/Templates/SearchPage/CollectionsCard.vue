@@ -40,7 +40,7 @@ export default mixins(genericHelpers).extend({
 	border-radius: var(--border-radius-large);
 	border: $--version-card-border;
 	margin-right: var(--spacing-2xs);
-	background-color: var(--color-white);
+	background-color: var(--color-background-xlight);
 	padding: var(--spacing-s);
 }
 
