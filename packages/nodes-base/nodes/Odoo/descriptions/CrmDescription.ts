@@ -2,32 +2,71 @@ import { INodeProperties } from 'n8n-workflow';
 
 const crmFields: INodeProperties[] = [
 	{
-		displayName: 'Notes',
-		name: 'notes',
+		displayName: 'Phone',
+		name: 'phone',
 		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Email',
+		name: 'email_from',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Internal Notes',
+		name: 'description',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Expected Closing',
+		name: 'date_deadline',
+		type: 'dateTime',
+		default: '',
+	},
+	{
+		displayName: 'Expected Revenue',
+		name: 'expected_revenue',
+		type: 'number',
+		default: 0,
+	},
+	{
+		displayName: 'Probability',
+		name: 'probability',
+		type: 'number',
+		default: 0,
 		typeOptions: {
-			alwaysOpenEditWindow: true,
+			maxValue: 100,
+			minValue: 0,
 		},
-		default: '',
 	},
 	{
-		displayName: 'Main Contact',
-		name: 'maincontact_name',
-		type: 'string',
+		displayName: 'Priority',
+		name: 'priority',
+		type: 'options',
 		default: '',
-	},
-	{
-		displayName: 'Phone Number',
-		name: 'phonenumber',
-		type: 'string',
-		default: '',
+		options: [
+			{
+				name: '1',
+				value: '1',
+			},
+			{
+				name: '2',
+				value: '2',
+			},
+			{
+				name: '3',
+				value: '3',
+			},
+		],
 	},
 ];
 
 export const crmDescription: INodeProperties[] = [
 	{
-		displayName: 'Name',
-		name: 'crmName',
+		displayName: 'Opportunity',
+		name: 'opportunity',
 		type: 'string',
 		default: '',
 		required: true,
@@ -68,11 +107,10 @@ export const crmDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Name',
+				displayName: 'Opportunity',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Enter site name',
 			},
 			...crmFields,
 		],

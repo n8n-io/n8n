@@ -226,11 +226,11 @@ export class Odoo implements INodeType {
 			...crmDescription,
 
 			//======================================================================
-			...noteNoteDescription,
-			...resPartnerDescription,
-			...calendarEventDescription,
+			// ...noteNoteDescription,
+			// ...resPartnerDescription,
+			// ...calendarEventDescription,
 			// ...crmLeadDescription,
-			...stockPickingTypeDescription,
+			// ...stockPickingTypeDescription,
 
 			//    Get All   ------------------------------------------------------
 			// {
@@ -495,8 +495,8 @@ export class Odoo implements INodeType {
 					const fields = { ...additionalFields};
 
 					if (resource === 'crm') {
-						const crmName = this.getNodeParameter('crmName', i) as string;
-						fields['name'] = crmName;
+						const opportunity = this.getNodeParameter('opportunity', i) as string;
+						fields['name'] = opportunity;
 					}
 
 					console.log(fields);
@@ -544,7 +544,7 @@ export class Odoo implements INodeType {
 
 				//    Update    ------------------------------------------------------
 				if (operation === 'update') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const fields = { ...additionalFields};
 
 					responseData = await odooUpdate.call(
