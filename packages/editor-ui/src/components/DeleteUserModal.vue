@@ -10,7 +10,10 @@
 	>
 		<template slot="content">
 			<div>
-				<div :class="$style.content">
+				<div v-if="isPending">
+					<n8n-text color="base">Are you sure you want to delete this invited user?</n8n-text>
+				</div>
+				<div :class="$style.content" v-else>
 					<div><n8n-text color="base">What should we do with their data?</n8n-text></div>
 					<el-radio :value="operation" label="transfer" @change="() => setOperation('transfer')">
 						<n8n-text color="dark">Transfer their workflows and credentials to another user</n8n-text>
@@ -80,10 +83,19 @@ export default mixins(showMessage).extend({
 			const getUserById = this.$store.getters['users/getUserById'];
 			return getUserById(this.activeId);
 		},
+		isPending(): boolean {
+			return this.userToDelete && !this.userToDelete.firstName;
+		},
 		title(): string {
-			return `Delete ${this.userToDelete.firstName} ${this.userToDelete.lastName}`;
+			if (!this.userToDelete.firstName) {
+				return `Delete ${this.userToDelete.email}?`;
+			}
+			return `Delete ${this.userToDelete.firstName} ${this.userToDelete.lastName}?`;
 		},
 		enabled(): boolean {
+			if (this.isPending) {
+				return true;
+			}
 			if (this.operation === 'delete' && this.deleteConfirmText === 'delete all data') {
 				return true;
 			}

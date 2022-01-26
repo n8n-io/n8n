@@ -65,25 +65,7 @@ export default mixins(showMessage).extend({
 			const getUserById = this.$store.getters['users/getUserById'];
 			const user = getUserById(userId) as IUser | null;
 			if (user) {
-				if (!user.firstName) {
-					const confirm = await this.confirmMessage('Are you sure you want to delete this invited user?', `Delete ${user.email}`, null);
-					if (confirm) {
-						try {
-							await this.$store.dispatch('users/deleteUser', {id: user.id});
-
-							this.$showToast({
-								type: 'success',
-								title: 'User deleted successfully',
-								message: `${user.email} was deleted`,
-							});
-						} catch (e) {
-							this.$showError(e, 'Problem deleting user');
-						}
-					}
-				}
-				else {
-					this.$store.dispatch('ui/openDeleteUserModal', {id: userId});
-				}
+				this.$store.dispatch('ui/openDeleteUserModal', {id: userId});
 			}
 		},
 		async onReinvite(userId: string) {
