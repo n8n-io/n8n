@@ -34,6 +34,7 @@ export default mixins(genericHelpers).extend({
 
 <style lang="scss" module>
 .card {
+	min-width: 240px;
 	width: 100%;
 	height: 140px;
 	border-radius: var(--border-radius-large);

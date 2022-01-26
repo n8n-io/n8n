@@ -25,7 +25,7 @@
 						</template>
 
 						<template v-slot:rightHover>
-							<n8n-button type="outline" label="Use workflow" />
+							<n8n-button type="outline" label="Use workflow" @click="redirectToTemplate(workflow.id)"/>
 						</template>
 
 						<template v-slot:footer>
@@ -50,7 +50,7 @@
 				<TemplateCard :loading="true" title="" />
 				<TemplateCard :loading="true" title="" />
 				<TemplateCard :loading="true" title="" />
-				<TemplateCard v-if="!searchFinished" v-infocus  :loading="true" title="" />
+				<TemplateCard v-if="!searchFinished" v-infocus :loading="true" title="" />
 			</div>
 		</div>
 
@@ -71,6 +71,9 @@ import mixins from 'vue-typed-mixins';
 export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
 	props: {
+		category: {
+			type: Object,
+		},
 		loading: {
 			type: Boolean,
 		},
@@ -83,30 +86,31 @@ export default mixins(genericHelpers).extend({
 			inserted: (el, binding, vnode) => {
 				const f = () => {
 					const rect = el.getBoundingClientRect();
-					const inView =
-						rect.top >= 200 &&
-						rect.left >= 0 &&
-						rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-						rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+					if (el) {
+						const inView =
+							rect.top >= 200 &&
+							rect.left >= 0 &&
+							rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+							rect.right <= (window.innerWidth || document.documentElement.clientWidth);
 
-					if (inView) {
-						if (vnode.context) {
-							if (!vnode.context.$data.searchFinished) {
-								vnode.context.$data.lastQuery.page = vnode.context.$data.lastQuery.page + 1;
-								vnode.context.$data.lastQuery.skip = 10 * vnode.context.$data.lastQuery.page;
+						if (inView) {
+							if (vnode.context) {
+								if (!vnode.context.$data.searchFinished) {
+									vnode.context.$data.page = vnode.context.$data.page + 1;
+									vnode.context.$data.skip = 10 * vnode.context.$data.page;
 
-								const { search, category, skip } = vnode.context.$data.lastQuery;
-								vnode.context.$store.dispatch('templates/getSearchResults', {
-									search,
-									category,
-									skip,
-								});
+									vnode.context.$store.dispatch('templates/getSearchResults', {
+										search: vnode.context.$props.search,
+										category: vnode.context.$props.category,
+										skip: vnode.context.$data.skip,
+									});
 
-								vnode.context.$data.searchFinished = true;
+									vnode.context.$data.searchFinished = true;
 
-								setTimeout(() => {
-									if (vnode.context) vnode.context.$data.searchFinished = false;
-								}, 1000);
+									setTimeout(() => {
+										if (vnode.context) vnode.context.$data.searchFinished = false;
+									}, 1000);
+								}
 							}
 						}
 					}
@@ -132,18 +136,17 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
-			lastQuery: {
-				skip: 1,
-				page: 0,
-				search: '',
-				category: [] as number[] | null,
-			},
-			searchFinished: false,
-			workflowsUI: [],
 			hover: false,
+			page: 0,
+			searchFinished: false,
+			skip: 1,
+			workflowsUI: [],
 		};
 	},
 	methods: {
+		redirectToTemplate(templateId: string) {
+			this.$router.push(`/workflows/templates/${templateId}`);
+		},
 		truncate(views: number): string {
 			return new Intl.NumberFormat('en-GB', {
 				notation: 'compact',

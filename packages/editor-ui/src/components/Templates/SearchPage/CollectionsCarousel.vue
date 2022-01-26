@@ -150,6 +150,7 @@ export default mixins(genericHelpers).extend({
 			border: $--version-card-border;
 			background-color: #fbfcfe;
 			opacity: 1;
+			cursor: pointer;
 		}
 
 		&--prev {
