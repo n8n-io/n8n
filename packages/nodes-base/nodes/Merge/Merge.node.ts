@@ -111,7 +111,7 @@ export class Merge implements INodeType {
 				name: 'propertyName1',
 				type: 'string',
 				default: '',
-				hint: 'Enter the name of the property (JSON key). Supports dot-notation.',
+				hint: 'The name of the field as text (e.g. “id”)',
 				required: true,
 				displayOptions: {
 					show: {
@@ -129,7 +129,7 @@ export class Merge implements INodeType {
 				name: 'propertyName2',
 				type: 'string',
 				default: '',
-				hint: 'Enter the name of the property (JSON key). Supports dot-notation.',
+				hint: 'The name of the field as text (e.g. “id”)',
 				required: true,
 				displayOptions: {
 					show: {
