@@ -152,7 +152,7 @@ export const organizationDescription: INodeProperties[] = [
 				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
-				default: false,
+				default: true,
 			},
 			{
 				displayName: 'Custom Fields',
@@ -221,7 +221,7 @@ export const organizationDescription: INodeProperties[] = [
 				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
-				default: false,
+				default: true,
 			},
 			{
 				displayName: 'Custom Fields',

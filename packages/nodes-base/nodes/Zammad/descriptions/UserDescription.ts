@@ -157,7 +157,7 @@ export const userDescription: INodeProperties[] = [
 				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
-				default: false,
+				default: true,
 			},
 			{
 				displayName: 'Address',
@@ -341,7 +341,7 @@ export const userDescription: INodeProperties[] = [
 				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
-				default: false,
+				default: true,
 			},
 			{
 				displayName: 'Address',
