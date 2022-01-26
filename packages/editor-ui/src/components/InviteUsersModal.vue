@@ -30,8 +30,22 @@ import mixins from "vue-typed-mixins";
 import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
-import { IFormInputs } from "@/Interface";
-import { ROLE } from "@/constants";
+import { IFormInputs, IUser } from "@/Interface";
+import { ROLE, VALID_EMAIL_REGEX } from "@/constants";
+
+const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
+
+
+function getEmail(email: string): string {
+	let parsed = email.trim();
+	if (NAME_EMAIL_FORMAT_REGEX.test(parsed)) {
+		const matches = parsed.match(NAME_EMAIL_FORMAT_REGEX);
+		if (matches && matches.length === 2) {
+			parsed = matches[1];
+		}
+	}
+	return parsed;
+}
 
 export default mixins(showMessage).extend({
 	components: { Modal },
@@ -58,6 +72,11 @@ export default mixins(showMessage).extend({
 					label: 'New user email address(es)',
 					required: true,
 					validationRules: [{name: 'VALID_EMAILS'}],
+					validators: {
+						VALID_EMAILS: {
+							validate: this.validateEmails,
+						},
+					},
 					placeholder: 'name1@email.com, name2@email.com, ...',
 				},
 			},
@@ -94,6 +113,15 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
+		validateEmails: (value: string) => {
+			value.split(',').forEach((email: string) => {
+				const parsed = getEmail(email);
+
+				if (!!parsed.trim() && !VALID_EMAIL_REGEX.test(String(parsed).trim().toLowerCase())) {
+					throw new Error(`"${parsed.trim()}" is not a valid email`);
+				}
+			});
+		},
 		onInput(e: {name: string, value: string}) {
 			if (e.name === 'emails') {
 				this.emails = e.value;
@@ -104,20 +132,25 @@ export default mixins(showMessage).extend({
 				this.loading = true;
 
 				const emails = this.emails.split(',')
-					.map((email) => email.trim())
-					.filter((email) => !!email)
-					.map((email: string) => ({email}));
+					.map((email) => ({email: getEmail(email).trim()}))
+					.filter((invite) => !!invite.email);
 
 				if (emails.length === 0) {
 					throw new Error('No users to invite');
 				}
 
-				await this.$store.dispatch('users/inviteUsers', emails);
+				const invited: IUser[] = await this.$store.dispatch('users/inviteUsers', emails);
+				const invitedEmails = invited.reduce((accu, user) => {
+					if (user.email) {
+						return accu ? `${accu}, ${user.email}` : user.email;
+					}
+					return accu;
+				}, '');
 
 				this.$showMessage({
 					type: 'success',
-					title: `User${emails.length > 1 ? 's' : ''} invited successfully`,
-					message: `An invite email was sent to ${this.emails}`,
+					title: `User${invited.length > 1 ? 's' : ''} invited successfully`,
+					message: `An invite email was sent to ${invitedEmails}`,
 				});
 
 				this.modalBus.$emit('close');

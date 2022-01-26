@@ -112,15 +112,6 @@ const VALIDATORS: { [key: string]: Validator | RuleGroup } = {
 			}
 		},
 	},
-	VALID_EMAILS: {
-		validate: (value: string) => {
-			value.split(',').forEach((email: string) => {
-				if (!!email.trim() && !emailRegex.test(String(email).trim().toLowerCase())) {
-					throw new Error(`"${email.trim()}" is not a valid email`);
-				}
-			});
-		},
-	},
 	CONTAINS_UPPERCASE: {
 		validate: (value: string, config: { minimum: number }) => {
 			const uppercaseCount = (value.match(/[A-Z]/g) || []).length;

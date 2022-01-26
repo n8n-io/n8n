@@ -208,9 +208,10 @@ const module: Module<IUsersState, IRootState> = {
 			const users = await getUsers(context.rootGetters.getRestApiContext);
 			context.commit('addUsers', users);
 		},
-		async inviteUsers(context: ActionContext<IUsersState, IRootState>, params: Array<{email: string}>) {
+		async inviteUsers(context: ActionContext<IUsersState, IRootState>, params: Array<{email: string}>): Promise<Partial<IUser>[]> {
 			const users = await inviteUsers(context.rootGetters.getRestApiContext, params);
 			context.commit('addUsers', users);
+			return users;
 		},
 		async reinviteUser(context: ActionContext<IUsersState, IRootState>, params: {id: string}) {
 			await reinvite(context.rootGetters.getRestApiContext, params);
