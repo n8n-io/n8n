@@ -7,7 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import { ICredentialDataDecryptedObject, ICredentialTestFunctions, IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 const serviceJSONRPC = 'object';
 const methodJSONRPC = 'execute';
@@ -18,6 +18,14 @@ export const mapOperationToJSONRPC = {
 	getAll: 'search_read',
 	update: 'write',
 	delete: 'unlink',
+};
+
+export const mapOdooResources: {[key:string]: string} = {
+	calendar: 'calendar.event',
+	contact: 'res.partner',
+	crm: 'crm.lead',
+	inventory: 'stock.picking.type',
+	note: 'note.note',
 };
 
 export const mapFilterOperationToJSONRPC = {
@@ -89,7 +97,7 @@ function processFilters(value: IOdooFilterOperations) {
 	});
 }
 
-function processNameValueFields(value: IDataObject) {
+export function processNameValueFields(value: IDataObject) {
 	const data = value as unknown as IOdooNameValueFields;
 	return data?.fields?.reduce((acc, record) => {
 		return Object.assign(acc, { [record.fieldName]: record.fieldValue });
@@ -112,7 +120,6 @@ export async function odooJSONRPCRequest(
 				'User-Agent': 'https://n8n.io',
 				Connection: 'keep-alive',
 				Accept: '*/*',
-				'Accept-Encoding': 'gzip, deflate, br',
 				'Content-Type': 'application/json',
 			},
 			method: 'POST',
@@ -152,7 +159,7 @@ export async function odooGetModelFields(
 					db,
 					userID,
 					password,
-					resource,
+					mapOdooResources[resource],
 					'fields_get',
 					[],
 					['string', 'type', 'help', 'required', 'name'],
@@ -189,9 +196,9 @@ export async function odooCreate(
 					db,
 					userID,
 					password,
-					resource,
+					mapOdooResources[resource],
 					mapOperationToJSONRPC[operation],
-					processNameValueFields(newItem) || {},
+					newItem || {},
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -213,7 +220,7 @@ export async function odooGet(
 	operation: OdooCRUD,
 	url: string,
 	itemsID: string,
-	fieldsToReturn: IDataObject,
+	// fieldsToReturn: IDataObject,
 ) {
 	try {
 		const body = {
@@ -226,10 +233,11 @@ export async function odooGet(
 					db,
 					userID,
 					password,
-					resource,
+					mapOdooResources[resource],
 					mapOperationToJSONRPC[operation],
 					sanitizeInput(itemsID, true) || [],
-					processResponceFields(fieldsToReturn) || [],
+					// processResponceFields(fieldsToReturn) || [],
+					[],
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -250,8 +258,8 @@ export async function odooGetAll(
 	resource: string,
 	operation: OdooCRUD,
 	url: string,
-	filters: IOdooFilterOperations,
-	fieldsToReturn: IDataObject,
+	// filters: IOdooFilterOperations,
+	// fieldsToReturn: IDataObject,
 ) {
 	try {
 		const body = {
@@ -264,10 +272,11 @@ export async function odooGetAll(
 					db,
 					userID,
 					password,
-					resource,
+					mapOdooResources[resource],
 					mapOperationToJSONRPC[operation],
-					processFilters(filters) || [],
-					processResponceFields(fieldsToReturn) || [],
+					// processFilters(filters) || [],
+					// processResponceFields(fieldsToReturn) || [],
+					[],
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -302,10 +311,10 @@ export async function odooUpdate(
 					db,
 					userID,
 					password,
-					resource,
+					mapOdooResources[resource],
 					mapOperationToJSONRPC[operation],
 					sanitizeInput(itemsID, true) || [],
-					processNameValueFields(fieldsToUpdate) || {},
+					fieldsToUpdate,
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -339,7 +348,7 @@ export async function odooDelete(
 					db,
 					userID,
 					password,
-					resource,
+					mapOdooResources[resource],
 					mapOperationToJSONRPC[operation],
 					sanitizeInput(itemsID, true) || [],
 				],

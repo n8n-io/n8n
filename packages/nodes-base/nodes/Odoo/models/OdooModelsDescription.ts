@@ -21,7 +21,7 @@ export const noteNoteDescription: INodeProperties[] = [
 		placeholder: '',
 		displayOptions: {
 			show: {
-				resource: ['note.note'],
+				resource: ['note'],
 				operation: ['get', 'getAll'],
 			},
 		},
@@ -83,7 +83,7 @@ export const resPartnerDescription: INodeProperties[] = [
 		placeholder: '',
 		displayOptions: {
 			show: {
-				resource: ['res.partner'],
+				resource: ['contact'],
 				operation: ['get', 'getAll'],
 			},
 		},
@@ -145,7 +145,7 @@ export const calendarEventDescription: INodeProperties[] = [
 		placeholder: '',
 		displayOptions: {
 			show: {
-				resource: ['calendar.event'],
+				resource: ['calendar'],
 				operation: ['get', 'getAll'],
 			},
 		},
@@ -207,7 +207,7 @@ export const crmLeadDescription: INodeProperties[] = [
 		placeholder: '',
 		displayOptions: {
 			show: {
-				resource: ['crm.lead'],
+				resource: ['crm'],
 				operation: ['get', 'getAll'],
 			},
 		},
@@ -269,7 +269,7 @@ export const stockPickingTypeDescription: INodeProperties[] = [
 		placeholder: '',
 		displayOptions: {
 			show: {
-				resource: ['stock.picking.type'],
+				resource: ['inventory'],
 				operation: ['get', 'getAll'],
 			},
 		},

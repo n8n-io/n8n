@@ -6,35 +6,31 @@ export class OdooApi implements ICredentialType {
 	documentationUrl = 'odoo';
 	properties = [
 		{
-			displayName: 'Site url: ',
+			displayName: 'Site url',
 			name: 'url',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			required: true,
 		},
 		{
-			displayName: 'Username: ',
+			displayName: 'Username',
 			name: 'username',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			required: true,
 		},
 		{
-			displayName: 'Password Or API Key: ',
+			displayName: 'Password Or API Key',
 			name: 'password',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			required: true,
 			typeOptions: {
 				password: true,
 			},
 		},
 		{
-			displayName: 'Database name: ',
+			displayName: 'Database name',
 			name: 'db',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			required: false,
 		},
 	];
 }
