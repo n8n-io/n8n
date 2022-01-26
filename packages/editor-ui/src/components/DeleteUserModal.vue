@@ -18,21 +18,25 @@
 					<el-radio :value="operation" label="transfer" @change="() => setOperation('transfer')">
 						<n8n-text color="dark">Transfer their workflows and credentials to another user</n8n-text>
 					</el-radio>
-					<n8n-input-label label="User to transfer to" v-if="operation === 'transfer'">
-						<n8n-user-select
-							:users="allUsers"
-							:currentUserId="currentUserId"
-							:value="transferId"
-							:ignoreIds="ignoreIds"
-							@input="setTransferId"
-						/>
-					</n8n-input-label>
+					<div :class="$style.optionInput" v-if="operation === 'transfer'">
+						<n8n-input-label label="User to transfer to">
+							<n8n-user-select
+								:users="allUsers"
+								:currentUserId="currentUserId"
+								:value="transferId"
+								:ignoreIds="ignoreIds"
+								@input="setTransferId"
+							/>
+						</n8n-input-label>
+					</div>
 					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
 						<n8n-text color="dark">Delete their workflows and credentials</n8n-text>
 					</el-radio>
-					<n8n-input-label label="Type “delete all data” to confirm" v-if="operation === 'delete'">
-						<n8n-input :value="deleteConfirmText" placeholder="delete all data" @input="setConfirmText" />
-					</n8n-input-label>
+					<div :class="$style.optionInput" v-if="operation === 'delete'">
+						<n8n-input-label label="Type “delete all data” to confirm">
+							<n8n-input :value="deleteConfirmText" placeholder="delete all data" @input="setConfirmText" />
+						</n8n-input-label>
+					</div>
 				</div>
 			</div>
 		</template>
@@ -169,5 +173,9 @@ export default mixins(showMessage).extend({
 	> * {
 		margin-bottom: var(--spacing-2xs);
 	}
+}
+
+.optionInput {
+	padding-left: var(--spacing-l);
 }
 </style>
