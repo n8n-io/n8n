@@ -259,7 +259,7 @@ export async function getUsers(context: IRestApiContext): Promise<IUser[]> {
 	return Promise.resolve(getAllUsers());
 }
 
-export async function inviteUsers(context: IRestApiContext, params: Array<{email: string}>): Promise<Partial<IUser>[]> {
+export async function inviteUsers(context: IRestApiContext, params: Array<{email: string}>): Promise<Array<Partial<IUser>>> {
 	log(context, 'POST', '/users', params);
 
 	const users = params.map(({email}: {email: string}) => ({

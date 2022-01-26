@@ -58,7 +58,7 @@ export async function getUsers(context: IRestApiContext): Promise<IUser[]> {
 	return await makeRestApiRequest(context, 'GET', '/users');
 }
 
-export async function inviteUsers(context: IRestApiContext, params: Array<{email: string}>): Promise<Partial<IUser>[]> {
+export async function inviteUsers(context: IRestApiContext, params: Array<{email: string}>): Promise<Array<Partial<IUser>>> {
 	return await makeRestApiRequest(context, 'POST', '/users', params as unknown as IDataObject);
 }
 
