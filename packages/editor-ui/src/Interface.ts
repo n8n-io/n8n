@@ -827,7 +827,7 @@ export type IFormInputs = IFormInputsRow[];
 
 export type IFormBoxConfig = {
 	title: string;
-	buttonText: string;
+	buttonText?: string;
 	secondaryButtonText?: string;
 	inputs: IFormInputs;
 	redirectLink?: string;

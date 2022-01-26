@@ -23,7 +23,7 @@
 				@submit="onSubmit"
 			/>
 		</div>
-		<div :class="$style.buttonsContainer">
+		<div :class="$style.buttonsContainer" v-if="secondaryButtonText || buttonText">
 			<span
 				v-if="secondaryButtonText"
 				:class="$style.secondaryButtonContainer"

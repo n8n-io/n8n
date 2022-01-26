@@ -39,7 +39,6 @@ const NO_SMTP_INPUTS: IFormBoxConfig['inputs'] = [[
 
 const DEFAULT_FORM_CONFIG = {
 	title: 'Recover password',
-	buttonText: 'Email me a recovery link',
 	redirectText: 'Back to sign in',
 	redirectLink: '/signin',
 };
@@ -59,9 +58,16 @@ export default mixins(
 	computed: {
 		...mapGetters('settings', ['isSmtpSetup']),
 		formConfig(): IFormBoxConfig {
+			if (this.isSmtpSetup) {
+				return {
+					...DEFAULT_FORM_CONFIG,
+					buttonText: 'Email me a recovery link',
+					inputs: EMAIL_INPUTS,
+				};
+			}
 			return {
 				...DEFAULT_FORM_CONFIG,
-				inputs: this.isSmtpSetup ? EMAIL_INPUTS : NO_SMTP_INPUTS,
+				inputs: NO_SMTP_INPUTS,
 			};
 		},
 	},
