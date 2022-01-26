@@ -8,7 +8,7 @@
 			<div
 				v-for="(input, j) in row"
 				:key="input.name"
-				:class="columns > 1 && !columnView && j < columns - 1? $style.multiContainer : (row < inputs.length - 1 ? $style.inputContainer : '')"
+				:class="columns > 1 && !columnView && j < columns - 1? $style.multiContainer : (input.properties.type === 'text' ? $style.textContainer : $style.inputContainer)"
 			>
 				<div :class="$style.center"  v-if="input.properties.type === 'text'">
 					<n8n-text color="text-base">
@@ -132,13 +132,14 @@ export default Vue.extend({
 	flex-direction: column;
 }
 
-.expandedContainer {
+.inputContainer {
 	flex-grow: 1;
+	margin-bottom: var(--spacing-s);
 }
 
-.inputContainer {
-	composes: expandedContainer;
-	margin-bottom: var(--spacing-s);
+.textContainer {
+	flex-grow: 1;
+	margin-bottom: var(--spacing-4xs);
 }
 
 .center {
