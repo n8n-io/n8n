@@ -55,10 +55,6 @@ $color-warning-shade: lightness(
 }
 
 .default {
-
-}
-
-.default {
 	composes: badge;
 	color: var(--color-text-light);
 	border-color: var(--color-text-light);
