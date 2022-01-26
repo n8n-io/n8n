@@ -91,6 +91,9 @@ export default mixins(showMessage).extend({
 			return this.userToDelete && !this.userToDelete.firstName;
 		},
 		title(): string {
+			if (!this.userToDelete) {
+				return '';
+			}
 			if (!this.userToDelete.firstName) {
 				return `Delete ${this.userToDelete.email}?`;
 			}
