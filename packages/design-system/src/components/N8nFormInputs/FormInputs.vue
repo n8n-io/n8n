@@ -8,9 +8,15 @@
 			<div
 				v-for="(input, j) in row"
 				:key="input.name"
-				:class="columns > 1 && !columnView && j < columns - 1? $style.multiContainer : $style.inputContainer"
+				:class="columns > 1 && !columnView && j < columns - 1? $style.multiContainer : (row < inputs.length - 1 ? $style.inputContainer : '')"
 			>
+				<div :class="$style.center"  v-if="input.properties.type === 'text'">
+					<n8n-text color="text-base">
+						{{input.properties.label}}
+					</n8n-text>
+				</div>
 				<n8n-form-input
+					v-else
 					v-bind="input.properties"
 					:value="values[input.name]"
 					:showValidationWarnings="showValidationWarnings"
@@ -126,9 +132,17 @@ export default Vue.extend({
 	flex-direction: column;
 }
 
-.inputContainer {
+.expandedContainer {
 	flex-grow: 1;
+}
+
+.inputContainer {
+	composes: expandedContainer;
 	margin-bottom: var(--spacing-s);
+}
+
+.center {
+	text-align: center; // todo add tag prop to text
 }
 
 .multiContainer {

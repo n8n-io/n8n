@@ -1,6 +1,6 @@
 <template>
 	<AuthView
-		:form="FORM_CONFIG"
+		:form="formConfig"
 		:formLoading="loading"
 		@submit="onSubmit"
 	/>
@@ -12,24 +12,36 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
+import { mapGetters } from 'vuex';
 
-const FORM_CONFIG: IFormBoxConfig = {
+const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [[
+	{
+		name: 'email',
+		properties: {
+			label: 'Email',
+			type: 'email',
+			required: true,
+			validationRules: [{name: 'VALID_EMAIL'}],
+			autocomplete: 'email',
+		},
+	},
+]];
+
+const NO_SMTP_INPUTS: IFormBoxConfig['inputs'] = [[
+	{
+		name: 'no-smtp-warning',
+		properties: {
+			label: 'Please contact your admin. n8n isn’t set up to send email right now.',
+			type: 'text',
+		},
+	},
+]];
+
+const DEFAULT_FORM_CONFIG = {
 	title: 'Recover password',
 	buttonText: 'Email me a recovery link',
 	redirectText: 'Back to sign in',
 	redirectLink: '/signin',
-	inputs: [[
-		{
-			name: 'email',
-			properties: {
-				label: 'Email',
-				type: 'email',
-				required: true,
-				validationRules: [{name: 'VALID_EMAIL'}],
-				autocomplete: 'email',
-			},
-		},
-	]],
 };
 
 export default mixins(
@@ -41,9 +53,17 @@ export default mixins(
 	},
 	data() {
 		return {
-			FORM_CONFIG,
 			loading: false,
 		};
+	},
+	computed: {
+		...mapGetters('settings', ['isSmtpSetup']),
+		formConfig(): IFormBoxConfig {
+			return {
+				...DEFAULT_FORM_CONFIG,
+				inputs: this.isSmtpSetup ? EMAIL_INPUTS : NO_SMTP_INPUTS,
+			};
+		},
 	},
 	methods: {
 		async onSubmit(values: {[key: string]: string}) {
