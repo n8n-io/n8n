@@ -3,7 +3,7 @@
 		<div :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				Collections
-				<span v-if="!loading" v-text="`(${collectionsUI.length})`" />
+				<span v-if="!loading" v-text="`(${collections.length})`" />
 			</n8n-heading>
 		</div>
 
@@ -13,10 +13,10 @@
 			</agile>
 		</div>
 
-		<span :class="$style.slider" v-else-if="collectionsUI.length">
-			<agile :options="sliderOptions">
+		<span :class="$style.slider" v-else-if="collections.length">
+			<agile ref="slider" :options="sliderOptions">
 				<CollectionsCard
-					v-for="collection in collectionsUI"
+					v-for="collection in collections"
 					:key="collection.id"
 					:title="collection.name"
 					:loading="loading"
@@ -28,22 +28,15 @@
 						<NodeList :nodes="collection.nodes" :showMore="false" />
 					</template>
 				</CollectionsCard>
-
-				<template slot="prevButton">
-					<div>
-						<button >
-							<font-awesome-icon icon="chevron-left" />
-						</button>
-					</div>
-				</template>
-				<template slot="nextButton">
-					<div>
-						<button >
-							<font-awesome-icon icon="chevron-right" />
-						</button>
-					</div>
-				</template>
 			</agile>
+			<div :class="$style.buttons">
+				<button v-show="currentSlide > 1" :class="$style.button" @click="$refs.slider.goToPrev(); currentSlide = currentSlide - 1">
+					<font-awesome-icon icon="chevron-left" />
+				</button>
+				<button v-show="currentSlide !== collections.length" :class="$style.button" @click="$refs.slider.goToNext(); currentSlide = currentSlide + 1">
+					<font-awesome-icon icon="chevron-right" />
+				</button>
+			</div>
 		</span>
 
 		<div v-else :class="$style.text">
@@ -74,15 +67,6 @@ export default mixins(genericHelpers).extend({
 		NodeList,
 		VueAgile,
 	},
-	watch: {
-		collections(newCollections): void {
-			if (newCollections) {
-				this.$data.collectionsUI = newCollections;
-			} else {
-				this.$data.collectionsUI = [];
-			}
-		},
-	},
 	computed: {
 		collections() {
 			return this.$store.getters['templates/getCollections'];
@@ -90,11 +74,11 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
-			collectionsUI: [],
+			currentSlide: 1,
 			sliderOptions: {
 				dots: false,
 				infinite: false,
-				navButtons: true,
+				navButtons: false,
 				slidesToShow: 3.35,
 			},
 		};
@@ -124,6 +108,42 @@ export default mixins(genericHelpers).extend({
 	}
 }
 
+.buttons {
+	width: 100%;
+	height: 100%;
+	top: 50%;
+	position: absolute;
+	background: transparent;
+	border: none;
+	font-size: var(--font-size-xl);
+	transition-duration: 0.1s;
+	cursor: pointer;
+	z-index: 1;
+}
+
+.button {
+	width: 28px;
+	height: 37px;
+	position: absolute;
+	border-radius: var(--border-radius-large);
+	border: $--version-card-border;
+	background-color: #fbfcfe;
+	opacity: 1;
+	cursor: pointer;
+
+	&:nth-child(1) {
+		left: var(--spacing-2xs);
+	}
+
+	&:nth-child(2) {
+		right: var(--spacing-2xs);
+	}
+
+	svg {
+		color: var(--color-foreground-xdark);
+	}
+}
+
 .text {
 	padding-top: var(--spacing-xs);
 }
@@ -131,36 +151,6 @@ export default mixins(genericHelpers).extend({
 
 <style lang="scss">
 .agile {
-	&__nav-button {
-		width: 36px;
-		height: 100%;
-		top: 0;
-		position: absolute;
-		background: transparent;
-		border: none;
-		font-size: var(--font-size-xl);
-		cursor: pointer;
-		transition-duration: 0.1s;
-		z-index: 1;
-
-		button {
-			width: 28px;
-			height: 37px;
-			border-radius: var(--border-radius-large);
-			border: $--version-card-border;
-			background-color: #fbfcfe;
-			opacity: 1;
-			cursor: pointer;
-		}
-
-		&--prev {
-			left: 0;
-		}
-
-		&--next {
-			right: 0;
-		}
-	}
 	&__track {
 		width: 50px;
 	}
