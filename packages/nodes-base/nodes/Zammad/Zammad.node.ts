@@ -281,37 +281,37 @@ export class Zammad implements INodeType {
 			},
 
 			async zammadTokenAuthApiTest(
-					this: ICredentialTestFunctions,
-					credential: ICredentialsDecrypted,
-				): Promise<NodeCredentialTestResult> {
-					const credentials = credential.data as ZammadTypes.TokenAuthCredentials;
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data as ZammadTypes.TokenAuthCredentials;
 
-					const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
+				const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
 
-					const options: OptionsWithUri = {
-						method: 'GET',
-						uri: `${baseUrl}/api/v1/users/me`,
-						json: true,
-						rejectUnauthorized: !credentials.allowUnauthorizedCerts,
-						headers: {
-							Authorization: `Token token=${credentials.accessToken}`,
-						},
+				const options: OptionsWithUri = {
+					method: 'GET',
+					uri: `${baseUrl}/api/v1/users/me`,
+					json: true,
+					rejectUnauthorized: !credentials.allowUnauthorizedCerts,
+					headers: {
+						Authorization: `Token token=${credentials.accessToken}`,
+					},
+				};
+
+				try {
+					await this.helpers.request(options);
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
 					};
-
-					try {
-						await this.helpers.request(options);
-						return {
-							status: 'OK',
-							message: 'Authentication successful',
-						};
-					} catch (error) {
-						return {
-							status: 'Error',
-							message: error.message,
-						};
-					}
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
 				}
-			}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
