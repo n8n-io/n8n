@@ -66,9 +66,8 @@ type Validator = {
 	validate: (value: string, config?: any) => void;
 };
 
-// https://stackoverflow.com/a/1373724
 const emailRegex =
-	/[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
+	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
 const VALIDATORS: { [key: string]: Validator | RuleGroup } = {
 	REQUIRED: {
@@ -108,7 +107,7 @@ const VALIDATORS: { [key: string]: Validator | RuleGroup } = {
 	},
 	VALID_EMAIL: {
 		validate: (value: string) => {
-			if (!emailRegex.test(String(value).toLowerCase())) {
+			if (!emailRegex.test(String(value).trim().toLowerCase())) {
 				throw new Error('Must be a valid email');
 			}
 		},
@@ -116,7 +115,7 @@ const VALIDATORS: { [key: string]: Validator | RuleGroup } = {
 	VALID_EMAILS: {
 		validate: (value: string) => {
 			value.split(',').forEach((email: string) => {
-				if (!!email.trim() && !emailRegex.test(String(email).toLowerCase())) {
+				if (!!email.trim() && !emailRegex.test(String(email).trim().toLowerCase())) {
 					throw new Error(`"${email.trim()}" is not a valid email`);
 				}
 			});
