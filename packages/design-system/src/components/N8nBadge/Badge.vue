@@ -49,21 +49,21 @@ $color-warning-shade: lightness(
   display: inline-flex;
   align-items: center;
   padding: var(--spacing-5xs) var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
 	border: var(--border-base);
 	white-space: nowrap;
 }
 
 .default {
 	composes: badge;
+	border-radius: var(--border-radius-base);
 	color: var(--color-text-light);
 	border-color: var(--color-text-light);
 }
 
 .secondary {
 	composes: badge;
+	border-radius: var(--border-radius-xlarge);
 	color: var(--color-secondary);
-	border-color: var(--color-text-light);
 	background-color: var(--color-secondary-tint-1);
 }
 </style>
