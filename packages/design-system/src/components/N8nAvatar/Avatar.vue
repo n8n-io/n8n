@@ -1,11 +1,19 @@
 <template functional>
-	<component
-		:is="$options.components.Avatar"
-		:size="$options.methods.getSize(props.size)"
-		:name="props.firstName + ' ' + props.lastName"
-		variant="marble"
-		:colors="$options.methods.getColors()"
-	/>
+	<span>
+		<component
+			v-if="props.firstName"
+			:is="$options.components.Avatar"
+			:size="$options.methods.getSize(props.size)"
+			:name="props.firstName + ' ' + props.lastName"
+			variant="marble"
+			:colors="$options.methods.getColors(props.colors)"
+		/>
+		<div
+			v-else
+			:class="$style.empty"
+			:style="$options.methods.getBlankStyles(props.size)">
+		</div>
+	</span>
 </template>
 
 <script lang="ts">
@@ -22,7 +30,6 @@ export default {
 	props: {
 		firstName: {
 			type: String,
-			required: true,
 		},
 		lastName: {
 			type: String,
@@ -31,15 +38,20 @@ export default {
 			type: String,
 			default: 'medium',
 		},
+		colors: {
+			default: ['--color-primary', '--color-secondary', '--color-avatar-accent-1', '--color-avatar-accent-2', '--color-primary-tint-1'],
+		},
 	},
 	components: {
 		Avatar,
 	},
 	methods: {
-		getColors(): string[] {
+		getBlankStyles(size): {height: string, width: string} {
+			const px = sizes[size];
+			return {height: `${px}px`, width: `${px}px`};
+		},
+		getColors(colors): string[] {
 			const style = getComputedStyle(document.body);
-			const colors = ['--color-primary', '--color-secondary', '--color-avatar-accent-1', '--color-avatar-accent-2', '--color-primary-tint-1'];
-
 			return colors.map((color: string) => style.getPropertyValue(color));
 		},
 		getSize(size: string): number {
@@ -48,3 +60,10 @@ export default {
 	},
 };
 </script>
+
+<style lang="scss" module>
+.empty {
+	border-radius: 50%;
+	background-color: var(--color-foreground-dark);
+}
+</style>

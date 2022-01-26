@@ -85,7 +85,6 @@ import {
 	faTimes,
 	faTrash,
 	faUndo,
-	faUserClock,
 	faUserCircle,
 	faUserFriends,
 	faUsers,
@@ -175,7 +174,6 @@ library.add(faThLarge);
 library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);
-library.add(faUserClock);
 library.add(faUserCircle);
 library.add(faUserFriends);
 library.add(faUsers);

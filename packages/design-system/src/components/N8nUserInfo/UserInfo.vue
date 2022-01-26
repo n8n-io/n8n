@@ -1,10 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<div :class="$style.avatarContainer">
-			<n8n-avatar v-if="user.firstName" :firstName="user.firstName" :lastName="user.lastName" />
-			<div v-else>
-				<n8n-icon icon="user-clock" size="xlarge" />
-			</div>
+			<n8n-avatar :firstName="user.firstName" :lastName="user.lastName" />
 		</div>
 		<div v-if="user.firstName" :class="$style.infoContainer">
 			<div>
