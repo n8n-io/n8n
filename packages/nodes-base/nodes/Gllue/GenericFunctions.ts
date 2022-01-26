@@ -25,6 +25,13 @@ export class Hasura {
 		const options = buildOptionWithUri(uri, 'POST', payload);
 		return await this.request(options);
 	}
+
+	async get(id?: string){
+		const uri = this.getUrl(id);
+		const options = buildOptionWithUri(uri, 'GET');
+		const data = await this.request(options);
+		return data.email_notification[0];
+	}
 }
 
 
