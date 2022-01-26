@@ -37,7 +37,7 @@
 			</div>
 		</template>
 		<template slot="footer">
-			<n8n-button :loading="loading" :disabled="!enabled" label="Delete user" @click="onSubmit" float="right" />
+			<n8n-button :loading="loading" :disabled="!enabled" label="Delete" @click="onSubmit" float="right" />
 		</template>
 	</Modal>
 </template>
