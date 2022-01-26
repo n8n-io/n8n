@@ -21,6 +21,7 @@ const module: Module<ITemplateState, IRootState> = {
 		categories: [],
 		collections: [],
 		templates: [],
+		totalworkflow: null,
 	},
 	getters: {
 		getCategories(state: ITemplateState) {
@@ -32,10 +33,13 @@ const module: Module<ITemplateState, IRootState> = {
 		getTemplates(state: ITemplateState) {
 			return state.templates;
 		},
+		getTotalWorkflows(state: ITemplateState) {
+			return state.totalworkflow;
+		},
 	},
 	mutations: {
-		setTemplate(state: ITemplateState, template: IN8nTemplate) {
-			state.templates.push(template);
+		appendWorkflows(state: ITemplateState, templates: IN8nTemplate[]) {
+			Vue.set(state, 'templates', state.templates.concat(templates));
 		},
 		setCategories(state: ITemplateState, categories: ITemplateCategory[]) {
 			Vue.set(state, 'categories', categories);
@@ -43,11 +47,14 @@ const module: Module<ITemplateState, IRootState> = {
 		setCollections(state: ITemplateState, collections: ITemplateCollection[]) {
 			Vue.set(state, 'collections', collections);
 		},
+		setTemplate(state: ITemplateState, template: IN8nTemplate) {
+			state.templates.push(template);
+		},
+		setTotalWorkflows(state: ITemplateState, totalworkflow: number) {
+			state.totalworkflow = totalworkflow;
+		},
 		setWorkflows(state: ITemplateState, templates: IN8nTemplate[]) {
 			Vue.set(state, 'templates', templates);
-		},
-		appendWorkflows(state: ITemplateState, templates: IN8nTemplate[]) {
-			Vue.set(state, 'templates', state.templates.concat(templates));
 		},
 	},
 	actions: {
@@ -67,7 +74,6 @@ const module: Module<ITemplateState, IRootState> = {
 			const searchQuery = search.length || category ? true : false;
 			const allData = fetchCategories ? fetchCategories : !searchQuery;
 			try {
-				//todo constant pagination
 				const payload: ISearchPayload = await getTemplates(numberOfResults, skip, category, search, allData, !allData);
 				const results : ISearchResults = payload.data;
 				if (allData) {
@@ -80,8 +86,9 @@ const module: Module<ITemplateState, IRootState> = {
 				if (skip) {
 					context.commit('appendWorkflows', results.workflows);
 				} else {
-					context.commit('setWorkflows', results.workflows);
 					context.commit('setCollections', results.collections);
+					context.commit('setTotalWorkflows', results.totalworkflow);
+					context.commit('setWorkflows', results.workflows);
 				}
 				return results;
 			} catch(e) {

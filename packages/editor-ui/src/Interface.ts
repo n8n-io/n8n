@@ -543,7 +543,7 @@ export interface ISearchPayload {
 export interface ISearchResults{
 	categories: ITemplateCategory[];
 	collections: ITemplateCollection[];
-	totalWorkflows: number;
+	totalworkflow: number;
 	workflows: IN8nTemplate[];
 }
 
@@ -806,6 +806,7 @@ export interface ITemplateState {
 	categories: ITemplateCategory[];
 	collections: ITemplateCollection[];
 	templates: IN8nTemplate[];
+	totalworkflow: number | null;
 }
 
 export interface IVersionsState {

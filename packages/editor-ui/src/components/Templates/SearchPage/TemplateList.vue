@@ -3,7 +3,7 @@
 		<div :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				Workflows
-				<span v-if="!loading" v-text="`(${workflowsUI.length})`" />
+				<span v-if="!loading" v-text="`(${totalworkflows})`" />
 			</n8n-heading>
 		</div>
 		<div v-if="loading" :class="$style.container">
@@ -14,9 +14,9 @@
 				<TemplateCard :loading="loading" title="" />
 			</div>
 		</div>
-		<div v-else-if="workflowsUI.length" :class="$style.container">
+		<div v-else-if="workflows.length" :class="$style.container">
 			<div :class="$style.wrapper">
-				<div v-for="(workflow, index) in workflowsUI" :key="'workflow-' + index">
+				<div v-for="(workflow, index) in workflows" :key="'workflow-' + index">
 					<TemplateCard :title="workflow.name" :loading="false">
 						<template v-slot:right>
 							<div>
@@ -124,12 +124,10 @@ export default mixins(genericHelpers).extend({
 		NodeList,
 		TemplateCard,
 	},
-	watch: {
-		workflows(newWorkflows) {
-			this.workflowsUI = newWorkflows;
-		},
-	},
 	computed: {
+		totalworkflows() {
+			return this.$store.getters['templates/getTotalWorkflows'];
+		},
 		workflows() {
 			return this.$store.getters['templates/getTemplates'];
 		},
@@ -140,7 +138,6 @@ export default mixins(genericHelpers).extend({
 			page: 0,
 			searchFinished: false,
 			skip: 1,
-			workflowsUI: [],
 		};
 	},
 	methods: {
