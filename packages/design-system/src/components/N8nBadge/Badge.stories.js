@@ -6,7 +6,7 @@ export default {
 	argTypes: {
 		theme: {
 			type: 'text',
-			options: ['info', 'danger', 'warning'],
+			options: ['default', 'secondary'],
 		},
 		size: {
 			type: 'select',

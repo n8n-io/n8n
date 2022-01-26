@@ -15,8 +15,8 @@ export default {
 	props: {
 		theme: {
 			type: String,
-			default: 'info',
-			validator: (value: string) => ['info', 'danger', 'warning'].includes(value),
+			default: 'default',
+			validator: (value: string) => ['default', 'secondary'].includes(value),
 		},
 		size: {
 			type: String,
@@ -54,23 +54,20 @@ $color-warning-shade: lightness(
 	white-space: nowrap;
 }
 
-.danger {
-  composes: badge;
-  color: var(--color-danger);
-  background-color: var(--color-danger-tint-2);
-  border-color: var(--color-danger-tint-1);
+.default {
+
 }
 
-.warning {
-  composes: badge;
-  background-color: var(--color-warning-tint-1);
-	color: $color-warning-shade;
-	border-color: transparent;
-}
-
-.info {
+.default {
 	composes: badge;
 	color: var(--color-text-light);
 	border-color: var(--color-text-light);
+}
+
+.secondary {
+	composes: badge;
+	color: var(--color-secondary);
+	border-color: var(--color-text-light);
+	background-color: var(--color-secondary-tint-1);
 }
 </style>

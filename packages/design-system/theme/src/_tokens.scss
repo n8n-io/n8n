@@ -70,6 +70,13 @@
 		var(--color-secondary-l)
 	);
 
+	--color-secondary-tint-1-l: 92%;
+	--color-secondary-tint-1: hsl(
+		var(--color-secondary-h),
+		var(--color-secondary-s),
+		var(--color-secondary-tint-1-l)
+	);
+
 	--color-success-h: 150.4;
 	--color-success-s: 60%;
 	--color-success-l: 40.4%;
