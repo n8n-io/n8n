@@ -34,29 +34,35 @@ export async function zammadApiRequest(
 		json: true,
 	};
 
-	const credentials = await this.getCredentials('zammadApi') as Zammad.Credentials;
+	const authentication = this.getNodeParameter('authentication', 0) as 'basicAuth' | 'tokenAuth';
 
-	if (credentials.authType === 'basicAuth') {
+	if (authentication === 'basicAuth') {
+
+		const credentials = await this.getCredentials('zammadBasicAuthApi') as Zammad.BasicAuthCredentials;
 
 		const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
+
+		options.uri = `${baseUrl}/api/v1${endpoint}`;
 
 		options.auth = {
 			user: credentials.username,
 			pass: credentials.password,
 		};
 
-		options.uri = `${baseUrl}/api/v1${endpoint}`;
 		options.rejectUnauthorized = !credentials.allowUnauthorizedCerts;
 
-	} else if (credentials.authType === 'tokenAuth') {
+	} else {
+
+		const credentials = await this.getCredentials('zammadTokenAuthApi') as Zammad.TokenAuthCredentials;
 
 		const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
+
+		options.uri = `${baseUrl}/api/v1${endpoint}`;
 
 		options.headers = {
 			Authorization: `Token token=${credentials.accessToken}`,
 		};
 
-		options.uri = `${baseUrl}/api/v1${endpoint}`;
 		options.rejectUnauthorized = !credentials.allowUnauthorizedCerts;
 
 	}
@@ -128,7 +134,7 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 // ----------------------------------
 
 export const fieldToLoadOption = (i: Zammad.Field) => {
-	return { name: prettifyDisplayName(i.display), value: i.name };
+	return { name: i.display ? prettifyDisplayName(i.display) : i.name, value: i.name };
 };
 
 export const prettifyDisplayName = (fieldName: string) => fieldName.replace('name', ' Name');

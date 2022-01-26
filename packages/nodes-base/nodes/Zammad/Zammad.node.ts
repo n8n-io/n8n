@@ -66,12 +66,47 @@ export class Zammad implements INodeType {
 		],
 		credentials: [
 			{
-				name: 'zammadApi',
+				name: 'zammadBasicAuthApi',
 				required: true,
-				testedBy: 'zammadApiTest',
+				testedBy: 'zammadBasicAuthApiTest',
+				displayOptions: {
+					show: {
+						authentication: [
+							'basicAuth',
+						],
+					},
+				},
+			},
+			{
+				name: 'zammadTokenAuthApi',
+				required: true,
+				testedBy: 'zammadTokenAuthApiTest',
+				displayOptions: {
+					show: {
+						authentication: [
+							'tokenAuth',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'Token Auth',
+						value: 'tokenAuth',
+					},
+				],
+				default: 'tokenAuth',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -212,12 +247,11 @@ export class Zammad implements INodeType {
 			},
 		},
 		credentialTest: {
-			async zammadApiTest(
+			async zammadBasicAuthApiTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<NodeCredentialTestResult> {
-
-				const credentials = credential.data as ZammadTypes.Credentials;
+				const credentials = credential.data as ZammadTypes.BasicAuthCredentials;
 
 				const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
 
@@ -226,22 +260,11 @@ export class Zammad implements INodeType {
 					uri: `${baseUrl}/api/v1/users/me`,
 					json: true,
 					rejectUnauthorized: !credentials.allowUnauthorizedCerts,
-				};
-
-				if (credentials.authType === 'basicAuth') {
-
-					options.auth = {
+					auth: {
 						user: credentials.username,
 						pass: credentials.password,
-					};
-
-				} else if (credentials.accessToken) {
-
-					options.headers = {
-						Authorization: `Token token=${credentials.accessToken}`,
-					};
-
-				}
+					},
+				};
 
 				try {
 					await this.helpers.request(options);
@@ -256,7 +279,39 @@ export class Zammad implements INodeType {
 					};
 				}
 			},
-		},
+
+			async zammadTokenAuthApiTest(
+					this: ICredentialTestFunctions,
+					credential: ICredentialsDecrypted,
+				): Promise<NodeCredentialTestResult> {
+					const credentials = credential.data as ZammadTypes.TokenAuthCredentials;
+
+					const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
+
+					const options: OptionsWithUri = {
+						method: 'GET',
+						uri: `${baseUrl}/api/v1/users/me`,
+						json: true,
+						rejectUnauthorized: !credentials.allowUnauthorizedCerts,
+						headers: {
+							Authorization: `Token token=${credentials.accessToken}`,
+						},
+					};
+
+					try {
+						await this.helpers.request(options);
+						return {
+							status: 'OK',
+							message: 'Authentication successful',
+						};
+					} catch (error) {
+						return {
+							status: 'Error',
+							message: error.message,
+						};
+					}
+				}
+			}
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
