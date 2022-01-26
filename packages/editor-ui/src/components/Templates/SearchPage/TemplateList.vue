@@ -25,7 +25,11 @@
 						</template>
 
 						<template v-slot:rightHover>
-							<n8n-button type="outline" label="Use workflow" @click="redirectToTemplate(workflow.id)"/>
+							<n8n-button
+								type="outline"
+								label="Use workflow"
+								@click="redirectToTemplate(workflow.id)"
+							/>
 						</template>
 
 						<template v-slot:footer>
@@ -46,11 +50,16 @@
 						</template>
 					</TemplateCard>
 				</div>
-				<TemplateCard :loading="true" title="" />
-				<TemplateCard :loading="true" title="" />
-				<TemplateCard :loading="true" title="" />
-				<TemplateCard :loading="true" title="" />
-				<TemplateCard v-if="!searchFinished" v-infocus :loading="true" title="" />
+				<div v-if="shouldShowLoadingState" v-infocus>
+					<TemplateCard :loading="true" title="" />
+					<TemplateCard :loading="true" title="" />
+					<TemplateCard :loading="true" title="" />
+					<TemplateCard :loading="true" title="" />
+				</div>
+			</div>
+
+			<div :class="$style.text" v-if="!shouldShowLoadingState">
+				<n8n-text size="medium" color="text-base">End of results</n8n-text>
 			</div>
 		</div>
 
@@ -71,14 +80,22 @@ import mixins from 'vue-typed-mixins';
 export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
 	props: {
-		category: {
-			type: Object,
+		categories: {
+			type: Array,
 		},
 		loading: {
 			type: Boolean,
 		},
 		search: {
 			type: String,
+		},
+	},
+	watch: {
+		categories(categoriesAreChanged) {
+			if (categoriesAreChanged) {
+				this.page = 0;
+				this.skip = 1;
+			}
 		},
 	},
 	directives: {
@@ -88,29 +105,28 @@ export default mixins(genericHelpers).extend({
 					const rect = el.getBoundingClientRect();
 					if (el) {
 						const inView =
-							rect.top >= 200 &&
+							rect.top >= 0 &&
 							rect.left >= 0 &&
 							rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
 							rect.right <= (window.innerWidth || document.documentElement.clientWidth);
 
-						if (inView) {
-							if (vnode.context) {
-								if (!vnode.context.$data.searchFinished) {
-									vnode.context.$data.page = vnode.context.$data.page + 1;
-									vnode.context.$data.skip = 10 * vnode.context.$data.page;
+						if (inView && vnode.context && !vnode.context.$data.searchFinished) {
+							// @ts-ignore
+							if (vnode.context.shouldShowLoadingState) {
+								vnode.context.$data.page = vnode.context.$data.page + 1;
+								vnode.context.$data.skip = 10 * vnode.context.$data.page;
 
-									vnode.context.$store.dispatch('templates/getSearchResults', {
-										search: vnode.context.$props.search,
-										category: vnode.context.$props.category,
-										skip: vnode.context.$data.skip,
-									});
+								vnode.context.$store.dispatch('templates/getSearchResults', {
+									search: vnode.context.$props.search,
+									category: vnode.context.$props.categories,
+									skip: vnode.context.$data.skip,
+								});
 
-									vnode.context.$data.searchFinished = true;
+								vnode.context.$data.searchFinished = true;
 
-									setTimeout(() => {
-										if (vnode.context) vnode.context.$data.searchFinished = false;
-									}, 1000);
-								}
+								setTimeout(() => {
+									if (vnode.context) vnode.context.$data.searchFinished = false;
+								}, 1000);
 							}
 						}
 					}
@@ -125,6 +141,12 @@ export default mixins(genericHelpers).extend({
 		TemplateCard,
 	},
 	computed: {
+		shouldShowLoadingState(): boolean | undefined {
+			if (this.workflows && this.totalworkflows) {
+				return this.totalworkflows > this.workflows.length;
+			}
+			return;
+		},
 		totalworkflows() {
 			return this.$store.getters['templates/getTotalWorkflows'];
 		},
@@ -180,5 +202,9 @@ export default mixins(genericHelpers).extend({
 	padding: 0 6px;
 	color: var(--color-foreground-base);
 	font-size: var(--font-size-2xs);
+}
+
+.text {
+	margin-top: var(--spacing-xl);
 }
 </style>

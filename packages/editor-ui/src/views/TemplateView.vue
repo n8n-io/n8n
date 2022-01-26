@@ -28,7 +28,8 @@ export default mixins(workflowHelpers).extend({
 <style lang="scss" module>
 .template {
 	width: 100%;
-	// height: 100vh;
+	height: 100vh;
+	position: relative;
 	display: flex;
 	justify-content: center;
 	background-color: var(--color-background-light);

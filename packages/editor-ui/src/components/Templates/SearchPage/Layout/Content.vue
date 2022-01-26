@@ -16,7 +16,7 @@
 			</div>
 			<div :class="$style.carousel">
 				<CollectionsCarousel :loading="loading" />
-				<TemplateList :loading="loading" :search="search" :category="category" />
+				<TemplateList :loading="loading" :search="search" :categories="categories" />
 			</div>
 		</div>
 	</div>
@@ -37,7 +37,6 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
-			category: [] as number[] | null,
 			categories: [] as number[],
 			loading: true,
 			numberOfResults: 10,
@@ -89,12 +88,12 @@ export default mixins(genericHelpers).extend({
 			this.categories = this.$route.query.categories.split(',').map((id) => Number(id));
 		}
 
-		this.category = this.categories.length ? this.categories : null;
+		const category = this.categories.length ? this.categories : null;
 
 		await this.$store.dispatch('templates/getSearchResults', {
 			numberOfResults: this.numberOfResults,
 			search: this.search,
-			category: this.category,
+			category,
 			fetchCategories: true,
 		});
 
@@ -104,6 +103,7 @@ export default mixins(genericHelpers).extend({
 </script>
 <style lang="scss" module>
 .content {
+	padding-bottom: var(--spacing-3xl);
 	display: flex;
 	justify-content: space-between;
 }

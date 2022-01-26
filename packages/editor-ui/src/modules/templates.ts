@@ -84,11 +84,10 @@ const module: Module<ITemplateState, IRootState> = {
 					context.commit('setCategories', categories);
 				}
 
-				context.commit('setCollections', results.collections);
-
 				if (skip) {
 					context.commit('appendWorkflows', results.workflows);
 				} else {
+					context.commit('setCollections', results.collections);
 					context.commit('setTotalWorkflows', results.totalworkflow);
 					context.commit('setWorkflows', results.workflows);
 				}
