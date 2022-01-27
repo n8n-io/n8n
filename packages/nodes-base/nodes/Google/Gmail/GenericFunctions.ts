@@ -176,8 +176,8 @@ export async function encodeEmail(email: IEmail) {
 	const mail = new mailComposer(mailOptions).compile();
 
 	// by default the bcc headers are deleted when the mail is built.
-	// So add keepBcc flag to averride such behavior. Only works when
-	// the falg is set after the compilation. 
+	// So add keepBcc flag to averride such behaviour. Only works when
+	// the flag is set after the compilation.
 	//https://nodemailer.com/extras/mailcomposer/#bcc
 	mail.keepBcc = true;
 
