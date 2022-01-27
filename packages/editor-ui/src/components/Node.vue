@@ -92,7 +92,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
-import { getStyleTokenValue } from './helpers';
+import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
@@ -131,7 +131,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					'node.waitingForYouToCreateAnEventIn',
 					{
 						interpolate: {
-							nodeType: this.nodeType && this.nodeType.displayName.replace(/Trigger/, ""),
+							nodeType: this.nodeType && getTriggerNodeServiceName(this.nodeType.displayName),
 						},
 					},
 				);
