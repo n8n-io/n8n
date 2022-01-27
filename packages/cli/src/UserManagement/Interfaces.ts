@@ -2,6 +2,7 @@
 import { Application } from 'express';
 import { JwtFromRequestFunction } from 'passport-jwt';
 import type { AuthenticatedRequest } from '../requests';
+import { User } from '../databases/entities/User';
 
 export interface JwtToken {
 	token: string;
