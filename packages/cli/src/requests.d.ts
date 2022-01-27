@@ -1,5 +1,7 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
+import { User } from './databases/entities/User';
+import { IExecutionDeleteFilter } from '.';
 import {
 	IConnections,
 	ICredentialDataDecryptedObject,
@@ -7,8 +9,6 @@ import {
 	INode,
 	IWorkflowSettings,
 } from '../../workflow/dist/src';
-import { IExecutionDeleteFilter } from '.';
-import { User } from './databases/entities/User';
 
 export type AuthenticatedRequest<
 	RouteParams = {},
@@ -16,6 +16,31 @@ export type AuthenticatedRequest<
 	RequestBody = {},
 	RequestQuery = {},
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & { user: User };
+
+export declare namespace OAuthRequest {
+	type OAuth1CredentialAuth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
+	type OAuth2CredentialAuth = OAuth1CredentialAuth;
+	type OAuth1CredentialCallback = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{ oauth_verifier: string; oauth_token: string; cid: string }
+	>;
+	type OAuth2CredentialCallback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+}
+
+export type NodeParameterOptionsRequest = AuthenticatedRequest<
+	{},
+	{},
+	{},
+	{
+		nodeTypeAndVersion: string;
+		methodName: string;
+		path: string;
+		currentNodeParameters: string;
+		credentials: string;
+	}
+>;
 
 export declare namespace ExecutionRequest {
 	type GetAllQsParam = {

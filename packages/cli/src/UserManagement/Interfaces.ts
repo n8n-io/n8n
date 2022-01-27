@@ -1,6 +1,8 @@
 /* eslint-disable import/no-cycle */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Application } from 'express';
 import { JwtFromRequestFunction } from 'passport-jwt';
+import { IPersonalizationSurveyAnswers } from '../Interfaces';
 import type { AuthenticatedRequest } from '../requests';
 
 export interface JwtToken {
@@ -24,7 +26,7 @@ export interface PublicUser {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	personalizationAnswers?: { [key: string]: string } | null;
+	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
 	password?: string;
 	passwordResetToken?: string;
 }
