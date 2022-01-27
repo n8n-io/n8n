@@ -1808,7 +1808,7 @@ class App {
 			ResponseHelper.send(async (req: CredentialRequest.Get) => {
 				const { id: credentialId } = req.params;
 
-				const shared = await Db.collections.SharedCredentials!.findOneOrFail({
+				const shared = await Db.collections.SharedCredentials!.findOne({
 					relations: ['credentials'],
 					where: whereClause({
 						user: req.user,
@@ -1816,6 +1816,8 @@ class App {
 						entityId: credentialId,
 					}),
 				});
+
+				if (!shared) return {};
 
 				const { credentials: credential } = shared;
 
