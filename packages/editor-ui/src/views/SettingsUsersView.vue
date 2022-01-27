@@ -95,7 +95,7 @@ export default mixins(showMessage).extend({
 	padding-right: var(--spacing-2xs);
 
 	> * {
-		margin-bottom: var(--spacing-xl);
+		margin-bottom: var(--spacing-2xl);
 	}
 }
 
