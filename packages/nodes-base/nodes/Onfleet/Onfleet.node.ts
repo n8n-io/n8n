@@ -142,6 +142,17 @@ export class Onfleet implements INodeType {
 		loadOptions: resourceLoaders,
 	};
 
+	/**
+	 * Returns a valid formated destination object
+	 * @param unparsed Whether the address is parsed or not
+	 * @param address Destination address
+	 * @param addressNumber Destination number
+	 * @param addressStreet Destination street
+	 * @param addressCity Destination city
+	 * @param addressCountry Destination country
+	 * @param additionalFields Destination additional fields
+	 * @returns
+	 */
 	static formatAddress (
 		unparsed: boolean,
 		address: string | undefined,
@@ -428,6 +439,13 @@ export class Onfleet implements INodeType {
 		return null;
 	}
 
+	/**
+	 * Returns a valid formated recipient object
+	 * @param name Recipient name
+	 * @param phone Recipient phone
+	 * @param additionalFields Recipient additional fields
+	 * @returns
+	 */
 	static formatRecipient(
 		name: string, phone: string, additionalFields: IDataObject,
 	): OnfleetRecipient {
