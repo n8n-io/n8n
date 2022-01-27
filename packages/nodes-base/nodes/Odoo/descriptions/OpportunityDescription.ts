@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-const crmFields: INodeProperties[] = [
+const opportunityFields: INodeProperties[] = [
 	{
 		displayName: 'Phone',
 		name: 'phone',
@@ -45,7 +45,7 @@ const crmFields: INodeProperties[] = [
 		displayName: 'Priority',
 		name: 'priority',
 		type: 'options',
-		default: '',
+		default: '1',
 		options: [
 			{
 				name: '1',
@@ -63,9 +63,9 @@ const crmFields: INodeProperties[] = [
 	},
 ];
 
-export const crmDescription: INodeProperties[] = [
+export const opportunityDescription: INodeProperties[] = [
 	{
-		displayName: 'Opportunity',
+		displayName: 'Name',
 		name: 'opportunity',
 		type: 'string',
 		default: '',
@@ -73,7 +73,7 @@ export const crmDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create'],
-				resource: ['crm'],
+				resource: ['opportunity'],
 			},
 		},
 	},
@@ -87,10 +87,10 @@ export const crmDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create'],
-				resource: ['crm'],
+				resource: ['opportunity'],
 			},
 		},
-		options: [...crmFields],
+		options: [...opportunityFields],
 	},
 	// Update fields =============================================================
 	{
@@ -102,7 +102,7 @@ export const crmDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update'],
-				resource: ['crm'],
+				resource: ['opportunity'],
 			},
 		},
 		options: [
@@ -112,7 +112,7 @@ export const crmDescription: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-			...crmFields,
+			...opportunityFields,
 		],
 	},
 ];

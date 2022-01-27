@@ -13,7 +13,9 @@ import {
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
-import { crmDescription } from './descriptions/CrmDescription';
+import { contactDescription } from './descriptions/ContactDescription';
+import { noteDescription } from './descriptions/NoteDescription';
+import { opportunityDescription } from './descriptions/OpportunityDescription';
 
 import {
 	IOdooFilterOperations,
@@ -24,14 +26,8 @@ import {
 	odooGetModelFields,
 	odooGetUserID,
 	odooUpdate,
+	processNameValueFields,
 } from './GenericFunctions';
-import {
-	calendarEventDescription,
-	crmLeadDescription,
-	noteNoteDescription,
-	resPartnerDescription,
-	stockPickingTypeDescription,
-} from './models/OdooModelsDescription';
 
 export class Odoo implements INodeType {
 	description: INodeTypeDescription = {
@@ -64,24 +60,17 @@ export class Odoo implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Calendar',
-						value: 'calendar',
-					},
-					{
 						name: 'Contact',
 						value: 'contact',
 					},
 					{
-						name: 'Crm',
-						value: 'crm',
+						name: 'Opportunity',
+						value: 'opportunity',
 					},
 					{
 						name: 'Custom Resource',
 						value: 'custom',
-					},
-					{
-						name: 'Inventory',
-						value: 'inventory',
+						description: 'Only for advanced users! Use cautiously!',
 					},
 					{
 						name: 'Note',
@@ -223,148 +212,147 @@ export class Odoo implements INodeType {
 			},
 
 			//    Descriptions   --------------------------------------------------
-			...crmDescription,
-
-			//======================================================================
-			// ...noteNoteDescription,
-			// ...resPartnerDescription,
-			// ...calendarEventDescription,
-			// ...crmLeadDescription,
-			// ...stockPickingTypeDescription,
+			...opportunityDescription,
+			...contactDescription,
+			...noteDescription,
 
 			//    Get All   ------------------------------------------------------
-			// {
-			// 	displayName: 'Filter Results',
-			// 	name: 'filterRequest',
-			// 	type: 'fixedCollection',
-			// 	typeOptions: {
-			// 		multipleValues: true,
-			// 		multipleValueButtonText: 'Add Filter',
-			// 	},
-			// 	default: {},
-			// 	description: 'Filter request by applying filters',
-			// 	placeholder: 'Add condition',
-			// 	displayOptions: {
-			// 		show: {
-			// 			operation: ['getAll'],
-			// 		},
-			// 	},
-			// 	options: [
-			// 		{
-			// 			name: 'filter',
-			// 			displayName: 'Filter',
-			// 			values: [
-			// 				{
-			// 					displayName: 'Field Name',
-			// 					name: 'fieldName',
-			// 					type: 'string',
-			// 					default: '',
-			// 					description: 'Specify field name',
-			// 					required: true,
-			// 				},
-			// 				{
-			// 					displayName: 'Operator',
-			// 					name: 'operator',
-			// 					type: 'options',
-			// 					default: 'equal',
-			// 					description: 'Specify an operator',
-			// 					required: true,
-			// 					options: [
-			// 						{
-			// 							name: '!=',
-			// 							value: 'notEqual',
-			// 						},
-			// 						{
-			// 							name: '<',
-			// 							value: 'lesserThen',
-			// 						},
-			// 						{
-			// 							name: '=',
-			// 							value: 'equal',
-			// 						},
-			// 						{
-			// 							name: '=<',
-			// 							value: 'lesserOrEqual',
-			// 						},
-			// 						{
-			// 							name: '>',
-			// 							value: 'greaterThen',
-			// 						},
-			// 						{
-			// 							name: '>=',
-			// 							value: 'greaterOrEqual',
-			// 						},
-			// 						{
-			// 							name: 'Chield Of',
-			// 							value: 'childOf',
-			// 						},
-			// 						{
-			// 							name: 'In',
-			// 							value: 'in',
-			// 						},
-			// 						{
-			// 							name: 'Like',
-			// 							value: 'like',
-			// 						},
-			// 						{
-			// 							name: 'Not In',
-			// 							value: 'notIn',
-			// 						},
-			// 					],
-			// 				},
-			// 				{
-			// 					displayName: 'Value',
-			// 					name: 'value',
-			// 					type: 'string',
-			// 					default: '',
-			// 					description: 'Specify value for comparison',
-			// 					required: true,
-			// 				},
-			// 			],
-			// 		},
-			// 	],
-			// },
+			{
+				displayName: 'Filter Results',
+				name: 'filterRequest',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Filter',
+				},
+				default: {},
+				description: 'Filter request by applying filters',
+				placeholder: 'Add condition',
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+						resource: ['custom'],
+					},
+				},
+				options: [
+					{
+						name: 'filter',
+						displayName: 'Filter',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'string',
+								default: '',
+								description: 'Specify field name',
+								required: true,
+							},
+							{
+								displayName: 'Operator',
+								name: 'operator',
+								type: 'options',
+								default: 'equal',
+								description: 'Specify an operator',
+								required: true,
+								options: [
+									{
+										name: '!=',
+										value: 'notEqual',
+									},
+									{
+										name: '<',
+										value: 'lesserThen',
+									},
+									{
+										name: '=',
+										value: 'equal',
+									},
+									{
+										name: '=<',
+										value: 'lesserOrEqual',
+									},
+									{
+										name: '>',
+										value: 'greaterThen',
+									},
+									{
+										name: '>=',
+										value: 'greaterOrEqual',
+									},
+									{
+										name: 'Chield Of',
+										value: 'childOf',
+									},
+									{
+										name: 'In',
+										value: 'in',
+									},
+									{
+										name: 'Like',
+										value: 'like',
+									},
+									{
+										name: 'Not In',
+										value: 'notIn',
+									},
+								],
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Specify value for comparison',
+								required: true,
+							},
+						],
+					},
+				],
+			},
 
 			//    Update/Create    -----------------------------------------------
-			// {
-			// 	displayName: 'AddFields',
-			// 	name: 'fieldsToCreateOrUpdate',
-			// 	type: 'fixedCollection',
-			// 	typeOptions: {
-			// 		multipleValues: true,
-			// 		multipleValueButtonText: 'Add Field',
-			// 	},
-			// 	default: {},
-			// 	description: 'Add field and value',
-			// 	placeholder: '',
-			// 	displayOptions: {
-			// 		show: {
-			// 			operation: ['update', 'create'],
-			// 		},
-			// 	},
-			// 	options: [
-			// 		{
-			// 			displayName: 'Field Record:',
-			// 			name: 'fields',
-			// 			values: [
-			// 				{
-			// 					displayName: 'Field Name',
-			// 					name: 'fieldName',
-			// 					type: 'string',
-			// 					default: '',
-			// 					required: true,
-			// 				},
-			// 				{
-			// 					displayName: 'New Value',
-			// 					name: 'fieldValue',
-			// 					type: 'string',
-			// 					default: '',
-			// 					required: true,
-			// 				},
-			// 			],
-			// 		},
-			// 	],
-			// },
+			{
+				displayName: 'AddFields',
+				name: 'fieldsToCreateOrUpdate',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Field',
+				},
+				default: {},
+				description: 'Add field and value',
+				placeholder: '',
+				displayOptions: {
+					show: {
+						operation: ['update', 'create'],
+						resource: ['custom'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Field Record:',
+						name: 'fields',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'options',
+								default: '',
+								noDataExpression: true,
+								typeOptions: {
+									loadOptionsMethod: 'getModelFields',
+								},
+							},
+							{
+								displayName: 'New Value',
+								name: 'fieldValue',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -429,7 +417,7 @@ export class Odoo implements INodeType {
 					},
 					method: 'POST',
 					body,
-					uri: `${credentials?.url}/jsonrpc`,
+					uri: `${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
 					json: true,
 				};
 				try {
@@ -466,14 +454,15 @@ export class Odoo implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		let resource = this.getNodeParameter('resource', 0) as string;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		let customResource = '';
 		if (resource === 'custom') {
-			resource = this.getNodeParameter('customResource', 0) as string;
+			customResource = this.getNodeParameter('customResource', 0) as string;
 		}
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		const credentials = await this.getCredentials('odooApi');
-		const url = credentials?.url as string;
+		const url = (credentials?.url as string).replace(/\/$/, '');
 		const username = credentials?.username as string;
 		const password = credentials?.password as string;
 		const db = (credentials?.db || url.split('//')[1].split('.')[0]) as string;
@@ -487,25 +476,33 @@ export class Odoo implements INodeType {
 			try {
 				//    Create    ------------------------------------------------------
 				if (operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					// const fieldsToCreateOrUpdate =
-					// 	(processNameValueFields(
-					// 		this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject,
-					// 	) as IDataObject) || {};
-					const fields = { ...additionalFields};
+					let fields: IDataObject = {};
+					if (resource === 'custom') {
+						fields =
+							(processNameValueFields(
+								this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject,
+							) as IDataObject) || {};
+					} else {
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						fields = { ...additionalFields };
+					}
 
-					if (resource === 'crm') {
+					if (resource === 'opportunity') {
 						const opportunity = this.getNodeParameter('opportunity', i) as string;
 						fields['name'] = opportunity;
 					}
 
-					console.log(fields);
+					if (resource === 'contact') {
+						const contactName = this.getNodeParameter('contactName', i) as string;
+						fields['name'] = contactName;
+					}
+
 					responseData = await odooCreate.call(
 						this,
 						db,
 						userID,
 						password,
-						resource,
+						resource === 'custom' ? customResource : resource,
 						operation,
 						url,
 						fields,
@@ -514,45 +511,78 @@ export class Odoo implements INodeType {
 
 				//    Get       ------------------------------------------------------
 				if (operation === 'get') {
-					responseData = await odooGet.call(
-						this,
-						db,
-						userID,
-						password,
-						resource,
-						operation,
-						url,
-						this.getNodeParameter('items_id', i) as string,
-						// this.getNodeParameter('fieldsList', i) as IDataObject,
-					);
+					if (resource === 'custom') {
+						responseData = await odooGet.call(
+							this,
+							db,
+							userID,
+							password,
+							customResource,
+							operation,
+							url,
+							this.getNodeParameter('items_id', i) as string,
+							this.getNodeParameter('fieldsList', i) as IDataObject,
+						);
+					} else {
+						responseData = await odooGet.call(
+							this,
+							db,
+							userID,
+							password,
+							resource,
+							operation,
+							url,
+							this.getNodeParameter('items_id', i) as string,
+						);
+					}
 				}
 
 				//    Get All   ------------------------------------------------------
 				if (operation === 'getAll') {
-					responseData = await odooGetAll.call(
-						this,
-						db,
-						userID,
-						password,
-						resource,
-						operation,
-						url,
-						// this.getNodeParameter('filterRequest', i) as IOdooFilterOperations,
-						// this.getNodeParameter('fieldsList', i) as IDataObject,
-					);
+					if (resource === 'custom') {
+						responseData = await odooGetAll.call(
+							this,
+							db,
+							userID,
+							password,
+							customResource,
+							operation,
+							url,
+							this.getNodeParameter('filterRequest', i) as IOdooFilterOperations,
+							this.getNodeParameter('fieldsList', i) as IDataObject,
+						);
+					} else {
+						responseData = await odooGetAll.call(
+							this,
+							db,
+							userID,
+							password,
+							resource,
+							operation,
+							url,
+						);
+					}
 				}
 
 				//    Update    ------------------------------------------------------
 				if (operation === 'update') {
-					const additionalFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const fields = { ...additionalFields};
+					let fields: IDataObject = {};
+					if (resource === 'custom') {
+						fields =
+							(processNameValueFields(
+								this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject,
+							) as IDataObject) || {};
+					} else {
+						const additionalFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						fields = { ...additionalFields };
+					}
 
 					responseData = await odooUpdate.call(
 						this,
 						db,
 						userID,
 						password,
-						resource,
+						resource === 'custom' ? customResource : resource,
 						operation,
 						url,
 						this.getNodeParameter('items_id', i) as string,
@@ -567,7 +597,7 @@ export class Odoo implements INodeType {
 						db,
 						userID,
 						password,
-						resource,
+						resource === 'custom' ? customResource : resource,
 						operation,
 						url,
 						this.getNodeParameter('items_id', i) as string,
