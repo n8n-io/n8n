@@ -9,7 +9,7 @@ export const adminOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'admins' ],
+				resource: [ 'admin' ],
 			},
 		},
 		options: [
@@ -19,14 +19,14 @@ export const adminOperations = [
 				description: 'Create a new Onfleet admin',
 			},
 			{
-				name: 'Remove',
+				name: 'Delete',
 				value: 'delete',
-				description: 'Remove an Onfleet admin',
+				description: 'Delete an Onfleet admin',
 			},
 			{
-				name: 'List',
+				name: 'Get all',
 				value: 'getAll',
-				description: 'List all Onfleet admins',
+				description: 'Get all Onfleet admins',
 			},
 			{
 				name: 'Update',
@@ -72,12 +72,12 @@ const adminReadOnlyField = {
 
 export const adminFields = [
 	{
-		displayName: 'ID',
+		displayName: 'Admin ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'admins' ],
+				resource: [ 'admin' ],
 			},
 			hide: {
 				operation: [
@@ -93,7 +93,7 @@ export const adminFields = [
 	{
 		displayOptions: {
 			show: {
-				resource: [ 'admins' ],
+				resource: [ 'admin' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -103,7 +103,7 @@ export const adminFields = [
 	{
 		displayOptions: {
 			show: {
-				resource: [ 'admins' ],
+				resource: [ 'admin' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -111,14 +111,14 @@ export const adminFields = [
 		...adminEmailField,
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'admins' ],
+				resource: [ 'admin' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -128,14 +128,14 @@ export const adminFields = [
 		],
 	},
 	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'admins' ],
+				resource: [ 'admin' ],
 				operation: [ 'update' ],
 			},
 		},

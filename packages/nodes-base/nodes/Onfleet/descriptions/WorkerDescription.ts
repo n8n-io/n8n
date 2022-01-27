@@ -9,7 +9,7 @@ export const workerOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
+				resource: [ 'worker' ],
 			},
 		},
 		options: [
@@ -19,19 +19,9 @@ export const workerOperations = [
 				description: 'Create a new Onfleet worker',
 			},
 			{
-				name: 'Remove',
+				name: 'Delete',
 				value: 'delete',
-				description: 'Remove an Onfleet worker',
-			},
-			{
-				name: 'List',
-				value: 'getAll',
-				description: 'List all Onfleet workers',
-			},
-			{
-				name: 'List workers by location',
-				value: 'getAllByLocation',
-				description: 'List all Onfleet workers who are currently within a centain target area',
+				description: 'Delete an Onfleet worker',
 			},
 			{
 				name: 'Get',
@@ -39,12 +29,17 @@ export const workerOperations = [
 				description: 'Get a specific Onfleet worker',
 			},
 			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all Onfleet workers',
+			},
+			{
 				name: 'Get Schedule',
 				value: 'getSchedule',
 				description: 'Get a specific Onfleet worker schedule',
 			},
 			{
-				name: 'Set worker\'s schedule',
+				name: 'Set Worker\'s Schedule',
 				value: 'setSchedule',
 				description: 'Set the worker\'s schedule',
 			},
@@ -57,6 +52,14 @@ export const workerOperations = [
 		default: 'get',
 	},
 ] as INodeProperties[];
+
+const byLocationField = {
+	displayName: 'Search by location',
+	name: 'byLocation',
+	type: 'boolean',
+	default: false,
+	description: 'Search workers who are currently within a certain target area',
+} as INodeProperties;
 
 const nameField = {
 	displayName: 'Name',
@@ -83,20 +86,11 @@ const capacityField = {
 } as INodeProperties;
 
 const displayNameField = {
-	displayName: 'Display name',
+	displayName: 'Display Name',
 	name: 'displayName',
 	type: 'string',
 	default: '',
 	description: 'This value is used in place of the worker\'s actual name within sms notifications, delivery tracking pages, and across organization boundaries',
-} as INodeProperties;
-
-// Vehicles fields
-const vehicleField = {
-	displayName: 'Vehicle',
-	name: 'vehicle',
-	type: 'boolean',
-	default: false,
-	description: 'Whether the worker has vehicle or not',
 } as INodeProperties;
 
 const vehicleTypeField = {
@@ -104,6 +98,10 @@ const vehicleTypeField = {
 	name: 'type',
 	type: 'options',
 	options: [
+		{
+			name: 'Bicycle',
+			value: 'BICYCLE',
+		},
 		{
 			name: 'Car',
 			value: 'CAR',
@@ -113,15 +111,11 @@ const vehicleTypeField = {
 			value: 'MOTORCYCLE',
 		},
 		{
-			name: 'Bicycle',
-			value: 'BICYCLE',
-		},
-		{
 			name: 'Truck',
 			value: 'TRUCK',
 		},
 	],
-	default: 'CAR',
+	default: '',
 	description: 'Whether the worker has vehicle or not',
 } as INodeProperties;
 
@@ -134,7 +128,7 @@ const vehicleDescriptionField = {
 } as INodeProperties;
 
 const vehicleLicensePlateField = {
-	displayName: 'License plate',
+	displayName: 'License Plate',
 	name: 'licensePlate',
 	type: 'string',
 	default: '',
@@ -150,19 +144,25 @@ const vehicleColorField = {
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Teams (JSON)',
+	displayName: 'Teams',
 	name: 'teams',
-	type: 'json',
-	default: '[]',
-	description: 'One or more team IDs of which the worker is a member',
+	type: 'multiOptions',
+	typeOptions: {
+		loadOptionsMethod: 'getTeams',
+	},
+	default: [],
+	description: 'One or more teams of which the worker is a member',
 } as INodeProperties;
 
 const teamsFilterField = {
 	displayName: 'Teams',
 	name: 'teams',
-	type: 'string',
-	default: '',
-	description: 'A comma-separated list of the team IDs that workers must be part of',
+	type: 'multiOptions',
+	typeOptions: {
+		loadOptionsMethod: 'getTeams',
+	},
+	default: [],
+	description: 'A list of the teams that workers must be part of',
 } as INodeProperties;
 
 const statesFilterField = {
@@ -171,16 +171,16 @@ const statesFilterField = {
 	type: 'multiOptions',
 	options: [
 		{
-			name: 'Off-duty',
-			value: 0,
+			name: 'Active (on-duty, active task)',
+			value: 2,
 		},
 		{
 			name: 'Idle (on-duty, no active task)',
 			value: 1,
 		},
 		{
-			name: 'Active (on-duty, active task)',
-			value: 2,
+			name: 'Off-duty',
+			value: 0,
 		},
 	],
 	default: '',
@@ -191,16 +191,102 @@ const phonesFilterField = {
 	displayName: 'Phones',
 	name: 'phones',
 	type: 'string',
-	default: '',
-	description: 'A comma-separated list of workers\' phone numbers',
+	typeOptions: {
+		multipleValues: true,
+		multipleValueButtonText: 'Add Phone',
+	},
+	default: [],
+	description: 'A list of workers\' phone numbers',
 } as INodeProperties;
 
 const filterField = {
-	displayName: 'List of fields to return',
+	displayName: 'List Of Fields To Return',
 	name: 'filter',
-	type: 'string',
+	type: 'multiOptions',
+	options: [
+		{
+			name: 'Account Status',
+			value: 'accountStatus',
+		},
+		{
+			name: 'Active Task',
+			value: 'activeTask',
+		},
+		{
+			name: 'Capacity',
+			value: 'capacity',
+		},
+		{
+			name: 'Delay Time',
+			value: 'delayTime',
+		},
+		{
+			name: 'Display Name',
+			value: 'displayName',
+		},
+		{
+			name: 'Image Url',
+			value: 'imageUrl',
+		},
+		{
+			name: 'Location',
+			value: 'location',
+		},
+		{
+			name: 'Metadata',
+			value: 'metadata',
+		},
+		{
+			name: 'Name',
+			value: 'name',
+		},
+		{
+			name: 'On Duty',
+			value: 'onDuty',
+		},
+		{
+			name: 'organization',
+			value: 'organization',
+		},
+		{
+			name: 'Phone',
+			value: 'phone',
+		},
+		{
+			name: 'Tasks',
+			value: 'tasks',
+		},
+		{
+			name: 'Teams',
+			value: 'teams',
+		},
+		{
+			name: 'Time Created',
+			value: 'timeCreated',
+		},
+		{
+			name: 'Time Last Modified',
+			value: 'timeLastModified',
+		},
+		{
+			name: 'Time Last Seen',
+			value: 'timeLastSeen',
+		},
+		{
+			name: 'User Data',
+			value: 'userData',
+		},
+		{
+			name: 'Vehicle',
+			value: 'vehicle',
+		},
+		{
+			name: 'Worker ID',
+			value: 'id',
+		},
+	],
 	default: '',
-	description: 'A comma-separated list of fields to return, if all are not desired. For example, name, location',
+	description: 'A list of fields to return, if all are not desired',
 } as INodeProperties;
 
 const longitudeFilterField = {
@@ -241,14 +327,17 @@ const scheduleDateField = {
 	displayName: 'Date',
 	name: 'date',
 	type: 'dateTime',
-	default: Date.now(),
+	default: '',
 	description: 'Schedule\'s date',
 } as INodeProperties;
 
 const scheduleTimezoneField = {
 	displayName: 'Timezone',
 	name: 'timezone',
-	type: 'string',
+	type: 'options',
+	typeOptions: {
+		loadOptionsMethod: 'getTimezones',
+	},
 	default: '',
 	description: 'A valid timezone',
 } as INodeProperties;
@@ -257,7 +346,7 @@ const scheduleStartField = {
 	displayName: 'Start',
 	name: 'start',
 	type: 'dateTime',
-	default: Date.now(),
+	default: '',
 	description: 'Start time',
 } as INodeProperties;
 
@@ -265,18 +354,28 @@ const scheduleEndField = {
 	displayName: 'End',
 	name: 'end',
 	type: 'dateTime',
-	default: Date.now(),
+	default: '',
 	description: 'End time',
 } as INodeProperties;
 
 export const workerFields = [
 	{
-		displayName: 'ID',
+		...byLocationField,
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [ 'worker' ],
+				operation: [ 'getAll' ],
+			},
+		},
+	},
+	{
+		displayName: 'Worker ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
+				resource: [ 'worker' ],
 				operation: [
 					'get',
 					'getSchedule',
@@ -291,24 +390,10 @@ export const workerFields = [
 		description: 'The ID of the worker object for lookup',
 	},
 	{
-		displayName: 'Analytics',
-		name: 'analytics',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [ 'workers' ],
-				operation: [ 'get' ],
-			},
-		},
-		default: true,
-		required: true,
-		description: 'A more detailed response, includes basic worker duty event, traveled distance (meters) and time analytics',
-	},
-	{
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
+				resource: [ 'worker' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -318,44 +403,107 @@ export const workerFields = [
 		...phoneField,
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
+				resource: [ 'worker' ],
 				operation: [ 'create' ],
 			},
 		},
 		required: true,
 	},
 	{
-		...vehicleField,
+		displayName: 'Vehicle',
+		name: 'vehicle',
+		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: [ 'worker' ],
+				operation: [ 'update' ],
 			},
 		},
-		required: true,
+		default: {},
+		options: [
+			{
+				displayName: 'Vehicle Properties',
+				name: 'vehicleProperties',
+				values: [
+					{
+						displayName: 'Additional Fields',
+						name: 'additionalFields',
+						type: 'collection',
+						placeholder: 'Add Field',
+						default: {},
+						options: [
+							{
+								...vehicleTypeField,
+								required: true,
+							},
+							{
+								...vehicleDescriptionField,
+								required: false,
+							},
+							{
+								...vehicleLicensePlateField,
+								required: false,
+							},
+							{
+								...vehicleColorField,
+								required: false,
+							},
+						],
+					},
+				],
+			},
+		],
 	},
 	{
-		...vehicleTypeField,
+		displayName: 'Vehicle',
+		name: 'vehicle',
+		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
-				operation: [
-					'create',
-					'update',
-				],
-				vehicle: [ true ],
+				resource: [ 'worker' ],
+				operation: [ 'create' ],
 			},
 		},
-		required: true,
+		default: {},
+		options: [
+			{
+				displayName: 'Vehicle Properties',
+				name: 'vehicleProperties',
+				values: [
+					{
+						...vehicleTypeField,
+						required: true,
+					},
+					{
+						displayName: 'Additional Fields',
+						name: 'additionalFields',
+						type: 'collection',
+						placeholder: 'Add Field',
+						default: {},
+						options: [
+							{
+								...vehicleDescriptionField,
+								required: false,
+							},
+							{
+								...vehicleLicensePlateField,
+								required: false,
+							},
+							{
+								...vehicleColorField,
+								required: false,
+							},
+						],
+					},
+				],
+			},
+		],
 	},
 	{
 		...teamsField,
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
+				resource: [ 'worker' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -365,8 +513,9 @@ export const workerFields = [
 		...longitudeFilterField,
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
-				operation: [ 'getAllByLocation' ],
+				resource: [ 'worker' ],
+				operation: [ 'getAll' ],
+				byLocation: [ true ],
 			},
 		},
 		required: true,
@@ -375,57 +524,37 @@ export const workerFields = [
 		...latitudeFilterField,
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
-				operation: [ 'getAllByLocation' ],
+				resource: [ 'worker' ],
+				operation: [ 'getAll' ],
+				byLocation: [ true ],
 			},
 		},
 		required: true,
 	},
 	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
+		displayName: 'Filter Fields',
+		name: 'filterFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
-				operation: [ 'getAllByLocation' ],
+				resource: [ 'worker' ],
+				operation: [ 'getAll' ],
+				byLocation: [ true ],
 			},
 		},
 		options: [ radiusFilterField ],
 	},
 	{
-		displayName: 'Additional vehicle fields',
-		name: 'additionalVehicleFields',
-		type: 'collection',
-		placeholder: 'Add vehicle fields',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [ 'workers' ],
-				operation: [
-					'create',
-					'update',
-				],
-				vehicle: [ true ],
-			},
-		},
-		options: [
-			vehicleDescriptionField,
-			vehicleLicensePlateField,
-			vehicleColorField,
-		],
-	},
-	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
+				resource: [ 'worker' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -435,14 +564,14 @@ export const workerFields = [
 		],
 	},
 	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
+				resource: [ 'worker' ],
 				operation: [ 'update' ],
 			},
 		},
@@ -454,15 +583,16 @@ export const workerFields = [
 		],
 	},
 	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
+		displayName: 'Filter Fields',
+		name: 'filterFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
+				resource: [ 'worker' ],
 				operation: [ 'getAll' ],
+				byLocation: [ false ],
 			},
 		},
 		options: [
@@ -473,57 +603,90 @@ export const workerFields = [
 		],
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Filter Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
+				resource: [ 'worker' ],
 				operation: [ 'get' ],
 			},
 		},
-		options: [ filterField ],
+		options: [
+			{
+				...filterField,
+				required: false,
+			},
+			{
+				displayName: 'Analytics',
+				name: 'analytics',
+				type: 'boolean',
+				default: true,
+				required: false,
+				description: 'A more detailed response, includes basic worker duty event, traveled distance (meters) and time analytics',
+			},
+		],
 	},
 	{
-		...scheduleDateField,
+		displayName: 'Schedule',
+		name: 'schedule',
+		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				resource: [ 'workers' ],
+				resource: [ 'worker' ],
 				operation: [ 'setSchedule' ],
 			},
 		},
-		required: true,
-	},
-	{
-		...scheduleTimezoneField,
-		displayOptions: {
-			show: {
-				resource: [ 'workers' ],
-				operation: [ 'setSchedule' ],
-			},
+		default: {},
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Schedule',
 		},
-		required: true,
-	},
-	{
-		...scheduleStartField,
-		displayOptions: {
-			show: {
-				resource: [ 'workers' ],
-				operation: [ 'setSchedule' ],
+		options: [
+			{
+				displayName: 'Schedule Properties',
+				name: 'scheduleProperties',
+				default: {},
+				values: [
+					{
+						...scheduleDateField,
+						required: true,
+					},
+					{
+						...scheduleTimezoneField,
+						required: true,
+					},
+					{
+						displayName: 'Shifts',
+						name: 'shifts',
+						type: 'fixedCollection',
+						default: {},
+						typeOptions: {
+							multipleValues: true,
+							multipleValueButtonText: 'Add Shift',
+						},
+						options: [
+							{
+								displayName: 'Shifts Properties',
+								name: 'shiftsProperties',
+								default: {},
+								values: [
+									{
+										...scheduleStartField,
+										required: true,
+									},
+									{
+										...scheduleEndField,
+										required: true,
+									},
+								],
+							},
+						],
+					},
+				],
 			},
-		},
-		required: true,
-	},
-	{
-		...scheduleEndField,
-		displayOptions: {
-			show: {
-				resource: [ 'workers' ],
-				operation: [ 'setSchedule' ],
-			},
-		},
-		required: true,
+		],
 	},
 ] as INodeProperties[];

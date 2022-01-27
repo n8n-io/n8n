@@ -1,6 +1,7 @@
 import {
 	INodeProperties
 } from 'n8n-workflow';
+import { destinationExternalField } from './DestinationDescription';
 
 export const hubOperations = [
 	{
@@ -9,7 +10,7 @@ export const hubOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'hubs' ],
+				resource: [ 'hub' ],
 			},
 		},
 		options: [
@@ -19,9 +20,9 @@ export const hubOperations = [
 				description: 'Create a new Onfleet hub',
 			},
 			{
-				name: 'List hubs',
+				name: 'Get all',
 				value: 'getAll',
-				description: 'List Onfleet hubs',
+				description: 'Get all Onfleet hubs',
 			},
 			{
 				name: 'Update',
@@ -29,7 +30,7 @@ export const hubOperations = [
 				description: 'Update an Onfleet hub',
 			},
 		],
-		default: 'get',
+		default: 'getAll',
 	},
 ] as INodeProperties[];
 
@@ -42,21 +43,24 @@ const nameField = {
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Teams (JSON)',
+	displayName: 'Teams',
 	name: 'teams',
-	type: 'json',
-	default: '[]',
-	description: 'This is the team ID(s) that this Hub will be assigned to',
+	type: 'multiOptions',
+	typeOptions: {
+		loadOptionsMethod: 'getTeams',
+	},
+	default: [],
+	description: 'These are the teams that this Hub will be assigned to',
 } as INodeProperties;
 
 export const hubFields = [
 	{
-		displayName: 'ID',
+		displayName: 'Hub ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'hubs' ],
+				resource: [ 'hub' ],
 				operation: [ 'update' ],
 			},
 		},
@@ -68,41 +72,61 @@ export const hubFields = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [ 'hubs' ],
+				resource: [ 'hub' ],
 				operation: [ 'create' ],
 			},
 		},
 		required: true,
 	},
 	{
-		displayName: 'Additional fields',
+		...destinationExternalField,
+		displayOptions: {
+			show: {
+				resource: [ 'hub' ],
+				operation: [
+					'create',
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'hubs' ],
+				resource: [ 'hub' ],
 				operation: [ 'create' ],
 			},
 		},
-		options: [ teamsField ],
+		options: [
+			{
+				...teamsField,
+				require: false,
+			},
+		],
 	},
 	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'hubs' ],
+				resource: [ 'hub' ],
 				operation: [ 'update' ],
 			},
 		},
 		options: [
 			nameField,
-			teamsField,
+			{
+				...teamsField,
+				required: false,
+			},
 		],
 	},
 ] as INodeProperties[];

@@ -64,11 +64,21 @@ export interface OnfleetListTaskFilters {
 	dependencies?: string;
 }
 
+export interface OnfleetCloneOverrideTaskOptions {
+	completeAfter?: number;
+	completeBefore?: number;
+	destination?: OnfleetDestination;
+	notes?: string;
+	pickupTask?: boolean;
+	recipients?: OnfleetRecipient[];
+	serviceTime?: number;
+}
+
 export interface OnfleetCloneTaskOptions {
 	includeMetadata?: boolean;
 	includeBarcodes?: boolean;
 	includeDependencies?: boolean;
-	overrides?: object;
+	overrides?: OnfleetCloneOverrideTaskOptions;
 }
 
 export interface OnfleetCloneTask {

@@ -9,7 +9,7 @@ export const containerOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'containers' ],
+				resource: [ 'container' ],
 			},
 		},
 		options: [
@@ -24,7 +24,7 @@ export const containerOperations = [
 				description: 'Fully replace a container\'s tasks',
 			},
 			{
-				name: 'Get container',
+				name: 'Get',
 				value: 'get',
 				description: 'Get container information',
 			},
@@ -34,7 +34,7 @@ export const containerOperations = [
 ] as INodeProperties[];
 
 const containerTypeField = {
-	displayName: 'Container',
+	displayName: 'Container Type',
 	name: 'containerType',
 	type: 'options',
 	options: [
@@ -56,7 +56,7 @@ const containerTypeField = {
 } as INodeProperties;
 
 const containerIdField = {
-	displayName: 'ID',
+	displayName: 'Container ID',
 	name: 'containerId',
 	type: 'string',
 	default: '',
@@ -64,7 +64,7 @@ const containerIdField = {
 } as INodeProperties;
 
 const insertTypeField = {
-	displayName: 'Insert type',
+	displayName: 'Insert Type',
 	name: 'type',
 	type: 'options',
 	options: [
@@ -89,20 +89,24 @@ const indexField = {
 	displayName: 'Index',
 	name: 'index',
 	type: 'number',
-	default: '',
+	default: 0,
 	description: 'The index given indicates the position where the tasks are going to be inserted',
 } as INodeProperties;
 
 const tasksField = {
-	displayName: 'Tasks (JSON)',
+	displayName: 'Tasks',
 	name: 'tasks',
-	type: 'json',
-	default: '[]',
-	description: 'Array witht the task\'s ID that are going to be used in JSON format',
+	type: 'string',
+	typeOptions: {
+		multipleValues: true,
+		multipleValueButtonText: 'Add Task',
+	},
+	default: [],
+	description: 'Task\'s ID that are going to be used',
 } as INodeProperties;
 
 const considerDependenciesField = {
-	displayName: 'Consider dependencies',
+	displayName: 'Consider Dependencies',
 	name: 'considerDependencies',
 	type: 'boolean',
 	default: false,
@@ -114,7 +118,7 @@ export const containerFields = [
 		...containerTypeField,
 		displayOptions: {
 			show: {
-				resource: [ 'containers' ],
+				resource: [ 'container' ],
 				operation: [
 					'get',
 					'add',
@@ -128,7 +132,7 @@ export const containerFields = [
 		...containerIdField,
 		displayOptions: {
 			show: {
-				resource: [ 'containers' ],
+				resource: [ 'container' ],
 				operation: [
 					'get',
 					'add',
@@ -142,7 +146,7 @@ export const containerFields = [
 		...insertTypeField,
 		displayOptions: {
 			show: {
-				resource: [ 'containers' ],
+				resource: [ 'container' ],
 				operation: [ 'add' ],
 			},
 		},
@@ -152,7 +156,7 @@ export const containerFields = [
 		...indexField,
 		displayOptions: {
 			show: {
-				resource: [ 'containers' ],
+				resource: [ 'container' ],
 				operation: [ 'add' ],
 				type: [ 1 ],
 			},
@@ -163,7 +167,7 @@ export const containerFields = [
 		...tasksField,
 		displayOptions: {
 			show: {
-				resource: [ 'containers' ],
+				resource: [ 'container' ],
 				operation: [
 					'add',
 					'update',
@@ -173,16 +177,25 @@ export const containerFields = [
 		required: true,
 	},
 	{
-		...considerDependenciesField,
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'containers' ],
+				resource: [ 'container' ],
 				operation: [
 					'add',
 					'update',
 				],
 			},
 		},
-		required: true,
+		options: [
+			{
+				...considerDependenciesField,
+				required: false,
+			},
+		],
 	},
 ] as INodeProperties[];

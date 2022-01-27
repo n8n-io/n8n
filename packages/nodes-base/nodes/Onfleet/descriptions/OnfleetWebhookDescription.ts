@@ -17,10 +17,10 @@ export const eventDisplay: INodeProperties = {
 };
 
 export const eventNameField = {
-	displayName: 'Additional fields',
+	displayName: 'Additional Fields',
 	name: 'additionalFields',
 	type: 'collection',
-	placeholder: 'Add fields',
+	placeholder: 'Add Field',
 	default: {},
 	options: [
 		{

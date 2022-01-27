@@ -10,7 +10,7 @@ export const webhookOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 			},
 		},
 		options: [
@@ -20,14 +20,14 @@ export const webhookOperations = [
 				description: 'Create a new Onfleet webhook',
 			},
 			{
-				name: 'Remove',
+				name: 'Delete',
 				value: 'delete',
-				description: 'Remove an Onfleet webhook',
+				description: 'Delete an Onfleet webhook',
 			},
 			{
-				name: 'List',
+				name: 'Get All',
 				value: 'getAll',
-				description: 'List all Onfleet webhooks',
+				description: 'Get all Onfleet webhooks',
 			},
 		],
 		default: 'getAll',
@@ -71,12 +71,12 @@ const thresholdField = {
 
 export const webhookFields = [
 	{
-		displayName: 'ID',
+		displayName: 'Webhook ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 				operation: [ 'delete' ],
 			},
 		},
@@ -88,7 +88,7 @@ export const webhookFields = [
 		...urlField,
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -98,7 +98,7 @@ export const webhookFields = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -108,21 +108,21 @@ export const webhookFields = [
 		...triggerField,
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 				operation: [ 'create' ],
 			},
 		},
 		required: true,
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 				operation: [ 'create' ],
 			},
 		},

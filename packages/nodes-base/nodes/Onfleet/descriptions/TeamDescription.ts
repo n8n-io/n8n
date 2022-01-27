@@ -9,24 +9,24 @@ export const teamOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 			},
 		},
 		options: [
+			{
+				name: 'Auto-Dispatch',
+				value: 'autoDispatch',
+				description: 'Dynamically dispatching tasks on the fly',
+			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet team',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update an Onfleet team',
-			},
-			{
-				name: 'Remove',
+				name: 'Delete',
 				value: 'delete',
-				description: 'Remove an Onfleet team',
+				description: 'Delete an Onfleet team',
 			},
 			{
 				name: 'Get',
@@ -34,19 +34,19 @@ export const teamOperations = [
 				description: 'Get a specific Onfleet team',
 			},
 			{
-				name: 'List',
+				name: 'Get all',
 				value: 'getAll',
 				description: 'List all Onfleet teams',
-			},
-			{
-				name: 'Auto-Dispatch',
-				value: 'autoDispatch',
-				description: 'Dynamically dispatching tasks on the fly',
 			},
 			{
 				name: 'Get time estimates',
 				value: 'getTimeEstimates',
 				description: 'The Driver Time Estimates endpoint allows an API user to get estimated times for tasks that haven\'t been created yet',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an Onfleet team',
 			},
 		],
 		default: 'getAll',
@@ -62,31 +62,40 @@ const nameField = {
 } as INodeProperties;
 
 const workersField = {
-	displayName: 'Workers (JSON)',
+	displayName: 'Workers',
 	name: 'workers',
-	type: 'json',
-	default: '[]',
-	description: 'An array of workers IDs',
+	type: 'multiOptions',
+	typeOptions: {
+		loadOptionsMethod: 'getWorkers',
+	},
+	default: [],
+	description: 'A list of workers',
 } as INodeProperties;
 
 const managersField = {
-	displayName: 'Administrators (JSON)',
+	displayName: 'Administrators',
 	name: 'managers',
-	type: 'json',
-	default: '[]',
-	description: 'An array of managing administrator IDs',
+	type: 'multiOptions',
+	typeOptions: {
+		loadOptionsMethod: 'getAdmins',
+	},
+	default: [],
+	description: 'A list of managing administrator',
 } as INodeProperties;
 
 const hubField = {
 	displayName: 'Hub',
 	name: 'hub',
-	type: 'string',
+	type: 'options',
+	typeOptions: {
+		loadOptionsMethod: 'getHubs',
+	},
 	default: '',
-	description: 'The ID of the team\'s hub',
+	description: 'The team\'s hub',
 } as INodeProperties;
 
 const enableSelfAssignmentField = {
-	displayName: 'Self assignment',
+	displayName: 'Self Assignment',
 	name: 'enableSelfAssignment',
 	type: 'boolean',
 	default: false,
@@ -94,7 +103,7 @@ const enableSelfAssignmentField = {
 } as INodeProperties;
 
 const maxTasksPerRouteField = {
-	displayName: 'Max number of tasks per route',
+	displayName: 'Max Number Of Tasks Per Route',
 	name: 'maxTasksPerRoute',
 	type: 'number',
 	default: 100,
@@ -105,24 +114,8 @@ const maxTasksPerRouteField = {
 	description: 'Total number of tasks allowed on a route',
 }as INodeProperties;
 
-const taskTimeWindowField = {
-	displayName: 'Task time window (JSON)',
-	name: 'taskTimeWindow',
-	type: 'json',
-	default: '{}',
-	description: 'This is the time window of tasks to include in the optimization. Param must be an array of length 2 in unix time in seconds precision, [start, end]',
-} as INodeProperties;
-
-const scheduleTimeWindowField = {
-	displayName: 'Schedule time window (JSON)',
-	name: 'scheduleTimeWindow',
-	type: 'json',
-	default: '{}',
-	description: 'This is the Driver\'s scheduled time window. Param must be an array of length 2 in unix time in seconds precision, [start, end]',
-} as INodeProperties;
-
 const serviceTimeField = {
-	displayName: 'Service time',
+	displayName: 'Service Time',
 	name: 'serviceTIme',
 	type: 'number',
 	default: 2,
@@ -133,7 +126,7 @@ const serviceTimeField = {
 } as INodeProperties;
 
 const routeEndField = {
-	displayName: 'Route end',
+	displayName: 'Route End',
 	name: 'routeEnd',
 	type: 'string',
 	default: '',
@@ -141,7 +134,7 @@ const routeEndField = {
 } as INodeProperties;
 
 const maxAllowedDelayField = {
-	displayName: 'Max allowed delay',
+	displayName: 'Max Allowed Delay',
 	name: 'maxAllowedDelay',
 	type: 'number',
 	default: 10,
@@ -151,24 +144,8 @@ const maxAllowedDelayField = {
 	},
 } as INodeProperties;
 
-const dropoffField = {
-	displayName: 'Dropoff',
-	name: 'dropoff',
-	type: 'boolean',
-	default: false,
-	description: 'Dropoff',
-} as INodeProperties;
-
-const pickupField = {
-	displayName: 'Pickup',
-	name: 'pickup',
-	type: 'boolean',
-	default: false,
-	description: 'Pickup',
-} as INodeProperties;
-
 const longitudeDropoffField = {
-	displayName: 'Dropoff longitude',
+	displayName: 'Dropoff Longitude',
 	name: 'dropoffLongitude',
 	type: 'number',
 	typeOptions: {
@@ -179,7 +156,7 @@ const longitudeDropoffField = {
 } as INodeProperties;
 
 const latitudeDropoffField = {
-	displayName: 'Dropoff latitude',
+	displayName: 'Dropoff Latitude',
 	name: 'dropoffLatitude',
 	type: 'number',
 	typeOptions: {
@@ -190,7 +167,7 @@ const latitudeDropoffField = {
 } as INodeProperties;
 
 const longitudePickupField = {
-	displayName: 'Pickup longitude',
+	displayName: 'Pick Up Longitude',
 	name: 'pickupLongitude',
 	type: 'number',
 	typeOptions: {
@@ -201,7 +178,7 @@ const longitudePickupField = {
 } as INodeProperties;
 
 const latitudePickupField = {
-	displayName: 'Pickup latitude',
+	displayName: 'Pick Up Latitude',
 	name: 'pickupLatitude',
 	type: 'number',
 	typeOptions: {
@@ -212,15 +189,15 @@ const latitudePickupField = {
 } as INodeProperties;
 
 const pickupTimeField = {
-	displayName: 'Pickup time',
+	displayName: 'Pick Up Time',
 	name: 'pickupTime',
 	type: 'dateTime',
-	default: Date.now(),
+	default: '',
 	description: 'If the request includes pickupLocation pickupTime must be present if the time is fewer than 3 hours in the future',
 } as INodeProperties;
 
 const restrictedVehicleTypesField = {
-	displayName: 'Restricted vehicle types',
+	displayName: 'Restricted Vehicle Types',
 	name: 'restrictedVehicleTypes',
 	type: 'options',
 	options: [
@@ -246,7 +223,7 @@ const restrictedVehicleTypesField = {
 } as INodeProperties;
 
 const serviceTimeEstimateField = {
-	displayName: 'Service time',
+	displayName: 'Service Time',
 	name: 'serviceTIme',
 	type: 'number',
 	default: 120,
@@ -258,12 +235,12 @@ const serviceTimeEstimateField = {
 
 export const teamFields = [
 	{
-		displayName: 'ID',
+		displayName: 'Team ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 				operation: [
 					'get',
 					'update',
@@ -281,7 +258,7 @@ export const teamFields = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -291,7 +268,7 @@ export const teamFields = [
 		...workersField,
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -301,21 +278,21 @@ export const teamFields = [
 		...managersField,
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 				operation: [ 'create' ],
 			},
 		},
 		required: true,
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -325,14 +302,14 @@ export const teamFields = [
 		],
 	},
 	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 				operation: [ 'update' ],
 			},
 		},
@@ -345,109 +322,170 @@ export const teamFields = [
 		],
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 				operation: [ 'autoDispatch' ],
 			},
 		},
 		options: [
-			maxTasksPerRouteField,
-			taskTimeWindowField,
-			scheduleTimeWindowField,
-			serviceTimeField,
-			routeEndField,
 			maxAllowedDelayField,
+			maxTasksPerRouteField,
+			routeEndField,
+			{
+				displayName: 'Schedule Time Window',
+				name: 'scheduleTimeWindow',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Schedule Time Window Properties',
+						name: 'scheduleTimeWindowProperties',
+						type: 'fixedCollection',
+						default: {},
+						values: [
+							{
+								displayName: 'Start Time',
+								name: 'startTime',
+								type: 'dateTime',
+								default: '',
+							},
+							{
+								displayName: 'End Time',
+								name: 'endTime',
+								type: 'dateTime',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			serviceTimeField,
+			{
+				displayName: 'Task Time Window',
+				name: 'taskTimeWindow',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Task Time Window Properties',
+						name: 'taskTimeWindowProperties',
+						type: 'fixedCollection',
+						default: {},
+						values: [
+							{
+								displayName: 'Start Time',
+								name: 'startTime',
+								type: 'dateTime',
+								default: '',
+							},
+							{
+								displayName: 'End Time',
+								name: 'endTime',
+								type: 'dateTime',
+								default: '',
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 	{
-		...dropoffField,
+		displayName: 'Dropoff',
+		name: 'dropoff',
+		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 				operation: [ 'getTimeEstimates' ],
 			},
 		},
+		default: {},
+		options: [
+			{
+				displayName: 'Dropoff Properties',
+				name: 'dropoffProperties',
+				values: [
+					{
+						...longitudeDropoffField,
+						required: true,
+					},
+					{
+						...latitudeDropoffField,
+						required: true,
+					},
+				],
+			},
+		],
 	},
 	{
-		...longitudeDropoffField,
+		displayName: 'Pick Up',
+		name: 'pickUp',
+		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
-				operation: [ 'getTimeEstimates' ],
-				dropoff: [ true ],
-			},
-		},
-	},
-	{
-		...latitudeDropoffField,
-		displayOptions: {
-			show: {
-				resource: [ 'teams' ],
-				operation: [ 'getTimeEstimates' ],
-				dropoff: [ true ],
-			},
-		},
-	},
-	{
-		...pickupField,
-		displayOptions: {
-			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 				operation: [ 'getTimeEstimates' ],
 			},
 		},
-	},
-	{
-		...longitudePickupField,
-		displayOptions: {
-			show: {
-				resource: [ 'teams' ],
-				operation: [ 'getTimeEstimates' ],
-				pickup: [ true ],
+		default: {},
+		options: [
+			{
+				displayName: 'Pick Up Properties',
+				name: 'pickUpProperties',
+				values: [
+					{
+						...longitudePickupField,
+						required: true,
+					},
+					{
+						...latitudePickupField,
+						required: true,
+					},
+					{
+						displayName: 'Additional Fields',
+						name: 'additionalFields',
+						type: 'collection',
+						placeholder: 'Add Field',
+						default: {},
+						options: [
+							{
+								...pickupTimeField,
+								required: false,
+							},
+						],
+					},
+				],
 			},
-		},
+		],
 	},
 	{
-		...latitudePickupField,
-		displayOptions: {
-			show: {
-				resource: [ 'teams' ],
-				operation: [ 'getTimeEstimates' ],
-				pickup: [ true ],
-			},
-		},
-	},
-	{
-		...pickupTimeField,
-		displayOptions: {
-			show: {
-				resource: [ 'teams' ],
-				operation: [ 'getTimeEstimates' ],
-				pickup: [ true ],
-			},
-		},
-	},
-	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add fields',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'teams' ],
+				resource: [ 'team' ],
 				operation: [ 'getTimeEstimates' ],
 			},
 		},
 		options: [
-			restrictedVehicleTypesField,
-			serviceTimeEstimateField,
+			{
+				...restrictedVehicleTypesField,
+				required: false,
+			},
+			{
+				...serviceTimeEstimateField,
+				required: false,
+			},
 		],
 	},
 ] as INodeProperties[];

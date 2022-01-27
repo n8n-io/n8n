@@ -1,6 +1,8 @@
 import {
 	INodeProperties
 } from 'n8n-workflow';
+import { destinationExternalField } from './DestinationDescription';
+import { recipientExternalField } from './RecipientDescription';
 
 export const taskOperations = [
 	{
@@ -9,7 +11,7 @@ export const taskOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
+				resource: [ 'task' ],
 			},
 		},
 		options: [
@@ -34,14 +36,14 @@ export const taskOperations = [
 				description: 'Force-complete a started Onfleet task',
 			},
 			{
-				name: 'Remove',
+				name: 'Delete',
 				value: 'delete',
-				description: 'Remove an Onfleet task',
+				description: 'Delete an Onfleet task',
 			},
 			{
-				name: 'List',
+				name: 'Get All',
 				value: 'getAll',
-				description: 'List Onfleet tasks',
+				description: 'Get all Onfleet tasks',
 			},
 			{
 				name: 'Get',
@@ -76,7 +78,7 @@ const executorIdField = {
 } as INodeProperties;
 
 const completeAfterField = {
-	displayName: 'CompleteAfter',
+	displayName: 'Complete After',
 	name: 'completeAfter',
 	type: 'dateTime',
 	default: null,
@@ -84,7 +86,7 @@ const completeAfterField = {
 } as INodeProperties;
 
 const completeBeforeField = {
-	displayName: 'CompleteBefore',
+	displayName: 'Complete Before',
 	name: 'completeBefore',
 	type: 'dateTime',
 	default: null,
@@ -92,7 +94,7 @@ const completeBeforeField = {
 } as INodeProperties;
 
 const pickupTaskField = {
-	displayName: 'PickupTask',
+	displayName: 'Pick Up Task',
 	name: 'pickupTask',
 	type: 'boolean',
 	default: false,
@@ -125,12 +127,12 @@ const serviceTimeField = {
 
 export const taskFields = [
 	{
-		displayName: 'ID',
+		displayName: 'Task ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
+				resource: [ 'task' ],
 			},
 			hide: {
 				operation: [
@@ -145,12 +147,38 @@ export const taskFields = [
 		description: 'The ID of the task object for lookup',
 	},
 	{
+		...destinationExternalField,
+		displayOptions: {
+			show: {
+				resource: [ 'task' ],
+				operation: [
+					'create',
+					'createBatch',
+				],
+			},
+		},
+		default: {},
+	},
+	{
+		...recipientExternalField,
+		displayOptions: {
+			show: {
+				resource: [ 'task' ],
+				operation: [
+					'create',
+					'createBatch',
+				],
+			},
+		},
+		default: {},
+	},
+	{
 		displayName: 'Short ID',
 		name: 'shortId',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
+				resource: [ 'task' ],
 				operation: [ 'get' ],
 			},
 		},
@@ -163,7 +191,7 @@ export const taskFields = [
 		type: 'dateTime',
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
+				resource: [ 'task' ],
 				operation: [ 'getAll' ],
 			},
 		},
@@ -177,7 +205,7 @@ export const taskFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
+				resource: [ 'task' ],
 				operation: [ 'complete' ],
 			},
 		},
@@ -186,14 +214,14 @@ export const taskFields = [
 		default: true,
 	},
 	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
+		displayName: 'Filter Fields',
+		name: 'filterFields',
 		type: 'collection',
-		placeholder: 'Add Fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
+				resource: [ 'task' ],
 				operation: [ 'getAll' ],
 			},
 		},
@@ -211,20 +239,20 @@ export const taskFields = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Unassigned',
-						value: 0,
+						name: 'Active',
+						value: 2,
 					},
 					{
 						name: 'Assigned',
 						value: 1,
 					},
 					{
-						name: 'Active',
-						value: 2,
-					},
-					{
 						name: 'Completed',
 						value: 3,
+					},
+					{
+						name: 'Unassigned',
+						value: 0,
 					},
 				],
 				default: null,
@@ -247,7 +275,7 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
+				resource: [ 'task' ],
 				operation: [ 'clone' ],
 			},
 		},
@@ -273,20 +301,49 @@ export const taskFields = [
 			{
 				displayName: 'Overrides',
 				name: 'overrides',
-				type: 'json',
-				default: null,
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Override Properties',
+						name: 'overrideProperties',
+						default: {},
+						values: [
+							{
+								...notesField,
+								required: false,
+							},
+							{
+								...pickupTaskField,
+								required: false,
+							},
+							{
+								...serviceTimeField,
+								required: false,
+							},
+							{
+								...completeAfterField,
+								required: false,
+							},
+							{
+								...completeBeforeField,
+								required: false,
+							},
+						],
+					},
+				],
 			},
 		],
 	},
 	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
+				resource: [ 'task' ],
 				operation: [ 'update' ],
 			},
 		},
@@ -302,14 +359,14 @@ export const taskFields = [
 		],
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
+				resource: [ 'task' ],
 				operation: [ 'complete' ],
 			},
 		},
@@ -324,14 +381,14 @@ export const taskFields = [
 		],
 	},
 	{
-		displayName: 'Additional task fields',
+		displayName: 'Additional Task Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
+				resource: [ 'task' ],
 				operation: [
 					'create',
 					'createBatch',

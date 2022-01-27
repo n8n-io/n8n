@@ -9,7 +9,7 @@ export const recipientOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'recipients' ],
+				resource: [ 'recipient' ],
 			},
 		},
 		options: [
@@ -35,21 +35,21 @@ export const recipientOperations = [
 
 const additionalRecipientFields = [
 	{
-		displayName: 'Recipient notes',
+		displayName: 'Recipient Notes',
 		name: 'recipientNotes',
 		type: 'string',
 		default: '',
 		description: 'Notes for this recipient: these are global notes that should not be task- or destination-specific',
 	},
 	{
-		displayName: 'Skip recipient SMS notifications',
+		displayName: 'Skip Recipient SMS Notifications',
 		name: 'recipientSkipSMSNotifications',
 		type: 'boolean',
 		default: false,
 		description: 'Whether this recipient has requested to skip SMS notifications',
 	},
 	{
-		displayName: 'Skip recipient phone number validation',
+		displayName: 'Skip Recipient Phone Number Validation',
 		name: 'recipientSkipPhoneNumberValidation',
 		type: 'boolean',
 		default: false,
@@ -58,38 +58,46 @@ const additionalRecipientFields = [
 ];
 
 const recipientName = {
-	displayName: 'Recipient name',
+	displayName: 'Recipient Name',
 	name: 'recipientName',
 	type: 'string',
 	description: 'The recipient\'s complete name',
+	default: '',
 } as INodeProperties;
 
 const recipientPhone = {
-	displayName: 'Recipient phone',
+	displayName: 'Recipient Phone',
 	name: 'recipientPhone',
 	type: 'string',
 	description: 'A unique, valid phone number as per the organization\'s country if there\'s no leading + sign. If a phone number has a leading + sign, it will disregard the organization\'s country setting',
+	default: '',
 } as INodeProperties;
 
-const additionalRecipientFieldsUpdate = [
-	recipientName,
-	recipientPhone,
+const updateFields = [
 	{
-		displayName: 'Recipient notes',
+		...recipientName,
+		required: false,
+	},
+	{
+		...recipientPhone,
+		required: false,
+	},
+	{
+		displayName: 'Recipient Notes',
 		name: 'notes',
 		type: 'string',
 		default: '',
 		description: 'Notes for this recipient: these are global notes that should not be task- or destination-specific',
 	},
 	{
-		displayName: 'Skip recipient SMS notifications',
+		displayName: 'Skip Recipient SMS Notifications',
 		name: 'skipSMSNotifications',
 		type: 'boolean',
 		default: false,
 		description: 'Whether this recipient has requested to skip SMS notifications',
 	},
 	{
-		displayName: 'Skip recipient phone number validation',
+		displayName: 'Skip Recipient Phone Number Validation',
 		name: 'skipPhoneNumberValidation',
 		type: 'boolean',
 		default: false,
@@ -97,14 +105,46 @@ const additionalRecipientFieldsUpdate = [
 	},
 ];
 
+export const recipientExternalField = {
+	displayName: 'Recipient',
+	name: 'recipient',
+	type: 'fixedCollection',
+	default: {},
+	options: [
+		{
+			displayName: 'Recipient Properties',
+			name: 'recipientProperties',
+			default: {},
+			values: [
+				{
+					...recipientName,
+					required: true,
+				},
+				{
+					...recipientPhone,
+					required: true,
+				},
+				{
+					displayName: 'Additional Fields',
+					name: 'additionalFields',
+					type: 'collection',
+					placeholder: 'Add Field',
+					default: {},
+					options: additionalRecipientFields,
+				},
+			],
+		},
+	],
+} as INodeProperties;
+
 export const recipientFields = [
 	{
-		displayName: 'Get by',
+		displayName: 'Get By',
 		name: 'getBy',
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'recipients' ],
+				resource: [ 'recipient' ],
 				operation: [ 'get' ],
 			},
 		},
@@ -127,12 +167,12 @@ export const recipientFields = [
 		default: 'id',
 	},
 	{
-		displayName: 'ID',
+		displayName: 'Recipient ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'recipients' ],
+				resource: [ 'recipient' ],
 				operation: [ 'get' ],
 				getBy: [ 'id' ],
 			},
@@ -142,12 +182,12 @@ export const recipientFields = [
 		description: 'The ID of the recipient object for lookup',
 	},
 	{
-		displayName: 'ID',
+		displayName: 'Recipient ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'recipients' ],
+				resource: [ 'recipient' ],
 				operation: [ 'update' ],
 			},
 		},
@@ -161,7 +201,7 @@ export const recipientFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'recipients' ],
+				resource: [ 'recipient' ],
 				operation: [ 'get' ],
 				getBy: [ 'name' ],
 			},
@@ -176,7 +216,7 @@ export const recipientFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'recipients' ],
+				resource: [ 'recipient' ],
 				operation: [ 'get' ],
 				getBy: [ 'phone' ],
 			},
@@ -186,40 +226,9 @@ export const recipientFields = [
 		description: 'The phone of the recipient for lookup',
 	},
 	{
-		displayName: 'Recipient',
-		name: 'recipient',
-		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
-				operation: [
-					'create',
-					'createBatch',
-				],
-			},
-		},
-		description: 'Whether the task has a recipient associated',
-		required: true,
-		default: true,
-	},
-	{
-		displayOptions: {
-			show: {
-				resource: [ 'tasks' ],
-				operation: [
-					'create',
-					'createBatch',
-				],
-				recipient: [ true ],
-			},
-		},
-		...recipientName,
-		required: true,
-	},
-	{
-		displayOptions: {
-			show: {
-				resource: [ 'recipients' ],
+				resource: [ 'recipient' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -229,21 +238,7 @@ export const recipientFields = [
 	{
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
-				operation: [
-					'create',
-					'createBatch',
-				],
-				recipient: [ true ],
-			},
-		},
-		...recipientPhone,
-		required: true,
-	},
-	{
-		displayOptions: {
-			show: {
-				resource: [ 'recipients' ],
+				resource: [ 'recipient' ],
 				operation: ['create' ],
 			},
 		},
@@ -251,49 +246,31 @@ export const recipientFields = [
 		required: true,
 	},
 	{
-		displayName: 'Additional recipient fields',
-		name: 'additionalRecipientFields',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add recipient fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'recipients' ],
+				resource: [ 'recipient' ],
 				operation: [ 'create' ],
 			},
 		},
 		options: additionalRecipientFields,
 	},
 	{
-		displayName: 'Additional recipient fields',
-		name: 'additionalRecipientFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add recipient fields',
+		placeholder: 'Update fields',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'tasks' ],
-				operation: [
-					'create',
-					'createBatch',
-				],
-				recipient: [ true ],
-			},
-		},
-		options: additionalRecipientFields,
-	},
-	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add fields',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [ 'recipients' ],
+				resource: [ 'recipient' ],
 				operation: [ 'update' ],
 			},
 		},
-		options: additionalRecipientFieldsUpdate,
+		options: updateFields,
 	},
 ] as INodeProperties[];

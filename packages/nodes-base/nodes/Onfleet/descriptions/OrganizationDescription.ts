@@ -9,17 +9,17 @@ export const organizationOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'organizations' ],
+				resource: [ 'organization' ],
 			},
 		},
 		options: [
 			{
-				name: 'Get details',
+				name: 'Get My Organization',
 				value: 'get',
 				description: 'Retrieve your own organization\'s details',
 			},
 			{
-				name: 'Get delegatee details',
+				name: 'Get Delegatee Details',
 				value: 'getDelegatee',
 				description: 'Retrieve the details of an organization with which you are connected',
 			},
@@ -31,12 +31,12 @@ export const organizationOperations = [
 
 export const organizationFields = [
 	{
-		displayName: 'ID',
+		displayName: 'Organiation ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'organizations' ],
+				resource: [ 'organization' ],
 				operation: [ 'getDelegatee' ],
 			},
 		},
