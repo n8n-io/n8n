@@ -1,10 +1,9 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Application } from 'express';
-import express = require('express');
 import { JwtFromRequestFunction } from 'passport-jwt';
-import { User } from '../databases/entities/User';
 import { IPersonalizationSurveyAnswers } from '../Interfaces';
+import type { AuthenticatedRequest } from '../requests';
 
 export interface JwtToken {
 	token: string;
@@ -37,64 +36,49 @@ export interface N8nApp {
 	restEndpoint: string;
 }
 
-export type AuthenticatedRequest<ReqBody = {}, ReqQuery = {}, ReqParams = {}> = express.Request<
-	ReqParams,
-	{},
-	ReqBody,
-	ReqQuery
-> & { user: User };
-
 // ----------------------------------
 //         requests to /me
 // ----------------------------------
 
-declare namespace UpdateSelfPayload {
-	type Settings = Pick<PublicUser, 'email' | 'firstName' | 'lastName'>;
-	type Password = Pick<PublicUser, 'password'>;
-	type SurveyAnswers = { [key: string]: string } | {};
-}
-
 export declare namespace UpdateSelfRequest {
-	export type Settings = AuthenticatedRequest<UpdateSelfPayload.Settings>;
-	export type Password = AuthenticatedRequest<UpdateSelfPayload.Password>;
-	export type SurveyAnswers = AuthenticatedRequest<UpdateSelfPayload.SurveyAnswers>;
+	export type Settings = AuthenticatedRequest<
+		{},
+		{},
+		Pick<PublicUser, 'email' | 'firstName' | 'lastName'>
+	>;
+	export type Password = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'password'>>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
 
 // ----------------------------------
 //      password reset requests
 // ----------------------------------
 
-declare namespace PasswordResetPayload {
-	type Email = Pick<PublicUser, 'email'>;
-	type NewPassword = Pick<PublicUser, 'password'> & { token?: string; id?: string };
-}
-
-declare namespace PasswordResetQuery {
-	type Credentials = { userId?: string; token?: string };
-}
-
 export declare namespace PasswordResetRequest {
-	export type Email = AuthenticatedRequest<PasswordResetPayload.Email>;
-	export type Credentials = AuthenticatedRequest<{}, PasswordResetQuery.Credentials>;
-	export type NewPassword = AuthenticatedRequest<PasswordResetPayload.NewPassword>;
+	export type Email = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'email'>>;
+
+	export type Credentials = AuthenticatedRequest<{}, {}, {}, { userId?: string; token?: string }>;
+
+	export type NewPassword = AuthenticatedRequest<
+		{},
+		{},
+		Pick<PublicUser, 'password'> & { token?: string; id?: string }
+	>;
 }
 
 // ----------------------------------
-//      users requests
+//        requests to /users
 // ----------------------------------
-
-declare namespace UserPayload {
-	type Invitations = Array<{ email: string }>;
-}
-
-declare namespace UserQuery {
-	type Signup = { inviterId?: string; inviteeId?: string };
-	type Deletion = { transferId?: string };
-}
 
 export declare namespace UserRequest {
-	export type Invites = AuthenticatedRequest<UserPayload.Invitations>;
-	export type Signup = AuthenticatedRequest<{}, UserQuery.Signup>;
-	export type Deletion = AuthenticatedRequest<{}, UserQuery.Deletion, { id: string }>;
-	export type Reinvite = AuthenticatedRequest<{}, {}, { id: string }>;
+	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
+
+	export type SignUp = AuthenticatedRequest<
+		{ id: string },
+		{ inviterId?: string; inviteeId?: string }
+	>;
+
+	export type Delete = AuthenticatedRequest<{ id: string }, {}, {}, { transferId?: string }>;
+
+	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 }

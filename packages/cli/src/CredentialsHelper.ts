@@ -18,7 +18,6 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
 import { CredentialsOverwrites, CredentialTypes, Db, ICredentialsDb, WhereClause } from '.';
 import { User } from './databases/entities/User';
 

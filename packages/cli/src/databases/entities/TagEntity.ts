@@ -39,7 +39,7 @@ export class TagEntity implements ITagDb {
 	@Column({ length: 24 })
 	@Index({ unique: true })
 	@IsString({ message: 'Tag name must be of type string.' })
-	@Length(1, 24, { message: 'Tag name must be 1 to 24 characters long.' })
+	@Length(1, 24, { message: 'Tag name must be $constraint1 to $constraint2 characters long.' })
 	name: string;
 
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
