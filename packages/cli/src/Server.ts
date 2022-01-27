@@ -177,6 +177,7 @@ import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpe
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { SharedCredentials } from './databases/entities/SharedCredentials';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1571,7 +1572,7 @@ class App {
 				const encryptionKey = await UserSettings.getEncryptionKey();
 
 				if (!encryptionKey) {
-					throw new Error('No encryption key was found to encrypt the credential!');
+					throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 				}
 
 				// Encrypt the data
@@ -1746,7 +1747,7 @@ class App {
 				const encryptionKey = await UserSettings.getEncryptionKey();
 
 				if (!encryptionKey) {
-					throw new Error('No encryption key was found to encrypt the credential!');
+					throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 				}
 
 				const coreCredential = new Credentials(
@@ -1840,7 +1841,7 @@ class App {
 				const encryptionKey = await UserSettings.getEncryptionKey();
 
 				if (!encryptionKey) {
-					throw new Error('No encryption key was found to decrypt the credentials!');
+					throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 				}
 
 				const coreCredential = new Credentials(
@@ -1900,7 +1901,7 @@ class App {
 						encryptionKey = await UserSettings.getEncryptionKey();
 
 						if (!encryptionKey) {
-							throw new Error('No encryption key was found to decrypt the credentials!');
+							throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 						}
 					}
 
@@ -1989,14 +1990,18 @@ class App {
 					const credential = await getCredentialForUser(credentialId, req.user);
 
 					if (!credential) {
-						throw new ResponseHelper.ResponseError('The credential is not known', undefined, 404);
+						throw new ResponseHelper.ResponseError(
+							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
+							undefined,
+							404,
+						);
 					}
 
 					const encryptionKey = await UserSettings.getEncryptionKey();
 
 					if (!encryptionKey) {
 						throw new ResponseHelper.ResponseError(
-							'No encryption key found to decrypt the credentials',
+							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 							undefined,
 							500,
 						);
@@ -2106,7 +2111,7 @@ class App {
 
 					if (!credential) {
 						const errorResponse = new ResponseHelper.ResponseError(
-							'The credential is not known.',
+							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
 							undefined,
 							404,
 						);
@@ -2117,7 +2122,7 @@ class App {
 
 					if (!encryptionKey) {
 						const errorResponse = new ResponseHelper.ResponseError(
-							'No encryption key found to decrypt the credentials!',
+							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 							undefined,
 							503,
 						);
@@ -2208,14 +2213,18 @@ class App {
 					const credential = await getCredentialForUser(credentialId, req.user);
 
 					if (!credential) {
-						throw new ResponseHelper.ResponseError('The credential is not known', undefined, 404);
+						throw new ResponseHelper.ResponseError(
+							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
+							undefined,
+							404,
+						);
 					}
 
 					const encryptionKey = await UserSettings.getEncryptionKey();
 
 					if (!encryptionKey) {
 						throw new ResponseHelper.ResponseError(
-							'No encryption key found to decrypt the credentials',
+							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 							undefined,
 							500,
 						);
@@ -2335,7 +2344,7 @@ class App {
 
 					if (!credential) {
 						const errorResponse = new ResponseHelper.ResponseError(
-							'The credential is not known.',
+							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
 							undefined,
 							404,
 						);
@@ -2346,7 +2355,7 @@ class App {
 
 					if (!encryptionKey) {
 						const errorResponse = new ResponseHelper.ResponseError(
-							'No encryption key got found to decrypt the credentials!',
+							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 							undefined,
 							503,
 						);
