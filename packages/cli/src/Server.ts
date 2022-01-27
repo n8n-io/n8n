@@ -1269,7 +1269,6 @@ class App {
 
 					if (req.query.credentials) {
 						credentials = JSON.parse(req.query.credentials);
-						// TODO UM: restrict user access to credentials he cannot use.
 					}
 
 					const loadDataInstance = new LoadNodeParameterOptions(
