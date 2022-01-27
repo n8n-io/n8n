@@ -21,7 +21,7 @@ export default mixins(
 			return;
 		}
 		this.alert = this.$showAlert({
-			message: `Set up SMTP before adding users (so that n8n can send them invitation emails). <a target="_blank" href="https://docs.n8n.io/reference/user-management#smtp">Instructions</a>.`,
+			message: `Set up SMTP before adding users (so that n8n can send them invitation emails). <a target="_blank" href="https://docs.n8n.io/reference/user-management#smtp">Instructions</a>`,
 			type: 'warning',
 			duration: 0,
 			showClose: true,
