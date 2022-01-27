@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 import { webhookMapping } from '../WebhookMapping';
 
-export const webhookOperations = [
+export const webhookOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -32,14 +32,14 @@ export const webhookOperations = [
 		],
 		default: 'getAll',
 	},
-] as INodeProperties[];
+];
 
 const urlField = {
 	displayName: 'Url',
 	name: 'url',
 	type: 'string',
 	default: '',
-	description: 'The URL that Onfleet should issue a request against as soon as the trigger condition is met. It must be HTTPS and have a valid certificate',
+	description: 'The URL that Onfleet should issue a request against as soon as the trigger condition is met. It must be HTTPS and have a valid certificate.',
 } as INodeProperties;
 
 const nameField = {
@@ -65,11 +65,11 @@ const thresholdField = {
 	displayName: 'Threshold',
 	name: 'threshold',
 	type: 'number',
-	default: '',
+	default: 0,
 	description: 'For trigger Task Eta, the time threshold in seconds; for trigger Task Arrival, the distance threshold in meters',
 } as INodeProperties;
 
-export const webhookFields = [
+export const webhookFields: INodeProperties[] = [
 	{
 		displayName: 'Webhook ID',
 		name: 'id',
@@ -128,4 +128,4 @@ export const webhookFields = [
 		},
 		options: [ thresholdField ],
 	},
-] as INodeProperties[];
+];

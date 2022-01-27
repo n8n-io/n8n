@@ -1,9 +1,13 @@
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
+	NodeOperationError,
 } from 'n8n-workflow';
 import * as moment from 'moment-timezone';
 
@@ -41,6 +45,7 @@ import { workerFields, workerOperations } from './descriptions/WorkerDescription
 import { webhookFields, webhookOperations } from './descriptions/WebhookDescription';
 import { containerFields, containerOperations } from './descriptions/ContainerDescription';
 import { teamFields, teamOperations } from './descriptions/TeamDescription';
+import { OptionsWithUri } from 'request';
 
 export class Onfleet implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,8 +57,10 @@ export class Onfleet implements INodeType {
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Onfleet API',
 			defaults: {
-					name: 'Onfleet',
 					color: '#AA81F3',
+					description: 'Use the Onfleet API',
+					name: 'Onfleet',
+					testedBy: 'onfeletApiTest',
 			},
 			inputs: [ 'main' ],
 			outputs: [ 'main' ],
@@ -139,6 +146,36 @@ export class Onfleet implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async onfeletApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data as IDataObject;
+				const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
+
+				const options: OptionsWithUri = {
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': `Basic ${encodedApiKey}`,
+						'User-Agent': 'n8n-onfleet',
+					},
+					method: 'GET',
+					uri: 'https://onfleet.com/api/v2/auth/test',
+					json: true,
+				};
+
+				try {
+					await this.helpers.request(options);
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
+					};
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Settings are not valid: ${error}`,
+					};
+				}
+			},
+		},
 		loadOptions: resourceLoaders,
 	};
 
@@ -676,7 +713,11 @@ export class Onfleet implements INodeType {
 			const hasPickUp = pickup && Object.keys(pickup).length > 0;
 			const hasDropoff = dropoff && Object.keys(dropoff).length > 0;
 
-			if (!hasPickUp && !hasDropoff) throw new Error('At least 1 of dropoffLocation or pickupLocation must be selected');
+			if (!hasPickUp && !hasDropoff) {
+				throw new NodeOperationError(
+					this.getNode(), 'At least 1 of dropoffLocation or pickupLocation must be selected',
+				);
+			}
 
 			const workerTimeEstimates = {} as OnfleetWorkerEstimates;
 			if (hasPickUp) {

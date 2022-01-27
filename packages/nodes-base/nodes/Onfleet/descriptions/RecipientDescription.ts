@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const recipientOperations = [
+export const recipientOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -31,9 +31,9 @@ export const recipientOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-const additionalRecipientFields = [
+const additionalRecipientFields: INodeProperties[] = [
 	{
 		displayName: 'Recipient Notes',
 		name: 'recipientNotes',
@@ -69,11 +69,11 @@ const recipientPhone = {
 	displayName: 'Recipient Phone',
 	name: 'recipientPhone',
 	type: 'string',
-	description: 'A unique, valid phone number as per the organization\'s country if there\'s no leading + sign. If a phone number has a leading + sign, it will disregard the organization\'s country setting',
+	description: 'A unique, valid phone number as per the organization\'s country if there\'s no leading + sign. If a phone number has a leading + sign, it will disregard the organization\'s country setting.',
 	default: '',
 } as INodeProperties;
 
-const updateFields = [
+const updateFields: INodeProperties[] = [
 	{
 		...recipientName,
 		required: false,
@@ -137,7 +137,7 @@ export const recipientExternalField = {
 	],
 } as INodeProperties;
 
-export const recipientFields = [
+export const recipientFields: INodeProperties[] = [
 	{
 		displayName: 'Get By',
 		name: 'getBy',
@@ -273,4 +273,4 @@ export const recipientFields = [
 		},
 		options: updateFields,
 	},
-] as INodeProperties[];
+];

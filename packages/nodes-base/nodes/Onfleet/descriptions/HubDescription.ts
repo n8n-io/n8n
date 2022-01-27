@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 import { destinationExternalField } from './DestinationDescription';
 
-export const hubOperations = [
+export const hubOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -20,7 +20,7 @@ export const hubOperations = [
 				description: 'Create a new Onfleet hub',
 			},
 			{
-				name: 'Get all',
+				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all Onfleet hubs',
 			},
@@ -32,7 +32,7 @@ export const hubOperations = [
 		],
 		default: 'getAll',
 	},
-] as INodeProperties[];
+];
 
 const nameField = {
 	displayName: 'Name',
@@ -53,7 +53,7 @@ const teamsField = {
 	description: 'These are the teams that this Hub will be assigned to',
 } as INodeProperties;
 
-export const hubFields = [
+export const hubFields: INodeProperties[] = [
 	{
 		displayName: 'Hub ID',
 		name: 'id',
@@ -105,7 +105,7 @@ export const hubFields = [
 		options: [
 			{
 				...teamsField,
-				require: false,
+				required: false,
 			},
 		],
 	},
@@ -129,4 +129,4 @@ export const hubFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

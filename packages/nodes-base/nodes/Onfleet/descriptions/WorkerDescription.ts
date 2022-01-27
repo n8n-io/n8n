@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const workerOperations = [
+export const workerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -51,14 +51,14 @@ export const workerOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
 const byLocationField = {
-	displayName: 'Search by location',
+	displayName: 'Search By Location',
 	name: 'byLocation',
 	type: 'boolean',
 	default: false,
-	description: 'Search workers who are currently within a certain target area',
+	description: 'Whether searching workers who are currently within a certain target area or not',
 } as INodeProperties;
 
 const nameField = {
@@ -171,15 +171,15 @@ const statesFilterField = {
 	type: 'multiOptions',
 	options: [
 		{
-			name: 'Active (on-duty, active task)',
+			name: 'Active (On-Duty, Active Task)',
 			value: 2,
 		},
 		{
-			name: 'Idle (on-duty, no active task)',
+			name: 'Idle (On-Duty, No Active Task)',
 			value: 1,
 		},
 		{
-			name: 'Off-duty',
+			name: 'Off-Duty',
 			value: 0,
 		},
 	],
@@ -245,7 +245,7 @@ const filterField = {
 			value: 'onDuty',
 		},
 		{
-			name: 'organization',
+			name: 'Organization',
 			value: 'organization',
 		},
 		{
@@ -296,7 +296,7 @@ const longitudeFilterField = {
 	typeOptions: {
 		numberPrecision: 14,
 	},
-	default: '',
+	default: 0,
 	description: 'The longitude component of the coordinate pair',
 } as INodeProperties;
 
@@ -307,7 +307,7 @@ const latitudeFilterField = {
 	typeOptions: {
 		numberPrecision: 14,
 	},
-	default: '',
+	default: 0,
 	description: 'The latitude component of the coordinate pair',
 } as INodeProperties;
 
@@ -320,7 +320,7 @@ const radiusFilterField = {
 		minValue: 0,
 	},
 	default: 1000,
-	description: 'The length in meters of the radius of the spherical area in which to look for workers. Defaults to 1000 if missing. Maximum value is 10000',
+	description: 'The length in meters of the radius of the spherical area in which to look for workers. Defaults to 1000 if missing. Maximum value is 10000.',
 } as INodeProperties;
 
 const scheduleDateField = {
@@ -358,7 +358,7 @@ const scheduleEndField = {
 	description: 'End time',
 } as INodeProperties;
 
-export const workerFields = [
+export const workerFields: INodeProperties[] = [
 	{
 		...byLocationField,
 		required: true,
@@ -625,7 +625,7 @@ export const workerFields = [
 				type: 'boolean',
 				default: true,
 				required: false,
-				description: 'A more detailed response, includes basic worker duty event, traveled distance (meters) and time analytics',
+				description: 'Whether a more detailed response is needed, includes basic worker duty event, traveled distance (meters) and time analytics',
 			},
 		],
 	},
@@ -689,4 +689,4 @@ export const workerFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

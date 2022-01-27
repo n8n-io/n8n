@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const adminOperations = [
+export const adminOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,7 +24,7 @@ export const adminOperations = [
 				description: 'Delete an Onfleet admin',
 			},
 			{
-				name: 'Get all',
+				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all Onfleet admins',
 			},
@@ -36,7 +36,7 @@ export const adminOperations = [
 		],
 		default: 'getAll',
 	},
-] as INodeProperties[];
+];
 
 const adminNameField = {
 	displayName: 'Name',
@@ -63,14 +63,14 @@ const adminPhoneField = {
 } as INodeProperties;
 
 const adminReadOnlyField = {
-	displayName: 'Read only',
+	displayName: 'Read Only',
 	name: 'isReadOnly',
 	type: 'boolean',
 	default: false,
 	description: 'Whether this administrator can perform write operations',
 } as INodeProperties;
 
-export const adminFields = [
+export const adminFields: INodeProperties[] = [
 	{
 		displayName: 'Admin ID',
 		name: 'id',
@@ -145,4 +145,4 @@ export const adminFields = [
 			adminReadOnlyField,
 		],
 	},
-] as INodeProperties[];
+];

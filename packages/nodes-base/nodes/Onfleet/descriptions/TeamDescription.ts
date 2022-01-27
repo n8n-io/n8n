@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const teamOperations = [
+export const teamOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,12 +34,12 @@ export const teamOperations = [
 				description: 'Get a specific Onfleet team',
 			},
 			{
-				name: 'Get all',
+				name: 'Get All',
 				value: 'getAll',
 				description: 'List all Onfleet teams',
 			},
 			{
-				name: 'Get time estimates',
+				name: 'Get Time Estimates',
 				value: 'getTimeEstimates',
 				description: 'The Driver Time Estimates endpoint allows an API user to get estimated times for tasks that haven\'t been created yet',
 			},
@@ -51,7 +51,7 @@ export const teamOperations = [
 		],
 		default: 'getAll',
 	},
-] as INodeProperties[];
+];
 
 const nameField = {
 	displayName: 'Name',
@@ -99,7 +99,7 @@ const enableSelfAssignmentField = {
 	name: 'enableSelfAssignment',
 	type: 'boolean',
 	default: false,
-	description: 'This toggles Team Self-Assignment that allows Drivers to Self Assign Tasks that are in the Team unassigned container',
+	description: 'Whether allows Drivers to Self Assign Tasks that are in the Team unassigned container or not',
 } as INodeProperties;
 
 const maxTasksPerRouteField = {
@@ -138,7 +138,7 @@ const maxAllowedDelayField = {
 	name: 'maxAllowedDelay',
 	type: 'number',
 	default: 10,
-	description: '',
+	description: 'Max allowed time in minutes that a task can be late',
 	typeOptions: {
 		minValue: 1,
 	},
@@ -151,7 +151,7 @@ const longitudeDropoffField = {
 	typeOptions: {
 		numberPrecision: 14,
 	},
-	default: '',
+	default: 0,
 	description: 'The longitude for dropoff location',
 } as INodeProperties;
 
@@ -162,7 +162,7 @@ const latitudeDropoffField = {
 	typeOptions: {
 		numberPrecision: 14,
 	},
-	default: '',
+	default: 0,
 	description: 'The latitude for dropoff location',
 } as INodeProperties;
 
@@ -173,7 +173,7 @@ const longitudePickupField = {
 	typeOptions: {
 		numberPrecision: 14,
 	},
-	default: '',
+	default: 0,
 	description: 'The longitude for pickup location',
 } as INodeProperties;
 
@@ -184,7 +184,7 @@ const latitudePickupField = {
 	typeOptions: {
 		numberPrecision: 14,
 	},
-	default: '',
+	default: 0,
 	description: 'The latitude for pickup location',
 } as INodeProperties;
 
@@ -233,7 +233,7 @@ const serviceTimeEstimateField = {
 	description: 'The expected time a worker will take at the pickupLocation, dropoffLocation, or both (as applicable) Unit: seconds',
 } as INodeProperties;
 
-export const teamFields = [
+export const teamFields: INodeProperties[] = [
 	{
 		displayName: 'Team ID',
 		name: 'id',
@@ -488,4 +488,4 @@ export const teamFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

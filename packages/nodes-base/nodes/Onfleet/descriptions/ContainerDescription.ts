@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const containerOperations = [
+export const containerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -14,12 +14,12 @@ export const containerOperations = [
 		},
 		options: [
 			{
-				name: 'Insert tasks (or append)',
+				name: 'Insert Tasks (Or Append)',
 				value: 'add',
 				description: 'Insert tasks at index (or append)',
 			},
 			{
-				name: 'Update tasks',
+				name: 'Update Tasks',
 				value: 'update',
 				description: 'Fully replace a container\'s tasks',
 			},
@@ -31,7 +31,7 @@ export const containerOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
 const containerTypeField = {
 	displayName: 'Container Type',
@@ -77,7 +77,7 @@ const insertTypeField = {
 			value: 0,
 		},
 		{
-			name: 'At specific index',
+			name: 'At Specific Index',
 			value: 1,
 		},
 	],
@@ -113,7 +113,7 @@ const considerDependenciesField = {
 	description: 'Whether to include the target task\'s dependency family (parent and child tasks) in the resulting assignment operation',
 } as INodeProperties;
 
-export const containerFields = [
+export const containerFields: INodeProperties[] = [
 	{
 		...containerTypeField,
 		displayOptions: {
@@ -198,4 +198,4 @@ export const containerFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

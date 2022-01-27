@@ -4,7 +4,7 @@ import {
 import { destinationExternalField } from './DestinationDescription';
 import { recipientExternalField } from './RecipientDescription';
 
-export const taskOperations = [
+export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -21,7 +21,7 @@ export const taskOperations = [
 				description: 'Create a new Onfleet task',
 			},
 			{
-				name: 'Create multiple tasks',
+				name: 'Create Multiple Tasks',
 				value: 'createBatch',
 				description: 'Creating multiple tasks in batch',
 			},
@@ -59,7 +59,7 @@ export const taskOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
 const merchantIdField = {
 	displayName: 'Merchant ID',
@@ -125,7 +125,7 @@ const serviceTimeField = {
 	description: 'The number of minutes to be spent by the worker on arrival at this task\'s destination, for route optimization purposes',
 } as INodeProperties;
 
-export const taskFields = [
+export const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -184,6 +184,7 @@ export const taskFields = [
 		},
 		required: true,
 		description: 'Whether the task short ID is used for lookup',
+		default: false,
 	},
 	{
 		displayName: 'From',
@@ -195,7 +196,7 @@ export const taskFields = [
 				operation: [ 'getAll' ],
 			},
 		},
-		description: 'The starting time of the range. Tasks created or completed at or after this time will be included',
+		description: 'The starting time of the range. Tasks created or completed at or after this time will be included.',
 		required: true,
 		default: null,
 	},
@@ -231,7 +232,7 @@ export const taskFields = [
 				name: 'to',
 				type: 'dateTime',
 				default: null,
-				description: 'The ending time of the range. Defaults to current time if not specified',
+				description: 'The ending time of the range. Defaults to current time if not specified.',
 			},
 			{
 				displayName: 'State',
@@ -255,15 +256,15 @@ export const taskFields = [
 						value: 0,
 					},
 				],
-				default: null,
+				default: '',
 				description: 'The state of the tasks',
 			},
 			{
-				displayName: 'LastId',
+				displayName: 'Last ID',
 				name: 'lastId',
 				type: 'string',
-				default: null,
-				description: 'The last Id to walk the paginated response',
+				default: '',
+				description: 'The last ID to walk the paginated response',
 			},
 		],
 	},
@@ -284,19 +285,19 @@ export const taskFields = [
 				displayName: 'Include Metadata',
 				name: 'includeMetadata',
 				type: 'boolean',
-				default: null,
+				default: false,
 			},
 			{
 				displayName: 'Include Barcodes',
 				name: 'includeBarcodes',
 				type: 'boolean',
-				default: null,
+				default: false,
 			},
 			{
 				displayName: 'Include Dependencies',
 				name: 'includeDependencies',
 				type: 'boolean',
-				default: null,
+				default: false,
 			},
 			{
 				displayName: 'Overrides',
@@ -422,16 +423,16 @@ export const taskFields = [
 				displayName: 'Recipient Skip SMS Notifications Override',
 				name: 'recipientSkipSMSNotifications',
 				type: 'boolean',
-				default: '',
-				description: 'Override the recipient notification settings for this task only',
+				default: false,
+				description: 'Whether override the recipient notification settings for this task only or not',
 			},
 			{
 				displayName: 'Use Merchant For Proxy Override',
 				name: 'useMerchantForProxy',
 				type: 'boolean',
-				default: '',
-				description: 'Override the organization ID to use the merchant orgID when set to true for this task only',
+				default: false,
+				description: 'Whether override the organization ID to use the merchant orgID when set to true for this task only',
 			},
 		],
 	},
-] as INodeProperties[];
+];

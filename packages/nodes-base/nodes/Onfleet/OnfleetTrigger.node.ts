@@ -1,10 +1,13 @@
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 	NodeApiError,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 import {
@@ -15,6 +18,7 @@ import {
 import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
 import { onfleetApiRequest } from './GenericFunctions';
 import { webhookMapping } from './WebhookMapping';
+import { OptionsWithUri } from 'request';
 
 export class OnfleetTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,6 +32,7 @@ export class OnfleetTrigger implements INodeType {
 		defaults: {
 			name: 'Onfleet Trigger',
 			color: '#AA81F3',
+			description: 'Handle Onfleet events via webhooks',
 		},
 		inputs: [],
 		outputs: [ 'main' ],
@@ -55,6 +60,39 @@ export class OnfleetTrigger implements INodeType {
 			eventDisplay,
 			eventNameField,
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async onfeletApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data as IDataObject;
+				const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
+
+				const options: OptionsWithUri = {
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': `Basic ${encodedApiKey}`,
+						'User-Agent': 'n8n-onfleet',
+					},
+					method: 'GET',
+					uri: 'https://onfleet.com/api/v2/auth/test',
+					json: true,
+				};
+
+				try {
+					await this.helpers.request(options);
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
+					};
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Settings are not valid: ${error}`,
+					};
+				}
+			},
+		},
 	};
 
 	// @ts-ignore (because of request)

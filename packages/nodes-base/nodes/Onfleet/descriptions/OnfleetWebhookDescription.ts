@@ -28,7 +28,7 @@ export const eventNameField = {
 			name: 'name',
 			type: 'string',
 			required: false,
-			default: null,
+			default: '',
 			description: 'A name for the webhook for identification',
 		},
 	],

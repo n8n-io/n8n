@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const destinationOperations = [
+export const destinationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,7 +27,7 @@ export const destinationOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
 const unparsedField = {
 	displayName: 'Unparsed Address',
@@ -42,7 +42,7 @@ const unparsedAddressField = {
 	name: 'address',
 	type: 'string',
 	description: 'The destination\'s street address details',
-	default: null,
+	default: '',
 } as INodeProperties;
 
 const unparsedAddressNumberField = {
@@ -209,7 +209,7 @@ export const destinationExternalField = {
 	],
  } as INodeProperties;
 
-export const destinationFields = [
+export const destinationFields: INodeProperties[] = [
 	{
 		displayName: 'Destination ID',
 		name: 'id',
@@ -330,4 +330,4 @@ export const destinationFields = [
 			addressPostalCodeField,
 		],
 	},
-]  as INodeProperties[];
+];

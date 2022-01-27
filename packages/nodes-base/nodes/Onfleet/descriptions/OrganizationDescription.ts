@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const organizationOperations = [
+export const organizationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const organizationOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const organizationFields = [
+export const organizationFields: INodeProperties[] = [
 	{
 		displayName: 'Organiation ID',
 		name: 'id',
@@ -44,4 +44,4 @@ export const organizationFields = [
 		required: true,
 		description: 'The ID of the delegatees for lookup',
 	},
-] as INodeProperties[];
+];
