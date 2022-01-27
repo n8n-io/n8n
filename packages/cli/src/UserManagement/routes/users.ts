@@ -5,7 +5,6 @@ import { getConnection, In } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import { Db, GenericHelpers, ResponseHelper } from '../..';
-import { N8nApp, UserRequest } from '../Interfaces';
 import { AuthenticatedRequest } from '../../requests';
 import { N8nApp, UserRequest } from '../Interfaces';
 import { isEmailSetup, isValidEmail, sanitizeUser } from '../UserManagementHelper';
