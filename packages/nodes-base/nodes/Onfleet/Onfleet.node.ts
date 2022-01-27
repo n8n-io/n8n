@@ -144,11 +144,11 @@ export class Onfleet implements INodeType {
 
 	static formatAddress (
 		unparsed: boolean,
-		address: string,
-		addressNumber: string,
-		addressStreet: string,
-		addressCity: string,
-		addressCountry: string,
+		address: string | undefined,
+		addressNumber: string | undefined,
+		addressStreet: string | undefined,
+		addressCity: string | undefined,
+		addressCountry: string | undefined,
 		additionalFields: IDataObject,
 	): OnfleetDestination {
 		let destination: OnfleetDestination;
@@ -218,13 +218,17 @@ export class Onfleet implements INodeType {
 					additionalFields as IDataObject,
 				) as OnfleetDestination;
 			} else {
-				const unparsed = this.getNodeParameter('unparsed', item) as boolean;
-				const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
-				const address = this.getNodeParameter('address', item) as string;
-				const addressNumber = this.getNodeParameter('addressNumber', item) as string;
-				const addressStreet = this.getNodeParameter('addressStreet', item) as string;
-				const addressCity = this.getNodeParameter('addressCity', item) as string;
-				const addressCountry = this.getNodeParameter('addressCountry', item) as string;
+				let unparsed, address, addressNumber, addressStreet, addressCity, addressCountry, additionalFields;
+				unparsed = this.getNodeParameter('unparsed', item) as boolean;
+				if (unparsed) {
+					address = this.getNodeParameter('address', item) as string;
+				} else {
+					addressNumber = this.getNodeParameter('addressNumber', item) as string;
+					addressStreet = this.getNodeParameter('addressStreet', item) as string;
+					addressCity = this.getNodeParameter('addressCity', item) as string;
+					addressCountry = this.getNodeParameter('addressCountry', item) as string;
+				}
+				additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
 
 				return Onfleet.formatAddress(
 					unparsed, address, addressNumber, addressStreet, addressCity, addressCountry, additionalFields,
@@ -484,8 +488,8 @@ export class Onfleet implements INodeType {
 					);
 				}
 			} else {
-				const name = this.getNodeParameter('name', item) as string;
-				const phone = this.getNodeParameter('phone', item) as string;
+				const name = this.getNodeParameter('recipientName', item) as string;
+				const phone = this.getNodeParameter('recipientPhone', item) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
 				return Onfleet.formatRecipient(name, phone, additionalFields) as OnfleetRecipient;
 			}
