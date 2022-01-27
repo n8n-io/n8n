@@ -22,17 +22,15 @@ import { issueCookie, issueJWT } from '../auth/jwt';
 import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
+import { isNotTestRun } from '../../databases/MigrationHelpers';
 
-export async function addRoutes(
-	this: N8nApp,
-	ignoredEndpoints: string[],
-	restEndpoint: string,
-): Promise<void> {
+export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	this.app.use(cookieParser());
 
 	const options = {
 		jwtFromRequest: (req: Request) => {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			console.log('cookie', req.cookies?.['n8n-auth']);
 			return (req.cookies?.['n8n-auth'] as string | undefined) ?? null;
 		},
 		secretOrKey: config.get('userManagement.jwtSecret') as string,
@@ -40,6 +38,7 @@ export async function addRoutes(
 
 	passport.use(
 		new Strategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
+			console.log('jwtPayload', jwtPayload);
 			// We will assign the `sub` property on the JWT to the database ID of user
 			const user = await Db.collections.User!.findOne(jwtPayload.id, { relations: ['globalRole'] });
 
@@ -76,6 +75,8 @@ export async function addRoutes(
 			return next();
 		}
 
+		// https://stackoverflow.com/questions/14001183/how-to-authenticate-supertest-requests-with-passport
+
 		for (let i = 0; i < ignoredEndpoints.length; i++) {
 			const path = ignoredEndpoints[i];
 			if (!path) {
@@ -87,6 +88,7 @@ export async function addRoutes(
 				return next();
 			}
 		}
+
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
@@ -130,10 +132,12 @@ export async function addRoutes(
 		next();
 	});
 
-	authenticationMethods.apply(this);
-	meNamespace.apply(this);
-	passwordResetNamespace.apply(this);
-	usersNamespace.apply(this);
+	if (isNotTestRun) {
+		authenticationMethods.apply(this);
+		meNamespace.apply(this);
+		passwordResetNamespace.apply(this);
+		usersNamespace.apply(this);
+	}
 
 	// ----------------------------------------
 	// Temporary code below - must be refactored

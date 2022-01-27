@@ -1,61 +1,71 @@
-import { createConnection, getConnection, getRepository } from "typeorm";
-import { Db } from "../src";
-import { entities } from "../src/databases/entities";
-import { Role } from "../src/databases/entities/Role";
-import { User } from "../src/databases/entities/User";
-import { sqliteMigrations } from "../src/databases/sqlite/migrations";
+import { createConnection, getConnection } from 'typeorm';
+import { entities } from '../src/databases/entities';
+import { sqliteMigrations } from '../src/databases/sqlite/migrations';
 import * as request from 'supertest';
-import * as app from '../src/Server';
+import * as config from '../config';
+import express = require('express');
+import { meNamespace } from '../src/UserManagement/routes/me';
+import { userManagementRouter } from '../src/UserManagement';
 
-// describe('Placeholder', () => {
-// 	test('example', () => {
-// 		expect(1 + 1).toEqual(2);
-// 	});
-// });
+const REST_ENDPOINT = config.get('endpoints.rest') as string;
 
-const TEST_USER_EMAIL = 'test@n8n.io';
+const IGNORED_ENDPOINTS = [
+	'healthz',
+	'metrics',
+	config.get('endpoints.webhook') as string,
+	config.get('endpoints.webhookWaiting') as string,
+	config.get('endpoints.webhookTest') as string,
+];
 
-describe('', () => {
+describe('/me namespace', () => {
+	let server: {
+		app: express.Application,
+		restEndpoint: string;
+	};
+
 	beforeEach(async () => {
+		server = {
+			app: express(),
+			restEndpoint: REST_ENDPOINT,
+		};
+
+		meNamespace.apply(server);
+
+		config.set('userManagement.jwtSecret', 'My JWT secret');
+
+		// TODO: passport middleware not protecting /me
+		userManagementRouter.addRoutes.apply(server, [IGNORED_ENDPOINTS, REST_ENDPOINT]);
+
 		const connection = await createConnection({
 			type: 'sqlite',
 			database: ':memory:',
-			migrations: sqliteMigrations,
-			entities: Object.values(entities),
 			dropSchema: true,
+			entities: Object.values(entities),
+			migrations: sqliteMigrations,
 			migrationsRun: false,
 			logging: false,
 		});
 
-		await connection.runMigrations({
-			transaction: 'none',
-		});
+		await connection.runMigrations({ transaction: 'none' });
 	});
 
 	afterEach(() => {
-		const connection = getConnection();
-		return connection.close();
+		getConnection().close();
 	});
 
-	// test('store user and fetch it', async () => {
-	// 	const role = await getRepository(Role).findOne({ scope: 'global', name: 'member' });
-	// 	await getRepository(User).save({ email: TEST_USER_EMAIL, globalRole: role });
+	test('GET /me should return 401 Unauthorized if not logged in', async () => {
+		// console.log(appObj.app._router.stack);
 
-	// 	const fetchedUser = await getRepository(User).findOneOrFail({
-	// 		where: { email: TEST_USER_EMAIL },
-	// 	});
+		server.app._router.stack.forEach((r: { route: { path: string} }) => {
+			if (r?.route?.path) console.log(r.route.path);
+		});
 
-	// 	console.log(fetchedUser);
+		const response = await request(server.app).get(`/${REST_ENDPOINT}/me`);
 
-	// 	expect(fetchedUser.email).toBe(TEST_USER_EMAIL);
-	// 	expect(fetchedUser.id).toBeDefined();
-	// });
+		// const response = await request(server.app).patch(`/${REST_ENDPOINT}/me/password`);
 
-	// test('test using supertest', async () => {
-	// 	request(app)
-	// 		.get('/me')
-	// 		.expect('Content-Type', /json/)
-	// 		.expect(200)
-	// 		.end();
-	// });
+		console.log(response.statusCode);
+
+		expect(response.statusCode).toBe(401);
+	});
 });

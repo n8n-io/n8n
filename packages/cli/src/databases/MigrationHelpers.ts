@@ -37,3 +37,5 @@ export class MigrationHelpers {
 		`;
 	}
 }
+
+export const isNotTestRun = process.argv[1].split('/').pop() !== 'jest';
