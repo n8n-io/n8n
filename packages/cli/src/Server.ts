@@ -1583,8 +1583,6 @@ class App {
 
 				await this.externalHooks.run('credentials.create', [encryptedData]);
 
-				// let savedCredential: undefined | CredentialsEntity;
-
 				const role = await Db.collections.Role!.findOneOrFail({
 					name: 'owner',
 					scope: 'credential',
