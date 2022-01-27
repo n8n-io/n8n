@@ -1,5 +1,5 @@
 <template functional>
-	<span>
+	<span :class="$style.container">
 		<component
 			v-if="props.firstName"
 			:is="$options.components.Avatar"
@@ -62,6 +62,10 @@ export default {
 </script>
 
 <style lang="scss" module>
+.container {
+	display: contents;
+}
+
 .empty {
 	border-radius: 50%;
 	background-color: var(--color-foreground-dark);
