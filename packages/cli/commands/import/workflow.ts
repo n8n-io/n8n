@@ -32,8 +32,8 @@ export class ImportWorkflowsCommand extends Command {
 	static examples = [
 		'$ n8n import:workflow --input=file.json',
 		'$ n8n import:workflow --separate --input=backups/latest/',
-		'$ n8n import:workflow --input=file.json --id=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
-		'$ n8n import:workflow --separate --input=backups/latest/ --id=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'$ n8n import:workflow --input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'$ n8n import:workflow --separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 	];
 
 	static flags = {
@@ -45,7 +45,7 @@ export class ImportWorkflowsCommand extends Command {
 		separate: flags.boolean({
 			description: 'Imports *.json files from directory provided by --input',
 		}),
-		id: flags.string({
+		userId: flags.string({
 			description: 'The ID of the user to assign the imported workflows to',
 		}),
 	};
@@ -78,7 +78,7 @@ export class ImportWorkflowsCommand extends Command {
 			await Db.init();
 
 			await this.initOwnerWorkflowRole();
-			const user = flags.id ? await this.getAssignee(flags.id) : await this.getOwner();
+			const user = flags.userId ? await this.getAssignee(flags.userId) : await this.getOwner();
 
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
@@ -200,11 +200,11 @@ export class ImportWorkflowsCommand extends Command {
 		return owner;
 	}
 
-	private async getAssignee(id: string) {
-		const user = await Db.collections.User!.findOne(id);
+	private async getAssignee(userId: string) {
+		const user = await Db.collections.User!.findOne(userId);
 
 		if (!user) {
-			throw new Error(`Failed to find user with ID ${id}`);
+			throw new Error(`Failed to find user with ID ${userId}`);
 		}
 
 		return user;
