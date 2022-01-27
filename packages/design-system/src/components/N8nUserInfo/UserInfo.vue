@@ -13,7 +13,7 @@
 		</div>
 		<div v-else :class="$style.pendingUser">
 			<n8n-text :bold="true">{{user.email}}</n8n-text>
-			<span :class="$style.pendingBadge"><n8n-badge>Pending</n8n-badge></span>
+			<span :class="$style.pendingBadge"><n8n-badge :bold="true">Pending</n8n-badge></span>
 		</div>
 	</div>
 </template>
