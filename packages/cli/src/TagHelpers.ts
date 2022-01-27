@@ -2,9 +2,6 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable import/no-cycle */
 import { getConnection } from 'typeorm';
-import { validate } from 'class-validator';
-
-import { ResponseHelper } from '.';
 
 import { TagEntity } from './databases/entities/TagEntity';
 
@@ -27,23 +24,6 @@ export function sortByRequestOrder(
 	}, {});
 
 	return requestOrder.map((tagId) => tagMap[tagId]);
-}
-
-// ----------------------------------
-//           validators
-// ----------------------------------
-
-/**
- * Validate a new tag based on `class-validator` constraints.
- */
-export async function validateTag(newTag: TagEntity) {
-	const errors = await validate(newTag);
-
-	if (errors.length) {
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
-		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
-	}
 }
 
 // ----------------------------------

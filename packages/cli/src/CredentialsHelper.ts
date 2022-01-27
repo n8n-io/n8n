@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 import { Credentials } from 'n8n-core';
 
 import {
@@ -16,7 +17,6 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
 import { CredentialsOverwrites, CredentialTypes, Db, ICredentialsDb } from '.';
 
 const mockNodeTypes: INodeTypes = {

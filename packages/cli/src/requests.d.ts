@@ -1,7 +1,13 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
+import {
+	IConnections,
+	ICredentialDataDecryptedObject,
+	ICredentialNodeAccess,
+	INode,
+	IWorkflowSettings,
+} from '../../workflow/dist/src';
 import { IExecutionDeleteFilter } from '.';
-import { IConnections, INode, IWorkflowSettings } from '../../workflow/dist/src';
 import { User } from './databases/entities/User';
 
 export type AuthenticatedRequest<
@@ -57,7 +63,7 @@ type UpdateWorkflowPayload = Partial<{
 
 export declare namespace WorkflowRequest {
 	type Payload = Partial<{
-		id: string; // delete if sent in body
+		id: string; // delete if sent
 		name: string;
 		nodes: INode[];
 		connections: IConnections;
@@ -81,4 +87,30 @@ export declare namespace WorkflowRequest {
 	type GetAllActive = AuthenticatedRequest;
 
 	type GetAllActivationErrors = Get;
+}
+
+// ----------------------------------
+//      requests to /credentials
+// ----------------------------------
+
+export declare namespace CredentialRequest {
+	type Payload = Partial<{
+		id: string; // delete if sent
+		name: string;
+		type: string;
+		nodesAccess: ICredentialNodeAccess[];
+		data: ICredentialDataDecryptedObject;
+	}>;
+
+	type Create = AuthenticatedRequest<{}, {}, Payload>;
+
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
+
+	type Delete = Get;
+
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string; includeData: string }>;
+
+	type Update = AuthenticatedRequest<{ id: string }, {}, Payload>;
+
+	type NewName = WorkflowRequest.NewName;
 }

@@ -117,10 +117,7 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
-	IActivationError,
 	ICredentialsDb,
-	ICredentialsDecryptedDb,
-	ICredentialsDecryptedResponse,
 	ICredentialsOverwrite,
 	ICredentialsResponse,
 	ICustomRequest,
@@ -158,21 +155,21 @@ import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
 import * as PersonalizationSurvey from './PersonalizationSurvey';
-import * as UserManagementHelpers from './UserManagement/UserManagementHelper';
 
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { getSharedWorkflowIds, whereClause, NameRequest } from './WorkflowHelpers';
+import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 
 import { userManagementRouter } from './UserManagement';
 import { User } from './databases/entities/User';
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
-import { ExecutionRequest, WorkflowRequest } from './requests';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from './GenericHelpers';
+import type { CredentialRequest, ExecutionRequest, WorkflowRequest } from './requests';
+import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import { SharedCredentials } from './databases/entities/SharedCredentials';
 
 require('body-parser-xml')(bodyParser);
 
@@ -701,7 +698,7 @@ class App {
 
 				Object.assign(newWorkflow, req.body);
 
-				await WorkflowHelpers.validateWorkflow(newWorkflow);
+				await validateEntity(newWorkflow);
 
 				await this.externalHooks.run('workflow.create', [newWorkflow]);
 
@@ -962,7 +959,7 @@ class App {
 				// required due to atomic update
 				updateData.updatedAt = this.getCurrentDate();
 
-				await WorkflowHelpers.validateWorkflow(updateData);
+				await validateEntity(updateData);
 
 				await Db.collections.Workflow!.update(workflowId, updateData);
 
@@ -1179,7 +1176,7 @@ class App {
 
 					await this.externalHooks.run('tag.beforeCreate', [newTag]);
 
-					await TagHelpers.validateTag(newTag);
+					await validateEntity(newTag);
 					const tag = await Db.collections.Tag!.save(newTag);
 
 					await this.externalHooks.run('tag.afterCreate', [tag]);
@@ -1205,7 +1202,7 @@ class App {
 
 					await this.externalHooks.run('tag.beforeUpdate', [newTag]);
 
-					await TagHelpers.validateTag(newTag);
+					await validateEntity(newTag);
 					const tag = await Db.collections.Tag!.save(newTag);
 
 					await this.externalHooks.run('tag.afterUpdate', [tag]);
@@ -1508,35 +1505,40 @@ class App {
 
 		this.app.get(
 			`/${this.restEndpoint}/credentials/new`,
-			ResponseHelper.send(
-				async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
-					const requestedName =
-						req.query.name && req.query.name !== '' ? req.query.name : this.defaultCredentialsName;
+			ResponseHelper.send(async (req: WorkflowRequest.NewName): Promise<{ name: string }> => {
+				const requestedName =
+					req.query.name && req.query.name !== '' ? req.query.name : this.defaultCredentialsName;
 
-					return await GenericHelpers.generateUniqueName(requestedName, 'credentials');
-				},
-			),
+				return await GenericHelpers.generateUniqueName(requestedName, 'credentials');
+			}),
 		);
 
 		// Deletes a specific credential
 		this.app.delete(
 			`/${this.restEndpoint}/credentials/:id`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-				const { id } = req.params;
+			ResponseHelper.send(async (req: CredentialRequest.Delete) => {
+				const { id: credentialId } = req.params;
 
-				const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-				queryBuilder.andWhere('c.id = :id', { id });
-				queryBuilder.innerJoin('c.shared', 'shared', 'shared.userId = :userId', {
-					userId: (req.user as User).id,
+				const shared = await Db.collections.SharedCredentials!.findOne({
+					relations: ['credentials'],
+					where: whereClause({
+						user: req.user,
+						entityType: 'credentials',
+						entityId: credentialId,
+					}),
 				});
-				const credential = await queryBuilder.getOne();
-				if (!credential) {
-					return false;
+
+				if (!shared) {
+					throw new ResponseHelper.ResponseError(
+						`Credential with ID "${credentialId}" could not be found to be deleted.`,
+						undefined,
+						404,
+					);
 				}
 
-				await this.externalHooks.run('credentials.delete', [id]);
+				await this.externalHooks.run('credentials.delete', [credentialId]);
 
-				await Db.collections.Credentials!.delete({ id });
+				await Db.collections.Credentials!.delete(credentialId);
 
 				return true;
 			}),
@@ -1545,61 +1547,69 @@ class App {
 		// Creates new credentials
 		this.app.post(
 			`/${this.restEndpoint}/credentials`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse> => {
-					const incomingData = req.body;
+			ResponseHelper.send(async (req: CredentialRequest.Create) => {
+				delete req.body.id; // delete if sent
 
-					if (!incomingData.name || incomingData.name.length < 3) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials name must be at least 3 characters long.`,
-							undefined,
-							400,
-						);
-					}
+				const newCredential = new CredentialsEntity();
 
-					// Add the added date for node access permissions
-					for (const nodeAccess of incomingData.nodesAccess) {
-						nodeAccess.date = this.getCurrentDate();
-					}
+				Object.assign(newCredential, req.body);
 
-					const encryptionKey = await UserSettings.getEncryptionKey();
-					if (encryptionKey === undefined) {
-						throw new Error('No encryption key got found to encrypt the credentials!');
-					}
+				await validateEntity(newCredential);
 
-					if (incomingData.name === '') {
-						throw new Error('Credentials have to have a name set!');
-					}
+				// Add the added date for node access permissions
+				for (const nodeAccess of newCredential.nodesAccess) {
+					nodeAccess.date = this.getCurrentDate();
+				}
 
-					// Encrypt the data
-					const credentials = new Credentials(
-						{ id: null, name: incomingData.name },
-						incomingData.type,
-						incomingData.nodesAccess,
-					);
-					credentials.setData(incomingData.data, encryptionKey);
-					const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
+				const encryptionKey = await UserSettings.getEncryptionKey();
 
-					await this.externalHooks.run('credentials.create', [newCredentialsData]);
+				if (!encryptionKey) {
+					throw new Error('No encryption key was found to encrypt the credential!');
+				}
 
-					// Save the credentials in DB
-					const result = await Db.collections.Credentials!.save(newCredentialsData);
-					result.data = incomingData.data;
+				// Encrypt the data
+				const coreCredential = new Credentials(
+					{ id: null, name: newCredential.name },
+					newCredential.type,
+					newCredential.nodesAccess,
+				);
 
-					try {
-						await UserManagementHelpers.saveCredentialOwnership(
-							result as CredentialsEntity,
-							req.user as User,
-						);
-					} catch (error) {
-						LoggerProxy.error('Failed saving credential ownership.');
-					}
+				// @ts-ignore
+				coreCredential.setData(newCredential.data, encryptionKey);
 
-					// Convert to response format in which the id is a string
-					(result as unknown as ICredentialsResponse).id = result.id.toString();
-					return result as unknown as ICredentialsResponse;
-				},
-			),
+				const encryptedData = coreCredential.getDataToSave() as ICredentialsDb;
+
+				Object.assign(newCredential, encryptedData);
+
+				await this.externalHooks.run('credentials.create', [encryptedData]);
+
+				const role = await Db.collections.Role!.findOneOrFail({
+					name: 'owner',
+					scope: 'credential',
+				});
+
+				const savedCredential = await getConnection().transaction(async (transactionManager) => {
+					const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
+
+					savedCredential.data = newCredential.data;
+
+					const newSharedCredential = new SharedCredentials();
+
+					Object.assign(newSharedCredential, {
+						role,
+						user: req.user,
+						credentials: savedCredential,
+					});
+
+					await transactionManager.save<SharedCredentials>(newSharedCredential);
+
+					return savedCredential;
+				});
+
+				const { id, ...rest } = savedCredential;
+
+				return { id: id.toString(), ...rest };
+			}),
 		);
 
 		// Test credentials
@@ -1694,197 +1704,200 @@ class App {
 		// Updates existing credentials
 		this.app.patch(
 			`/${this.restEndpoint}/credentials/:id`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse> => {
-					const incomingData = req.body;
+			ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsResponse> => {
+				const { id: credentialId } = req.params;
 
-					const { id } = req.params;
+				const updateData = new CredentialsEntity();
+				Object.assign(updateData, req.body);
 
-					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-					queryBuilder.andWhere('c.id = :id', { id });
-					queryBuilder.innerJoin('c.shared', 'shared');
-					queryBuilder.andWhere('shared.userId = :userId', {
-						userId: (req.user as User).id,
-					});
-					const result = (await queryBuilder.getOne()) as ICredentialsDb;
-					if (!result) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with the id "${id}" do not exist.`,
-							undefined,
-							400,
-						);
-					}
+				const shared = await Db.collections.SharedCredentials!.findOne({
+					relations: ['credentials'],
+					where: whereClause({
+						user: req.user,
+						entityType: 'credentials',
+						entityId: credentialId,
+					}),
+				});
 
-					if (incomingData.name === '') {
-						throw new Error('Credentials have to have a name set!');
-					}
-
-					// Add the date for newly added node access permissions
-					for (const nodeAccess of incomingData.nodesAccess) {
-						if (!nodeAccess.date) {
-							nodeAccess.date = this.getCurrentDate();
-						}
-					}
-
-					const encryptionKey = await UserSettings.getEncryptionKey();
-					if (encryptionKey === undefined) {
-						throw new Error('No encryption key got found to encrypt the credentials!');
-					}
-
-					const currentlySavedCredentials = new Credentials(
-						result as INodeCredentialsDetails,
-						result.type,
-						result.nodesAccess,
-						result.data,
+				if (!shared) {
+					throw new ResponseHelper.ResponseError(
+						`Credential with ID "${credentialId}" could not be found to be updated.`,
+						undefined,
+						404,
 					);
-					const decryptedData = currentlySavedCredentials.getData(encryptionKey);
+				}
 
-					// Do not overwrite the oauth data else data like the access or refresh token would get lost
-					// everytime anybody changes anything on the credentials even if it is just the name.
-					if (decryptedData.oauthTokenData) {
-						incomingData.data.oauthTokenData = decryptedData.oauthTokenData;
+				const { credentials: credential } = shared;
+
+				// Add the date for newly added node access permissions
+				for (const nodeAccess of updateData.nodesAccess) {
+					if (!nodeAccess.date) {
+						nodeAccess.date = this.getCurrentDate();
 					}
+				}
 
-					// Encrypt the data
-					const credentials = new Credentials(
-						{ id, name: incomingData.name },
-						incomingData.type,
-						incomingData.nodesAccess,
+				const encryptionKey = await UserSettings.getEncryptionKey();
+
+				if (!encryptionKey) {
+					throw new Error('No encryption key was found to encrypt the credential!');
+				}
+
+				const coreCredential = new Credentials(
+					{ id: credential.id.toString(), name: credential.name },
+					credential.type,
+					credential.nodesAccess,
+					credential.data,
+				);
+
+				const decryptedData = coreCredential.getData(encryptionKey);
+
+				// Do not overwrite the oauth data else data like the access or refresh token would get lost
+				// everytime anybody changes anything on the credentials even if it is just the name.
+				if (decryptedData.oauthTokenData) {
+					// @ts-ignore
+					updateData.data.oauthTokenData = decryptedData.oauthTokenData;
+				}
+
+				// Encrypt the data
+				const credentials = new Credentials(
+					{ id: credentialId, name: updateData.name },
+					updateData.type,
+					updateData.nodesAccess,
+				);
+
+				// @ts-ignore
+				credentials.setData(updateData.data, encryptionKey);
+
+				const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
+
+				// Add special database related data
+				newCredentialData.updatedAt = this.getCurrentDate();
+
+				await this.externalHooks.run('credentials.update', [newCredentialData]);
+
+				// Update the credentials in DB
+				await Db.collections.Credentials!.update(credentialId, newCredentialData);
+
+				// We sadly get nothing back from "update". Neither if it updated a record
+				// nor the new value. So query now the hopefully updated entry.
+				const responseData = await Db.collections.Credentials!.findOne(credentialId);
+
+				if (responseData === undefined) {
+					throw new ResponseHelper.ResponseError(
+						`Credential with ID "${credentialId}" could not be found to be updated.`,
+						undefined,
+						400,
 					);
-					credentials.setData(incomingData.data, encryptionKey);
-					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
+				}
 
-					// Add special database related data
-					newCredentialsData.updatedAt = this.getCurrentDate();
+				// Remove the encrypted data as it is not needed in the frontend
+				const { id, data, ...rest } = responseData;
 
-					await this.externalHooks.run('credentials.update', [newCredentialsData]);
-
-					// Update the credentials in DB
-					await Db.collections.Credentials!.update(id, newCredentialsData);
-
-					// We sadly get nothing back from "update". Neither if it updated a record
-					// nor the new value. So query now the hopefully updated entry.
-					const responseData = await Db.collections.Credentials!.findOne(id);
-
-					if (responseData === undefined) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with id "${id}" could not be found to be updated.`,
-							undefined,
-							400,
-						);
-					}
-
-					// Remove the encrypted data as it is not needed in the frontend
-					responseData.data = '';
-
-					// Convert to response format in which the id is a string
-					(responseData as unknown as ICredentialsResponse).id = responseData.id.toString();
-					return responseData as unknown as ICredentialsResponse;
-				},
-			),
+				return {
+					id: id.toString(),
+					...rest,
+				};
+			}),
 		);
 
 		// Returns specific credentials
 		this.app.get(
 			`/${this.restEndpoint}/credentials/:id`,
-			ResponseHelper.send(
-				async (
-					req: express.Request,
-					res: express.Response,
-				): Promise<ICredentialsDecryptedResponse | ICredentialsResponse | undefined> => {
-					const { id } = req.params;
-					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-					queryBuilder.andWhere('c.id = :id', { id });
-					queryBuilder.innerJoin('c.shared', 'shared');
-					queryBuilder.andWhere('shared.userId = :userId', {
-						userId: (req.user as User).id,
-					});
+			ResponseHelper.send(async (req: CredentialRequest.Get) => {
+				const { id: credentialId } = req.params;
 
-					// Make sure the variable has an expected value
-					const includeData = ['true', true].includes(req.query.includeData as string);
+				const shared = await Db.collections.SharedCredentials!.findOne({
+					relations: ['credentials'],
+					where: whereClause({
+						user: req.user,
+						entityType: 'credentials',
+						entityId: credentialId,
+					}),
+				});
 
-					if (!includeData) {
-						queryBuilder.select([
-							'c.id',
-							'c.name',
-							'c.type',
-							'c.nodesAccess',
-							'c.createdAt',
-							'c.updatedAt',
-						]);
-					}
+				if (!shared) return {};
 
-					const result = (await queryBuilder.getOne()) as ICredentialsDb;
+				const { credentials: credential } = shared;
 
-					if (result === undefined) {
-						return result;
-					}
+				if (req.query.includeData !== 'true') {
+					const { data, id, ...rest } = credential;
 
-					let encryptionKey;
-					if (includeData) {
-						encryptionKey = await UserSettings.getEncryptionKey();
-						if (encryptionKey === undefined) {
-							throw new Error('No encryption key got found to decrypt the credentials!');
-						}
+					return {
+						id: id.toString(),
+						...rest,
+					};
+				}
 
-						const credentials = new Credentials(
-							result as INodeCredentialsDetails,
-							result.type,
-							result.nodesAccess,
-							result.data,
-						);
-						(result as ICredentialsDecryptedDb).data = credentials.getData(encryptionKey);
-					}
+				const { data, id, ...rest } = credential;
 
-					(result as ICredentialsDecryptedResponse).id = result.id.toString();
+				const encryptionKey = await UserSettings.getEncryptionKey();
 
-					return result as ICredentialsDecryptedResponse;
-				},
-			),
+				if (!encryptionKey) {
+					throw new Error('No encryption key was found to decrypt the credentials!');
+				}
+
+				const coreCredential = new Credentials(
+					{ id: credential.id.toString(), name: credential.name },
+					credential.type,
+					credential.nodesAccess,
+					credential.data,
+				);
+
+				return {
+					id: id.toString(),
+					data: coreCredential.getData(encryptionKey),
+					...rest,
+				};
+			}),
 		);
 
 		// Returns all the saved credentials
 		this.app.get(
 			`/${this.restEndpoint}/credentials`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse[]> => {
-					const queryBuilder = Db.collections.Credentials!.createQueryBuilder('c');
-					queryBuilder.innerJoin('c.shared', 'shared');
-					queryBuilder.andWhere('shared.userId = :userId', {
-						userId: (req.user as User).id,
-					});
+				async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
+					let credentials: ICredentialsDb[] = [];
 
-					if (req.query.filter) {
-						queryBuilder.andWhere(JSON.parse(req.query.filter as string));
+					const filter: Record<string, string> = req.query.filter
+						? JSON.parse(req.query.filter)
+						: {};
+
+					if (req.user.globalRole.name === 'owner') {
+						credentials = await Db.collections.Credentials!.find({
+							select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
+							where: filter,
+						});
+					} else {
+						const shared = await Db.collections.SharedCredentials!.find({
+							relations: ['credentials'],
+							where: whereClause({
+								user: req.user,
+								entityType: 'credentials',
+							}),
+						});
+
+						if (!shared.length) return [];
+
+						credentials = await Db.collections.Credentials!.find({
+							select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
+							where: {
+								id: In(shared.map(({ credentials }) => credentials.id)),
+								...filter,
+							},
+						});
 					}
-
-					queryBuilder.select([
-						'c.id',
-						'c.name',
-						'c.type',
-						'c.nodesAccess',
-						'c.createdAt',
-						'c.updatedAt',
-					]);
-
-					const results = (await queryBuilder.getMany()) as unknown as ICredentialsResponse[];
 
 					let encryptionKey;
 
-					const includeData = ['true', true].includes(req.query.includeData as string);
-					if (includeData) {
+					if (req.query.includeData === 'true') {
 						encryptionKey = await UserSettings.getEncryptionKey();
-						if (encryptionKey === undefined) {
-							throw new Error('No encryption key got found to decrypt the credentials!');
+
+						if (!encryptionKey) {
+							throw new Error('No encryption key was found to decrypt the credentials!');
 						}
 					}
 
-					let result;
-					for (result of results) {
-						(result as ICredentialsDecryptedResponse).id = result.id.toString();
-					}
-
-					return results;
+					return credentials.map(({ id, ...rest }) => ({ id: id.toString(), ...rest }));
 				},
 			),
 		);
