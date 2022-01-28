@@ -7,9 +7,15 @@ import {
 	IPersonalizationSurveyAnswers,
 	IRootState,
 	IUser,
+	IUserResponse,
 	IUsersState,
 } from '../Interface';
-import { getPersonalizedNodeTypes, isDefaultUser, isAuthorized, PERMISSIONS } from './userHelpers';
+import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS } from './userHelpers';
+
+const isDefaultUser = (user: IUserResponse | null) => Boolean(user && user.email);
+
+const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.email && !user.firstName && !user.lastName);
+
 
 const module: Module<IUsersState, IRootState> = {
 	namespaced: true,
@@ -18,8 +24,15 @@ const module: Module<IUsersState, IRootState> = {
 		users: {},
 	},
 	mutations: {
-		addUsers: (state: IUsersState, users: IUser[]) => {
-			users.forEach((user: IUser) => {
+		addUsers: (state: IUsersState, users: IUserResponse[]) => {
+			users.forEach((userResponse: IUserResponse) => {
+				const user: IUser = {
+					...userResponse,
+					fullName: userResponse.firstName? `${userResponse.firstName} ${userResponse.lastName || ''}`: undefined,
+					isDefaultUser: isDefaultUser(userResponse),
+					isPendingUser: isPendingUser(userResponse),
+					isCurrentUser: userResponse.id === state.currentUserId,
+				};
 				Vue.set(state.users, user.id, user);
 			});
 		},
@@ -154,7 +167,7 @@ const module: Module<IUsersState, IRootState> = {
 		async changePassword(context: ActionContext<IUsersState, IRootState>, params: {token: string, password: string, userId: string}) {
 			await changePassword(context.rootGetters.getRestApiContext, params);
 		},
-		async updateUser(context: ActionContext<IUsersState, IRootState>, params: IUser) {
+		async updateUser(context: ActionContext<IUsersState, IRootState>, params: {id: string, firstName: string, lastName: string, email: string}) {
 			const user = await updateCurrentUser(context.rootGetters.getRestApiContext, params);
 			context.commit('addUsers', [user]);
 		},
@@ -169,7 +182,7 @@ const module: Module<IUsersState, IRootState> = {
 			const users = await getUsers(context.rootGetters.getRestApiContext);
 			context.commit('addUsers', users);
 		},
-		async inviteUsers(context: ActionContext<IUsersState, IRootState>, params: Array<{email: string}>): Promise<Array<Partial<IUser>>> {
+		async inviteUsers(context: ActionContext<IUsersState, IRootState>, params: Array<{email: string}>): Promise<Array<Partial<IUserResponse>>> {
 			const users = await inviteUsers(context.rootGetters.getRestApiContext, params);
 			context.commit('addUsers', users);
 			return users;

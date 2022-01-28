@@ -1,6 +1,6 @@
 
 import { CALENDLY_TRIGGER_NODE_TYPE, CLEARBIT_NODE_TYPE, COMPANY_SIZE_1000_OR_MORE, COMPANY_SIZE_500_999, CRON_NODE_TYPE, ELASTIC_SECURITY_NODE_TYPE, EMAIL_SEND_NODE_TYPE, EXECUTE_COMMAND_NODE_TYPE, FINANCE_WORK_AREA, FUNCTION_NODE_TYPE, GITHUB_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, ITEM_LISTS_NODE_TYPE, IT_ENGINEERING_WORK_AREA, JIRA_TRIGGER_NODE_TYPE, MICROSOFT_EXCEL_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE, PERSONALIZATION_MODAL_KEY, PAGERDUTY_NODE_TYPE, PRODUCT_WORK_AREA, QUICKBOOKS_NODE_TYPE, SALESFORCE_NODE_TYPE, SALES_BUSINESSDEV_WORK_AREA, SECURITY_WORK_AREA, SEGMENT_NODE_TYPE, SET_NODE_TYPE, SLACK_NODE_TYPE, SPREADSHEET_FILE_NODE_TYPE, SWITCH_NODE_TYPE, WEBHOOK_NODE_TYPE, XERO_NODE_TYPE, COMPANY_SIZE_KEY, WORK_AREA_KEY, CODING_SKILL_KEY } from '@/constants';
-import { IPersonalizationSurveyAnswers } from '@/Interface';
+import { IPermissions, IPersonalizationSurveyAnswers, IUser } from '@/Interface';
 
 import { ILogInStatus, IRole, IUserPermissions } from "@/Interface";
 
@@ -121,9 +121,6 @@ export const PERMISSIONS: IUserPermissions = {
 	},
 };
 
-export const isDefaultUser = (user: IUser | null) => Boolean(user && user.email);
-
-export const isPendingUser = (user: IUser | null) => Boolean(user && user.email && !user.firstName && !user.lastName);
 
 export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {currentUser: IUser | null, isUMEnabled: boolean}): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
@@ -137,7 +134,7 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 		}
 
 		if (currentUser) {
-			const role = isDefaultUser(currentUser) ? ROLE.Default: currentUser.globalRole.name;
+			const role = currentUser.isDefaultUser ? ROLE.Default: currentUser.globalRole.name;
 			if (permissions.deny.role && permissions.deny.role.includes(role)) {
 				return false;
 			}
@@ -154,7 +151,7 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 		}
 
 		if (currentUser) {
-			const role = isDefaultUser(currentUser) ? ROLE.Default: currentUser.globalRole.name;
+			const role = currentUser.isDefaultUser ? ROLE.Default: currentUser.globalRole.name;
 			if (permissions.allow.role && permissions.allow.role.includes(role)) {
 				return true;
 			}

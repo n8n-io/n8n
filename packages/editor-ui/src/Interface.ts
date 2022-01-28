@@ -779,7 +779,7 @@ export type ILogInStatus = 'LoggedIn' | 'LoggedOut';
 
 export type IRole = 'default' | 'owner' | 'member';
 
-export interface IUser {
+export interface IUserResponse {
 	id: string;
 	firstName?: string;
 	lastName?: string;
@@ -789,6 +789,13 @@ export interface IUser {
 		id: string;
 	};
 	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
+}
+
+export interface IUser extends IUserResponse {
+	isDefaultUser: boolean;
+	isCurrentUser: boolean;
+	isPendingUser: boolean;
+	fullName?: string;
 }
 
 type IValidationRule = {

@@ -166,7 +166,6 @@ import {
 	ITag,
 	IWorkflowTemplate,
 	IExecutionsSummary,
-	IUser,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 

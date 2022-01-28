@@ -1,4 +1,4 @@
-import { IPersonalizationSurveyAnswers, IRestApiContext, IUser } from '@/Interface';
+import { IPersonalizationSurveyAnswers, IRestApiContext, IUserResponse } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 
 const users = [
@@ -123,10 +123,10 @@ function getCurrUser() {
 
 	const users = JSON.parse(window.localStorage.getItem('mock.users.users') || '[]');
 
-	return users.find((user: IUser) => user.id === id);
+	return users.find((user: IUserResponse) => user.id === id);
 }
 
-function addUser(user: IUser) {
+function addUser(user: IUserResponse) {
 	const users = JSON.parse(window.localStorage.getItem('mock.users.users') || '[]');
 	users.push(user);
 	window.localStorage.setItem('mock.users.users', JSON.stringify(users));
@@ -134,7 +134,7 @@ function addUser(user: IUser) {
 
 function removeUser(userId: string) {
 	let users = JSON.parse(window.localStorage.getItem('mock.users.users') || '[]');
-	users = users.filter((user: IUser) => user.id !== userId);
+	users = users.filter((user: IUserResponse) => user.id !== userId);
 	window.localStorage.setItem('mock.users.users', JSON.stringify(users));
 }
 
@@ -142,23 +142,23 @@ function log(context: IRestApiContext, method: string, path: string, params?: an
 	console.log(method, path, params); // eslint-disable-line no-console
 }
 
-export async function loginCurrentUser(context: IRestApiContext): Promise<IUser | null> {
+export async function loginCurrentUser(context: IRestApiContext): Promise<IUserResponse | null> {
 	log(context, 'GET', '/login');
 
 	return await Promise.resolve(getCurrUser());
 }
 
-export async function getCurrentUser(context: IRestApiContext): Promise<IUser | null> {
+export async function getCurrentUser(context: IRestApiContext): Promise<IUserResponse | null> {
 	log(context, 'GET', '/me');
 
 	return await Promise.resolve(getCurrUser());
 }
 
-export async function login(context: IRestApiContext, params: {email: string, password: string}): Promise<IUser> {
+export async function login(context: IRestApiContext, params: {email: string, password: string}): Promise<IUserResponse> {
 	log(context, 'POST', '/login', params);
 
 	const users = getAllUsers();
-	const user = users.find((user: IUser) => user.email === params.email && user.firstName);
+	const user = users.find((user: IUserResponse) => user.email === params.email && user.firstName);
 	if (!user) {
 		throw new Error(`Cannot login with this email. Must use an existing email`);
 	}
@@ -172,11 +172,11 @@ export async function logout(context: IRestApiContext): Promise<void> {
 	window.localStorage.setItem('mock.users.currentUserId', undefined);
 }
 
-export async function setupOwner(context: IRestApiContext, params: { firstName: string; lastName: string; email: string; password: string;}): Promise<IUser> {
+export async function setupOwner(context: IRestApiContext, params: { firstName: string; lastName: string; email: string; password: string;}): Promise<IUserResponse> {
 	log(context, 'POST', '/owner-setup', params as unknown as IDataObject);
 	const user = getCurrUser();
 	removeUser('0');
-	const newUser: IUser = {...user, ...params};
+	const newUser: IUserResponse = {...user, ...params};
 	addUser(newUser);
 
 	return await Promise.resolve(newUser);
@@ -197,14 +197,14 @@ export async function validateSignupToken(context: IRestApiContext, params: {inv
 	});
 }
 
-export async function signup(context: IRestApiContext, params: {inviterId: string; inviteeId: string;  firstName: string; lastName: string; password: string}): Promise<IUser> {
+export async function signup(context: IRestApiContext, params: {inviterId: string; inviteeId: string;  firstName: string; lastName: string; password: string}): Promise<IUserResponse> {
 	if (params.inviterId !== '123' || params.inviteeId !== '345') {
 		throw new Error('invalid token. try query ?inviterId=123&inviteeId=345');
 	}
 
 	log(context, 'POST', '/user', params as unknown as IDataObject);
 
-	const newUser: IUser = {...params, email: `${params.firstName}@n8n.io`, id: getRandomId(), "globalRole": {name: 'member', id: '2'}};
+	const newUser: IUserResponse = {...params, email: `${params.firstName}@n8n.io`, id: getRandomId(), "globalRole": {name: 'member', id: '2'}};
 	window.localStorage.setItem('mock.users.currentUserId', newUser.id);
 	addUser(newUser);
 
@@ -231,7 +231,7 @@ export async function changePassword(context: IRestApiContext, params: {token: s
 	log(context, 'POST', '/change-password', params);
 }
 
-export async function updateCurrentUser(context: IRestApiContext, params: IUser): Promise<IUser> {
+export async function updateCurrentUser(context: IRestApiContext, params: {id: string, firstName: string, lastName: string, email: string}): Promise<IUserResponse> {
 	log(context, 'PATCH', `/me`, params as unknown as IDataObject);
 	const user = getCurrUser();
 	removeUser(params.id);
@@ -253,13 +253,13 @@ export async function deleteUser(context: IRestApiContext, {id, transferId}: {id
 	removeUser(id);
 }
 
-export async function getUsers(context: IRestApiContext): Promise<IUser[]> {
+export async function getUsers(context: IRestApiContext): Promise<IUserResponse[]> {
 	log(context, 'GET', '/users');
 
 	return Promise.resolve(getAllUsers());
 }
 
-export async function inviteUsers(context: IRestApiContext, params: Array<{email: string}>): Promise<Array<Partial<IUser>>> {
+export async function inviteUsers(context: IRestApiContext, params: Array<{email: string}>): Promise<Array<Partial<IUserResponse>>> {
 	log(context, 'POST', '/users', params);
 
 	const users = params.map(({email}: {email: string}) => ({
