@@ -2,7 +2,6 @@
 import { Application } from 'express';
 import express = require('express');
 import { JwtFromRequestFunction } from 'passport-jwt';
-import { Interface } from 'readline';
 import { User } from '../databases/entities/User';
 
 export interface JwtToken {
