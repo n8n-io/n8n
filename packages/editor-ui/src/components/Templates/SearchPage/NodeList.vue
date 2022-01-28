@@ -1,14 +1,10 @@
 <template>
 	<div :class="$style.list">
-		<div :class="$style.container" v-for="node in nodes.slice(0, 4)" :key="node.name">
-			<img
-				v-if="node.iconData.fileBuffer"
-				:class="$style.image"
-				:src="node.iconData.fileBuffer"
-			/>
+		<div :class="$style.container" v-for="node in nodes.slice(0, 2)" :key="node.name">
+			<img v-if="node.iconData.fileBuffer" :class="$style.image" :src="node.iconData.fileBuffer" />
 			<FontAwesomeIcon v-else :icon="node.iconData.icon" :color="node.defaults.color" />
 		</div>
-		<div :class="$style.nodes" v-if="nodes.length > 4">+{{ nodes.length - 4 }}</div>
+		<div :class="$style.button" v-if="nodes.length > 2">+{{ nodes.length - 2 }}</div>
 	</div>
 </template>
 
@@ -41,7 +37,7 @@ export default mixins(genericHelpers).extend({
 	.container {
 		width: 16px;
 		height: 16px;
-		margin-left: 10px;
+		margin-left: var(--spacing-2xs);
 		position: relative;
 		display: block;
 
@@ -52,17 +48,21 @@ export default mixins(genericHelpers).extend({
 		}
 	}
 
-	.nodes {
+	.button {
 		width: 20px;
 		height: 20px;
-		margin-left: 10px;
-		padding: 3px;
-		display: block;
-		background: #f8f9fb;
-		border: 1px solid #dbdfe7;
-		border-radius: 4px;
-		font-weight: 600;
+		margin-left: var(--spacing-2xs);
+		top: 1px;
+		position: relative;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		background: var(--color-background-light);
+		border: $--version-card-border;
+		border-radius: var(--border-radius-base);
 		font-size: 10px;
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text-base);
 	}
 }
 </style>
