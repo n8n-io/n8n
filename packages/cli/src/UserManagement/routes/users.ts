@@ -4,7 +4,7 @@ import { Request, Response } from 'express';
 import { getConnection, In } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 import { genSaltSync, hashSync } from 'bcryptjs';
-import { Db, GenericHelpers, ICredentialsResponse, ResponseHelper } from '../..';
+import { Db, GenericHelpers, ResponseHelper } from '../..';
 import { AuthenticatedRequest, N8nApp, UserRequest } from '../Interfaces';
 import { isEmailSetup, isValidEmail, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
