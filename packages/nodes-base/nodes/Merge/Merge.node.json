@@ -36,7 +36,8 @@
 	},
 	"alias": [
 		"Join",
-		"Concatenate"
+		"Concatenate",
+		"Wait"
 	],
 	"subcategories": {
 		"Core Nodes": [

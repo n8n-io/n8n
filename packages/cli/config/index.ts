@@ -507,6 +507,12 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
 			doc: 'Path for test-webhook endpoint',
 		},
+		disableUi: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_DISABLE_UI',
+			doc: 'Disable N8N UI (Frontend).',
+		},
 		disableProductionWebhooksOnMainProcess: {
 			format: Boolean,
 			default: false,
@@ -650,6 +656,39 @@ const config = convict({
 		},
 	},
 
+	binaryDataManager: {
+		availableModes: {
+			format: String,
+			default: 'filesystem',
+			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
+			doc: 'Available modes of binary data storage, as comma separated strings',
+		},
+		mode: {
+			format: String,
+			default: 'default',
+			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
+			doc: 'Storage mode for binary data, default | filesystem',
+		},
+		localStoragePath: {
+			format: String,
+			default: path.join(core.UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			env: 'N8N_BINARY_DATA_STORAGE_PATH',
+			doc: 'Path for binary data storage in "filesystem" mode',
+		},
+		binaryDataTTL: {
+			format: Number,
+			default: 60,
+			env: 'N8N_BINARY_DATA_TTL',
+			doc: 'TTL for binary data of unsaved executions in minutes',
+		},
+		persistedBinaryDataTTL: {
+			format: Number,
+			default: 1440,
+			env: 'N8N_PERSISTED_BINARY_DATA_TTL',
+			doc: 'TTL for persisted binary data in minutes (binary data gets deleted if not persisted before TTL expires)',
+		},
+	},
+
 	deployment: {
 		type: {
 			format: String,
@@ -688,6 +727,13 @@ const config = convict({
 				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
 			},
 		},
+	},
+
+	defaultLocale: {
+		doc: 'Default locale for the UI',
+		format: String,
+		default: 'en',
+		env: 'N8N_DEFAULT_LOCALE',
 	},
 });
 

@@ -58,7 +58,6 @@ export class Grafana implements INodeType {
 		description: 'Consume the Grafana API',
 		defaults: {
 			name: 'Grafana',
-			color: '#fb755a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

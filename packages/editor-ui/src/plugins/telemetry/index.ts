@@ -34,7 +34,7 @@ interface IUserNodesPanelSession {
 }
 
 class Telemetry {
-	
+
 	private get telemetry() {
 		// @ts-ignore
 		return window.rudderanalytics;

@@ -34,7 +34,6 @@ export class TypeformTrigger implements INodeType {
 		description: 'Starts the workflow on a Typeform form submission',
 		defaults: {
 			name: 'Typeform Trigger',
-			color: '#404040',
 		},
 		inputs: [],
 		outputs: ['main'],
