@@ -134,8 +134,8 @@
 						</div>
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
 					</n8n-menu-item>
-					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" class="hello">
-						<n8n-menu-item class="user" v-if="canUserAccessSidebarUserInfo && currentUser">
+					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
+						<n8n-menu-item class="user">
 							<div class="avatar">
 								<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
 							</div>
@@ -155,7 +155,7 @@
 								Sign out
 							</el-dropdown-item>
 						</el-dropdown-menu>
-				</el-dropdown>
+					</el-dropdown>
 				</div>
 			</n8n-menu>
 
@@ -201,7 +201,7 @@ export default mixins(
 	workflowRun,
 )
 	.extend({
-		name: 'MainHeader',
+		name: 'MainSidebar',
 		components: {
 			ExecutionsList,
 			GiftNotificationIcon,
