@@ -22,7 +22,6 @@
 						<n8n-input-label label="User to transfer to">
 							<n8n-user-select
 								:users="allUsers"
-								:currentUserId="currentUserId"
 								:value="transferId"
 								:ignoreIds="ignoreIds"
 								@input="setTransferId"

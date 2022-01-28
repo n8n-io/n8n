@@ -20,7 +20,7 @@
 			:class="$style.itemContainer"
 			:label="getLabel(user)"
 		>
-			<n8n-user-info :user="user" :currentUserId="currentUserId" />
+			<n8n-user-info :user="user" />
 		</el-option>
 	</el-select>
 </template>
@@ -45,9 +45,6 @@ export default Vue.extend({
 			default() {
 				return [];
 			},
-		},
-		currentUserId: {
-			type: String || null,
 		},
 		value: {
 			type: String,

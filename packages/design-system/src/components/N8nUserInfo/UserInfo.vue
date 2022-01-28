@@ -38,9 +38,6 @@ export default Vue.extend({
 			type: Object,
 			required: true,
 		},
-		currentUserId: {
-			type: String || null,
-		},
 	},
 });
 </script>

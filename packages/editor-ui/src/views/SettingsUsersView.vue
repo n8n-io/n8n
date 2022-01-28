@@ -23,7 +23,7 @@
 			</div>
 			<div :class="$style.usersContainer" v-else>
 				<SmtpAlert />
-				<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
+				<n8n-users-list :users="allUsers" @delete="onDelete" @reinvite="onReinvite" />
 			</div>
 		</div>
 	</SettingsView>
