@@ -39,6 +39,13 @@ FormBox.args = {
 			},
 		},
 		{
+			name: 'message',
+			properties: {
+				label: 'Please contact someone someday.',
+				type: 'text',
+			},
+		},
+		{
 			name: 'password',
 			properties: {
 				label: 'Your Password',
