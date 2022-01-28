@@ -49,6 +49,10 @@ export default {
 
 
 <style lang="scss" module>
+.danger {
+	color: var(--color-danger);
+}
+
 .xlarge {
 	width: var(--font-size-xl) !important;
 }
@@ -67,16 +71,16 @@ export default {
 
 .small-danger {
 	composes: small;
-	color: var(--color-danger);
+	composes: danger;
 }
 
 .medium-danger {
 	composes: medium;
-	color: var(--color-danger);
+	composes: danger;
 }
 
 .large-danger {
 	composes: large;
-	color: var(--color-danger);
+	composes: danger;
 }
 </style>
