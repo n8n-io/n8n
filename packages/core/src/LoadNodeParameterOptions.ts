@@ -271,7 +271,7 @@ export class LoadNodeParameterOptions {
 
 			// Get value for 'name'
 			const nameProperty = routingNode.getParameterValue(
-				loadOptions.name.property,
+				loadOptions.displayName.property,
 				itemIndex,
 				runIndex,
 				{},
@@ -279,10 +279,10 @@ export class LoadNodeParameterOptions {
 			) as string;
 
 			let nameValue = get(optionData, nameProperty);
-			if (loadOptions.name.value) {
+			if (loadOptions.displayName.value) {
 				// Value overwrite is set so resolve
 				nameValue = routingNode.getParameterValue(
-					loadOptions.name.value,
+					loadOptions.displayName.value,
 					itemIndex,
 					runIndex,
 					{ $value: nameValue, $self: { value: valueValue } },

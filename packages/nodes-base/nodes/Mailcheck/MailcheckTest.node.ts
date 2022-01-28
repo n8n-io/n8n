@@ -486,7 +486,7 @@ export class MailcheckTest implements INodeType {
 								// 	},
 								// },
 								rootProperty: 'responseData', // Optional Path to option array
-								name: {
+								displayName: {
 									property: 'key',
 									// TODO: Is confusing that it is called $value. Should it be $value/$name instead? But
 									//       then would also have to change logic in other locations where also $value gets used.

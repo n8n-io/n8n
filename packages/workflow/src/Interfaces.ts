@@ -835,7 +835,7 @@ export interface ILoadOptions {
 	request: IHttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;
 	rootProperty?: string; // Optional Path to option array
-	name: {
+	displayName: {
 		property: string;
 		value?: string;
 	};
