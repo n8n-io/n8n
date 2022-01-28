@@ -13,7 +13,7 @@
 				<n8n-text :bold="true">{{user.fullName}} {{user.isCurrentUser ? '(you)' : ''}}</n8n-text>
 			</div>
 			<div>
-				<n8n-text size="small" color="light">{{user.email}}</n8n-text>
+				<n8n-text size="small" color="text-light">{{user.email}}</n8n-text>
 			</div>
 		</div>
 	</div>
