@@ -19,15 +19,13 @@ const Template = (args, { argTypes }) => ({
 
 export const Member = Template.bind({});
 Member.args = {
-	firstName: "M",
-	lastName: "A",
+	fullName: "M A",
 	email: 'test@n8n.io',
 };
 
 export const Current = Template.bind({});
 Current.args = {
-	firstName: "M",
-	lastName: "A",
+	fullName: "M A",
 	email: 'test@n8n.io',
 	isCurrentUser: true,
 };
