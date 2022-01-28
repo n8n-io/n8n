@@ -55,15 +55,15 @@ export class MailcheckTest implements INodeType {
 		// TODO: Think about proper name
 		requestOperations: {
 			// Different types: https://nordicapis.com/everything-you-need-to-know-about-api-pagination/
-			async pagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<IDataObject[]> {
+			async pagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<Array<IDataObject | Buffer>> {
 				if (!requestData.options.qs) {
 					requestData.options.qs = {};
 				}
 				const pageSize = 10;
 				requestData.options.qs.limit = pageSize;
 				requestData.options.qs.offset = 0;
-				let tempResponseData: IDataObject[];
-				const responseData: IDataObject[] = [];
+				let tempResponseData: Array<IDataObject | Buffer>;
+				const responseData: Array<IDataObject | Buffer> = [];
 
 				do {
 					if (requestData?.maxResults) {
