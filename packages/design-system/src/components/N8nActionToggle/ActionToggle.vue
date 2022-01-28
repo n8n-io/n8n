@@ -41,6 +41,8 @@ export default {
 		placement: {
 			type: String,
 			default: 'bottom',
+			validator: (value: string): boolean =>
+				['top', 'bottom'].indexOf(value) !== -1,
 		},
 	},
 	methods: {
