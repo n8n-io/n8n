@@ -169,28 +169,8 @@ export class RoutingNode {
 						'',
 						{ $credentials: credentials, $value: value },
 					);
-					if (tempOptions) {
-						requestData.pagination =
-							tempOptions.pagination !== undefined
-								? tempOptions.pagination
-								: requestData.pagination;
 
-						requestData.maxResults =
-							tempOptions.maxResults !== undefined
-								? tempOptions.maxResults
-								: requestData.maxResults;
-
-						merge(requestData.options, tempOptions.options);
-						requestData.preSend.push(...tempOptions.preSend);
-						requestData.postReceive.push(...tempOptions.postReceive);
-
-						if (tempOptions.requestOperations) {
-							requestData.requestOperations = Object.assign(
-								requestData.requestOperations,
-								tempOptions.requestOperations,
-							);
-						}
-					}
+					this.mergeOptions(requestData, tempOptions);
 				}
 
 				// TODO: Change to handle some requests in parallel (should be configurable)
@@ -209,9 +189,23 @@ export class RoutingNode {
 				}
 
 				// Add as INodeExecutionData[]
-				responseData.forEach((item) => {
-					returnData.push({ json: item });
-				});
+				for (const item of responseData) {
+					if (Buffer.isBuffer(item)) {
+						const destinationProperty = requestData.binaryResponse
+							? requestData.binaryResponse.destinationProperty
+							: 'data';
+
+						returnData.push({
+							json: {},
+							binary: {
+								// TODO: Have to be able to define name of binary property, not always just "data"
+								[destinationProperty]: await thisArgs.helpers.prepareBinaryData(item),
+							},
+						});
+					} else {
+						returnData.push({ json: item });
+					}
+				}
 			} catch (error) {
 				if (get(this.node, 'continueOnFail', false)) {
 					returnData.push({ json: {}, error: error.message });
@@ -224,6 +218,36 @@ export class RoutingNode {
 		return [returnData];
 	}
 
+	mergeOptions(
+		destinationOptions: IRequestOptionsFromParameters,
+		sourceOptions?: IRequestOptionsFromParameters,
+	): void {
+		if (sourceOptions) {
+			if (sourceOptions.binaryResponse) {
+				if (!destinationOptions.binaryResponse) {
+					destinationOptions.binaryResponse = sourceOptions.binaryResponse;
+				} else {
+					destinationOptions.binaryResponse = Object.assign(
+						destinationOptions.binaryResponse,
+						sourceOptions.binaryResponse,
+					);
+				}
+			}
+
+			destinationOptions.pagination = destinationOptions.pagination ?? sourceOptions.pagination;
+			destinationOptions.maxResults = destinationOptions.maxResults ?? sourceOptions.maxResults;
+			merge(destinationOptions.options, sourceOptions.options);
+			destinationOptions.preSend.push(...sourceOptions.preSend);
+			destinationOptions.postReceive.push(...sourceOptions.postReceive);
+			if (sourceOptions.requestOperations) {
+				destinationOptions.requestOperations = Object.assign(
+					destinationOptions.requestOperations,
+					sourceOptions.requestOperations,
+				);
+			}
+		}
+	}
+
 	async rawRoutingRequest(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		requestData: IRequestOptionsFromParameters,
@@ -231,8 +255,12 @@ export class RoutingNode {
 		runIndex: number,
 		credentialType?: string,
 		credentialsDecrypted?: ICredentialsDecrypted,
-	): Promise<IDataObject[]> {
-		let responseData: IDataObject | IDataObject[] | null;
+	): Promise<Array<IDataObject | Buffer>> {
+		let responseData: IDataObject | IDataObject[] | Buffer | null;
+
+		if (requestData.binaryResponse) {
+			requestData.options.encoding = 'arraybuffer';
+		}
 
 		if (credentialType) {
 			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
@@ -289,8 +317,8 @@ export class RoutingNode {
 		credentialType?: string,
 		requestOperations?: IN8nRequestOperations,
 		credentialsDecrypted?: ICredentialsDecrypted,
-	): Promise<IDataObject[]> {
-		let responseData: IDataObject[];
+	): Promise<Array<IDataObject | Buffer>> {
+		let responseData: Array<IDataObject | Buffer>;
 		for (const preSendMethod of requestData.preSend) {
 			requestData.options = await preSendMethod.call(executeSingleFunctions, requestData.options);
 		}
@@ -336,7 +364,7 @@ export class RoutingNode {
 					(requestData.options[optionsType] as IDataObject)[properties.limitParameter] =
 						properties.pageSize;
 					(requestData.options[optionsType] as IDataObject)[properties.offsetParameter] = 0;
-					let tempResponseData: IDataObject[];
+					let tempResponseData: Array<IDataObject | Buffer>;
 					do {
 						if (requestData?.maxResults) {
 							// Only request as many results as needed
@@ -520,6 +548,27 @@ export class RoutingNode {
 				returnData.pagination = !!paginationValue;
 			}
 
+			if (nodeProperties.requestProperty.binaryResponse !== undefined) {
+				let { destinationProperty } = nodeProperties.requestProperty.binaryResponse;
+				if (typeof destinationProperty === 'string' && destinationProperty.charAt(0) === '=') {
+					// If the propertyName is an expression resolve it
+					const value = executeSingleFunctions.getNodeParameter(
+						basePath + nodeProperties.name,
+						itemIndex,
+					) as string;
+
+					destinationProperty = this.getParameterValue(
+						destinationProperty,
+						itemIndex,
+						runIndex,
+						{ ...additionalKeys, $value: value },
+						true,
+					) as string;
+				}
+
+				returnData.binaryResponse = { destinationProperty };
+			}
+
 			if (nodeProperties.requestProperty.maxResults !== undefined) {
 				let maxResultsValue = nodeProperties.requestProperty.maxResults;
 				if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
@@ -583,19 +632,7 @@ export class RoutingNode {
 					{ $value: optionValue },
 				);
 
-				if (tempOptions) {
-					returnData.pagination = returnData.pagination ?? tempOptions.pagination;
-					returnData.maxResults = returnData.maxResults ?? tempOptions.maxResults;
-					merge(returnData.options, tempOptions.options);
-					returnData.preSend.push(...tempOptions.preSend);
-					returnData.postReceive.push(...tempOptions.postReceive);
-					if (tempOptions.requestOperations) {
-						returnData.requestOperations = Object.assign(
-							returnData.requestOperations,
-							tempOptions.requestOperations,
-						);
-					}
-				}
+				this.mergeOptions(returnData, tempOptions);
 			}
 		} else if (nodeProperties.type === 'collection') {
 			value = NodeHelpers.getParameterValueByPath(
@@ -618,19 +655,7 @@ export class RoutingNode {
 						`${basePath}${nodeProperties.name}`,
 					);
 
-					if (tempOptions) {
-						returnData.pagination = returnData.pagination ?? tempOptions.pagination;
-						returnData.maxResults = returnData.maxResults ?? tempOptions.maxResults;
-						merge(returnData.options, tempOptions.options);
-						returnData.preSend.push(...tempOptions.preSend);
-						returnData.postReceive.push(...tempOptions.postReceive);
-						if (tempOptions.requestOperations) {
-							returnData.requestOperations = Object.assign(
-								returnData.requestOperations,
-								tempOptions.requestOperations,
-							);
-						}
-					}
+					this.mergeOptions(returnData, tempOptions);
 				}
 			}
 		} else if (nodeProperties.type === 'fixedCollection') {
@@ -664,13 +689,7 @@ export class RoutingNode {
 							{ ...(additionalKeys || {}), $index: i, $self: value[i] },
 						);
 
-						if (tempOptions) {
-							returnData.pagination = returnData.pagination ?? tempOptions.pagination;
-							returnData.maxResults = returnData.maxResults ?? tempOptions.maxResults;
-							merge(returnData.options, tempOptions.options);
-							returnData.preSend.push(...tempOptions.preSend);
-							returnData.postReceive.push(...tempOptions.postReceive);
-						}
+						this.mergeOptions(returnData, tempOptions);
 					}
 				}
 			}

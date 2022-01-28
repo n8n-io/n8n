@@ -37,6 +37,10 @@ export interface IBinaryData {
 	id?: string;
 }
 
+export interface IBinaryResponseProperty {
+	destinationProperty: string;
+}
+
 export interface IOAuth2Options {
 	includeCredentialsOnRefreshOnBody?: boolean;
 	property?: string;
@@ -447,7 +451,7 @@ export interface IN8nRequestOperations {
 		| ((
 				this: IExecutePaginationFunctions,
 				requestOptions: IRequestOptionsFromParameters,
-		  ) => Promise<IDataObject[]>);
+		  ) => Promise<Array<IDataObject | Buffer>>);
 }
 
 export interface IN8nRequestOperationPaginationBase {
@@ -560,7 +564,7 @@ export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	makeRoutingRequest(
 		this: IAllExecuteFunctions,
 		requestOptions: IRequestOptionsFromParameters,
-	): Promise<IDataObject[]>;
+	): Promise<Array<IDataObject | Buffer>>;
 }
 export interface IExecuteWorkflowInfo {
 	code?: IWorkflowBase;
@@ -1014,6 +1018,7 @@ export interface INodeTypeBaseDescription {
 }
 
 export interface INodeRequestProperty {
+	binaryResponse?: IBinaryResponseProperty;
 	property?: string;
 	value?: string;
 	type?: 'body' | 'query';
@@ -1057,6 +1062,7 @@ export interface IPostReceiveSet extends IPostReceiveBase {
 }
 
 export interface IRequestOptionsFromParameters {
+	binaryResponse?: IBinaryResponseProperty;
 	options: IHttpRequestOptions;
 	pagination?: boolean | string;
 	maxResults?: number | string;

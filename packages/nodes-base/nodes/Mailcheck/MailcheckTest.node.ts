@@ -171,6 +171,15 @@ export class MailcheckTest implements INodeType {
 							url: '/singleEmail:delete',
 						},
 					},
+					{
+						name: 'Download',
+						value: 'download',
+						request: {
+							method: 'GET',
+							baseURL: 'http://www.africau.edu',
+							url: '/images/default/sample.pdf',
+						},
+					},
 				],
 				// The "request" can be defined both on the property or the option
 				// request: {
@@ -179,6 +188,33 @@ export class MailcheckTest implements INodeType {
 				// },
 				default: 'check',
 			},
+
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				required: true,
+				default: 'data',
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+						operation: [
+							'download',
+						],
+					},
+				},
+				requestProperty: {
+					// If "binaryResponse" is set the response get set under binary data
+					binaryResponse: {
+						// Defines the name of the binary property it should be set as
+						destinationProperty: '={{$value}}',
+					},
+				},
+				description: 'Name of the binary property to which to write the data of the read file.',
+			},
+
 			{
 				displayName: 'ID',
 				name: 'id',
