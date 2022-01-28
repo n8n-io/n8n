@@ -181,7 +181,7 @@ import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 require('body-parser-xml')(bodyParser);
 
-export class App {
+class App {
 	app: express.Application;
 
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
