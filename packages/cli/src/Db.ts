@@ -17,6 +17,7 @@ import { entities } from './databases/entities';
 import { postgresMigrations } from './databases/postgresdb/migrations';
 import { mysqlMigrations } from './databases/mysqldb/migrations';
 import { sqliteMigrations } from './databases/sqlite/migrations';
+import { TEST_CONNECTION_OPTIONS } from '../test/constants';
 
 export const collections: IDatabaseCollections = {
 	Credentials: null,
@@ -31,9 +32,7 @@ export const collections: IDatabaseCollections = {
 	Settings: null,
 };
 
-export async function init(
-	testConnectionOptions?: ConnectionOptions,
-): Promise<IDatabaseCollections> {
+export async function init(): Promise<IDatabaseCollections> {
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
@@ -111,8 +110,8 @@ export async function init(
 			throw new Error(`The database "${dbType}" is currently not supported!`);
 	}
 
-	if (testConnectionOptions) {
-		connectionOptions = testConnectionOptions;
+	if (process.argv[1].split('/').pop() === 'jest') {
+		connectionOptions = TEST_CONNECTION_OPTIONS;
 	}
 
 	Object.assign(connectionOptions, {

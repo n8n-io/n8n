@@ -2,22 +2,11 @@ import { getConnection } from 'typeorm';
 import * as request from 'supertest';
 import express = require('express');
 
-import * as config from '../config';
 import { Db } from '../src';
 import { meNamespace } from '../src/UserManagement/routes/me';
-import { addRoutes as authMiddleware } from '../src/UserManagement/routes';
-import { authenticationMethods as loginRoutes } from '../src/UserManagement/routes/auth';
-import {
-	REST_PATH_SEGMENT,
-	TEST_CONNECTION_OPTIONS,
-	TEST_JWT_SECRET,
-	AUTH_MIDDLEWARE_ARGS,
-	ME_NAMESPACE_ROUTES,
-	SUCCESSFUL_MUTATION_RESPONSE_BODY,
-	ME_NAMESPACE_TEST_PAYLOADS,
-} from './constants';
-import bodyParser = require('body-parser');
-import { expectOwnerGlobalRole, restPrefix } from './utils';
+import { SUCCESSFUL_MUTATION_RESPONSE_BODY } from './constants';
+import { expectOwnerGlobalRole, initTestServer, restPrefix } from './utils';
+import { ROUTES, TEST_PAYLOADS } from './constants/me';
 
 describe('/me namespace', () => {
 	let testServer: {
@@ -26,28 +15,18 @@ describe('/me namespace', () => {
 	};
 
 	beforeAll(async () => {
-		testServer = {
-			app: express(),
-			restEndpoint: REST_PATH_SEGMENT,
-		};
-
-		testServer.app.use(bodyParser.json());
-		testServer.app.use(bodyParser.urlencoded({ extended: true }));
-
-		config.set('userManagement.jwtSecret', TEST_JWT_SECRET);
-		authMiddleware.apply(testServer, AUTH_MIDDLEWARE_ARGS);
-		loginRoutes.apply(testServer);
+		testServer = initTestServer();
 
 		meNamespace.apply(testServer);
 
-		await Db.init(TEST_CONNECTION_OPTIONS);
+		await Db.init();
 		await getConnection().runMigrations({ transaction: 'none' });
 	});
 
 	afterAll(() => getConnection().close());
 
 	describe('If requester is unauthorized', () => {
-		ME_NAMESPACE_ROUTES.forEach((route) => {
+		ROUTES.forEach((route) => {
 			const [method, endpoint] = route.split(' ').map((i) => i.toLowerCase());
 
 			test(`${route} should return 401 Unauthorized`, async () => {
@@ -86,7 +65,7 @@ describe('/me namespace', () => {
 			});
 
 			test('PATCH /me should return their updated sanitized data', async () => {
-				const response = await agent.patch('/me').send(ME_NAMESPACE_TEST_PAYLOADS.PROFILE).use(restPrefix);
+				const response = await agent.patch('/me').send(TEST_PAYLOADS.PROFILE).use(restPrefix);
 
 				expect(response.statusCode).toBe(200);
 
@@ -94,9 +73,9 @@ describe('/me namespace', () => {
 					response.body.data;
 
 				expect(typeof id).toBe('string');
-				expect(email).toBe(ME_NAMESPACE_TEST_PAYLOADS.PROFILE.email);
-				expect(firstName).toBe(ME_NAMESPACE_TEST_PAYLOADS.PROFILE.firstName);
-				expect(lastName).toBe(ME_NAMESPACE_TEST_PAYLOADS.PROFILE.lastName);
+				expect(email).toBe(TEST_PAYLOADS.PROFILE.email);
+				expect(firstName).toBe(TEST_PAYLOADS.PROFILE.firstName);
+				expect(lastName).toBe(TEST_PAYLOADS.PROFILE.lastName);
 				expect(personalizationAnswers).toBeNull();
 
 				expectOwnerGlobalRole(globalRole);
@@ -105,7 +84,7 @@ describe('/me namespace', () => {
 			test('PATCH /me/password should return success response', async () => {
 				const response = await agent
 					.patch('/me/password')
-					.send(ME_NAMESPACE_TEST_PAYLOADS.PASSWORD)
+					.send(TEST_PAYLOADS.PASSWORD)
 					.use(restPrefix);
 
 				expect(response.statusCode).toBe(200);
@@ -113,7 +92,10 @@ describe('/me namespace', () => {
 			});
 
 			test('POST /me/survey should return success response', async () => {
-				const response = await agent.patch('/me/password').send(ME_NAMESPACE_TEST_PAYLOADS.PASSWORD).use(restPrefix);
+				const response = await agent
+					.patch('/me/password')
+					.send(TEST_PAYLOADS.PASSWORD)
+					.use(restPrefix);
 
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESSFUL_MUTATION_RESPONSE_BODY);
@@ -123,20 +105,4 @@ describe('/me namespace', () => {
 		describe('If requester is owner', () => {});
 		describe('If requester is member', () => {});
 	});
-
-	// function loginUser() {
-	// 	return function (done) {
-	// 		server.app
-	// 			.post('/login')
-	// 			.send({ username: 'admin', password: 'admin' })
-	// 			.expect(302)
-	// 			.expect('Location', '/')
-	// 			.end(onResponse);
-
-	// 		function onResponse(err, res) {
-	// 			if (err) return done(err);
-	// 			return done();
-	// 		}
-	// 	};
-	// }
 });

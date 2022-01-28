@@ -1,32 +1,29 @@
+import bodyParser = require('body-parser');
 import express = require('express');
 import request = require('superagent');
 import { URL } from 'url';
+
+import config = require('../config');
 import { Role } from '../src/databases/entities/Role';
-import { REST_PATH_SEGMENT } from './constants';
+import { AUTH_MIDDLEWARE_ARGS, REST_PATH_SEGMENT, TEST_JWT_SECRET } from './constants';
+import { addRoutes as authMiddleware } from '../src/UserManagement/routes';
+import { authenticationMethods as loginRoutes } from '../src/UserManagement/routes/auth';
 
-/**
- * Log all the routes mounted on the Express app, for debugging.
- */
-export const logRoutes = (app: express.Application) => {
-	app._router.stack.forEach((r: { route?: { path?: string } }) => {
-		if (r?.route?.path) console.log(r.route.path);
-	});
-};
+export const initTestServer = () => {
+	const testServer = {
+		app: express(),
+		restEndpoint: REST_PATH_SEGMENT,
+	};
 
-/**
- * Extract the `n8n-auth` cookie from the headers of a response.
- */
-export const extractAuthCookie = (
-	response: Omit<request.Response, 'headers'> & { headers: { 'set-cookie': string[] } },
-) => {
-	const { 'set-cookie': cookie } = response.headers;
+	testServer.app.use(bodyParser.json());
+	testServer.app.use(bodyParser.urlencoded({ extended: true }));
 
-	if (Array.isArray(cookie) && cookie.length === 1) {
-		return cookie.pop()!.split(';').shift()!.split('=').pop()!;
-	}
+	config.set('userManagement.jwtSecret', TEST_JWT_SECRET);
+	authMiddleware.apply(testServer, AUTH_MIDDLEWARE_ARGS);
+	loginRoutes.apply(testServer);
 
-	throw new Error('Failed to extract cookie from response');
-};
+	return testServer;
+}
 
 /**
  * Validate that a role in a response corresponds to a global owner.
@@ -37,6 +34,15 @@ export const expectOwnerGlobalRole = (globalRole: Role) => {
 	expect(globalRole.scope).toBe('global');
 	expect(typeof globalRole.createdAt).toBe('string');
 	expect(typeof globalRole.updatedAt).toBe('string');
+};
+
+/**
+ * Log all the routes mounted on the test server app, for debugging.
+ */
+export const logRoutes = (app: express.Application) => {
+	app._router.stack.forEach((r: { route?: { path?: string } }) => {
+		if (r?.route?.path) console.log(r.route.path);
+	});
 };
 
 /**
