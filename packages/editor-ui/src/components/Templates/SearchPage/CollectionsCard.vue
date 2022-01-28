@@ -1,7 +1,7 @@
 <template>
-	<div :class="$style.card">
+	<div :class="$style.card" @click="redirectToCollectionPage(id)">
 		<div :class="$style.container">
-			<n8n-heading v-if="!loading" :bold="true" size="small">{{ shortTitle }}</n8n-heading>
+			<n8n-heading v-if="!loading" :bold="true" size="small">{{ title }}</n8n-heading>
 			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
 			<div :class="$style.footer">
 				<slot name="footer"></slot>
@@ -18,15 +18,13 @@ import mixins from 'vue-typed-mixins';
 export default mixins(genericHelpers).extend({
 	name: 'CollectionsCard',
 	props: {
-		title: String,
+		id: String,
 		loading: Boolean,
+		title: String,
 	},
-	computed: {
-		shortTitle(): string {
-			if (this.title.length > 90) {
-				return this.title.slice(0, 87) + '...';
-			}
-			return this.title;
+	methods: {
+		redirectToCollectionPage(collectionId: string) {
+			this.$router.push({ name: 'CollectionPage', params: { id: collectionId } });
 		},
 	},
 });
@@ -42,6 +40,7 @@ export default mixins(genericHelpers).extend({
 	margin-right: var(--spacing-2xs);
 	background-color: var(--color-background-xlight);
 	padding: var(--spacing-s);
+	cursor: pointer;
 }
 
 .container {

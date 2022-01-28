@@ -17,9 +17,10 @@
 			<agile ref="slider" :options="sliderOptions">
 				<CollectionsCard
 					v-for="collection in collections"
+					:id="collection.id"
 					:key="collection.id"
-					:title="collection.name"
 					:loading="loading"
+					:title="collection.name"
 				>
 					<template v-slot:footer>
 						<n8n-text size="small" color="text-light">
@@ -30,10 +31,24 @@
 				</CollectionsCard>
 			</agile>
 			<div :class="$style.buttons">
-				<button v-show="currentSlide > 1" :class="$style.button" @click="$refs.slider.goToPrev(); currentSlide = currentSlide - 1">
+				<button
+					v-show="currentSlide > 1"
+					:class="$style.button"
+					@click="
+						$refs.slider.goToPrev();
+						currentSlide = currentSlide - 1;
+					"
+				>
 					<font-awesome-icon icon="chevron-left" />
 				</button>
-				<button v-show="currentSlide < (collections.length - 1)" :class="$style.button" @click="$refs.slider.goToNext(); currentSlide = currentSlide + 1">
+				<button
+					v-show="currentSlide < collections.length - 1"
+					:class="$style.button"
+					@click="
+						$refs.slider.goToNext();
+						currentSlide = currentSlide + 1;
+					"
+				>
 					<font-awesome-icon icon="chevron-right" />
 				</button>
 			</div>

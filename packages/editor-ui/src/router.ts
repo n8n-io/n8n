@@ -5,6 +5,9 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import TemplateView from '@/views/TemplateView.vue';
 
+import CollectionPageHeader from '@/components/Templates/CollectionPage/Layout/Header.vue';
+import CollectionPageContent from '@/components/Templates/CollectionPage/Layout/Content.vue';
+
 import SearchPageHeader from '@/components/Templates/SearchPage/Layout/Header.vue';
 import SearchPageContent from '@/components/Templates/SearchPage/Layout/Content.vue';
 
@@ -26,6 +29,23 @@ export default new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
+		},
+		{
+			path: '/collection/',
+			components: {
+				default: TemplateView,
+				sidebar: MainSidebar,
+			},
+			children: [
+				{
+					path: ':id',
+					name: 'CollectionPage',
+					components: {
+						header: CollectionPageHeader,
+						default: CollectionPageContent,
+					},
+				},
+			],
 		},
 		{
 			path: '/template/',

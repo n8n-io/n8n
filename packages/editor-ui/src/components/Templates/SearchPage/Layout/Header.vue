@@ -22,10 +22,11 @@
 </template>
 <script lang="ts">
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+
 import mixins from 'vue-typed-mixins';
 
 export default mixins(workflowHelpers).extend({
-	name: 'Header',
+	name: 'SearchPageHeader',
 	methods: {
 		openNewWorkflow() {
 			this.$router.push({ name: 'NodeViewNew' });

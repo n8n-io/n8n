@@ -27,7 +27,7 @@ import { IN8nTemplate } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(workflowHelpers).extend({
-	name: 'TemplateView',
+	name: 'WokrflowPageHeader',
 	components: {
 		GoBackButton,
 	},
