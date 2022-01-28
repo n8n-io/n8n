@@ -34,11 +34,9 @@ export default {
 </script>
 
 <style lang="scss" module>
-@function lightness($h, $s, $l, $lightness) {
-	@return hsl(var(#{$h}), var(#{$s}), calc(var(#{$l}) + #{$lightness}));
-}
+@use "../../utils";
 
-$color-warning-shade: lightness(
+$color-warning-shade: utils.lightness(
 	--color-warning-h,
 	--color-warning-s,
 	--color-warning-tint-1-l,

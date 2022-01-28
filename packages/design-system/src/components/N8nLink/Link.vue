@@ -63,16 +63,13 @@ export default {
 </script>
 
 <style lang="scss" module>
-// todo clean up these imports
-@function saturation($h, $s, $l, $saturation) {
-	@return hsl(var(#{$h}), calc(var(#{$s}) + #{$saturation}), var(#{$l}));
-}
+@use "../../utils";
 
 .primary {
 	color: var(--color-primary);
 
 	&:active {
-		color: saturation(
+		color: utils.saturation(
 			--color-primary-h,
 			--color-primary-s,
 			--color-primary-l,
@@ -89,7 +86,7 @@ export default {
 	color: var(--color-danger);
 
 	&:active {
-		color: saturation(
+		color: utils.saturation(
 			--color-danger-h,
 			--color-danger-s,
 			--color-danger-l,
