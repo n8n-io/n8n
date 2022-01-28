@@ -6,7 +6,7 @@ export default {
 	argTypes: {
 		size: {
 			type: 'select',
-			options: ['medium', 'large'],
+			options: ['small', 'medium', 'large'],
 		},
 	},
 };
@@ -21,6 +21,5 @@ const Template = (args, { argTypes }) => ({
 
 export const Avatar = Template.bind({});
 Avatar.args = {
-	firstName: 'Sunny',
-	lastName: 'Side',
+	name: 'Sunny Side',
 };
