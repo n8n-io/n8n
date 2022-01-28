@@ -15,25 +15,22 @@ import {
 	JsonObject,
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
+
 import {
-	clientDescription
-} from './descriptions/ClientDescription';
-import {
-	invoiceDescription
-} from './descriptions/InvoiceDescription';
-import {
-	siteDescription
-} from './descriptions/SiteDescription';
-import {
-	ticketDescription
-} from './descriptions/TicketDescription';
-import {
-	userDescription
-} from './descriptions/UserDescription';
+	clientFields,
+	clientOperations,
+	siteFields,
+	siteOperations,
+	ticketFields,
+	ticketOperations,
+	userFields,
+	userOperations
+} from './descriptions';
 
 import {
 	getAccessTokens,
 	haloPSAApiRequest,
+	haloPSAApiRequestAllItems,
 	validateCrendetials
 } from './GenericFunctions';
 
@@ -70,10 +67,6 @@ export class HaloPSA implements INodeType {
 						name: 'Client',
 						value: 'client',
 					},
-					// {
-					// 	name: 'Invoice',
-					// 	value: 'invoice',
-					// },
 					{
 						name: 'Site',
 						value: 'site',
@@ -87,131 +80,34 @@ export class HaloPSA implements INodeType {
 						value: 'user',
 					},
 				],
-				default: 'ticket',
+				default: 'client',
 				required: true,
 			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Create',
-						value: 'create',
-					},
-					{
-						name: 'Delete',
-						value: 'delete',
-					},
-					{
-						name: 'Get',
-						value: 'get',
-					},
-					{
-						name: 'Get All',
-						value: 'getAll',
-					},
-					{
-						name: 'Update',
-						value: 'update',
-					},
-				],
-				default: 'getAll',
-			},
-
-			// Get, Update, Delete ----------------------------------------------------
-			{
-				displayName: 'Item ID',
-				name: 'item_id',
-				type: 'string',
-				default: '',
-				description: 'Specify item ID',
-				displayOptions: {
-					show: {
-						operation: ['get', 'update', 'delete'],
-						resource: [
-							'client',
-							'invoice',
-							'site',
-							'ticket',
-							'user',
-						],
-					},
-				},
-			},
-
-			// Descriptions -------------------------------------------------------------
-			...ticketDescription,
-			// ...invoiceDescription,
-			...userDescription,
-			...clientDescription,
-			...siteDescription,
-
-			// Delete ----------------------------------------------------------------
-			{
-				displayName: 'The Reason For Deleting Item',
-				name: 'reasonForDeletion',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				displayOptions: {
-					show: {
-						operation: ['delete'],
-					},
-				},
-			},
-
-			// Get All ----------------------------------------------------------------
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: ['getAll'],
-					},
-				},
-				default: false,
-				description: 'Whether to return all results or only up to a given limit',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				default: 50,
-				description: 'Max number of results to return',
-				displayOptions: {
-					show: {
-						returnAll: [false],
-						operation: ['getAll'],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 1000,
-				},
-			},
+			...clientOperations,
+			...clientFields,
+			...ticketOperations,
+			...ticketFields,
+			...siteOperations,
+			...siteFields,
+			...userOperations,
+			...userFields,
 		],
 	};
 
 	methods = {
 		loadOptions: {
 			async getHaloPSASites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = await this.getCredentials('haloPSAApi');
 				const tokens = await getAccessTokens.call(this);
 
-				const responce = (await haloPSAApiRequest.call(
+				const response = await haloPSAApiRequestAllItems.call(
 					this,
-					credentials?.resourceApiUrl as string,
-					'site',
+					'sites',
 					'GET',
+					'/site',
 					tokens.access_token,
-				)) as IDataObject[];
+				) as IDataObject[];
 
-				const options = responce.map((site) => {
+				const options = response.map((site) => {
 					return {
 						name: site.clientsite_name as string,
 						value: site.id as number,
@@ -221,63 +117,18 @@ export class HaloPSA implements INodeType {
 				return options.sort((a, b) => a.name.localeCompare(b.name));
 			},
 
-			async getHaloPSAClients(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = await this.getCredentials('haloPSAApi');
-				const tokens = await getAccessTokens.call(this);
-
-				const responce = (await haloPSAApiRequest.call(
-					this,
-					credentials?.resourceApiUrl as string,
-					'client',
-					'GET',
-					tokens.access_token,
-				)) as IDataObject[];
-
-				const options = responce.map((client) => {
-					return {
-						name: client.name as string,
-						value: client.id as number,
-					};
-				});
-
-				return options.sort((a, b) => a.name.localeCompare(b.name));
-			},
-
-			async getHaloPSAItems(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = await this.getCredentials('haloPSAApi');
-				const tokens = await getAccessTokens.call(this);
-
-				const responce = (await haloPSAApiRequest.call(
-					this,
-					credentials?.resourceApiUrl as string,
-					'item',
-					'GET',
-					tokens.access_token,
-				)) as IDataObject[];
-
-				const options = responce.map((item) => {
-					return {
-						name: item.name as string,
-						value: item.id as number,
-					};
-				});
-
-				return options.sort((a, b) => a.name.localeCompare(b.name));
-			},
-
 			async getHaloPSAAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = await this.getCredentials('haloPSAApi');
 				const tokens = await getAccessTokens.call(this);
 
-				const responce = (await haloPSAApiRequest.call(
+				const response = await haloPSAApiRequestAllItems.call(
 					this,
-					credentials?.resourceApiUrl as string,
-					'agent',
+					'agents',
 					'GET',
+					'/agent',
 					tokens.access_token,
-				)) as IDataObject[];
+				) as IDataObject[];
 
-				const options = responce.map((agent) => {
+				const options = response.map((agent) => {
 					return {
 						name: agent.name as string,
 						value: agent.id as number,
@@ -316,17 +167,8 @@ export class HaloPSA implements INodeType {
 
 		const tokens = await getAccessTokens.call(this);
 
-		let resource = this.getNodeParameter('resource', 0) as string;
-		if(resource === 'ticket') {
-			resource = 'tickets';
-		}
-		if(resource === 'user') {
-			resource = 'users';
-		}
-
+		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const resourceApiUrl = ((await this.getCredentials('haloPSAApi')) as IDataObject)
-			.resourceApiUrl as string;
 
 		//====================================================================
 		//                        Main Loop
@@ -334,144 +176,356 @@ export class HaloPSA implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				// Create ----------------------------------------------------
-				if (operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const item: IDataObject = { ...additionalFields };
 
-					if (resource === 'ticket') {
-						const summary = this.getNodeParameter('summary', i) as string;
-						item['summary'] = summary;
-						const details = this.getNodeParameter('details', i) as string;
-						item['details'] = details;
-					}
-
-					if (resource === 'client') {
+				if (resource === 'client') {
+					if (operation === 'create') {
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const name = this.getNodeParameter('clientName', i) as string;
-						item['name'] = name;
+						const body: IDataObject = {
+							name,
+							...additionalFields,
+						};
+
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'POST',
+							'/client',
+							tokens.access_token,
+							[body],
+						);
 					}
 
-					if (resource === 'user') {
-						const name = this.getNodeParameter('userName', i) as string;
-						item['name'] = name;
-						const site = this.getNodeParameter('sitesList', i) as string;
-						item['site_id'] = site;
+					if (operation === 'delete') {
+						const clientId = this.getNodeParameter('clientId', i) as string;
+
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'DELETE',
+							`/client/${clientId}`,
+							tokens.access_token,
+						);
 					}
 
-					if (resource === 'site') {
-						const siteName = this.getNodeParameter('siteName', i) as string;
-						item['name'] = siteName;
-						const client = this.getNodeParameter('clientsList', i) as number;
-						item['client_id'] = client;
+					if (operation === 'get') {
+						const clientId = this.getNodeParameter('clientId', i) as string;
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'GET',
+							`/client/${clientId}`,
+							tokens.access_token,
+						);
 					}
 
-					if (resource === 'invoice') {
-						const client = this.getNodeParameter('clientsList', i) as number;
-						item['client_id'] = client;
-						const invoiceDate = this.getNodeParameter('invoiceDate', i) as number;
-						item['invoice_date'] = invoiceDate;
-						const itemsList = this.getNodeParameter('itemsList', i) as IDataObject;
-						const items = [];
-
-						for (const entry of itemsList.items as IDataObject[]) {
-							const response = await haloPSAApiRequest.call(
+					if (operation === 'getAll') {
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const qs: IDataObject = {};
+						Object.assign(qs, filters);
+						if (returnAll) {
+							responseData = await haloPSAApiRequestAllItems.call(
 								this,
-								resourceApiUrl,
-								'item',
+								'clients',
 								'GET',
+								`/client`,
 								tokens.access_token,
-								entry.item_id as string,
+								{},
+								qs,
 							);
-							const quantity = entry.quantity as number;
-							const price = (response as IDataObject).baseprice as number;
-							items.push({
-								_itemid: (response as IDataObject).id,
-								qty_order: quantity,
-								unit_price: price,
-								prorata_quantity: quantity,
-								prorata_unit_price: price,
-								calculate_price_from_assets: true,
-							});
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.count = limit;
+							const { clients } = await haloPSAApiRequest.call(
+								this,
+								'GET',
+								`/client`,
+								tokens.access_token,
+								{},
+								qs,
+							);
+							responseData = clients;
 						}
-
-						item['lines'] = items;
 					}
 
-					const body = [item];
-					responseData = await haloPSAApiRequest.call(
-						this,
-						resourceApiUrl,
-						resource,
-						'POST',
-						tokens.access_token,
-						'',
-						body,
-					);
-				}
-				// Delete ----------------------------------------------------
-				if (operation === 'delete') {
-					const itemID = this.getNodeParameter('item_id', i) as string;
-					const reasonForDeletion = this.getNodeParameter('reasonForDeletion', i) as string;
-					responseData = await haloPSAApiRequest.call(
-						this,
-						resourceApiUrl,
-						resource,
-						'DELETE',
-						tokens.access_token,
-						itemID,
-						{},
-						{ reason: reasonForDeletion },
-					);
-				}
-				// Get -------------------------------------------------------
-				if (operation === 'get') {
-					const itemID = this.getNodeParameter('item_id', i) as string;
-					responseData = await haloPSAApiRequest.call(
-						this,
-						resourceApiUrl,
-						resource,
-						'GET',
-						tokens.access_token,
-						itemID,
-					);
-				}
-				// Get All ---------------------------------------------------
-				if (operation === 'getAll') {
-					let count;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll) {
-						count = {};
-					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						count = { count: limit };
+					if (operation === 'update') {
+						const clientId = this.getNodeParameter('clientId', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body: IDataObject = {
+							client_id: clientId,
+							...updateFields,
+						};
+
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'POST',
+							'/client',
+							tokens.access_token,
+							[body],
+						);
 					}
-					responseData = await haloPSAApiRequest.call(
-						this,
-						resourceApiUrl,
-						resource,
-						'GET',
-						tokens.access_token,
-						'',
-						{},
-						count,
-					);
 				}
 
-				// Update ----------------------------------------------------
-				if (operation === 'update') {
-					const itemID = this.getNodeParameter('item_id', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+				if (resource === 'site') {
+					if (operation === 'create') {
+						const name = this.getNodeParameter('siteName', i) as string;
+						const clientId = this.getNodeParameter('clientId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body: IDataObject = {
+							name,
+							client_id: clientId,
+							...additionalFields,
+						};
 
-					const body = [{ id: +itemID, ...updateFields }];
-					responseData = await haloPSAApiRequest.call(
-						this,
-						resourceApiUrl,
-						resource,
-						'POST',
-						tokens.access_token,
-						'',
-						body,
-					);
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'POST',
+							'/site',
+							tokens.access_token,
+							[body],
+						);
+					}
+
+					if (operation === 'delete') {
+						const siteId = this.getNodeParameter('siteId', i) as string;
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'DELETE',
+							`/site/${siteId}`,
+							tokens.access_token,
+						);
+					}
+
+					if (operation === 'get') {
+						const siteId = this.getNodeParameter('siteId', i) as string;
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'GET',
+							`/site/${siteId}`,
+							tokens.access_token,
+						);
+					}
+
+					if (operation === 'getAll') {
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const qs: IDataObject = {};
+						Object.assign(qs, filters);
+						if (returnAll) {
+							responseData = await haloPSAApiRequestAllItems.call(
+								this,
+								'sites',
+								'GET',
+								`/site`,
+								tokens.access_token,
+								{},
+								qs,
+							);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.count = limit;
+							const { sites } = await haloPSAApiRequest.call(
+								this,
+								'GET',
+								`/site`,
+								tokens.access_token,
+								{},
+								qs,
+							);
+							responseData = sites;
+						}
+					}
+
+					if (operation === 'update') {
+						const siteId = this.getNodeParameter('siteId', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body: IDataObject = {
+							site_id: siteId,
+							...updateFields,
+						};
+
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'POST',
+							'/site',
+							tokens.access_token,
+							[body],
+						);
+					}
+				}
+
+				if (resource === 'ticket') {
+					if (operation === 'create') {
+						const summary = this.getNodeParameter('summary', i) as string;
+						const details = this.getNodeParameter('details', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body: IDataObject = {
+							summary,
+							details,
+							...additionalFields,
+						};
+
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'POST',
+							'/tickets',
+							tokens.access_token,
+							[body],
+						);
+					}
+
+					if (operation === 'delete') {
+						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'DELETE',
+							`/tickets/${ticketId}`,
+							tokens.access_token,
+						);
+					}
+
+					if (operation === 'get') {
+						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'GET',
+							`/tickets/${ticketId}`,
+							tokens.access_token,
+						);
+					}
+
+					if (operation === 'getAll') {
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const qs: IDataObject = {};
+						Object.assign(qs, filters);
+						if (returnAll) {
+							responseData = await haloPSAApiRequestAllItems.call(
+								this,
+								'tickets',
+								'GET',
+								`/tickets`,
+								tokens.access_token,
+								{},
+								qs,
+							);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.count = limit;
+							const { tickets } = await haloPSAApiRequest.call(
+								this,
+								'GET',
+								`/tickets`,
+								tokens.access_token,
+								{},
+								qs,
+							);
+							responseData = tickets;
+						}
+					}
+
+					if (operation === 'update') {
+						const ticketId = this.getNodeParameter('ticketId', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body: IDataObject = {
+							ticket_id: ticketId,
+							...updateFields,
+						};
+
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'POST',
+							'/tickets',
+							tokens.access_token,
+							[body],
+						);
+					}
+				}
+
+				if (resource === 'user') {
+					if (operation === 'create') {
+						const name = this.getNodeParameter('userName', i) as string;
+						const siteId = this.getNodeParameter('siteId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body: IDataObject = {
+							name,
+							site_id: siteId,
+							...additionalFields,
+						};
+
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'POST',
+							'/users',
+							tokens.access_token,
+							[body],
+						);
+					}
+
+					if (operation === 'delete') {
+						const userId = this.getNodeParameter('userId', i) as string;
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'DELETE',
+							`/users/${userId}`,
+							tokens.access_token,
+						);
+					}
+
+					if (operation === 'get') {
+						const userId = this.getNodeParameter('userId', i) as string;
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'GET',
+							`/users/${userId}`,
+							tokens.access_token,
+						);
+					}
+
+					if (operation === 'getAll') {
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const qs: IDataObject = {};
+						Object.assign(qs, filters);
+						if (returnAll) {
+							responseData = await haloPSAApiRequestAllItems.call(
+								this,
+								'users',
+								'GET',
+								`/users`,
+								tokens.access_token,
+								{},
+								qs,
+							);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.count = limit;
+							const { users } = await haloPSAApiRequest.call(
+								this,
+								'GET',
+								`/users`,
+								tokens.access_token,
+								{},
+								qs,
+							);
+							responseData = users;
+						}
+					}
+
+					if (operation === 'update') {
+						const userId = this.getNodeParameter('userId', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body: IDataObject = {
+							user_id: userId,
+							...updateFields,
+						};
+
+						responseData = await haloPSAApiRequest.call(
+							this,
+							'POST',
+							'/users',
+							tokens.access_token,
+							[body],
+						);
+					}
 				}
 
 				if (Array.isArray(responseData)) {
@@ -481,7 +535,7 @@ export class HaloPSA implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as JsonObject).message });
+					returnData.push({ error: error.message });
 					continue;
 				}
 				throw error;

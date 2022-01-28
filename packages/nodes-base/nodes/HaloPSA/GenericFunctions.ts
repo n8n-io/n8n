@@ -1,4 +1,7 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+	IHookFunctions,
+} from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -11,7 +14,9 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 // Interfaces and Types -------------------------------------------------------------
 interface IHaloPSATokens {
@@ -22,21 +27,6 @@ interface IHaloPSATokens {
 	refresh_token: string;
 	id_token: string;
 }
-
-const pluralResource: { [key: string]: string } = {
-	client: 'clients',
-	asset: 'assets',
-	attachment: 'attachments',
-	clientcontract: 'contracts',
-	invoice: 'invoices',
-	item: 'items',
-	opportunities: 'tickets',
-	projects: 'tickets',
-	quotation: 'quotes',
-	report: 'reports',
-	site: 'sites',
-	supplier: 'suppliers',
-};
 
 // API Requests ---------------------------------------------------------------------
 
@@ -75,15 +65,17 @@ export async function haloPSAApiRequest(
 		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions
 		| IPollFunctions,
-	url: string,
-	resource: string,
 	method: string,
+	resource: string,
 	accessToken: string,
-	itemID = '',
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-): Promise<IDataObject | IDataObject[]> {
+): Promise<IDataObject> {
+
+	const resourceApiUrl = ((await this.getCredentials('haloPSAApi')) as IDataObject)
+		.resourceApiUrl as string;
+
 	try {
 		let options: OptionsWithUri = {
 			headers: {
@@ -97,19 +89,41 @@ export async function haloPSAApiRequest(
 			method,
 			qs,
 			body,
-			uri: itemID ? `${url}/${resource}/${itemID}` : `${url}/${resource}`,
+			uri: `${resourceApiUrl}${resource}`,
 			json: true,
 		};
 		options = Object.assign({}, options, option);
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		const result = await this.helpers.request!(options);
-
-		return result[pluralResource[resource] || resource] || result;
+		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+export async function haloPSAApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	accessToken: string,
+	body = {},
+	query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData: IDataObject;
+	query.page_no = 1;
+	query.pageinate = true;
+
+	do {
+		responseData = await haloPSAApiRequest.call(this, method, endpoint, accessToken, body, query) as IDataObject;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		query.page_no++;
+		//@ts-ignore
+	} while (returnData.length < responseData.record_count);
+
+	return returnData;
 }
 
 // Utilities ------------------------------------------------------------------------

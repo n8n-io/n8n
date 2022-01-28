@@ -1,62 +1,87 @@
 import { INodeProperties } from 'n8n-workflow';
 
-const siteFields: INodeProperties[] = [
+export const siteOperations: INodeProperties[] = [
 	{
-		displayName: 'Notes',
-		name: 'notes',
-		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'site',
+				],
+			},
 		},
-		default: '',
-	},
-	{
-		displayName: 'Main Contact',
-		name: 'maincontact_name',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Phone Number',
-		name: 'phonenumber',
-		type: 'string',
-		default: '',
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a site',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a site',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a client',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all sites',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a site',
+			},
+		],
+		default: 'create',
 	},
 ];
 
-export const siteDescription: INodeProperties[] = [
+export const siteFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                site:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'siteName',
 		type: 'string',
 		default: '',
-		description: 'Enter site name',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['site'],
+				resource: [
+					'site',
+				],
+				operation: [
+					'create'
+				],
 			},
 		},
+		description: 'Enter site name',
 	},
 	{
-		displayName: 'Client',
-		name: 'clientsList',
-		type: 'options',
+		displayName: 'Client ID',
+		name: 'clientId',
+		type: 'string',
 		default: '',
-		noDataExpression: true,
 		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getHaloPSAClients',
-		},
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['site'],
+				resource: [
+					'site',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
-	// Additional fields =============================================================
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -65,13 +90,162 @@ export const siteDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['site'],
+				resource: [
+					'site',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
-		options: [...siteFields],
+		options: [
+			{
+				displayName: 'Main Contact',
+				name: 'maincontact_name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Phone Number',
+				name: 'phonenumber',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
-	// Update fields =============================================================
+	/* -------------------------------------------------------------------------- */
+	/*                                site:delete                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Site ID',
+		name: 'siteId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'site',
+				],
+				operation: [
+					'delete',
+					'get',
+				],
+			},
+		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                site:getAll                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'site',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		displayOptions: {
+			show: {
+				resource: [
+					'site',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'site',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Active',
+				name: 'includeActive',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to include active customers in the response',
+			},
+			{
+				displayName: 'Include Inactive',
+				name: 'includeinactive',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include inactive Customers in the response',
+			},
+			{
+				displayName: 'Text Search',
+				name: 'search',
+				type: 'string',
+				default: '',
+				description: 'Filter by Customers like your search string',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                site:update                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Site ID',
+		name: 'siteId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'site',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -80,11 +254,27 @@ export const siteDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['update'],
-				resource: ['site'],
+				resource: [
+					'site',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		options: [
+			{
+				displayName: 'Client',
+				name: 'client_id',
+				type: 'options',
+				default: '',
+			},
+			{
+				displayName: 'Main Contact',
+				name: 'maincontact_name',
+				type: 'string',
+				default: '',
+			},
 			{
 				displayName: 'Name',
 				name: 'name',
@@ -93,16 +283,20 @@ export const siteDescription: INodeProperties[] = [
 				description: 'Enter site name',
 			},
 			{
-				displayName: 'Client',
-				name: 'client_id',
-				type: 'options',
-				default: '',
-				noDataExpression: true,
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
 				typeOptions: {
-					loadOptionsMethod: 'getHaloPSAClients',
+					alwaysOpenEditWindow: true,
 				},
+				default: '',
 			},
-			...siteFields,
+			{
+				displayName: 'Phone Number',
+				name: 'phonenumber',
+				type: 'string',
+				default: '',
+			},
 		],
 	},
 ];

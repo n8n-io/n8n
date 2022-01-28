@@ -1,56 +1,52 @@
 import { INodeProperties } from 'n8n-workflow';
 
-const userFields: INodeProperties[] = [
+export const userOperations: INodeProperties[] = [
 	{
-		displayName: 'Email Address',
-		name: 'emailaddress',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Network Login',
-		name: 'login',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Notes',
-		name: 'notes',
-		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+			},
 		},
-		default: '',
-	},
-	{
-		displayName: 'Site Telephone Number',
-		name: 'sitephonenumber',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Surname',
-		name: 'surname',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Password',
-		name: 'password',
-		type: 'string',
-		default: '',
-		description:
-			'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
-	},
-	{
-		displayName: 'User Is Active',
-		name: 'inactive',
-		type: 'boolean',
-		default: true,
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a user',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a user',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a user',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all users',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a user',
+			},
+		],
+		default: 'create',
 	},
 ];
 
-export const userDescription: INodeProperties[] = [
+export const userFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                user:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'userName',
@@ -60,29 +56,35 @@ export const userDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['user'],
+				resource: [
+					'user',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
 	{
-		displayName: 'Website',
-		name: 'sitesList',
+		displayName: 'Site Name/ID',
+		name: 'siteId',
 		type: 'options',
 		default: '',
-		noDataExpression: true,
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getHaloPSASites',
 		},
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['user'],
+				resource: [
+					'user',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
-	// Additional fields =============================================================
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -91,13 +93,181 @@ export const userDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['user'],
+				resource: [
+					'user',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
-		options: [...userFields],
+		options: [
+			{
+				displayName: 'Email',
+				name: 'emailaddress',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				default: '',
+				description: 'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
+			},
+			{
+				displayName: 'Site Telephone Number',
+				name: 'sitephonenumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Surname',
+				name: 'surname',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'User Is Active',
+				name: 'inactive',
+				type: 'boolean',
+				default: true,
+			},
+		],
 	},
-	// Update fields =============================================================
+	/* -------------------------------------------------------------------------- */
+	/*                                user:delete                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'User ID',
+		name: 'userId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'delete',
+					'get',
+				],
+			},
+		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                user:getAll                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Active',
+				name: 'includeActive',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to include active customers in the response',
+			},
+			{
+				displayName: 'Include Inactive',
+				name: 'includeinactive',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include inactive Customers in the response',
+			},
+			{
+				displayName: 'Text Search',
+				name: 'search',
+				type: 'string',
+				default: '',
+				description: 'Filter by Customers like your search string',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                user:update                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'User ID',
+		name: 'userId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -106,11 +276,21 @@ export const userDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['update'],
-				resource: ['user'],
+				resource: [
+					'user',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		options: [
+			{
+				displayName: 'Email',
+				name: 'emailaddress',
+				type: 'string',
+				default: '',
+			},
 			{
 				displayName: 'Name',
 				name: 'name',
@@ -119,16 +299,48 @@ export const userDescription: INodeProperties[] = [
 				description: 'Enter user name',
 			},
 			{
-				displayName: 'Website',
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				default: '',
+				description: 'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
+			},
+			{
+				displayName: 'Site Telephone Number',
+				name: 'sitephonenumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Surname',
+				name: 'surname',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'User Is Active',
+				name: 'inactive',
+				type: 'boolean',
+				default: true,
+			},
+			{
+				displayName: 'Site ID',
 				name: 'site_id',
 				type: 'options',
 				default: '',
-				noDataExpression: true,
 				typeOptions: {
 					loadOptionsMethod: 'getHaloPSASites',
 				},
 			},
-			...userFields,
 		],
 	},
 ];
