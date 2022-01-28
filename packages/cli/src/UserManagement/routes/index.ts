@@ -30,7 +30,6 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	const options = {
 		jwtFromRequest: (req: Request) => {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			console.log('cookie', req.cookies?.['n8n-auth']);
 			return (req.cookies?.['n8n-auth'] as string | undefined) ?? null;
 		},
 		secretOrKey: config.get('userManagement.jwtSecret') as string,
@@ -38,7 +37,6 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 
 	passport.use(
 		new Strategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
-			console.log('jwtPayload', jwtPayload);
 			// We will assign the `sub` property on the JWT to the database ID of user
 			const user = await Db.collections.User!.findOne(jwtPayload.id, { relations: ['globalRole'] });
 
