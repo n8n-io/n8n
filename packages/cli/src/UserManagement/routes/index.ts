@@ -74,8 +74,6 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			return next();
 		}
 
-		// https://stackoverflow.com/questions/14001183/how-to-authenticate-supertest-requests-with-passport
-
 		for (let i = 0; i < ignoredEndpoints.length; i++) {
 			const path = ignoredEndpoints[i];
 			if (!path) {
@@ -87,7 +85,6 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 				return next();
 			}
 		}
-
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
