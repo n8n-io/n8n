@@ -36,13 +36,6 @@ export default {
 <style lang="scss" module>
 @use "../../utils";
 
-$color-warning-shade: utils.lightness(
-	--color-warning-h,
-	--color-warning-s,
-	--color-warning-tint-1-l,
-	-30%
-);
-
 .badge {
   display: inline-flex;
   align-items: center;
