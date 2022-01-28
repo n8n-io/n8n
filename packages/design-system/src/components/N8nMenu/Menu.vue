@@ -49,6 +49,7 @@ export default {
 .primary {
 	composes: menu;
 	--menu-item-hover-font-color: var(--color-primary);
+	--menu-item-active-font-weight: var(--font-weight-regular);
 }
 
 .secondary {
