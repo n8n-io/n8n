@@ -32,6 +32,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import N8nFormInput from '../N8nFormInput';
+import { IFormInputs } from '../../Interface';
 
 export default Vue.extend({
 	name: 'n8n-form-inputs',
@@ -64,8 +65,8 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		this.inputs.forEach((row: any) => {
-			row.forEach((input: any) => {
+		(this.inputs as IFormInputs).forEach((row: IFormInputsRow) => {
+			row.forEach((input: IFormInputsCol) => {
 				if (input.hasOwnProperty('initialValue')) {
 					Vue.set(this.values, input.name, input.initialValue);
 				}
@@ -122,7 +123,7 @@ export default Vue.extend({
 	display: flex;
 	width: 100%;
 
-	@media (max-width: 768px) {
+	@media (max-width: 768px) { // todo remove media query
 		flex-direction: column;
 	}
 }
@@ -151,7 +152,7 @@ export default Vue.extend({
 	max-width: 50%;
 	padding-right: var(--spacing-2xs);
 
-	@media (max-width: 768px) {
+	@media (max-width: 768px) { // todo remove media query if possible
 		max-width: 100%;
 		padding-right: 0;
 	}
