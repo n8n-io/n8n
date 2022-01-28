@@ -19,29 +19,21 @@ const Template = (args, { argTypes }) => ({
 
 export const Member = Template.bind({});
 Member.args = {
-	user: {
-		id: "1",
-		firstName: "M",
-		lastName: "A",
-		email: 'test@n8n.io',
-	},
+	firstName: "M",
+	lastName: "A",
+	email: 'test@n8n.io',
 };
 
 export const Current = Template.bind({});
 Current.args = {
-	user: {
-		id: "1",
-		firstName: "M",
-		lastName: "A",
-		email: 'test@n8n.io',
-	},
-	currentUserId: "1",
+	firstName: "M",
+	lastName: "A",
+	email: 'test@n8n.io',
+	isCurrentUser: true,
 };
 
 export const Invited = Template.bind({});
 Invited.args = {
-	user: {
-		id: "1",
-		email: 'test@n8n.io',
-	},
+	email: 'test@n8n.io',
+	isPendingUser: true,
 };

@@ -20,7 +20,7 @@
 			:class="$style.itemContainer"
 			:label="getLabel(user)"
 		>
-			<n8n-user-info :user="user" />
+			<n8n-user-info v-bind="user" />
 		</el-option>
 	</el-select>
 </template>

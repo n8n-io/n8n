@@ -5,7 +5,7 @@
 			:key="user.id"
 			:class="$style.itemContainer"
 		>
-			<n8n-user-info :user="user" />
+			<n8n-user-info v-bind="user" />
 			<div :class="$style.badgeContainer">
 				<n8n-badge v-if="user.globalRole.name === 'owner'" theme="secondary">Owner</n8n-badge>
 				<n8n-action-toggle

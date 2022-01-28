@@ -1,19 +1,19 @@
 <template>
 	<div :class="$style.container">
 		<div :class="$style.avatarContainer">
-			<n8n-avatar :name="user.fullName" />
+			<n8n-avatar :name="fullName" />
 		</div>
 
-		<div v-if="user.isPendingUser" :class="$style.pendingUser">
-			<n8n-text :bold="true">{{user.email}}</n8n-text>
+		<div v-if="isPendingUser" :class="$style.pendingUser">
+			<n8n-text :bold="true">{{email}}</n8n-text>
 			<span :class="$style.pendingBadge"><n8n-badge :bold="true">Pending</n8n-badge></span>
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
-				<n8n-text :bold="true">{{user.fullName}} {{user.isCurrentUser ? '(you)' : ''}}</n8n-text>
+				<n8n-text :bold="true">{{fullName}} {{isCurrentUser ? '(you)' : ''}}</n8n-text>
 			</div>
 			<div>
-				<n8n-text size="small" color="text-light">{{user.email}}</n8n-text>
+				<n8n-text size="small" color="text-light">{{email}}</n8n-text>
 			</div>
 		</div>
 	</div>
@@ -34,9 +34,17 @@ export default Vue.extend({
 		N8nBadge,
 	},
 	props: {
-		user: {
-			type: Object,
-			required: true,
+		fullName: {
+			type: String,
+		},
+		email: {
+			type: String,
+		},
+		isPendingUser: {
+			type: Boolean,
+		},
+		isCurrentUser: {
+			type: Boolean,
 		},
 	},
 });
