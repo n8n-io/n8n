@@ -111,15 +111,15 @@ export async function init(
 			throw new Error(`The database "${dbType}" is currently not supported!`);
 	}
 
+	if (testConnectionOptions) {
+		connectionOptions = testConnectionOptions;
+	}
+
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
 		synchronize: false,
 		logging: false,
 	});
-
-	if (testConnectionOptions) {
-		connectionOptions = testConnectionOptions;
-	}
 
 	let connection = await createConnection(connectionOptions);
 
