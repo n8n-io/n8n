@@ -34,8 +34,6 @@ export default {
 </script>
 
 <style lang="scss" module>
-@use "../../utils";
-
 .badge {
   display: inline-flex;
   align-items: center;

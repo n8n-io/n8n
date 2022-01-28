@@ -122,7 +122,7 @@ export default {
 </script>
 
 <style lang="scss" module>
-@use "../../utils";
+@import "../../utils";
 
 .button {
 	> i {
@@ -141,28 +141,28 @@ export default {
 }
 
 $active-shade-percent: 10%;
-$color-primary-shade: utils.lightness(
+$color-primary-shade: lightness(
 	--color-primary-h,
 	--color-primary-s,
 	--color-primary-l,
 	-($active-shade-percent)
 );
 
-$color-success-shade: utils.lightness(
+$color-success-shade: lightness(
 	--color-success-h,
 	--color-success-s,
 	--color-success-l,
 	-($active-shade-percent)
 );
 
-$color-warning-shade: utils.lightness(
+$color-warning-shade: lightness(
 	--color-warning-h,
 	--color-warning-s,
 	--color-warning-l,
 	-($active-shade-percent)
 );
 
-$color-danger-shade: utils.lightness(
+$color-danger-shade: lightness(
 	--color-danger-h,
 	--color-danger-s,
 	--color-danger-l,

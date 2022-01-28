@@ -63,13 +63,13 @@ export default {
 </script>
 
 <style lang="scss" module>
-@use "../../utils";
+@import "../../utils";
 
 .primary {
 	color: var(--color-primary);
 
 	&:active {
-		color: utils.saturation(
+		color: saturation(
 			--color-primary-h,
 			--color-primary-s,
 			--color-primary-l,
@@ -86,7 +86,7 @@ export default {
 	color: var(--color-danger);
 
 	&:active {
-		color: utils.saturation(
+		color: saturation(
 			--color-danger-h,
 			--color-danger-s,
 			--color-danger-l,
