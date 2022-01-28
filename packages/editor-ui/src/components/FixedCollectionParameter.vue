@@ -83,6 +83,20 @@ export default mixins(genericHelpers)
 				selectedOption: undefined,
 			};
 		},
+
+		created() {
+			// Add default polling interval for Poll trigger nodes
+			if (this.values) {
+				this.addDefaultPolling();
+			} else {
+				const unwatch = this.$watch('values', () => {
+					if (!this.values) return;
+					this.addDefaultPolling();
+					unwatch();
+				});
+			}
+		},
+
 		computed: {
 			getPlaceholderText (): string {
 				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
@@ -126,6 +140,14 @@ export default mixins(genericHelpers)
 			},
 		},
 		methods: {
+			addDefaultPolling() {
+				if (this.parameter.name === 'pollTimes' && !this.values.item){
+					this.values['item'] = [];
+				}
+				if (!this.values.item.length) {
+					this.values.item.push({ 'mode': 'everyMinute' });
+				}
+			},
 			deleteOption (optionName: string, index?: number) {
 				const parameterData = {
 					name: this.getPropertyPath(optionName, index),
