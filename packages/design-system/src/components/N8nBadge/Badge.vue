@@ -35,9 +35,9 @@ export default {
 
 <style lang="scss" module>
 .badge {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--spacing-5xs) var(--spacing-4xs);
+	display: inline-flex;
+	align-items: center;
+	padding: var(--spacing-5xs) var(--spacing-4xs);
 	border: var(--border-base);
 	white-space: nowrap;
 }
