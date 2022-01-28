@@ -1,10 +1,10 @@
 <template>
 	<div :class="$style.list">
-		<div :class="$style.container" v-for="node in nodes.slice(0, 2)" :key="node.name">
+		<div :class="$style.container" v-for="node in nodes.slice(0, numberOfHiddenNodes)" :key="node.name">
 			<img v-if="node.iconData.fileBuffer" :class="$style.image" :src="node.iconData.fileBuffer" />
 			<FontAwesomeIcon v-else :icon="node.iconData.icon" :color="node.defaults.color" />
 		</div>
-		<div :class="$style.button" v-if="nodes.length > 2">+{{ nodes.length - 2 }}</div>
+		<div :class="$style.button" v-if="nodes.length > numberOfHiddenNodes">+{{ nodes.length - numberOfHiddenNodes }}</div>
 	</div>
 </template>
 
@@ -18,6 +18,11 @@ export default mixins(genericHelpers).extend({
 	name: 'TemplateCard',
 	props: {
 		nodes: Array,
+	},
+	data() {
+		return {
+			numberOfHiddenNodes: 4,
+		};
 	},
 	components: {
 		FontAwesomeIcon,
@@ -50,6 +55,7 @@ export default mixins(genericHelpers).extend({
 
 	.button {
 		width: 20px;
+		min-width: 20px;
 		height: 20px;
 		margin-left: var(--spacing-2xs);
 		top: 1px;
