@@ -1,25 +1,41 @@
-export const ROUTES = [
+export const ROUTES: readonly string[] = [
 	'GET /me',
 	'PATCH /me',
 	'PATCH /me/password',
 	'POST /me/survey',
 ];
 
+const email = 'test@n8n.io';
+const password = 'abcd1234';
+const firstName = 'John';
+const lastName = 'Smith';
+
 export const TEST_PAYLOADS = {
 	PROFILE: {
-		email: 'test@n8n.io',
-		firstName: 'John',
-		lastName: 'Smith',
+		email,
+		firstName,
+		lastName,
 	},
 	PASSWORD: {
-		password: 'abcd1234',
+		password,
 	},
 	SURVEY: {
+		// TODO: Find proper examples
 		codingSkill: 'a',
 		companyIndustry: 'b',
 		companySize: 'c',
 		otherCompanyIndustry: 'd',
 		otherWorkArea: 'e',
 		workArea: 'f',
+	},
+	OWNER_SETUP: {
+		email,
+		firstName,
+		lastName,
+		password,
+	},
+	OWNER_LOGIN: {
+		email,
+		password,
 	},
 };
