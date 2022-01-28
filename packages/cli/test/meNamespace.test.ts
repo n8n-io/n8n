@@ -17,10 +17,7 @@ import {
 	ME_NAMESPACE_TEST_PAYLOADS,
 } from './constants';
 import bodyParser = require('body-parser');
-import { expectOwnerGlobalRole, rest } from './utils';
-
-// TODO: Replace rest() with superagent-prefix
-// https://github.com/johntron/superagent-prefix
+import { expectOwnerGlobalRole, restPrefix } from './utils';
 
 describe('/me namespace', () => {
 	let testServer: {
@@ -55,7 +52,7 @@ describe('/me namespace', () => {
 
 			test(`${route} should return 401 Unauthorized`, async () => {
 				// @ts-ignore TODO: module augmentation
-				const response = await request(testServer.app)[method](rest(endpoint));
+				const response = await request(testServer.app)[method](endpoint).use(restPrefix);
 
 				expect(response.statusCode).toBe(401);
 			});
@@ -68,11 +65,11 @@ describe('/me namespace', () => {
 
 			beforeAll(async () => {
 				agent = request.agent(testServer.app);
-				await agent.get(`/${REST_PATH_SEGMENT}/login`);
+				await agent.get('/login').use(restPrefix);
 			});
 
 			test('GET /me should return their sanitized data', async () => {
-				const response = await agent.get('/rest/me');
+				const response = await agent.get('/me').use(restPrefix);
 
 				expect(response.statusCode).toBe(200);
 
@@ -89,7 +86,7 @@ describe('/me namespace', () => {
 			});
 
 			test('PATCH /me should return their updated sanitized data', async () => {
-				const response = await agent.patch(rest('me')).send(ME_NAMESPACE_TEST_PAYLOADS.PROFILE);
+				const response = await agent.patch('/me').send(ME_NAMESPACE_TEST_PAYLOADS.PROFILE).use(restPrefix);
 
 				expect(response.statusCode).toBe(200);
 
@@ -106,14 +103,17 @@ describe('/me namespace', () => {
 			});
 
 			test('PATCH /me/password should return success response', async () => {
-				const response = await agent.patch(rest('me/password')).send(ME_NAMESPACE_TEST_PAYLOADS.PASSWORD);
+				const response = await agent
+					.patch('/me/password')
+					.send(ME_NAMESPACE_TEST_PAYLOADS.PASSWORD)
+					.use(restPrefix);
 
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESSFUL_MUTATION_RESPONSE_BODY);
 			});
 
 			test('POST /me/survey should return success response', async () => {
-				const response = await agent.patch(rest('me/password')).send(ME_NAMESPACE_TEST_PAYLOADS.PASSWORD);
+				const response = await agent.patch('/me/password').send(ME_NAMESPACE_TEST_PAYLOADS.PASSWORD).use(restPrefix);
 
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESSFUL_MUTATION_RESPONSE_BODY);

@@ -1,5 +1,6 @@
 import express = require('express');
 import request = require('superagent');
+import { URL } from 'url';
 import { Role } from '../src/databases/entities/Role';
 import { REST_PATH_SEGMENT } from './constants';
 
@@ -39,6 +40,22 @@ export const expectOwnerGlobalRole = (globalRole: Role) => {
 };
 
 /**
- * Build the full path of a test server route.
+ * Prefix a path segment into the pathname of a request URL.
  */
-export const rest = (endpoint: string) => [`/${REST_PATH_SEGMENT}`, endpoint].join('/');
+const prefixPathname = (pathSegment: string) => {
+	return function (request: request.SuperAgentRequest) {
+		const url = new URL(request.url);
+		url.pathname = pathSegment + url.pathname;
+		request.url = url.toString();
+
+		return request;
+	};
+};
+
+/**
+ * Plugin to prefix the base n8n REST API path segment into the pathname of a request URL.
+ *
+ * Example:
+ * http://127.0.0.1:62100/me/password → http://127.0.0.1:62100/rest/me/password
+ */
+export const restPrefix = prefixPathname(REST_PATH_SEGMENT);
