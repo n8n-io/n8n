@@ -493,10 +493,10 @@ export class MailcheckTest implements INodeType {
 									property: 'key',
 									// TODO: Is confusing that it is called $value. Should it be $value/$name instead? But
 									//       then would also have to change logic in other locations where also $value gets used.
-									value: '={{$value.toUpperCase()}} ({{$self.value}})',
+									value: '={{$value.toUpperCase()}} ({{$parent.value}})',
 								},
 								value: {
-									property: 'blub',
+									property: 'value',
 									value: '={{$value}}X',
 								},
 								sort: true,
@@ -577,7 +577,7 @@ export class MailcheckTest implements INodeType {
 								type: 'string',
 								default: '',
 								requestProperty: {
-									property: '=single-{{$self.name}}',
+									property: '=single-{{$parent.name}}',
 									type: 'body',
 								},
 								description: 'Value of the property to set.',
@@ -677,7 +677,7 @@ export class MailcheckTest implements INodeType {
 								type: 'string',
 								default: '',
 								requestProperty: {
-									property: '={{$self.name}}',
+									property: '={{$parent.name}}',
 									type: 'body',
 								},
 								description: 'Value of the property to set.',

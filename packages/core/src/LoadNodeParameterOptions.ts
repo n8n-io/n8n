@@ -285,7 +285,7 @@ export class LoadNodeParameterOptions {
 					loadOptions.displayName.value,
 					itemIndex,
 					runIndex,
-					{ $value: nameValue, $self: { value: valueValue } },
+					{ $value: nameValue, $parent: { value: valueValue } },
 					true,
 				) as string;
 			}

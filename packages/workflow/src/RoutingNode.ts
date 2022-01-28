@@ -689,7 +689,7 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							nodeProperties.typeOptions?.multipleValues ? `${loopBasePath}[${i}]` : loopBasePath,
-							{ ...(additionalKeys || {}), $index: i, $self: value[i] },
+							{ ...(additionalKeys || {}), $index: i, $parent: value[i] },
 						);
 
 						this.mergeOptions(returnData, tempOptions);
