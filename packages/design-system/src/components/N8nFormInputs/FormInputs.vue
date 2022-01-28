@@ -10,11 +10,9 @@
 				:key="input.name"
 				:class="columns > 1 && !columnView && j < columns - 1? $style.multiContainer : (input.properties.type === 'text' ? $style.textContainer : $style.inputContainer)"
 			>
-				<div :class="$style.center"  v-if="input.properties.type === 'text'">
-					<n8n-text color="text-base">
-						{{input.properties.label}}
-					</n8n-text>
-				</div>
+				<n8n-text color="text-base" v-if="input.properties.type === 'text'" tag="div" align="center">
+					{{input.properties.label}}
+				</n8n-text>
 				<n8n-form-input
 					v-else
 					v-bind="input.properties"
@@ -141,10 +139,6 @@ export default Vue.extend({
 .textContainer {
 	flex-grow: 1;
 	margin-bottom: var(--spacing-4xs);
-}
-
-.center {
-	text-align: center; // todo add tag prop to text
 }
 
 .multiContainer {
