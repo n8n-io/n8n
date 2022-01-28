@@ -23,7 +23,7 @@ export const initTestServer = () => {
 	loginRoutes.apply(testServer);
 
 	return testServer;
-}
+};
 
 /**
  * Validate that a role in a response corresponds to a global owner.
@@ -51,6 +51,11 @@ export const logRoutes = (app: express.Application) => {
 const prefixPathname = (pathSegment: string) => {
 	return function (request: request.SuperAgentRequest) {
 		const url = new URL(request.url);
+
+		if (url.pathname[0] !== '/') {
+			throw new Error('Pathname must start with a forward slash');
+		}
+
 		url.pathname = pathSegment + url.pathname;
 		request.url = url.toString();
 
