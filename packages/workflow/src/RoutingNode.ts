@@ -510,19 +510,22 @@ export class RoutingNode {
 					) as string;
 				}
 
-				if (nodeProperties.requestProperty.type === 'query') {
-					if (nodeProperties.requestProperty.propertyInDotNotation === false) {
-						returnData.options.qs![propertyName] = value;
-					} else {
-						set(returnData.options.qs as object, propertyName, value);
-					}
-				} else if (nodeProperties.requestProperty.type === 'body') {
+				if (nodeProperties.requestProperty.type === 'body') {
+					// Send in "body"
 					// eslint-disable-next-line no-lonely-if
 					if (nodeProperties.requestProperty.propertyInDotNotation === false) {
 						// @ts-ignore
 						returnData.options.body![propertyName] = value;
 					} else {
 						set(returnData.options.body as object, propertyName, value);
+					}
+				} else {
+					// Send in "query"
+					// eslint-disable-next-line no-lonely-if
+					if (nodeProperties.requestProperty.propertyInDotNotation === false) {
+						returnData.options.qs![propertyName] = value;
+					} else {
+						set(returnData.options.qs as object, propertyName, value);
 					}
 				}
 			}

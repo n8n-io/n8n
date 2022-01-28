@@ -385,6 +385,7 @@ export class MailcheckTest implements INodeType {
 				},
 				requestProperty: {
 					property: 'toEmail', // Simple set
+					type: 'body',
 					value: '={{$value.toUpperCase()}}', // Change value that gets send via an expression
 				},
 				default: '',
@@ -406,6 +407,7 @@ export class MailcheckTest implements INodeType {
 				},
 				requestProperty: {
 					property: 'message.text', // Set on lower level with dot-notation
+					type: 'body',
 				},
 				default: '',
 				description: 'The message.',
@@ -436,7 +438,8 @@ export class MailcheckTest implements INodeType {
 						requestProperty: {
 							property: 'some.value',
 							propertyInDotNotation: false, // send as "some.value"
-							type: 'query',
+							// If type is not set it will be send in in "query"
+							// type: 'query',
 						},
 						default: '',
 					},
@@ -493,8 +496,8 @@ export class MailcheckTest implements INodeType {
 									value: '={{$value.toUpperCase()}} ({{$self.value}})',
 								},
 								value: {
-									property: 'value',
-									value: '={{$value}}',
+									property: 'blub',
+									value: '={{$value}}X',
 								},
 								sort: true,
 							},
@@ -575,6 +578,7 @@ export class MailcheckTest implements INodeType {
 								default: '',
 								requestProperty: {
 									property: '=single-{{$self.name}}',
+									type: 'body',
 								},
 								description: 'Value of the property to set.',
 							},
@@ -674,6 +678,7 @@ export class MailcheckTest implements INodeType {
 								default: '',
 								requestProperty: {
 									property: '={{$self.name}}',
+									type: 'body',
 								},
 								description: 'Value of the property to set.',
 							},
@@ -693,6 +698,7 @@ export class MailcheckTest implements INodeType {
 								default: '',
 								requestProperty: {
 									property: '=customValues[{{$index}}].name',
+									type: 'body',
 								},
 								description: 'Name of the property to set.',
 							},
@@ -703,6 +709,7 @@ export class MailcheckTest implements INodeType {
 								default: '',
 								requestProperty: {
 									property: '=customValues[{{$index}}].value',
+									type: 'body',
 								},
 								description: 'Value of the property to set.',
 							},
