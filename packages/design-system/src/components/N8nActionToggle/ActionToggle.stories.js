@@ -7,7 +7,7 @@ export default {
 	argTypes: {
 		placement: {
 			type: 'select',
-			options: ['bottom-start', 'bottom'],
+			options: ['top', 'bottom'],
 		},
 	},
 	parameters: {
@@ -24,7 +24,7 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nActionToggle,
 	},
-	template: '<n8n-action-toggle v-bind="$props" @action="onAction" />',
+	template: '<div style="height:300px;width:300px;display:flex;align-items:center;justify-content:center"><n8n-action-toggle v-bind="$props" @action="onAction" /></div>',
 	methods,
 });
 
