@@ -67,6 +67,7 @@ import {
 	faRedo,
 	faRss,
 	faSave,
+	faShapes,
 	faSearch,
 	faSearchMinus,
 	faSearchPlus,
@@ -154,6 +155,7 @@ library.add(faQuestionCircle);
 library.add(faRedo);
 library.add(faRss);
 library.add(faSave);
+library.add(faShapes);
 library.add(faSearch);
 library.add(faSearchMinus);
 library.add(faSearchPlus);

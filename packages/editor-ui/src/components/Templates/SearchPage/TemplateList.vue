@@ -16,20 +16,19 @@
 		</div>
 		<div v-else-if="workflows.length" :class="$style.container">
 			<div :class="$style.wrapper">
-				<div v-for="(workflow, index) in workflows" :key="'workflow-' + index">
+				<div v-for="(workflow, index) in workflows" :key="'workflow-' + index" :class="$style.card">
 					<TemplateCard :title="workflow.name" :loading="false">
-						<template v-slot:right>
-							<div>
-								<NodeList :nodes="workflow.nodes" :showMore="true" />
+						<template v-slot:button>
+							<div :class="$style.button">
+								<n8n-button
+									type="outline"
+									label="Use workflow"
+									@click="redirectToTemplate(workflow.id, $event)"
+								/>
 							</div>
-						</template>
-
-						<template v-slot:rightHover>
-							<n8n-button
-								type="outline"
-								label="Use workflow"
-								@click="redirectToTemplate(workflow.id)"
-							/>
+							<div :class="$style.nodes">
+								<NodeList :nodes="workflow.nodes" />
+							</div>
 						</template>
 
 						<template v-slot:footer>
@@ -50,7 +49,8 @@
 						</template>
 					</TemplateCard>
 				</div>
-				<div v-if="shouldShowLoadingState" v-infocus>
+				<div v-infocus />
+				<div v-if="shouldShowLoadingState && !searchFinished">
 					<TemplateCard :loading="true" title="" />
 					<TemplateCard :loading="true" title="" />
 					<TemplateCard :loading="true" title="" />
@@ -110,7 +110,7 @@ export default mixins(genericHelpers).extend({
 							rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
 							rect.right <= (window.innerWidth || document.documentElement.clientWidth);
 
-						if (inView && vnode.context && !vnode.context.$data.searchFinished) {
+						if (inView && vnode.context && vnode.context.$data.searchFinished) {
 							// @ts-ignore
 							if (vnode.context.shouldShowLoadingState) {
 								vnode.context.$data.page = vnode.context.$data.page + 1;
@@ -122,10 +122,10 @@ export default mixins(genericHelpers).extend({
 									skip: vnode.context.$data.skip,
 								});
 
-								vnode.context.$data.searchFinished = true;
+								vnode.context.$data.searchFinished = false;
 
 								setTimeout(() => {
-									if (vnode.context) vnode.context.$data.searchFinished = false;
+									if (vnode.context) vnode.context.$data.searchFinished = true;
 								}, 1000);
 							}
 						}
@@ -156,15 +156,20 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
-			hover: false,
 			page: 0,
-			searchFinished: false,
+			searchFinished: true,
 			skip: 1,
 		};
 	},
 	methods: {
-		redirectToTemplate(templateId: string) {
-			this.$router.push(`/workflows/templates/${templateId}`);
+		redirectToTemplate(templateId: string, e: PointerEvent) {
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({name: 'TemplatePage', params: {id: templateId}});
+				window.open(route.href, '_blank');
+				return;
+			} else {
+				this.$router.push({name: 'TemplatePage', params: {id: templateId}});
+			}
 		},
 		truncate(views: number): string {
 			return new Intl.NumberFormat('en-GB', {
@@ -190,7 +195,26 @@ export default mixins(genericHelpers).extend({
 	background-color: var(--color-white);
 	border-radius: var(--border-radius-large);
 	border: $--version-card-border;
+	border-bottom: none;
 	overflow: auto;
+}
+
+.card {
+	cursor: pointer;
+
+	&:hover {
+		.button {
+			display: block;
+		}
+
+		.nodes {
+			display: none;
+		}
+	}
+}
+
+.button {
+	display: none;
 }
 
 .footer {

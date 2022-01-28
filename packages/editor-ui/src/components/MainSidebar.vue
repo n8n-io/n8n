@@ -30,6 +30,12 @@
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
 						</template>
 					</n8n-menu-item>
+					<n8n-menu-item index="template-new">
+						<template slot="title">
+							<font-awesome-icon icon="shapes"/>&nbsp;
+							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
+						</template>
+					</n8n-menu-item>
 					<n8n-menu-item index="workflow-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>&nbsp;
@@ -79,6 +85,11 @@
 						</template>
 					</n8n-menu-item>
 				</el-submenu>
+
+				<n8n-menu-item index="templates">
+					<font-awesome-icon icon="shapes"/>&nbsp;
+					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
+				</n8n-menu-item>
 
 				<el-submenu index="credentials" :title="$locale.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
 					<template slot="title">
@@ -492,6 +503,10 @@ export default mixins(
 						});
 					}
 					this.$titleReset();
+				} else if (key === 'templates' || key === 'template-new') {
+					if (this.$router.currentRoute.name !== 'TemplateSearchPage') {
+						this.$router.push({ name: 'TemplateSearchPage' });
+					}
 				} else if (key === 'credentials-open') {
 					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
 				} else if (key === 'credentials-new') {

@@ -1,14 +1,14 @@
 <template>
-	<div :class="$style.nodeList">
-		<div :class="$style.nodeContainer" v-for="node in nodes.slice(0, 4)" :key="node.name">
+	<div :class="$style.list">
+		<div :class="$style.container" v-for="node in nodes.slice(0, 4)" :key="node.name">
 			<img
 				v-if="node.iconData.fileBuffer"
-				:class="$style.nodeImage"
+				:class="$style.image"
 				:src="node.iconData.fileBuffer"
 			/>
 			<FontAwesomeIcon v-else :icon="node.iconData.icon" :color="node.defaults.color" />
 		</div>
-		<div :class="$style.plusNodes" v-if="nodes.length > 4 && showMore">+{{ nodes.length - 4 }}</div>
+		<div :class="$style.nodes" v-if="nodes.length > 4">+{{ nodes.length - 4 }}</div>
 	</div>
 </template>
 
@@ -22,7 +22,6 @@ export default mixins(genericHelpers).extend({
 	name: 'TemplateCard',
 	props: {
 		nodes: Array,
-		showMore: Boolean,
 	},
 	components: {
 		FontAwesomeIcon,
@@ -31,38 +30,39 @@ export default mixins(genericHelpers).extend({
 </script>
 
 <style lang="scss" module>
-.nodeList {
+.list {
+	max-width: 100px;
+	height: 20px;
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
 	align-items: center;
-	height: 20px;
-	max-width: 100px;
 
-	.nodeContainer {
-		position: relative;
-		display: block;
+	.container {
 		width: 16px;
 		height: 16px;
 		margin-left: 10px;
-		.nodeImage {
-			display: block;
+		position: relative;
+		display: block;
+
+		.image {
 			width: 16px;
 			height: 16px;
+			display: block;
 		}
 	}
 
-	.plusNodes {
+	.nodes {
+		width: 20px;
+		height: 20px;
+		margin-left: 10px;
+		padding: 3px;
 		display: block;
 		background: #f8f9fb;
 		border: 1px solid #dbdfe7;
 		border-radius: 4px;
 		font-weight: 600;
 		font-size: 10px;
-		height: 20px;
-		width: 20px;
-		padding: 3px;
-		margin-left: 10px;
 	}
 }
 </style>

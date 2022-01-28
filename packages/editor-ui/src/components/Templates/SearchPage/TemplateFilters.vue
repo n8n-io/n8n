@@ -77,7 +77,7 @@ export default mixins(genericHelpers).extend({
 		categories(newCategories) {
 			this.sortedCategories = newCategories;
 		},
-		collapsed(newState) {
+		collapsed() {
 			if (!this.collapsed) {
 				this.sortedCategories = this.sortCategories(this.categories);
 			}

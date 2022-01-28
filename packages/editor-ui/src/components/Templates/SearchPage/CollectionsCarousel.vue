@@ -110,7 +110,7 @@ export default mixins(genericHelpers).extend({
 
 .buttons {
 	width: 100%;
-	height: 100%;
+	height: 0;
 	top: 50%;
 	position: absolute;
 	background: transparent;

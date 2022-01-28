@@ -41,21 +41,24 @@ export default mixins(genericHelpers).extend({
 			loading: true,
 			numberOfResults: 10,
 			search: '',
-			searchFinished: false,
 		};
 	},
 	methods: {
 		async doSearch() {
-			this.searchFinished = false;
+			this.loading = true;
 			const category = this.categories;
 			const search = this.search;
 
 			this.updatQueryParam(search, category.join(','));
 
-			await this.$store.dispatch('templates/getSearchResults', { search, category });
-		},
+			const response = await this.$store.dispatch('templates/getSearchResults', { search, category });
+
+			if (response) {
+				this.loading = false;
+			}
+ 		},
 		async onSearchInput() {
-			await this.doSearch();
+			this.callDebounced('doSearch', 500);
 		},
 		async setCategories(selected: number[]) {
 			this.categories = selected;
@@ -110,14 +113,23 @@ export default mixins(genericHelpers).extend({
 
 .filters {
 	width: 188px;
+
 	@media (max-width: $--breakpoint-xs) {
-		width: auto;
+		min-width: 140px;
 	}
 }
 
 .search {
 	width: 100%;
 	padding-left: var(--spacing-2xl);
+
+	@media (max-width: $--breakpoint-xs) {
+	  width: 308px;
+	}
+
+	@media (max-width: $--breakpoint-2xs) {
+	  width: 208px;
+	}
 }
 
 .input {

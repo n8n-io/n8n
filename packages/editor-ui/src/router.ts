@@ -29,7 +29,6 @@ export default new Router({
 		},
 		{
 			path: '/template/',
-			name: 'TemplateView',
 			components: {
 				default: TemplateView,
 				sidebar: MainSidebar,
@@ -37,6 +36,7 @@ export default new Router({
 			children: [
 				{
 					path: ':id',
+					name: 'TemplatePage',
 					components: {
 						header: WorkflowPageHeader,
 						default: WorkflowPageContent,
@@ -46,7 +46,6 @@ export default new Router({
 		},
 		{
 			path: '/templates/',
-			name: 'TemplateView',
 			components: {
 				default: TemplateView,
 				sidebar: MainSidebar,
@@ -54,6 +53,7 @@ export default new Router({
 			children: [
 				{
 					path: '',
+					name: 'TemplateSearchPage',
 					components: {
 						header: SearchPageHeader,
 						default: SearchPageContent,

@@ -325,6 +325,7 @@
 		"importFromFile": "Import from File",
 		"importFromUrl": "Import from URL",
 		"new": "New",
+		"newTemplate": "New from template",
 		"open": "Open",
 		"prompt": {
 			"cancel": "@:reusableBaseText.cancel",
@@ -363,6 +364,7 @@
 				"title": "Execution stopped"
 			}
 		},
+		"templates": "Templates",
 		"workflows": "Workflows"
 	},
 	"multipleParameter": {

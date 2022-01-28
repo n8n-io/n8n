@@ -11,16 +11,15 @@
 				<div :class="$style.spacer" />
 			</div>
 		</div>
-		<div v-else :class="$style.card" @mouseover="hover = true" @mouseleave="hover = false">
+		<div v-else :class="$style.card">
 			<div :class="$style.body">
-				<n8n-heading :bold="true" size="small">{{ shortTitle }}</n8n-heading>
+				<n8n-heading :bold="true" size="small">{{ title }}</n8n-heading>
 				<div :class="$style.content">
 					<slot name="footer"></slot>
 				</div>
 			</div>
 			<div>
-				<slot v-if="!hover" name="right"></slot>
-				<slot v-if="hover" name="rightHover"></slot>
+				<slot name="button"></slot>
 			</div>
 		</div>
 	</div>
@@ -52,19 +51,6 @@ export default mixins(genericHelpers).extend({
 			},
 		},
 		title: String,
-	},
-	data() {
-		return {
-			hover: false,
-		};
-	},
-	computed: {
-		shortTitle(): string {
-			if (this.title.length > 70) {
-				return this.title.slice(0, 67) + '...';
-			}
-			return this.title;
-		},
 	},
 });
 </script>
