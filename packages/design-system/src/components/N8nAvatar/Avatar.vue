@@ -36,7 +36,7 @@ export default {
 			default: 'medium',
 		},
 		colors: {
-			default: ['--color-primary', '--color-secondary', '--color-avatar-accent-1', '--color-avatar-accent-2', '--color-primary-tint-1'],
+			default: () => (['--color-primary', '--color-secondary', '--color-avatar-accent-1', '--color-avatar-accent-2', '--color-primary-tint-1']),
 		},
 	},
 	components: {
