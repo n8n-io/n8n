@@ -7,14 +7,14 @@
 		:default-first-option="true"
 		:popper-append-to-body="true"
 		:popper-class="$style.limitPopperWidth"
-		noMatchText="No matches found"
-		noDataText="No users"
+		:noMatchText="noMatchText"
+		:noDataText="noDataText"
 		@change="onChange"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
 		<el-option
-			v-for="user in fitleredUsers"
+			v-for="user in sortedUsers"
 			:key="user.id"
 			:value="user.id"
 			:class="$style.itemContainer"
@@ -50,10 +50,6 @@ export default Vue.extend({
 			type: String,
 			default: '',
 		},
-		ignoreInvited: {
-			type: Boolean,
-			default: true,
-		},
 		ignoreIds: {
 			type: Array,
 			default() {
@@ -65,6 +61,14 @@ export default Vue.extend({
 			type: String,
 			default: 'Select user',
 		},
+		noMatchText: {
+			type: String,
+			default: 'No matches found',
+		},
+		noDataText: {
+			type: String,
+			default: 'No users',
+		},
 	},
 	data() {
 		return {
@@ -72,37 +76,10 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		sortedUsers(): IUser[] {
-			return [...(this.users as IUser[])].sort((a: IUser, b: IUser) => {
-				// invited users sorted by email
-				if (!a.lastName && !b.lastName) {
-					return a.email > b.email ? 1 : -1;
-				}
-
-				// invited first
-				if (!a.lastName && b.lastName) {
-					return -1;
-				}
-				if (a.lastName && !b.lastName) {
-					return 1;
-				}
-
-				if (a.lastName && b.lastName && a.firstName && b.firstName) {
-					if (a.lastName !== b.lastName) {
-						return a.lastName > b.lastName ? 1 : -1;
-					}
-					if (a.firstName !== b.firstName) {
-						return a.firstName > b.firstName? 1 : -1;
-					}
-				}
-
-				return a.email > b.email ? 1 : -1;
-			});
-		},
 		fitleredUsers(): IUser[] {
-			return this.sortedUsers
+			return this.users
 				.filter((user: IUser) => {
-					if (this.ignoreInvited && !user.firstName) {
+					if (user.isPendingUser || !user.email) {
 						return false;
 					}
 
@@ -110,8 +87,8 @@ export default Vue.extend({
 						return false;
 					}
 
-					if (user.firstName && user.lastName) {
-						const match = `${user.firstName} ${user.lastName}`.toLowerCase().includes(this.filter.toLowerCase());
+					if (user.fullName) {
+						const match = user.fullName.toLowerCase().includes(this.filter.toLowerCase());
 						if (match) {
 							return true;
 						}
@@ -120,6 +97,19 @@ export default Vue.extend({
 					return user.email.includes(this.filter);
 				});
 		},
+		sortedUsers(): IUser[] {
+			return [...(this.fitleredUsers as IUser[])].sort((a: IUser, b: IUser) => {
+				if (a.lastName && b.lastName && a.lastName !== b.lastName) {
+					return a.lastName > b.lastName ? 1 : -1;
+				}
+				if (a.firstName && b.firstName && a.firstName !== b.firstName) {
+					return a.firstName > b.firstName? 1 : -1;
+				}
+
+				return a.email > b.email ? 1 : -1;
+			});
+		},
+
 	},
 	methods: {
 		setFilter(value: string) {
@@ -135,11 +125,11 @@ export default Vue.extend({
 			this.$emit('focus');
 		},
 		getLabel(user: IUser) {
-			if (!user.firstName) {
+			if (!user.fullName) {
 				return user.email;
 			}
 
-			return `${user.firstName} ${user.lastName} (${user.email})`;
+			return `${user.fullName} (${user.email})`;
 		},
 	},
 });
