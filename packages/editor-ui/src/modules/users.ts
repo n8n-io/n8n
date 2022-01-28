@@ -11,6 +11,10 @@ import {
 } from '../Interface';
 import { getPersonalizedNodeTypes } from './helper';
 
+const isDefaultUser = (user: IUser | null) => Boolean(user && user.email);
+
+const isPendingUser = (user: IUser | null) => Boolean(user && user.email && !user.firstName && !user.lastName);
+
 const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {currentUser: IUser | null, isUMEnabled: boolean}): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
 	if (permissions.deny) {
@@ -23,7 +27,7 @@ const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {cu
 		}
 
 		if (currentUser) {
-			const role = currentUser.email ? currentUser.globalRole.name: ROLE.Default;
+			const role = isDefaultUser(currentUser) ? ROLE.Default: currentUser.globalRole.name;
 			if (permissions.deny.role && permissions.deny.role.includes(role)) {
 				return false;
 			}
@@ -40,7 +44,7 @@ const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {cu
 		}
 
 		if (currentUser) {
-			const role = currentUser.email ? currentUser.globalRole.name: ROLE.Default;
+			const role = isDefaultUser(currentUser) ? ROLE.Default: currentUser.globalRole.name;
 			if (permissions.allow.role && permissions.allow.role.includes(role)) {
 				return true;
 			}
@@ -122,7 +126,7 @@ const module: Module<IUsersState, IRootState> = {
 		isDefaultUser(state: IUsersState, getters: any): boolean { // tslint:disable-line:no-any
 			const user = getters.currentUser as IUser | null;
 
-			return user ? !user.email : false;
+			return isDefaultUser(user);
 		},
 		isUMEnabled(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any): boolean { // tslint:disable-line:no-any
 			return rootGetters['settings/isUserManagementEnabled'];
