@@ -12,7 +12,7 @@ import { NextFunction, Request, Response } from 'express';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
-import { AuthenticatedRequest, JwtPayload, N8nApp } from '../Interfaces';
+import { JwtPayload, N8nApp } from '../Interfaces';
 import { authenticationMethods } from './auth';
 import config = require('../../../config');
 import { Db, ResponseHelper } from '../..';
@@ -23,6 +23,7 @@ import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { isNotTestRun } from '../../databases/MigrationHelpers';
+import { AuthenticatedRequest } from '../../requests';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	this.app.use(cookieParser());

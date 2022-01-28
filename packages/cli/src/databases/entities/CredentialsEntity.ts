@@ -13,6 +13,7 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 
+import { Length } from 'class-validator';
 import config = require('../../../config');
 import { DatabaseType, ICredentialsDb } from '../..';
 import { SharedCredentials } from './SharedCredentials';
@@ -53,8 +54,9 @@ export class CredentialsEntity implements ICredentialsDb {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	@Column({
-		length: 128,
+	@Column({ length: 128 })
+	@Length(3, 128, {
+		message: 'Credential name must be $constraint1 to $constraint2 characters long.',
 	})
 	name: string;
 
@@ -62,9 +64,7 @@ export class CredentialsEntity implements ICredentialsDb {
 	data: string;
 
 	@Index()
-	@Column({
-		length: 32,
-	})
+	@Column({ length: 32 })
 	type: string;
 
 	@OneToMany(() => SharedCredentials, (sharedCredentials) => sharedCredentials.credentials)

@@ -13,7 +13,7 @@ import {
 } from 'typeorm';
 import { IsEmail } from 'class-validator';
 import config = require('../../../config');
-import { DatabaseType } from '../..';
+import { DatabaseType, IPersonalizationSurveyAnswers } from '../..';
 import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
@@ -75,7 +75,7 @@ export class User {
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
 	})
-	personalizationAnswers: { [key: string]: string } | null;
+	personalizationAnswers: IPersonalizationSurveyAnswers | null;
 
 	@ManyToOne(() => Role, (role) => role.globalForUsers, {
 		cascade: true,
