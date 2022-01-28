@@ -307,8 +307,8 @@
 			"workflowNew": {
 				"cancelButtonText": "",
 				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Save your Changes?",
-				"message": "When you switch workflows your current workflow changes will be lost."
+				"headline": "Switch workflows without saving?",
+				"message": "When you switch workflows without saving, your current changes will be lost."
 			}
 		},
 		"credentials": "Credentials",
@@ -512,14 +512,14 @@
 			"beforeRouteLeave": {
 				"cancelButtonText": "",
 				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Save your Changes?",
-				"message": "When you switch workflows your current workflow changes will be lost."
+				"headline": "Switch workflows without saving?",
+				"message": "When you switch workflows without saving, your current changes will be lost."
 			},
 			"initView": {
 				"cancelButtonText": "",
 				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Save your Changes?",
-				"message": "When you switch workflows your current workflow changes will be lost."
+				"headline": "Switch workflows without saving?",
+				"message": "When you switch workflows without saving, your current changes will be lost."
 			},
 			"receivedCopyPasteData": {
 				"cancelButtonText": "",
@@ -937,8 +937,8 @@
 		"confirmMessage": {
 			"cancelButtonText": "",
 			"confirmButtonText": "Yes, switch workflows and forget changes",
-			"headline": "Save your Changes?",
-			"message": "When you switch workflows your current workflow changes will be lost."
+			"headline": "Switch workflows without saving?",
+			"message": "When you switch workflows without saving, your current changes will be lost."
 		},
 		"created": "Created",
 		"name": "@:reusableBaseText.name",
