@@ -34,17 +34,26 @@ export const TEST_CONNECTION_OPTIONS: ConnectionOptions = {
 
 export const TEST_JWT_SECRET = 'My JWT secret';
 
-export const PATCH_ME_PROFILE_PAYLOAD = {
-	email: 'test@n8n.io',
-	firstName: 'John',
-	lastName: 'Smith',
+export const ME_NAMESPACE_TEST_PAYLOADS = {
+	PROFILE: {
+		email: 'test@n8n.io',
+		firstName: 'John',
+		lastName: 'Smith',
+	},
+	PASSWORD: {
+		password: 'abcd1234',
+	},
+	SURVEY: {
+		codingSkill: 'a',
+		companyIndustry: 'b',
+		companySize: 'c',
+		otherCompanyIndustry: 'd',
+		otherWorkArea: 'e',
+		workArea: 'f',
+	},
 };
 
-export const PATCH_ME_PASSWORD_PAYLOAD = {
-	password: 'abcd1234',
-};
-
-export const SUCCESSFUL_MUTATION_RESPONSE = {
+export const SUCCESSFUL_MUTATION_RESPONSE_BODY = {
 	data: {
 		success: true,
 	},

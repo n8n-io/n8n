@@ -12,15 +12,15 @@ import {
 	TEST_CONNECTION_OPTIONS,
 	TEST_JWT_SECRET,
 	AUTH_MIDDLEWARE_ARGS,
-	PATCH_ME_PROFILE_PAYLOAD,
 	ME_NAMESPACE_ROUTES,
-	PATCH_ME_PASSWORD_PAYLOAD,
-	SUCCESSFUL_MUTATION_RESPONSE,
+	SUCCESSFUL_MUTATION_RESPONSE_BODY,
+	ME_NAMESPACE_TEST_PAYLOADS,
 } from './constants';
 import bodyParser = require('body-parser');
 import { expectOwnerGlobalRole, rest } from './utils';
 
-// TODO: https://github.com/johntron/superagent-prefix
+// TODO: Replace rest() with superagent-prefix
+// https://github.com/johntron/superagent-prefix
 
 describe('/me namespace', () => {
 	let testServer: {
@@ -89,7 +89,7 @@ describe('/me namespace', () => {
 			});
 
 			test('PATCH /me should return their updated sanitized data', async () => {
-				const response = await agent.patch(rest('me')).send(PATCH_ME_PROFILE_PAYLOAD);
+				const response = await agent.patch(rest('me')).send(ME_NAMESPACE_TEST_PAYLOADS.PROFILE);
 
 				expect(response.statusCode).toBe(200);
 
@@ -97,22 +97,31 @@ describe('/me namespace', () => {
 					response.body.data;
 
 				expect(typeof id).toBe('string');
-				expect(email).toBe(PATCH_ME_PROFILE_PAYLOAD.email);
-				expect(firstName).toBe(PATCH_ME_PROFILE_PAYLOAD.firstName);
-				expect(lastName).toBe(PATCH_ME_PROFILE_PAYLOAD.lastName);
+				expect(email).toBe(ME_NAMESPACE_TEST_PAYLOADS.PROFILE.email);
+				expect(firstName).toBe(ME_NAMESPACE_TEST_PAYLOADS.PROFILE.firstName);
+				expect(lastName).toBe(ME_NAMESPACE_TEST_PAYLOADS.PROFILE.lastName);
 				expect(personalizationAnswers).toBeNull();
 
 				expectOwnerGlobalRole(globalRole);
 			});
 
 			test('PATCH /me/password should return success response', async () => {
-				const response = await agent.patch(rest('me/password')).send(PATCH_ME_PASSWORD_PAYLOAD);
+				const response = await agent.patch(rest('me/password')).send(ME_NAMESPACE_TEST_PAYLOADS.PASSWORD);
 
 				expect(response.statusCode).toBe(200);
+				expect(response.body).toEqual(SUCCESSFUL_MUTATION_RESPONSE_BODY);
+			});
 
-				expect(response.body).toEqual(SUCCESSFUL_MUTATION_RESPONSE);
+			test('POST /me/survey should return success response', async () => {
+				const response = await agent.patch(rest('me/password')).send(ME_NAMESPACE_TEST_PAYLOADS.PASSWORD);
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body).toEqual(SUCCESSFUL_MUTATION_RESPONSE_BODY);
 			});
 		});
+
+		describe('If requester is owner', () => {});
+		describe('If requester is member', () => {});
 	});
 
 	// function loginUser() {
