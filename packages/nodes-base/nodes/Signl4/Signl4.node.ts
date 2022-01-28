@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -312,8 +309,9 @@ export class Signl4 implements INodeType {
 										throw new NodeOperationError(this.getNode(), `Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
 									}
 
+									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
 									data.attachment = {
-										value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+										value: binaryDataBuffer,
 										options: {
 											filename: binaryProperty.fileName,
 											contentType: binaryProperty.mimeType,
