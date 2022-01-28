@@ -1,5 +1,5 @@
 import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
-import { LOGIN_STATUS, PERMISSIONS, PERSONALIZATION_MODAL_KEY, ROLE } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
 import {
@@ -9,50 +9,7 @@ import {
 	IUser,
 	IUsersState,
 } from '../Interface';
-import { getPersonalizedNodeTypes } from './helper';
-
-const isDefaultUser = (user: IUser | null) => Boolean(user && user.email);
-
-const isPendingUser = (user: IUser | null) => Boolean(user && user.email && !user.firstName && !user.lastName);
-
-const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {currentUser: IUser | null, isUMEnabled: boolean}): boolean => {
-	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
-	if (permissions.deny) {
-		if (permissions.deny.um === isUMEnabled) {
-			return false;
-		}
-
-		if (permissions.deny.loginStatus && permissions.deny.loginStatus.includes(loginStatus)) {
-			return false;
-		}
-
-		if (currentUser) {
-			const role = isDefaultUser(currentUser) ? ROLE.Default: currentUser.globalRole.name;
-			if (permissions.deny.role && permissions.deny.role.includes(role)) {
-				return false;
-			}
-		}
-	}
-
-	if (permissions.allow) {
-		if (permissions.allow.um === isUMEnabled) {
-			return true;
-		}
-
-		if (permissions.allow.loginStatus && permissions.allow.loginStatus.includes(loginStatus)) {
-			return true;
-		}
-
-		if (currentUser) {
-			const role = isDefaultUser(currentUser) ? ROLE.Default: currentUser.globalRole.name;
-			if (permissions.allow.role && permissions.allow.role.includes(role)) {
-				return true;
-			}
-		}
-	}
-
-	return false;
-};
+import { getPersonalizedNodeTypes, isDefaultUser, isAuthorized, PERMISSIONS } from './userHelpers';
 
 const module: Module<IUsersState, IRootState> = {
 	namespaced: true,
