@@ -1,7 +1,7 @@
 import N8nUserInfo from './UserInfo.vue';
 
 export default {
-	title: 'Atoms/UserInfo',
+	title: 'Modules/UserInfo',
 	component: N8nUserInfo,
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
