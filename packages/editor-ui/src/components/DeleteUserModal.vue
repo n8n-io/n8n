@@ -94,10 +94,10 @@ export default mixins(showMessage).extend({
 			if (!this.userToDelete) {
 				return '';
 			}
-			if (!this.userToDelete.firstName) {
+			if (!this.userToDelete.fullName) {
 				return `Delete ${this.userToDelete.email}?`;
 			}
-			return `Delete ${this.userToDelete.firstName} ${this.userToDelete.lastName}?`;
+			return `Delete ${this.userToDelete.fullName}?`;
 		},
 		enabled(): boolean {
 			if (this.isPending) {
@@ -143,7 +143,7 @@ export default mixins(showMessage).extend({
 				if (this.transferId) {
 					const getUserById = this.$store.getters['users/getUserById'];
 					const transferUser = getUserById(this.transferId);
-					message = `${message} and transferred to ${transferUser.firstName} ${transferUser.lastName}`;
+					message = `${message} and transferred to ${transferUser.fullName}`;
 				}
 
 				this.$showMessage({

@@ -140,7 +140,7 @@
 								<n8n-avatar :name="currentUser.fullName" size="small" />
 							</div>
 							<span slot="title" class="item-title-root" v-if="!isCollapsed">
-								{{currentUser.firstName}} {{currentUser.lastName}}
+								{{currentUser.fullName}}
 							</span>
 						</n8n-menu-item>
 						<el-dropdown-menu slot="dropdown">
