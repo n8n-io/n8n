@@ -1,10 +1,10 @@
 <template functional>
 	<span :class="$style.container">
 		<component
-			v-if="props.firstName"
+			v-if="props.name"
 			:is="$options.components.Avatar"
 			:size="$options.methods.getSize(props.size)"
-			:name="props.firstName + ' ' + props.lastName"
+			:name="props.name"
 			variant="marble"
 			:colors="$options.methods.getColors(props.colors)"
 		/>
@@ -28,10 +28,7 @@ const sizes: {[size: string]: number} = {
 export default {
 	name: 'n8n-avatar',
 	props: {
-		firstName: {
-			type: String,
-		},
-		lastName: {
+		name: {
 			type: String,
 		},
 		size: {

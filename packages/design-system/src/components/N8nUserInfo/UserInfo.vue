@@ -1,19 +1,20 @@
 <template>
 	<div :class="$style.container">
 		<div :class="$style.avatarContainer">
-			<n8n-avatar :firstName="user.firstName" :lastName="user.lastName" />
+			<n8n-avatar :name="user.fullName" />
 		</div>
-		<div v-if="user.firstName" :class="$style.infoContainer">
+
+		<div v-if="user.isPendingUser" :class="$style.pendingUser">
+			<n8n-text :bold="true">{{user.email}}</n8n-text>
+			<span :class="$style.pendingBadge"><n8n-badge :bold="true">Pending</n8n-badge></span>
+		</div>
+		<div v-else :class="$style.infoContainer">
 			<div>
-				<n8n-text :bold="true">{{user.firstName}} {{user.lastName}} {{currentUserId === user.id ? '(you)' : ''}}</n8n-text>
+				<n8n-text :bold="true">{{user.fullName}} {{user.isCurrentUser ? '(you)' : ''}}</n8n-text>
 			</div>
 			<div>
 				<n8n-text size="small" color="light">{{user.email}}</n8n-text>
 			</div>
-		</div>
-		<div v-else :class="$style.pendingUser">
-			<n8n-text :bold="true">{{user.email}}</n8n-text>
-			<span :class="$style.pendingBadge"><n8n-badge :bold="true">Pending</n8n-badge></span>
 		</div>
 	</div>
 </template>
@@ -21,7 +22,6 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
@@ -30,7 +30,6 @@ export default Vue.extend({
 	name: 'n8n-users-info',
 	components: {
 		N8nAvatar,
-		N8nIcon,
 		N8nText,
 		N8nBadge,
 	},

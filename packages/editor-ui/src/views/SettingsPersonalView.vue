@@ -7,7 +7,7 @@
 					<span :class="$style.username">
 						<n8n-text  color="light">{{currentUser.firstName}} {{currentUser.lastName}}</n8n-text>
 					</span>
-					<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="large" />
+					<n8n-avatar :name="user.fullName" size="large" />
 				</div>
 			</div>
 			<div>

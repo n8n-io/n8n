@@ -137,7 +137,7 @@
 					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
 						<n8n-menu-item class="user">
 							<div class="avatar">
-								<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+								<n8n-avatar :name="user.fullName" size="small" />
 							</div>
 							<span slot="title" class="item-title-root" v-if="!isCollapsed">
 								{{currentUser.firstName}} {{currentUser.lastName}}
