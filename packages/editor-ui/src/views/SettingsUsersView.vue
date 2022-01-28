@@ -3,7 +3,7 @@
 		<div :class="$style.container">
 			<div>
 				<n8n-heading size="2xlarge">Users</n8n-heading>
-				<div :class="$style.buttonContainer">
+				<div :class="$style.buttonContainer" v-if="!showUMSetupWarning">
 						<n8n-tooltip :disabled="isSmtpSetup" placement="bottom">
 							<div slot="content">Set up SMTP to invite users. <a href="https://docs.n8n.io/reference/user-management#smtp" target="_blank">Instructions</a></div>
 							<div>

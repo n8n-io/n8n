@@ -5,7 +5,7 @@
 				<n8n-heading size="2xlarge">Personal Settings</n8n-heading>
 				<div :class="$style.user">
 					<span :class="$style.username">
-						<n8n-text  color="light">{{currentUser.firstName}} {{currentUser.lastName}}</n8n-text>
+						<n8n-text  color="light">{{currentUser.fullName}}</n8n-text>
 					</span>
 					<n8n-avatar :name="currentUser.fullName" size="large" />
 				</div>
