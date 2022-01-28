@@ -36,23 +36,12 @@ export default {
 			type: Boolean,
 			default: false,
 		},
-		theme: {
-			type: String,
-			default: '',
-			validator: (value: string) => {
-				return ['', 'danger'].includes(value);
-			},
-		},
 	},
 };
 </script>
 
 
 <style lang="scss" module>
-.danger {
-	color: var(--color-danger);
-}
-
 .xlarge {
 	width: var(--font-size-xl) !important;
 }
@@ -67,20 +56,5 @@ export default {
 
 .small {
 	width: var(--font-size-2xs) !important;
-}
-
-.small-danger {
-	composes: small;
-	composes: danger;
-}
-
-.medium-danger {
-	composes: medium;
-	composes: danger;
-}
-
-.large-danger {
-	composes: large;
-	composes: danger;
 }
 </style>
