@@ -47,7 +47,7 @@ describe('/me namespace', () => {
 				await agent.get('/login').use(restPrefix);
 			});
 
-			test('GET /me should return their sanitized data', async () => {
+			test("GET /me should return shell user's sanitized data", async () => {
 				const response = await agent.get('/me').use(restPrefix);
 
 				expect(response.statusCode).toBe(200);
@@ -64,7 +64,7 @@ describe('/me namespace', () => {
 				expectOwnerGlobalRole(globalRole);
 			});
 
-			test('PATCH /me should return their updated sanitized data', async () => {
+			test("PATCH /me should return shell user's updated sanitized data", async () => {
 				const response = await agent.patch('/me').send(TEST_PAYLOADS.PROFILE).use(restPrefix);
 
 				expect(response.statusCode).toBe(200);
@@ -102,7 +102,74 @@ describe('/me namespace', () => {
 			});
 		});
 
-		describe('If requester is owner', () => {});
-		describe('If requester is member', () => {});
+		describe('If requester is owner', () => {
+			let agent: request.SuperAgentTest;
+
+			beforeAll(async () => {
+				agent = request.agent(testServer.app);
+				await agent.post('/owner-setup').send(TEST_PAYLOADS.OWNER_SETUP).use(restPrefix);
+				await agent.post('/login').send(TEST_PAYLOADS.OWNER_LOGIN).use(restPrefix);
+			});
+
+			test("GET /me should return owner's sanitized data", async () => {
+				const response = await agent.get('/me').use(restPrefix);
+
+				expect(response.statusCode).toBe(200);
+
+				const { id, email, firstName, lastName, personalizationAnswers, globalRole } =
+					response.body.data;
+
+				expect(typeof id).toBe('string');
+				expect(email).toBe(TEST_PAYLOADS.OWNER_LOGIN.email);
+				expect(firstName).toBe(TEST_PAYLOADS.OWNER_SETUP.firstName);
+				expect(lastName).toBe(TEST_PAYLOADS.OWNER_SETUP.lastName);
+				expect(personalizationAnswers).toBeNull();
+
+				expectOwnerGlobalRole(globalRole);
+			});
+
+			test("PATCH /me should return owner's updated sanitized data", async () => {
+				const response = await agent.patch('/me').send(TEST_PAYLOADS.PROFILE).use(restPrefix);
+
+				expect(response.statusCode).toBe(200);
+
+				const { id, email, firstName, lastName, personalizationAnswers, globalRole } =
+					response.body.data;
+
+				expect(typeof id).toBe('string');
+				expect(email).toBe(TEST_PAYLOADS.PROFILE.email);
+				expect(firstName).toBe(TEST_PAYLOADS.PROFILE.firstName);
+				expect(lastName).toBe(TEST_PAYLOADS.PROFILE.lastName);
+				expect(personalizationAnswers).toBeNull();
+
+				expectOwnerGlobalRole(globalRole);
+			});
+
+			test('PATCH /me/password should return success response', async () => {
+				const response = await agent
+					.patch('/me/password')
+					.send(TEST_PAYLOADS.PASSWORD)
+					.use(restPrefix);
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body).toEqual(SUCCESSFUL_MUTATION_RESPONSE_BODY);
+			});
+
+			test('POST /me/survey should return success response', async () => {
+				const response = await agent
+					.patch('/me/password')
+					.send(TEST_PAYLOADS.PASSWORD)
+					.use(restPrefix);
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body).toEqual(SUCCESSFUL_MUTATION_RESPONSE_BODY);
+			});
+		});
+
+		describe('If requester is member', () => {
+			// TODO
+		});
+
+		// PENDING: input validation in all test suite groups
 	});
 });
