@@ -31,7 +31,9 @@ export const collections: IDatabaseCollections = {
 	Settings: null,
 };
 
-export async function init(): Promise<IDatabaseCollections> {
+export async function init(
+	testConnectionOptions?: ConnectionOptions,
+): Promise<IDatabaseCollections> {
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
@@ -114,6 +116,10 @@ export async function init(): Promise<IDatabaseCollections> {
 		synchronize: false,
 		logging: false,
 	});
+
+	if (testConnectionOptions) {
+		connectionOptions = testConnectionOptions;
+	}
 
 	let connection = await createConnection(connectionOptions);
 
