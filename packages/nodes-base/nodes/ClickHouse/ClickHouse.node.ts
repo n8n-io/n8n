@@ -56,7 +56,7 @@ export class ClickHouse implements INodeType {
 					{
 						name: 'Update',
 						value: 'update',
-						description: `Update rows in database. Tables created with <b>ENGINE = MergeTree</b> , <b>ENGINE = Merge </b> and <b>ENGINE = Distributed</b> don't support this operation.`,
+						description: `Update rows in database. Tables created with <b>ENGINE = MergeTree</b>, <b>ENGINE = Merge </b> and <b>ENGINE = Distributed</b> don't support this operation.`,
 					},
 				],
 				default: 'insert',
