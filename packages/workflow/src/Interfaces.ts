@@ -451,7 +451,7 @@ export interface IN8nRequestOperations {
 		| ((
 				this: IExecutePaginationFunctions,
 				requestOptions: IRequestOptionsFromParameters,
-		  ) => Promise<Array<IDataObject | Buffer>>);
+		  ) => Promise<INodeExecutionData[]>);
 }
 
 export interface IN8nRequestOperationPaginationBase {
@@ -564,7 +564,7 @@ export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	makeRoutingRequest(
 		this: IAllExecuteFunctions,
 		requestOptions: IRequestOptionsFromParameters,
-	): Promise<Array<IDataObject | Buffer>>;
+	): Promise<INodeExecutionData[]>;
 }
 export interface IExecuteWorkflowInfo {
 	code?: IWorkflowBase;
@@ -1033,8 +1033,9 @@ export interface INodeRequestProperty {
 	postReceive?:
 		| ((
 				this: IExecuteSingleFunctions,
-				item: IDataObject | IDataObject[],
-		  ) => Promise<IDataObject | IDataObject[] | null>)
+				items: INodeExecutionData[],
+				response: IN8nHttpFullResponse,
+		  ) => Promise<INodeExecutionData[]>)
 		| IPostReceiveRootProperty
 		| IPostReceiveSet;
 }
@@ -1076,8 +1077,9 @@ export interface IRequestOptionsFromParameters {
 	postReceive: Array<
 		| ((
 				this: IExecuteSingleFunctions,
-				item: IDataObject | IDataObject[],
-		  ) => Promise<IDataObject | IDataObject[] | null>)
+				items: INodeExecutionData[],
+				response: IN8nHttpFullResponse,
+		  ) => Promise<INodeExecutionData[]>)
 		| IPostReceiveRootProperty
 		| IPostReceiveSet
 	>;

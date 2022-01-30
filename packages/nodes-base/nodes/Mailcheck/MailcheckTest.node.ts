@@ -3,6 +3,8 @@ import {
 	IExecutePaginationFunctions,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IRequestOptionsFromParameters,
@@ -55,15 +57,15 @@ export class MailcheckTest implements INodeType {
 		// TODO: Think about proper name
 		requestOperations: {
 			// Different types: https://nordicapis.com/everything-you-need-to-know-about-api-pagination/
-			async pagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<Array<IDataObject | Buffer>> {
+			async pagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<INodeExecutionData[]> {
 				if (!requestData.options.qs) {
 					requestData.options.qs = {};
 				}
 				const pageSize = 10;
 				requestData.options.qs.limit = pageSize;
 				requestData.options.qs.offset = 0;
-				let tempResponseData: Array<IDataObject | Buffer>;
-				const responseData: Array<IDataObject | Buffer> = [];
+				let tempResponseData: INodeExecutionData[];
+				const responseData: INodeExecutionData[] = [];
 
 				do {
 					if (requestData?.maxResults) {
@@ -78,15 +80,13 @@ export class MailcheckTest implements INodeType {
 					tempResponseData = await this.makeRoutingRequest(requestData);
 					requestData.options.qs.offset = requestData.options.qs.offset + pageSize;
 
-					tempResponseData = tempResponseData.map((item) => {
-						return { json: item };
-					});
-
-					// tempResponseData = get(
-					// 	tempResponseData[0],
-					// 	'data',
-					// 	[],
-					// ) as IDataObject[];
+					// tempResponseData = (
+					// 	get(tempResponseData[0].json, 'data', []) as IDataObject[]
+					// ).map((item) => {
+					// 	return {
+					// 		json: item,
+					// 	};
+					// });
 
 					responseData.push(...tempResponseData);
 				} while (tempResponseData.length && tempResponseData.length === pageSize);
@@ -243,10 +243,14 @@ export class MailcheckTest implements INodeType {
 						},
 					},
 					// Identical with the above
-					// async postReceive (this: IExecuteSingleFunctions, item: IDataObject | IDataObject[]): Promise<IDataObject | IDataObject[] | null> {
-					// 	return {
-					// 		success: true,
-					// 	};
+					// async postReceive (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
+					// 	return [
+					// 		{
+					// 			json: {
+					// 				success: true,
+					// 			}
+					// 		}
+					// 	];
 					// },
 				},
 			},
@@ -274,12 +278,9 @@ export class MailcheckTest implements INodeType {
 						return requestOptions;
 					},
 					// Transform the received data
-					async postReceive (this: IExecuteSingleFunctions, item: IDataObject | IDataObject[]): Promise<IDataObject | IDataObject[] | null> {
-						if (!Array.isArray(item)) {
-							item.success = true;
-						}
-
-						return item;
+					async postReceive (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
+						items.forEach(item => item.json = { success: true });
+						return items;
 					},
 				},
 				default: '',

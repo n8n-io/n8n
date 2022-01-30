@@ -214,6 +214,10 @@ export class LoadNodeParameterOptions {
 			{ $parameters: this.currentNodeParameters },
 		);
 
+		if (!requestData) {
+			return [];
+		}
+
 		let credentialType: string | undefined;
 		if (node?.credentials && Object.keys(node.credentials).length) {
 			[credentialType] = Object.keys(node?.credentials);
@@ -226,8 +230,19 @@ export class LoadNodeParameterOptions {
 			requestOperations = Object.assign(requestOperations, loadOptions.requestOperations);
 		}
 
-		let optionsData = await routingNode.makeRoutingRequest(
-			requestData!,
+		if (loadOptions.rootProperty) {
+			requestData.postReceive = [
+				{
+					type: 'rootProperty',
+					properties: {
+						property: loadOptions.rootProperty,
+					},
+				},
+			];
+		}
+
+		const optionsData = await routingNode.makeRoutingRequest(
+			requestData,
 			executeSingleFunctions,
 			itemIndex,
 			runIndex,
@@ -237,10 +252,6 @@ export class LoadNodeParameterOptions {
 
 		if (optionsData.length === 0) {
 			return [];
-		}
-
-		if (loadOptions.rootProperty) {
-			optionsData = get(optionsData[0], loadOptions.rootProperty, []);
 		}
 
 		if (!Array.isArray(optionsData)) {
@@ -258,7 +269,7 @@ export class LoadNodeParameterOptions {
 				true,
 			) as string;
 
-			let valueValue = get(optionData, valueProperty);
+			let valueValue = get(optionData.json, valueProperty);
 			if (loadOptions.value.value) {
 				valueValue = routingNode.getParameterValue(
 					loadOptions.value.value,
@@ -278,7 +289,7 @@ export class LoadNodeParameterOptions {
 				true,
 			) as string;
 
-			let nameValue = get(optionData, nameProperty);
+			let nameValue = get(optionData.json, nameProperty);
 			if (loadOptions.displayName.value) {
 				// Value overwrite is set so resolve
 				nameValue = routingNode.getParameterValue(

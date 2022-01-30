@@ -16,6 +16,7 @@ import set from 'lodash.set';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
+	IN8nHttpFullResponse,
 	INode,
 	INodeExecuteFunctions,
 	INodeExecutionData,
@@ -188,24 +189,7 @@ export class RoutingNode {
 					responseData.splice(requestData.maxResults as number);
 				}
 
-				// Add as INodeExecutionData[]
-				for (const item of responseData) {
-					if (Buffer.isBuffer(item)) {
-						const destinationProperty = requestData.binaryResponse
-							? requestData.binaryResponse.destinationProperty
-							: 'data';
-
-						returnData.push({
-							json: {},
-							binary: {
-								// TODO: Have to be able to define name of binary property, not always just "data"
-								[destinationProperty]: await thisArgs.helpers.prepareBinaryData(item),
-							},
-						});
-					} else {
-						returnData.push({ json: item });
-					}
-				}
+				returnData.push(...responseData);
 			} catch (error) {
 				if (get(this.node, 'continueOnFail', false)) {
 					returnData.push({ json: {}, error: error.message });
@@ -255,12 +239,19 @@ export class RoutingNode {
 		runIndex: number,
 		credentialType?: string,
 		credentialsDecrypted?: ICredentialsDecrypted,
-	): Promise<Array<IDataObject | Buffer>> {
-		let responseData: IDataObject | IDataObject[] | Buffer | null;
+	): Promise<INodeExecutionData[]> {
+		let responseData: IN8nHttpFullResponse;
+		let returnData: INodeExecutionData[] = [
+			{
+				json: {},
+			},
+		];
 
 		if (requestData.binaryResponse) {
 			requestData.options.encoding = 'arraybuffer';
 		}
+
+		requestData.options.returnFullResponse = true;
 
 		if (credentialType) {
 			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
@@ -268,27 +259,51 @@ export class RoutingNode {
 				credentialType,
 				requestData.options,
 				{ credentialsDecrypted },
-			)) as IDataObject;
+			)) as IN8nHttpFullResponse;
 		} else {
 			responseData = (await executeSingleFunctions.helpers.httpRequest(
 				requestData.options,
-			)) as IDataObject;
+			)) as IN8nHttpFullResponse;
 		}
 
-		for (const postReceiveMethod of requestData.postReceive) {
-			if (responseData !== null) {
+		if (requestData.postReceive.length) {
+			// If postReceive functionality got defined execute all of them
+			for (const postReceiveMethod of requestData.postReceive) {
 				if (typeof postReceiveMethod === 'function') {
-					responseData = await postReceiveMethod.call(executeSingleFunctions, responseData);
+					returnData = await postReceiveMethod.call(
+						executeSingleFunctions,
+						returnData,
+						responseData,
+					);
 				} else if (postReceiveMethod.type === 'rootProperty') {
-					if (Array.isArray(responseData)) {
-						responseData = responseData.map((item) => item[postReceiveMethod.properties.property]);
-					} else {
-						responseData = responseData[postReceiveMethod.properties.property] as IDataObject;
+					if (responseData.body) {
+						let responseBody: IDataObject[];
+						if (!Array.isArray(responseData.body)) {
+							responseBody = [responseData.body as IDataObject];
+						} else {
+							responseBody = responseData.body as IDataObject[];
+						}
+
+						try {
+							returnData = responseBody.flatMap((item) => {
+								return (item[postReceiveMethod.properties.property] as IDataObject[]).map(
+									(json) => {
+										return {
+											json,
+										};
+									},
+								);
+							});
+						} catch (e) {
+							throw new Error(
+								`The rootProperty "${postReceiveMethod.properties.property}" could not be found on item or is not an Array.`,
+							);
+						}
 					}
 				} else if (postReceiveMethod.type === 'set') {
 					const { value } = postReceiveMethod.properties;
 					// If the value is an expression resolve it
-					responseData = this.getParameterValue(
+					returnData[0].json = this.getParameterValue(
 						value,
 						itemIndex,
 						runIndex,
@@ -297,16 +312,34 @@ export class RoutingNode {
 					) as INodeParameters;
 				}
 			}
+		} else {
+			// No postReceive functionality got defined so add data depending on type
+			// eslint-disable-next-line no-lonely-if
+			if (Buffer.isBuffer(responseData.body)) {
+				const destinationProperty = requestData.binaryResponse
+					? requestData.binaryResponse.destinationProperty
+					: 'data';
+
+				returnData[0] = {
+					json: {},
+					binary: {
+						[destinationProperty]: await executeSingleFunctions.helpers.prepareBinaryData(
+							responseData.body,
+						),
+					},
+				};
+			} else if (Array.isArray(responseData.body)) {
+				returnData = responseData.body.map((json) => {
+					return {
+						json,
+					} as INodeExecutionData;
+				});
+			} else {
+				returnData[0].json = responseData.body as IDataObject;
+			}
 		}
 
-		if (responseData === null) {
-			return [];
-		}
-		if (Array.isArray(responseData)) {
-			return responseData;
-		}
-
-		return [responseData];
+		return returnData;
 	}
 
 	async makeRoutingRequest(
@@ -317,8 +350,8 @@ export class RoutingNode {
 		credentialType?: string,
 		requestOperations?: IN8nRequestOperations,
 		credentialsDecrypted?: ICredentialsDecrypted,
-	): Promise<Array<IDataObject | Buffer>> {
-		let responseData: Array<IDataObject | Buffer>;
+	): Promise<INodeExecutionData[]> {
+		let responseData: INodeExecutionData[];
 		for (const preSendMethod of requestData.preSend) {
 			requestData.options = await preSendMethod.call(executeSingleFunctions, requestData.options);
 		}
@@ -364,7 +397,7 @@ export class RoutingNode {
 					(requestData.options[optionsType] as IDataObject)[properties.limitParameter] =
 						properties.pageSize;
 					(requestData.options[optionsType] as IDataObject)[properties.offsetParameter] = 0;
-					let tempResponseData: Array<IDataObject | Buffer>;
+					let tempResponseData: INodeExecutionData[];
 					do {
 						if (requestData?.maxResults) {
 							// Only request as many results as needed
@@ -384,17 +417,20 @@ export class RoutingNode {
 							credentialType,
 							credentialsDecrypted,
 						);
+
 						(requestData.options[optionsType] as IDataObject)[properties.offsetParameter] =
 							((requestData.options[optionsType] as IDataObject)[
 								properties.offsetParameter
 							] as number) + properties.pageSize;
 
 						if (properties.rootProperty) {
-							tempResponseData = get(
-								tempResponseData[0],
-								properties.rootProperty,
-								[],
-							) as IDataObject[];
+							tempResponseData = (
+								get(tempResponseData[0].json, properties.rootProperty, []) as IDataObject[]
+							).map((item) => {
+								return {
+									json: item,
+								};
+							});
 						}
 
 						responseData.push(...tempResponseData);
