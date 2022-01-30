@@ -208,7 +208,7 @@ export class RoutingNode {
 		sourceOptions?: IRequestOptionsFromParameters,
 	): void {
 		if (sourceOptions) {
-			destinationOptions.pagination = destinationOptions.pagination ?? sourceOptions.pagination;
+			destinationOptions.paginate = destinationOptions.paginate ?? sourceOptions.paginate;
 			destinationOptions.maxResults = destinationOptions.maxResults ?? sourceOptions.maxResults;
 			merge(destinationOptions.options, sourceOptions.options);
 			destinationOptions.preSend.push(...sourceOptions.preSend);
