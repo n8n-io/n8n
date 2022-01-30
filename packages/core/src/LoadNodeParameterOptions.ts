@@ -202,7 +202,9 @@ export class LoadNodeParameterOptions {
 		const nodeProperties: INodePropertyOptions = {
 			name: '',
 			value: '',
-			request: options,
+			routing: {
+				request: options,
+			},
 		};
 
 		const requestData = routingNode.getRequestOptionsFromParameters(

@@ -882,18 +882,14 @@ export interface INodeProperties {
 	placeholder?: string;
 	isNodeSetting?: boolean;
 	noDataExpression?: boolean;
-	request?: IHttpRequestOptions;
-	requestOperations?: IN8nRequestOperations;
-	requestProperty?: INodeRequestProperty;
 	required?: boolean;
+	routing?: INodePropertyRouting;
 }
 export interface INodePropertyOptions {
 	name: string;
 	value: string | number | boolean;
 	description?: string;
-	request?: IHttpRequestOptions;
-	requestOperations?: IN8nRequestOperations;
-	requestProperty?: INodeRequestProperty;
+	routing?: INodePropertyRouting;
 }
 
 export interface INodePropertyCollection {
@@ -1013,18 +1009,15 @@ export interface INodeTypeBaseDescription {
 	codex?: CodexData;
 }
 
-export interface INodeRequestProperty {
-	property?: string;
-	value?: string;
-	type?: 'body' | 'query';
-	pagination?: boolean | string;
+export interface INodePropertyRouting {
+	operations?: IN8nRequestOperations; // Should be changed, does not sound right
+	output?: INodeRequestOutput;
+	request?: IHttpRequestOptions;
+	send?: INodeRequestSend;
+}
+
+export interface INodeRequestOutput {
 	maxResults?: number | string;
-	propertyInDotNotation?: boolean; // Enabled by default
-	preSend?: (
-		this: IExecuteSingleFunctions,
-		requestOptions: IHttpRequestOptions,
-	) => Promise<IHttpRequestOptions>;
-	// TODO: Improve, think how to make it possible to handle binary data
 	postReceive?:
 		| ((
 				this: IExecuteSingleFunctions,
@@ -1034,6 +1027,18 @@ export interface INodeRequestProperty {
 		| IPostReceiveBinaryData
 		| IPostReceiveRootProperty
 		| IPostReceiveSet;
+}
+
+export interface INodeRequestSend {
+	preSend?: (
+		this: IExecuteSingleFunctions,
+		requestOptions: IHttpRequestOptions,
+	) => Promise<IHttpRequestOptions>;
+	paginate?: boolean | string; // Where should this life?
+	property?: string; // Maybe: propertyName, destinationProperty?
+	propertyInDotNotation?: boolean; // Enabled by default
+	type?: 'body' | 'query';
+	value?: string;
 }
 
 export interface IPostReceiveBase {
@@ -1065,11 +1070,14 @@ export interface IPostReceiveSet extends IPostReceiveBase {
 	};
 }
 
+export interface IHttpRequestOptionsFromParameters extends Partial<IHttpRequestOptions> {
+	url?: string;
+}
+
 export interface IRequestOptionsFromParameters {
-	options: IHttpRequestOptions;
-	pagination?: boolean | string;
 	maxResults?: number | string;
-	requestOperations?: IN8nRequestOperations;
+	options: IHttpRequestOptionsFromParameters;
+	paginate?: boolean | string;
 	preSend: Array<
 		(
 			this: IExecuteSingleFunctions,
@@ -1086,6 +1094,7 @@ export interface IRequestOptionsFromParameters {
 		| IPostReceiveRootProperty
 		| IPostReceiveSet
 	>;
+	requestOperations?: IN8nRequestOperations;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {

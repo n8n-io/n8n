@@ -537,7 +537,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 						displayName: 'Temp',
 						name: 'temp',
 						type: 'string',
-						request: credentialTestFunction.testRequest.request,
+						routing: {
+							request: credentialTestFunction.testRequest.request,
+						},
 						default: '',
 					},
 				],
@@ -616,7 +618,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 					displayName: 'Temp',
 					name: 'temp',
 					type: 'string',
-					request: credentialTestFunction.testRequest.request,
+					routing: {
+						request: credentialTestFunction.testRequest.request,
+					},
 					default: '',
 				},
 				itemIndex,

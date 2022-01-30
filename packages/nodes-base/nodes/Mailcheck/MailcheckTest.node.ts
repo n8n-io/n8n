@@ -5,6 +5,7 @@ import {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
+	INodePropertyRouting,
 	INodeType,
 	INodeTypeDescription,
 	IRequestOptionsFromParameters,
@@ -158,26 +159,32 @@ export class MailcheckTest implements INodeType {
 					{
 						name: 'Check',
 						value: 'check',
-						request: {
-							method: 'POST',
-							url: '/singleEmail:check',
+						routing: {
+							request: {
+								method: 'POST',
+								url: '/singleEmail:check',
+							},
 						},
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						request: {
-							method: 'POST',
-							url: '/singleEmail:delete',
+						routing: {
+							request: {
+								method: 'POST',
+								url: '/singleEmail:delete',
+							},
 						},
 					},
 					{
 						name: 'Download',
 						value: 'download',
-						request: {
-							method: 'GET',
-							baseURL: 'http://www.africau.edu',
-							url: '/images/default/sample.pdf',
+						routing: {
+							request: {
+								method: 'GET',
+								baseURL: 'http://www.africau.edu',
+								url: '/images/default/sample.pdf',
+							},
 						},
 					},
 				],
@@ -205,13 +212,15 @@ export class MailcheckTest implements INodeType {
 						],
 					},
 				},
-				requestProperty: {
-					postReceive: {
-						type: 'binaryData',
-						properties: {
-							destinationProperty: 'data',
-							// TODO: $value is currently not supported, add!
-							// destinationProperty: '={{$value}}',
+				routing: {
+					output: {
+						postReceive: {
+							type: 'binaryData',
+							properties: {
+								destinationProperty: 'data',
+								// TODO: $value is currently not supported, add!
+								// destinationProperty: '={{$value}}',
+							},
 						},
 					},
 				},
@@ -233,28 +242,30 @@ export class MailcheckTest implements INodeType {
 						],
 					},
 				},
-				request: {
-					method: 'DELETE',
-					url: '=/senders/{{$value}}', // send value in path
-				},
-				requestProperty: {
-					postReceive: {
-						type: 'set',
-						properties: {
-							value: '={{ { "success": true } }}',
-							// value: '={{ { "success": $response } }}', // Also possible to use the original response data
-						},
+				routing: {
+					request: {
+						method: 'DELETE',
+						url: '=/senders/{{$value}}', // send value in path
 					},
-					// Identical with the above
-					// async postReceive (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
-					// 	return [
-					// 		{
-					// 			json: {
-					// 				success: true,
-					// 			}
-					// 		}
-					// 	];
-					// },
+					output: {
+						postReceive: {
+							type: 'set',
+							properties: {
+								value: '={{ { "success": true } }}',
+								// value: '={{ { "success": $response } }}', // Also possible to use the original response data
+							},
+						},
+						// Identical with the above
+						// async postReceive (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
+						// 	return [
+						// 		{
+						// 			json: {
+						// 				success: true,
+						// 			}
+						// 		}
+						// 	];
+						// },
+					},
 				},
 			},
 
@@ -272,18 +283,22 @@ export class MailcheckTest implements INodeType {
 						],
 					},
 				},
-				requestProperty: {
-					// Transform request before it gets send
-					async preSend (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
-						requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
-						// if something special is required it is possible to write custom code and get from parameter
-						requestOptions.qs.sender = this.getNodeParameter('sender');
-						return requestOptions;
+				routing: {
+					send: {
+						// Transform request before it gets send
+						async preSend (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+							requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
+							// if something special is required it is possible to write custom code and get from parameter
+							requestOptions.qs.sender = this.getNodeParameter('sender');
+							return requestOptions;
+						},
 					},
-					// Transform the received data
-					async postReceive (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
-						items.forEach(item => item.json = { success: true });
-						return items;
+					output: {
+						// Transform the received data
+						async postReceive (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
+							items.forEach(item => item.json = { success: true });
+							return items;
+						},
 					},
 				},
 				default: '',
@@ -303,8 +318,10 @@ export class MailcheckTest implements INodeType {
 						],
 					},
 				},
-				requestProperty: {
-					pagination: '={{$value}}', // Activate pagination depending on value of current parameter
+				routing: {
+					send: {
+						paginate: '={{$value}}', // Activate pagination depending on value of current parameter
+					},
 				},
 				default: false,
 				description: 'To test pagination.',
@@ -327,17 +344,24 @@ export class MailcheckTest implements INodeType {
 					},
 				},
 				default: false,
-				request: {
-					method: 'GET',
-					// url: 'webhook/pagination-offset',
-					url: 'webhook/pagination-offset-sub',
-				},
-				requestProperty: {
-					// Data to returned underneath a property called "data"
-					postReceive: {
-						type: 'rootProperty',
-						properties: {
-							property: 'data',
+				routing: {
+					request: {
+						method: 'GET',
+						// url: 'webhook/pagination-offset',
+						url: 'webhook/pagination-offset-sub',
+					},
+					// send: {
+					// 	type: 'body',
+					// 	property: 'whatever',
+					// },
+					output: {
+						// rootProperty: 'data',
+						// Data to returned underneath a property called "data"
+						postReceive: {
+							type: 'rootProperty',
+							properties: {
+								property: 'data',
+							},
 						},
 					},
 				},
@@ -368,8 +392,10 @@ export class MailcheckTest implements INodeType {
 					maxValue: 500,
 				},
 				default: 10,
-				requestProperty: {
-					maxResults: '={{$value}}', // Set maxResults to the value of current parameter
+				routing: {
+					output: {
+						maxResults: '={{$value}}', // Set maxResults to the value of current parameter
+					},
 				},
 				description: 'How many results to return.',
 			},
@@ -387,10 +413,12 @@ export class MailcheckTest implements INodeType {
 						],
 					},
 				},
-				requestProperty: {
-					property: 'toEmail', // Simple set
-					type: 'body',
-					value: '={{$value.toUpperCase()}}', // Change value that gets send via an expression
+				routing: {
+					send: {
+						property: 'toEmail', // Simple set
+						type: 'body',
+						value: '={{$value.toUpperCase()}}', // Change value that gets send via an expression
+					},
 				},
 				default: '',
 				description: 'Email address to check.',
@@ -409,9 +437,11 @@ export class MailcheckTest implements INodeType {
 						],
 					},
 				},
-				requestProperty: {
-					property: 'message.text', // Set on lower level with dot-notation
-					type: 'body',
+				routing: {
+					send: {
+						property: 'message.text', // Set on lower level with dot-notation
+						type: 'body',
+					},
 				},
 				default: '',
 				description: 'The message.',
@@ -439,11 +469,13 @@ export class MailcheckTest implements INodeType {
 						displayName: 'Some Value',
 						name: 'someValue',
 						type: 'string',
-						requestProperty: {
-							property: 'some.value',
-							propertyInDotNotation: false, // send as "some.value"
-							// If type is not set it will be send in in "query"
-							// type: 'query',
+						routing: {
+							send: {
+								property: 'some.value',
+								propertyInDotNotation: false, // send as "some.value"
+								// If type is not set it will be send in in "query"
+								// type: 'query',
+							},
 						},
 						default: '',
 					},
@@ -452,9 +484,11 @@ export class MailcheckTest implements INodeType {
 						name: 'deal_id',
 						type: 'number',
 						default: 0,
-						requestProperty: {
-							property: 'dealId',
-							type: 'query',
+						routing: {
+							send: {
+								property: 'dealId',
+								type: 'query',
+							},
 						},
 						description: 'ID of the deal this activity will be associated with',
 					},
@@ -463,8 +497,10 @@ export class MailcheckTest implements INodeType {
 						name: 'due_date',
 						type: 'dateTime',
 						default: '',
-						requestProperty: {
-							type: 'query',
+						routing: {
+							send: {
+								type: 'query',
+							},
 						},
 						description: 'Due Date to activity be done YYYY-MM-DD',
 					},
@@ -520,9 +556,11 @@ export class MailcheckTest implements INodeType {
 								name: 'deal_id',
 								type: 'number',
 								default: 0,
-								requestProperty: {
-									property: 'dealId2',
-									type: 'query',
+								routing: {
+									send: {
+										property: 'dealId2',
+										type: 'query',
+									},
 								},
 								description: 'ID of the deal this activity will be associated with',
 							},
@@ -531,9 +569,11 @@ export class MailcheckTest implements INodeType {
 								name: 'due_date',
 								type: 'dateTime',
 								default: '',
-								requestProperty: {
-									property: 'due_date2',
-									type: 'query',
+								routing: {
+									send: {
+										property: 'due_date2',
+										type: 'query',
+									},
 								},
 								description: 'Due Date to activity be done YYYY-MM-DD',
 							},
@@ -580,9 +620,11 @@ export class MailcheckTest implements INodeType {
 								name: 'value',
 								type: 'string',
 								default: '',
-								requestProperty: {
-									property: '=single-{{$parent.name}}',
-									type: 'body',
+								routing: {
+									send: {
+										property: '=single-{{$parent.name}}',
+										type: 'body',
+									},
 								},
 								description: 'Value of the property to set.',
 							},
@@ -620,8 +662,10 @@ export class MailcheckTest implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								requestProperty: {
-									property: 'single-customValues.name',
+								routing: {
+									send: {
+										property: 'single-customValues.name',
+									},
 								},
 								description: 'Name of the property to set.',
 							},
@@ -630,8 +674,10 @@ export class MailcheckTest implements INodeType {
 								name: 'value',
 								type: 'string',
 								default: '',
-								requestProperty: {
-									property: 'single-customValues.value',
+								routing: {
+									send: {
+										property: 'single-customValues.value',
+									},
 								},
 								description: 'Value of the property to set.',
 							},
@@ -680,9 +726,11 @@ export class MailcheckTest implements INodeType {
 								name: 'value',
 								type: 'string',
 								default: '',
-								requestProperty: {
-									property: '={{$parent.name}}',
-									type: 'body',
+								routing: {
+									send: {
+										property: '={{$parent.name}}',
+										type: 'body',
+									},
 								},
 								description: 'Value of the property to set.',
 							},
@@ -700,9 +748,11 @@ export class MailcheckTest implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								requestProperty: {
-									property: '=customValues[{{$index}}].name',
-									type: 'body',
+								routing: {
+									send: {
+										property: '=customValues[{{$index}}].name',
+										type: 'body',
+									},
 								},
 								description: 'Name of the property to set.',
 							},
@@ -711,9 +761,11 @@ export class MailcheckTest implements INodeType {
 								name: 'value',
 								type: 'string',
 								default: '',
-								requestProperty: {
-									property: '=customValues[{{$index}}].value',
-									type: 'body',
+								routing: {
+									send: {
+										property: '=customValues[{{$index}}].value',
+										type: 'body',
+									},
 								},
 								description: 'Value of the property to set.',
 							},

@@ -16,6 +16,7 @@ import set from 'lodash.set';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
+	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INode,
 	INodeExecuteFunctions,
@@ -136,8 +137,8 @@ export class RoutingNode {
 					Object.assign(requestData.options, nodeType.description.requestDefaults);
 
 					for (const key of Object.keys(nodeType.description.requestDefaults)) {
-						// @ts-ignore
-						let value = nodeType.description.requestDefaults[key];
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
 						// If the value is an expression resolve it
 						value = this.getParameterValue(
 							value,
@@ -146,8 +147,8 @@ export class RoutingNode {
 							{ $credentials: credentials },
 							true,
 						) as string;
-						// @ts-ignore
-						requestData.options[key] = value;
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(requestData.options as Record<string, any>)[key] = value;
 					}
 				}
 
@@ -242,12 +243,12 @@ export class RoutingNode {
 			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
 				executeSingleFunctions,
 				credentialType,
-				requestData.options,
+				requestData.options as IHttpRequestOptions,
 				{ credentialsDecrypted },
 			)) as IN8nHttpFullResponse;
 		} else {
 			responseData = (await executeSingleFunctions.helpers.httpRequest(
-				requestData.options,
+				requestData.options as IHttpRequestOptions,
 			)) as IN8nHttpFullResponse;
 		}
 
@@ -343,7 +344,10 @@ export class RoutingNode {
 	): Promise<INodeExecutionData[]> {
 		let responseData: INodeExecutionData[];
 		for (const preSendMethod of requestData.preSend) {
-			requestData.options = await preSendMethod.call(executeSingleFunctions, requestData.options);
+			requestData.options = await preSendMethod.call(
+				executeSingleFunctions,
+				requestData.options as IHttpRequestOptions,
+			);
 		}
 
 		const executePaginationFunctions = {
@@ -360,7 +364,7 @@ export class RoutingNode {
 			},
 		};
 
-		if (requestData.pagination && requestOperations?.pagination) {
+		if (requestData.paginate && requestOperations?.pagination) {
 			// Has pagination
 
 			if (typeof requestOperations.pagination === 'function') {
@@ -474,10 +478,7 @@ export class RoutingNode {
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 	): IRequestOptionsFromParameters | undefined {
 		const returnData: IRequestOptionsFromParameters = {
-			// @ts-ignore
 			options: {
-				// Do not uncomment, else it will overwrite url always to empty!
-				// url: '', // TODO: Replace with own type where url is not required
 				qs: {},
 				body: {},
 			},
@@ -490,119 +491,131 @@ export class RoutingNode {
 		if (!NodeHelpers.displayParameter(this.node.parameters, nodeProperties, this.node.parameters)) {
 			return undefined;
 		}
-
-		if (nodeProperties.requestOperations) {
-			returnData.requestOperations = { ...nodeProperties.requestOperations };
-		}
-
-		if (nodeProperties.request) {
-			for (const key of Object.keys(nodeProperties.request)) {
-				// @ts-ignore
-				let value = nodeProperties.request[key];
-				// If the value is an expression resolve it
-				value = this.getParameterValue(value, itemIndex, runIndex, additionalKeys, true) as string;
-				// @ts-ignore
-				returnData.options[key] = value;
+		if (nodeProperties.routing) {
+			if (nodeProperties.routing.operations) {
+				returnData.requestOperations = { ...nodeProperties.routing.operations };
 			}
-		}
 
-		if (nodeProperties.requestProperty) {
-			let propertyName = nodeProperties.requestProperty.property;
-			if (propertyName !== undefined) {
-				// If the propertyName is an expression resolve it
-				propertyName = this.getParameterValue(
-					propertyName,
-					itemIndex,
-					runIndex,
-					additionalKeys,
-					true,
-				) as string;
-
-				let value = executeSingleFunctions.getNodeParameter(
-					basePath + nodeProperties.name,
-					itemIndex,
-				) as string;
-
-				if (nodeProperties.requestProperty.value) {
-					const valueString = nodeProperties.requestProperty.value;
-					// Special value got set
-					// If the valueString is an expression resolve it
+			if (nodeProperties.routing.request) {
+				for (const key of Object.keys(nodeProperties.routing.request)) {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					let value = (nodeProperties.routing.request as Record<string, any>)[key];
+					// If the value is an expression resolve it
 					value = this.getParameterValue(
-						valueString,
+						value,
 						itemIndex,
 						runIndex,
-						{ ...additionalKeys, $value: value },
+						additionalKeys,
 						true,
 					) as string;
-				}
-
-				if (nodeProperties.requestProperty.type === 'body') {
-					// Send in "body"
-					// eslint-disable-next-line no-lonely-if
-					if (nodeProperties.requestProperty.propertyInDotNotation === false) {
-						// @ts-ignore
-						returnData.options.body![propertyName] = value;
-					} else {
-						set(returnData.options.body as object, propertyName, value);
-					}
-				} else {
-					// Send in "query"
-					// eslint-disable-next-line no-lonely-if
-					if (nodeProperties.requestProperty.propertyInDotNotation === false) {
-						returnData.options.qs![propertyName] = value;
-					} else {
-						set(returnData.options.qs as object, propertyName, value);
-					}
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(returnData.options as Record<string, any>)[key] = value;
 				}
 			}
 
-			if (nodeProperties.requestProperty.pagination !== undefined) {
-				let paginationValue = nodeProperties.requestProperty.pagination;
-				if (typeof paginationValue === 'string' && paginationValue.charAt(0) === '=') {
+			if (nodeProperties.routing.send) {
+				let propertyName = nodeProperties.routing.send.property;
+				if (propertyName !== undefined) {
 					// If the propertyName is an expression resolve it
-					const value = executeSingleFunctions.getNodeParameter(
+					propertyName = this.getParameterValue(
+						propertyName,
+						itemIndex,
+						runIndex,
+						additionalKeys,
+						true,
+					) as string;
+
+					let value = executeSingleFunctions.getNodeParameter(
 						basePath + nodeProperties.name,
 						itemIndex,
 					) as string;
 
-					paginationValue = this.getParameterValue(
-						paginationValue,
-						itemIndex,
-						runIndex,
-						{ ...additionalKeys, $value: value },
-						true,
-					) as string;
+					if (nodeProperties.routing.send.value) {
+						const valueString = nodeProperties.routing.send.value;
+						// Special value got set
+						// If the valueString is an expression resolve it
+						value = this.getParameterValue(
+							valueString,
+							itemIndex,
+							runIndex,
+							{ ...additionalKeys, $value: value },
+							true,
+						) as string;
+					}
+
+					if (nodeProperties.routing.send.type === 'body') {
+						// Send in "body"
+						// eslint-disable-next-line no-lonely-if
+						if (nodeProperties.routing.send.propertyInDotNotation === false) {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(returnData.options.body as Record<string, any>)![propertyName] = value;
+						} else {
+							set(returnData.options.body as object, propertyName, value);
+						}
+					} else {
+						// Send in "query"
+						// eslint-disable-next-line no-lonely-if
+						if (nodeProperties.routing.send.propertyInDotNotation === false) {
+							returnData.options.qs![propertyName] = value;
+						} else {
+							set(returnData.options.qs as object, propertyName, value);
+						}
+					}
 				}
 
-				returnData.pagination = !!paginationValue;
+				if (nodeProperties.routing.send.paginate !== undefined) {
+					let paginateValue = nodeProperties.routing.send.paginate;
+					if (typeof paginateValue === 'string' && paginateValue.charAt(0) === '=') {
+						// If the propertyName is an expression resolve it
+						const value = executeSingleFunctions.getNodeParameter(
+							basePath + nodeProperties.name,
+							itemIndex,
+						) as string;
+
+						paginateValue = this.getParameterValue(
+							paginateValue,
+							itemIndex,
+							runIndex,
+							{ ...additionalKeys, $value: value },
+							true,
+						) as string;
+					}
+
+					if (nodeProperties.routing.send.preSend) {
+						returnData.preSend.push(nodeProperties.routing.send.preSend);
+					}
+
+					// TODO: Should also be renamed
+					returnData.paginate = !!paginateValue;
+				}
 			}
+			if (nodeProperties.routing.output) {
+				if (nodeProperties.routing.output) {
+					if (nodeProperties.routing.output.maxResults !== undefined) {
+						let maxResultsValue = nodeProperties.routing.output.maxResults;
+						if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
+							// If the propertyName is an expression resolve it
+							const value = executeSingleFunctions.getNodeParameter(
+								basePath + nodeProperties.name,
+								itemIndex,
+							) as number;
 
-			if (nodeProperties.requestProperty.maxResults !== undefined) {
-				let maxResultsValue = nodeProperties.requestProperty.maxResults;
-				if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
-					// If the propertyName is an expression resolve it
-					const value = executeSingleFunctions.getNodeParameter(
-						basePath + nodeProperties.name,
-						itemIndex,
-					) as number;
+							maxResultsValue = this.getParameterValue(
+								maxResultsValue,
+								itemIndex,
+								runIndex,
+								{ ...additionalKeys, $value: value },
+								true,
+							) as string;
+						}
 
-					maxResultsValue = this.getParameterValue(
-						maxResultsValue,
-						itemIndex,
-						runIndex,
-						{ ...additionalKeys, $value: value },
-						true,
-					) as string;
+						returnData.maxResults = maxResultsValue;
+					}
 				}
 
-				returnData.maxResults = maxResultsValue;
-			}
-
-			if (nodeProperties.requestProperty.preSend) {
-				returnData.preSend.push(nodeProperties.requestProperty.preSend);
-			}
-			if (nodeProperties.requestProperty.postReceive) {
-				returnData.postReceive.push(nodeProperties.requestProperty.postReceive);
+				if (nodeProperties.routing.output.postReceive) {
+					returnData.postReceive.push(nodeProperties.routing.output.postReceive);
+				}
 			}
 		}
 
