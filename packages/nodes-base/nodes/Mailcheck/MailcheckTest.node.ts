@@ -206,10 +206,13 @@ export class MailcheckTest implements INodeType {
 					},
 				},
 				requestProperty: {
-					// If "binaryResponse" is set the response get set under binary data
-					binaryResponse: {
-						// Defines the name of the binary property it should be set as
-						destinationProperty: '={{$value}}',
+					postReceive: {
+						type: 'binaryData',
+						properties: {
+							destinationProperty: 'data',
+							// TODO: $value is currently not supported, add!
+							// destinationProperty: '={{$value}}',
+						},
 					},
 				},
 				description: 'Name of the binary property to which to write the data of the read file.',

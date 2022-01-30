@@ -37,10 +37,6 @@ export interface IBinaryData {
 	id?: string;
 }
 
-export interface IBinaryResponseProperty {
-	destinationProperty: string;
-}
-
 export interface IOAuth2Options {
 	includeCredentialsOnRefreshOnBody?: boolean;
 	property?: string;
@@ -1018,7 +1014,6 @@ export interface INodeTypeBaseDescription {
 }
 
 export interface INodeRequestProperty {
-	binaryResponse?: IBinaryResponseProperty;
 	property?: string;
 	value?: string;
 	type?: 'body' | 'query';
@@ -1036,6 +1031,7 @@ export interface INodeRequestProperty {
 				items: INodeExecutionData[],
 				response: IN8nHttpFullResponse,
 		  ) => Promise<INodeExecutionData[]>)
+		| IPostReceiveBinaryData
 		| IPostReceiveRootProperty
 		| IPostReceiveSet;
 }
@@ -1046,6 +1042,13 @@ export interface IPostReceiveBase {
 		[key: string]: string | number;
 	};
 	errorMessage?: string;
+}
+
+export interface IPostReceiveBinaryData extends IPostReceiveBase {
+	type: 'binaryData';
+	properties: {
+		destinationProperty: string;
+	};
 }
 
 export interface IPostReceiveRootProperty extends IPostReceiveBase {
@@ -1063,7 +1066,6 @@ export interface IPostReceiveSet extends IPostReceiveBase {
 }
 
 export interface IRequestOptionsFromParameters {
-	binaryResponse?: IBinaryResponseProperty;
 	options: IHttpRequestOptions;
 	pagination?: boolean | string;
 	maxResults?: number | string;
@@ -1080,6 +1082,7 @@ export interface IRequestOptionsFromParameters {
 				items: INodeExecutionData[],
 				response: IN8nHttpFullResponse,
 		  ) => Promise<INodeExecutionData[]>)
+		| IPostReceiveBinaryData
 		| IPostReceiveRootProperty
 		| IPostReceiveSet
 	>;

@@ -207,17 +207,6 @@ export class RoutingNode {
 		sourceOptions?: IRequestOptionsFromParameters,
 	): void {
 		if (sourceOptions) {
-			if (sourceOptions.binaryResponse) {
-				if (!destinationOptions.binaryResponse) {
-					destinationOptions.binaryResponse = sourceOptions.binaryResponse;
-				} else {
-					destinationOptions.binaryResponse = Object.assign(
-						destinationOptions.binaryResponse,
-						sourceOptions.binaryResponse,
-					);
-				}
-			}
-
 			destinationOptions.pagination = destinationOptions.pagination ?? sourceOptions.pagination;
 			destinationOptions.maxResults = destinationOptions.maxResults ?? sourceOptions.maxResults;
 			merge(destinationOptions.options, sourceOptions.options);
@@ -246,10 +235,6 @@ export class RoutingNode {
 				json: {},
 			},
 		];
-
-		if (requestData.binaryResponse) {
-			requestData.options.encoding = 'arraybuffer';
-		}
 
 		requestData.options.returnFullResponse = true;
 
@@ -310,25 +295,30 @@ export class RoutingNode {
 						{ $response: responseData },
 						false,
 					) as INodeParameters;
-				}
-			}
-		} else {
-			// No postReceive functionality got defined so add data depending on type
-			// eslint-disable-next-line no-lonely-if
-			if (Buffer.isBuffer(responseData.body)) {
-				const destinationProperty = requestData.binaryResponse
-					? requestData.binaryResponse.destinationProperty
-					: 'data';
+				} else if (postReceiveMethod.type === 'binaryData') {
+					responseData.body = Buffer.from(responseData.body as string);
+					let { destinationProperty } = postReceiveMethod.properties;
 
-				returnData[0] = {
-					json: {},
-					binary: {
+					// TODO: Have to make $value accessible, but at that level it does not have that reference anymore
+					destinationProperty = this.getParameterValue(
+						destinationProperty,
+						itemIndex,
+						runIndex,
+						{ $response: responseData },
+						false,
+					) as string;
+
+					returnData[0].binary = {
 						[destinationProperty]: await executeSingleFunctions.helpers.prepareBinaryData(
 							responseData.body,
 						),
-					},
-				};
-			} else if (Array.isArray(responseData.body)) {
+					};
+				}
+			}
+		} else {
+			// No postReceive functionality got defined so simply add data as it is
+			// eslint-disable-next-line no-lonely-if
+			if (Array.isArray(responseData.body)) {
 				returnData = responseData.body.map((json) => {
 					return {
 						json,
@@ -585,27 +575,6 @@ export class RoutingNode {
 				}
 
 				returnData.pagination = !!paginationValue;
-			}
-
-			if (nodeProperties.requestProperty.binaryResponse !== undefined) {
-				let { destinationProperty } = nodeProperties.requestProperty.binaryResponse;
-				if (typeof destinationProperty === 'string' && destinationProperty.charAt(0) === '=') {
-					// If the propertyName is an expression resolve it
-					const value = executeSingleFunctions.getNodeParameter(
-						basePath + nodeProperties.name,
-						itemIndex,
-					) as string;
-
-					destinationProperty = this.getParameterValue(
-						destinationProperty,
-						itemIndex,
-						runIndex,
-						{ ...additionalKeys, $value: value },
-						true,
-					) as string;
-				}
-
-				returnData.binaryResponse = { destinationProperty };
 			}
 
 			if (nodeProperties.requestProperty.maxResults !== undefined) {
