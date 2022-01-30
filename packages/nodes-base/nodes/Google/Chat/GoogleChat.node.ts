@@ -77,18 +77,18 @@ export class GoogleChat implements INodeType {
 				noDataExpression: true,
 				type: 'options',
 				options: [
-					{
-						name: 'Attachment',
-						value: 'attachment',
-					},
-					{
-						name: 'Incoming Webhook',
-						value: 'incomingWebhook',
-					},
-					{
-						name: 'Media',
-						value: 'media',
-					},
+					// {
+					// 	name: 'Attachment',
+					// 	value: 'attachment',
+					// },
+					// {
+					// 	name: 'Incoming Webhook',
+					// 	value: 'incomingWebhook',
+					// },
+					// {
+					// 	name: 'Media',
+					// 	value: 'media',
+					// },
 					{
 						name: 'Member',
 						value: 'member',
@@ -105,12 +105,12 @@ export class GoogleChat implements INodeType {
 				default: 'message',
 				description: 'The resource to operate on',
 			},
-			...attachmentOperations,
-			...attachmentFields,
-			...incomingWebhookOperations,
-			...incomingWebhookFields,
-			...mediaOperations,
-			...mediaFields,
+			// ...attachmentOperations,
+			// ...attachmentFields,
+			// ...incomingWebhookOperations,
+			// ...incomingWebhookFields,
+			// ...mediaOperations,
+			// ...mediaFields,
 			...memberOperations,
 			...memberFields,
 			...messageOperations,
