@@ -23,18 +23,21 @@
 		<div :class="$style.errors" v-if="showRequiredErrors">
 			{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }} <n8n-link v-if="documentationUrl" size="small" theme="danger" :to="documentationUrl" :newWindow="true" :underline="true" @click="onDocumentationUrlClick">{{ $locale.baseText('parameterInputExpanded.openDocs') }}</n8n-link>
 		</div>
+		<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
 	</n8n-input-label>
 </template>
 
 <script lang="ts">
 import { IUpdateInformation } from '@/Interface';
 import ParameterInput from './ParameterInput.vue';
+import InputHint from './ParameterInputHint.vue';
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'ParameterInputExpanded',
 	components: {
 		ParameterInput,
+		InputHint,
 	},
 	props: {
 		parameter: {
@@ -96,10 +99,13 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.errors {
-	margin-top: var(--spacing-2xs);
-	color: var(--color-danger);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
-}
+	.errors {
+		margin-top: var(--spacing-2xs);
+		color: var(--color-danger);
+		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight-regular);
+	}
+	.hint {
+		margin-top: var(--spacing-4xs);
+	}
 </style>
