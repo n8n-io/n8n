@@ -241,7 +241,7 @@ const invalidRequests = {
 	},
 
 	patchPassword: async function (requester: request.SuperAgentTest) {
-		const invalidPayloads: object[] = [
+		const invalidPayloads: Array<{ password?: string }> = [
 			'abc',
 			'Lorem ipsum dolor sit amet, consectetur adipiscing elit accumsan.',
 		].map((password) => ({ password }));
