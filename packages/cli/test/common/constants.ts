@@ -24,8 +24,6 @@ export const TEST_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
 	logging: false,
 };
 
-export const TEST_JWT_SECRET: Readonly<string> = 'My JWT secret';
-
 export const SUCCESS_RESPONSE_BODY: Readonly<object> = {
 	data: {
 		success: true,

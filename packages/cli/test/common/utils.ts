@@ -6,7 +6,7 @@ import validator from 'validator';
 
 import config = require('../../config');
 import { Role } from '../../src/databases/entities/Role';
-import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT, TEST_JWT_SECRET } from './constants';
+import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../src/UserManagement/routes';
 import { authenticationMethods as loginRoutes } from '../../src/UserManagement/routes/auth';
 
@@ -22,7 +22,7 @@ export const initTestServer = () => {
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
 
-	config.set('userManagement.jwtSecret', TEST_JWT_SECRET);
+	config.set('userManagement.jwtSecret', 'My JWT secret');
 
 	authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
 	loginRoutes.apply(testServer);
