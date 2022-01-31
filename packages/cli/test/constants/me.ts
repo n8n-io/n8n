@@ -10,7 +10,7 @@ const password = 'abcd1234';
 const firstName = 'John';
 const lastName = 'Smith';
 
-export const TEST_PAYLOADS = {
+export const PAYLOADS = {
 	PROFILE: {
 		email,
 		firstName,
