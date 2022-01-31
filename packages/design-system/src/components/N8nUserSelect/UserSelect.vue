@@ -138,8 +138,8 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .itemContainer {
-	padding: var(--spacing-2xs) var(--spacing-s) var(--spacing-2xs) var(--spacing-s) !important;
-	line-height: 1 !important;
+	--select-option-padding: var(--spacing-2xs) var(--spacing-s);
+	--select-option-line-height: 1;
 }
 
 .limitPopperWidth {
