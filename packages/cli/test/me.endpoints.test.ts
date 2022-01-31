@@ -73,6 +73,11 @@ describe('/me endpoints', () => {
 		test('POST /me/survey should return success response', () => {
 			return validRequests.postSurvey(shell);
 		});
+
+		// TODO: Not working
+		// test('POST /me/survey should fail with invalid inputs', () => {
+		// 	return invalidRequests.postSurvey(shell);
+		// });
 	});
 
 	describe('Owner requests', () => {
@@ -139,6 +144,11 @@ describe('/me endpoints', () => {
 		test('POST /me/survey should return success response', () => {
 			return validRequests.postSurvey(owner);
 		});
+
+		// TODO: Not working
+		// test('POST /me/survey should fail with invalid inputs', () => {
+		// 	return invalidRequests.postSurvey(owner);
+		// });
 	});
 
 	describe('If requester is member', () => {
@@ -249,14 +259,13 @@ const invalidRequests = {
 		invalidPayloads.push({});
 
 		invalidPayloads.forEach(async (invalidPayload) => {
-			await requester.patch('/me').send(invalidPayload).expect(400);
+			await requester.patch('/me/password').send(invalidPayload).expect(400);
 		});
 	},
 
 	postSurvey: async function (requester: request.SuperAgentTest) {
 		const response = await requester.post('/me/survey').send({ wrongKey: 123 });
 
-		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+		expect(response.statusCode).toBe(400);
 	},
 };
