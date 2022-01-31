@@ -527,7 +527,6 @@ export class RoutingNode {
 
 					let value = executeSingleFunctions.getNodeParameter(
 						basePath + nodeProperties.name,
-						itemIndex,
 					) as string;
 
 					if (nodeProperties.routing.send.value) {
@@ -569,7 +568,6 @@ export class RoutingNode {
 						// If the propertyName is an expression resolve it
 						const value = executeSingleFunctions.getNodeParameter(
 							basePath + nodeProperties.name,
-							itemIndex,
 						) as string;
 
 						paginateValue = this.getParameterValue(
@@ -581,12 +579,12 @@ export class RoutingNode {
 						) as string;
 					}
 
-					if (nodeProperties.routing.send.preSend) {
-						returnData.preSend.push(nodeProperties.routing.send.preSend);
-					}
-
 					// TODO: Should also be renamed
 					returnData.paginate = !!paginateValue;
+				}
+
+				if (nodeProperties.routing.send.preSend) {
+					returnData.preSend.push(nodeProperties.routing.send.preSend);
 				}
 			}
 			if (nodeProperties.routing.output) {
@@ -597,7 +595,6 @@ export class RoutingNode {
 							// If the propertyName is an expression resolve it
 							const value = executeSingleFunctions.getNodeParameter(
 								basePath + nodeProperties.name,
-								itemIndex,
 							) as number;
 
 							maxResultsValue = this.getParameterValue(

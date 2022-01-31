@@ -516,7 +516,7 @@ export class MailcheckTest implements INodeType {
 									// url: '=/webhook/mock-option-parameters/{{$parameters.email}}',
 									method: 'GET',
 								},
-								// requestOperations: {
+								// operations: {
 								// 	// Is possible to overwrite pagination for loadOptions. (Limitation: only via JSON, not funciton code)
 								// 	pagination: {
 								// 		type: 'offset',
@@ -525,6 +525,7 @@ export class MailcheckTest implements INodeType {
 								// 			offsetParameter: 'offset',
 								// 			pageSize: 10,
 								// 			rootProperty: 'data',
+								// 			type: 'body',
 								// 		},
 								// 	},
 								// },
