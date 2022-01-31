@@ -29,7 +29,7 @@
     "start": "run-script-os",
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
-    "test": "jest --runInBand --verbose",
+    "test": "jest --runInBand",
     "watch": "tsc --watch",
     "typeorm": "ts-node ../../node_modules/typeorm/cli.js"
   },
@@ -137,22 +137,5 @@
     "typeorm": "0.2.30",
     "uuid": "^8.3.0",
     "winston": "^3.3.3"
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.tsx?$": "ts-jest"
-    },
-    "testURL": "http://localhost/",
-    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
-    "testPathIgnorePatterns": [
-      "/dist/",
-      "/node_modules/"
-    ],
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js",
-      "json"
-    ]
   }
 }
