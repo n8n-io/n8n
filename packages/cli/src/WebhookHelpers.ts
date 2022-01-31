@@ -227,7 +227,7 @@ export async function executeWebhook(
 		try {
 			user = await getWorkflowOwner(workflowData.id.toString());
 		} catch (error) {
-			throw new ResponseHelper.ResponseError('Cannot find workflow', 500, 500);
+			throw new ResponseHelper.ResponseError('Cannot find workflow', undefined, 404);
 		}
 	}
 

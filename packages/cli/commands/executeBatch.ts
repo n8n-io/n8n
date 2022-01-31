@@ -38,7 +38,7 @@ import {
 } from '../src';
 import config = require('../config');
 import { User } from '../src/databases/entities/User';
-import { getInstanceowner } from '../src/UserManagement/UserManagementHelper';
+import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -283,7 +283,7 @@ export class ExecuteBatch extends Command {
 		// Wait till the database is ready
 		await startDbInitPromise;
 
-		ExecuteBatch.instanceOwner = await getInstanceowner();
+		ExecuteBatch.instanceOwner = await getInstanceOwner();
 
 		let allWorkflows;
 

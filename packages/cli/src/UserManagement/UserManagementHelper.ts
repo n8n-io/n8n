@@ -45,15 +45,16 @@ export async function saveCredentialOwnership(
 	})) as SharedCredentials;
 }
 
-export async function getWorkflowOwner(workflowId: string) {
-	const workflowDb = await Db.collections.Workflow!.findOneOrFail(workflowId, {
-		relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+export async function getWorkflowOwner(workflowId: string | number) {
+	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
+		where: { workflow: { id: workflowId } },
+		relations: ['user', 'user.globalRole'],
 	});
 
-	return workflowDb.shared[0].user;
+	return sharedWorkflow.user;
 }
 
-export async function getInstanceowner() {
+export async function getInstanceOwner() {
 	const qb = Db.collections.User!.createQueryBuilder('u');
 	qb.innerJoin('u.globalRole', 'gr');
 	qb.andWhere('gr.name = :name and gr.scope = :scope', { name: 'owner', scope: 'global' });

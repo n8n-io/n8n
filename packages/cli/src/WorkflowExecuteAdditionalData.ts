@@ -818,9 +818,7 @@ export async function executeWorkflow(
 	const nodeTypes = NodeTypes();
 
 	const workflowData =
-		loadedWorkflowData !== undefined
-			? loadedWorkflowData
-			: await getWorkflowData(workflowInfo, additionalData.user);
+		loadedWorkflowData ?? (await getWorkflowData(workflowInfo, additionalData.user));
 
 	const workflowName = workflowData ? workflowData.name : undefined;
 	const workflow = new Workflow({
@@ -833,10 +831,7 @@ export async function executeWorkflow(
 		staticData: workflowData.staticData,
 	});
 
-	const runData =
-		loadedRunData !== undefined
-			? loadedRunData
-			: await getRunData(workflowData, additionalData.user, inputData);
+	const runData = loadedRunData ?? (await getRunData(workflowData, additionalData.user, inputData));
 
 	let executionId;
 
