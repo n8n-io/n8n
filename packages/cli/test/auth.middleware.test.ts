@@ -1,7 +1,6 @@
 import express = require('express');
 import * as request from 'supertest';
 
-import { restPrefix } from './utils';
 import * as utils from './utils';
 
 describe('/me endpoints', () => {
@@ -21,7 +20,7 @@ describe('/me endpoints', () => {
 			const [method, endpoint] = route.split(' ').map((i) => i.toLowerCase());
 
 			test(`${route} should return 401 Unauthorized`, async () => {
-				const response = await request(testServer.app)[method](endpoint).use(restPrefix);
+				const response = await request(testServer.app)[method](endpoint).use(utils.restPrefix);
 
 				expect(response.statusCode).toBe(401);
 			});

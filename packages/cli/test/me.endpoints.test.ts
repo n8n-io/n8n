@@ -5,7 +5,6 @@ import validator from 'validator';
 
 import { Db } from '../src';
 import { meNamespace } from '../src/UserManagement/routes/me';
-import { restPrefix } from './utils';
 import * as utils from './utils';
 import { SUCCESS_RESPONSE_BODY } from './constants';
 
@@ -33,7 +32,7 @@ describe('/me endpoints', () => {
 
 		beforeAll(async () => {
 			shell = request.agent(testServer.app);
-			shell.use(restPrefix);
+			shell.use(utils.restPrefix);
 			await shell.get('/login');
 		});
 
@@ -81,7 +80,7 @@ describe('/me endpoints', () => {
 
 		beforeAll(async () => {
 			owner = request.agent(testServer.app);
-			owner.use(restPrefix);
+			owner.use(utils.restPrefix);
 
 			await owner.post('/owner-setup').send({
 				email: 'test@n8n.io',
