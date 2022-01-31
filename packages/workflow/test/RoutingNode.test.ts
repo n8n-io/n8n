@@ -159,7 +159,6 @@ describe('RoutingNode', () => {
 					},
 				},
 			},
-
 			{
 				description: 'mutliple parameters, complex example with everything',
 				input: {
@@ -226,6 +225,7 @@ describe('RoutingNode', () => {
 								},
 							},
 							output: {
+								maxResults: 10,
 								postReceive: postReceiveFunction1,
 							},
 						},
@@ -278,6 +278,9 @@ describe('RoutingNode', () => {
 									send: {
 										property: 'value4',
 										type: 'query',
+									},
+									output: {
+										maxResults: '={{$value}}',
 									},
 									operations: {
 										pagination: {
@@ -386,7 +389,7 @@ describe('RoutingNode', () => {
 												routing: {
 													request: {
 														method: 'POST',
-														url: '/destination2',
+														url: '=/{{$value}}',
 													},
 													send: {
 														property: 'single-customValues.name',
@@ -484,9 +487,10 @@ describe('RoutingNode', () => {
 					},
 				},
 				output: {
+					maxResults: 4,
 					options: {
 						method: 'POST',
-						url: '/destination2',
+						url: '/cSName1',
 						qs: {
 							value4: 4,
 							llvalue1: 1,

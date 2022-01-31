@@ -209,7 +209,9 @@ export class RoutingNode {
 	): void {
 		if (sourceOptions) {
 			destinationOptions.paginate = destinationOptions.paginate ?? sourceOptions.paginate;
-			destinationOptions.maxResults = destinationOptions.maxResults ?? sourceOptions.maxResults;
+			destinationOptions.maxResults = sourceOptions.maxResults
+				? sourceOptions.maxResults
+				: destinationOptions.maxResults;
 			merge(destinationOptions.options, sourceOptions.options);
 			destinationOptions.preSend.push(...sourceOptions.preSend);
 			destinationOptions.postReceive.push(...sourceOptions.postReceive);
@@ -492,6 +494,10 @@ export class RoutingNode {
 			return undefined;
 		}
 		if (nodeProperties.routing) {
+			const parameterValue = executeSingleFunctions.getNodeParameter(
+				basePath + nodeProperties.name,
+			) as string;
+
 			if (nodeProperties.routing.operations) {
 				returnData.requestOperations = { ...nodeProperties.routing.operations };
 			}
@@ -499,17 +505,17 @@ export class RoutingNode {
 			if (nodeProperties.routing.request) {
 				for (const key of Object.keys(nodeProperties.routing.request)) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					let value = (nodeProperties.routing.request as Record<string, any>)[key];
+					let propertyValue = (nodeProperties.routing.request as Record<string, any>)[key];
 					// If the value is an expression resolve it
-					value = this.getParameterValue(
-						value,
+					propertyValue = this.getParameterValue(
+						propertyValue,
 						itemIndex,
 						runIndex,
-						additionalKeys,
+						{ ...additionalKeys, $value: parameterValue },
 						true,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					(returnData.options as Record<string, any>)[key] = value;
+					(returnData.options as Record<string, any>)[key] = propertyValue;
 				}
 			}
 
@@ -525,9 +531,7 @@ export class RoutingNode {
 						true,
 					) as string;
 
-					let value = executeSingleFunctions.getNodeParameter(
-						basePath + nodeProperties.name,
-					) as string;
+					let value = parameterValue;
 
 					if (nodeProperties.routing.send.value) {
 						const valueString = nodeProperties.routing.send.value;
@@ -566,15 +570,11 @@ export class RoutingNode {
 					let paginateValue = nodeProperties.routing.send.paginate;
 					if (typeof paginateValue === 'string' && paginateValue.charAt(0) === '=') {
 						// If the propertyName is an expression resolve it
-						const value = executeSingleFunctions.getNodeParameter(
-							basePath + nodeProperties.name,
-						) as string;
-
 						paginateValue = this.getParameterValue(
 							paginateValue,
 							itemIndex,
 							runIndex,
-							{ ...additionalKeys, $value: value },
+							{ ...additionalKeys, $value: parameterValue },
 							true,
 						) as string;
 					}
@@ -593,15 +593,11 @@ export class RoutingNode {
 						let maxResultsValue = nodeProperties.routing.output.maxResults;
 						if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
 							// If the propertyName is an expression resolve it
-							const value = executeSingleFunctions.getNodeParameter(
-								basePath + nodeProperties.name,
-							) as number;
-
 							maxResultsValue = this.getParameterValue(
 								maxResultsValue,
 								itemIndex,
 								runIndex,
-								{ ...additionalKeys, $value: value },
+								{ ...additionalKeys, $value: parameterValue },
 								true,
 							) as string;
 						}
