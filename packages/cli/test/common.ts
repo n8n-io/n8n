@@ -75,6 +75,9 @@ export const expectOwnerGlobalRole = (globalRole: Role) => {
 	expect(globalRole.id).toBe(1); // TODO: Will this always be true?
 	expect(globalRole.name).toBe('owner');
 	expect(globalRole.scope).toBe('global');
-	expect(typeof globalRole.createdAt).toBe('string');
-	expect(typeof globalRole.updatedAt).toBe('string');
+	expectIso8601Date(globalRole.createdAt);
+	expectIso8601Date(globalRole.updatedAt);
 };
+
+const expectIso8601Date = (date: Date) =>
+	expect(validator.isISO8601(date.toString(), { strict: true })).toBe(true);
