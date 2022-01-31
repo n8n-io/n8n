@@ -47,7 +47,7 @@ describe('/me endpoints', () => {
 			utils.expectOwnerGlobalRole(globalRole);
 		});
 
-		test('PATCH /me should return updated sanitized shell', () => {
+		test('PATCH /me should return succeed with valid inputs', () => {
 			return validRequests.patchMe(shell);
 		});
 
@@ -55,23 +55,17 @@ describe('/me endpoints', () => {
 			return invalidRequests.patchMe(shell);
 		});
 
-		test('PATCH /me/password should return success response', () => {
+		test('PATCH /me/password should succeed with valid inputs', () => {
 			return validRequests.patchPassword(shell);
 		});
 
-		// TODO: Not working
-		// test('PATCH /me/password should fail with invalid inputs', () => {
-		// 	return invalidRequests.patchPassword(shell);
-		// });
-
-		test('POST /me/survey should return success response', () => {
-			return validRequests.postSurvey(shell);
+		test('PATCH /me/password should fail with invalid inputs', () => {
+			return invalidRequests.patchPassword(shell);
 		});
 
-		// TODO: Not working
-		// test('POST /me/survey should fail with invalid inputs', () => {
-		// 	return invalidRequests.postSurvey(shell);
-		// });
+		test('POST /me/survey should succeed with valid inputs', () => {
+			return validRequests.postSurvey(shell);
+		});
 	});
 
 	describe('Owner requests', () => {
@@ -119,7 +113,7 @@ describe('/me endpoints', () => {
 			utils.expectOwnerGlobalRole(globalRole);
 		});
 
-		test('PATCH /me should return updated sanitized owner', () => {
+		test('PATCH /me should succeed with valid inputs', () => {
 			return validRequests.patchMe(owner);
 		});
 
@@ -127,23 +121,17 @@ describe('/me endpoints', () => {
 			return invalidRequests.patchMe(owner);
 		});
 
-		test('PATCH /me/password should return success response', () => {
+		test('PATCH /me/password should succeed with valid inputs', () => {
 			return validRequests.patchPassword(owner);
 		});
 
-		// TODO: Not working
-		// test('PATCH /me/password should fail with invalid inputs', () => {
-		// 	return invalidRequests.patchPassword(owner);
-		// });
-
-		test('POST /me/survey should return success response', () => {
-			return validRequests.postSurvey(owner);
+		test('PATCH /me/password should fail with invalid inputs', () => {
+			return invalidRequests.patchPassword(owner);
 		});
 
-		// TODO: Not working
-		// test('POST /me/survey should fail with invalid inputs', () => {
-		// 	return invalidRequests.postSurvey(owner);
-		// });
+		test('POST /me/survey should succeed with valid inputs', () => {
+			return validRequests.postSurvey(owner);
+		});
 	});
 
 	describe('Member requests', () => {
@@ -187,7 +175,7 @@ const validRequests = {
 	},
 
 	postSurvey: async function (requester: request.SuperAgentTest) {
-		const response = await requester.post('/me/survey').send({
+		const fullSurveyResponse = await requester.post('/me/survey').send({
 			codingSkill: 'a',
 			companyIndustry: 'b',
 			companySize: 'c',
@@ -196,8 +184,13 @@ const validRequests = {
 			workArea: 'f',
 		});
 
-		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+		expect(fullSurveyResponse.statusCode).toBe(200);
+		expect(fullSurveyResponse.body).toEqual(SUCCESS_RESPONSE_BODY);
+
+		const emptySurveyResponse = await requester.post('/me/survey').send({});
+
+		expect(emptySurveyResponse.statusCode).toBe(200);
+		expect(emptySurveyResponse.body).toEqual(SUCCESS_RESPONSE_BODY);
 	},
 };
 
@@ -246,11 +239,5 @@ const invalidRequests = {
 		invalidPayloads.forEach(async (invalidPayload) => {
 			await requester.patch('/me/password').send(invalidPayload).expect(400);
 		});
-	},
-
-	postSurvey: async function (requester: request.SuperAgentTest) {
-		const response = await requester.post('/me/survey').send({ wrongKey: 123 });
-
-		expect(response.statusCode).toBe(400);
 	},
 };
