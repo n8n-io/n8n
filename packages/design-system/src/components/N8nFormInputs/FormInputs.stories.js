@@ -28,51 +28,47 @@ const Template = (args, { argTypes }) => ({
 export const FormInputs = Template.bind({});
 FormInputs.args = {
 	inputs: [
-		[
-			{
-				name: 'email',
-				properties: {
-					label: 'Your Email',
-					type: 'email',
-					required: true,
-					initialValue: 'test@test.com',
-				},
+		{
+			name: 'email',
+			properties: {
+				label: 'Your Email',
+				type: 'email',
+				required: true,
+				initialValue: 'test@test.com',
 			},
-			{
-				name: 'password',
-				properties: {
-					label: 'Your Password',
-					type: 'password',
-					required: true,
-				},
+		},
+		{
+			name: 'password',
+			properties: {
+				label: 'Your Password',
+				type: 'password',
+				required: true,
 			},
-		],
-		[
-			{
-				name: 'nickname',
-				properties: {
-					label: 'Your Nickname',
-					placeholder: 'Monty',
-				},
+		},
+		{
+			name: 'nickname',
+			properties: {
+				label: 'Your Nickname',
+				placeholder: 'Monty',
 			},
-			{
-				name: 'opts',
-				properties: {
-					type: 'select',
-					label: 'Opts',
-					options: [
-						{
-							label: 'Opt1',
-							value: 'opt1',
-						},
-						{
-							label: 'Opt2',
-							value: 'opt2',
-						},
-					],
-				},
+		},
+		{
+			name: 'opts',
+			properties: {
+				type: 'select',
+				label: 'Opts',
+				options: [
+					{
+						label: 'Opt1',
+						value: 'opt1',
+					},
+					{
+						label: 'Opt2',
+						value: 'opt2',
+					},
+				],
 			},
-		],
+		},
 	],
 };
 

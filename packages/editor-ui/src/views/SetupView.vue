@@ -18,7 +18,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 	title: 'Set up owner account',
 	buttonText: 'Next',
 	secondaryButtonText: 'Skip setup for now',
-	inputs: [[
+	inputs: [
 		{
 			name: 'email',
 			properties: {
@@ -58,7 +58,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				autocomplete: 'new-password',
 			},
 		},
-	]],
+	],
 };
 
 export default mixins(

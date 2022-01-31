@@ -1,41 +1,42 @@
 <template>
-	<div>
-		<div
-			:class="columnView ? $style.columnView : $style.container"
-			v-for="(row, i) in inputs"
-			:key="i"
-			>
-			<div
-				v-for="(input, j) in row"
-				:key="input.name"
-				:class="columns > 1 && !columnView && j < columns - 1? $style.multiContainer : (input.properties.type === 'text' ? $style.textContainer : $style.inputContainer)"
-			>
-				<n8n-text color="text-base" v-if="input.properties.type === 'text'" tag="div" align="center">
-					{{input.properties.label}}
-				</n8n-text>
-				<n8n-form-input
-					v-else
-					v-bind="input.properties"
-					:value="values[input.name]"
-					:showValidationWarnings="showValidationWarnings"
-					@input="(value) => onInput(input.name, value)"
-					@validate="(value) => onValidate(input.name, value)"
-					@enter="onSubmit"
-				/>
+	<ResizeObserver
+		:breakpoints="[{bp: 'md', width: 565}]"
+	>
+		<template v-slot="{ bp }">
+			<div :class="bp === 'md' || columnView? $style.grid : $style.gridMulti">
+				<div
+					v-for="(input) in inputs"
+					:key="input.name"
+				>
+					<n8n-text color="text-base" v-if="input.properties.type === 'text'" tag="div" align="center">
+						{{input.properties.label}}
+					</n8n-text>
+					<n8n-form-input
+						v-else
+						v-bind="input.properties"
+						:value="values[input.name]"
+						:showValidationWarnings="showValidationWarnings"
+						@input="(value) => onInput(input.name, value)"
+						@validate="(value) => onValidate(input.name, value)"
+						@enter="onSubmit"
+					/>
+				</div>
 			</div>
-		</div>
-	</div>
+		</template>
+	</ResizeObserver>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import { IFormInputs } from '../../Interface';
+import ResizeObserver from '../ResizeObserver';
 
 export default Vue.extend({
 	name: 'n8n-form-inputs',
 	components: {
 		N8nFormInput,
+		ResizeObserver,
 	},
 	props: {
 		inputs: {
@@ -59,20 +60,13 @@ export default Vue.extend({
 			showValidationWarnings: false,
 			values: {} as {[key: string]: string},
 			validity: {} as {[key: string]: boolean},
-			columns: 1,
 		};
 	},
 	mounted() {
-		(this.inputs as IFormInputs).forEach((row: IFormInputsRow) => {
-			row.forEach((input: IFormInputsCol) => {
-				if (input.hasOwnProperty('initialValue')) {
-					Vue.set(this.values, input.name, input.initialValue);
-				}
-
-				if (row.length > this.columns) {
-					this.columns = row.length;
-				}
-			});
+		(this.inputs as IFormInputs).forEach((input: IFormInput) => {
+			if (input.hasOwnProperty('initialValue')) {
+				Vue.set(this.values, input.name, input.initialValue);
+			}
 		});
 
 		if (this.eventBus) {
@@ -117,39 +111,15 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.container {
-	display: flex;
-	width: 100%;
-
-	@media (max-width: 768px) { // todo remove media query
-		flex-direction: column;
-	}
+.grid {
+	display: grid;
+	grid-row-gap: var(--spacing-s);
+	grid-column-gap: var(--spacing-2xs);
 }
 
-.columnView {
-	composes: container;
-	flex-direction: column;
-}
-
-.inputContainer {
-	flex-grow: 1;
-	margin-bottom: var(--spacing-s);
-}
-
-.textContainer {
-	flex-grow: 1;
-	margin-bottom: var(--spacing-4xs);
-}
-
-.multiContainer {
-	composes: inputContainer;
-	max-width: 50%;
-	padding-right: var(--spacing-2xs);
-
-	@media (max-width: 768px) { // todo remove media query if possible
-		max-width: 100%;
-		padding-right: 0;
-	}
+.gridMulti {
+	composes: grid;
+	grid-template-columns: repeat(2, 1fr);
 }
 
 </style>

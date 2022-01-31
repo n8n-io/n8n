@@ -68,41 +68,37 @@ export default mixins(
 	},
 	mounted() {
 		this.formInputs = [
-			[
-				{
-					name: 'firstName',
-					initialValue: this.currentUser.firstName,
-					properties: {
-						label: 'First Name',
-						maxlength: 32,
-						required: true,
-						autocomplete: 'given-name',
-					},
+			{
+				name: 'firstName',
+				initialValue: this.currentUser.firstName,
+				properties: {
+					label: 'First Name',
+					maxlength: 32,
+					required: true,
+					autocomplete: 'given-name',
 				},
-				{
-					name: 'lastName',
-					initialValue: this.currentUser.lastName,
-					properties: {
-						label: 'Last Name',
-						maxlength: 32,
-						required: true,
-						autocomplete: 'family-name',
-					},
+			},
+			{
+				name: 'lastName',
+				initialValue: this.currentUser.lastName,
+				properties: {
+					label: 'Last Name',
+					maxlength: 32,
+					required: true,
+					autocomplete: 'family-name',
 				},
-			],
-			[
-				{
-					name: 'email',
-					initialValue: this.currentUser.email,
-					properties: {
-						label: 'Email',
-						type: 'email',
-						required: true,
-						validationRules: [{name: 'VALID_EMAIL'}],
-						autocomplete: 'email',
-					},
+			},
+			{
+				name: 'email',
+				initialValue: this.currentUser.email,
+				properties: {
+					label: 'Email',
+					type: 'email',
+					required: true,
+					validationRules: [{name: 'VALID_EMAIL'}],
+					autocomplete: 'email',
 				},
-			],
+			},
 		];
 	},
 	computed: {

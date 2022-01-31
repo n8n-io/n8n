@@ -17,7 +17,7 @@ import { IFormBoxConfig } from '@/Interface';
 const FORM_CONFIG: IFormBoxConfig = {
 	title: 'Set up your account',
 	buttonText: 'Finish account setup',
-	inputs: [[
+	inputs: [
 		{
 			name: 'firstName',
 			properties: {
@@ -47,7 +47,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				autocomplete: 'new-password',
 			},
 		},
-	]],
+	],
 };
 
 export default mixins(

@@ -803,7 +803,7 @@ type IValidationRule = {
 	config?: any; // tslint:disable-line:no-any
 };
 
-export type IFormInputsCol = {
+export type IFormInput = {
 	name: string;
 	initialValue?: string | number | boolean | null;
 	properties: {
@@ -824,13 +824,11 @@ export type IFormInputsCol = {
 	}
 };
 
-export type IFormInputsRow = IFormInputsCol[];
-
 type IValidator = {
 	validate: Function;
 };
 
-export type IFormInputs = IFormInputsRow[];
+export type IFormInputs = IFormInput[];
 
 export type IFormBoxConfig = {
 	title: string;

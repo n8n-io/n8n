@@ -50,7 +50,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	mounted() {
-		this.config = [[
+		this.config = [
 			{
 				name: 'password',
 				properties: {
@@ -77,7 +77,7 @@ export default mixins(showMessage).extend({
 					autocomplete: 'new-password',
 				},
 			},
-		]];
+		];
 	},
 	methods: {
 		passwordsMatch(value: string) {

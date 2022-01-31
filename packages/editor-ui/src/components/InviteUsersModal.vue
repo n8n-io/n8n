@@ -30,7 +30,7 @@ import mixins from "vue-typed-mixins";
 import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
-import { IFormInputs, IUser, IUserResponse } from "@/Interface";
+import { IFormInputs, IUserResponse } from "@/Interface";
 import { VALID_EMAIL_REGEX } from "@/constants";
 import { ROLE } from "@/modules/userHelpers";
 
@@ -66,7 +66,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	mounted() {
-		this.config = [[
+		this.config = [
 			{
 				name: 'emails',
 				properties: {
@@ -96,7 +96,7 @@ export default mixins(showMessage).extend({
 					],
 				},
 			},
-		]];
+		];
 	},
 	computed: {
 		emailsCount(): number {

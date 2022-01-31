@@ -18,7 +18,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 	buttonText: 'Sign in',
 	redirectText: 'Forgot my password',
 	redirectLink: '/forgot-password',
-	inputs: [[
+	inputs: [
 		{
 			name: 'email',
 			properties: {
@@ -42,7 +42,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				autocomplete: 'current-password',
 			},
 		},
-	]],
+	],
 };
 
 export default mixins(

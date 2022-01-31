@@ -35,7 +35,7 @@ export default mixins(
 			buttonText: 'Change Password',
 			redirectText: 'Sign in',
 			redirectLink: '/signin',
-			inputs: [[
+			inputs: [
 				{
 					name: 'password',
 					properties: {
@@ -62,7 +62,7 @@ export default mixins(
 						autocomplete: 'new-password',
 					},
 				},
-			]],
+			],
 		};
 
 		const token = this.$route.query.token;

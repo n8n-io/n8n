@@ -28,7 +28,7 @@ const Template = (args, { argTypes }) => ({
 export const FormBox = Template.bind({});
 FormBox.args = {
 	title: 'Form title',
-	inputs: [[
+	inputs: [
 		{
 			name: 'email',
 			properties: {
@@ -61,7 +61,7 @@ FormBox.args = {
 				placeholder: 'Monty',
 			},
 		},
-	]],
+	],
 	buttonText: 'Action',
 	redirectText: 'Go somewhere',
 	redirectLink: 'https://n8n.io',

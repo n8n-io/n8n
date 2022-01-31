@@ -14,7 +14,7 @@ import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { mapGetters } from 'vuex';
 
-const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [[
+const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [
 	{
 		name: 'email',
 		properties: {
@@ -25,9 +25,9 @@ const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [[
 			autocomplete: 'email',
 		},
 	},
-]];
+];
 
-const NO_SMTP_INPUTS: IFormBoxConfig['inputs'] = [[
+const NO_SMTP_INPUTS: IFormBoxConfig['inputs'] = [
 	{
 		name: 'no-smtp-warning',
 		properties: {
@@ -35,7 +35,7 @@ const NO_SMTP_INPUTS: IFormBoxConfig['inputs'] = [[
 			type: 'text',
 		},
 	},
-]];
+];
 
 const DEFAULT_FORM_CONFIG = {
 	title: 'Recover password',
