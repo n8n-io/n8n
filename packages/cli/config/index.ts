@@ -22,6 +22,26 @@ const config = convict({
 			default: '',
 			env: 'DB_TABLE_PREFIX',
 		},
+		logging: {
+			enabled: {
+				doc: 'Typeorm logging enabled flag.',
+				format: 'Boolean',
+				default: false,
+				env: 'DB_LOGGING_ENABLED',
+			},
+			options: {
+				doc: 'Comma separated logging options, default is "error".',
+				format: String,
+				default: 'error',
+				env: 'DB_LOGGING_OPTIONS',
+			},
+			maxQueryExecutionTime: {
+				doc: 'Maximum number of milliseconds query should be executed before logger log a warning. Set 0 to disable',
+				format: Number,
+				default: 1000,
+				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
+			},
+		},
 		postgresdb: {
 			database: {
 				doc: 'PostgresDB Database',
