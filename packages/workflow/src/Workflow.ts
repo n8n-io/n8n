@@ -416,10 +416,28 @@ export class Workflow {
 					// In case some special characters are used in name escape them
 					const currentNameEscaped = currentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-					parameterValue = parameterValue.replace(
-						new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.|"\\]|'\\]))`, 'g'),
-						`$1${newName}$3`,
-					);
+					if (parameterValue.includes('$node')) {
+						parameterValue = parameterValue.replace(
+							new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.|"\\]|'\\]))`, 'g'),
+							`$1${newName}$3`,
+						);
+					}
+					if (parameterValue.includes('$items')) {
+						parameterValue = parameterValue.replace(
+							new RegExp(`(\\$items(\\.|\\("|\\('))${currentNameEscaped}((\\.|"\\)|'\\)))`, 'g'),
+							`$1${newName}$3`,
+						);
+					}
+
+					// eslint-disable-next-line no-useless-escape
+					const specialCharacters = /[(^\d) `!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~]/g;
+					if (specialCharacters.test(newName) && parameterValue.includes(`.${newName}`)) {
+						const newNameEscaped = newName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+						parameterValue = parameterValue.replace(
+							new RegExp(`.${newNameEscaped}`, 'g'),
+							`["${newName}"]`,
+						);
+					}
 				}
 			}
 
