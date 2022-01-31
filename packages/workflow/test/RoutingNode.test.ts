@@ -209,6 +209,10 @@ describe('RoutingNode', () => {
 						type: 'collection',
 						placeholder: 'Add Field',
 						routing: {
+							request: {
+								method: 'GET',
+								url: '/destination1',
+							},
 							operations: {
 								pagination: {
 									type: 'offset',
@@ -380,6 +384,10 @@ describe('RoutingNode', () => {
 												type: 'string',
 												default: '',
 												routing: {
+													request: {
+														method: 'POST',
+														url: '/destination2',
+													},
 													send: {
 														property: 'single-customValues.name',
 													},
@@ -477,6 +485,8 @@ describe('RoutingNode', () => {
 				},
 				output: {
 					options: {
+						method: 'POST',
+						url: '/destination2',
 						qs: {
 							value4: 4,
 							llvalue1: 1,

@@ -1012,7 +1012,7 @@ export interface INodeTypeBaseDescription {
 export interface INodePropertyRouting {
 	operations?: IN8nRequestOperations; // Should be changed, does not sound right
 	output?: INodeRequestOutput;
-	request?: IHttpRequestOptions;
+	request?: IHttpRequestOptionsFromParameters;
 	send?: INodeRequestSend;
 }
 
