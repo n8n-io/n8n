@@ -23,6 +23,7 @@ export const initTestServer = () => {
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
 
 	config.set('userManagement.jwtSecret', 'My JWT secret');
+	config.set('userManagement.hasOwner', false);
 
 	authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
 	loginRoutes.apply(testServer);

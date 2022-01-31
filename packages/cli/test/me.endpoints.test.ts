@@ -9,31 +9,25 @@ import * as utils from './common/utils';
 import { SUCCESS_RESPONSE_BODY } from './common/constants';
 
 describe('/me endpoints', () => {
-	let testServer: {
-		app: express.Application;
-		restEndpoint: string;
-	};
-
-	beforeAll(async () => {
-		testServer = utils.initTestServer();
-
-		meNamespace.apply(testServer);
-
-		await Db.init();
-		await getConnection().runMigrations({ transaction: 'none' });
-	});
-
-	afterAll(() => {
-		getConnection().close();
-	});
-
 	describe('Shell requests', () => {
+		let testServer: { app: express.Application; restEndpoint: string };
 		let shell: request.SuperAgentTest;
 
 		beforeAll(async () => {
+			testServer = utils.initTestServer();
+			meNamespace.apply(testServer);
+
+			await Db.init();
+			await getConnection().runMigrations({ transaction: 'none' });
+
 			shell = request.agent(testServer.app);
 			shell.use(utils.restPrefix);
+
 			await shell.get('/login');
+		});
+
+		afterAll(async () => {
+			await getConnection().close();
 		});
 
 		test('GET /me should return sanitized shell', async () => {
@@ -54,11 +48,11 @@ describe('/me endpoints', () => {
 		});
 
 		test('PATCH /me should return updated sanitized shell', () => {
-			return validRequests.patchMe(shell, { expectSurvey: false });
+			return validRequests.patchMe(shell);
 		});
 
 		test('PATCH /me should fail with invalid inputs', () => {
-			return invalidRequests.patchMe(shell, { expectSurvey: false });
+			return invalidRequests.patchMe(shell);
 		});
 
 		test('PATCH /me/password should return success response', () => {
@@ -81,23 +75,31 @@ describe('/me endpoints', () => {
 	});
 
 	describe('Owner requests', () => {
+		let testServer: { app: express.Application; restEndpoint: string };
 		let owner: request.SuperAgentTest;
 
 		beforeAll(async () => {
+			testServer = utils.initTestServer();
+			meNamespace.apply(testServer);
+
+			await Db.init();
+			await getConnection().runMigrations({ transaction: 'none' });
+
 			owner = request.agent(testServer.app);
 			owner.use(utils.restPrefix);
 
+			await owner.get('/login');
+
 			await owner.post('/owner-setup').send({
-				email: 'test@n8n.io',
+				email: 'owner@n8n.io',
 				firstName: 'John',
 				lastName: 'Smith',
 				password: 'abcd1234',
 			});
+		});
 
-			await owner.post('/login').send({
-				email: 'test@n8n.io',
-				password: 'abcd1234',
-			});
+		afterAll(async () => {
+			await getConnection().close();
 		});
 
 		test('GET /me should return sanitized owner', async () => {
@@ -109,27 +111,20 @@ describe('/me endpoints', () => {
 				response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe('test@n8n.io');
+			expect(email).toBe('owner@n8n.io');
 			expect(firstName).toBe('John');
 			expect(lastName).toBe('Smith');
-			expect(personalizationAnswers).toEqual({
-				codingSkill: 'a',
-				companyIndustry: 'b',
-				companySize: 'c',
-				otherCompanyIndustry: 'd',
-				otherWorkArea: 'e',
-				workArea: 'f',
-			});
+			expect(personalizationAnswers).toBeNull();
 
 			utils.expectOwnerGlobalRole(globalRole);
 		});
 
 		test('PATCH /me should return updated sanitized owner', () => {
-			return validRequests.patchMe(owner, { expectSurvey: true });
+			return validRequests.patchMe(owner);
 		});
 
 		test('PATCH /me should fail with invalid inputs', () => {
-			return invalidRequests.patchMe(owner, { expectSurvey: false });
+			return invalidRequests.patchMe(owner);
 		});
 
 		test('PATCH /me/password should return success response', () => {
@@ -151,29 +146,17 @@ describe('/me endpoints', () => {
 		// });
 	});
 
-	describe('If requester is member', () => {
+	describe('Member requests', () => {
 		// TODO
 	});
 });
-
-const sampleSurvey = {
-	codingSkill: 'a',
-	companyIndustry: 'b',
-	companySize: 'c',
-	otherCompanyIndustry: 'd',
-	otherWorkArea: 'e',
-	workArea: 'f',
-};
 
 // ----------------------------------
 //          valid requests
 // ----------------------------------
 
 const validRequests = {
-	patchMe: async function (
-		requester: request.SuperAgentTest,
-		{ expectSurvey }: { expectSurvey: boolean },
-	) {
+	patchMe: async function (requester: request.SuperAgentTest) {
 		const response = await requester.patch('/me').send({
 			email: 'test@n8n.io',
 			firstName: 'John',
@@ -191,9 +174,7 @@ const validRequests = {
 		expect(firstName).toBe('John');
 		expect(lastName).toBe('Smith');
 
-		expectSurvey
-			? expect(personalizationAnswers).toEqual(sampleSurvey)
-			: expect(personalizationAnswers).toBeNull();
+		expect(personalizationAnswers).toBeNull();
 
 		utils.expectOwnerGlobalRole(globalRole);
 	},
@@ -206,7 +187,14 @@ const validRequests = {
 	},
 
 	postSurvey: async function (requester: request.SuperAgentTest) {
-		const response = await requester.post('/me/survey').send(sampleSurvey);
+		const response = await requester.post('/me/survey').send({
+			codingSkill: 'a',
+			companyIndustry: 'b',
+			companySize: 'c',
+			otherCompanyIndustry: 'd',
+			otherWorkArea: 'e',
+			workArea: 'f',
+		});
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
@@ -218,10 +206,7 @@ const validRequests = {
 // ----------------------------------
 
 const invalidRequests = {
-	patchMe: async function (
-		requester: request.SuperAgentTest,
-		{ expectSurvey }: { expectSurvey: boolean },
-	) {
+	patchMe: async function (requester: request.SuperAgentTest) {
 		const invalidPayloads = [
 			{
 				email: 'invalid email',
