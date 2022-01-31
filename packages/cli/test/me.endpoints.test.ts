@@ -1,12 +1,14 @@
-import { getConnection } from 'typeorm';
-import * as request from 'supertest';
 import express = require('express');
+import * as request from 'supertest';
+import { getConnection } from 'typeorm';
 import validator from 'validator';
 
+import config = require('../config');
 import { Db } from '../src';
-import { meNamespace } from '../src/UserManagement/routes/me';
 import * as utils from './common/utils';
+import { meNamespace } from '../src/UserManagement/routes/me';
 import { SUCCESS_RESPONSE_BODY } from './common/constants';
+import { usersNamespace } from '../src/UserManagement/routes/users';
 
 describe('/me endpoints', () => {
 	describe('Shell requests', () => {
@@ -48,7 +50,7 @@ describe('/me endpoints', () => {
 		});
 
 		test('PATCH /me should return succeed with valid inputs', () => {
-			return validRequests.patchMe(shell);
+			return validRequests.patchMe(shell, 'shell');
 		});
 
 		test('PATCH /me should fail with invalid inputs', () => {
@@ -114,7 +116,7 @@ describe('/me endpoints', () => {
 		});
 
 		test('PATCH /me should succeed with valid inputs', () => {
-			return validRequests.patchMe(owner);
+			return validRequests.patchMe(owner, 'owner');
 		});
 
 		test('PATCH /me should fail with invalid inputs', () => {
@@ -135,7 +137,94 @@ describe('/me endpoints', () => {
 	});
 
 	describe('Member requests', () => {
-		// TODO
+		let testServer: { app: express.Application; restEndpoint: string };
+		let owner: request.SuperAgentTest;
+		let member: request.SuperAgentTest;
+
+		beforeAll(async () => {
+			testServer = utils.initTestServer();
+			meNamespace.apply(testServer);
+			usersNamespace.apply(testServer);
+			config.set('userManagement.emails.mode', 'smtp'); // needed for POST /users
+
+			await Db.init();
+			await getConnection().runMigrations({ transaction: 'none' });
+
+			owner = request.agent(testServer.app);
+			owner.use(utils.restPrefix);
+
+			await owner.get('/login');
+
+			const {
+				body: {
+					data: { id: ownerId },
+				},
+			} = await owner.post('/owner-setup').send({
+				email: 'owner@n8n.io',
+				firstName: 'John',
+				lastName: 'Smith',
+				password: 'abcd1234',
+			});
+
+			const {
+				body: { data },
+			} = await owner.post('/users').send([{ email: 'member@n8n.io' }]);
+			const memberId = data[0].id;
+
+			await owner.get('/logout');
+
+			member = request.agent(testServer.app);
+			member.use(utils.restPrefix);
+
+			await member.post('/user').send({
+				inviterId: ownerId,
+				inviteeId: memberId,
+				firstName: 'James',
+				lastName: 'Smith',
+				password: 'abcd1234',
+			});
+		});
+
+		afterAll(async () => {
+			await getConnection().close();
+		});
+
+		test('GET /me should return sanitized member', async () => {
+			const response = await member.get('/me');
+
+			expect(response.statusCode).toBe(200);
+
+			const { id, email, firstName, lastName, personalizationAnswers, globalRole } =
+				response.body.data;
+
+			expect(validator.isUUID(id)).toBe(true);
+			expect(email).toBe('member@n8n.io');
+			expect(firstName).toBe('James');
+			expect(lastName).toBe('Smith');
+			expect(personalizationAnswers).toBeNull();
+
+			utils.expectMemberGlobalRole(globalRole);
+		});
+
+		test('PATCH /me should return succeed with valid inputs', () => {
+			return validRequests.patchMe(member, 'member');
+		});
+
+		// test('PATCH /me should fail with invalid inputs', () => {
+		// 	return invalidRequests.patchMe(member);
+		// });
+
+		// test('PATCH /me/password should succeed with valid inputs', () => {
+		// 	return validRequests.patchPassword(owner);
+		// });
+
+		// test('PATCH /me/password should fail with invalid inputs', () => {
+		// 	return invalidRequests.patchPassword(owner);
+		// });
+
+		// test('POST /me/survey should succeed with valid inputs', () => {
+		// 	return validRequests.postSurvey(owner);
+		// });
 	});
 });
 
@@ -144,7 +233,10 @@ describe('/me endpoints', () => {
 // ----------------------------------
 
 const validRequests = {
-	patchMe: async function (requester: request.SuperAgentTest) {
+	patchMe: async function (
+		requester: request.SuperAgentTest,
+		requesterType: 'owner' | 'member' | 'shell',
+	) {
 		const response = await requester.patch('/me').send({
 			email: 'test@n8n.io',
 			firstName: 'John',
@@ -164,7 +256,9 @@ const validRequests = {
 
 		expect(personalizationAnswers).toBeNull();
 
-		utils.expectOwnerGlobalRole(globalRole);
+		requesterType === 'member'
+			? utils.expectMemberGlobalRole(globalRole)
+			: utils.expectOwnerGlobalRole(globalRole);
 	},
 
 	patchPassword: async function (requester: request.SuperAgentTest) {

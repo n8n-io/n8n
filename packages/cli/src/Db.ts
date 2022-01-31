@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-case-declarations */
@@ -18,6 +19,7 @@ import { postgresMigrations } from './databases/postgresdb/migrations';
 import { mysqlMigrations } from './databases/mysqldb/migrations';
 import { sqliteMigrations } from './databases/sqlite/migrations';
 import { TEST_CONNECTION_OPTIONS } from '../test/common/constants';
+import { isTestRun } from '../test/common/utils';
 
 export const collections: IDatabaseCollections = {
 	Credentials: null,
@@ -110,7 +112,7 @@ export async function init(): Promise<IDatabaseCollections> {
 			throw new Error(`The database "${dbType}" is currently not supported!`);
 	}
 
-	if (process.argv[1].split('/').pop() === 'jest') {
+	if (isTestRun) {
 		connectionOptions = TEST_CONNECTION_OPTIONS;
 	}
 

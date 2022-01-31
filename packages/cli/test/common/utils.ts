@@ -10,6 +10,8 @@ import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../src/UserManagement/routes';
 import { authenticationMethods as loginRoutes } from '../../src/UserManagement/routes/auth';
 
+export const isTestRun = process.argv[1].split('/').pop() === 'jest';
+
 /**
  * Initialize a test server with auth middleware and login routes.
  */
@@ -41,8 +43,14 @@ export const logRoutes = (app: express.Application) => {
 };
 
 export const expectOwnerGlobalRole = (globalRole: Role) => {
-	expect(globalRole.id).toBe(1); // TODO: Will this always be true?
 	expect(globalRole.name).toBe('owner');
+	expect(globalRole.scope).toBe('global');
+	expectIso8601Date(globalRole.createdAt);
+	expectIso8601Date(globalRole.updatedAt);
+};
+
+export const expectMemberGlobalRole = (globalRole: Role) => {
+	expect(globalRole.name).toBe('member');
 	expect(globalRole.scope).toBe('global');
 	expectIso8601Date(globalRole.createdAt);
 	expectIso8601Date(globalRole.updatedAt);

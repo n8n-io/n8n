@@ -13,6 +13,7 @@ import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import { getInstance } from '../email/UserManagementMailer';
 import { issueJWT } from '../auth/jwt';
+import { isTestRun } from '../../../test/common/utils';
 
 export function usersNamespace(this: N8nApp): void {
 	this.app.post(
@@ -78,6 +79,10 @@ export function usersNamespace(this: N8nApp): void {
 					undefined,
 					400,
 				);
+			}
+
+			if (isTestRun) {
+				return createdUsers.map(({ id, email }) => ({ id, email }));
 			}
 
 			const mailer = getInstance();
