@@ -67,6 +67,38 @@ describe('Workflow', () => {
 				},
 			},
 			{
+				description: 'should work with $items("nodeName")',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$items("Node1")["data"]["value1"] + \'Node1\'}}',
+						value2:
+							'={{$items("Node1")["data"]["value2"] + \' - \' + $items("Node1")["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$items("NewName")["data"]["value1"] + \'Node1\'}}',
+					value2:
+					'={{$items("NewName")["data"]["value2"] + \' - \' + $items("NewName")["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with dot notation that contains space and special character',
+				input: {
+					currentName: 'Node1',
+					newName: 'New $ Name',
+					parameters: {
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+					},
+				},
+				output: {
+					value1: "={{$node[\"New $ Name\"].data.value1 + 'Node1'}}",
+					value2: "={{$node[\"New $ Name\"].data.value2 + ' - ' + $node[\"New $ Name\"].data.value2}}",
+				},
+			},
+			{
 				description: "should work with ['nodeName']",
 				input: {
 					currentName: 'Node1',
@@ -529,8 +561,8 @@ describe('Workflow', () => {
 						{
 							name: 'Node2',
 							parameters: {
-								value1: "={{$node.Node1New.data.value1 + 'Node1'}}",
-								value2: "={{$node.Node1New.data.value2 + ' - ' + $node.Node1New.data.value2}}",
+								value1: "={{$node[\"Node1New\"].data.value1 + 'Node1'}}",
+								value2: "={{$node[\"Node1New\"].data.value2 + ' - ' + $node[\"Node1New\"].data.value2}}",
 							},
 						},
 					],
