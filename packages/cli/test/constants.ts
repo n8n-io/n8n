@@ -1,7 +1,7 @@
 import { ConnectionOptions } from 'typeorm';
 
-import config = require('../../config');
-import { sqliteMigrations } from '../../src/databases/sqlite/migrations';
+import config = require('../config');
+import { sqliteMigrations } from '../src/databases/sqlite/migrations';
 
 export const REST_PATH_SEGMENT = config.get('endpoints.rest') as Readonly<string>;
 

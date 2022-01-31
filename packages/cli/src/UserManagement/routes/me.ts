@@ -9,6 +9,7 @@ import { N8nApp, PublicUser } from '../Interfaces';
 import { isValidEmail, validatePassword, sanitizeUser } from '../UserManagementHelper';
 import type { UpdateSelfRequest } from '../Interfaces';
 import { AuthenticatedRequest } from '../../requests';
+import { validateEntity } from '../../GenericHelpers';
 
 export function meNamespace(this: N8nApp): void {
 	/**
@@ -29,10 +30,12 @@ export function meNamespace(this: N8nApp): void {
 		ResponseHelper.send(
 			async (req: UpdateSelfRequest.Settings, res: express.Response): Promise<PublicUser> => {
 				if (req.body.email && !isValidEmail(req.body.email)) {
-					throw new Error('Invalid email address');
+					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}
 
 				req.user = Object.assign(req.user, req.body);
+
+				await validateEntity(req.user);
 
 				const user = await Db.collections.User!.save(req.user);
 

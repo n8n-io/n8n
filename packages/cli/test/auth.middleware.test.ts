@@ -1,9 +1,8 @@
 import express = require('express');
 import * as request from 'supertest';
 
-import { ROUTES as ME_NAMESPACE_ROUTES } from './constants/me';
 import { restPrefix } from './utils';
-import * as common from './common';
+import * as utils from './utils';
 
 describe('/me namespace', () => {
 	let testServer: {
@@ -11,12 +10,14 @@ describe('/me namespace', () => {
 		restEndpoint: string;
 	};
 
+	const meRoutes = ['GET /me', 'PATCH /me', 'PATCH /me/password', 'POST /me/survey'];
+
 	beforeAll(async () => {
-		testServer = common.initTestServer();
+		testServer = utils.initTestServer();
 	});
 
 	describe('Unauthorized requests', () => {
-		ME_NAMESPACE_ROUTES.forEach((route) => {
+		meRoutes.forEach((route) => {
 			const [method, endpoint] = route.split(' ').map((i) => i.toLowerCase());
 
 			test(`${route} should return 401 Unauthorized`, async () => {
