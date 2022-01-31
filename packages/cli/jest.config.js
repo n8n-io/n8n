@@ -14,5 +14,10 @@ module.exports = {
 		"tsx",
 		"js",
 		"json"
-	]
+	],
+	globals: {
+		"ts-jest": {
+			isolatedModules: true
+		}
+	},
 }
