@@ -187,9 +187,7 @@ export class GoogleTasks implements INodeType {
 						if (options.dueMax) {
 							qs.dueMax = options.dueMax as string;
 						}
-						if (options.showCompleted) {
-							qs.showCompleted = options.showCompleted as boolean;
-						}
+						qs.showCompleted = options.showCompleted as boolean;
 						if (options.showDeleted) {
 							qs.showDeleted = options.showDeleted as boolean;
 						}
