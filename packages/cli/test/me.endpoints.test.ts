@@ -9,7 +9,7 @@ import { restPrefix } from './utils';
 import * as utils from './utils';
 import { SUCCESS_RESPONSE_BODY } from './constants';
 
-describe('/me namespace', () => {
+describe('/me endpoints', () => {
 	let testServer: {
 		app: express.Application;
 		restEndpoint: string;

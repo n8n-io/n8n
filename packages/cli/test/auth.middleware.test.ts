@@ -4,7 +4,7 @@ import * as request from 'supertest';
 import { restPrefix } from './utils';
 import * as utils from './utils';
 
-describe('/me namespace', () => {
+describe('/me endpoints', () => {
 	let testServer: {
 		app: express.Application;
 		restEndpoint: string;
