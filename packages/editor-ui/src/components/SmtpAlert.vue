@@ -13,8 +13,10 @@ export default mixins(
 	showMessage,
 ).extend({
 	name: 'SmtpAlert',
-	data: {
-		alert: null as null | ElMessageComponent,
+	data() {
+		return {
+			alert: null as null | ElMessageComponent,
+		};
 	},
 	mounted() {
 		if (this.isSmtpSetup) {
