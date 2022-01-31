@@ -1,6 +1,7 @@
 import { getConnection } from 'typeorm';
 import * as request from 'supertest';
 import express = require('express');
+import validator from 'validator';
 
 import { Db } from '../src';
 import { meNamespace } from '../src/UserManagement/routes/me';
@@ -31,9 +32,7 @@ describe('/me namespace', () => {
 			const [method, endpoint] = route.split(' ').map((i) => i.toLowerCase());
 
 			test(`${route} should return 401 Unauthorized`, async () => {
-				const response = await request(testServer.app)
-					[method](endpoint)
-					.use(restPrefix);
+				const response = await request(testServer.app)[method](endpoint).use(restPrefix);
 
 				expect(response.statusCode).toBe(401);
 			});
@@ -45,7 +44,7 @@ describe('/me namespace', () => {
 			let shell: request.SuperAgentTest;
 
 			beforeAll(async () => {
-				shell = request.agent(testServer.app)
+				shell = request.agent(testServer.app);
 				shell.use(restPrefix);
 				await shell.get('/login');
 			});
@@ -58,7 +57,7 @@ describe('/me namespace', () => {
 				const { id, email, firstName, lastName, personalizationAnswers, globalRole } =
 					response.body.data;
 
-				expect(typeof id).toBe('string');
+				expect(validator.isUUID(id)).toBe(true);
 				expect(email).toBeNull();
 				expect(firstName).toBe('default');
 				expect(lastName).toBe('default');
@@ -98,7 +97,7 @@ describe('/me namespace', () => {
 				const { id, email, firstName, lastName, personalizationAnswers, globalRole } =
 					response.body.data;
 
-				expect(typeof id).toBe('string');
+				expect(validator.isUUID(id)).toBe(true);
 				expect(email).toBe(PAYLOADS.OWNER_LOGIN.email);
 				expect(firstName).toBe(PAYLOADS.OWNER_SETUP.firstName);
 				expect(lastName).toBe(PAYLOADS.OWNER_SETUP.lastName);

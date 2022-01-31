@@ -1,13 +1,13 @@
 import express = require('express');
 import bodyParser = require('body-parser');
+import validator from 'validator';
+import * as request from 'supertest';
+
 import config = require('../config');
 import { Role } from '../src/databases/entities/Role';
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT, TEST_JWT_SECRET } from './constants';
 import { addRoutes as authMiddleware } from '../src/UserManagement/routes';
 import { authenticationMethods as loginRoutes } from '../src/UserManagement/routes/auth';
-
-import * as request from 'supertest';
-
 import { SUCCESS_RESPONSE_BODY } from './constants';
 import { PAYLOADS } from './constants/me';
 
@@ -46,7 +46,7 @@ export const patchMe = async (
 
 	const { id, email, firstName, lastName, personalizationAnswers, globalRole } = response.body.data;
 
-	expect(typeof id).toBe('string');
+	expect(validator.isUUID(id)).toBe(true);
 	expect(email).toBe(PAYLOADS.PROFILE.email);
 	expect(firstName).toBe(PAYLOADS.PROFILE.firstName);
 	expect(lastName).toBe(PAYLOADS.PROFILE.lastName);
@@ -72,7 +72,7 @@ export const postSurvey = async (requester: request.SuperAgentTest) => {
 };
 
 export const expectOwnerGlobalRole = (globalRole: Role) => {
-	expect(globalRole.id).toBe(1);
+	expect(globalRole.id).toBe(1); // TODO: Will this always be true?
 	expect(globalRole.name).toBe('owner');
 	expect(globalRole.scope).toBe('global');
 	expect(typeof globalRole.createdAt).toBe('string');
