@@ -22,7 +22,10 @@
 				/>
 			</div>
 			<div :class="$style.usersContainer" v-else>
-				<SmtpAlert />
+				<PageAlert
+					:message="$locale.baseText('SMTP_TO_ADD_USERS_WARNING')"
+					:popupClass="$style.alert"
+				/>
 				<n8n-users-list :users="allUsers" @delete="onDelete" @reinvite="onReinvite" />
 			</div>
 		</div>
@@ -34,7 +37,7 @@ import { INVITE_USER_MODAL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
 
 import SettingsView from './SettingsView.vue';
-import SmtpAlert from '../components/SmtpAlert.vue';
+import PageAlert from '../components/PageAlert.vue';
 import { N8nUsersList } from 'n8n-design-system';
 import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
@@ -45,7 +48,7 @@ export default mixins(showMessage).extend({
 	components: {
 		SettingsView,
 		'n8n-users-list': N8nUsersList,
-		SmtpAlert,
+		PageAlert,
 	},
 	async mounted() {
 		await this.$store.dispatch('users/fetchUsers');
@@ -115,6 +118,10 @@ export default mixins(showMessage).extend({
 
 .setupInfoContainer {
 	max-width: 728px;
+}
+
+.alert {
+	left: calc(50% + 100px);
 }
 
 </style>

@@ -48,7 +48,6 @@ import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
-import SmtpAlert from '../components/SmtpAlert.vue';
 
 export default mixins(
 	showMessage,
@@ -56,7 +55,6 @@ export default mixins(
 	name: 'SettingsPersonalView',
 	components: {
 		SettingsView,
-		SmtpAlert,
 	},
 	data() {
 		return {
