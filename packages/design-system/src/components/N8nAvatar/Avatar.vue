@@ -60,7 +60,7 @@ export default {
 
 <style lang="scss" module>
 .container {
-	display: contents;
+	display: inline-flex;
 }
 
 .empty {
