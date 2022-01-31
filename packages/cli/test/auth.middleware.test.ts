@@ -1,7 +1,7 @@
 import express = require('express');
 import * as request from 'supertest';
 
-import * as utils from './utils';
+import * as utils from './common/utils';
 
 describe('/me endpoints', () => {
 	let testServer: {

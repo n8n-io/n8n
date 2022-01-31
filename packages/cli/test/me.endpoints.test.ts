@@ -5,8 +5,8 @@ import validator from 'validator';
 
 import { Db } from '../src';
 import { meNamespace } from '../src/UserManagement/routes/me';
-import * as utils from './utils';
-import { SUCCESS_RESPONSE_BODY } from './constants';
+import * as utils from './common/utils';
+import { SUCCESS_RESPONSE_BODY } from './common/constants';
 
 describe('/me endpoints', () => {
 	let testServer: {

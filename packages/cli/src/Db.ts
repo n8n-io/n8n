@@ -17,7 +17,7 @@ import { entities } from './databases/entities';
 import { postgresMigrations } from './databases/postgresdb/migrations';
 import { mysqlMigrations } from './databases/mysqldb/migrations';
 import { sqliteMigrations } from './databases/sqlite/migrations';
-import { TEST_CONNECTION_OPTIONS } from '../test/constants';
+import { TEST_CONNECTION_OPTIONS } from '../test/common/constants';
 
 export const collections: IDatabaseCollections = {
 	Credentials: null,

@@ -4,11 +4,11 @@ import { URL } from 'url';
 import bodyParser = require('body-parser');
 import validator from 'validator';
 
-import config = require('../config');
-import { Role } from '../src/databases/entities/Role';
+import config = require('../../config');
+import { Role } from '../../src/databases/entities/Role';
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT, TEST_JWT_SECRET } from './constants';
-import { addRoutes as authMiddleware } from '../src/UserManagement/routes';
-import { authenticationMethods as loginRoutes } from '../src/UserManagement/routes/auth';
+import { addRoutes as authMiddleware } from '../../src/UserManagement/routes';
+import { authenticationMethods as loginRoutes } from '../../src/UserManagement/routes/auth';
 
 /**
  * Initialize a test server with auth middleware and login routes.
