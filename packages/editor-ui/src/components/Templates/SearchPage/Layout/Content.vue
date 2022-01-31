@@ -109,13 +109,22 @@ export default mixins(genericHelpers).extend({
 	padding-bottom: var(--spacing-3xl);
 	display: flex;
 	justify-content: space-between;
+
+	@media (max-width: $--breakpoint-2xs) {
+	  flex-direction: column;
+	}
+
 }
 
 .filters {
 	width: 188px;
 
 	@media (max-width: $--breakpoint-xs) {
-		min-width: 140px;
+		width: 15%;
+	}
+
+	@media (max-width: $--breakpoint-2xs) {
+		width: 100%;
 	}
 }
 
@@ -124,11 +133,12 @@ export default mixins(genericHelpers).extend({
 	padding-left: var(--spacing-2xl);
 
 	@media (max-width: $--breakpoint-xs) {
-	  width: 308px;
+	  width: 75%;
 	}
 
 	@media (max-width: $--breakpoint-2xs) {
-	  width: 208px;
+	  width: 100%;
+		padding-left: 0;
 	}
 }
 

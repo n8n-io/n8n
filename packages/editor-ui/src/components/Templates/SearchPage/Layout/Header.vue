@@ -52,9 +52,17 @@ export default mixins(workflowHelpers).extend({
 
 .title {
 	width: 75%;
+
+	@media (max-width: $--breakpoint-2xs) {
+		width: 45%;
+	}
 }
 
 .button {
 	display: block;
+
+	@media (max-width: $--breakpoint-xs) {
+		width: 55%;
+	}
 }
 </style>
