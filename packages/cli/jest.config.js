@@ -1,17 +1,16 @@
 module.exports = {
 	verbose: true,
 	transform: {
-		"^.+\\.tsx?$": "ts-jest"
+		"^.+\\.ts?$": "ts-jest"
 	},
 	testURL: "http://localhost/",
-	testRegex: "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+	testRegex: "(/__tests__/.*|(\\.|/)(test))\\.ts$",
 	testPathIgnorePatterns: [
 		"/dist/",
 		"/node_modules/"
 	],
 	moduleFileExtensions: [
 		"ts",
-		"tsx",
 		"js",
 		"json"
 	],
