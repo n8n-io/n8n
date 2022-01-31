@@ -61,12 +61,12 @@ export class User {
 
 	@Column({ length: 32, nullable: true })
 	@IsString({ message: 'First name must be of type string.' })
-	@Length(1, 32, { message: 'First name must be 1 to 32 characters long.' })
+	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
 	@Column({ length: 32, nullable: true })
 	@IsString({ message: 'Last name must be of type string.' })
-	@Length(1, 32, { message: 'Last name must be 1 to 32 characters long.' })
+	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
 
 	@Column({ nullable: true })

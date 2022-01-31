@@ -68,7 +68,7 @@ export function validatePassword(password?: string) {
 
 	if (password.length < 8 || password.length > 64) {
 		throw new ResponseHelper.ResponseError(
-			'Password length must 8 to 64 characters long',
+			'Password must be 8 to 64 characters long',
 			undefined,
 			400,
 		);
