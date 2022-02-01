@@ -4,6 +4,7 @@ import * as request from 'supertest';
 import { URL } from 'url';
 import bodyParser = require('body-parser');
 import validator from 'validator';
+import { v4 as uuid } from 'uuid';
 
 import config = require('../../config');
 import { Role } from '../../src/databases/entities/Role';
@@ -22,7 +23,7 @@ export const isTestRun = process.argv[1].split('/').pop() === 'jest';
 
 /**
  * Initialize a test server with auth middleware and login routes.
- * Optionally, pass in endpoints namespaces to enable.
+ * Optionally, pass in namespaces of endpoints to enable.
  */
 export const initTestServer = (
 	namespaces: { [K in 'meEndpoints' | 'usersEndpoints']?: true } = {},
@@ -45,54 +46,41 @@ export const initTestServer = (
 	if (namespaces.meEndpoints) meEndpoints.apply(testServer);
 	if (namespaces.usersEndpoints) usersEndpoints.apply(testServer);
 
-	return testServer;
+	return testServer.app;
 };
 
+/**
+ * Initialize a sqlite DB with test connection settings.
+ */
 export const initTestDb = async () => {
 	await Db.init();
 	await getConnection().runMigrations({ transaction: 'none' });
 };
 
-export const initOwnerAgent = async (app: express.Application) => {
+/**
+ * Create an agent for a shell user holding an `n8n-auth` cookie.
+ */
+export async function createShellAgent(app: express.Application) {
+	const shellAgent = request.agent(app);
+	shellAgent.use(restPrefix);
+
+	await shellAgent.get('/login');
+
+	return shellAgent;
+}
+
+/**
+ * Create an agent for an owner user holding an `n8n-auth` cookie.
+ */
+export async function createOwnerAgent(app: express.Application, owner: User) {
 	const ownerAgent = request.agent(app);
 	ownerAgent.use(restPrefix);
 
-	const response = await ownerAgent.get('/login');
-
-	const owner = await createOwner(response.body.data.id);
-	await initOwnerConfig();
-
-	const { token: jwt } = await issueJWT(owner);
-	ownerAgent.jar.setCookie(`n8n-auth=${jwt}`);
+	const { token } = await issueJWT(owner);
+	ownerAgent.jar.setCookie(`n8n-auth=${token}`);
 
 	return ownerAgent;
-};
-
-export const createOwner = async (id: string) => {
-	const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
-
-	const owner = new User();
-
-	Object.assign(owner, {
-		id,
-		email: 'owner@n8n.io',
-		firstName: 'John',
-		lastName: 'Smith',
-		password: hashSync('abcd1234', genSaltSync(10)),
-		globalRole: role,
-	});
-
-	return Db.collections.User!.save(owner);
-};
-
-export const initOwnerConfig = async () => {
-	config.set('userManagement.hasOwner', true);
-
-	await Db.collections.Settings!.update(
-		{ key: 'userManagement.hasOwner' },
-		{ value: JSON.stringify(true) },
-	);
-};
+}
 
 /**
  * Log all the routes mounted on the test server app, for debugging.
@@ -103,22 +91,10 @@ export const logRoutes = (app: express.Application) => {
 	});
 };
 
-export const expectOwnerGlobalRole = (globalRole: Role) => {
-	expect(globalRole.name).toBe('owner');
-	expect(globalRole.scope).toBe('global');
-	expectIso8601Date(globalRole.createdAt);
-	expectIso8601Date(globalRole.updatedAt);
-};
-
 export const expectMemberGlobalRole = (globalRole: Role) => {
 	expect(globalRole.name).toBe('member');
 	expect(globalRole.scope).toBe('global');
-	expectIso8601Date(globalRole.createdAt);
-	expectIso8601Date(globalRole.updatedAt);
 };
-
-const expectIso8601Date = (date: Date) =>
-	expect(validator.isISO8601(date.toString(), { strict: true })).toBe(true);
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
