@@ -1,7 +1,7 @@
 <template functional>
 	<fragment>
 		<router-link
-			v-if="typeof props.to === 'Object' || (typeof props.to === 'string' && !props.newWindow && props.to.startsWith('/'))"
+			v-if="$options.methods.useRouterLink(props)"
 			:to="props.to"
 			@click="(e) => listeners.click && listeners.click(e)"
 		>
@@ -11,7 +11,7 @@
 			v-else
 			:href="props.to"
 			@click="(e) => listeners.click && listeners.click(e)"
-			:target="props.newWindow ? '_blank': '_self'"
+			:target="$options.methods.openNewWindow(props) ? '_blank': '_self'"
 		>
 			<slot></slot>
 		</a>
@@ -29,7 +29,27 @@ export default {
 		},
 		newWindow: {
 			type: Boolean,
-			default: false,
+		},
+	},
+	methods: {
+		useRouterLink(props: {to: object | string, newWindow: boolean | undefined}) {
+			if (props.newWindow === true) {
+				return false;
+			}
+			if (typeof props.to === 'string') {
+				return props.to.startsWith('/');
+			}
+
+			return props.to !== undefined;
+		},
+		openNewWindow(props: {to: string, newWindow: boolean | undefined}) {
+			if (props.newWindow !== undefined) {
+				return props.newWindow;
+			}
+			if (typeof props.to === 'string') {
+				return !props.to.startsWith('/');
+			}
+			return true;
 		},
 	},
 };
