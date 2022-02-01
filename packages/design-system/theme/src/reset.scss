@@ -171,6 +171,15 @@ a {
 	background: transparent;
 	cursor: pointer;
 	color: var(--color-primary);
+
+	&:active {
+		color: function.saturation(
+			--color-primary-h,
+			--color-primary-s,
+			--color-primary-l,
+			-(30%)
+		);
+	}
 }
 
 h1,

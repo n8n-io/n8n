@@ -73,7 +73,7 @@ export default {
 			--color-primary-h,
 			--color-primary-s,
 			--color-primary-l,
-			-(10%)
+			-(30%)
 		);
 	}
 }
@@ -90,7 +90,7 @@ export default {
 			--color-danger-h,
 			--color-danger-s,
 			--color-danger-l,
-			-(10%)
+			-(20%)
 		);
 	}
 }
