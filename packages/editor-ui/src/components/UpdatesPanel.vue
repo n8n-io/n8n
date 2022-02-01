@@ -119,9 +119,4 @@ export default Vue.extend({
 .versions-card {
 	margin-block-end: 15px;
 }
-
-.infoIcon {
-	color: $--updates-panel-info-icon-color;
-	margin-right: 5px;
-}
 </style>
