@@ -795,6 +795,7 @@ export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isCurrentUser: boolean;
 	isPendingUser: boolean;
+	isOwner: boolean;
 	fullName?: string;
 }
 

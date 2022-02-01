@@ -52,22 +52,21 @@ export default Vue.extend({
 		sortedUsers(): IUser[] {
 			return [...(this.users as IUser[])].sort((a: IUser, b: IUser) => {
 				// invited users sorted by email
-				if (!a.lastName && !b.lastName) {
+				if (a.isPendingUser && b.isPendingUser) {
 					return a.email > b.email ? 1 : -1;
 				}
 
-				// invited first
-				if (!a.lastName && b.lastName) {
+				if (a.isPendingUser) {
 					return -1;
 				}
-				if (a.lastName && !b.lastName) {
+				if (b.isPendingUser) {
 					return 1;
 				}
 
-				if (a.globalRole.name === 'owner') {
+				if (a.isOwner) {
 					return -1;
 				}
-				if (b.globalRole.name === 'owner') {
+				if (b.isOwner) {
 					return 1;
 				}
 
