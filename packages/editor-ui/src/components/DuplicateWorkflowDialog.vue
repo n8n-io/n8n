@@ -5,8 +5,7 @@
 		@enter="save"
 		:title="$locale.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
 		:center="true"
-		minWidth="420px"
-		maxWidth="420px"
+		width="420px"
 	>
 		<template v-slot:content>
 			<div :class="$style.content">
