@@ -964,10 +964,10 @@ class App {
 					}
 				}
 
-				// required due to atomic update
-				updateData.updatedAt = this.getCurrentDate();
-
-				await validateEntity(updateData);
+				if (Object.keys(updateData).length > 1 || updateData.active === undefined) {
+					updateData.updatedAt = this.getCurrentDate(); // required due to atomic update
+					await validateEntity(updateData);
+				}
 
 				await Db.collections.Workflow!.update(workflowId, updateData);
 
