@@ -4,8 +4,7 @@
 		@enter="onSubmit"
 		title="Change Password"
 		:center="true"
-		minWidth="460px"
-		maxWidth="460px"
+		width="460px"
 		:eventBus="modalBus"
 	>
 		<template slot="content">
