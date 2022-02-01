@@ -13,7 +13,7 @@ import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import { getInstance } from '../email/UserManagementMailer';
 import { issueJWT } from '../auth/jwt';
-import { isTestRun } from '../../../test/common/utils';
+import { isTestRun } from '../../../test/shared/utils';
 
 export function usersNamespace(this: N8nApp): void {
 	this.app.post(

@@ -5,9 +5,9 @@ import validator from 'validator';
 
 import config = require('../config');
 import { Db } from '../src';
-import * as utils from './common/utils';
+import * as utils from './shared/utils';
 import { meNamespace } from '../src/UserManagement/routes/me';
-import { SUCCESS_RESPONSE_BODY } from './common/constants';
+import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { usersNamespace } from '../src/UserManagement/routes/users';
 
 describe('/me endpoints', () => {
@@ -28,8 +28,8 @@ describe('/me endpoints', () => {
 			await shell.get('/login');
 		});
 
-		afterAll(async () => {
-			await getConnection().close();
+		afterAll(() => {
+			return getConnection().close();
 		});
 
 		test('GET /me should return sanitized shell', async () => {
@@ -153,6 +153,15 @@ describe('/me endpoints', () => {
 			owner = request.agent(testServer.app);
 			owner.use(utils.restPrefix);
 
+			// 1. use SQL **instead** of exercising the routes
+			// helper to insert random 'member' user
+
+			// 2. move user creation to test
+
+			// 3. TRUNCATE user tables on afterEach (clean DB)
+
+			// 4. Figure out connection error: ConnectionIsNotSetError: Connection with sqlite database is not established. Check connection configuration.
+
 			await owner.get('/login');
 
 			const {
@@ -210,9 +219,9 @@ describe('/me endpoints', () => {
 			return validRequests.patchMe(member, 'member');
 		});
 
-		// test('PATCH /me should fail with invalid inputs', () => {
-		// 	return invalidRequests.patchMe(member);
-		// });
+		test('PATCH /me should fail with invalid inputs', () => {
+			return invalidRequests.patchMe(member);
+		});
 
 		// test('PATCH /me/password should succeed with valid inputs', () => {
 		// 	return validRequests.patchPassword(member);
