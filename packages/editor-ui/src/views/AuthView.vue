@@ -55,7 +55,6 @@ export default Vue.extend({
 
 <style lang="scss" module>
 body {
-	// todo
 	background-color: var(--color-background-light);
 }
 
