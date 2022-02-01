@@ -5,13 +5,10 @@ import {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
-	INodePropertyRouting,
 	INodeType,
 	INodeTypeDescription,
 	IRequestOptionsFromParameters,
 } from 'n8n-workflow';
-
-import { get } from 'lodash';
 
 export class MailcheckTest implements INodeType {
 	description: INodeTypeDescription = {

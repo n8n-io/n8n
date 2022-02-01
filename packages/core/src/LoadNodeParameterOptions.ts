@@ -23,10 +23,6 @@ import {
 // eslint-disable-next-line import/no-cycle
 import { NodeExecuteFunctions } from '.';
 
-// As enabling "esModuleInterop" messed up the package import via require for now
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const get = require('lodash.get');
-
 const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
 
@@ -233,7 +229,14 @@ export class LoadNodeParameterOptions {
 		}
 
 		if (loadOptions.routing?.output?.postReceive) {
-			requestData.postReceive = [loadOptions.routing.output.postReceive];
+			requestData.postReceive = [
+				{
+					data: {
+						parameterValue: undefined,
+					},
+					action: loadOptions.routing.output.postReceive,
+				},
+			];
 		}
 
 		if (loadOptions.routing?.output?.maxResults) {
