@@ -15,7 +15,7 @@
 						{{ $locale.baseText('about.sourceCode') }}
 					</el-col>
 					<el-col :span="16">
-						<a href="https://github.com/n8n-io/n8n" target="_blank">https://github.com/n8n-io/n8n</a>
+						<n8n-link href="https://github.com/n8n-io/n8n">https://github.com/n8n-io/n8n</n8n-link>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -23,9 +23,9 @@
 						{{ $locale.baseText('about.license') }}
 					</el-col>
 					<el-col :span="16">
-						<a href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">
+						<n8n-link href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md">
 							{{ $locale.baseText('about.apacheWithCommons20Clause') }}
-						</a>
+						</n8n-link>
 					</el-col>
 				</el-row>
 
