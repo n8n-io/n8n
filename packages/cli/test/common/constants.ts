@@ -17,8 +17,8 @@ export const TEST_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
 	type: 'sqlite',
 	database: ':memory:',
 	entityPrefix: '',
-	// dropSchema: true, // TODO: Needed?
-	migrations: sqliteMigrations, // TODO: Other DB types
+	dropSchema: true,
+	migrations: sqliteMigrations,
 	migrationsTableName: 'migrations',
 	migrationsRun: false,
 	logging: false,
