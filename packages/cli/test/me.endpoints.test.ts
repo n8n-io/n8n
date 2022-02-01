@@ -13,11 +13,8 @@ import { getConnection } from 'typeorm';
 import validator from 'validator';
 
 import config = require('../config');
-import { Db } from '../src';
 import * as utils from './shared/utils';
-import { meNamespace as meEndpoints } from '../src/UserManagement/routes/me';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { usersNamespace } from '../src/UserManagement/routes/users';
 import { issueJWT } from '../src/UserManagement/auth/jwt';
 
 describe('/me endpoints', () => {
