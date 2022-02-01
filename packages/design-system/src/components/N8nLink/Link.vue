@@ -1,35 +1,21 @@
 <template functional>
-	<span>
-		<router-link
-			v-if="typeof props.to === 'Object' || (typeof props.to === 'string' && !props.newWindow && props.to.startsWith('/'))"
-			:to="props.to"
-			@click="(e) => listeners.click && listeners.click(e)"
+	<component :is="$options.components.N8nRoute" :to="props.to" :newWindow="props.newWindow"
+		@click="(e) => listeners.click && listeners.click(e)"
+	>
+		<span
 			:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
 		>
-			<n8n-text :size="props.size" :bold="props.bold">
+			<component :is="$options.components.N8nText" :size="props.size" :bold="props.bold">
 				<slot></slot>
-			</n8n-text>
-		</router-link>
-		<a
-			v-else
-			:href="props.to"
-			@click="(e) => listeners.click && listeners.click(e)"
-			:target="props.newWindow ? '_blank': '_self'"
-			:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
-		>
-			<n8n-text :size="props.size" :bold="props.bold">
-				<slot></slot>
-			</n8n-text>
-		</a>
-
-	</span>
+			</component>
+		</span>
+	</component>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
 import N8nText from '../N8nText';
-
-Vue.component('N8nText', N8nText);
+import N8nRoute from '../N8nRoute';
 
 export default {
 	name: 'n8n-link',
@@ -58,6 +44,10 @@ export default {
 			validator: (value: string): boolean =>
 				['primary', 'danger', 'text'].indexOf(value) !== -1,
 		},
+	},
+	components: {
+		N8nText,
+		N8nRoute,
 	},
 };
 </script>
