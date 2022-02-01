@@ -39,15 +39,18 @@ export default Vue.extend({
 
 		const observer = new ResizeObserver((entries) => {
 			entries.forEach((entry) => {
-				const newWidth = entry.contentRect.width;
-				let newBP = 'default';
-				for (let i = 0; i < bps.length; i++) {
-					if (newWidth < bps[i].width) {
-						newBP = bps[i].bp;
-						break;
+				// We wrap it in requestAnimationFrame to avoid this error - ResizeObserver loop limit exceeded
+				requestAnimationFrame(() => {
+					const newWidth = entry.contentRect.width;
+					let newBP = 'default';
+					for (let i = 0; i < bps.length; i++) {
+						if (newWidth < bps[i].width) {
+							newBP = bps[i].bp;
+							break;
+						}
 					}
-				}
-				this.bp = newBP;
+					this.bp = newBP;
+			 });
 			});
 		});
 
