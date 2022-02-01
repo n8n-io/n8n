@@ -21,7 +21,12 @@
 			inputSize="large"
 		/>
 		<div :class="$style.errors" v-if="showRequiredErrors">
-			{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }} <n8n-link v-if="documentationUrl" size="small" theme="danger" :to="documentationUrl" :newWindow="true" :underline="true" @click="onDocumentationUrlClick">{{ $locale.baseText('parameterInputExpanded.openDocs') }}</n8n-link>
+			<n8n-text color="danger" size="small">
+				{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+				<n8n-link v-if="documentationUrl" :to="documentationUrl" size="small" :underline="true" @click="onDocumentationUrlClick">
+					{{ $locale.baseText('parameterInputExpanded.openDocs') }}
+				</n8n-link>
+			</n8n-text>
 		</div>
 		<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
 	</n8n-input-label>
@@ -101,9 +106,6 @@ export default Vue.extend({
 <style lang="scss" module>
 	.errors {
 		margin-top: var(--spacing-2xs);
-		color: var(--color-danger);
-		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-regular);
 	}
 	.hint {
 		margin-top: var(--spacing-4xs);
