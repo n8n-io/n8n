@@ -63,6 +63,10 @@ export default {
 	--menu-item-hover-font-color: var(--color-primary);
 	--menu-item-border-radius: 4px;
 	--menu-item-height: 38px;
+
+	li {
+		padding-left: 12px !important;
+	}
 }
 
 .secondary-light {
