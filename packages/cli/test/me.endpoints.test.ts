@@ -219,9 +219,9 @@ describe('/me endpoints', () => {
 			return validRequests.patchMe(member, 'member');
 		});
 
-		test('PATCH /me should fail with invalid inputs', () => {
-			return invalidRequests.patchMe(member);
-		});
+		// test('PATCH /me should fail with invalid inputs', () => {
+		// 	return invalidRequests.patchMe(member);
+		// });
 
 		// test('PATCH /me/password should succeed with valid inputs', () => {
 		// 	return validRequests.patchPassword(member);
