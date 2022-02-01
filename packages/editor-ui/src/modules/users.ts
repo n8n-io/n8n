@@ -10,7 +10,7 @@ import {
 	IUserResponse,
 	IUsersState,
 } from '../Interface';
-import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS } from './userHelpers';
+import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from './userHelpers';
 
 const isDefaultUser = (user: IUserResponse | null) => Boolean(user && !user.email);
 
@@ -32,7 +32,7 @@ const module: Module<IUsersState, IRootState> = {
 					isDefaultUser: isDefaultUser(userResponse),
 					isPendingUser: isPendingUser(userResponse),
 					isCurrentUser: userResponse.id === state.currentUserId,
-					isOwner: userResponse.globalRole.name === 'owner',
+					isOwner: Boolean(userResponse.globalRole && userResponse.globalRole.name === ROLE.Owner),
 				};
 				Vue.set(state.users, user.id, user);
 			});

@@ -784,7 +784,7 @@ export interface IUserResponse {
 	firstName?: string;
 	lastName?: string;
 	email?: string;
-	globalRole: {
+	globalRole?: {
 		name: IRole;
 		id: string;
 	};
