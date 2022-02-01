@@ -160,13 +160,12 @@ export default mixins(
 .user {
 	display: flex;
 	align-items: center;
-}
 
-@media (max-width: $--breakpoint-2xs) {
-	.user {
+	@media (max-width: $--breakpoint-2xs) {
 		display: none;
 	}
 }
+
 
 .username {
 	margin-right: var(--spacing-s);
