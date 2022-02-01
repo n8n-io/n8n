@@ -235,11 +235,6 @@ export default mixins(
 
 	> *:first-child {
 		flex-grow: 1;
-
-		h1 {
-			line-height: 24px;
-			font-size: 18px;
-		}
 	}
 
 	.search-filter {
