@@ -94,8 +94,8 @@ describe('/me endpoints', () => {
 			});
 		});
 
-		afterAll(async () => {
-			await getConnection().close();
+		afterAll(() => {
+			return getConnection().close();
 		});
 
 		test('GET /me should return sanitized owner', async () => {
@@ -194,8 +194,8 @@ describe('/me endpoints', () => {
 			});
 		});
 
-		afterAll(async () => {
-			await getConnection().close();
+		afterAll(() => {
+			return getConnection().close();
 		});
 
 		test('GET /me should return sanitized member', async () => {
