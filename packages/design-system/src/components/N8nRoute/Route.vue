@@ -1,5 +1,5 @@
 <template functional>
-	<fragment>
+	<span>
 		<router-link
 			v-if="$options.methods.useRouterLink(props)"
 			:to="props.to"
@@ -15,7 +15,7 @@
 		>
 			<slot></slot>
 		</a>
-	</fragment>
+	</span>
 </template>
 
 <script lang="ts">
