@@ -116,6 +116,7 @@ export default mixins(showMessage).extend({
 	methods: {
 		setOperation(operation: string) {
 			this.operation = operation;
+			this.transferId = '';
 		},
 		setConfirmText(text: string) {
 			this.deleteConfirmText = text;
