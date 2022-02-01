@@ -1,14 +1,4 @@
-// 1. use SQL **instead** of exercising the routes
-// helper to insert random 'member' user
-
-// 2. move user creation to test
-
-// 3. TRUNCATE user tables on afterEach (clean DB)
-
-// 4. Figure out connection error: ConnectionIsNotSetError: Connection with sqlite database is not established. Check connection configuration.
-
 import express = require('express');
-import * as request from 'supertest';
 import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
@@ -56,7 +46,8 @@ describe('/me endpoints', () => {
 		});
 
 		test('GET /me should return sanitized shell', async () => {
-			const shellAgent = await utils.createShellAgent(app);
+			const shell = await Db.collections.User!.findOneOrFail();
+			const shellAgent = await utils.createAgent(app, shell);
 
 			const response = await shellAgent.get('/me');
 
@@ -84,8 +75,9 @@ describe('/me endpoints', () => {
 			expect(globalRole.scope).toBe('global');
 		});
 
-		test('PATCH /me should return succeed with valid inputs', async () => {
-			const shellAgent = await utils.createShellAgent(app);
+		test('PATCH /me should succeed with valid inputs', async () => {
+			const shell = await Db.collections.User!.findOneOrFail();
+			const shellAgent = await utils.createAgent(app, shell);
 
 			const validPayloads = [
 				{
@@ -131,7 +123,8 @@ describe('/me endpoints', () => {
 		});
 
 		test('PATCH /me should fail with invalid inputs', async () => {
-			const shellAgent = await utils.createShellAgent(app);
+			const shell = await Db.collections.User!.findOneOrFail();
+			const shellAgent = await utils.createAgent(app, shell);
 
 			const invalidPayloads = [
 				{
@@ -162,7 +155,8 @@ describe('/me endpoints', () => {
 		});
 
 		test('PATCH /me/password should succeed with valid inputs', async () => {
-			const shellAgent = await utils.createShellAgent(app);
+			const shell = await Db.collections.User!.findOneOrFail();
+			const shellAgent = await utils.createAgent(app, shell);
 
 			const validPayloads = ['abcd1234', 'q38rdun9!8a'].map((password) => ({ password }));
 
@@ -174,7 +168,8 @@ describe('/me endpoints', () => {
 		});
 
 		test('PATCH /me/password should fail with invalid inputs', async () => {
-			const shellAgent = await utils.createShellAgent(app);
+			const shell = await Db.collections.User!.findOneOrFail();
+			const shellAgent = await utils.createAgent(app, shell);
 
 			const invalidPayloads: Array<{ password?: string }> = [
 				'a',
@@ -189,7 +184,8 @@ describe('/me endpoints', () => {
 		});
 
 		test('POST /me/survey should succeed with valid inputs', async () => {
-			const shellAgent = await utils.createShellAgent(app);
+			const shell = await Db.collections.User!.findOneOrFail();
+			const shellAgent = await utils.createAgent(app, shell);
 
 			const validPayloads = [
 				{
@@ -258,7 +254,7 @@ describe('/me endpoints', () => {
 
 		test('GET /me should return sanitized owner', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createOwnerAgent(app, owner);
+			const ownerAgent = await utils.createAgent(app, owner);
 
 			const response = await ownerAgent.get('/me');
 
@@ -288,7 +284,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should succeed with valid inputs', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createOwnerAgent(app, owner);
+			const ownerAgent = await utils.createAgent(app, owner);
 
 			const validPayloads = [
 				{
@@ -335,7 +331,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should fail with invalid inputs', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createOwnerAgent(app, owner);
+			const ownerAgent = await utils.createAgent(app, owner);
 
 			const invalidPayloads = [
 				{
@@ -367,7 +363,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me/password should succeed with valid inputs', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createOwnerAgent(app, owner);
+			const ownerAgent = await utils.createAgent(app, owner);
 
 			const validPayloads = ['abcd1234', 'q38rdun9!8a'].map((password) => ({ password }));
 
@@ -380,7 +376,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me/password should fail with invalid inputs', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createOwnerAgent(app, owner);
+			const ownerAgent = await utils.createAgent(app, owner);
 
 			const invalidPayloads: Array<{ password?: string }> = [
 				'a',
@@ -396,7 +392,7 @@ describe('/me endpoints', () => {
 
 		test('POST /me/survey should succeed with valid inputs', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createOwnerAgent(app, owner);
+			const ownerAgent = await utils.createAgent(app, owner);
 
 			const validPayloads = [
 				{
@@ -424,48 +420,39 @@ describe('/me endpoints', () => {
 
 	describe('Member requests', () => {
 		let app: express.Application;
-		let owner: request.SuperAgentTest;
-		let member: request.SuperAgentTest;
 
 		beforeAll(async () => {
 			app = utils.initTestServer({ meEndpoints: true, usersEndpoints: true });
 			await utils.initTestDb();
+			await Db.collections.User!.clear(); // remove user added by migration
+		});
 
-			config.set('userManagement.emails.mode', 'smtp'); // needed for POST /users
+		beforeEach(async () => {
+			const role = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
 
-			owner = request.agent(app);
-			owner.use(utils.restPrefix);
+			const newMember = new User();
 
-			await owner.get('/login');
-
-			const {
-				body: {
-					data: { id: ownerId },
-				},
-			} = await owner.post('/owner-setup').send({
-				email: 'owner@n8n.io',
+			Object.assign(newMember, {
+				id: uuid(),
+				email: 'member@n8n.io',
 				firstName: 'John',
 				lastName: 'Smith',
-				password: 'abcd1234',
+				password: hashSync('abcd1234', genSaltSync(10)),
+				globalRole: role,
 			});
 
-			const {
-				body: { data },
-			} = await owner.post('/users').send([{ email: 'member@n8n.io' }]);
-			const memberId = data[0].id;
+			await Db.collections.User!.save(newMember);
 
-			await owner.get('/logout');
+			config.set('userManagement.hasOwner', true);
 
-			member = request.agent(app);
-			member.use(utils.restPrefix);
+			await Db.collections.Settings!.update(
+				{ key: 'userManagement.hasOwner' },
+				{ value: JSON.stringify(true) },
+			);
+		});
 
-			await member.post('/user').send({
-				inviterId: ownerId,
-				inviteeId: memberId,
-				firstName: 'James',
-				lastName: 'Smith',
-				password: 'abcd1234',
-			});
+		afterEach(async () => {
+			await Db.collections.User!.clear();
 		});
 
 		afterAll(() => {
@@ -473,40 +460,164 @@ describe('/me endpoints', () => {
 		});
 
 		test('GET /me should return sanitized member', async () => {
-			const response = await member.get('/me');
+			const member = await Db.collections.User!.findOneOrFail();
+			const memberAgent = await utils.createAgent(app, member);
+
+			const response = await memberAgent.get('/me');
 
 			expect(response.statusCode).toBe(200);
 
-			const { id, email, firstName, lastName, personalizationAnswers, globalRole } =
-				response.body.data;
+			const {
+				id,
+				email,
+				firstName,
+				lastName,
+				personalizationAnswers,
+				globalRole,
+				password,
+				resetPasswordToken,
+			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
 			expect(email).toBe('member@n8n.io');
-			expect(firstName).toBe('James');
+			expect(firstName).toBe('John');
 			expect(lastName).toBe('Smith');
 			expect(personalizationAnswers).toBeNull();
-
-			utils.expectMemberGlobalRole(globalRole);
+			expect(password).toBeUndefined();
+			expect(resetPasswordToken).toBeUndefined();
+			expect(globalRole.name).toBe('member');
+			expect(globalRole.scope).toBe('global');
 		});
 
-		// test('PATCH /me should return succeed with valid inputs', () => {
-		// 	return validRequests.patchMe(member, 'member');
-		// });
+		test('PATCH /me should succeed with valid inputs', async () => {
+			const member = await Db.collections.User!.findOneOrFail();
+			const memberAgent = await utils.createAgent(app, member);
 
-		// test('PATCH /me should fail with invalid inputs', () => {
-		// 	return invalidRequests.patchMe(member);
-		// });
+			const validPayloads = [
+				{
+					email: 'test@n8n.io',
+					firstName: 'John',
+					lastName: 'Smith',
+					password: 'abcd1234',
+				},
+				{
+					email: 'abc@def.com',
+					firstName: 'John',
+					lastName: 'Smith',
+					password: 'abcd1234',
+				},
+			];
 
-		// test('PATCH /me/password should succeed with valid inputs', () => {
-		// 	return validRequests.patchPassword(member);
-		// });
+			for (const validPayload of validPayloads) {
+				const response = await memberAgent.patch('/me').send(validPayload);
 
-		// test('PATCH /me/password should fail with invalid inputs', () => {
-		// 	return invalidRequests.patchPassword(member);
-		// });
+				expect(response.statusCode).toBe(200);
 
-		// test('POST /me/survey should succeed with valid inputs', () => {
-		// 	return validRequests.postSurvey(member);
-		// });
+				const {
+					id,
+					email,
+					firstName,
+					lastName,
+					personalizationAnswers,
+					globalRole,
+					password,
+					resetPasswordToken,
+				} = response.body.data;
+
+				expect(validator.isUUID(id)).toBe(true);
+				expect(email).toBe(validPayload.email);
+				expect(firstName).toBe(validPayload.firstName);
+				expect(lastName).toBe(validPayload.lastName);
+				expect(personalizationAnswers).toBeNull();
+				expect(password).toBeUndefined();
+				expect(resetPasswordToken).toBeUndefined();
+				expect(globalRole.name).toBe('member');
+				expect(globalRole.scope).toBe('global');
+			}
+		});
+
+		test('PATCH /me should fail with invalid inputs', async () => {
+			const member = await Db.collections.User!.findOneOrFail();
+			const memberAgent = await utils.createAgent(app, member);
+
+			const invalidPayloads = [
+				{
+					email: 'invalid email',
+					firstName: 'John',
+					lastName: 'Smith',
+				},
+				{
+					email: 'test@n8n.io',
+					firstName: '',
+					lastName: 'Smith',
+				},
+				{
+					email: 'test@n8n.io',
+					firstName: 'John',
+					lastName: '',
+				},
+				{
+					email: 'test@n8n.io',
+					firstName: 123,
+					lastName: 'Smith',
+				},
+			];
+
+			for (const invalidPayload of invalidPayloads) {
+				await memberAgent.patch('/me').send(invalidPayload).expect(400);
+			}
+		});
+
+		test('PATCH /me/password should succeed with valid inputs', async () => {
+			const member = await Db.collections.User!.findOneOrFail();
+			const memberAgent = await utils.createAgent(app, member);
+
+			const validPayloads = ['abcd1234', 'q38rdun9!8a'].map((password) => ({ password }));
+
+			for (const validPayload of validPayloads) {
+				const response = await memberAgent.patch('/me/password').send(validPayload);
+				expect(response.statusCode).toBe(200);
+				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+			}
+		});
+
+		test('PATCH /me/password should fail with invalid inputs', async () => {
+			const member = await Db.collections.User!.findOneOrFail();
+			const memberAgent = await utils.createAgent(app, member);
+
+			const invalidPayloads: Array<{ password?: string }> = [
+				'a',
+				'This is an extremely long password that should never ever be accepted.',
+			].map((password) => ({ password }));
+
+			invalidPayloads.push({});
+
+			for (const invalidPayload of invalidPayloads) {
+				await memberAgent.patch('/me/password').send(invalidPayload).expect(400);
+			}
+		});
+
+		test('POST /me/survey should succeed with valid inputs', async () => {
+			const member = await Db.collections.User!.findOneOrFail();
+			const memberAgent = await utils.createAgent(app, member);
+
+			const validPayloads = [
+				{
+					codingSkill: 'a',
+					companyIndustry: 'b',
+					companySize: 'c',
+					otherCompanyIndustry: 'd',
+					otherWorkArea: 'e',
+					workArea: 'f',
+				},
+				{},
+			];
+
+			for (const validPayload of validPayloads) {
+				const response = await memberAgent.post('/me/survey').send(validPayload);
+				expect(response.statusCode).toBe(200);
+				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+			}
+		});
 	});
 });

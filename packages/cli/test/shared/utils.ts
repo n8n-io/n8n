@@ -58,28 +58,16 @@ export const initTestDb = async () => {
 };
 
 /**
- * Create an agent for a shell user holding an `n8n-auth` cookie.
+ * Create an agent for a user holding an `n8n-auth` cookie.
  */
-export async function createShellAgent(app: express.Application) {
-	const shellAgent = request.agent(app);
-	shellAgent.use(restPrefix);
+export async function createAgent(app: express.Application, user: User) {
+	const userAgent = request.agent(app);
+	userAgent.use(restPrefix);
 
-	await shellAgent.get('/login');
+	const { token } = await issueJWT(user);
+	userAgent.jar.setCookie(`n8n-auth=${token}`);
 
-	return shellAgent;
-}
-
-/**
- * Create an agent for an owner user holding an `n8n-auth` cookie.
- */
-export async function createOwnerAgent(app: express.Application, owner: User) {
-	const ownerAgent = request.agent(app);
-	ownerAgent.use(restPrefix);
-
-	const { token } = await issueJWT(owner);
-	ownerAgent.jar.setCookie(`n8n-auth=${token}`);
-
-	return ownerAgent;
+	return userAgent;
 }
 
 /**
