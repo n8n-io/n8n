@@ -39,19 +39,10 @@ export default Vue.extend({
 		redirectLink: {
 			type: String,
 		},
-		pageRedirect: {
-			type: Boolean,
-			default: false,
-		},
 	},
 	methods: {
 		onButtonClick() {
-			if (this.pageRedirect) {
-				window.location.assign(this.redirectLink);
-			}
-			else {
-				this.$router.push(this.redirectLink);
-			}
+			this.$router.push(this.redirectLink);
 		},
 	},
 });
