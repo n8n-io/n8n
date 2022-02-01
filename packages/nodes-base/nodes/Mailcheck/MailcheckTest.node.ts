@@ -510,29 +510,26 @@ export class MailcheckTest implements INodeType {
 						type: 'options',
 						typeOptions: {
 							loadOptions: {
-								displayName: {
-									property: 'key',
-									// TODO: Is confusing that it is called $value. Should it be $value/$name instead? But
-									//       then would also have to change logic in other locations where also $value gets used.
-									value: '={{$value.toUpperCase()}} ({{$parent.value}})',
-								},
-								value: {
-									property: 'value',
-									value: '={{$value}}X',
-								},
-								sort: true,
 								routing: {
 									request: {
 										url: '/webhook/mock-option-parameters',
+										// url: '/webhook/mock-option-parameters-simple',
 										// Data from the current node can be accessed via $parameters (only in "loadOptions")
 										// url: '=/webhook/mock-option-parameters/{{$parameters.email}}',
 										method: 'GET',
 									},
 									output: {
 										postReceive: {
-											type: 'rootProperty',
+											type: 'setKeyValue',
 											properties: {
-												property: 'responseData',
+												rootProperty: 'responseData',
+												sort: {
+													key: 'name',
+												},
+												values: {
+													name: '={{$responseItem.key}} ({{$responseItem.value}})xxx',
+													value: '={{$responseItem.value}}',
+												},
 											},
 										},
 									},

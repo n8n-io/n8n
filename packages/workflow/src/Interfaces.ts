@@ -833,15 +833,6 @@ export interface ILoadOptions {
 		output?: INodeRequestOutput;
 		request?: IHttpRequestOptionsFromParameters;
 	};
-	displayName: {
-		property: string;
-		value?: string;
-	};
-	value: {
-		property: string;
-		value?: string;
-	};
-	sort?: boolean; // If the returned options we be sorted alphabetically, true by default
 }
 
 export interface INodePropertyTypeOptions {
@@ -1028,7 +1019,8 @@ export interface INodeRequestOutput {
 		  ) => Promise<INodeExecutionData[]>)
 		| IPostReceiveBinaryData
 		| IPostReceiveRootProperty
-		| IPostReceiveSet;
+		| IPostReceiveSet
+		| IPostReceiveSetKeyValue;
 }
 
 export interface INodeRequestSend {
@@ -1046,7 +1038,7 @@ export interface INodeRequestSend {
 export interface IPostReceiveBase {
 	type: string;
 	properties: {
-		[key: string]: string | number;
+		[key: string]: string | number | IDataObject;
 	};
 	errorMessage?: string;
 }
@@ -1069,6 +1061,19 @@ export interface IPostReceiveSet extends IPostReceiveBase {
 	type: 'set';
 	properties: {
 		value: string;
+	};
+}
+
+export interface IPostReceiveSetKeyValue extends IPostReceiveBase {
+	type: 'setKeyValue';
+	properties: {
+		rootProperty?: string;
+		sort?: {
+			key: string;
+		};
+		values: {
+			[key: string]: string | number;
+		};
 	};
 }
 
@@ -1095,6 +1100,7 @@ export interface IRequestOptionsFromParameters {
 		| IPostReceiveBinaryData
 		| IPostReceiveRootProperty
 		| IPostReceiveSet
+		| IPostReceiveSetKeyValue
 	>;
 	requestOperations?: IN8nRequestOperations;
 }

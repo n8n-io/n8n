@@ -298,6 +298,64 @@ export class RoutingNode {
 						{ $response: responseData },
 						false,
 					) as INodeParameters;
+				} else if (postReceiveMethod.type === 'setKeyValue') {
+					returnData.length = 0;
+					let rootProperty: string | undefined;
+					let reponseItems = responseData.body;
+					if (postReceiveMethod.properties.rootProperty) {
+						rootProperty = this.getParameterValue(
+							postReceiveMethod.properties.rootProperty,
+							itemIndex,
+							runIndex,
+							{ $response: responseData },
+							false,
+						) as string;
+						reponseItems = get(reponseItems, rootProperty);
+					}
+
+					if (!Array.isArray(reponseItems)) {
+						reponseItems = [reponseItems];
+					}
+
+					// eslint-disable-next-line @typescript-eslint/no-loop-func
+					(reponseItems as IDataObject[]).forEach((item) => {
+						const returnItem: IDataObject = {};
+						for (const key of Object.keys(postReceiveMethod.properties.values)) {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							let propertyValue = (postReceiveMethod.properties.values as Record<string, any>)[key];
+							// If the value is an expression resolve it
+							propertyValue = this.getParameterValue(
+								propertyValue,
+								itemIndex,
+								runIndex,
+								{ $response: responseData, $responseItem: item },
+								true,
+							) as string;
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(returnItem as Record<string, any>)[key] = propertyValue;
+						}
+						returnData.push({ json: returnItem });
+					});
+
+					if (postReceiveMethod.properties.sort) {
+						// Sort the returned options
+						const sortKey = postReceiveMethod.properties.sort.key;
+						returnData.sort((a, b) => {
+							const aSortValue = a.json[sortKey]
+								? (a.json[sortKey]?.toString().toLowerCase() as string)
+								: '';
+							const bSortValue = b.json[sortKey]
+								? (b.json[sortKey]?.toString().toLowerCase() as string)
+								: '';
+							if (aSortValue < bSortValue) {
+								return -1;
+							}
+							if (aSortValue > bSortValue) {
+								return 1;
+							}
+							return 0;
+						});
+					}
 				} else if (postReceiveMethod.type === 'binaryData') {
 					responseData.body = Buffer.from(responseData.body as string);
 					let { destinationProperty } = postReceiveMethod.properties;

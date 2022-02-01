@@ -257,68 +257,6 @@ export class LoadNodeParameterOptions {
 			throw new Error('The returned data is not an array!');
 		}
 
-		const returnData = optionsData.map((optionData) => {
-			// Get value for 'value'
-			let valueProperty = loadOptions.value.property;
-			valueProperty = routingNode.getParameterValue(
-				valueProperty,
-				itemIndex,
-				runIndex,
-				{ $currentNodeParameters: this.currentNodeParameters },
-				true,
-			) as string;
-
-			let valueValue = get(optionData.json, valueProperty);
-			if (loadOptions.value.value) {
-				valueValue = routingNode.getParameterValue(
-					loadOptions.value.value,
-					itemIndex,
-					runIndex,
-					{ $currentNodeParameters: this.currentNodeParameters, $value: valueValue },
-					true,
-				) as string;
-			}
-
-			// Get value for 'name'
-			const nameProperty = routingNode.getParameterValue(
-				loadOptions.displayName.property,
-				itemIndex,
-				runIndex,
-				{},
-				true,
-			) as string;
-
-			let nameValue = get(optionData.json, nameProperty);
-			if (loadOptions.displayName.value) {
-				// Value overwrite is set so resolve
-				nameValue = routingNode.getParameterValue(
-					loadOptions.displayName.value,
-					itemIndex,
-					runIndex,
-					{ $value: nameValue, $parent: { value: valueValue } },
-					true,
-				) as string;
-			}
-
-			return {
-				name: nameValue,
-				value: valueValue,
-			};
-		});
-
-		// Sort the returned options by default
-		if (loadOptions.sort !== false) {
-			returnData.sort((a, b) => {
-				if (a.name < b.name) {
-					return -1;
-				}
-				if (a.name > b.name) {
-					return 1;
-				}
-				return 0;
-			});
-		}
-
-		return returnData;
+		return optionsData.map((item) => item.json) as unknown as INodePropertyOptions[];
 	}
 }
