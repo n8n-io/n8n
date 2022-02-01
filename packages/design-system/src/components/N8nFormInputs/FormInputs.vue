@@ -51,9 +51,6 @@ export default Vue.extend({
 		columnView: {
 			type: Boolean,
 		},
-		showErrorsOnSubmit: {
-			type: Boolean,
-		},
 	},
 	data() {
 		return {
