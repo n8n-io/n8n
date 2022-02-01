@@ -34,6 +34,7 @@ export default {
 	methods: {
 		useRouterLink(props: {to: object | string, newWindow: boolean | undefined}) {
 			if (props.newWindow === true) {
+				// router-link does not support click events and opening in new window
 				return false;
 			}
 			if (typeof props.to === 'string') {

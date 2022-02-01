@@ -1,6 +1,6 @@
 <template functional>
 	<component :is="$options.components.N8nRoute" :to="props.to" :newWindow="props.newWindow"
-		@click="(e) => listeners.click && listeners.click(e)"
+		@click="listeners.click"
 	>
 		<span
 			:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
