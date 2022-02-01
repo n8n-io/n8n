@@ -1,9 +1,10 @@
 <template>
 	<Modal
-		width="50%"
+		width="540px"
 		:title="$locale.baseText('about.aboutN8n')"
 		:eventBus="modalBus"
 		:name="modalName"
+		:center="true"
 	>
 		<template slot="content">
 			<div :class="$style.container">

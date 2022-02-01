@@ -28,9 +28,6 @@ export default mixins(
 		};
 	},
 	mounted() {
-		if (this.isSmtpSetup) {
-			return;
-		}
 		this.alert = this.$showAlert({
 			message: this.message,
 			type: 'warning',
@@ -45,9 +42,6 @@ export default mixins(
 		if (this.alert) {
 			this.alert.close();
 		}
-	},
-	computed: {
-		...mapGetters('settings', ['isSmtpSetup']),
 	},
 });
 </script>

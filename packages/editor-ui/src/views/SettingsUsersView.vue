@@ -23,6 +23,7 @@
 			</div>
 			<div :class="$style.usersContainer" v-else>
 				<PageAlert
+					v-if="isSmtpSetup"
 					:message="$locale.baseText('SMTP_TO_ADD_USERS_WARNING')"
 					:popupClass="$style.alert"
 				/>
