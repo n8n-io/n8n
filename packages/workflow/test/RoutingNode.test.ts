@@ -524,11 +524,58 @@ describe('RoutingNode', () => {
 					},
 					preSend: [preSendFunction1, preSendFunction1],
 					postReceive: [
-						postReceiveFunction1,
 						{
-							type: 'rootProperty',
-							properties: {
-								property: 'data',
+							action: postReceiveFunction1,
+							data: {
+								parameterValue: {
+									value1: 'v1',
+									value2: 'v2',
+									value3: 'v3',
+									value4: 4,
+									lowerLevel: {
+										lowLevelValue1: 1,
+										lowLevelValue2: 'llv2',
+									},
+									customPropertiesSingle1: {
+										property: {
+											name: 'cSName1',
+											value: 'cSValue1',
+										},
+									},
+									customPropertiesMulti: {
+										property0: [
+											{
+												name: 'cM0Name1',
+												value: 'cM0Value1',
+											},
+											{
+												name: 'cM0Name2',
+												value: 'cM0Value2',
+											},
+										],
+										property1: [
+											{
+												name: 'cM1Name2',
+												value: 'cM1Value2',
+											},
+											{
+												name: 'cM1Name2',
+												value: 'cM1Value2',
+											},
+										],
+									},
+								},
+							},
+						},
+						{
+							action: {
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							data: {
+								parameterValue: 'llv2',
 							},
 						},
 					],

@@ -24,6 +24,7 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
+	IPostReceiveSetKeyValue,
 	IRequestOptionsFromParameters,
 	IRunExecutionData,
 	ITaskDataConnections,
@@ -41,6 +42,7 @@ import {
 	IN8nRequestOperations,
 	INodeProperties,
 	INodePropertyCollection,
+	IPostReceiveRootProperty,
 } from './Interfaces';
 
 export class RoutingNode {
@@ -257,13 +259,13 @@ export class RoutingNode {
 		if (requestData.postReceive.length) {
 			// If postReceive functionality got defined execute all of them
 			for (const postReceiveMethod of requestData.postReceive) {
-				if (typeof postReceiveMethod === 'function') {
-					returnData = await postReceiveMethod.call(
+				if (typeof postReceiveMethod.action === 'function') {
+					returnData = await postReceiveMethod.action.call(
 						executeSingleFunctions,
 						returnData,
 						responseData,
 					);
-				} else if (postReceiveMethod.type === 'rootProperty') {
+				} else if (postReceiveMethod.action.type === 'rootProperty') {
 					if (responseData.body) {
 						let responseBody: IDataObject[];
 						if (!Array.isArray(responseData.body)) {
@@ -274,40 +276,42 @@ export class RoutingNode {
 
 						try {
 							returnData = responseBody.flatMap((item) => {
-								return (item[postReceiveMethod.properties.property] as IDataObject[]).map(
-									(json) => {
-										return {
-											json,
-										};
-									},
-								);
+								return (
+									item[
+										(postReceiveMethod.action as IPostReceiveRootProperty).properties.property
+									] as IDataObject[]
+								).map((json) => {
+									return {
+										json,
+									};
+								});
 							});
 						} catch (e) {
 							throw new Error(
-								`The rootProperty "${postReceiveMethod.properties.property}" could not be found on item or is not an Array.`,
+								`The rootProperty "${postReceiveMethod.action.properties.property}" could not be found on item or is not an Array.`,
 							);
 						}
 					}
-				} else if (postReceiveMethod.type === 'set') {
-					const { value } = postReceiveMethod.properties;
+				} else if (postReceiveMethod.action.type === 'set') {
+					const { value } = postReceiveMethod.action.properties;
 					// If the value is an expression resolve it
 					returnData[0].json = this.getParameterValue(
 						value,
 						itemIndex,
 						runIndex,
-						{ $response: responseData },
+						{ $response: responseData, $value: postReceiveMethod.data.parameterValue },
 						false,
 					) as INodeParameters;
-				} else if (postReceiveMethod.type === 'setKeyValue') {
+				} else if (postReceiveMethod.action.type === 'setKeyValue') {
 					returnData.length = 0;
 					let rootProperty: string | undefined;
 					let reponseItems = responseData.body;
-					if (postReceiveMethod.properties.rootProperty) {
+					if (postReceiveMethod.action.properties.rootProperty) {
 						rootProperty = this.getParameterValue(
-							postReceiveMethod.properties.rootProperty,
+							postReceiveMethod.action.properties.rootProperty,
 							itemIndex,
 							runIndex,
-							{ $response: responseData },
+							{ $response: responseData, $value: postReceiveMethod.data.parameterValue },
 							false,
 						) as string;
 						reponseItems = get(reponseItems, rootProperty);
@@ -320,15 +324,26 @@ export class RoutingNode {
 					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					(reponseItems as IDataObject[]).forEach((item) => {
 						const returnItem: IDataObject = {};
-						for (const key of Object.keys(postReceiveMethod.properties.values)) {
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							let propertyValue = (postReceiveMethod.properties.values as Record<string, any>)[key];
+						for (const key of Object.keys(
+							(postReceiveMethod.action as IPostReceiveSetKeyValue).properties.values,
+						)) {
+							let propertyValue = (
+								(postReceiveMethod.action as IPostReceiveSetKeyValue).properties.values as Record<
+									string,
+									// eslint-disable-next-line @typescript-eslint/no-explicit-any
+									any
+								>
+							)[key];
 							// If the value is an expression resolve it
 							propertyValue = this.getParameterValue(
 								propertyValue,
 								itemIndex,
 								runIndex,
-								{ $response: responseData, $responseItem: item },
+								{
+									$response: responseData,
+									$responseItem: item,
+									$value: postReceiveMethod.data.parameterValue,
+								},
 								true,
 							) as string;
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -337,9 +352,9 @@ export class RoutingNode {
 						returnData.push({ json: returnItem });
 					});
 
-					if (postReceiveMethod.properties.sort) {
+					if (postReceiveMethod.action.properties.sort) {
 						// Sort the returned options
-						const sortKey = postReceiveMethod.properties.sort.key;
+						const sortKey = postReceiveMethod.action.properties.sort.key;
 						returnData.sort((a, b) => {
 							const aSortValue = a.json[sortKey]
 								? (a.json[sortKey]?.toString().toLowerCase() as string)
@@ -356,16 +371,16 @@ export class RoutingNode {
 							return 0;
 						});
 					}
-				} else if (postReceiveMethod.type === 'binaryData') {
+				} else if (postReceiveMethod.action.type === 'binaryData') {
 					responseData.body = Buffer.from(responseData.body as string);
-					let { destinationProperty } = postReceiveMethod.properties;
+					let { destinationProperty } = postReceiveMethod.action.properties;
 
 					// TODO: Have to make $value accessible, but at that level it does not have that reference anymore
 					destinationProperty = this.getParameterValue(
 						destinationProperty,
 						itemIndex,
 						runIndex,
-						{ $response: responseData },
+						{ $response: responseData, $value: postReceiveMethod.data.parameterValue },
 						false,
 					) as string;
 
@@ -553,7 +568,7 @@ export class RoutingNode {
 		}
 		if (nodeProperties.routing) {
 			let parameterValue: string | undefined;
-			if (basePath + nodeProperties.name) {
+			if (basePath + nodeProperties.name && 'type' in nodeProperties) {
 				parameterValue = executeSingleFunctions.getNodeParameter(
 					basePath + nodeProperties.name,
 				) as string;
@@ -666,7 +681,13 @@ export class RoutingNode {
 				}
 
 				if (nodeProperties.routing.output.postReceive) {
-					returnData.postReceive.push(nodeProperties.routing.output.postReceive);
+					returnData.postReceive.push({
+						data: {
+							// TODO: Still missing
+							parameterValue,
+						},
+						action: nodeProperties.routing.output.postReceive,
+					});
 				}
 			}
 		}

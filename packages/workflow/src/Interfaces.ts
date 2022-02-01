@@ -1091,17 +1091,21 @@ export interface IRequestOptionsFromParameters {
 			requestOptions: IHttpRequestOptions,
 		) => Promise<IHttpRequestOptions>
 	>;
-	postReceive: Array<
-		| ((
-				this: IExecuteSingleFunctions,
-				items: INodeExecutionData[],
-				response: IN8nHttpFullResponse,
-		  ) => Promise<INodeExecutionData[]>)
-		| IPostReceiveBinaryData
-		| IPostReceiveRootProperty
-		| IPostReceiveSet
-		| IPostReceiveSetKeyValue
-	>;
+	postReceive: Array<{
+		data: {
+			parameterValue: string | IDataObject | undefined;
+		};
+		action:
+			| ((
+					this: IExecuteSingleFunctions,
+					items: INodeExecutionData[],
+					response: IN8nHttpFullResponse,
+			  ) => Promise<INodeExecutionData[]>)
+			| IPostReceiveBinaryData
+			| IPostReceiveRootProperty
+			| IPostReceiveSet
+			| IPostReceiveSetKeyValue;
+	}>;
 	requestOperations?: IN8nRequestOperations;
 }
 

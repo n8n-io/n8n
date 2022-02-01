@@ -217,9 +217,7 @@ export class MailcheckTest implements INodeType {
 						postReceive: {
 							type: 'binaryData',
 							properties: {
-								destinationProperty: 'data',
-								// TODO: $value is currently not supported, add!
-								// destinationProperty: '={{$value}}',
+								destinationProperty: '={{$value}}',
 							},
 						},
 					},
