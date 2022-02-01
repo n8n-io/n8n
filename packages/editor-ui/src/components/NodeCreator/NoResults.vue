@@ -21,7 +21,6 @@
 			<div>
 				<n8n-link
 					:to="REQUEST_NODE_FORM_URL"
-					:newWindow="true"
 				>
 					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span>&nbsp;
 					<span>

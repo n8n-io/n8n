@@ -4,7 +4,7 @@
 			<span v-if="node">
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
 				<span class="node-info">
-					<n8n-link v-if="nodeType" :to="'http://n8n.io/nodes/' + nodeType.name" :newWindow="true">
+					<n8n-link v-if="nodeType" :to="'http://n8n.io/nodes/' + nodeType.name">
 						<n8n-tooltip class="clickable" placement="top" >
 							<div slot="content" v-html="`<strong>${$locale.baseText('nodeSettings.nodeDescription')}:</strong><br />` + nodeTypeDescription + `<br /><br /><strong>${$locale.baseText('nodeSettings.clickOnTheQuestionMarkIcon')}</strong>`"></div>
 							<font-awesome-icon icon="question-circle" />

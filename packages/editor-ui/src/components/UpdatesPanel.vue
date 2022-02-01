@@ -30,7 +30,6 @@
 				<n8n-link
 					v-if="infoUrl"
 					:to="infoUrl"
-					:newWindow="true"
 					:bold="true"
 				>
 					<font-awesome-icon icon="info-circle"></font-awesome-icon>

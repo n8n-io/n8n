@@ -40,7 +40,7 @@
 
 		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
 			{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-			<n8n-link :to="documentationUrl" :newWindow="true" size="small" :bold="true" @click="onDocumentationUrlClick">
+			<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
 				{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
 			</n8n-link>
 		</n8n-info-tip>
