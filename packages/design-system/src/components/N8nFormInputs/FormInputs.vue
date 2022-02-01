@@ -1,6 +1,6 @@
 <template>
 	<ResizeObserver
-		:breakpoints="[{bp: 'md', width: 565}]"
+		:breakpoints="[{bp: 'md', width: 500}]"
 	>
 		<template v-slot="{ bp }">
 			<div :class="bp === 'md' || columnView? $style.grid : $style.gridMulti">
