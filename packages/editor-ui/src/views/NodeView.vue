@@ -1979,9 +1979,9 @@ export default mixins(
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
 				this.deselectAllNodes();
-				setTimeout(() => {
-					this.nodeSelectedByName(newNodeData.name, true);
-				});
+				// setTimeout(() => {
+				// 	this.nodeSelectedByName(newNodeData.name, true);
+				// });
 
 				this.$telemetry.track('User duplicated node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
 			},
