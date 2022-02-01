@@ -1,21 +1,10 @@
 
-type Rule = { name: string; config?: any;};
-
-type RuleSet = (Rule | RuleGroup)[];
-
-type RuleGroup = {
-	rules: RuleSet;
-	defaultError?: string;
-};
-
-type Validator = {
-	validate: (value: string, config?: any) => void;
-};
+import { IValidator, RuleGroup } from "../../../../editor-ui/src/Interface";
 
 export const emailRegex =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
-export const VALIDATORS: { [key: string]: Validator | RuleGroup } = {
+export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 	REQUIRED: {
 		validate: (value: string | number | boolean | null | undefined) => {
 			if (typeof value === 'string' && !!value.trim()) {

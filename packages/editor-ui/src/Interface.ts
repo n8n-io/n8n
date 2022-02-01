@@ -799,9 +799,15 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 }
 
-type IValidationRule = {
-	name: string;
-	config?: any; // tslint:disable-line:no-any
+export type Rule = { name: string; config?: any}; // tslint:disable-line:no-any
+
+export type RuleGroup = {
+	rules: Array<Rule | RuleGroup>;
+	defaultError?: string;
+};
+
+export type IValidator = {
+	validate: Function;
 };
 
 export type IFormInput = {
@@ -816,17 +822,13 @@ export type IFormInput = {
 		validators?: {
 			[name: string]: IValidator;
 		};
-		validationRules?: IValidationRule[];
+		validationRules?: Array<Rule | RuleGroup>;
 		validateOnBlur?: boolean;
 		infoText?: string;
 		placeholder?: string;
 		options?: Array<{label: string; value: string}>;
 		autocomplete?: 'off' | 'new-password' | 'current-password' | 'given-name' | 'family-name' | 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
 	}
-};
-
-type IValidator = {
-	validate: Function;
 };
 
 export type IFormInputs = IFormInput[];

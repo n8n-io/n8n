@@ -54,6 +54,7 @@ import N8nOption from '../N8nOption';
 import N8nInputLabel from '../N8nInputLabel';
 
 import { getValidationError, VALIDATORS } from './validators';
+import { Rule, RuleGroup, IValidator } from "../../../../editor-ui/src/Interface";
 
 export default Vue.extend({
 	name: 'n8n-form-input',
@@ -145,11 +146,11 @@ export default Vue.extend({
 	},
 	methods: {
 		getValidationError(): string | null {
-			const rules = (this.validationRules || []) as RuleSet;
+			const rules = (this.validationRules || []) as (Rule | RuleGroup)[];
 			const validators = {
 				...VALIDATORS,
 				...(this.validators || {}),
-			} as { [key: string]: Validator | RuleGroup };
+			} as { [key: string]: IValidator | RuleGroup };
 
 			if (this.required) {
 				const error = getValidationError(this.value, validators, validators.REQUIRED as Validator);
