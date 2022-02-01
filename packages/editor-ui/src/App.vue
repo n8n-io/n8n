@@ -149,7 +149,7 @@ export default mixins(
 .header {
 	z-index: 10;
 	position: fixed;
-	width: 100;
+	width: 100%;
 }
 
 .sidebar {
