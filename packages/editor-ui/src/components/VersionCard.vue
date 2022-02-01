@@ -1,46 +1,44 @@
-<template functional>
-	<n8n-link v-if="props.version" :to="props.version.documentationUrl" :newWindow="true">
-		<!-- eslint-disable-next-line vue/no-mutating-props -->
-		<div :set="version = props.version" :class="$style.card">
-			<div :class="$style.header">
-				<div>
-					<div :class="$style.name">
-						{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
-					</div>
-					<WarningTooltip v-if="version.hasSecurityIssue">
-						<template>
-							{{ $locale.baseText('versionCard.thisVersionHasASecurityIssue') }}
-						</template>
-					</WarningTooltip>
-					<Badge
-						v-if="version.hasSecurityFix"
-						:text="$locale.baseText('versionCard.securityUpdate')"
-						type="danger"
-					/>
-					<Badge
-						v-if="version.hasBreakingChange"
-						:text="$locale.baseText('versionCard.breakingChanges')"
-						type="warning"
-					/>
-				</div>
-				<div :class="$style['release-date']">
-					{{ $locale.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
-				</div>
-			</div>
-			<div :class="$style.divider" v-if="version.description || (version.nodes && version.nodes.length)"></div>
+<template>
+	<!-- eslint-disable-next-line vue/no-mutating-props -->
+	<a v-if="version" :set="version = version" :href="version.documentationUrl" target="_blank" :class="$style.card">
+		<div :class="$style.header">
 			<div>
-				<div v-if="version.description" v-html="version.description" :class="$style.description"></div>
-				<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
-					<NodeIcon
-						v-for="node in version.nodes"
-						:key="node.name"
-						:nodeType="node"
-						:title="$options.nodeName(node)"
-					/>
+				<div :class="$style.name">
+					{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
 				</div>
+				<WarningTooltip v-if="version.hasSecurityIssue">
+					<template>
+						{{ $locale.baseText('versionCard.thisVersionHasASecurityIssue') }}
+					</template>
+				</WarningTooltip>
+				<Badge
+					v-if="version.hasSecurityFix"
+					:text="$locale.baseText('versionCard.securityUpdate')"
+					type="danger"
+				/>
+				<Badge
+					v-if="version.hasBreakingChange"
+					:text="$locale.baseText('versionCard.breakingChanges')"
+					type="warning"
+				/>
+			</div>
+			<div :class="$style['release-date']">
+				{{ $locale.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
 			</div>
 		</div>
-	</n8n-link>
+		<div :class="$style.divider" v-if="version.description || (version.nodes && version.nodes.length)"></div>
+		<div>
+			<div v-if="version.description" v-html="version.description" :class="$style.description"></div>
+			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
+				<NodeIcon
+					v-for="node in version.nodes"
+					:key="node.name"
+					:nodeType="node"
+					:title="$options.nodeName(node)"
+				/>
+			</div>
+		</div>
+	</a>
 </template>
 
 <script lang="ts">
@@ -74,6 +72,7 @@ export default Vue.extend({
 		border-radius: 8px;
 		display: block;
 		padding: 16px;
+		text-decoration: none;
 
 		&:hover {
 			box-shadow: 0px 2px 10px $--version-card-box-shadow-color;
