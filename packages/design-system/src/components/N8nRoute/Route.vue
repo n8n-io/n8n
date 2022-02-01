@@ -28,7 +28,8 @@ export default {
 			type: String || Object,
 		},
 		newWindow: {
-			type: Boolean,
+			type: Boolean || undefined,
+			default: undefined,
 		},
 	},
 	methods: {
