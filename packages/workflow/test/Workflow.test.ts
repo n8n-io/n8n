@@ -99,6 +99,21 @@ describe('Workflow', () => {
 				},
 			},
 			{
+				description: 'should work with dot notation without trailing dot',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: "={{$node.Node1 + 'Node1'}}",
+						value2: "={{$node.Node1 + ' - ' + $node.Node1}}",
+					},
+				},
+				output: {
+					value1: "={{$node.NewName + 'Node1'}}",
+					value2: "={{$node.NewName + ' - ' + $node.NewName}}",
+				},
+			},
+			{
 				description: "should work with ['nodeName']",
 				input: {
 					currentName: 'Node1',
@@ -561,8 +576,8 @@ describe('Workflow', () => {
 						{
 							name: 'Node2',
 							parameters: {
-								value1: "={{$node[\"Node1New\"].data.value1 + 'Node1'}}",
-								value2: "={{$node[\"Node1New\"].data.value2 + ' - ' + $node[\"Node1New\"].data.value2}}",
+								value1: "={{$node.Node1New.data.value1 + 'Node1'}}",
+								value2: "={{$node.Node1New.data.value2 + ' - ' + $node.Node1New.data.value2}}",
 							},
 						},
 					],

@@ -418,7 +418,7 @@ export class Workflow {
 
 					if (parameterValue.includes('$node')) {
 						parameterValue = parameterValue.replace(
-							new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.|"\\]|'\\]))`, 'g'),
+							new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.?|"\\]?|'\\]?))`, 'g'),
 							`$1${newName}$3`,
 						);
 					}
@@ -429,8 +429,7 @@ export class Workflow {
 						);
 					}
 
-					// eslint-disable-next-line no-useless-escape
-					const specialCharacters = /[(^\d) `!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~]/g;
+					const specialCharacters = /^(\d)|[ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
 					if (specialCharacters.test(newName) && parameterValue.includes(`.${newName}`)) {
 						const newNameEscaped = newName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 						parameterValue = parameterValue.replace(
