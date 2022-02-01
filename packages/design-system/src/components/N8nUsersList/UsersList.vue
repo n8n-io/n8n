@@ -7,9 +7,9 @@
 		>
 			<n8n-user-info v-bind="user" />
 			<div :class="$style.badgeContainer">
-				<n8n-badge v-if="user.globalRole.name === 'owner'" theme="secondary">Owner</n8n-badge>
+				<n8n-badge v-if="user.isOwner" theme="secondary">Owner</n8n-badge>
 				<n8n-action-toggle
-					v-if="user.globalRole.name !== 'owner'"
+					v-if="!user.isOwner"
 					placement="bottom"
 					:actions="getActions(user)"
 					@action="(action) => onUserAction(user, action)"
@@ -34,9 +34,6 @@ export default Vue.extend({
 	components: {
 		N8nActionToggle,
 		N8nBadge,
-		N8nIcon,
-		N8nText,
-		N8nLink,
 		N8nUserInfo,
 	},
 	props: {
@@ -95,7 +92,7 @@ export default Vue.extend({
 				value: 'reinvite',
 			};
 
-			if (user.globalRole.name === 'owner')	{
+			if (user.isOwner)	{
 				return [];
 			}
 
