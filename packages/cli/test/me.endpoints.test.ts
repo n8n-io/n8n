@@ -1,3 +1,12 @@
+// 1. use SQL **instead** of exercising the routes
+// helper to insert random 'member' user
+
+// 2. move user creation to test
+
+// 3. TRUNCATE user tables on afterEach (clean DB)
+
+// 4. Figure out connection error: ConnectionIsNotSetError: Connection with sqlite database is not established. Check connection configuration.
+
 import express = require('express');
 import * as request from 'supertest';
 import { getConnection } from 'typeorm';
@@ -6,9 +15,10 @@ import validator from 'validator';
 import config = require('../config');
 import { Db } from '../src';
 import * as utils from './shared/utils';
-import { meNamespace } from '../src/UserManagement/routes/me';
+import { meNamespace as meEndpoints } from '../src/UserManagement/routes/me';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { usersNamespace } from '../src/UserManagement/routes/users';
+import { issueJWT } from '../src/UserManagement/auth/jwt';
 
 describe('/me endpoints', () => {
 	describe('Shell requests', () => {
@@ -16,11 +26,8 @@ describe('/me endpoints', () => {
 		let shell: request.SuperAgentTest;
 
 		beforeAll(async () => {
-			testServer = utils.initTestServer();
-			meNamespace.apply(testServer);
-
-			await Db.init();
-			await getConnection().runMigrations({ transaction: 'none' });
+			testServer = utils.initTestServer({ meEndpoints: true });
+			await utils.initTestDb();
 
 			shell = request.agent(testServer.app);
 			shell.use(utils.restPrefix);
@@ -72,26 +79,22 @@ describe('/me endpoints', () => {
 
 	describe('Owner requests', () => {
 		let testServer: { app: express.Application; restEndpoint: string };
-		let owner: request.SuperAgentTest;
+		let ownerAgent: request.SuperAgentTest;
 
 		beforeAll(async () => {
-			testServer = utils.initTestServer();
-			meNamespace.apply(testServer);
+			testServer = utils.initTestServer({ meEndpoints: true });
+			await utils.initTestDb();
 
-			await Db.init();
-			await getConnection().runMigrations({ transaction: 'none' });
+			ownerAgent = request.agent(testServer.app);
+			ownerAgent.use(utils.restPrefix);
 
-			owner = request.agent(testServer.app);
-			owner.use(utils.restPrefix);
+			const response = await ownerAgent.get('/login');
 
-			await owner.get('/login');
+			const owner = await utils.createOwner(response.body.data.id);
+			await utils.initOwnerConfig();
 
-			await owner.post('/owner-setup').send({
-				email: 'owner@n8n.io',
-				firstName: 'John',
-				lastName: 'Smith',
-				password: 'abcd1234',
-			});
+			const userData = await issueJWT(owner);
+			ownerAgent.jar.setCookie(`n8n-auth=${userData.token}`);
 		});
 
 		afterAll(() => {
@@ -99,7 +102,7 @@ describe('/me endpoints', () => {
 		});
 
 		test('GET /me should return sanitized owner', async () => {
-			const response = await owner.get('/me');
+			const response = await ownerAgent.get('/me');
 
 			expect(response.statusCode).toBe(200);
 
@@ -116,23 +119,23 @@ describe('/me endpoints', () => {
 		});
 
 		test('PATCH /me should succeed with valid inputs', () => {
-			return validRequests.patchMe(owner, 'owner');
+			return validRequests.patchMe(ownerAgent, 'owner');
 		});
 
 		test('PATCH /me should fail with invalid inputs', () => {
-			return invalidRequests.patchMe(owner);
+			return invalidRequests.patchMe(ownerAgent);
 		});
 
 		test('PATCH /me/password should succeed with valid inputs', () => {
-			return validRequests.patchPassword(owner);
+			return validRequests.patchPassword(ownerAgent);
 		});
 
 		test('PATCH /me/password should fail with invalid inputs', () => {
-			return invalidRequests.patchPassword(owner);
+			return invalidRequests.patchPassword(ownerAgent);
 		});
 
 		test('POST /me/survey should succeed with valid inputs', () => {
-			return validRequests.postSurvey(owner);
+			return validRequests.postSurvey(ownerAgent);
 		});
 	});
 
@@ -142,25 +145,13 @@ describe('/me endpoints', () => {
 		let member: request.SuperAgentTest;
 
 		beforeAll(async () => {
-			testServer = utils.initTestServer();
-			meNamespace.apply(testServer);
-			usersNamespace.apply(testServer);
-			config.set('userManagement.emails.mode', 'smtp'); // needed for POST /users
+			testServer = utils.initTestServer({ meEndpoints: true, usersEndpoints: true });
+			await utils.initTestDb();
 
-			await Db.init();
-			await getConnection().runMigrations({ transaction: 'none' });
+			config.set('userManagement.emails.mode', 'smtp'); // needed for POST /users
 
 			owner = request.agent(testServer.app);
 			owner.use(utils.restPrefix);
-
-			// 1. use SQL **instead** of exercising the routes
-			// helper to insert random 'member' user
-
-			// 2. move user creation to test
-
-			// 3. TRUNCATE user tables on afterEach (clean DB)
-
-			// 4. Figure out connection error: ConnectionIsNotSetError: Connection with sqlite database is not established. Check connection configuration.
 
 			await owner.get('/login');
 
