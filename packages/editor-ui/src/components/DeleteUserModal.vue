@@ -29,7 +29,7 @@
 						</n8n-input-label>
 					</div>
 					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
-						<n8n-text color="text-dark">Delete their workflows and credentials</n8n-text>
+						<n8n-text color="text-dark">Delete their workflows, executions and credentials</n8n-text>
 					</el-radio>
 					<div :class="$style.optionInput" v-if="operation === 'delete'">
 						<n8n-input-label label="Type “delete all data” to confirm">
