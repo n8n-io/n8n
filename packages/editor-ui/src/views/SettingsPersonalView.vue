@@ -162,6 +162,12 @@ export default mixins(
 	align-items: center;
 }
 
+@media (max-width: $--breakpoint-2xs) {
+	.user {
+		display: none;
+	}
+}
+
 .username {
 	margin-right: var(--spacing-s);
 	text-align: right;
