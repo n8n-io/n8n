@@ -2182,6 +2182,9 @@ export class Github implements INodeType {
 					const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i);
 
 					if (asBinaryProperty === true) {
+						if (Array.isArray(responseData)) {
+							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.');
+						}
 						// Add the returned data to the item as binary property
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
