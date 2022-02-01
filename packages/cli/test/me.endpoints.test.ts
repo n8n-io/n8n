@@ -215,15 +215,15 @@ describe('/me endpoints', () => {
 		// });
 
 		// test('PATCH /me/password should succeed with valid inputs', () => {
-		// 	return validRequests.patchPassword(owner);
+		// 	return validRequests.patchPassword(member);
 		// });
 
 		// test('PATCH /me/password should fail with invalid inputs', () => {
-		// 	return invalidRequests.patchPassword(owner);
+		// 	return invalidRequests.patchPassword(member);
 		// });
 
 		// test('POST /me/survey should succeed with valid inputs', () => {
-		// 	return validRequests.postSurvey(owner);
+		// 	return validRequests.postSurvey(member);
 		// });
 	});
 });
