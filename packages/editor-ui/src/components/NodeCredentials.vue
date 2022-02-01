@@ -20,7 +20,14 @@
 				</div>
 
 				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
-					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$locale.baseText('nodeCredentials.selectCredential')" size="small">
+					<n8n-select
+						:value="!getSelectedId(credentialTypeDescription.name) && credentialOptions[credentialTypeDescription.name].length === 1
+							? onCredentialSelected(credentialTypeDescription.name, credentialOptions[credentialTypeDescription.name][0].id)
+							: getSelectedId(credentialTypeDescription.name)"
+						@change="(value) => onCredentialSelected(credentialTypeDescription.name, value)"
+						:placeholder="$locale.baseText('nodeCredentials.selectCredential')"
+						size="small"
+					>
 						<n8n-option
 							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
 							:key="item.id"
