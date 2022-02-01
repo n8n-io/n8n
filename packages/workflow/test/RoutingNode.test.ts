@@ -935,7 +935,6 @@ describe('RoutingNode', () => {
 								headers: {},
 								statusCode: 200,
 								requestOptions: {
-									url: '',
 									qs: {},
 									body: {
 										toEmail: 'fixedValue',

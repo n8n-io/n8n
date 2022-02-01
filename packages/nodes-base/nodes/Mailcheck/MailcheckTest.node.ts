@@ -53,7 +53,6 @@ export class MailcheckTest implements INodeType {
 			baseURL: 'http://localhost:5678',
 			// Possible to use expressions and reference data from credentials
 			// baseURL: '={{$credentials.host}}',
-			url: '',
 		},
 		// TODO: Think about proper name
 		requestOperations: {

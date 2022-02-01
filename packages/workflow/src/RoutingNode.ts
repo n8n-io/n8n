@@ -122,7 +122,6 @@ export class RoutingNode {
 
 				const requestData: IRequestOptionsFromParameters = {
 					options: {
-						url: '', // TODO: Replace with own type where url is not required
 						qs: {},
 						body: {},
 					},
@@ -663,7 +662,6 @@ export class RoutingNode {
 						) as string;
 					}
 
-					// TODO: Should also be renamed
 					returnData.paginate = !!paginateValue;
 				}
 
