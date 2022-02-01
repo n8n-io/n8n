@@ -13,11 +13,11 @@ export const ticketOperations: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a ticket',
-			},
+			// {
+			// 	name: 'Create',
+			// 	value: 'create',
+			// 	description: 'Create a ticket',
+			// },
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -33,13 +33,13 @@ export const ticketOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Get all tickets',
 			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a ticket',
-			},
+			// {
+			// 	name: 'Update',
+			// 	value: 'update',
+			// 	description: 'Update a ticket',
+			// },
 		],
-		default: 'create',
+		default: 'delete',
 	},
 ];
 
@@ -209,7 +209,7 @@ export const ticketFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Include Active',
-				name: 'includeActive',
+				name: 'includeactive',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to include active customers in the response',

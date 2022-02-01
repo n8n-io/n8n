@@ -26,7 +26,7 @@ export const siteOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a client',
+				description: 'Get a site',
 			},
 			{
 				name: 'Get All',
@@ -206,17 +206,17 @@ export const siteFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Include Active',
-				name: 'includeActive',
+				name: 'includeactive',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to include active customers in the response',
+				description: 'Whether to include active sites in the response',
 			},
 			{
 				displayName: 'Include Inactive',
 				name: 'includeinactive',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include inactive Customers in the response',
+				description: 'Whether to include inactive sites in the response',
 			},
 			{
 				displayName: 'Text Search',
@@ -264,9 +264,9 @@ export const siteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client ID',
 				name: 'client_id',
-				type: 'options',
+				type: 'string',
 				default: '',
 			},
 			{

@@ -250,7 +250,7 @@ export class HaloPSA implements INodeType {
 						const clientId = this.getNodeParameter('clientId', i) as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: IDataObject = {
-							client_id: clientId,
+							id: clientId,
 							...updateFields,
 						};
 
@@ -338,7 +338,7 @@ export class HaloPSA implements INodeType {
 						const siteId = this.getNodeParameter('siteId', i) as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: IDataObject = {
-							site_id: siteId,
+							id: siteId,
 							...updateFields,
 						};
 
@@ -426,7 +426,7 @@ export class HaloPSA implements INodeType {
 						const ticketId = this.getNodeParameter('ticketId', i) as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: IDataObject = {
-							ticket_id: ticketId,
+							id: ticketId,
 							...updateFields,
 						};
 
@@ -514,7 +514,7 @@ export class HaloPSA implements INodeType {
 						const userId = this.getNodeParameter('userId', i) as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: IDataObject = {
-							user_id: userId,
+							id: userId,
 							...updateFields,
 						};
 

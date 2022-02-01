@@ -206,7 +206,7 @@ export const clientFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Include Active',
-				name: 'includeActive',
+				name: 'includeactive',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to include active customers in the response',
@@ -223,7 +223,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Filter by Customers like your search string',
+				description: 'Filter clients using search string',
 			},
 		],
 	},
@@ -234,6 +234,7 @@ export const clientFields: INodeProperties[] = [
 		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
+		required: true,
 		default: '',
 		displayOptions: {
 			show: {

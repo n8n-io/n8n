@@ -125,19 +125,13 @@ export const userFields: INodeProperties[] = [
 				description: 'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
 			},
 			{
-				displayName: 'Site Telephone Number',
-				name: 'sitephonenumber',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Surname',
 				name: 'surname',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'User Is Active',
+				displayName: 'User is Inactive',
 				name: 'inactive',
 				type: 'boolean',
 				default: true,
@@ -228,7 +222,7 @@ export const userFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Include Active',
-				name: 'includeActive',
+				name: 'includeactive',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to include active customers in the response',
@@ -245,7 +239,7 @@ export const userFields: INodeProperties[] = [
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Filter by Customers like your search string',
+				description: 'Search sites by text',
 			},
 		],
 	},
@@ -311,26 +305,11 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: {
+					password: true,
+				},
 				default: '',
 				description: 'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
-			},
-			{
-				displayName: 'Site Telephone Number',
-				name: 'sitephonenumber',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Surname',
-				name: 'surname',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'User Is Active',
-				name: 'inactive',
-				type: 'boolean',
-				default: true,
 			},
 			{
 				displayName: 'Site ID',
@@ -340,6 +319,18 @@ export const userFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getHaloPSASites',
 				},
+			},
+			{
+				displayName: 'Surname',
+				name: 'surname',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'User is Inactive',
+				name: 'inactive',
+				type: 'boolean',
+				default: true,
 			},
 		],
 	},
