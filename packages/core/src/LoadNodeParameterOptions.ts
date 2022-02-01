@@ -170,7 +170,7 @@ export class LoadNodeParameterOptions {
 		}
 
 		const options = nodeType.description.requestDefaults;
-		Object.assign(options, loadOptions.request);
+		Object.assign(options, loadOptions.routing?.request);
 
 		const mode = 'internal';
 		const runIndex = 0;
@@ -227,22 +227,19 @@ export class LoadNodeParameterOptions {
 
 		let requestOperations = nodeType.description.requestOperations ?? {};
 
-		if (loadOptions.requestOperations) {
+		if (loadOptions.routing?.operations) {
 			// If overwrites exist on loadOptions apply them
-			requestOperations = Object.assign(requestOperations, loadOptions.requestOperations);
+			requestOperations = Object.assign(requestOperations, loadOptions.routing?.operations);
 		}
 
-		if (loadOptions.rootProperty) {
-			requestData.postReceive = [
-				{
-					type: 'rootProperty',
-					properties: {
-						property: loadOptions.rootProperty,
-					},
-				},
-			];
+		if (loadOptions.routing?.output?.postReceive) {
+			requestData.postReceive = [loadOptions.routing.output.postReceive];
 		}
 
+		if (loadOptions.routing?.output?.maxResults) {
+			// INFO: Currently expressions are not supported here but should not be needed for loadOptions anyway
+			requestData.maxResults = loadOptions.routing.output.maxResults;
+		}
 		const optionsData = await routingNode.makeRoutingRequest(
 			requestData,
 			executeSingleFunctions,

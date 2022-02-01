@@ -828,9 +828,11 @@ export type CodeAutocompleteTypes = 'function' | 'functionItem';
 export type EditorTypes = 'code' | 'json';
 
 export interface ILoadOptions {
-	request: IHttpRequestOptions;
-	requestOperations?: IN8nRequestOperations;
-	rootProperty?: string; // Optional Path to option array
+	routing?: {
+		operations?: IN8nRequestOperations;
+		output?: INodeRequestOutput;
+		request?: IHttpRequestOptionsFromParameters;
+	};
 	displayName: {
 		property: string;
 		value?: string;

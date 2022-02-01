@@ -510,26 +510,6 @@ export class MailcheckTest implements INodeType {
 						type: 'options',
 						typeOptions: {
 							loadOptions: {
-								request: {
-									url: '/webhook/mock-option-parameters',
-									// Data from the current node can be accessed via $parameters (only in "loadOptions")
-									// url: '=/webhook/mock-option-parameters/{{$parameters.email}}',
-									method: 'GET',
-								},
-								// operations: {
-								// 	// Is possible to overwrite pagination for loadOptions. (Limitation: only via JSON, not funciton code)
-								// 	pagination: {
-								// 		type: 'offset',
-								// 		properties: {
-								// 			limitParameter: 'limit',
-								// 			offsetParameter: 'offset',
-								// 			pageSize: 10,
-								// 			rootProperty: 'data',
-								// 			type: 'body',
-								// 		},
-								// 	},
-								// },
-								rootProperty: 'responseData', // Optional Path to option array
 								displayName: {
 									property: 'key',
 									// TODO: Is confusing that it is called $value. Should it be $value/$name instead? But
@@ -541,6 +521,35 @@ export class MailcheckTest implements INodeType {
 									value: '={{$value}}X',
 								},
 								sort: true,
+								routing: {
+									request: {
+										url: '/webhook/mock-option-parameters',
+										// Data from the current node can be accessed via $parameters (only in "loadOptions")
+										// url: '=/webhook/mock-option-parameters/{{$parameters.email}}',
+										method: 'GET',
+									},
+									output: {
+										postReceive: {
+											type: 'rootProperty',
+											properties: {
+												property: 'responseData',
+											},
+										},
+									},
+									// operations: {
+									// 	// Is possible to overwrite pagination for loadOptions. (Limitation: only via JSON, not funciton code)
+									// 	pagination: {
+									// 		type: 'offset',
+									// 		properties: {
+									// 			limitParameter: 'limit',
+									// 			offsetParameter: 'offset',
+									// 			pageSize: 10,
+									// 			rootProperty: 'data',
+									// 			type: 'body',
+									// 		},
+									// 	},
+									// },
+								},
 							},
 						},
 						default: '',

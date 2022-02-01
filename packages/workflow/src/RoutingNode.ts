@@ -494,9 +494,12 @@ export class RoutingNode {
 			return undefined;
 		}
 		if (nodeProperties.routing) {
-			const parameterValue = executeSingleFunctions.getNodeParameter(
-				basePath + nodeProperties.name,
-			) as string;
+			let parameterValue: string | undefined;
+			if (basePath + nodeProperties.name) {
+				parameterValue = executeSingleFunctions.getNodeParameter(
+					basePath + nodeProperties.name,
+				) as string;
+			}
 
 			if (nodeProperties.routing.operations) {
 				returnData.requestOperations = { ...nodeProperties.routing.operations };
@@ -588,22 +591,20 @@ export class RoutingNode {
 				}
 			}
 			if (nodeProperties.routing.output) {
-				if (nodeProperties.routing.output) {
-					if (nodeProperties.routing.output.maxResults !== undefined) {
-						let maxResultsValue = nodeProperties.routing.output.maxResults;
-						if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
-							// If the propertyName is an expression resolve it
-							maxResultsValue = this.getParameterValue(
-								maxResultsValue,
-								itemIndex,
-								runIndex,
-								{ ...additionalKeys, $value: parameterValue },
-								true,
-							) as string;
-						}
-
-						returnData.maxResults = maxResultsValue;
+				if (nodeProperties.routing.output.maxResults !== undefined) {
+					let maxResultsValue = nodeProperties.routing.output.maxResults;
+					if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
+						// If the propertyName is an expression resolve it
+						maxResultsValue = this.getParameterValue(
+							maxResultsValue,
+							itemIndex,
+							runIndex,
+							{ ...additionalKeys, $value: parameterValue },
+							true,
+						) as string;
 					}
+
+					returnData.maxResults = maxResultsValue;
 				}
 
 				if (nodeProperties.routing.output.postReceive) {
