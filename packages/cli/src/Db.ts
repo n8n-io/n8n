@@ -109,11 +109,15 @@ export async function init(): Promise<IDatabaseCollections> {
 	)) as boolean;
 
 	if (loggingOption) {
-		const optionsString = (await GenericHelpers.getConfigValue(
-			'database.logging.options',
-		)) as string;
+		const optionsString = (
+			(await GenericHelpers.getConfigValue('database.logging.options')) as string
+		).replace(/\s+/g, '');
 
-		loggingOption = optionsString.split(',') as LoggerOptions;
+		if (optionsString === 'all') {
+			loggingOption = optionsString;
+		} else {
+			loggingOption = optionsString.split(',') as LoggerOptions;
+		}
 	}
 
 	Object.assign(connectionOptions, {

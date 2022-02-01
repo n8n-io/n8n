@@ -30,13 +30,13 @@ const config = convict({
 				env: 'DB_LOGGING_ENABLED',
 			},
 			options: {
-				doc: 'Comma separated logging options, default is "error".',
+				doc: 'Logging level options, default is "error". Possible values: query,error,schema,warn,info,log. To enable all logging, specify "all"',
 				format: String,
 				default: 'error',
 				env: 'DB_LOGGING_OPTIONS',
 			},
 			maxQueryExecutionTime: {
-				doc: 'Maximum number of milliseconds query should be executed before logger log a warning. Set 0 to disable',
+				doc: 'Maximum number of milliseconds query should be executed before logger logs a warning. Set 0 to disable long running query warning',
 				format: Number,
 				default: 1000,
 				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
