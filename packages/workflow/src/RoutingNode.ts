@@ -276,11 +276,13 @@ export class RoutingNode {
 
 						try {
 							returnData = responseBody.flatMap((item) => {
-								return (
-									item[
-										(postReceiveMethod.action as IPostReceiveRootProperty).properties.property
-									] as IDataObject[]
-								).map((json) => {
+								let itemContent =
+									item[(postReceiveMethod.action as IPostReceiveRootProperty).properties.property];
+
+								if (!Array.isArray(itemContent)) {
+									itemContent = [itemContent];
+								}
+								return (itemContent as IDataObject[]).map((json) => {
 									return {
 										json,
 									};
@@ -288,7 +290,7 @@ export class RoutingNode {
 							});
 						} catch (e) {
 							throw new Error(
-								`The rootProperty "${postReceiveMethod.action.properties.property}" could not be found on item or is not an Array.`,
+								`The rootProperty "${postReceiveMethod.action.properties.property}" could not be found on item.`,
 							);
 						}
 					}
@@ -375,7 +377,6 @@ export class RoutingNode {
 					responseData.body = Buffer.from(responseData.body as string);
 					let { destinationProperty } = postReceiveMethod.action.properties;
 
-					// TODO: Have to make $value accessible, but at that level it does not have that reference anymore
 					destinationProperty = this.getParameterValue(
 						destinationProperty,
 						itemIndex,
@@ -493,9 +494,16 @@ export class RoutingNode {
 							] as number) + properties.pageSize;
 
 						if (properties.rootProperty) {
-							tempResponseData = (
-								get(tempResponseData[0].json, properties.rootProperty, []) as IDataObject[]
-							).map((item) => {
+							const tempResponseValue = get(tempResponseData[0].json, properties.rootProperty) as
+								| IDataObject[]
+								| undefined;
+							if (tempResponseValue === undefined) {
+								throw new Error(
+									`The rootProperty "${properties.rootProperty}" could not be found on item.`,
+								);
+							}
+
+							tempResponseData = tempResponseValue.map((item) => {
 								return {
 									json: item,
 								};
@@ -683,7 +691,6 @@ export class RoutingNode {
 				if (nodeProperties.routing.output.postReceive) {
 					returnData.postReceive.push({
 						data: {
-							// TODO: Still missing
 							parameterValue,
 						},
 						action: nodeProperties.routing.output.postReceive,
