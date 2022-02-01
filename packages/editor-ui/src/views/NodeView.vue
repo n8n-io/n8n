@@ -42,7 +42,7 @@
 			@nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
-		<div :class="{ 'zoom-menu': true, expanded: !sidebarMenuCollapsed }">
+		<div :class="{ 'zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
 			<button @click="zoomToFit" class="button-white" :title="$locale.baseText('nodeView.zoomToFit')">
 				<font-awesome-icon icon="expand"/>
 			</button>
@@ -53,7 +53,7 @@
 				<font-awesome-icon icon="search-minus"/>
 			</button>
 			<button
-				v-if="nodeViewScale !== 1"
+				v-if="nodeViewScale !== 1 && !isDemo"
 				@click="resetZoom()"
 				class="button-white"
 				:title="$locale.baseText('nodeView.resetZoom')"
@@ -509,6 +509,28 @@ export default mixins(
 						duration: 0,
 					});
 				}
+			},
+			async importWorkflowExact(data: {workflow: IWorkflowDataUpdate}) {
+				if (!data.workflow.nodes || !data.workflow.connections) {
+					throw new Error('Invalid workflow object');
+				}
+				this.resetWorkspace();
+				const nodes = data.workflow.nodes;
+				const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
+				const leftmostTop = CanvasHelpers.getLeftmostTopNode(nodes);
+				const diffX = CanvasHelpers.DEFAULT_START_POSITION_X - leftmostTop.position[0];
+				const diffY = CanvasHelpers.DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+				data.workflow.nodes.map((node) => {
+					node.position[0] += diffX + (hasStartNode? 0 : CanvasHelpers.NODE_SIZE * 2);
+					node.position[1] += diffY;
+				});
+				if (!hasStartNode) {
+					data.workflow.nodes.push({...CanvasHelpers.DEFAULT_START_NODE});
+				}
+				await this.addNodes(data.workflow.nodes, data.workflow.connections);
+				this.$nextTick(() => {
+					this.zoomToFit();
+				});
 			},
 			async openWorkflowTemplate (templateId: string) {
 				this.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
@@ -1029,7 +1051,7 @@ export default mixins(
 					return;
 				}
 
-				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes);
+				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes,this.isDemo);
 
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
@@ -1790,6 +1812,18 @@ export default mixins(
 				if (this.blankRedirect) {
 					this.blankRedirect = false;
 				}
+				else if (this.isDemo && this.$route.query.workflow && typeof this.$route.query.workflow === 'string') {
+					try {
+						const workflow = JSON.parse(decodeURIComponent(this.$route.query.workflow));
+						await this.importWorkflowExact({workflow});
+					} catch (e) {
+						this.$showMessage({
+							title: 'Could not import workflow',
+							message: (e as Error).message,
+							type: 'error',
+						});
+					}
+				}
 				else if (this.$route.name === 'WorkflowTemplate') {
 					const templateId = this.$route.params.id;
 					await this.openWorkflowTemplate(templateId);
@@ -1845,7 +1879,10 @@ export default mixins(
 				document.addEventListener('keyup', this.keyUp);
 
 				window.addEventListener("beforeunload",  (e) => {
-					if(this.$store.getters.getStateIsDirty === true) {
+					if(this.isDemo){
+						return;
+					}
+					else if(this.$store.getters.getStateIsDirty === true) {
 						const confirmationMessage = this.$locale.baseText('nodeView.itLooksLikeYouHaveBeenEditingSomething');
 						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
 						return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
@@ -2690,6 +2727,24 @@ export default mixins(
 
 
 		async mounted () {
+			window.addEventListener('message', async (message) => {
+				try {
+					const json = JSON.parse(message.data);
+					if (json && json.command === 'openWorkflow') {
+						try {
+							await this.importWorkflowExact(json);
+						} catch (e) {
+							this.$showMessage({
+								title: 'Could not import workflow',
+								message: (e as Error).message,
+								type: 'error',
+							});
+						}
+					}
+				} catch (e) {
+				}
+			});
+
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
 				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
 			});
@@ -2737,6 +2792,9 @@ export default mixins(
 				try {
 					this.initNodeView();
 					await this.initView();
+					if (window.top) {
+						window.top.postMessage(JSON.stringify({command: 'n8nReady'}), '*');
+					}
 				} catch (error) {
 					this.$showError(
 						error,
@@ -2777,6 +2835,26 @@ export default mixins(
 	@media (max-width: $--breakpoint-2xs) {
 		bottom: 90px;
 	}
+
+	&.expanded {
+		left: $--sidebar-expanded-width + $--zoom-menu-margin;
+	}
+
+	button {
+		border: var(--border-base);
+	}
+}
+
+.demo-zoom-menu {
+	$--zoom-menu-margin: 5;
+
+	position: fixed;
+	left: 10px;
+	width: 200px;
+	bottom: 10px;
+	line-height: 25px;
+	color: #444;
+	padding-right: 5px;
 
 	&.expanded {
 		left: $--sidebar-expanded-width + $--zoom-menu-margin;

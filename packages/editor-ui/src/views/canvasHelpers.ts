@@ -587,25 +587,31 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 };
 
 
-export const getZoomToFit = (nodes: INodeUi[]): {offset: XYPosition, zoomLevel: number} => {
+export const getZoomToFit = (nodes: INodeUi[],addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
+	let sidebarWidth = SIDEBAR_WIDTH;
+	let headerHeight = HEADER_HEIGHT;
+	if (!addComponentPadding){
+		sidebarWidth = 0;
+		headerHeight = 0;
+	}
 
 	const PADDING = NODE_SIZE * 4;
 
 	const editorWidth = window.innerWidth;
-	const diffX = maxX - minX + SIDEBAR_WIDTH + PADDING;
+	const diffX = maxX - minX + sidebarWidth + PADDING;
 	const scaleX = editorWidth / diffX;
 
 	const editorHeight = window.innerHeight;
-	const diffY = maxY - minY + HEADER_HEIGHT + PADDING;
+	const diffY = maxY - minY + headerHeight + PADDING;
 	const scaleY = editorHeight / diffY;
 
 	const zoomLevel = Math.min(scaleX, scaleY, 1);
-	let xOffset = (minX * -1) * zoomLevel + SIDEBAR_WIDTH; // find top right corner
-	xOffset += (editorWidth - SIDEBAR_WIDTH - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
+	let xOffset = (minX * -1) * zoomLevel + sidebarWidth; // find top right corner
+	xOffset += (editorWidth - sidebarWidth - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
 
-	let yOffset = (minY * -1) * zoomLevel + HEADER_HEIGHT; // find top right corner
-	yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+	let yOffset = (minY * -1) * zoomLevel + headerHeight; // find top right corner
+	yOffset += (editorHeight - headerHeight - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
 
 	return {
 		zoomLevel,

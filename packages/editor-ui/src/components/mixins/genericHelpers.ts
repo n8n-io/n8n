@@ -11,6 +11,12 @@ export const genericHelpers = mixins(showMessage).extend({
 		};
 	},
 	computed: {
+		isDemo (): boolean {
+			if (this.$route.name === 'WorkflowDemo') {
+				return true;
+			}
+			return false;
+		},
 		isReadOnly (): boolean {
 			if (['NodeViewExisting', 'NodeViewNew'].includes(this.$route.name as string)) {
 				return false;
