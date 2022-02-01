@@ -80,6 +80,15 @@ export default {
 
 .text {
 	color: var(--color-text-base);
+
+	&:active {
+		color: saturation(
+			--color-primary-h,
+			--color-primary-s,
+			--color-primary-l,
+			-(30%)
+		);
+	}
 }
 
 .danger {
