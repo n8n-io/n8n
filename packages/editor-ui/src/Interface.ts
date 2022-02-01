@@ -605,6 +605,11 @@ export interface ITemplateImage {
 }
 
 export interface ITemplateMainImage {
+	image: ITemplateMainImageItem[];
+	workflowHash: string;
+}
+
+export interface ITemplateMainImageItem {
 	url: string;
 	metadata: ITemplateMetadata;
 }

@@ -16,14 +16,19 @@
 		</div>
 		<div v-else-if="workflows.length" :class="$style.container">
 			<div :class="$style.wrapper">
-				<div v-for="(workflow, index) in workflows" :key="'workflow-' + index" :class="$style.card">
-					<TemplateCard :title="workflow.name" :loading="false">
+				<div
+					v-for="(workflow, index) in workflows"
+					:key="'workflow-' + index"
+					:class="$style.card"
+					@click="navigateTo(workflow.id, 'TemplatePage', $event)"
+				>
+					<TemplateCard :title="workflow.name" :loading="false" :class="index === workflows.length - 1 ? $style.last : ''">
 						<template v-slot:button>
 							<div :class="$style.button">
 								<n8n-button
 									type="outline"
 									label="Use workflow"
-									@click="redirectToTemplate(workflow.id, $event)"
+									@click.stop="navigateTo(workflow.id, 'WorkflowTemplate', $event)"
 								/>
 							</div>
 							<div :class="$style.nodes">
@@ -162,13 +167,13 @@ export default mixins(genericHelpers).extend({
 		};
 	},
 	methods: {
-		redirectToTemplate(templateId: string, e: PointerEvent) {
+		navigateTo(templateId: string, page: string, e: PointerEvent) {
 			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({name: 'TemplatePage', params: {id: templateId}});
+				const route = this.$router.resolve({ name: page, params: { id: templateId } });
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({name: 'TemplatePage', params: {id: templateId}});
+				this.$router.push({ name: page, params: { id: templateId } });
 			}
 		},
 		truncate(views: number): string {
@@ -195,7 +200,7 @@ export default mixins(genericHelpers).extend({
 	background-color: var(--color-white);
 	border-radius: var(--border-radius-large);
 	border: $--version-card-border;
-	border-bottom: none;
+	// border-bottom: none;
 	overflow: auto;
 }
 
@@ -213,8 +218,16 @@ export default mixins(genericHelpers).extend({
 	}
 }
 
+.last {
+	div {
+		border: none;
+	}
+}
+
 .button {
 	display: none;
+	position: relative;
+	z-index: 100;
 }
 
 .footer {

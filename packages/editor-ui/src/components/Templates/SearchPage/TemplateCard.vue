@@ -72,7 +72,7 @@ export default mixins(genericHelpers).extend({
 	border-bottom: $--version-card-border;
 	display: flex;
 	justify-content: space-between;
-	align-items: center
+	align-items: center;
 }
 
 .content {

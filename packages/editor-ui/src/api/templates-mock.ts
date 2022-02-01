@@ -85,6 +85,6 @@ const response = {
 	},
 };
 
-export async function getTemplateById(templateId: string): Promise<IN8nTemplateResponse> {
-	return response;
-}
+// export async function getTemplateById(templateId: string): Promise<IN8nTemplateResponse> {
+// 	// return response;
+// }

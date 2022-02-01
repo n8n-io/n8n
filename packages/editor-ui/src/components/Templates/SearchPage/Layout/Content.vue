@@ -58,7 +58,7 @@ export default mixins(genericHelpers).extend({
 			}
  		},
 		async onSearchInput() {
-			this.callDebounced('doSearch', 500);
+			this.callDebounced('doSearch', 500, true);
 		},
 		async setCategories(selected: number[]) {
 			this.categories = selected;
