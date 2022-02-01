@@ -139,11 +139,11 @@ export default mixins(showMessage).extend({
 
 				await this.$store.dispatch('users/deleteUser', params);
 
-				let message = `User has been deleted successfully`;
+				let message = '';
 				if (this.transferId) {
 					const getUserById = this.$store.getters['users/getUserById'];
 					const transferUser = getUserById(this.transferId);
-					message = `${message} and transferred to ${transferUser.fullName}`;
+					message = `Transferred to ${transferUser.fullName}`;
 				}
 
 				this.$showMessage({
