@@ -524,6 +524,7 @@ export class MailcheckTest implements INodeType {
 											properties: {
 												rootProperty: 'responseData',
 												sort: {
+													// No expression supported
 													key: 'name',
 												},
 												values: {
