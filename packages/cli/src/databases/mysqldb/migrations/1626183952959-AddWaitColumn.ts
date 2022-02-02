@@ -1,13 +1,13 @@
 import {MigrationInterface, QueryRunner} from "typeorm";
 import * as config from '../../../../config';
-import { isNotTestRun } from "../../MigrationHelpers";
+import { isTestRun } from "../../../../test/shared/utils";
 
 export class AddWaitColumnId1626183952959 implements MigrationInterface {
 	name = 'AddWaitColumnId1626183952959';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.get('database.tablePrefix');
-		isNotTestRun && console.log(
+		!isTestRun && console.log(
 			'\n\nINFO: Started with migration for wait functionality.\n      Depending on the number of saved executions, that may take a little bit.\n\n',
 		);
 

@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
@@ -15,7 +16,7 @@ import {
 	IExecutionResponse,
 	IWorkflowDb,
 } from '.';
-import { isNotTestRun } from './databases/MigrationHelpers';
+import { isTestRun } from '../test/shared/utils';
 
 /**
  * Special Error which allows to return also an error code and http status code
@@ -103,9 +104,9 @@ export function sendErrorResponse(res: Response, error: ResponseError, shouldLog
 		httpStatusCode = error.httpStatusCode;
 	}
 
-	if (process.env.NODE_ENV !== 'production' && shouldLog) {
-		isNotTestRun && console.error('ERROR RESPONSE');
-		isNotTestRun && console.error(error);
+	if (process.env.NODE_ENV !== 'production' && shouldLog && !isTestRun) {
+		console.error('ERROR RESPONSE');
+		console.error(error);
 	}
 
 	const response = {

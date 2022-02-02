@@ -29,7 +29,7 @@
     "start": "run-script-os",
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
-    "test": "jest --runInBand",
+    "test": "jest",
     "watch": "tsc --watch",
     "typeorm": "ts-node ../../node_modules/typeorm/cli.js"
   },

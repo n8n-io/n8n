@@ -1,3 +1,4 @@
+import { hashSync, genSaltSync } from 'bcryptjs';
 import express = require('express');
 import { getConnection } from 'typeorm';
 import validator from 'validator';
@@ -7,21 +8,16 @@ import config = require('../config');
 import * as utils from './shared/utils';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../src';
-import { hashSync, genSaltSync } from 'bcryptjs';
 import { User } from '../src/databases/entities/User';
 
 describe('/me endpoints', () => {
-	// ----------------------------------
-	//          shell requests
-	// ----------------------------------
-
 	describe('Shell requests', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ meEndpoints: true });
+			app = utils.initTestServer({ me: true });
 			await utils.initTestDb();
-			await Db.collections.User!.clear(); // remove user added by migration
+			await utils.truncateUserTable();
 		});
 
 		beforeEach(async () => {
@@ -38,7 +34,7 @@ describe('/me endpoints', () => {
 		});
 
 		afterEach(async () => {
-			await Db.collections.User!.clear();
+			await utils.truncateUserTable();
 		});
 
 		afterAll(() => {
@@ -79,22 +75,7 @@ describe('/me endpoints', () => {
 			const shell = await Db.collections.User!.findOneOrFail();
 			const shellAgent = await utils.createAgent(app, shell);
 
-			const validPayloads = [
-				{
-					email: 'test@n8n.io',
-					firstName: 'John',
-					lastName: 'Smith',
-					password: 'abcd1234',
-				},
-				{
-					email: 'abc@def.com',
-					firstName: 'John',
-					lastName: 'Smith',
-					password: 'abcd1234',
-				},
-			];
-
-			for (const validPayload of validPayloads) {
+			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 				const response = await shellAgent.patch('/me').send(validPayload);
 
 				expect(response.statusCode).toBe(200);
@@ -126,31 +107,9 @@ describe('/me endpoints', () => {
 			const shell = await Db.collections.User!.findOneOrFail();
 			const shellAgent = await utils.createAgent(app, shell);
 
-			const invalidPayloads = [
-				{
-					email: 'invalid email',
-					firstName: 'John',
-					lastName: 'Smith',
-				},
-				{
-					email: 'test@n8n.io',
-					firstName: '',
-					lastName: 'Smith',
-				},
-				{
-					email: 'test@n8n.io',
-					firstName: 'John',
-					lastName: '',
-				},
-				{
-					email: 'test@n8n.io',
-					firstName: 123,
-					lastName: 'Smith',
-				},
-			];
-
-			for (const invalidPayload of invalidPayloads) {
-				await shellAgent.patch('/me').send(invalidPayload).expect(400);
+			for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
+				const response = await shellAgent.patch('/me').send(invalidPayload);
+				expect(response.statusCode).toBe(400);
 			}
 		});
 
@@ -158,7 +117,9 @@ describe('/me endpoints', () => {
 			const shell = await Db.collections.User!.findOneOrFail();
 			const shellAgent = await utils.createAgent(app, shell);
 
-			const validPayloads = ['abcd1234', 'q38rdun9!8a'].map((password) => ({ password }));
+			const validPayloads = Array.from({ length: 3 }, () => ({
+				password: utils.randomValidPassword(),
+			}));
 
 			for (const validPayload of validPayloads) {
 				const response = await shellAgent.patch('/me/password').send(validPayload);
@@ -172,8 +133,8 @@ describe('/me endpoints', () => {
 			const shellAgent = await utils.createAgent(app, shell);
 
 			const invalidPayloads: Array<{ password?: string }> = [
-				'a',
-				'This is an extremely long password that should never ever be accepted.',
+				utils.randomString(1, 4),
+				utils.randomString(80, 100),
 			].map((password) => ({ password }));
 
 			invalidPayloads.push({});
@@ -187,17 +148,7 @@ describe('/me endpoints', () => {
 			const shell = await Db.collections.User!.findOneOrFail();
 			const shellAgent = await utils.createAgent(app, shell);
 
-			const validPayloads = [
-				{
-					codingSkill: 'a',
-					companyIndustry: 'b',
-					companySize: 'c',
-					otherCompanyIndustry: 'd',
-					otherWorkArea: 'e',
-					workArea: 'f',
-				},
-				{},
-			];
+			const validPayloads = [SURVEY, {}];
 
 			for (const validPayload of validPayloads) {
 				const response = await shellAgent.post('/me/survey').send(validPayload);
@@ -207,17 +158,13 @@ describe('/me endpoints', () => {
 		});
 	});
 
-	// ----------------------------------
-	//          owner requests
-	// ----------------------------------
-
 	describe('Owner requests', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ meEndpoints: true });
+			app = utils.initTestServer({ me: true });
 			await utils.initTestDb();
-			await Db.collections.User!.clear(); // remove user added by migration
+			await utils.truncateUserTable();
 		});
 
 		beforeEach(async () => {
@@ -227,10 +174,10 @@ describe('/me endpoints', () => {
 
 			Object.assign(newOwner, {
 				id: uuid(),
-				email: 'owner@n8n.io',
-				firstName: 'John',
-				lastName: 'Smith',
-				password: hashSync('abcd1234', genSaltSync(10)),
+				email: TEST_USER.email,
+				firstName: TEST_USER.firstName,
+				lastName: TEST_USER.lastName,
+				password: hashSync(utils.randomValidPassword(), genSaltSync(10)),
 				globalRole: role,
 			});
 
@@ -245,7 +192,7 @@ describe('/me endpoints', () => {
 		});
 
 		afterEach(async () => {
-			await Db.collections.User!.clear();
+			await utils.truncateUserTable();
 		});
 
 		afterAll(() => {
@@ -272,9 +219,9 @@ describe('/me endpoints', () => {
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe('owner@n8n.io');
-			expect(firstName).toBe('John');
-			expect(lastName).toBe('Smith');
+			expect(email).toBe(TEST_USER.email);
+			expect(firstName).toBe(TEST_USER.firstName);
+			expect(lastName).toBe(TEST_USER.lastName);
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(resetPasswordToken).toBeUndefined();
@@ -286,22 +233,7 @@ describe('/me endpoints', () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const ownerAgent = await utils.createAgent(app, owner);
 
-			const validPayloads = [
-				{
-					email: 'test@n8n.io',
-					firstName: 'John',
-					lastName: 'Smith',
-					password: 'abcd1234',
-				},
-				{
-					email: 'abc@def.com',
-					firstName: 'John',
-					lastName: 'Smith',
-					password: 'ghij5678',
-				},
-			];
-
-			for (const validPayload of validPayloads) {
+			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 				const response = await ownerAgent.patch('/me').send(validPayload);
 
 				expect(response.statusCode).toBe(200);
@@ -333,30 +265,7 @@ describe('/me endpoints', () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const ownerAgent = await utils.createAgent(app, owner);
 
-			const invalidPayloads = [
-				{
-					email: 'invalid email',
-					firstName: 'John',
-					lastName: 'Smith',
-				},
-				{
-					email: 'test@n8n.io',
-					firstName: '',
-					lastName: 'Smith',
-				},
-				{
-					email: 'test@n8n.io',
-					firstName: 'John',
-					lastName: '',
-				},
-				{
-					email: 'test@n8n.io',
-					firstName: 123,
-					lastName: 'Smith',
-				},
-			];
-
-			for (const invalidPayload of invalidPayloads) {
+			for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
 				await ownerAgent.patch('/me').send(invalidPayload).expect(400);
 			}
 		});
@@ -365,7 +274,9 @@ describe('/me endpoints', () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const ownerAgent = await utils.createAgent(app, owner);
 
-			const validPayloads = ['abcd1234', 'q38rdun9!8a'].map((password) => ({ password }));
+			const validPayloads = Array.from({ length: 3 }, () => ({
+				password: utils.randomValidPassword(),
+			}));
 
 			for (const validPayload of validPayloads) {
 				const response = await ownerAgent.patch('/me/password').send(validPayload);
@@ -379,8 +290,8 @@ describe('/me endpoints', () => {
 			const ownerAgent = await utils.createAgent(app, owner);
 
 			const invalidPayloads: Array<{ password?: string }> = [
-				'a',
-				'This is an extremely long password that should never ever be accepted.',
+				utils.randomString(1, 4),
+				utils.randomString(80, 100),
 			].map((password) => ({ password }));
 
 			invalidPayloads.push({});
@@ -394,17 +305,7 @@ describe('/me endpoints', () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const ownerAgent = await utils.createAgent(app, owner);
 
-			const validPayloads = [
-				{
-					codingSkill: 'a',
-					companyIndustry: 'b',
-					companySize: 'c',
-					otherCompanyIndustry: 'd',
-					otherWorkArea: 'e',
-					workArea: 'f',
-				},
-				{},
-			];
+			const validPayloads = [SURVEY, {}];
 
 			for (const validPayload of validPayloads) {
 				const response = await ownerAgent.post('/me/survey').send(validPayload);
@@ -414,17 +315,13 @@ describe('/me endpoints', () => {
 		});
 	});
 
-	// ----------------------------------
-	//          member requests
-	// ----------------------------------
-
 	describe('Member requests', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ meEndpoints: true, usersEndpoints: true });
+			app = utils.initTestServer({ me: true, users: true });
 			await utils.initTestDb();
-			await Db.collections.User!.clear(); // remove user added by migration
+			await utils.truncateUserTable();
 		});
 
 		beforeEach(async () => {
@@ -434,10 +331,10 @@ describe('/me endpoints', () => {
 
 			Object.assign(newMember, {
 				id: uuid(),
-				email: 'member@n8n.io',
-				firstName: 'John',
-				lastName: 'Smith',
-				password: hashSync('abcd1234', genSaltSync(10)),
+				email: TEST_USER.email,
+				firstName: TEST_USER.firstName,
+				lastName: TEST_USER.lastName,
+				password: hashSync(utils.randomValidPassword(), genSaltSync(10)),
 				globalRole: role,
 			});
 
@@ -452,7 +349,7 @@ describe('/me endpoints', () => {
 		});
 
 		afterEach(async () => {
-			await Db.collections.User!.clear();
+			await utils.truncateUserTable();
 		});
 
 		afterAll(() => {
@@ -479,9 +376,9 @@ describe('/me endpoints', () => {
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe('member@n8n.io');
-			expect(firstName).toBe('John');
-			expect(lastName).toBe('Smith');
+			expect(email).toBe(TEST_USER.email);
+			expect(firstName).toBe(TEST_USER.firstName);
+			expect(lastName).toBe(TEST_USER.lastName);
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(resetPasswordToken).toBeUndefined();
@@ -493,22 +390,7 @@ describe('/me endpoints', () => {
 			const member = await Db.collections.User!.findOneOrFail();
 			const memberAgent = await utils.createAgent(app, member);
 
-			const validPayloads = [
-				{
-					email: 'test@n8n.io',
-					firstName: 'John',
-					lastName: 'Smith',
-					password: 'abcd1234',
-				},
-				{
-					email: 'abc@def.com',
-					firstName: 'John',
-					lastName: 'Smith',
-					password: 'abcd1234',
-				},
-			];
-
-			for (const validPayload of validPayloads) {
+			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 				const response = await memberAgent.patch('/me').send(validPayload);
 
 				expect(response.statusCode).toBe(200);
@@ -540,31 +422,9 @@ describe('/me endpoints', () => {
 			const member = await Db.collections.User!.findOneOrFail();
 			const memberAgent = await utils.createAgent(app, member);
 
-			const invalidPayloads = [
-				{
-					email: 'invalid email',
-					firstName: 'John',
-					lastName: 'Smith',
-				},
-				{
-					email: 'test@n8n.io',
-					firstName: '',
-					lastName: 'Smith',
-				},
-				{
-					email: 'test@n8n.io',
-					firstName: 'John',
-					lastName: '',
-				},
-				{
-					email: 'test@n8n.io',
-					firstName: 123,
-					lastName: 'Smith',
-				},
-			];
-
-			for (const invalidPayload of invalidPayloads) {
-				await memberAgent.patch('/me').send(invalidPayload).expect(400);
+			for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
+				const response = await memberAgent.patch('/me').send(invalidPayload);
+				expect(response.statusCode).toBe(400);
 			}
 		});
 
@@ -572,7 +432,9 @@ describe('/me endpoints', () => {
 			const member = await Db.collections.User!.findOneOrFail();
 			const memberAgent = await utils.createAgent(app, member);
 
-			const validPayloads = ['abcd1234', 'q38rdun9!8a'].map((password) => ({ password }));
+			const validPayloads = Array.from({ length: 3 }, () => ({
+				password: utils.randomValidPassword(),
+			}));
 
 			for (const validPayload of validPayloads) {
 				const response = await memberAgent.patch('/me/password').send(validPayload);
@@ -586,14 +448,15 @@ describe('/me endpoints', () => {
 			const memberAgent = await utils.createAgent(app, member);
 
 			const invalidPayloads: Array<{ password?: string }> = [
-				'a',
-				'This is an extremely long password that should never ever be accepted.',
+				utils.randomString(1, 4),
+				utils.randomString(80, 100),
 			].map((password) => ({ password }));
 
 			invalidPayloads.push({});
 
 			for (const invalidPayload of invalidPayloads) {
-				await memberAgent.patch('/me/password').send(invalidPayload).expect(400);
+				const response = await memberAgent.patch('/me/password').send(invalidPayload);
+				expect(response.statusCode).toBe(400);
 			}
 		});
 
@@ -601,17 +464,7 @@ describe('/me endpoints', () => {
 			const member = await Db.collections.User!.findOneOrFail();
 			const memberAgent = await utils.createAgent(app, member);
 
-			const validPayloads = [
-				{
-					codingSkill: 'a',
-					companyIndustry: 'b',
-					companySize: 'c',
-					otherCompanyIndustry: 'd',
-					otherWorkArea: 'e',
-					workArea: 'f',
-				},
-				{},
-			];
+			const validPayloads = [SURVEY, {}];
 
 			for (const validPayload of validPayloads) {
 				const response = await memberAgent.post('/me/survey').send(validPayload);
@@ -621,3 +474,58 @@ describe('/me endpoints', () => {
 		});
 	});
 });
+
+const TEST_USER = {
+	email: 'john@n8n.io',
+	firstName: 'John',
+	lastName: 'Smith',
+};
+
+const SURVEY = [
+	'codingSkill',
+	'companyIndustry',
+	'companySize',
+	'otherCompanyIndustry',
+	'otherWorkArea',
+	'workArea',
+].reduce<Record<string, string>>((acc, cur) => {
+	return (acc[cur] = utils.randomString(1, 10)), acc;
+}, {});
+
+const VALID_PATCH_ME_PAYLOADS = [
+	{
+		email: 'test@n8n.io',
+		firstName: 'John',
+		lastName: 'Smith',
+		password: utils.randomValidPassword(),
+	},
+	{
+		email: 'abc@def.com',
+		firstName: 'John',
+		lastName: 'Smith',
+		password: utils.randomValidPassword(),
+	},
+];
+
+const INVALID_PATCH_ME_PAYLOADS = [
+	{
+		email: 'invalid',
+		firstName: 'John',
+		lastName: 'Smith',
+	},
+	{
+		email: 'test@n8n.io',
+		firstName: '',
+		lastName: 'Smith',
+	},
+	{
+		email: 'test@n8n.io',
+		firstName: 'John',
+		lastName: '',
+	},
+	{
+		email: 'test@n8n.io',
+		firstName: 123,
+		lastName: 'Smith',
+	},
+];

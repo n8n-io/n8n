@@ -1,5 +1,6 @@
 import express = require('express');
 import * as request from 'supertest';
+import { REST_PATH_SEGMENT } from './shared/constants';
 
 import * as utils from './shared/utils';
 
@@ -17,7 +18,7 @@ describe('/me endpoints', () => {
 			const [method, endpoint] = route.split(' ').map((i) => i.toLowerCase());
 
 			test(`${route} should return 401 Unauthorized`, async () => {
-				const response = await request(app)[method](endpoint).use(utils.restPrefix);
+				const response = await request(app)[method](endpoint).use(utils.prefix(REST_PATH_SEGMENT));
 
 				expect(response.statusCode).toBe(401);
 			});

@@ -22,8 +22,8 @@ import { issueCookie, issueJWT } from '../auth/jwt';
 import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
-import { isNotTestRun } from '../../databases/MigrationHelpers';
 import { AuthenticatedRequest } from '../../requests';
+import { isTestRun } from '../../../test/shared/utils';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	this.app.use(cookieParser());
@@ -128,7 +128,8 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		next();
 	});
 
-	if (isNotTestRun) {
+	// tests add endpoints namespaces separately
+	if (!isTestRun) {
 		authenticationMethods.apply(this);
 		meNamespace.apply(this);
 		passwordResetNamespace.apply(this);

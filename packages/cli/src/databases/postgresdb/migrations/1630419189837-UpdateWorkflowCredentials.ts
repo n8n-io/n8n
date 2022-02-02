@@ -1,6 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import config = require('../../../../config');
-import { isNotTestRun, MigrationHelpers } from '../../MigrationHelpers';
+import { isTestRun } from '../../../../test/shared/utils';
+import { MigrationHelpers } from '../../MigrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`
@@ -9,8 +10,8 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 	name = 'UpdateWorkflowCredentials1630419189837';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		isNotTestRun && console.log('Start migration', this.name);
-		isNotTestRun && console.time(this.name);
+		!isTestRun && console.log('Start migration', this.name);
+		!isTestRun && console.time(this.name);
 		let tablePrefix = config.get('database.tablePrefix');
 		const schema = config.get('database.postgresdb.schema');
 		if (schema) {

@@ -1,6 +1,6 @@
 import {MigrationInterface, QueryRunner} from "typeorm";
 import * as config from '../../../../config';
-import { isNotTestRun } from "../../MigrationHelpers";
+import { isTestRun } from "../../../../test/shared/utils";
 
 export class AddwaitTill1626176912946 implements MigrationInterface {
 	name = 'AddwaitTill1626176912946';
@@ -12,7 +12,7 @@ export class AddwaitTill1626176912946 implements MigrationInterface {
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
-		isNotTestRun &&
+		!isTestRun &&
 			console.log(
 				'\n\nINFO: Started with migration for wait functionality.\n      Depending on the number of saved executions, that may take a little bit.\n\n',
 			);
