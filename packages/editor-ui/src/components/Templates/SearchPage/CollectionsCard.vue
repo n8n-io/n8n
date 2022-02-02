@@ -44,6 +44,10 @@ export default mixins(genericHelpers).extend({
 	&:last-child {
 		margin-right: var(--spacing-5xs);
 	}
+
+	&:hover {
+		box-shadow: 0 2px 4px rgba(68,28,23,0.07);
+	}
 }
 
 .title {
