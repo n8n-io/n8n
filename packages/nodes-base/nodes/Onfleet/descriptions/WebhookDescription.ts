@@ -3,14 +3,14 @@ import {
 } from 'n8n-workflow';
 import { webhookMapping } from '../WebhookMapping';
 
-export const webhookOperations = [
+export const webhookOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 			},
 		},
 		options: [
@@ -20,26 +20,26 @@ export const webhookOperations = [
 				description: 'Create a new Onfleet webhook',
 			},
 			{
-				name: 'Remove',
+				name: 'Delete',
 				value: 'delete',
-				description: 'Remove an Onfleet webhook',
+				description: 'Delete an Onfleet webhook',
 			},
 			{
-				name: 'List',
+				name: 'Get All',
 				value: 'getAll',
-				description: 'List all Onfleet webhooks',
+				description: 'Get all Onfleet webhooks',
 			},
 		],
 		default: 'getAll',
 	},
-] as INodeProperties[];
+];
 
 const urlField = {
 	displayName: 'Url',
 	name: 'url',
 	type: 'string',
 	default: '',
-	description: 'The URL that Onfleet should issue a request against as soon as the trigger condition is met. It must be HTTPS and have a valid certificate',
+	description: 'The URL that Onfleet should issue a request against as soon as the trigger condition is met. It must be HTTPS and have a valid certificate.',
 } as INodeProperties;
 
 const nameField = {
@@ -65,18 +65,18 @@ const thresholdField = {
 	displayName: 'Threshold',
 	name: 'threshold',
 	type: 'number',
-	default: '',
+	default: 0,
 	description: 'For trigger Task Eta, the time threshold in seconds; for trigger Task Arrival, the distance threshold in meters',
 } as INodeProperties;
 
-export const webhookFields = [
+export const webhookFields: INodeProperties[] = [
 	{
-		displayName: 'ID',
+		displayName: 'Webhook ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 				operation: [ 'delete' ],
 			},
 		},
@@ -88,7 +88,7 @@ export const webhookFields = [
 		...urlField,
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -98,7 +98,7 @@ export const webhookFields = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 				operation: [ 'create' ],
 			},
 		},
@@ -108,24 +108,24 @@ export const webhookFields = [
 		...triggerField,
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 				operation: [ 'create' ],
 			},
 		},
 		required: true,
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'webhooks' ],
+				resource: [ 'webhook' ],
 				operation: [ 'create' ],
 			},
 		},
 		options: [ thresholdField ],
 	},
-] as INodeProperties[];
+];
