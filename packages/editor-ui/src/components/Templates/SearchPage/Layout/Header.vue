@@ -10,9 +10,10 @@
 			<div :class="$style.button">
 				<n8n-button
 					v-if="!loading"
-					size="large"
+					size="small"
 					type="outline"
 					:label="$locale.baseText('templates.newButton')"
+					:transparentBackground="true"
 					@click="openNewWorkflow"
 				/>
 				<n8n-loading :animated="true" :loading="loading" :rows="1" variant="button" />

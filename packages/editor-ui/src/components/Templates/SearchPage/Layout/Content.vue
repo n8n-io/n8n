@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.content">
 		<div :class="$style.filters">
-			<TemplateFilters :setCategories="setCategories" :loading="loading" />
+			<TemplateFilters :setCategories="setCategories" :loading="loadingCategories" />
 		</div>
 		<div :class="$style.search">
 			<div :class="$style.input">
@@ -39,6 +39,7 @@ export default mixins(genericHelpers).extend({
 		return {
 			categories: [] as number[],
 			loading: true,
+			loadingCategories: true,
 			numberOfResults: 10,
 			search: '',
 		};
@@ -100,6 +101,7 @@ export default mixins(genericHelpers).extend({
 			fetchCategories: true,
 		});
 
+		this.loadingCategories = false;
 		this.loading = false;
 	},
 });

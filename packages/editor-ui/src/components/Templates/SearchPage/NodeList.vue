@@ -72,15 +72,15 @@ export default mixins(genericHelpers).extend({
 	align-items: center;
 
 	.container {
-		width: 16px;
-		height: 16px;
+		width: 18px;
+		height: 18px;
 		margin-left: var(--spacing-2xs);
 		position: relative;
 		display: block;
 
 		.image {
-			width: 16px;
-			height: 16px;
+			width: 18px;
+			height: 18px;
 			display: block;
 		}
 	}
@@ -90,7 +90,7 @@ export default mixins(genericHelpers).extend({
 		min-width: 20px;
 		height: 20px;
 		margin-left: var(--spacing-2xs);
-		top: 1px;
+		top: 0px;
 		position: relative;
 		display: flex;
 		justify-content: center;

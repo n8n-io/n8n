@@ -58,6 +58,7 @@ export default mixins(genericHelpers).extend({
 <style lang="scss" module>
 .loading {
 	width: 100%;
+	background-color: var(--color-background-xlight);
 	border-bottom: $--version-card-border;
 	margin-right: var(--spacing-2xs);
 	padding: 0 var(--spacing-s) var(--spacing-s);

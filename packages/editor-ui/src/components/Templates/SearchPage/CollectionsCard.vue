@@ -1,7 +1,9 @@
 <template>
 	<div :class="$style.card" @click="redirectToCollectionPage(id)">
 		<div :class="$style.container">
-			<n8n-heading v-if="!loading" :bold="true" size="small">{{ title }}</n8n-heading>
+			<n8n-heading v-if="!loading" :bold="true" size="small">
+				{{ title }}
+			</n8n-heading>
 			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
 			<div :class="$style.footer">
 				<slot name="footer"></slot>
@@ -32,8 +34,7 @@ export default mixins(genericHelpers).extend({
 
 <style lang="scss" module>
 .card {
-	min-width: 240px;
-	width: 100%;
+	width: 240px!important;
 	height: 140px;
 	border-radius: var(--border-radius-large);
 	border: $--version-card-border;
@@ -41,6 +42,10 @@ export default mixins(genericHelpers).extend({
 	background-color: var(--color-background-xlight);
 	padding: var(--spacing-s);
 	cursor: pointer;
+
+	&:last-child {
+		margin-right: var(--spacing-5xs);
+	}
 }
 
 .container {

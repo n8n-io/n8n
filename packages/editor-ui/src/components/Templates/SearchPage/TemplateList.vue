@@ -69,7 +69,7 @@
 		</div>
 
 		<div v-else class="emptyText">
-			<n8n-text>No workflows found. Try adjusting your search to see more.</n8n-text>
+			<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 		</div>
 	</div>
 </template>

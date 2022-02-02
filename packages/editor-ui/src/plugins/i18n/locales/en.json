@@ -1058,7 +1058,9 @@
 		"heading": "Workflow templates",
 		"newButton": "New blank workflow",
 		"searchPlaceholder": "Search workflows",
-		"categoriesHeading": "Categories"
+		"categoriesHeading": "Categories",
+		"collectionNotFound": "No collections found. Try adjusting your search to see more.",
+		"workflowsNotFound": "No workflows found. Try adjusting your search to see more."
 	},
 	"activationModal": {
 		"workflowActivated": "Workflow activated",

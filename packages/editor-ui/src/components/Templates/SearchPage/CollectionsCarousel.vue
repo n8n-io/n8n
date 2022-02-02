@@ -8,13 +8,13 @@
 		</div>
 
 		<div v-if="loading" :class="$style.slider">
-			<agile :options="sliderOptions">
+			<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4">
 				<CollectionsCard v-for="n in 4" :key="n" :loading="loading" />
 			</agile>
 		</div>
 
-		<span :class="$style.slider" v-else-if="collections.length">
-			<agile ref="slider" :options="sliderOptions">
+		<div :class="$style.slider" v-else-if="collections.length">
+			<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4">
 				<CollectionsCard
 					v-for="collection in collections"
 					:id="collection.id"
@@ -31,31 +31,17 @@
 				</CollectionsCard>
 			</agile>
 			<div :class="$style.buttons">
-				<button
-					v-show="currentSlide > 1"
-					:class="$style.button"
-					@click="
-						$refs.slider.goToPrev();
-						currentSlide = currentSlide - 1;
-					"
-				>
+				<button v-show="carouselScrollPosition > 0" :class="$style.button" @click="scrollLeft">
 					<font-awesome-icon icon="chevron-left" />
 				</button>
-				<button
-					v-show="currentSlide < collections.length - 1"
-					:class="$style.button"
-					@click="
-						$refs.slider.goToNext();
-						currentSlide = currentSlide + 1;
-					"
-				>
+				<button v-show="!scrollEnd" :class="$style.button" @click="scrollRight">
 					<font-awesome-icon icon="chevron-right" />
 				</button>
 			</div>
-		</span>
+		</div>
 
 		<div v-else :class="$style.text">
-			<n8n-text>No collections found. Try adjusting your search to see more.</n8n-text>
+			<n8n-text color="text-base">{{ $locale.baseText('templates.collectionNotFound') }}</n8n-text>
 		</div>
 	</div>
 </template>
@@ -83,20 +69,57 @@ export default mixins(genericHelpers).extend({
 		VueAgile,
 	},
 	computed: {
-		collections() {
+		collections(): [] {
 			return this.$store.getters['templates/getCollections'];
 		},
 	},
 	data() {
 		return {
-			currentSlide: 1,
-			sliderOptions: {
-				dots: false,
-				infinite: false,
-				navButtons: false,
-				slidesToShow: 3.35,
-			},
+			carouselScrollPosition: 0,
+			carouselWidth: 240,
+			scrollEnd: false,
 		};
+	},
+	methods: {
+		handleCarouselScroll() {
+			const list = document.querySelector('.agile__list');
+			if (list) {
+				this.carouselScrollPosition = Number(list.scrollLeft.toFixed());
+
+				const width = list.clientWidth;
+				const scrollWidth = list.scrollWidth;
+				const scrollLeft = this.carouselScrollPosition;
+
+				if (scrollWidth - width <= scrollLeft) {
+					this.scrollEnd = true;
+				} else {
+					this.scrollEnd = false;
+				}
+			}
+		},
+		scrollLeft() {
+			const list = document.querySelector('.agile__list');
+			if (list) {
+				list.scrollBy({ left: -(this.carouselWidth * 2), top: 0, behavior: 'smooth' });
+			}
+		},
+		scrollRight() {
+			const list = document.querySelector('.agile__list');
+			if (list) {
+				list.scrollBy({ left: this.carouselWidth * 2, top: 0, behavior: 'smooth' });
+			}
+		},
+	},
+	mounted() {
+		const list = document.querySelector('.agile__list');
+		this.$nextTick(() => {
+			if (list) {
+				list.addEventListener('scroll', this.handleCarouselScroll);
+			}
+		});
+	},
+	beforeDestroy() {
+		window.removeEventListener('scroll', this.handleCarouselScroll);
 	},
 });
 </script>
@@ -108,19 +131,6 @@ export default mixins(genericHelpers).extend({
 
 .header {
 	padding-bottom: var(--spacing-2xs);
-}
-
-.slider {
-	&:after {
-		content: '';
-		width: 60px;
-		height: 140px;
-		top: 30px;
-		right: 0;
-		position: absolute;
-		background: linear-gradient(270deg, rgba(255, 255, 255, 0.8) 25%, rgba(250, 7, 7, 0) 100%);
-		z-index: 0;
-	}
 }
 
 .buttons {
@@ -158,14 +168,26 @@ export default mixins(genericHelpers).extend({
 		color: var(--color-foreground-xdark);
 	}
 }
-
-.text {
-	padding-top: var(--spacing-xs);
-}
 </style>
 
 <style lang="scss">
 .agile {
+	&__list {
+		width: 100%;
+		padding-bottom: var(--spacing-2xs);
+		overflow-x: scroll;
+		transition: all 1s ease-in-out;
+
+		&::-webkit-scrollbar {
+			height: 6px;
+		}
+
+		&::-webkit-scrollbar-thumb {
+			border-radius: 6px;
+			background-color: var(--color-foreground-dark);
+		}
+	}
+
 	&__track {
 		width: 50px;
 	}
