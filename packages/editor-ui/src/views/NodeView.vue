@@ -2758,6 +2758,7 @@ export default mixins(
 
 		destroyed () {
 			this.resetWorkspace();
+			this.$store.commit('setStateDirty', false);
 		},
 	});
 </script>
