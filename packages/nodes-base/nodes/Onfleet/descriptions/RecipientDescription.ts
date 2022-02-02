@@ -263,7 +263,7 @@ export const recipientFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Update fields',
+		placeholder: 'Update Fields',
 		default: {},
 		displayOptions: {
 			show: {

@@ -42,7 +42,7 @@ export async function onfleetApiRequest(
 		//@ts-ignore
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject); // TODO: Check error
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

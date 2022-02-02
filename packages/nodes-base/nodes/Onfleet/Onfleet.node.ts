@@ -171,7 +171,7 @@ export class Onfleet implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: `Settings are not valid: ${error}`,
+						message: `Auth settings are not valid: ${error}`,
 					};
 				}
 			},
@@ -377,7 +377,7 @@ export class Onfleet implements INodeType {
 			const { vehicleProperties: vehicle } = this.getNodeParameter('vehicle', item) as IDataObject;
 			const workerData: OnfleetWorker = { name, phone, teams };
 
-			// Addding vehicule fields
+			// Adding vehicle fields
 			if (Object.keys((vehicle as IDataObject)).length > 0) {
 				const { type, additionalFields: additionalVehicleFields } = vehicle as IDataObject;
 				Object.assign(workerData, { vehicle: { type, ...(additionalVehicleFields as IDataObject) } });

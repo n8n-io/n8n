@@ -116,7 +116,7 @@ const vehicleTypeField = {
 		},
 	],
 	default: '',
-	description: 'Whether the worker has vehicle or not',
+	description: 'Whether the worker has vehicle or not. If it\'s not provided, this worker will be treated as if on foot.',
 } as INodeProperties;
 
 const vehicleDescriptionField = {
@@ -286,7 +286,7 @@ const filterField = {
 		},
 	],
 	default: '',
-	description: 'A list of fields to return, if all are not desired',
+	description: 'A list of fields to show in the response, if all are not desired',
 } as INodeProperties;
 
 const longitudeFilterField = {

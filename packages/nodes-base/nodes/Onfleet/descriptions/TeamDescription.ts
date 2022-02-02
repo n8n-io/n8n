@@ -16,7 +16,7 @@ export const teamOperations: INodeProperties[] = [
 			{
 				name: 'Auto-Dispatch',
 				value: 'autoDispatch',
-				description: 'Dynamically dispatching tasks on the fly',
+				description: 'Automatically dispatch tasks assigned to a team to on-duty drivers',
 			},
 			{
 				name: 'Create',
@@ -36,12 +36,12 @@ export const teamOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'List all Onfleet teams',
+				description: 'Get all Onfleet teams',
 			},
 			{
 				name: 'Get Time Estimates',
 				value: 'getTimeEstimates',
-				description: 'The Driver Time Estimates endpoint allows an API user to get estimated times for tasks that haven\'t been created yet',
+				description: 'Get estimated times for upcoming tasks for a team, returns a selected driver',
 			},
 			{
 				name: 'Update',
@@ -99,7 +99,7 @@ const enableSelfAssignmentField = {
 	name: 'enableSelfAssignment',
 	type: 'boolean',
 	default: false,
-	description: 'Whether allows Drivers to Self Assign Tasks that are in the Team unassigned container or not',
+	description: 'Whether or not to allow drivers to self-assign tasks that are in the Team\'s unassigned container',
 } as INodeProperties;
 
 const maxTasksPerRouteField = {
@@ -116,7 +116,7 @@ const maxTasksPerRouteField = {
 
 const serviceTimeField = {
 	displayName: 'Service Time',
-	name: 'serviceTIme',
+	name: 'serviceTime',
 	type: 'number',
 	default: 2,
 	typeOptions: {
@@ -193,7 +193,7 @@ const pickupTimeField = {
 	name: 'pickupTime',
 	type: 'dateTime',
 	default: '',
-	description: 'If the request includes pickupLocation pickupTime must be present if the time is fewer than 3 hours in the future',
+	description: 'If the request includes pickupLocation, pickupTime must be present if the time is fewer than 3 hours in the future',
 } as INodeProperties;
 
 const restrictedVehicleTypesField = {
@@ -224,7 +224,7 @@ const restrictedVehicleTypesField = {
 
 const serviceTimeEstimateField = {
 	displayName: 'Service Time',
-	name: 'serviceTIme',
+	name: 'serviceTime',
 	type: 'number',
 	default: 120,
 	typeOptions: {

@@ -33,7 +33,7 @@ const unparsedField = {
 	displayName: 'Unparsed Address',
 	name: 'unparsed',
 	type: 'boolean',
-	description: 'Whether the address is specified in a single',
+	description: 'Whether or not the address is specified in a single unparsed string',
 	default: false,
 } as INodeProperties;
 

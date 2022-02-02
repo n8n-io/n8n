@@ -31,7 +31,7 @@ export const organizationOperations: INodeProperties[] = [
 
 export const organizationFields: INodeProperties[] = [
 	{
-		displayName: 'Organiation ID',
+		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
