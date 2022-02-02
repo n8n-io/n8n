@@ -40,6 +40,8 @@ export interface N8nApp {
 //         requests to /me
 // ----------------------------------
 
+// TODO: Remove?
+
 export declare namespace UpdateSelfRequest {
 	export type Settings = AuthenticatedRequest<
 		{},
@@ -53,6 +55,8 @@ export declare namespace UpdateSelfRequest {
 // ----------------------------------
 //      password reset requests
 // ----------------------------------
+
+// TODO: Remove?
 
 export declare namespace PasswordResetRequest {
 	export type Email = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'email'>>;
