@@ -14,6 +14,7 @@ import { User } from '../databases/entities/User';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { PublicUser } from './Interfaces';
 
+// TODO: Remove?
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function saveWorkflowOwnership(
 	workflow: WorkflowEntity,
@@ -30,6 +31,7 @@ export async function saveWorkflowOwnership(
 	});
 }
 
+// TODO: Remove?
 export async function saveCredentialOwnership(
 	credentials: CredentialsEntity,
 	user: User,
@@ -55,12 +57,14 @@ export async function isInstanceOwnerSetup(): Promise<boolean> {
 	return users.length !== 0;
 }
 
+// TODO: Remove?
 export function isValidEmail(email: string): boolean {
 	return !!/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.exec(
 		String(email).toLowerCase(),
 	);
 }
 
+// TODO: Refactor and remove?
 export function validatePassword(password?: string) {
 	if (!password) {
 		throw new ResponseHelper.ResponseError('Password is mandatory', undefined, 400);
