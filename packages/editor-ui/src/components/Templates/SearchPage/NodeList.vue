@@ -2,14 +2,14 @@
 	<div :class="$style.list">
 		<div
 			:class="$style.container"
-			v-for="node in filteredCoreNodes.slice(0, numberOfHiddenNodes)"
+			v-for="node in filteredCoreNodes.slice(0, countNodesToBeSliced(filteredCoreNodes))"
 			:key="node.name"
 		>
 			<img v-if="node.iconData.fileBuffer" :class="$style.image" :src="node.iconData.fileBuffer" />
 			<FontAwesomeIcon v-else :icon="node.iconData.icon" :color="node.defaults.color" />
 		</div>
-		<div :class="$style.button" v-if="filteredCoreNodes.length > numberOfHiddenNodes">
-			+{{ filteredCoreNodes.length - numberOfHiddenNodes }}
+		<div :class="$style.button" v-if="filteredCoreNodes.length > nodesToBeShown + 1">
+			+{{ filteredCoreNodes.length - countNodesToBeSliced(filteredCoreNodes) }}
 		</div>
 	</div>
 </template>
@@ -43,7 +43,7 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
-			numberOfHiddenNodes: 4,
+			nodesToBeShown: 4,
 		};
 	},
 	components: {
@@ -51,12 +51,21 @@ export default mixins(genericHelpers).extend({
 	},
 	computed: {
 		filteredCoreNodes() {
-			return this.nodes.filter(elem => {
+			return this.nodes.filter((elem) => {
 				const node = elem as INode;
 				return node.categories.some((category: ITemplateCategories) => {
 					return category.name !== 'Core Nodes';
 				});
 			});
+		},
+	},
+	methods: {
+		countNodesToBeSliced(nodes: []): number {
+			if (nodes.length > this.nodesToBeShown) {
+				return this.nodesToBeShown - 1;
+			} else {
+				return this.nodesToBeShown;
+			}
 		},
 	},
 });
