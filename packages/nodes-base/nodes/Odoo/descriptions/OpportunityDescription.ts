@@ -1,5 +1,47 @@
 import { INodeProperties } from 'n8n-workflow';
 
+export const opportunityOperations: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		default: 'create',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: ['opportunity'],
+			},
+		},
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new opportunity',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an opportunity',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get an opportunity',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all opportunities',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an opportunity',
+			},
+		],
+	},
+];
+
 const opportunityFields: INodeProperties[] = [
 	{
 		displayName: 'Phone',
@@ -64,9 +106,12 @@ const opportunityFields: INodeProperties[] = [
 ];
 
 export const opportunityDescription: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                opportunity:create                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
-		name: 'opportunity',
+		name: 'opportunityName',
 		type: 'string',
 		default: '',
 		required: true,
@@ -77,7 +122,7 @@ export const opportunityDescription: INodeProperties[] = [
 			},
 		},
 	},
-	// Additional fields =============================================================
+
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -92,7 +137,76 @@ export const opportunityDescription: INodeProperties[] = [
 		},
 		options: [...opportunityFields],
 	},
-	// Update fields =============================================================
+
+	/* -------------------------------------------------------------------------- */
+	/*                                opportunity:get                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Opportunity ID',
+		name: 'opportunityId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['get', 'delete'],
+				resource: ['opportunity'],
+			},
+		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                opportunity:getAll                          */
+	/* -------------------------------------------------------------------------- */
+
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['opportunity'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		displayOptions: {
+			show: {
+				resource: ['opportunity'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		description: 'Max number of results to return',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                opportunity:update                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Opportunity ID',
+		name: 'opportunityId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['opportunity'],
+			},
+		},
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -107,7 +221,7 @@ export const opportunityDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Opportunity',
+				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
