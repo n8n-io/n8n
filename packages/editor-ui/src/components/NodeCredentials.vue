@@ -134,7 +134,7 @@ export default mixins(
 		},
 	},
 	watch: {
-		credentialTypesNodeDescriptionDisplayed: function(credentialsTypes) {
+		credentialTypesNodeDescriptionDisplayed (credentialsTypes) {
 			credentialsTypes.forEach((credentialType: ICredentialType) => {
 				if (!this.getSelectedId(credentialType.name) && this.credentialOptions[credentialType.name].length === 1) {
 					this.onCredentialSelected(credentialType.name, this.credentialOptions[credentialType.name][0].id);
