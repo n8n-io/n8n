@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { hashSync, genSaltSync } from 'bcryptjs';
 import * as express from 'express';
@@ -20,8 +21,6 @@ export function ownerSetupNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/owner/setup`,
 		ResponseHelper.send(async (req: OwnerSetupRequest, res: express.Response) => {
-			console.log('healskdnaslkdnaslkdnas');
-
 			const { email, firstName, lastName, password } = req.body;
 			const { id: userId } = req.user;
 
