@@ -615,6 +615,8 @@ class App {
 
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
+			LoggerProxy.debug('Health check started!');
+
 			const connection = getConnectionManager().get();
 
 			try {
@@ -634,6 +636,8 @@ class App {
 			const responseData = {
 				status: 'ok',
 			};
+
+			LoggerProxy.debug('Health check completed successfully!');
 
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
