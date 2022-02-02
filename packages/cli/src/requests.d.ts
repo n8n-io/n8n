@@ -139,3 +139,19 @@ export declare namespace CredentialRequest {
 
 	type NewName = WorkflowRequest.NewName;
 }
+
+// ----------------------------------
+//     requests to /owner/setup
+// ----------------------------------
+
+export type OwnerSetupRequest = AuthenticatedRequest<
+	{},
+	{},
+	Partial<{
+		email: string;
+		password: string;
+		firstName: string;
+		lastName: string;
+	}>,
+	{}
+>;
