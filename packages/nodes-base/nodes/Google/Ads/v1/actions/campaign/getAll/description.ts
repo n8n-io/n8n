@@ -2,13 +2,12 @@ import {
 	CampaignProperties,
 } from '../../Interfaces';
 
-export const reactionGetAllDescription: CampaignProperties = [
+export const campaignGetAllDescription: CampaignProperties = [
 	{
-		displayName: 'Post ID',
-		name: 'postId',
-		type: 'string',
-		default: '',
-		required: true,
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: 'true',
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,12 +18,12 @@ export const reactionGetAllDescription: CampaignProperties = [
 				],
 			},
 		},
-		description: 'One or more (comma-separated) posts to retrieve reactions from.',
+		description: 'Retrieve all campaigns',
 	},
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
+		displayName: 'Customer ID',
+		name: 'customerId',
+		type: 'string',
 		displayOptions: {
 			show: {
 				operation: [
@@ -36,7 +35,7 @@ export const reactionGetAllDescription: CampaignProperties = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Your Google Ads customer ID.',
 	},
 	{
 		displayName: 'Limit',

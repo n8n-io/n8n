@@ -30,7 +30,7 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get the reactions to one campaign via its ID',
+				description: 'Get the campaign via its ID',
 			},
 		],
 		default: 'getAll',

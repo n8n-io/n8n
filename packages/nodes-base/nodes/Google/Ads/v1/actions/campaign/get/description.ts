@@ -6,10 +6,7 @@ export const campaignDescription: CampaignProperties = [
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
-		type: 'options',
-		typeOptions: {
-		},
-		options: [],
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {

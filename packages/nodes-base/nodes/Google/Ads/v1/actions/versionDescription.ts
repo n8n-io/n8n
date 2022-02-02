@@ -2,6 +2,7 @@ import {
 	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import * as campaign from './campaign';
 
 export const versionDescription: INodeTypeDescription = {

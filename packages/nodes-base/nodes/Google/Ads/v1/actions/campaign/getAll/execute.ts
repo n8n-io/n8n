@@ -12,13 +12,14 @@ import {
 } from '../../../transport';
 
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const postId = this.getNodeParameter('postId', index) as string;
+	const customerId = this.getNodeParameter('customerId', index) as string;
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	const qs = {} as IDataObject;
-	const requestMethod = 'GET';
-	const endpoint = `posts/${postId}/reactions`;
+	const requestMethod = 'POST';
+	const endpoint = `/customers/${customerId}/googleAds:search`;
 	const body = {} as IDataObject;
+	body.query = 'SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC';
 
 	let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	if (limit > 0) {
