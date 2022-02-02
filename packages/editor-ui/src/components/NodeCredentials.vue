@@ -21,9 +21,7 @@
 
 				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
 					<n8n-select
-						:value="!getSelectedId(credentialTypeDescription.name) && credentialOptions[credentialTypeDescription.name].length === 1
-							? onCredentialSelected(credentialTypeDescription.name, credentialOptions[credentialTypeDescription.name][0].id)
-							: getSelectedId(credentialTypeDescription.name)"
+						:value="getSelectedId(credentialTypeDescription.name)"
 						@change="(value) => onCredentialSelected(credentialTypeDescription.name, value)"
 						:placeholder="$locale.baseText('nodeCredentials.selectCredential')"
 						size="small"
@@ -133,6 +131,15 @@ export default mixins(
 		},
 		selected(): {[type: string]: INodeCredentialsDetails} {
 			return this.node.credentials || {};
+		},
+	},
+	watch: {
+		credentialTypesNodeDescriptionDisplayed: function(credentialsTypes) {
+			credentialsTypes.forEach((credentialType: ICredentialType) => {
+				if (!this.getSelectedId(credentialType.name) && this.credentialOptions[credentialType.name].length === 1) {
+					this.onCredentialSelected(credentialType.name, this.credentialOptions[credentialType.name][0].id);
+				}
+			});
 		},
 	},
 	methods: {
