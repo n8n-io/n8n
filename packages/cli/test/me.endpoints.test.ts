@@ -266,7 +266,8 @@ describe('/me endpoints', () => {
 			const ownerAgent = await utils.createAgent(app, owner);
 
 			for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
-				await ownerAgent.patch('/me').send(invalidPayload).expect(400);
+				const response = await ownerAgent.patch('/me').send(invalidPayload);
+				expect(response.statusCode).toBe(400);
 			}
 		});
 
