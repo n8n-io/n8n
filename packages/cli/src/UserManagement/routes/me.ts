@@ -3,10 +3,12 @@
 
 import { genSaltSync, hashSync } from 'bcryptjs';
 import express = require('express');
+import validator from 'validator';
+
 import { Db, ResponseHelper } from '../..';
 import { issueJWT } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { isValidEmail, validatePassword, sanitizeUser } from '../UserManagementHelper';
+import { validatePassword, sanitizeUser } from '../UserManagementHelper';
 import type { UpdateSelfRequest } from '../Interfaces';
 import { AuthenticatedRequest } from '../../requests';
 import { validateEntity } from '../../GenericHelpers';
@@ -29,7 +31,7 @@ export function meNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/me`,
 		ResponseHelper.send(
 			async (req: UpdateSelfRequest.Settings, res: express.Response): Promise<PublicUser> => {
-				if (req.body.email && !isValidEmail(req.body.email)) {
+				if (req.body.email && validator.isEmail(req.body.email)) {
 					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}
 
