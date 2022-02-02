@@ -172,6 +172,7 @@ import {
 	IExecutionResponse,
 	IWorkflowDataUpdate,
 	IMenuItem,
+  IUser,
 } from '../Interface';
 
 import ExecutionsList from '@/components/ExecutionsList.vue';
@@ -547,7 +548,12 @@ export default mixins(
 				} else if (key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (key === 'settings') {
-					this.$router.push('/settings');
+					if ((this.currentUser as IUser).isDefaultUser) {
+						this.$router.push('/settings/users');
+					}
+					else {
+						this.$router.push('/settings/personal');
+					}
 				}
 			},
 		},

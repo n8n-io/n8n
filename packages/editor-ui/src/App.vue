@@ -70,21 +70,6 @@ export default mixins(
 			}
 		},
 		authenticate() {
-			if (this.$route.name === 'SettingsRedirect') {
-				if (this.$store.getters['users/isDefaultUser']) {
-					this.$router.push({
-						name: 'UsersSettings',
-					});
-				}
-				else {
-					this.$router.push({
-						name: 'PersonalSettings',
-					});
-				}
-
-				return;
-			}
-
 			// redirect to setup page. user should be redirected to this only once
 			if (this.isUserManagementEnabled && this.showSetupPage) {
 				this.loading = false;

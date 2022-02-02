@@ -98,6 +98,7 @@ const router = new Router({
 		{
 			path: '/settings',
 			name: 'SettingsRedirect',
+			redirect: '/settings/personal',
 		},
 		{
 			path: '/settings/users',
