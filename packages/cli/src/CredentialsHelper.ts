@@ -122,7 +122,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 						authenticate.properties.userPropertyName ?? 'user';
 					const passwordPropertyName: string =
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.userPropertyName ?? 'password';
+						authenticate.properties.passwordPropertyName ?? 'password';
 
 					requestOptions.auth = {
 						username: credentials[userPropertyName] as string,
