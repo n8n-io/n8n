@@ -6,7 +6,7 @@ import { URL } from 'url';
 import bodyParser = require('body-parser');
 
 import config = require('../../config');
-import { AUTHLESS_ENDPOINTS, MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, REST_PATH_SEGMENT } from './constants';
+import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../src/UserManagement/routes';
 import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
@@ -16,6 +16,12 @@ import { getConnection } from 'typeorm';
 import { issueJWT } from '../../src/UserManagement/auth/jwt';
 
 export const isTestRun = process.argv[1].split('/').includes('jest');
+
+export const MIN_PASSWORD_LENGTH = 8;
+
+export const MAX_PASSWORD_LENGTH = 64;
+
+const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
 
 export const initTestServer = (namespaces: { [K in 'me' | 'users']?: true } = {}) => {
 	const testServer = {
@@ -84,9 +90,22 @@ export function prefix(pathSegment: string) {
  * Create a random string of random length between two limits, both inclusive.
  */
 export function randomString(min: number, max: number) {
-	const randomInteger = Math.floor(Math.random() * (max - min + 1) + min);
+	const randomInteger = Math.floor(Math.random() * (max - min) + min) + 1;
 	return randomBytes(randomInteger / 2).toString('hex');
 }
 
-export const randomValidPassword = () =>
-	randomString(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH);
+const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
+
+export const randomValidPassword = () => randomString(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH);
+
+export const randomInvalidPassword = () =>
+	chooseRandomly([
+		randomString(1, MIN_PASSWORD_LENGTH - 1),
+		randomString(MAX_PASSWORD_LENGTH + 1, 100),
+	]);
+
+export const randomEmail = () => `${randomName()}@${randomName()}.${randomTopLevelDomain()}`;
+
+const randomTopLevelDomain = () => chooseRandomly(POPULAR_TOP_LEVEL_DOMAINS);
+
+export const randomName = () => randomString(3, 7);

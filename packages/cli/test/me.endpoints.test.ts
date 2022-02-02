@@ -132,15 +132,15 @@ describe('/me endpoints', () => {
 			const shell = await Db.collections.User!.findOneOrFail();
 			const shellAgent = await utils.createAgent(app, shell);
 
-			const invalidPayloads: Array<{ password?: string }> = [
-				utils.randomString(1, 4),
-				utils.randomString(80, 100),
-			].map((password) => ({ password }));
+			const invalidPayloads: Array<{ password?: string }> = Array.from({ length: 3 }, () => ({
+				password: utils.randomInvalidPassword(),
+			}));
 
 			invalidPayloads.push({});
 
 			for (const invalidPayload of invalidPayloads) {
-				await shellAgent.patch('/me/password').send(invalidPayload).expect(400);
+				const response = await shellAgent.patch('/me/password').send(invalidPayload);
+				expect(response.statusCode).toBe(400);
 			}
 		});
 
@@ -289,15 +289,15 @@ describe('/me endpoints', () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const ownerAgent = await utils.createAgent(app, owner);
 
-			const invalidPayloads: Array<{ password?: string }> = [
-				utils.randomString(1, 4),
-				utils.randomString(80, 100),
-			].map((password) => ({ password }));
+			const invalidPayloads: Array<{ password?: string }> = Array.from({ length: 3 }, () => ({
+				password: utils.randomInvalidPassword(),
+			}));
 
 			invalidPayloads.push({});
 
 			for (const invalidPayload of invalidPayloads) {
-				await ownerAgent.patch('/me/password').send(invalidPayload).expect(400);
+				const response = await ownerAgent.patch('/me/password').send(invalidPayload);
+				expect(response.statusCode).toBe(400);
 			}
 		});
 
@@ -447,10 +447,9 @@ describe('/me endpoints', () => {
 			const member = await Db.collections.User!.findOneOrFail();
 			const memberAgent = await utils.createAgent(app, member);
 
-			const invalidPayloads: Array<{ password?: string }> = [
-				utils.randomString(1, 4),
-				utils.randomString(80, 100),
-			].map((password) => ({ password }));
+			const invalidPayloads: Array<{ password?: string }> = Array.from({ length: 3 }, () => ({
+				password: utils.randomInvalidPassword(),
+			}));
 
 			invalidPayloads.push({});
 
@@ -476,9 +475,9 @@ describe('/me endpoints', () => {
 });
 
 const TEST_USER = {
-	email: 'john@n8n.io',
-	firstName: 'John',
-	lastName: 'Smith',
+	email: utils.randomEmail(),
+	firstName: utils.randomName(),
+	lastName: utils.randomName(),
 };
 
 const SURVEY = [
@@ -494,15 +493,15 @@ const SURVEY = [
 
 const VALID_PATCH_ME_PAYLOADS = [
 	{
-		email: 'test@n8n.io',
-		firstName: 'John',
-		lastName: 'Smith',
+		email: utils.randomEmail(),
+		firstName: utils.randomName(),
+		lastName: utils.randomName(),
 		password: utils.randomValidPassword(),
 	},
 	{
-		email: 'abc@def.com',
-		firstName: 'John',
-		lastName: 'Smith',
+		email: utils.randomEmail(),
+		firstName: utils.randomName(),
+		lastName: utils.randomName(),
 		password: utils.randomValidPassword(),
 	},
 ];
@@ -510,22 +509,22 @@ const VALID_PATCH_ME_PAYLOADS = [
 const INVALID_PATCH_ME_PAYLOADS = [
 	{
 		email: 'invalid',
-		firstName: 'John',
-		lastName: 'Smith',
+		firstName: utils.randomName(),
+		lastName: utils.randomName(),
 	},
 	{
-		email: 'test@n8n.io',
+		email: utils.randomEmail(),
 		firstName: '',
-		lastName: 'Smith',
+		lastName: utils.randomName(),
 	},
 	{
-		email: 'test@n8n.io',
-		firstName: 'John',
+		email: utils.randomEmail(),
+		firstName: utils.randomName(),
 		lastName: '',
 	},
 	{
-		email: 'test@n8n.io',
+		email: utils.randomEmail(),
 		firstName: 123,
-		lastName: 'Smith',
+		lastName: utils.randomName(),
 	},
 ];

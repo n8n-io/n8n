@@ -29,7 +29,3 @@ export const SUCCESS_RESPONSE_BODY: Readonly<object> = {
 		success: true,
 	},
 };
-
-export const MIN_PASSWORD_LENGTH = 8;
-
-export const MAX_PASSWORD_LENGTH = 64;
