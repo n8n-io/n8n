@@ -18,11 +18,7 @@
 			</template>
 		</ModalRoot>
 		<ModalRoot :name="ABOUT_MODAL_KEY">
-			<template v-slot:default="{ modalName }">
-				<AboutModal
-					:modalName="modalName"
-				/>
-			</template>
+			<AboutModal />
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">
@@ -69,19 +65,11 @@
 		</ModalRoot>
 
 		<ModalRoot :name="CHANGE_PASSWORD_MODAL_KEY">
-			<template v-slot="{ modalName }">
-				<ChangePasswordModal
-					:modalName="modalName"
-				/>
-			</template>
+			<ChangePasswordModal />
 		</ModalRoot>
 
 		<ModalRoot :name="INVITE_USER_MODAL_KEY">
-			<template v-slot="{ modalName }">
-				<InviteUsersModal
-					:modalName="modalName"
-				/>
-			</template>
+			<InviteUsersModal />
 		</ModalRoot>
 
 		<ModalRoot :name="DELETE_USER_MODAL_KEY">

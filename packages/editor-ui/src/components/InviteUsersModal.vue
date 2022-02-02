@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		:name="modalName"
+		:name="INVITE_USER_MODAL_KEY"
 		@enter="onSubmit"
 		title="Invite new users"
 		:center="true"
@@ -30,7 +30,7 @@ import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IFormInputs, IUserResponse } from "@/Interface";
-import { VALID_EMAIL_REGEX } from "@/constants";
+import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from "@/constants";
 import { ROLE } from "@/modules/userHelpers";
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
@@ -62,6 +62,7 @@ export default mixins(showMessage).extend({
 			modalBus: new Vue(),
 			emails: '',
 			loading: false,
+			INVITE_USER_MODAL_KEY,
 		};
 	},
 	mounted() {

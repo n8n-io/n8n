@@ -3,7 +3,7 @@
 		width="540px"
 		:title="$locale.baseText('about.aboutN8n')"
 		:eventBus="modalBus"
-		:name="modalName"
+		:name="ABOUT_MODAL_KEY"
 		:center="true"
 	>
 		<template slot="content">
@@ -49,19 +49,16 @@
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import Modal from './Modal.vue';
+import { ABOUT_MODAL_KEY } from '../constants';
 
 export default Vue.extend({
 	name: 'About',
-	props: {
-		modalName: {
-			type: String,
-		},
-	},
 	components: {
 		Modal,
 	},
 	data() {
 		return {
+			ABOUT_MODAL_KEY,
 			modalBus: new Vue(),
 		};
 	},

@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		:name="modalName"
+		:name="CHANGE_PASSWORD_MODAL_KEY"
 		@enter="onSubmit"
 		title="Change Password"
 		:center="true"
@@ -30,6 +30,7 @@ import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IFormInputs } from "@/Interface";
+import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 
 export default mixins(showMessage).extend({
 	components: { Modal },
@@ -46,6 +47,7 @@ export default mixins(showMessage).extend({
 			modalBus: new Vue(),
 			password: '',
 			loading: false,
+			CHANGE_PASSWORD_MODAL_KEY,
 		};
 	},
 	mounted() {
