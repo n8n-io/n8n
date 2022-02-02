@@ -74,10 +74,10 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 };
 
 export const getValidationError = (
-	value: any,
-	validators: { [key: string]: Validator | RuleGroup },
-	validator: Validator | RuleGroup,
-	config?: any,
+	value: any, // tslint:disable-line:no-any
+	validators: { [key: string]: IValidator | RuleGroup },
+	validator: IValidator | RuleGroup,
+	config?: any, // tslint:disable-line:no-any
 ): string | null => {
 	if (validator.hasOwnProperty('rules')) {
 		const rules = (validator as RuleGroup).rules;
@@ -104,7 +104,7 @@ export const getValidationError = (
 				const error = getValidationError(
 					value,
 					validators,
-					validators[rule.name] as Validator,
+					validators[rule.name] as IValidator,
 					rule.config,
 				);
 				if (error) {
@@ -116,7 +116,7 @@ export const getValidationError = (
 		validator.hasOwnProperty('validate')
 	) {
 		try {
-			(validator as Validator).validate(value, config);
+			(validator as IValidator).validate(value, config);
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				return e.message;
