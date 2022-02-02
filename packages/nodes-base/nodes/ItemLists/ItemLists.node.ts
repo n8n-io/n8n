@@ -89,7 +89,23 @@ export class ItemLists implements INodeType {
 				default: 'splitOutItems',
 			},
 			// Split out items - Fields
-
+			{
+				displayName: 'Split Root',
+				name: 'splitRoot',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						resource: [
+							'itemList',
+						],
+						operation: [
+							'splitOutItems',
+						],
+					},
+				},
+				description: 'If the item is an array, split it out into individual items',
+			},
 			{
 				displayName: 'Field To Split Out',
 				name: 'fieldToSplitOut',
@@ -103,6 +119,11 @@ export class ItemLists implements INodeType {
 						],
 						operation: [
 							'splitOutItems',
+						],
+					},
+					hide: {
+						splitRoot: [
+							true,
 						],
 					},
 				},
@@ -135,6 +156,11 @@ export class ItemLists implements INodeType {
 						],
 						operation: [
 							'splitOutItems',
+						],
+					},
+					hide: {
+						splitRoot: [
+							true,
 						],
 					},
 				},
@@ -600,6 +626,11 @@ return 0;`,
 							'aggregateItems',
 						],
 					},
+					hide: {
+						splitRoot: [
+							true,
+						],
+					},
 				},
 				options: [
 					{
@@ -674,13 +705,16 @@ return 0;`,
 			if (operation === 'splitOutItems') {
 
 				for (let i = 0; i < length; i++) {
-					const fieldToSplitOut = this.getNodeParameter('fieldToSplitOut', i) as string;
+					const splitRoot = this.getNodeParameter('splitRoot', i, false) as string;
+					const fieldToSplitOut = this.getNodeParameter('fieldToSplitOut', i, '') as string;
 					const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
 					const destinationFieldName = this.getNodeParameter('options.destinationFieldName', i, '') as string;
-					const include = this.getNodeParameter('include', i) as string;
+					const include = this.getNodeParameter('include', i, '') as string;
 
 					let arrayToSplit;
-					if (disableDotNotation === false) {
+					if (splitRoot) {
+						arrayToSplit = items[i].json;
+					} else if (disableDotNotation === false) {
 						arrayToSplit = get(items[i].json, fieldToSplitOut);
 					} else {
 						arrayToSplit = items[i].json[fieldToSplitOut as string];
@@ -745,7 +779,7 @@ return 0;`,
 								unset(newItem, fieldToSplitOut);
 							}
 
-							if (typeof element === 'object' && include === 'noOtherFields' && destinationFieldName === '') {
+							if (typeof element === 'object' && include === 'noOtherFields' && destinationFieldName === '' || splitRoot) {
 								newItem = { ...newItem, ...element };
 							} else {
 								newItem = { ...newItem, [destinationFieldName as string || fieldToSplitOut as string]: element };
