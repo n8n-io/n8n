@@ -59,7 +59,7 @@ export const siteFields: INodeProperties[] = [
 					'site',
 				],
 				operation: [
-					'create'
+					'create',
 				],
 			},
 		},
