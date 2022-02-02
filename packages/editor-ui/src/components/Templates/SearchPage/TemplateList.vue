@@ -22,7 +22,11 @@
 					:class="$style.card"
 					@click="navigateTo(workflow.id, 'TemplatePage', $event)"
 				>
-					<TemplateCard :title="workflow.name" :loading="false" :class="index === workflows.length - 1 ? $style.last : ''">
+					<TemplateCard
+						:title="workflow.name"
+						:loading="false"
+						:class="index === workflows.length - 1 ? $style.last : ''"
+					>
 						<template v-slot:button>
 							<div :class="$style.button">
 								<n8n-button
@@ -98,6 +102,12 @@ export default mixins(genericHelpers).extend({
 	watch: {
 		categories(categoriesAreChanged) {
 			if (categoriesAreChanged) {
+				this.page = 0;
+				this.skip = 1;
+			}
+		},
+		search(search) {
+			if (search) {
 				this.page = 0;
 				this.skip = 1;
 			}
