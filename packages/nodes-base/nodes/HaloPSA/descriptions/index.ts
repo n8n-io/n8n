@@ -1,6 +1,6 @@
 import { clientFields, clientOperations } from './ClientDescription';
-import { siteFields, siteOperations } from './siteDescription';
-import { ticketFields, ticketOperations } from './ticketDescription';
+import { siteFields, siteOperations } from './SiteDescription';
+import { ticketFields, ticketOperations } from './TicketDescription';
 import { userFields, userOperations } from './UserDescription';
 
 export {
