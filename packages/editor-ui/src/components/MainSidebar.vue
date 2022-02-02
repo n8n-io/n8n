@@ -172,7 +172,7 @@ import {
 	IExecutionResponse,
 	IWorkflowDataUpdate,
 	IMenuItem,
-  IUser,
+	IUser,
 } from '../Interface';
 
 import ExecutionsList from '@/components/ExecutionsList.vue';

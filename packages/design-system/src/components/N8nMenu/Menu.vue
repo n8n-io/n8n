@@ -49,7 +49,6 @@ export default {
 .primary {
 	composes: menu;
 	--menu-item-hover-font-color: var(--color-primary);
-	--menu-item-active-font-weight: var(--font-weight-regular);
 }
 
 .secondary {
@@ -58,7 +57,6 @@ export default {
 	--menu-item-font-weight: var(--font-weight-regular);
 	--menu-background-color: transparent;
 	--menu-item-active-font-color: var(--color-text-dark);
-	--menu-item-active-font-weight: var(--font-weight-regular);
 	--menu-item-active-background-color: var(--color-foreground-base);
 	--menu-item-hover-font-color: var(--color-primary);
 	--menu-item-border-radius: 4px;
