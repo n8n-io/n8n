@@ -719,7 +719,7 @@ export interface IUiState {
 	isPageLoading: boolean;
 }
 
-export type ILogLevel = 'debug' | 'info' | 'warn' | 'vebose';
+export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
 export interface ISettingsState {
 	settings: IN8nUISettings;

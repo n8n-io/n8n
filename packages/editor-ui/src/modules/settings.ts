@@ -32,10 +32,10 @@ const module: Module<ISettingsState, IRootState> = {
 		getPromptsData(state: ISettingsState) {
 			return state.promptsData;
 		},
-		telemetry: (state): ITelemetrySettings | null => {
+		telemetry: (state): ITelemetrySettings => {
 			return state.settings.telemetry;
 		},
-		logLevel: (state): ILogLevel | null => {
+		logLevel: (state): ILogLevel => {
 			return state.settings.logLevel;
 		},
 		isTelemetryEnabled: (state) => {
