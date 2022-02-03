@@ -7,8 +7,8 @@ import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 
 import { Db, GenericHelpers, ResponseHelper } from '../..';
-import { N8nApp, UserRequest } from '../Interfaces';
-import { AuthenticatedRequest } from '../../requests';
+import { N8nApp } from '../Interfaces';
+import { AuthenticatedRequest, UserRequest } from '../../requests';
 import { isEmailSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';

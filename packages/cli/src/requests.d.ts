@@ -9,6 +9,7 @@ import {
 	INode,
 	IWorkflowSettings,
 } from '../../workflow/dist/src';
+import { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthenticatedRequest<
 	RouteParams = {},
@@ -156,4 +157,37 @@ export declare namespace OwnerRequest {
 		}>,
 		{}
 	>;
+}
+
+// ----------------------------------
+//    password reset flow requests
+// ----------------------------------
+
+export declare namespace PasswordResetRequest {
+	export type Email = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'email'>>;
+
+	export type Credentials = AuthenticatedRequest<{}, {}, {}, { userId?: string; token?: string }>;
+
+	export type NewPassword = AuthenticatedRequest<
+		{},
+		{},
+		Pick<PublicUser, 'password'> & { token?: string; id?: string }
+	>;
+}
+
+// ----------------------------------
+//        requests to /users
+// ----------------------------------
+
+export declare namespace UserRequest {
+	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
+
+	export type SignUp = AuthenticatedRequest<
+		{ id: string },
+		{ inviterId?: string; inviteeId?: string }
+	>;
+
+	export type Delete = AuthenticatedRequest<{ id: string }, {}, {}, { transferId?: string }>;
+
+	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 }

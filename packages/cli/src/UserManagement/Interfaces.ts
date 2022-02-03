@@ -51,38 +51,3 @@ export declare namespace UpdateSelfRequest {
 	export type Password = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'password'>>;
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
-
-// ----------------------------------
-//      password reset requests
-// ----------------------------------
-
-// TODO: Remove?
-
-export declare namespace PasswordResetRequest {
-	export type Email = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'email'>>;
-
-	export type Credentials = AuthenticatedRequest<{}, {}, {}, { userId?: string; token?: string }>;
-
-	export type NewPassword = AuthenticatedRequest<
-		{},
-		{},
-		Pick<PublicUser, 'password'> & { token?: string; id?: string }
-	>;
-}
-
-// ----------------------------------
-//        requests to /users
-// ----------------------------------
-
-export declare namespace UserRequest {
-	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
-
-	export type SignUp = AuthenticatedRequest<
-		{ id: string },
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
-	export type Delete = AuthenticatedRequest<{ id: string }, {}, {}, { transferId?: string }>;
-
-	export type Reinvite = AuthenticatedRequest<{ id: string }>;
-}

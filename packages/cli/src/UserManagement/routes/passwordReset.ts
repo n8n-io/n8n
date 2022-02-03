@@ -11,7 +11,7 @@ import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
 import { validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
-import type { PasswordResetRequest } from '../Interfaces';
+import type { PasswordResetRequest } from '../../requests';
 import { issueJWT } from '../auth/jwt';
 import { getBaseUrl } from '../../GenericHelpers';
 
