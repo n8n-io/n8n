@@ -31,7 +31,7 @@ export function meNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/me`,
 		ResponseHelper.send(
 			async (req: UpdateSelfRequest.Settings, res: express.Response): Promise<PublicUser> => {
-				if (req.body.email && validator.isEmail(req.body.email)) {
+				if (req.body.email && !validator.isEmail(req.body.email)) {
 					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}
 
