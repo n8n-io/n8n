@@ -64,6 +64,7 @@ class Telemetry {
 			const logging = logLevel === 'debug' ? { logLevel: 'DEBUG'} : {};
 			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false, ...logging});
 			this.telemetry.identify(instanceId);
+			this.flushPageEvents();
 		}
 	}
 
@@ -196,6 +197,5 @@ class Telemetry {
 		};
 		this.telemetry.loadJS();
 		this.telemetry.load(key, url, options);
-		this.flushPageEvents();
 	}
 }
