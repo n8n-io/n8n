@@ -7,26 +7,8 @@
 import { IsNull, Not } from 'typeorm';
 import { Db, ResponseHelper } from '..';
 import config = require('../../config');
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { User } from '../databases/entities/User';
 import { PublicUser } from './Interfaces';
-
-// TODO: Remove?
-export async function saveCredentialOwnership(
-	credentials: CredentialsEntity,
-	user: User,
-): Promise<SharedCredentials> {
-	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-	const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'credential' });
-
-	// eslint-disable-next-line consistent-return, @typescript-eslint/return-await
-	return (await Db.collections.SharedCredentials?.save({
-		role,
-		user,
-		credentials,
-	})) as SharedCredentials;
-}
 
 export function isEmailSetup(): boolean {
 	const emailMode = config.get('userManagement.emails.mode') as string;
