@@ -96,7 +96,7 @@ export const getValidationError = (
 			}
 
 			if (rules[i].hasOwnProperty('name') ) {
-				const rule = rules[i] as {name: string, config?: any};
+				const rule = rules[i] as {name: string, config?: any}; // tslint:disable-line:no-any
 				if (!validators[rule.name]) {
 					continue;
 				}
