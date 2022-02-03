@@ -536,6 +536,7 @@ export interface IN8nUISettings {
 	personalizationSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
 	defaultLocale: string;
+	logLevel: ILogLevel;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -717,6 +718,8 @@ export interface IUiState {
 	};
 	isPageLoading: boolean;
 }
+
+export type ILogLevel = 'debug' | 'info' | 'warn' | 'vebose';
 
 export interface ISettingsState {
 	settings: IN8nUISettings;

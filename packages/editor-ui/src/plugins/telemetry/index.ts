@@ -3,7 +3,7 @@ import {
 	ITelemetrySettings,
 	IDataObject,
 } from 'n8n-workflow';
-import { INodeCreateElement } from "@/Interface";
+import { ILogLevel, INodeCreateElement } from "@/Interface";
 
 declare module 'vue/types/vue' {
 	interface Vue {
@@ -55,13 +55,14 @@ class Telemetry {
 		this.pageEventQueue = [];
 	}
 
-	init(options: ITelemetrySettings, instanceId: string) {
+	init(options: ITelemetrySettings, instanceId: string, logLevel?: ILogLevel) {
 		if (options.enabled && !this.telemetry) {
 			if(!options.config) {
 				return;
 			}
 
-			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false });
+			const logging = logLevel === 'debug' ? { logLevel: 'DEBUG'} : {};
+			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false, ...logging});
 			this.telemetry.identify(instanceId);
 		}
 	}
