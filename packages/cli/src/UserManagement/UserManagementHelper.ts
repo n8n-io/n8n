@@ -1,7 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import { IsNull, Not } from 'typeorm';
@@ -20,7 +17,7 @@ export async function isInstanceOwnerSetup(): Promise<boolean> {
 	return users.length !== 0;
 }
 
-export function validatePassword(password?: string) {
+export function validatePassword(password?: string): string {
 	if (!password) {
 		throw new ResponseHelper.ResponseError('Password is mandatory', undefined, 400);
 	}
