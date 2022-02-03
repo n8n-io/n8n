@@ -67,9 +67,8 @@ describe('/owner endpoints', () => {
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
 
-			// TODO: Confirm if needed
-			// const owner = await Db.collections.User!.findOneOrFail(id);
-			// expect(owner.password).not.toBeNull(); // or bcrypt compare()
+			const owner = await Db.collections.User!.findOneOrFail(id);
+			expect(owner.password).not.toBe(TEST_USER.password);
 		});
 
 		test('POST /owner should enable hasOwner setting', async () => {
