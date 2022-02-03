@@ -20,7 +20,7 @@ export function ownerNamespace(this: N8nApp): void {
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/owner`,
-		ResponseHelper.send(async (req: OwnerRequest.Setup, res: express.Response) => {
+		ResponseHelper.send(async (req: OwnerRequest.Post, res: express.Response) => {
 			const { email, firstName, lastName, password } = req.body;
 			const { id: userId } = req.user;
 

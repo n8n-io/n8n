@@ -145,7 +145,7 @@ export declare namespace CredentialRequest {
 // ----------------------------------
 
 export declare namespace OwnerRequest {
-	type Setup = AuthenticatedRequest<
+	type Post = AuthenticatedRequest<
 		{},
 		{},
 		Partial<{
