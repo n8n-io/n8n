@@ -288,6 +288,7 @@ class App {
 				shouldShow: false,
 			},
 			defaultLocale: config.get('defaultLocale'),
+			logLevel: config.get('logs.level'),
 		};
 	}
 
