@@ -3,7 +3,6 @@
 import { Application } from 'express';
 import { JwtFromRequestFunction } from 'passport-jwt';
 import { IPersonalizationSurveyAnswers } from '../Interfaces';
-import type { AuthenticatedRequest } from '../requests';
 
 export interface JwtToken {
 	token: string;
