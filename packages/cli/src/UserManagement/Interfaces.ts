@@ -35,19 +35,3 @@ export interface N8nApp {
 	app: Application;
 	restEndpoint: string;
 }
-
-// ----------------------------------
-//         requests to /me
-// ----------------------------------
-
-// TODO: Remove?
-
-export declare namespace UpdateSelfRequest {
-	export type Settings = AuthenticatedRequest<
-		{},
-		{},
-		Pick<PublicUser, 'email' | 'firstName' | 'lastName'>
-	>;
-	export type Password = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'password'>>;
-	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
-}
