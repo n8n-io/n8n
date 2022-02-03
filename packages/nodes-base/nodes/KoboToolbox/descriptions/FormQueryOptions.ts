@@ -4,7 +4,7 @@ import {
 
 export const formQueryOptions = [
 	{
-		displayName: 'Form Query Options',
+		displayName: 'Options',
 		name: 'formQueryOptions',
 		type: 'collection',
 		default: {},
@@ -19,14 +19,6 @@ export const formQueryOptions = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Filter',
-				name: 'filter',
-				type: 'string',
-				default: 'asset_type:survey',
-				required: false,
-				description:'A text search query based on form data - e.g. "owner__username:meg AND name__icontains:quixotic" - see https://github.com/kobotoolbox/kpi#searching for more details',
-			},
 			{
 				displayName: 'Order By',
 				name: 'ordering',
@@ -63,6 +55,32 @@ export const formQueryOptions = [
 				type: 'boolean',
 				default: true,
 				description:'Sort by descending order',
+			},
+		],
+	},
+	{
+		displayName: 'Filters',
+		name: 'formFilterOptions',
+		type: 'collection',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'form',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Filter',
+				name: 'filter',
+				type: 'string',
+				default: 'asset_type:survey',
+				required: false,
+				description:'A text search query based on form data - e.g. "owner__username:meg AND name__icontains:quixotic" - see https://github.com/kobotoolbox/kpi#searching for more details',
 			},
 		],
 	},

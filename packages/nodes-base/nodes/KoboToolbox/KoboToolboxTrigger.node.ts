@@ -85,7 +85,7 @@ export class KoBoToolboxTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const assetUid = this.getNodeParameter('assetUid') as string; //tslint:disable-line:variable-name
-				const {results: webhooks} = await koBoToolboxApiRequest.call(this, {
+				const webhooks = await koBoToolboxApiRequest.call(this, {
 					url: `/api/v2/assets/${assetUid}/hooks/`,
 				});
 				for (const webhook of webhooks || []) {

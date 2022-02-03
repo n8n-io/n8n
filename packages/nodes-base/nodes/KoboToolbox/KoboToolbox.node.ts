@@ -165,21 +165,20 @@ export class KoBoToolbox implements INodeType {
 					//          Submissions: query
 					// ----------------------------------
 
-					const limit = this.getNodeParameter('limit', i) as number;
-					const start = this.getNodeParameter('start', i) as number;
 					const submissionQueryOptions = this.getNodeParameter('submissionQueryOptions', i) as IDataObject;
 					const formatOptions = this.getNodeParameter('formatOptions', i) as IDataObject;
 
-					({results: responseData} = await koBoToolboxApiRequest.call(this, {
+					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${assetUid}/data/`,
 						qs: {
-							start,
-							limit,
+							start: this.getNodeParameter('start', i, 0) as number,
+							limit: this.getNodeParameter('limit', i, 1000) as number,
 							...(submissionQueryOptions.query   && {query:  submissionQueryOptions.query}),
 							...(submissionQueryOptions.sort    && {sort:   submissionQueryOptions.sort}),
 							...(submissionQueryOptions.fields  && {fields: JSON.stringify(parseStringList(submissionQueryOptions.fields as string))}),
 						},
-					}));
+						scroll: this.getNodeParameter('scroll', i) as boolean,
+					});
 
 					if(formatOptions.reformat) {
 						responseData = responseData.map((submission : IDataObject) => {
@@ -283,15 +282,19 @@ export class KoBoToolbox implements INodeType {
 					// ----------------------------------
 					//          Form: getAll
 					// ----------------------------------
-					const formQueryOptions = this.getNodeParameter('formQueryOptions', i) as IDataObject;
+					const formQueryOptions  = this.getNodeParameter('formQueryOptions', i)  as IDataObject;
+					const formFilterOptions = this.getNodeParameter('formFilterOptions', i) as IDataObject;
 
-					({results: responseData} = await koBoToolboxApiRequest.call(this, {
+					responseData = await koBoToolboxApiRequest.call(this, {
 						url: '/api/v2/assets/',
 						qs: {
-							...(formQueryOptions.filter    && {q:     formQueryOptions.filter}),
+							start: this.getNodeParameter('start', i, 0) as number,
+							limit: this.getNodeParameter('limit', i, 1000) as number,
+							...(formFilterOptions.filter    && {q:     formFilterOptions.filter}),
 							...(formQueryOptions.ordering  && {ordering: (formQueryOptions.descending ? '-' : '') + formQueryOptions.ordering}),
 						},
-					}));
+						scroll: this.getNodeParameter('scroll', i) as boolean,
+					});
 				}
 			}
 
@@ -303,11 +306,16 @@ export class KoBoToolbox implements INodeType {
 
 				if (operation === 'getAll') {
 					// ----------------------------------
-					//          Hook: list
+					//          Hook: getAll
 					// ----------------------------------
-					({results: responseData} = await koBoToolboxApiRequest.call(this, {
+					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${assetUid}/hooks/`,
-					}));
+						qs: {
+							start: this.getNodeParameter('start', i, 0) as number,
+							limit: this.getNodeParameter('limit', i, 1000) as number,
+						},
+						scroll: this.getNodeParameter('scroll', i) as boolean,
+					});
 				}
 
 				if (operation === 'get') {
@@ -331,18 +339,21 @@ export class KoBoToolbox implements INodeType {
 					})];
 				}
 
-				if (operation === 'logs') {
+				if (operation === 'getLogs') {
 					// ----------------------------------
-					//          Hook: logs
+					//          Hook: getLogs
 					// ----------------------------------
 					const id = this.getNodeParameter('id', i) as string;
 					const status = this.getNodeParameter('status', i) as string;
-					({results: responseData} = await koBoToolboxApiRequest.call(this, {
+					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${assetUid}/hooks/${id}/logs/`,
 						qs: {
+							start: this.getNodeParameter('start', i, 0) as number,
+							limit: this.getNodeParameter('limit', i, 1000) as number,
 							...(status !== '' && {status}),
 						},
-					}));
+						scroll: this.getNodeParameter('scroll', i) as boolean,
+					});
 				}
 
 				if (operation === 'retryOne') {

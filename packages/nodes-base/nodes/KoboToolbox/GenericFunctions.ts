@@ -20,6 +20,16 @@ import axios from 'axios';
 export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('koBoToolboxApi') as IDataObject;
 
+	// Set up pagination / scrolling
+	let scroll = !!option.scroll;
+	if(scroll) {
+		// Override manual pagination options
+		_.set(option,'qs.limit', 30000);
+		_.unset(option,'qs.start');
+		// Don't pass this custom param to helpers.httpRequest
+		delete option.scroll;
+	}
+
 	const options: IHttpRequestOptions = {
 		url: '',
 		headers: {
@@ -35,8 +45,23 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 		options.url = credentials.URL + options.url;
 	}
 
-	// Logger.debug('KoBoToolboxApiRequest', options);
-	return await this.helpers.httpRequest(options);
+	let results = null;
+	let keepLooking = true;
+	while(keepLooking) {
+		// Logger.debug('KoBoToolboxApiRequest', options);
+		const response = await this.helpers.httpRequest(options);
+		// Append or set results
+		results = response.results ? _.concat(results || [], response.results) : response;
+		if(scroll && response.next) {
+			options.url = response.next;
+			continue;
+		}
+		else {
+			keepLooking = false;
+		}
+	}
+
+	return results;
 }
 
 function parseGeoPoint(geoPoint: string): null | number[] {
@@ -213,8 +238,9 @@ export async function loadSurveys(this: ILoadOptionsFunctions): Promise<INodePro
 			q: 'asset_type:survey',
 			ordering: 'name',
 		},
+		scroll: true,
 	});
 
 	// Logger.debug('LoadSurveys', responseData);
-	return responseData.results?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];  // tslint:disable-line:no-any
+	return responseData?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];  // tslint:disable-line:no-any
 }

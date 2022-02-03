@@ -4,41 +4,6 @@ import {
 
 export const submissionQueryOptions = [
 	{
-		displayName: 'Start',
-		name: 'start',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: [
-					'submission',
-				],
-				operation: [
-					'query',
-				],
-			},
-		},
-		default: 0,
-		description:'Offset from the result set',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		required: false,
-		displayOptions: {
-			show: {
-				resource: [
-					'submission',
-				],
-				operation: [
-					'query',
-				],
-			},
-		},
-		default: 1000,
-		description:'Max records to return (up to 30000)',
-	},
-	{
 		displayName: 'Query Options',
 		name: 'submissionQueryOptions',
 		type: 'collection',
@@ -53,9 +18,10 @@ export const submissionQueryOptions = [
 			},
 		},
 		default: {},
+		placeholder: 'Add Query Option',
 		options: [
 			{
-				displayName: 'Query',
+				displayName: 'Filter',
 				name: 'query',
 				type: 'json',
 				default:'',

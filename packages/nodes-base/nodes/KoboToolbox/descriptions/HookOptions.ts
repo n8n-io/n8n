@@ -15,7 +15,7 @@ export const hookOptions = [
 				],
 				operation: [
 					'get',
-					'logs',
+					'getLogs',
 					'retryOne',
 					'retryAll',
 				],
@@ -52,7 +52,7 @@ export const hookOptions = [
 					'hook',
 				],
 				operation: [
-					'logs',
+					'getLogs',
 				],
 			},
 		},

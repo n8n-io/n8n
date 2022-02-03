@@ -4,6 +4,7 @@ import {
 
 export const options = {
 	displayName: 'Options',
+	placeholder: 'Add Option',
 	name: 'formatOptions',
 	type: 'collection',
 	default: {},

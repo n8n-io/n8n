@@ -92,7 +92,7 @@ export const operations = [
 			},
 			{
 				name: 'Logs',
-				value: 'logs',
+				value: 'getLogs',
 				description: 'Get hook logs',
 			},
 			{
