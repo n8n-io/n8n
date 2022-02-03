@@ -2752,7 +2752,6 @@ export default mixins(
 			});
 
 			this.$externalHooks().run('nodeView.mount');
-			this.$telemetry.page('Editor', this.$route.name);
 		},
 
 		destroyed () {
