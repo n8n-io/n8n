@@ -407,7 +407,6 @@ export class Workflow {
 			// Reached the actual value
 			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
 				// Is expression so has to be rewritten
-
 				// To not run the "expensive" regex stuff when it is not needed
 				// make a simple check first if it really contains the the node-name
 				if (parameterValue.includes(currentName)) {
@@ -421,25 +420,31 @@ export class Workflow {
 							new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.?|"\\]?|'\\]?))`, 'g'),
 							`$1${newName}$3`,
 						);
+						// eslint-disable-next-line no-console
+						console.log(String.raw`${parameterValue}`);
 					}
 					if (parameterValue.includes('$items')) {
 						parameterValue = parameterValue.replace(
-							new RegExp(`(\\$items(\\.|\\("|\\('))${currentNameEscaped}((\\.|"\\)|'\\)))`, 'g'),
+							new RegExp(
+								`(\\$items(\\.|\\("|\\('))${currentNameEscaped}(('\\,|"\\,|"\\)|'\\)))`,
+								'g',
+							),
 							`$1${newName}$3`,
 						);
 					}
 
 					const specialCharacters = /^(\d)|[ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
-					if (specialCharacters.test(newName) && parameterValue.includes(`.${newName}`)) {
+					if (parameterValue.includes(String.raw`.${newName}`) && specialCharacters.test(newName)) {
 						const newNameEscaped = newName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 						parameterValue = parameterValue.replace(
-							new RegExp(`.${newNameEscaped}`, 'g'),
-							`["${newName}"]`,
+							new RegExp(`.${newNameEscaped}( |\\.)`, 'g'),
+							`["${newName}"]$1`,
 						);
 					}
 				}
 			}
-
+			// eslint-disable-next-line no-console
+			// console.log(String.raw`${parameterValue}`);
 			return parameterValue;
 		}
 
