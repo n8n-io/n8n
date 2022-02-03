@@ -19,7 +19,7 @@ export function ownerSetupNamespace(this: N8nApp): void {
 	 * returning the owner with an `n8n-auth` cookie.
 	 */
 	this.app.post(
-		`/${this.restEndpoint}/owner/setup`,
+		`/${this.restEndpoint}/owner`,
 		ResponseHelper.send(async (req: OwnerSetupRequest, res: express.Response) => {
 			const { email, firstName, lastName, password } = req.body;
 			const { id: userId } = req.user;
