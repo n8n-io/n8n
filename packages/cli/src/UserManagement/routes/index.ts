@@ -20,7 +20,7 @@ import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
 import { isTestRun } from '../../../test/shared/utils';
-import { ownerSetupNamespace } from './ownerSetup';
+import { ownerNamespace } from './owner';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	this.app.use(cookieParser());
@@ -128,7 +128,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	// tests add endpoints namespaces separately
 	if (!isTestRun) {
 		authenticationMethods.apply(this);
-		ownerSetupNamespace.apply(this);
+		ownerNamespace.apply(this);
 		meNamespace.apply(this);
 		passwordResetNamespace.apply(this);
 		usersNamespace.apply(this);

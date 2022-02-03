@@ -141,17 +141,19 @@ export declare namespace CredentialRequest {
 }
 
 // ----------------------------------
-//     requests to /owner/setup
+//        requests to /owner
 // ----------------------------------
 
-export type OwnerSetupRequest = AuthenticatedRequest<
-	{},
-	{},
-	Partial<{
-		email: string;
-		password: string;
-		firstName: string;
-		lastName: string;
-	}>,
-	{}
->;
+export declare namespace OwnerRequest {
+	type Setup = AuthenticatedRequest<
+		{},
+		{},
+		Partial<{
+			email: string;
+			password: string;
+			firstName: string;
+			lastName: string;
+		}>,
+		{}
+	>;
+}

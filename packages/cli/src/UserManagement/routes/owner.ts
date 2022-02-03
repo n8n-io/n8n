@@ -8,19 +8,19 @@ import { Db, ResponseHelper } from '../..';
 import config = require('../../../config');
 import { User } from '../../databases/entities/User';
 import { validateEntity } from '../../GenericHelpers';
-import { OwnerSetupRequest } from '../../requests';
+import { OwnerRequest } from '../../requests';
 import { issueJWT } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
 import { sanitizeUser } from '../UserManagementHelper';
 
-export function ownerSetupNamespace(this: N8nApp): void {
+export function ownerNamespace(this: N8nApp): void {
 	/**
 	 * Promote a shell into the owner of the n8n instance,
 	 * returning the owner with an `n8n-auth` cookie.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/owner`,
-		ResponseHelper.send(async (req: OwnerSetupRequest, res: express.Response) => {
+		ResponseHelper.send(async (req: OwnerRequest.Setup, res: express.Response) => {
 			const { email, firstName, lastName, password } = req.body;
 			const { id: userId } = req.user;
 
