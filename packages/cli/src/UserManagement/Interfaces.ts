@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Application } from 'express';
 import { JwtFromRequestFunction } from 'passport-jwt';
 import { IPersonalizationSurveyAnswers } from '../Interfaces';
