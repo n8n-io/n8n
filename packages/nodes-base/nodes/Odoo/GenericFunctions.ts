@@ -257,6 +257,8 @@ export async function odooGetAll(
 	url: string,
 	filters?: IOdooFilterOperations,
 	fieldsToReturn?: IDataObject,
+	offset = 0,
+	limit = 0,
 ) {
 	try {
 		const body = {
@@ -273,6 +275,8 @@ export async function odooGetAll(
 					mapOperationToJSONRPC[operation],
 					(filters && processFilters(filters)) || [],
 					(fieldsToReturn && processResponceFields(fieldsToReturn)) || [],
+					offset,
+					limit,
 				],
 			},
 			id: Math.floor(Math.random() * 100),

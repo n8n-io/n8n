@@ -111,6 +111,25 @@ export const noteDescription: INodeProperties[] = [
 	},
 
 	{
+		displayName: 'Offset',
+		name: 'offset',
+		type: 'number',
+		default: 0,
+		displayOptions: {
+			show: {
+				resource: ['note'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 0,
+			maxValue: 1000,
+		},
+		description: 'The offset of results to return',
+	},
+
+	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',

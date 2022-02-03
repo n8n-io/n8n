@@ -198,10 +198,6 @@ export class Odoo implements INodeType {
 		let responseData;
 
 		const resource = this.getNodeParameter('resource', 0) as string;
-		let customResource = '';
-		if (resource === 'custom') {
-			customResource = this.getNodeParameter('customResource', 0) as string;
-		}
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		const credentials = await this.getCredentials('odooApi');
@@ -266,15 +262,34 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						responseData = await odooGetAll.call(
-							this,
-							db,
-							userID,
-							password,
-							resource,
-							operation,
-							url,
-						);
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
+							responseData = await odooGetAll.call(
+								this,
+								db,
+								userID,
+								password,
+								resource,
+								operation,
+								url,
+							);
+						} else {
+							const offset = this.getNodeParameter('offset', i) as number;
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = await odooGetAll.call(
+								this,
+								db,
+								userID,
+								password,
+								resource,
+								operation,
+								url,
+								undefined, // filters, only for custom resource
+								{}, // selected fields to return, only for custom resource
+								offset,
+								limit,
+							);
+						}
 					}
 
 					if (operation === 'update') {
@@ -295,6 +310,7 @@ export class Odoo implements INodeType {
 				}
 
 				if (resource === 'custom') {
+					const customResource = this.getNodeParameter('customResource', i) as string;
 					if (operation === 'create') {
 						const fields = this.getNodeParameter('fieldsToCreateOrUpdate', i) as IDataObject;
 						responseData = await odooCreate.call(
@@ -340,19 +356,38 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
 						const filter = this.getNodeParameter('filterRequest', i) as IOdooFilterOperations;
-						responseData = await odooGetAll.call(
-							this,
-							db,
-							userID,
-							password,
-							customResource,
-							operation,
-							url,
-							filter,
-							fields,
-						);
+						if (returnAll) {
+							responseData = await odooGetAll.call(
+								this,
+								db,
+								userID,
+								password,
+								customResource,
+								operation,
+								url,
+								filter,
+								fields,
+							);
+						} else {
+							const offset = this.getNodeParameter('offset', i) as number;
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = await odooGetAll.call(
+								this,
+								db,
+								userID,
+								password,
+								customResource,
+								operation,
+								url,
+								filter,
+								fields,
+								offset,
+								limit,
+							);
+						}
 					}
 
 					if (operation === 'update') {
@@ -363,7 +398,7 @@ export class Odoo implements INodeType {
 							db,
 							userID,
 							password,
-							resource === 'custom' ? customResource : resource,
+							customResource,
 							operation,
 							url,
 							customResourceId,
@@ -416,15 +451,34 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						responseData = await odooGetAll.call(
-							this,
-							db,
-							userID,
-							password,
-							resource,
-							operation,
-							url,
-						);
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
+							responseData = await odooGetAll.call(
+								this,
+								db,
+								userID,
+								password,
+								resource,
+								operation,
+								url,
+							);
+						} else {
+							const offset = this.getNodeParameter('offset', i) as number;
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = await odooGetAll.call(
+								this,
+								db,
+								userID,
+								password,
+								resource,
+								operation,
+								url,
+								undefined, // filters, only for custom resource
+								{}, // selected fields to return, only for custom resource
+								offset,
+								limit,
+							);
+						}
 					}
 
 					if (operation === 'update') {
@@ -493,15 +547,34 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						responseData = await odooGetAll.call(
-							this,
-							db,
-							userID,
-							password,
-							resource,
-							operation,
-							url,
-						);
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
+							responseData = await odooGetAll.call(
+								this,
+								db,
+								userID,
+								password,
+								resource,
+								operation,
+								url,
+							);
+						} else {
+							const offset = this.getNodeParameter('offset', i) as number;
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = await odooGetAll.call(
+								this,
+								db,
+								userID,
+								password,
+								resource,
+								operation,
+								url,
+								undefined, // filters, only for custom resource
+								{}, // selected fields to return, only for custom resource
+								offset,
+								limit,
+							);
+						}
 					}
 
 					if (operation === 'update') {
