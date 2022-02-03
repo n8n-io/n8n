@@ -16,7 +16,7 @@ import { sanitizeUser } from '../UserManagementHelper';
 export function ownerNamespace(this: N8nApp): void {
 	/**
 	 * Promote a shell into the owner of the n8n instance,
-	 * returning the owner with an `n8n-auth` cookie.
+	 * and enable `hasOwner` instance setting.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/owner`,
