@@ -4,9 +4,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { AxiosError } from 'axios';
-
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 
 import { NodeVersionedType } from 'n8n-nodes-base';
@@ -29,7 +26,6 @@ import {
 	INodeTypeData,
 	INodeTypes,
 	INodeVersionedType,
-	IRequestOptionsFromParameters,
 	IRequestOptionsSimplified,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -37,6 +33,7 @@ import {
 	RoutingNode,
 	Workflow,
 	WorkflowExecuteMode,
+	ITaskDataConnections,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -48,9 +45,6 @@ import {
 	NodeTypes,
 	WorkflowExecuteAdditionalData,
 } from '.';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const merge = require('lodash.merge');
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
@@ -565,8 +559,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const mode = 'internal';
 		const runIndex = 0;
-		const itemIndex = 0;
-		const inputData = {};
+		const inputData: ITaskDataConnections = {
+			main: [[{ json: {} }]],
+		};
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = {
 			resultData: {
@@ -576,123 +571,68 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(node.parameters);
 
-		const thisArgs = NodeExecuteFunctions.getExecuteSingleFunctions(
+		const routingNode = new RoutingNode(
 			workflow,
-			runExecutionData,
-			runIndex,
-			connectionInputData,
-			inputData,
 			node,
-			itemIndex,
+			connectionInputData,
+			runExecutionData ?? null,
 			additionalData,
 			mode,
 		);
 
-		const requestData: IRequestOptionsFromParameters = {
-			options: {
-				url: '', // TODO: Replace with own type where url is not required
-				qs: {},
-				body: {},
-			},
-			preSend: [],
-			postReceive: [],
-		};
-
-		if (nodeType.description.requestDefaults) {
-			Object.assign(requestData.options, nodeType.description.requestDefaults);
-		}
-
 		try {
-			const routingNode = new RoutingNode(
-				workflow,
-				node,
-				connectionInputData,
-				runExecutionData ?? null,
-				additionalData,
-				mode,
-			);
-
-			const tempOptions = routingNode.getRequestOptionsFromParameters(
-				thisArgs,
-				{
-					displayName: 'Temp',
-					name: 'temp',
-					type: 'string',
-					routing: {
-						request: credentialTestFunction.testRequest.request,
-					},
-					default: '',
-				},
-				itemIndex,
+			await routingNode.runNode(
+				inputData,
 				runIndex,
-				'',
+				nodeType,
+				NodeExecuteFunctions,
+				credentialsDecrypted,
 			);
+		} catch (error) {
+			// Do not fail any requests to allow custom error messages and
+			// make logic easier
+			if (error.cause.response) {
+				const errorResponseData = {
+					statusCode: error.cause.response.status,
+					statusMessage: error.cause.response.statusText,
+				};
 
-			if (tempOptions) {
-				merge(requestData.options, tempOptions.options);
-				requestData.preSend.push(...tempOptions.preSend);
-				requestData.postReceive.push(...tempOptions.postReceive);
-			}
-
-			await routingNode
-				.rawRoutingRequest(
-					thisArgs,
-					requestData,
-					itemIndex,
-					runIndex,
-					credentialType,
-					credentialsDecrypted,
-				)
-				.catch((error: AxiosError) => {
-					// Do not fail any requests to allow custom error messages and
-					// make logic easier
-					if (!error.response) {
-						throw error;
-					}
-
-					const errorResponseData = {
-						statusCode: error.response.status,
-						statusMessage: error.response.statusText,
-					};
-
-					if (credentialTestFunction.testRequest.rules) {
-						// Special testing rules are defined so check all in order
-						for (const rule of credentialTestFunction.testRequest.rules) {
-							if (rule.type === 'responseCode') {
-								if (errorResponseData.statusCode === rule.properties.value) {
-									return {
-										status: 'Error',
-										message: rule.properties.message,
-									};
-								}
+				if (credentialTestFunction.testRequest.rules) {
+					// Special testing rules are defined so check all in order
+					for (const rule of credentialTestFunction.testRequest.rules) {
+						if (rule.type === 'responseCode') {
+							if (errorResponseData.statusCode === rule.properties.value) {
+								return {
+									status: 'Error',
+									message: rule.properties.message,
+								};
 							}
 						}
 					}
+				}
 
-					if (errorResponseData.statusCode < 199 || errorResponseData.statusCode > 299) {
-						// All requests with response codes that are not 2xx are treated by default as failed
-						return {
-							status: 'Error',
-							message:
-								// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-								errorResponseData.statusMessage ||
-								`Received HTTP status code: ${errorResponseData.statusCode}`,
-						};
-					}
+				if (errorResponseData.statusCode < 199 || errorResponseData.statusCode > 299) {
+					// All requests with response codes that are not 2xx are treated by default as failed
+					return {
+						status: 'Error',
+						message:
+							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+							errorResponseData.statusMessage ||
+							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+							`Received HTTP status code: ${errorResponseData.statusCode}`,
+					};
+				}
+			}
 
-					// If we are still here mark it as success
-					return [];
-				});
-
-			return {
-				status: 'OK',
-				message: 'Connection successful!',
-			};
-		} catch (error) {
 			return {
 				status: 'Error',
 				message: error.message.toString(),
 			};
 		}
+
+		return {
+			status: 'OK',
+			message: 'Connection successful!',
+		};
 	}
 }

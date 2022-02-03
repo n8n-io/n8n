@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
@@ -11,10 +12,13 @@ import {
 	INodeCredentials,
 	INodeExecutionData,
 	INodeParameters,
+	INodeProperties,
 	INodePropertyOptions,
+	INodeType,
 	INodeTypeNameVersion,
 	INodeTypes,
 	IRunExecutionData,
+	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	RoutingNode,
 	Workflow,
@@ -165,26 +169,10 @@ export class LoadNodeParameterOptions {
 			);
 		}
 
-		const options = nodeType.description.requestDefaults;
-		Object.assign(options, loadOptions.routing?.request);
-
 		const mode = 'internal';
 		const runIndex = 0;
-		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
-
-		const executeSingleFunctions = NodeExecuteFunctions.getExecuteSingleFunctions(
-			this.workflow,
-			runExecutionData,
-			runIndex,
-			connectionInputData,
-			{},
-			node!,
-			itemIndex,
-			additionalData,
-			mode,
-		);
 
 		const routingNode = new RoutingNode(
 			this.workflow,
@@ -195,64 +183,37 @@ export class LoadNodeParameterOptions {
 			mode,
 		);
 
-		const nodeProperties: INodePropertyOptions = {
-			name: '',
-			value: '',
-			routing: {
-				request: options,
+		// Create copy of node-type with the single property we want to get the data off
+		const tempNode: INodeType = {
+			...nodeType,
+			...{
+				description: {
+					...nodeType.description,
+					properties: [
+						{
+							displayName: '',
+							type: 'string',
+							name: '',
+							default: '',
+							routing: loadOptions.routing,
+						} as INodeProperties,
+					],
+				},
 			},
 		};
 
-		const requestData = routingNode.getRequestOptionsFromParameters(
-			executeSingleFunctions,
-			nodeProperties,
-			itemIndex,
+		const inputData: ITaskDataConnections = {
+			main: [[{ json: {} }]],
+		};
+
+		const optionsData = await routingNode.runNode(
+			inputData,
 			runIndex,
-			'',
-			{ $parameters: this.currentNodeParameters },
+			tempNode,
+			NodeExecuteFunctions,
 		);
 
-		if (!requestData) {
-			return [];
-		}
-
-		let credentialType: string | undefined;
-		if (node?.credentials && Object.keys(node.credentials).length) {
-			[credentialType] = Object.keys(node?.credentials);
-		}
-
-		let requestOperations = nodeType.description.requestOperations ?? {};
-
-		if (loadOptions.routing?.operations) {
-			// If overwrites exist on loadOptions apply them
-			requestOperations = Object.assign(requestOperations, loadOptions.routing?.operations);
-		}
-
-		if (loadOptions.routing?.output?.postReceive) {
-			requestData.postReceive = [
-				{
-					data: {
-						parameterValue: undefined,
-					},
-					action: loadOptions.routing.output.postReceive,
-				},
-			];
-		}
-
-		if (loadOptions.routing?.output?.maxResults) {
-			// INFO: Currently expressions are not supported here but should not be needed for loadOptions anyway
-			requestData.maxResults = loadOptions.routing.output.maxResults;
-		}
-		const optionsData = await routingNode.makeRoutingRequest(
-			requestData,
-			executeSingleFunctions,
-			itemIndex,
-			runIndex,
-			credentialType,
-			requestOperations,
-		);
-
-		if (optionsData.length === 0) {
+		if (optionsData?.length === 0) {
 			return [];
 		}
 
@@ -260,6 +221,6 @@ export class LoadNodeParameterOptions {
 			throw new Error('The returned data is not an array!');
 		}
 
-		return optionsData.map((item) => item.json) as unknown as INodePropertyOptions[];
+		return optionsData[0].map((item) => item.json) as unknown as INodePropertyOptions[];
 	}
 }

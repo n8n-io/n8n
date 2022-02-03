@@ -79,6 +79,7 @@ export class RoutingNode {
 		runIndex: number,
 		nodeType: INodeType,
 		nodeExecuteFunctions: INodeExecuteFunctions,
+		credentialsDecrypted?: ICredentialsDecrypted,
 	): Promise<INodeExecutionData[][] | null | undefined> {
 		const items = inputData.main[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
@@ -101,7 +102,9 @@ export class RoutingNode {
 		);
 
 		let credentials: ICredentialDataDecryptedObject | undefined;
-		if (credentialType) {
+		if (credentialsDecrypted) {
+			credentials = credentialsDecrypted.data;
+		} else if (credentialType) {
 			credentials = (await executeFunctions.getCredentials(credentialType)) || {};
 		}
 
@@ -135,8 +138,6 @@ export class RoutingNode {
 				}
 
 				if (nodeType.description.requestDefaults) {
-					Object.assign(requestData.options, nodeType.description.requestDefaults);
-
 					for (const key of Object.keys(nodeType.description.requestDefaults)) {
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
@@ -184,6 +185,7 @@ export class RoutingNode {
 					runIndex,
 					credentialType,
 					requestData.requestOperations,
+					credentialsDecrypted,
 				);
 
 				if (requestData.maxResults) {
