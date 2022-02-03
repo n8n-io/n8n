@@ -9,27 +9,8 @@ import { Db, ResponseHelper } from '..';
 import config = require('../../config');
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { PublicUser } from './Interfaces';
-
-// TODO: Remove?
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function saveWorkflowOwnership(
-	workflow: WorkflowEntity,
-	user: User,
-): Promise<SharedWorkflow | undefined> {
-	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-	const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'workflow' });
-
-	// eslint-disable-next-line consistent-return, @typescript-eslint/return-await
-	return await Db.collections.SharedWorkflow?.save({
-		role,
-		user,
-		workflow,
-	});
-}
 
 // TODO: Remove?
 export async function saveCredentialOwnership(
