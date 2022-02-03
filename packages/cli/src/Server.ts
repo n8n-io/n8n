@@ -2009,7 +2009,6 @@ class App {
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
-						req.user,
 						true,
 					);
 
@@ -2133,7 +2132,6 @@ class App {
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
-						req.user as User,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
@@ -2234,7 +2232,6 @@ class App {
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
-						req.user as User,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
@@ -2367,7 +2364,6 @@ class App {
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
-						req.user as User,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(

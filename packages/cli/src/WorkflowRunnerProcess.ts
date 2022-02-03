@@ -50,6 +50,7 @@ import { getLogger } from './Logger';
 
 import * as config from '../config';
 import { InternalHooksManager } from './InternalHooksManager';
+import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -209,6 +210,9 @@ export class WorkflowRunnerProcess {
 			staticData: this.data.workflowData.staticData,
 			settings: this.data.workflowData.settings,
 		});
+
+		await checkPermissionsForExecution(this.workflow, user);
+
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			user,
 			undefined,

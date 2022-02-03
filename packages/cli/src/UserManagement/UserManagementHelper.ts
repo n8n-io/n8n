@@ -4,7 +4,8 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
-import { IsNull, Not } from 'typeorm';
+import { N8nUserData, Workflow } from 'n8n-workflow';
+import { In, IsNull, Not } from 'typeorm';
 import { Db, ResponseHelper } from '..';
 import config = require('../../config');
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
@@ -101,4 +102,66 @@ export function validatePassword(password?: string) {
 export function sanitizeUser(user: User): PublicUser {
 	const { password, resetPasswordToken, createdAt, updatedAt, ...sanitizedUser } = user;
 	return sanitizedUser;
+}
+
+async function getCredentialIdByName(name: string): Promise<string | number | null> {
+	const credential = await Db.collections.Credentials!.findOne({
+		where: {
+			name,
+		},
+	});
+	if (credential) {
+		return credential.id;
+	}
+	return null;
+}
+
+export async function checkPermissionsForExecution(
+	workflow: Workflow,
+	user: N8nUserData,
+): Promise<void> {
+	const credentialIds = new Set();
+	const nodeNames = Object.keys(workflow.nodes);
+	const pendingPromises = [] as Array<Promise<string | number | null>>;
+	nodeNames.forEach((nodeName) => {
+		const node = workflow.nodes[nodeName];
+		if (node.credentials) {
+			const credentialNames = Object.keys(node.credentials);
+			credentialNames.forEach((credentialName) => {
+				const credentialDetail = node.credentials![credentialName];
+				if (credentialDetail.id) {
+					credentialIds.add(credentialDetail.id.toString());
+				} else {
+					pendingPromises.push(getCredentialIdByName(credentialDetail.name));
+				}
+			});
+		}
+	});
+
+	const fullfilledPromises = await Promise.all(pendingPromises);
+	fullfilledPromises.forEach((credentialId) => {
+		if (credentialId !== null) {
+			credentialIds.add(credentialId.toString());
+		} else {
+			throw new Error('One or more of the required credentials was not found in the database.');
+		}
+	});
+	// We converted all IDs to string so that the set cannot contain duplicates.
+
+	const ids = Array.from(credentialIds);
+
+	if (ids.length === 0) {
+		return;
+	}
+
+	const credentialCount = await Db.collections.SharedCredentials!.count({
+		where: {
+			user,
+			credentials: In(ids),
+		},
+	});
+
+	if (ids.length !== credentialCount) {
+		throw new Error('One or more of the required credentials was not found in the database.');
+	}
 }

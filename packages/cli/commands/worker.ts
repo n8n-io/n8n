@@ -39,7 +39,10 @@ import { getLogger } from '../src/Logger';
 
 import * as config from '../config';
 import * as Queue from '../src/Queue';
-import { getWorkflowOwner } from '../src/UserManagement/UserManagementHelper';
+import {
+	checkPermissionsForExecution,
+	getWorkflowOwner,
+} from '../src/UserManagement/UserManagementHelper';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -166,6 +169,8 @@ export class Worker extends Command {
 			staticData,
 			settings: currentExecutionDb.workflowData.settings,
 		});
+
+		await checkPermissionsForExecution(workflow, workflowOwner);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			workflowOwner,

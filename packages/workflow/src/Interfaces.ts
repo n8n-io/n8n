@@ -138,14 +138,12 @@ export abstract class ICredentialsHelper {
 	abstract getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
-		user: N8nUserData,
 	): Promise<ICredentials>;
 
 	abstract getDecrypted(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
-		user: N8nUserData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
@@ -154,7 +152,6 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
-		user: N8nUserData,
 	): Promise<void>;
 }
 

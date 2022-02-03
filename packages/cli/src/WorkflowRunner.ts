@@ -57,6 +57,7 @@ import {
 } from '.';
 import * as Queue from './Queue';
 import { InternalHooksManager } from './InternalHooksManager';
+import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -266,6 +267,9 @@ export class WorkflowRunner {
 				`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
 				{ executionId },
 			);
+
+			await checkPermissionsForExecution(workflow, data.user);
+
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
 				data,
 				executionId,

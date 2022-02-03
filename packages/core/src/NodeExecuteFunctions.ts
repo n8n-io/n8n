@@ -944,7 +944,6 @@ export async function requestOAuth2(
 				nodeCredentials,
 				credentialsType,
 				credentials,
-				additionalData.user,
 			);
 
 			Logger.debug(
@@ -1175,7 +1174,6 @@ export async function getCredentials(
 		nodeCredentials,
 		type,
 		mode,
-		additionalData.user,
 		false,
 		expressionResolveValues,
 	);

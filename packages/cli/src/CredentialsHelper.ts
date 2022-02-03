@@ -13,7 +13,6 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
-	N8nUserData,
 	NodeHelpers,
 	Workflow,
 	WorkflowExecuteMode,
@@ -51,21 +50,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 	async getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
-		user: N8nUserData,
 	): Promise<Credentials> {
 		if (!nodeCredentials.id) {
 			throw new Error(`Credentials "${nodeCredentials.name}" for type "${type}" don't have an ID.`);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const qb = Db.collections.Credentials!.createQueryBuilder('c');
-		qb.where('c.id = :id and c.type = :type', { id: nodeCredentials.id, type });
-		if (user.globalRole.name !== 'owner') {
-			qb.innerJoin('c.shared', 'shared');
-			// @ts-ignore
-			qb.andWhere('shared.userId = :userId', { userId: user.id });
-		}
-		const credentials = await qb.getOne();
+		const credentials = await Db.collections.Credentials!.findOne(nodeCredentials.id);
 
 		if (!credentials) {
 			throw new Error(
@@ -126,11 +116,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
-		user: N8nUserData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
-		const credentials = await this.getCredentials(nodeCredentials, type, user);
+		const credentials = await this.getCredentials(nodeCredentials, type);
 		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
 
 		if (raw === true) {
@@ -246,10 +235,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
-		user: N8nUserData,
 	): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/await-thenable
-		const credentials = await this.getCredentials(nodeCredentials, type, user);
+		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		if (Db.collections.Credentials === null) {
 			// The first time executeWorkflow gets called the Database has

@@ -61,6 +61,8 @@ import {
 	WorkflowCredentials,
 	WorkflowHelpers,
 } from '.';
+// eslint-disable-next-line import/no-cycle
+import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -846,6 +848,8 @@ export async function executeWorkflow(
 
 	let data;
 	try {
+		await checkPermissionsForExecution(workflow, additionalData.user);
+
 		// Create new additionalData to have different workflow loaded and to call
 		// different webooks
 		const additionalDataIntegrated = await getBase(additionalData.user);
