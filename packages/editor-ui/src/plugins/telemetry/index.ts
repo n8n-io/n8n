@@ -35,6 +35,8 @@ interface IUserNodesPanelSession {
 
 class Telemetry {
 
+	private pageEventQueue: Array<{category?: string, name?: string | null}>;
+
 	private get telemetry() {
 		// @ts-ignore
 		return window.rudderanalytics;
@@ -48,6 +50,10 @@ class Telemetry {
 			filterMode: 'Regular',
 		},
 	};
+
+	constructor() {
+		this.pageEventQueue = [];
+	}
 
 	init(options: ITelemetrySettings, instanceId: string) {
 		if (options.enabled && !this.telemetry) {
@@ -66,10 +72,26 @@ class Telemetry {
 		}
 	}
 
-	page(category?: string, name?: string | undefined | null) {
+	page(category?: string, name?: string | null) {
 		if (this.telemetry)	{
 			this.telemetry.page(category, name);
 		}
+		else {
+			this.pageEventQueue.push({
+				category,
+				name,
+			});
+		}
+	}
+
+	flushPageEvents() {
+		const queue = this.pageEventQueue;
+		this.pageEventQueue = [];
+		queue.forEach(({category, name}) => {
+			if (this.telemetry) {
+				this.telemetry.page(category, name);
+			}
+		});
 	}
 
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
@@ -173,5 +195,6 @@ class Telemetry {
 		};
 		this.telemetry.loadJS();
 		this.telemetry.load(key, url, options);
+		this.flushPageEvents();
 	}
 }
