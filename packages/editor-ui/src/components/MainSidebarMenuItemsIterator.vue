@@ -5,6 +5,7 @@
 			:key="item.id"
 			:index="item.id"
 			@click="onClick(item)"
+			style="padding-left: 30px;"
 		>
 			<font-awesome-icon :icon="item.properties.icon" />
 			<span slot="title" :class="{'item-title-root': root, 'item-title': !root}">{{ item.properties.title }}</span>
