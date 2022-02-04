@@ -28,6 +28,7 @@ import {
 import {
 	fieldToLoadOption,
 	getAllFields,
+	getGroupCustomFields,
 	getGroupFields,
 	getOrganizationCustomFields,
 	getOrganizationFields,
@@ -145,6 +146,12 @@ export class Zammad implements INodeType {
 			// ----------------------------------
 			//          custom fields
 			// ----------------------------------
+
+			async loadGroupCustomFields(this: ILoadOptionsFunctions) {
+				const allFields = await getAllFields.call(this);
+
+				return getGroupCustomFields(allFields).map(fieldToLoadOption);
+			},
 
 			async loadOrganizationCustomFields(this: ILoadOptionsFunctions) {
 				const allFields = await getAllFields.call(this);
@@ -579,13 +586,20 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#create
 
-						const body = {
+						const body: IDataObject = {
 							name: this.getNodeParameter('name', i) as string,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const {
+							customFieldsUi,
+							...rest
+						} = this.getNodeParameter('additionalFields', i) as ZammadTypes.UserAdditionalFields;
 
-						Object.assign(body, additionalFields);
+						customFieldsUi?.customFieldPairs.forEach((pair) => {
+							body[pair['name']] = pair['value'];
+						});
+
+						Object.assign(body, rest);
 
 						responseData = await zammadApiRequest.call(this, 'POST', '/groups', body);
 
@@ -601,13 +615,19 @@ export class Zammad implements INodeType {
 
 						const body: IDataObject = {};
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i)  as ZammadTypes.GroupUpdateFields;
 
 						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this, resource);
 						}
 
-						Object.assign(body, updateFields);
+						const { customFieldsUi, ...rest } = updateFields;
+
+						customFieldsUi?.customFieldPairs.forEach((pair) => {
+							body[pair['name']] = pair['value'];
+						});
+
+						Object.assign(body, rest);
 
 						responseData = await zammadApiRequest.call(this, 'PUT', `/groups/${id}`, body);
 
