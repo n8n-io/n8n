@@ -26,6 +26,7 @@ import {
 } from './descriptions';
 
 import {
+	doesNotBelongToZammad,
 	fieldToLoadOption,
 	getAllFields,
 	getGroupCustomFields,
@@ -37,8 +38,7 @@ import {
 	getUserCustomFields,
 	getUserFields,
 	isCustomer,
-	isRelevantGroup,
-	isRelevantOrg,
+	isNotZammadFoundation,
 	throwOnEmptyUpdate,
 	tolerateTrailingSlash,
 	zammadApiRequest,
@@ -211,7 +211,7 @@ export class Zammad implements INodeType {
 			async loadGroupNames(this: ILoadOptionsFunctions) {
 				const groups = await zammadApiRequest.call(this, 'GET', '/groups') as ZammadTypes.Group[];
 
-				return groups.filter(isRelevantGroup).map(i => ({ name: i.name, value: i.name }));
+				return groups.map(i => ({ name: i.name, value: i.name }));
 			},
 
 			/**
@@ -220,7 +220,7 @@ export class Zammad implements INodeType {
 			async loadOrganizationNames(this: ILoadOptionsFunctions) {
 				const orgs = await zammadApiRequest.call(this, 'GET', '/organizations') as ZammadTypes.Group[];
 
-				return orgs.filter(isRelevantOrg).map(i => ({ name: i.name, value: i.name }));
+				return orgs.filter(isNotZammadFoundation).map(i => ({ name: i.name, value: i.name }));
 			},
 
 			/**
@@ -237,20 +237,19 @@ export class Zammad implements INodeType {
 			async loadGroups(this: ILoadOptionsFunctions) {
 				const groups = await zammadApiRequest.call(this, 'GET', '/groups') as ZammadTypes.Group[];
 
-				return groups.filter(isRelevantGroup).map(i => ({ name: i.name, value: i.id }));
+				return groups.map(i => ({ name: i.name, value: i.id }));
 			},
 
 			async loadOrganizations(this: ILoadOptionsFunctions) {
 				const orgs = await zammadApiRequest.call(this, 'GET', '/organizations') as ZammadTypes.Organization[];
 
-				return orgs.filter(isRelevantOrg).map(i => ({ name: i.name, value: i.id }));
+				return orgs.filter(isNotZammadFoundation).map(i => ({ name: i.name, value: i.id }));
 			},
 
 			async loadUsers(this: ILoadOptionsFunctions) {
 				const users = await zammadApiRequest.call(this, 'GET', '/users') as ZammadTypes.User[];
-				const isRelevant = (i: ZammadTypes.User) => !i.email.endsWith('@zammad.org') && i.login !== '-';
 
-				return users.filter(isRelevant).map(i => ({ name: i.login, value: i.id }));
+				return users.filter(doesNotBelongToZammad).map(i => ({ name: i.login, value: i.id }));
 			},
 		},
 		credentialTest: {

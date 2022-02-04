@@ -161,5 +161,6 @@ export const getOrganizationCustomFields = flow(getOrganizationFields, getCustom
 export const getUserCustomFields = flow(getUserFields, getCustomFields);
 export const getTicketCustomFields = flow(getTicketFields, getCustomFields);
 
-export const isRelevantOrg = (i: Zammad.Organization) => i.name !== 'Zammad Foundation' && i.active;
-export const isRelevantGroup = (i: Zammad.Organization) => i.active;
+export const isNotZammadFoundation = (i: Zammad.Organization) => i.name !== 'Zammad Foundation';
+
+export const doesNotBelongToZammad = (i: Zammad.User) => !i.email.endsWith('@zammad.org') && i.login !== '-';
