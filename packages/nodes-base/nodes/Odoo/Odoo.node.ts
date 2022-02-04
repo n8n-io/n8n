@@ -126,11 +126,11 @@ export class Odoo implements INodeType {
 						name: optionField.name,
 						value: optionField.name,
 						// nodelinter-ignore-next-line
-						description: optionField.string.replace(/^./, optionField.string[0].toUpperCase()),
+						description: `${optionField?.string}, type: ${optionField?.type} required: ${optionField?.required}`,
 					};
 				});
 
-				return options.sort((a, b) => a.name.localeCompare(b.name));
+				return options.sort((a, b) => a.name?.localeCompare(b.name) || 0);
 			},
 		},
 		credentialTest: {

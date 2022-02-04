@@ -208,11 +208,15 @@ export const customResourceDescription: INodeProperties[] = [
 				displayName: 'Filter',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field',
 						name: 'fieldName',
-						type: 'string',
+						type: 'options',
 						default: '',
-						description: 'Specify field name',
+						noDataExpression: true,
+						typeOptions: {
+							loadOptionsDependsOn: ['customResource'],
+							loadOptionsMethod: 'getModelFields',
+						},
 					},
 					{
 						displayName: 'Operator',
