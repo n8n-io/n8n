@@ -177,6 +177,28 @@ export class Strapi implements INodeType {
 
 						returnData.push(responseData);
 					}
+
+					if (operation === 'custom') {
+
+						const body: IDataObject = {};
+
+						const path = this.getNodeParameter('path', i) as string;
+
+						const columns = this.getNodeParameter('columns', i) as string;
+
+						const method = this.getNodeParameter('method', i) as string;
+
+						const columnList = columns.split(',').map(column => column.trim());
+
+						for (const key of Object.keys(items[i].json)) {
+							if (columnList.includes(key)) {
+								body[key] = items[i].json[key];
+							}
+						}
+						responseData = await strapiApiRequest.call(this, method, `/${path}`, body, qs, undefined, headers);
+
+						returnData.push(responseData);
+					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

@@ -40,6 +40,11 @@ export const entryOperations: INodeProperties[] = [
 				value: 'update',
 				description: 'Update an entry',
 			},
+			{
+				name: 'Custom',
+				value: 'custom',
+				description: 'Custom endpoint',
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform.',
@@ -344,5 +349,62 @@ export const entryFields: INodeProperties[] = [
 		default: '',
 		placeholder: 'id,name,description',
 		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+	},
+
+		/* -------------------------------------------------------------------------- */
+	/*                                entry:custom                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'entry',
+				],
+				operation: [
+					'custom',
+				],
+			},
+		},
+		default: '',
+		placeholder: 'id,name,description',
+		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+	},
+	{
+		displayName: 'Method',
+		name: 'method',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'entry',
+				],
+				operation: [
+					'custom',
+				],
+			},
+		},
+		default: 'PATCH',
+		description: 'REST method to use on this path.',
+	},
+	{
+		displayName: 'Path',
+		name: 'path',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'entry',
+				],
+				operation: [
+					'custom',
+				],
+			},
+		},
+		placeholder: '/custom-path',
+		default: '',
+		description: 'Path to custom endpoint without initial /.',
 	},
 ];
