@@ -42,7 +42,7 @@
 			@nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
-		<div :class="{ 'zoom-menu': true, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
+		<div :class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
 			<button @click="zoomToFit" class="button-white" :title="$locale.baseText('nodeView.zoomToFit')">
 				<font-awesome-icon icon="expand"/>
 			</button>
@@ -2831,16 +2831,18 @@ export default mixins(
 	color: #444;
 	padding-right: 5px;
 
-	@media (max-width: $--breakpoint-2xs) {
-		bottom: 90px;
-	}
-
 	&.expanded {
 		left: $--sidebar-expanded-width + $--zoom-menu-margin;
 	}
 
 	button {
 		border: var(--border-base);
+	}
+}
+
+.regular-zoom-menu {
+	@media (max-width: $--breakpoint-2xs) {
+		bottom: 90px;
 	}
 }
 
