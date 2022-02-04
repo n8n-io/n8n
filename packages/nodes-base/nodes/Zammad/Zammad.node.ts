@@ -692,7 +692,6 @@ export class Zammad implements INodeType {
 							article: {},
 							title: this.getNodeParameter('title', i) as string,
 							group: this.getNodeParameter('group', i) as string,
-							customer: this.getNodeParameter('customerEmail', i) as string,
 						};
 
 						const article = this.getNodeParameter('article', i) as ZammadTypes.Article;

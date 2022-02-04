@@ -92,28 +92,6 @@ export const ticketDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Customer Email',
-		name: 'customerEmail',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadCustomerEmails',
-		},
-		description: 'Email address of the customer concerned in the ticket to create. Choose from the list or specify an email using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-		default: '',
-		placeholder: 'hello@n8n.io',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
@@ -273,6 +251,17 @@ export const ticketDescription: INodeProperties[] = [
 		default: {},
 		placeholder: 'Add Field',
 		options: [
+			{
+				displayName: 'Customer Email',
+				name: 'customer',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadCustomerEmails',
+				},
+				description: 'Email address of the customer concerned in the ticket to create. Choose from the list or specify an email using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				default: '',
+				placeholder: 'hello@n8n.io',
+			},
 			{
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
