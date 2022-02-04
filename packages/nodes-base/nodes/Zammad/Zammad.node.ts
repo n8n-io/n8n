@@ -735,6 +735,10 @@ export class Zammad implements INodeType {
 
 						const { articleUi } = updateFields;
 
+						if (!articleUi?.articleDetails) {
+							throw new NodeOperationError(this.getNode(), 'Article is required.');
+						}
+
 						const {
 							articleDetails: {
 								visibility,
