@@ -689,7 +689,7 @@
     "@types/request-promise-native": "~1.0.15",
     "@types/ssh2-sftp-client": "^5.1.0",
     "@types/tmp": "^0.2.0",
-    "@types/uuid": "^8.3.0",
+    "@types/uuid": "^8.3.2",
     "@types/xml2js": "^0.4.3",
     "gulp": "^4.0.0",
     "jest": "^26.4.2",
@@ -750,7 +750,7 @@
     "snowflake-sdk": "^1.5.3",
     "ssh2-sftp-client": "^7.0.0",
     "tmp-promise": "^3.0.2",
-    "uuid": "^8.3.0",
+    "uuid": "^8.3.2",
     "vm2": "~3.9.5",
     "xlsx": "^0.17.0",
     "xml2js": "^0.4.23"
