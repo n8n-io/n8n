@@ -2269,11 +2269,13 @@ export default mixins(
 			deleteEveryEndpoint () {
 				// Check as it does not exist on first load
 				if (this.instance) {
-					const nodes = this.$store.getters.allNodes as INodeUi[];
-					// @ts-ignore
-					nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
+					try {
+						const nodes = this.$store.getters.allNodes as INodeUi[];
+						// @ts-ignore
+						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
 
-					this.instance.deleteEveryEndpoint();
+						this.instance.deleteEveryEndpoint();
+					} catch (e) {}
 				}
 			},
 			matchCredentials(node: INodeUi) {

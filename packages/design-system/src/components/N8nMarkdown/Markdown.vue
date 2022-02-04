@@ -205,6 +205,8 @@ export default {
 
 	img {
 		width: 100%;
+        max-height: 90vh;
+		object-fit: cover;
 		border: 1px solid #dbdfe7;
 		border-radius: var(--border-radius-large);
 	}

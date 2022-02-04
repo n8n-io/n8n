@@ -72,7 +72,7 @@
 			</div>
 		</div>
 
-		<div v-else class="emptyText">
+		<div v-else>
 			<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 		</div>
 	</div>
@@ -210,7 +210,6 @@ export default mixins(genericHelpers).extend({
 	background-color: var(--color-white);
 	border-radius: var(--border-radius-large);
 	border: $--version-card-border;
-	// border-bottom: none;
 	overflow: auto;
 }
 
