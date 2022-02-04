@@ -25,6 +25,9 @@ export default Vue.extend({
 		Modals,
 		Telemetry,
 	},
+	mounted() {
+		this.$telemetry.page('Editor', this.$route.name);
+	},
 	watch: {
 		'$route'(route) {
 			this.$telemetry.page('Editor', route.name);

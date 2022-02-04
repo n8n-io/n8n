@@ -409,6 +409,7 @@ export interface IN8nUISettings {
 	telemetry: ITelemetrySettings;
 	personalizationSurvey: IPersonalizationSurvey;
 	defaultLocale: string;
+	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 }
 
 export interface IPersonalizationSurveyAnswers {

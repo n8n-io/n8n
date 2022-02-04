@@ -583,6 +583,7 @@ export interface IN8nUISettings {
 	personalizationSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
 	defaultLocale: string;
+	logLevel: ILogLevel;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -764,7 +765,6 @@ export interface IRootState {
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
-	telemetry: ITelemetrySettings | null;
 }
 
 export interface ICredentialTypeMap {
@@ -801,6 +801,8 @@ export interface IUiState {
 	};
 	isPageLoading: boolean;
 }
+
+export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
