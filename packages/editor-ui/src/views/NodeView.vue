@@ -277,6 +277,12 @@ export default mixins(
 			executionWaitingForWebhook (): boolean {
 				return this.$store.getters.executionWaitingForWebhook;
 			},
+			isDemo (): boolean {
+				if (this.$route.name === 'WorkflowDemo') {
+					return true;
+				}
+				return false;
+			},
 			lastSelectedNode (): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
 			},
@@ -1051,7 +1057,7 @@ export default mixins(
 					return;
 				}
 
-				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes,this.isDemo);
+				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, this.isDemo);
 
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});

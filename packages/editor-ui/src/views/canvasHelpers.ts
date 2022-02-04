@@ -587,14 +587,10 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 };
 
 
-export const getZoomToFit = (nodes: INodeUi[],addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
+export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
-	let sidebarWidth = SIDEBAR_WIDTH;
-	let headerHeight = HEADER_HEIGHT;
-	if (!addComponentPadding){
-		sidebarWidth = 0;
-		headerHeight = 0;
-	}
+	const sidebarWidth = addComponentPadding? SIDEBAR_WIDTH: 0;
+	const headerHeight = addComponentPadding? HEADER_HEIGHT: 0;
 
 	const PADDING = NODE_SIZE * 4;
 
