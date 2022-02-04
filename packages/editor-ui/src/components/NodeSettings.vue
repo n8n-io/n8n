@@ -520,6 +520,7 @@ export default mixins(
 		},
 		mounted () {
 			this.setNodeValues();
+			console.log(this.nodeSettings);
 		},
 	});
 </script>
