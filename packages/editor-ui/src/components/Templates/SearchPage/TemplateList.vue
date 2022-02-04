@@ -117,32 +117,38 @@ export default mixins(genericHelpers).extend({
 		infocus: {
 			inserted: (el, binding, vnode) => {
 				const f = () => {
-					const rect = el.getBoundingClientRect();
-					if (el) {
-						const inView =
-							rect.top >= 0 &&
-							rect.left >= 0 &&
-							rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-							rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+					if (vnode.context) {
+						if (vnode.context.$route.name === 'TemplateSearchPage') {
+							const rect = el.getBoundingClientRect();
+							if (el) {
+								const inView =
+									rect.top >= 0 &&
+									rect.left >= 0 &&
+									rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+									rect.right <= (window.innerWidth || document.documentElement.clientWidth);
 
-						if (inView && vnode.context && vnode.context.$data.searchFinished) {
-							// @ts-ignore
-							if (vnode.context.shouldShowLoadingState) {
-								vnode.context.$data.page = vnode.context.$data.page + 1;
-								vnode.context.$data.skip = 10 * vnode.context.$data.page;
+								if (inView && vnode.context.$data.searchFinished) {
+									// @ts-ignore
+									if (vnode.context.shouldShowLoadingState) {
+										vnode.context.$data.page = vnode.context.$data.page + 1;
+										vnode.context.$data.skip = 10 * vnode.context.$data.page;
 
-								vnode.context.$store.dispatch('templates/getSearchResults', {
-									search: vnode.context.$props.search,
-									category: vnode.context.$props.categories,
-									skip: vnode.context.$data.skip,
-								});
+										vnode.context.$store.dispatch('templates/getSearchResults', {
+											search: vnode.context.$props.search,
+											category: vnode.context.$props.categories,
+											skip: vnode.context.$data.skip,
+										});
 
-								vnode.context.$data.searchFinished = false;
+										vnode.context.$data.searchFinished = false;
 
-								setTimeout(() => {
-									if (vnode.context) vnode.context.$data.searchFinished = true;
-								}, 1000);
+										setTimeout(() => {
+											if (vnode.context) vnode.context.$data.searchFinished = true;
+										}, 1000);
+									}
+								}
 							}
+						} else {
+							window.removeEventListener('scroll', f);
 						}
 					}
 				};
