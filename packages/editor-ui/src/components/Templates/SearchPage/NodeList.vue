@@ -53,9 +53,13 @@ export default mixins(genericHelpers).extend({
 		filteredCoreNodes() {
 			return this.nodes.filter((elem) => {
 				const node = elem as INode;
-				return node.categories.some((category: ITemplateCategories) => {
-					return category.name !== 'Core Nodes';
-				});
+				if (node.categories) {
+					return node.categories.some((category: ITemplateCategories) => {
+						return category.name !== 'Core Nodes';
+					});
+				} else {
+					return node;
+				}
 			});
 		},
 	},

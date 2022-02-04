@@ -1,7 +1,10 @@
-import { getTemplateById, getTemplates } from '@/api/templates';
+import { getCollectionById, getTemplateById, getTemplates } from '@/api/templates';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
+	IN8nCollectionResponse,
+	IN8nCollectionData,
+	IN8nCollection,
 	IN8nTemplate,
 	IN8nTemplateResponse,
 	IN8nTemplateWorkflow,
@@ -19,6 +22,7 @@ const module: Module<ITemplateState, IRootState> = {
 	namespaced: true,
 	state: {
 		categories: [],
+		collection: {} as ITemplateCollection,
 		collections: [],
 		templates: [],
 		totalworkflow: null,
@@ -26,6 +30,9 @@ const module: Module<ITemplateState, IRootState> = {
 	getters: {
 		getCategories(state: ITemplateState) {
 			return state.categories;
+		},
+		getCollection(state: ITemplateState) {
+			return state.collection;
 		},
 		getCollections(state: ITemplateState) {
 			return state.collections;
@@ -44,6 +51,9 @@ const module: Module<ITemplateState, IRootState> = {
 		setCategories(state: ITemplateState, categories: ITemplateCategory[]) {
 			Vue.set(state, 'categories', categories);
 		},
+		setCollection(state: ITemplateState, collection: IN8nCollection) {
+			Vue.set(state, 'collection', collection);
+		},
 		setCollections(state: ITemplateState, collections: ITemplateCollection[]) {
 			Vue.set(state, 'collections', collections);
 		},
@@ -58,6 +68,18 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 	},
 	actions: {
+		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string) {
+			try {
+				const response: IN8nCollectionResponse = await getCollectionById(collectionId);
+				const data: IN8nCollectionData = response.data;
+				const collection: IN8nCollection = data.collection;
+
+				context.commit('setCollection', collection);
+				return collection;
+			} catch(e) {
+				return;
+			}
+		},
 		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
 			try {
 				const response: IN8nTemplateResponse = await getTemplateById(templateId);

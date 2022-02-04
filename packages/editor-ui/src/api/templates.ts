@@ -1,6 +1,49 @@
-import { IN8nTemplateResponse, ISearchPayload } from '@/Interface';
+import { IN8nCollectionResponse, IN8nTemplateResponse, ISearchPayload } from '@/Interface';
 import { post } from './helpers';
 import { TEMPLATES_BASE_URL } from '@/constants';
+
+export async function getCollectionById(collectionId: string): Promise<IN8nCollectionResponse> {
+	const query = `query {
+		collection(id:"${collectionId}"){
+			id
+			name
+			description
+			image{
+				id
+				url
+			}
+			nodes{
+				defaults
+				name
+				displayName
+				icon
+				iconData
+				typeVersion: version
+			}
+			workflows(sort:"recentViews:desc,views:desc,name:asc"){
+				id
+				name
+				nodes{
+					defaults
+					name
+					displayName
+					icon
+					iconData
+					typeVersion: version
+				}
+				totalViews: views
+			}
+			totalViews: views
+			categories{
+				id
+				name
+			}
+			created_at
+		}
+	}`;
+
+	return await post(TEMPLATES_BASE_URL, `/graphql`, { query });
+}
 
 export async function getTemplateById(templateId: string): Promise<IN8nTemplateResponse> {
 	const query = `query {

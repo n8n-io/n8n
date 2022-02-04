@@ -517,6 +517,25 @@ export interface IN8nTemplateResponse {
 	data: IN8nTemplateWorkflow;
 }
 
+export interface IN8nCollectionResponse {
+	data: IN8nCollectionData;
+}
+
+export interface IN8nCollectionData {
+	collection: IN8nCollection;
+}
+
+export interface IN8nCollection {
+	id: string;
+	image: ITemplateImage[];
+	name: string;
+	nodes: ITemplateNode[];
+	categories: ITemplateCategories[];
+	description: string;
+	workflows: IN8nTemplate[];
+	totalworkflow: number;
+}
+
 export interface IN8nTemplateWorkflow {
 	workflow: IN8nTemplate;
 }
@@ -811,6 +830,7 @@ export interface ISettingsState {
 
 export interface ITemplateState {
 	categories: ITemplateCategory[];
+	collection: ITemplateCollection;
 	collections: ITemplateCollection[];
 	templates: IN8nTemplate[];
 	totalworkflow: number | null;
