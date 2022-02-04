@@ -193,7 +193,12 @@ export class Github implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single issue.',
+						description: 'Get the data of a single file.',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'List contents of a folder.',
 					},
 				],
 				default: 'create',
@@ -413,9 +418,37 @@ export class Github implements INodeType {
 							'file',
 						],
 					},
+					hide: {
+						operation: [
+							'list',
+						],
+					},
 				},
 				placeholder: 'docs/README.md',
 				description: 'The file path of the file. Has to contain the full path.',
+			},
+
+			// ----------------------------------
+			//         file:list
+			// ----------------------------------
+			{
+				displayName: 'Path',
+				name: 'filePath',
+				type: 'string',
+				default: '',
+				required: false,
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+						operation: [
+							'list',
+						],
+					},
+				},
+				placeholder: 'docs/',
+				description: 'The path of the folder to list.',
 			},
 
 			// ----------------------------------
@@ -1774,6 +1807,7 @@ export class Github implements INodeType {
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
 		const overwriteDataOperationsArray = [
+			'file:list',
 			'repository:getIssues',
 			'repository:listPopularPaths',
 			'repository:listReferrers',
@@ -1891,7 +1925,7 @@ export class Github implements INodeType {
 						body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
 
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-					} else if (operation === 'get') {
+					} else if (operation === 'get' || operation === 'list') {
 						requestMethod = 'GET';
 
 						const filePath = this.getNodeParameter('filePath', i) as string;
@@ -2182,6 +2216,9 @@ export class Github implements INodeType {
 					const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i);
 
 					if (asBinaryProperty === true) {
+						if (Array.isArray(responseData)) {
+							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.');
+						}
 						// Add the returned data to the item as binary property
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
