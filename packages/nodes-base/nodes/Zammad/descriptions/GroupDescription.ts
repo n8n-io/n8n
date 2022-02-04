@@ -153,7 +153,7 @@ export const groupDescription: INodeProperties[] = [
 				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
-				default: false,
+				default: true,
 			},
 			{
 				displayName: 'Notes',
@@ -187,7 +187,7 @@ export const groupDescription: INodeProperties[] = [
 				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
-				default: false,
+				default: true,
 			},
 			{
 				displayName: 'Group Name',
