@@ -213,7 +213,6 @@ export const customResourceDescription: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description: 'Specify field name',
-						required: true,
 					},
 					{
 						displayName: 'Operator',
@@ -221,7 +220,6 @@ export const customResourceDescription: INodeProperties[] = [
 						type: 'options',
 						default: 'equal',
 						description: 'Specify an operator',
-						required: true,
 						options: [
 							{
 								name: '!=',
@@ -271,7 +269,6 @@ export const customResourceDescription: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description: 'Specify value for comparison',
-						required: true,
 					},
 				],
 			},
