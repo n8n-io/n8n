@@ -22,6 +22,9 @@ export default Vue.extend({
 	components: {
 		Telemetry,
 	},
+	mounted() {
+		this.$telemetry.page('Editor', this.$route.name);
+	},
 	watch: {
 		'$route'(route) {
 			this.$telemetry.page('Editor', route.name);

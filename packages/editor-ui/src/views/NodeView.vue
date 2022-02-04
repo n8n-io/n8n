@@ -1980,7 +1980,7 @@ export default mixins(
 				// current node
 				this.deselectAllNodes();
 				setTimeout(() => {
-					this.nodeSelectedByName(newNodeData.name, true);
+					this.nodeSelectedByName(newNodeData.name, false);
 				});
 
 				this.$telemetry.track('User duplicated node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
@@ -2752,7 +2752,6 @@ export default mixins(
 			});
 
 			this.$externalHooks().run('nodeView.mount');
-			this.$telemetry.page('Editor', this.$route.name);
 		},
 
 		destroyed () {
