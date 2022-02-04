@@ -2,7 +2,10 @@
 	<div class="template-details">
 		<n8n-loading :animated="true" :loading="loading" :rows="5" variant="p" />
 
-		<template-block v-if="!loading" :title="$locale.baseText('template.details.appsInTheWorkflow')">
+		<template-block
+			v-if="!loading && template.nodes.length > 0"
+			:title="$locale.baseText('template.details.appsInTheWorkflow')"
+		>
 			<template v-slot:content>
 				<div :class="$style.icons">
 					<NodeIcon
@@ -16,9 +19,12 @@
 			</template>
 		</template-block>
 
-		<template-block v-if="!loading" :title="$locale.baseText('template.details.categories')">
+		<template-block
+			v-if="!loading && template.categories.length > 0"
+			:title="$locale.baseText('template.details.categories')"
+		>
 			<template v-slot:content>
-				<n8n-tags :tags="template.categories" :clickButton="redirectToCategory"/>
+				<n8n-tags :tags="template.categories" :clickButton="redirectToCategory" />
 			</template>
 		</template-block>
 
@@ -27,13 +33,13 @@
 				<div :class="$style.text">
 					<n8n-text v-if="template.user" size="small" color="text-base">
 						{{ $locale.baseText('template.details.created') }}
-						<TimeAgo :date="template.createdAt" />
+						<TimeAgo :date="template.created_at" />
 						{{ $locale.baseText('template.details.by') }}
 						{{ template.user.username }}
 					</n8n-text>
 				</div>
 				<div :class="$style.text">
-					<n8n-text size="small" color="text-base">
+					<n8n-text v-if="template.totalViews !== 0" size="small" color="text-base">
 						{{ $locale.baseText('template.details.viewed') }}
 						{{ abbreviateNumber(template.totalViews) }}
 						{{ $locale.baseText('template.details.times') }}
@@ -41,7 +47,6 @@
 				</div>
 			</template>
 		</template-block>
-
 	</div>
 </template>
 <script lang="ts">
