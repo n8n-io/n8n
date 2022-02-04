@@ -342,7 +342,8 @@ export class Zammad implements INodeType {
 						// https://docs.zammad.org/en/latest/api/user.html#create
 
 						const body: IDataObject = {
-							email: this.getNodeParameter('email', i),
+							firstname: this.getNodeParameter('firstname', i),
+							lastname: this.getNodeParameter('lastname', i),
 						};
 
 						const {

@@ -57,10 +57,29 @@ export const userDescription: INodeProperties[] = [
 	//             fields
 	// ----------------------------------
 	{
-		displayName: 'Email Address',
-		name: 'email',
+		displayName: 'First Name',
+		name: 'firstname',
 		type: 'string',
 		default: '',
+		placeholder: 'John',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Last Name',
+		name: 'lastname',
+		type: 'string',
+		default: '',
+		placeholder: 'Smith',
 		required: true,
 		displayOptions: {
 			show: {
@@ -244,25 +263,17 @@ export const userDescription: INodeProperties[] = [
 				placeholder: 'Finance',
 			},
 			{
+				displayName: 'Email Address',
+				name: 'email',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
 				default: '',
 				placeholder: '+49 30 901820',
-			},
-			{
-				displayName: 'First Name',
-				name: 'firstname',
-				type: 'string',
-				default: '',
-				placeholder: 'John',
-			},
-			{
-				displayName: 'Last Name',
-				name: 'lastname',
-				type: 'string',
-				default: '',
-				placeholder: 'Smith',
 			},
 			{
 				displayName: 'Notes',
