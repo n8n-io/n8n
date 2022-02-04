@@ -42,7 +42,7 @@
 			@nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
-		<div :class="{ 'zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
+		<div :class="{ 'zoom-menu': true, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
 			<button @click="zoomToFit" class="button-white" :title="$locale.baseText('nodeView.zoomToFit')">
 				<font-awesome-icon icon="expand"/>
 			</button>
@@ -516,23 +516,31 @@ export default mixins(
 					});
 				}
 			},
+			orientNodes(workflowNodes: INode[]) {
+				const nodes = workflowNodes;
+				const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
+
+				const leftmostTop = CanvasHelpers.getLeftmostTopNode(nodes);
+
+				const diffX = CanvasHelpers.DEFAULT_START_POSITION_X - leftmostTop.position[0];
+				const diffY = CanvasHelpers.DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+
+				nodes.map((node) => {
+					node.position[0] += diffX + (hasStartNode? 0 : CanvasHelpers.NODE_SIZE * 2);
+					node.position[1] += diffY;
+				});
+
+				if (!hasStartNode) {
+					nodes.push({...CanvasHelpers.DEFAULT_START_NODE});
+				}
+				return nodes;
+			},
 			async importWorkflowExact(data: {workflow: IWorkflowDataUpdate}) {
 				if (!data.workflow.nodes || !data.workflow.connections) {
 					throw new Error('Invalid workflow object');
 				}
 				this.resetWorkspace();
-				const nodes = data.workflow.nodes;
-				const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
-				const leftmostTop = CanvasHelpers.getLeftmostTopNode(nodes);
-				const diffX = CanvasHelpers.DEFAULT_START_POSITION_X - leftmostTop.position[0];
-				const diffY = CanvasHelpers.DEFAULT_START_POSITION_Y - leftmostTop.position[1];
-				data.workflow.nodes.map((node) => {
-					node.position[0] += diffX + (hasStartNode? 0 : CanvasHelpers.NODE_SIZE * 2);
-					node.position[1] += diffY;
-				});
-				if (!hasStartNode) {
-					data.workflow.nodes.push({...CanvasHelpers.DEFAULT_START_NODE});
-				}
+				data.workflow.nodes = this.orientNodes(data.workflow.nodes);
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				this.$nextTick(() => {
 					this.zoomToFit();
@@ -567,22 +575,7 @@ export default mixins(
 					return;
 				}
 
-				const nodes = data.workflow.nodes;
-				const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
-
-				const leftmostTop = CanvasHelpers.getLeftmostTopNode(nodes);
-
-				const diffX = CanvasHelpers.DEFAULT_START_POSITION_X - leftmostTop.position[0];
-				const diffY = CanvasHelpers.DEFAULT_START_POSITION_Y - leftmostTop.position[1];
-
-				data.workflow.nodes.map((node) => {
-					node.position[0] += diffX + (hasStartNode? 0 : CanvasHelpers.NODE_SIZE * 2);
-					node.position[1] += diffY;
-				});
-
-				if (!hasStartNode) {
-					data.workflow.nodes.push({...CanvasHelpers.DEFAULT_START_NODE});
-				}
+				data.workflow.nodes = this.orientNodes(data.workflow.nodes);
 
 				this.blankRedirect = true;
 				this.$router.push({ name: 'NodeViewNew', query: { templateId } });
@@ -2799,7 +2792,7 @@ export default mixins(
 					this.initNodeView();
 					await this.initView();
 					if (window.top) {
-						window.top.postMessage(JSON.stringify({command: 'n8nReady'}), '*');
+						window.top.postMessage(JSON.stringify({command: 'n8nReady',version:this.$store.getters.versionCli}), '*');
 					}
 				} catch (error) {
 					this.$showError(
@@ -2852,23 +2845,8 @@ export default mixins(
 }
 
 .demo-zoom-menu {
-	$--zoom-menu-margin: 5;
-
-	position: fixed;
 	left: 10px;
-	width: 200px;
 	bottom: 10px;
-	line-height: 25px;
-	color: #444;
-	padding-right: 5px;
-
-	&.expanded {
-		left: $--sidebar-expanded-width + $--zoom-menu-margin;
-	}
-
-	button {
-		border: var(--border-base);
-	}
 }
 
 .node-creator-button {
