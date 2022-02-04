@@ -102,7 +102,7 @@
     "dotenv": "^8.0.0",
     "express": "^4.16.4",
     "fast-glob": "^3.2.5",
-    "flatted": "^2.0.0",
+    "flatted": "^3.2.4",
     "google-timezones-json": "^1.0.2",
     "inquirer": "^7.0.1",
     "json-diff": "^0.5.4",
