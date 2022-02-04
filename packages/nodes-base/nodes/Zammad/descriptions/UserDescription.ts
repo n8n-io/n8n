@@ -93,7 +93,7 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User Name/ID',
+		displayName: 'User Login/ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {
@@ -114,7 +114,7 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User Name/ID',
+		displayName: 'User Login/ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {
@@ -135,7 +135,7 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User Name/ID',
+		displayName: 'User Login/ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {

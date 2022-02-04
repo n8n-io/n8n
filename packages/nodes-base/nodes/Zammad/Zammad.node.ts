@@ -243,7 +243,7 @@ export class Zammad implements INodeType {
 				const users = await zammadApiRequest.call(this, 'GET', '/users') as ZammadTypes.User[];
 				const isRelevant = (i: ZammadTypes.User) => !i.email.endsWith('@zammad.org') && i.login !== '-';
 
-				return users.filter(isRelevant).map(i => ({ name: i.email, value: i.id }));
+				return users.filter(isRelevant).map(i => ({ name: i.login, value: i.id }));
 			},
 		},
 		credentialTest: {
