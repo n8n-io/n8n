@@ -133,33 +133,8 @@ export default mixins(
 			return this.node.credentials || {};
 		},
 	},
-	mounted() {
-		this.$nextTick(function () {
-			const nodeTypeData = this.$store.getters.nodeType(this.node.type) as INodeTypeDescription | null;
-
-			if (!this.node.credentials) {
-				let allCredentials = nodeTypeData!.credentials && nodeTypeData!.credentials!.map(cred => {
-					return this.$store.getters['credentials/getCredentialsByType'](cred.name);
-				});
-
-				if (allCredentials) {
-					allCredentials = allCredentials.filter(cred => cred.length === 1).map( item => item[0]);
-					if(allCredentials.length === 1) {
-						this.credentialTypesNode.forEach((type) => {
-							this.setDefaultCredential(type);
-						});
-					}
-				}
-			}
-		});
-	},
 
 	methods: {
-		setDefaultCredential(type: string) {
-			if (!this.getSelectedId(type) && this.credentialOptions[type].length === 1) {
-				this.onCredentialSelected(type, this.credentialOptions[type][0].id);
-			}
-		},
 		getSelectedId(type: string) {
 			if (this.isCredentialExisting(type)) {
 				return this.selected[type].id;
