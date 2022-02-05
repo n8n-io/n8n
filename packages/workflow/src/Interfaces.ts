@@ -1009,25 +1009,30 @@ export interface INodePropertyRouting {
 	send?: INodeRequestSend;
 }
 
+export type PostReceiveAction =
+	| ((
+			this: IExecuteSingleFunctions,
+			items: INodeExecutionData[],
+			response: IN8nHttpFullResponse,
+	  ) => Promise<INodeExecutionData[]>)
+	| IPostReceiveBinaryData
+	| IPostReceiveRootProperty
+	| IPostReceiveSet
+	| IPostReceiveSetKeyValue
+	| IPostReceiveSort;
+
+export type PreSendAction = (
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+) => Promise<IHttpRequestOptions>;
+
 export interface INodeRequestOutput {
 	maxResults?: number | string;
-	postReceive?:
-		| ((
-				this: IExecuteSingleFunctions,
-				items: INodeExecutionData[],
-				response: IN8nHttpFullResponse,
-		  ) => Promise<INodeExecutionData[]>)
-		| IPostReceiveBinaryData
-		| IPostReceiveRootProperty
-		| IPostReceiveSet
-		| IPostReceiveSetKeyValue;
+	postReceive?: PostReceiveAction[];
 }
 
 export interface INodeRequestSend {
-	preSend?: (
-		this: IExecuteSingleFunctions,
-		requestOptions: IHttpRequestOptions,
-	) => Promise<IHttpRequestOptions>;
+	preSend?: PreSendAction[];
 	paginate?: boolean | string; // Where should this life?
 	property?: string; // Maybe: propertyName, destinationProperty?
 	propertyInDotNotation?: boolean; // Enabled by default
@@ -1067,13 +1072,14 @@ export interface IPostReceiveSet extends IPostReceiveBase {
 export interface IPostReceiveSetKeyValue extends IPostReceiveBase {
 	type: 'setKeyValue';
 	properties: {
-		rootProperty?: string;
-		sort?: {
-			key: string;
-		};
-		values: {
-			[key: string]: string | number;
-		};
+		[key: string]: string | number;
+	};
+}
+
+export interface IPostReceiveSort extends IPostReceiveBase {
+	type: 'sort';
+	properties: {
+		key: string;
 	};
 }
 
@@ -1085,26 +1091,12 @@ export interface IRequestOptionsFromParameters {
 	maxResults?: number | string;
 	options: IHttpRequestOptionsFromParameters;
 	paginate?: boolean | string;
-	preSend: Array<
-		(
-			this: IExecuteSingleFunctions,
-			requestOptions: IHttpRequestOptions,
-		) => Promise<IHttpRequestOptions>
-	>;
+	preSend: PreSendAction[];
 	postReceive: Array<{
 		data: {
 			parameterValue: string | IDataObject | undefined;
 		};
-		action:
-			| ((
-					this: IExecuteSingleFunctions,
-					items: INodeExecutionData[],
-					response: IN8nHttpFullResponse,
-			  ) => Promise<INodeExecutionData[]>)
-			| IPostReceiveBinaryData
-			| IPostReceiveRootProperty
-			| IPostReceiveSet
-			| IPostReceiveSetKeyValue;
+		actions: PostReceiveAction[];
 	}>;
 	requestOperations?: IN8nRequestOperations;
 }

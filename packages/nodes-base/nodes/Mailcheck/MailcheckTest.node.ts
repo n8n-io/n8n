@@ -210,12 +210,14 @@ export class MailcheckTest implements INodeType {
 				},
 				routing: {
 					output: {
-						postReceive: {
-							type: 'binaryData',
-							properties: {
-								destinationProperty: '={{$value}}',
-							},
-						},
+						postReceive: [
+							{
+								type: 'binaryData',
+								properties: {
+									destinationProperty: '={{$value}}',
+								},
+							}
+						],
 					},
 				},
 				description: 'Name of the binary property to which to write the data of the read file.',
@@ -242,13 +244,15 @@ export class MailcheckTest implements INodeType {
 						url: '=/senders/{{$value}}', // send value in path
 					},
 					output: {
-						postReceive: {
-							type: 'set',
-							properties: {
-								value: '={{ { "success": true } }}',
-								// value: '={{ { "success": $response } }}', // Also possible to use the original response data
-							},
-						},
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "success": true } }}',
+									// value: '={{ { "success": $response } }}', // Also possible to use the original response data
+								},
+							}
+						],
 						// Identical with the above
 						// async postReceive (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
 						// 	return [
@@ -280,19 +284,23 @@ export class MailcheckTest implements INodeType {
 				routing: {
 					send: {
 						// Transform request before it gets send
-						async preSend (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
-							requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
-							// if something special is required it is possible to write custom code and get from parameter
-							requestOptions.qs.sender = this.getNodeParameter('sender');
-							return requestOptions;
-						},
+						preSend: [
+							async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+								requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
+								// if something special is required it is possible to write custom code and get from parameter
+								requestOptions.qs.sender = this.getNodeParameter('sender');
+								return requestOptions;
+							},
+						],
 					},
 					output: {
 						// Transform the received data
-						async postReceive (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
-							items.forEach(item => item.json = { success: true });
-							return items;
-						},
+						postReceive: [
+							async function (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
+								items.forEach(item => item.json = { success: true });
+								return items;
+							},
+						],
 					},
 				},
 				default: '',
@@ -351,12 +359,14 @@ export class MailcheckTest implements INodeType {
 					output: {
 						// rootProperty: 'data',
 						// Data to returned underneath a property called "data"
-						postReceive: {
-							type: 'rootProperty',
-							properties: {
-								property: 'data',
-							},
-						},
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							}
+						],
 					},
 				},
 				description: 'If all results should be returned or only up to a given limit.',
@@ -513,20 +523,27 @@ export class MailcheckTest implements INodeType {
 										method: 'GET',
 									},
 									output: {
-										postReceive: {
-											type: 'setKeyValue',
-											properties: {
-												rootProperty: 'responseData',
-												sort: {
-													// No expression supported
-													key: 'name',
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'responseData',
 												},
-												values: {
+											},
+											{
+												type: 'setKeyValue',
+												properties: {
 													name: '={{$responseItem.key}} ({{$responseItem.value}})xxx',
 													value: '={{$responseItem.value}}',
 												},
 											},
-										},
+											{
+												type: 'sort',
+												properties: {
+													key: 'name',
+												},
+											},
+										],
 									},
 									// operations: {
 									// 	// Is possible to overwrite pagination for loadOptions. (Limitation: only via JSON, not funciton code)

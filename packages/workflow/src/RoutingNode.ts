@@ -24,7 +24,6 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
-	IPostReceiveSetKeyValue,
 	IRequestOptionsFromParameters,
 	IRunExecutionData,
 	ITaskDataConnections,
@@ -42,7 +41,7 @@ import {
 	IN8nRequestOperations,
 	INodeProperties,
 	INodePropertyCollection,
-	IPostReceiveRootProperty,
+	PostReceiveAction,
 } from './Interfaces';
 
 export class RoutingNode {
@@ -227,6 +226,141 @@ export class RoutingNode {
 		}
 	}
 
+	async runPostReceiveAction(
+		executeSingleFunctions: IExecuteSingleFunctions,
+		action: PostReceiveAction,
+		inputData: INodeExecutionData[],
+		responseData: IN8nHttpFullResponse,
+		parameterValue: string | IDataObject | undefined,
+		itemIndex: number,
+		runIndex: number,
+	): Promise<INodeExecutionData[]> {
+		if (typeof action === 'function') {
+			return action.call(executeSingleFunctions, inputData, responseData);
+		}
+		if (action.type === 'rootProperty') {
+			try {
+				return inputData.flatMap((item) => {
+					// let itemContent = item.json[action.properties.property];
+					let itemContent = get(item.json, action.properties.property);
+
+					if (!Array.isArray(itemContent)) {
+						itemContent = [itemContent];
+					}
+					return (itemContent as IDataObject[]).map((json) => {
+						return {
+							json,
+						};
+					});
+				});
+			} catch (e) {
+				throw new Error(
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+					`The rootProperty "${action.properties.property}" could not be found on item.`,
+				);
+			}
+		}
+		if (action.type === 'set') {
+			const { value } = action.properties;
+			// If the value is an expression resolve it
+			return [
+				{
+					json: this.getParameterValue(
+						value,
+						itemIndex,
+						runIndex,
+						{ $response: responseData, $value: parameterValue },
+						false,
+					) as IDataObject,
+				},
+			];
+		}
+		if (action.type === 'sort') {
+			// Sort the returned options
+			const sortKey = action.properties.key;
+			inputData.sort((a, b) => {
+				const aSortValue = a.json[sortKey]
+					? (a.json[sortKey]?.toString().toLowerCase() as string)
+					: '';
+				const bSortValue = b.json[sortKey]
+					? (b.json[sortKey]?.toString().toLowerCase() as string)
+					: '';
+				if (aSortValue < bSortValue) {
+					return -1;
+				}
+				if (aSortValue > bSortValue) {
+					return 1;
+				}
+				return 0;
+			});
+
+			return inputData;
+		}
+		if (action.type === 'setKeyValue') {
+			const returnData: INodeExecutionData[] = [];
+
+			// eslint-disable-next-line @typescript-eslint/no-loop-func
+			inputData.forEach((item) => {
+				const returnItem: IDataObject = {};
+				for (const key of Object.keys(action.properties)) {
+					let propertyValue = (
+						action.properties as Record<
+							string,
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							any
+						>
+					)[key];
+					// If the value is an expression resolve it
+					propertyValue = this.getParameterValue(
+						propertyValue,
+						itemIndex,
+						runIndex,
+						{
+							$response: responseData,
+							$responseItem: item.json,
+							$value: parameterValue,
+						},
+						true,
+					) as string;
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(returnItem as Record<string, any>)[key] = propertyValue;
+				}
+				returnData.push({ json: returnItem });
+			});
+
+			return returnData;
+		}
+		if (action.type === 'binaryData') {
+			responseData.body = Buffer.from(responseData.body as string);
+			let { destinationProperty } = action.properties;
+
+			destinationProperty = this.getParameterValue(
+				destinationProperty,
+				itemIndex,
+				runIndex,
+				{ $response: responseData, $value: parameterValue },
+				false,
+			) as string;
+
+			const binaryData = await executeSingleFunctions.helpers.prepareBinaryData(responseData.body);
+
+			return inputData.map((item) => {
+				if (typeof item.json === 'string') {
+					// By default is probably the binary data as string set, in this case remove it
+					item.json = {};
+				}
+
+				item.binary = {
+					[destinationProperty]: binaryData,
+				};
+
+				return item;
+			});
+		}
+
+		return [];
+	}
+
 	async rawRoutingRequest(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		requestData: IRequestOptionsFromParameters,
@@ -236,12 +370,6 @@ export class RoutingNode {
 		credentialsDecrypted?: ICredentialsDecrypted,
 	): Promise<INodeExecutionData[]> {
 		let responseData: IN8nHttpFullResponse;
-		let returnData: INodeExecutionData[] = [
-			{
-				json: {},
-			},
-		];
-
 		requestData.options.returnFullResponse = true;
 
 		if (credentialType) {
@@ -257,140 +385,25 @@ export class RoutingNode {
 			)) as IN8nHttpFullResponse;
 		}
 
+		let returnData: INodeExecutionData[] = [
+			{
+				json: responseData.body as IDataObject,
+			},
+		];
+
 		if (requestData.postReceive.length) {
 			// If postReceive functionality got defined execute all of them
 			for (const postReceiveMethod of requestData.postReceive) {
-				if (typeof postReceiveMethod.action === 'function') {
-					returnData = await postReceiveMethod.action.call(
+				for (const action of postReceiveMethod.actions) {
+					returnData = await this.runPostReceiveAction(
 						executeSingleFunctions,
+						action,
 						returnData,
 						responseData,
+						postReceiveMethod.data.parameterValue,
+						itemIndex,
+						runIndex,
 					);
-				} else if (postReceiveMethod.action.type === 'rootProperty') {
-					if (responseData.body) {
-						let responseBody: IDataObject[];
-						if (!Array.isArray(responseData.body)) {
-							responseBody = [responseData.body as IDataObject];
-						} else {
-							responseBody = responseData.body as IDataObject[];
-						}
-
-						try {
-							returnData = responseBody.flatMap((item) => {
-								let itemContent =
-									item[(postReceiveMethod.action as IPostReceiveRootProperty).properties.property];
-
-								if (!Array.isArray(itemContent)) {
-									itemContent = [itemContent];
-								}
-								return (itemContent as IDataObject[]).map((json) => {
-									return {
-										json,
-									};
-								});
-							});
-						} catch (e) {
-							throw new Error(
-								`The rootProperty "${postReceiveMethod.action.properties.property}" could not be found on item.`,
-							);
-						}
-					}
-				} else if (postReceiveMethod.action.type === 'set') {
-					const { value } = postReceiveMethod.action.properties;
-					// If the value is an expression resolve it
-					returnData[0].json = this.getParameterValue(
-						value,
-						itemIndex,
-						runIndex,
-						{ $response: responseData, $value: postReceiveMethod.data.parameterValue },
-						false,
-					) as INodeParameters;
-				} else if (postReceiveMethod.action.type === 'setKeyValue') {
-					returnData.length = 0;
-					let rootProperty: string | undefined;
-					let reponseItems = responseData.body;
-					if (postReceiveMethod.action.properties.rootProperty) {
-						rootProperty = this.getParameterValue(
-							postReceiveMethod.action.properties.rootProperty,
-							itemIndex,
-							runIndex,
-							{ $response: responseData, $value: postReceiveMethod.data.parameterValue },
-							false,
-						) as string;
-						reponseItems = get(reponseItems, rootProperty);
-					}
-
-					if (!Array.isArray(reponseItems)) {
-						reponseItems = [reponseItems];
-					}
-
-					// eslint-disable-next-line @typescript-eslint/no-loop-func
-					(reponseItems as IDataObject[]).forEach((item) => {
-						const returnItem: IDataObject = {};
-						for (const key of Object.keys(
-							(postReceiveMethod.action as IPostReceiveSetKeyValue).properties.values,
-						)) {
-							let propertyValue = (
-								(postReceiveMethod.action as IPostReceiveSetKeyValue).properties.values as Record<
-									string,
-									// eslint-disable-next-line @typescript-eslint/no-explicit-any
-									any
-								>
-							)[key];
-							// If the value is an expression resolve it
-							propertyValue = this.getParameterValue(
-								propertyValue,
-								itemIndex,
-								runIndex,
-								{
-									$response: responseData,
-									$responseItem: item,
-									$value: postReceiveMethod.data.parameterValue,
-								},
-								true,
-							) as string;
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(returnItem as Record<string, any>)[key] = propertyValue;
-						}
-						returnData.push({ json: returnItem });
-					});
-
-					if (postReceiveMethod.action.properties.sort) {
-						// Sort the returned options
-						const sortKey = postReceiveMethod.action.properties.sort.key;
-						returnData.sort((a, b) => {
-							const aSortValue = a.json[sortKey]
-								? (a.json[sortKey]?.toString().toLowerCase() as string)
-								: '';
-							const bSortValue = b.json[sortKey]
-								? (b.json[sortKey]?.toString().toLowerCase() as string)
-								: '';
-							if (aSortValue < bSortValue) {
-								return -1;
-							}
-							if (aSortValue > bSortValue) {
-								return 1;
-							}
-							return 0;
-						});
-					}
-				} else if (postReceiveMethod.action.type === 'binaryData') {
-					responseData.body = Buffer.from(responseData.body as string);
-					let { destinationProperty } = postReceiveMethod.action.properties;
-
-					destinationProperty = this.getParameterValue(
-						destinationProperty,
-						itemIndex,
-						runIndex,
-						{ $response: responseData, $value: postReceiveMethod.data.parameterValue },
-						false,
-					) as string;
-
-					returnData[0].binary = {
-						[destinationProperty]: await executeSingleFunctions.helpers.prepareBinaryData(
-							responseData.body,
-						),
-					};
 				}
 			}
 		} else {
@@ -668,7 +681,7 @@ export class RoutingNode {
 				}
 
 				if (nodeProperties.routing.send.preSend) {
-					returnData.preSend.push(nodeProperties.routing.send.preSend);
+					returnData.preSend.push(...nodeProperties.routing.send.preSend);
 				}
 			}
 			if (nodeProperties.routing.output) {
@@ -693,7 +706,7 @@ export class RoutingNode {
 						data: {
 							parameterValue,
 						},
-						action: nodeProperties.routing.output.postReceive,
+						actions: nodeProperties.routing.output.postReceive,
 					});
 				}
 			}

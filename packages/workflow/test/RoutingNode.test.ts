@@ -229,7 +229,7 @@ describe('RoutingNode', () => {
 							},
 							output: {
 								maxResults: 10,
-								postReceive: postReceiveFunction1,
+								postReceive: [postReceiveFunction1],
 							},
 						},
 						default: {},
@@ -255,7 +255,7 @@ describe('RoutingNode', () => {
 										property: 'topLevel.value2',
 										propertyInDotNotation: false,
 										type: 'body',
-										preSend: preSendFunction1,
+										preSend: [preSendFunction1],
 									},
 								},
 								default: '',
@@ -357,15 +357,17 @@ describe('RoutingNode', () => {
 											send: {
 												property: 'llvalue2',
 												type: 'query',
-												preSend: preSendFunction1,
+												preSend: [preSendFunction1],
 											},
 											output: {
-												postReceive: {
-													type: 'rootProperty',
-													properties: {
-														property: 'data',
+												postReceive: [
+													{
+														type: 'rootProperty',
+														properties: {
+															property: 'data',
+														},
 													},
-												},
+												],
 											},
 										},
 									},
@@ -528,7 +530,7 @@ describe('RoutingNode', () => {
 					preSend: [preSendFunction1, preSendFunction1],
 					postReceive: [
 						{
-							action: postReceiveFunction1,
+							actions: [postReceiveFunction1],
 							data: {
 								parameterValue: {
 									value1: 'v1',
@@ -571,12 +573,14 @@ describe('RoutingNode', () => {
 							},
 						},
 						{
-							action: {
-								type: 'rootProperty',
-								properties: {
-									property: 'data',
+							actions: [
+								{
+									type: 'rootProperty',
+									properties: {
+										property: 'data',
+									},
 								},
-							},
+							],
 							data: {
 								parameterValue: 'llv2',
 							},
@@ -734,7 +738,6 @@ describe('RoutingNode', () => {
 					],
 				],
 			},
-
 			{
 				description: 'single parameter, only send defined, fixed value, using requestDefaults',
 				input: {
@@ -783,7 +786,6 @@ describe('RoutingNode', () => {
 					],
 				],
 			},
-
 			{
 				description:
 					'single parameter, only send defined, using expression, using requestDefaults with overwrite',
@@ -1019,7 +1021,7 @@ describe('RoutingNode', () => {
 									},
 									output: {
 										maxResults: 10,
-										postReceive: postReceiveFunction1,
+										postReceive: [postReceiveFunction1],
 									},
 								},
 								default: {},
@@ -1045,7 +1047,7 @@ describe('RoutingNode', () => {
 												property: 'topLevel.value2',
 												propertyInDotNotation: false,
 												type: 'body',
-												preSend: preSendFunction1,
+												preSend: [preSendFunction1],
 											},
 										},
 										default: '',
@@ -1147,15 +1149,17 @@ describe('RoutingNode', () => {
 													send: {
 														property: 'llvalue2',
 														type: 'query',
-														preSend: preSendFunction1,
+														preSend: [preSendFunction1],
 													},
 													output: {
-														postReceive: {
-															type: 'rootProperty',
-															properties: {
-																property: 'requestOptions',
+														postReceive: [
+															{
+																type: 'rootProperty',
+																properties: {
+																	property: 'requestOptions',
+																},
 															},
-														},
+														],
 													},
 												},
 											},
@@ -1242,7 +1246,6 @@ describe('RoutingNode', () => {
 													},
 												],
 											},
-
 											{
 												name: 'property1',
 												displayName: 'Property1',
@@ -1321,6 +1324,256 @@ describe('RoutingNode', () => {
 									addedIn: 'preSendFunction1',
 								},
 								returnFullResponse: true,
+							},
+						},
+					],
+				],
+			},
+			{
+				description: 'single parameter, postReceive: set',
+				input: {
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'JSON Data',
+								name: 'jsonData',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'jsonData',
+										type: 'body',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'set',
+												properties: {
+													value: '={{ { "value": $value, "response": $response } }}',
+												},
+											},
+										],
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {
+							jsonData: {
+								root: [
+									{
+										name: 'Jim',
+										age: 34,
+									},
+									{
+										name: 'James',
+										age: 44,
+									},
+								],
+							},
+						},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								value: {
+									root: [
+										{
+											name: 'Jim',
+											age: 34,
+										},
+										{
+											name: 'James',
+											age: 44,
+										},
+									],
+								},
+								response: {
+									body: {
+										headers: {},
+										statusCode: 200,
+										requestOptions: {
+											qs: {},
+											body: {
+												jsonData: {
+													root: [
+														{
+															name: 'Jim',
+															age: 34,
+														},
+														{
+															name: 'James',
+															age: 44,
+														},
+													],
+												},
+											},
+											baseURL: 'http://127.0.0.1:5678',
+											url: '/test-url',
+											returnFullResponse: true,
+										},
+									},
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description: 'single parameter, postReceive: rootProperty',
+				input: {
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'JSON Data',
+								name: 'jsonData',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'jsonData',
+										type: 'body',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'requestOptions',
+												},
+											},
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'body.jsonData.root',
+												},
+											},
+										],
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {
+							jsonData: {
+								root: [
+									{
+										name: 'Jim',
+										age: 34,
+									},
+									{
+										name: 'James',
+										age: 44,
+									},
+								],
+							},
+						},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								name: 'Jim',
+								age: 34,
+							},
+						},
+						{
+							json: {
+								name: 'James',
+								age: 44,
+							},
+						},
+					],
+				],
+			},
+			{
+				description: 'single parameter, mutliple postReceive: rootProperty, setKeyValue, sort',
+				input: {
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'JSON Data',
+								name: 'jsonData',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'jsonData',
+										type: 'body',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'requestOptions.body.jsonData.root',
+												},
+											},
+											{
+												type: 'setKeyValue',
+												properties: {
+													display1: '={{$responseItem.name}} ({{$responseItem.age}})',
+													display2: '={{$responseItem.name}} is {{$responseItem.age}}',
+												},
+											},
+											{
+												type: 'sort',
+												properties: {
+													key: 'display1',
+												},
+											},
+										],
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {
+							jsonData: {
+								root: [
+									{
+										name: 'Jim',
+										age: 34,
+									},
+									{
+										name: 'James',
+										age: 44,
+									},
+								],
+							},
+						},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								display1: 'James (44)',
+								display2: 'James is 44',
+							},
+						},
+						{
+							json: {
+								display1: 'Jim (34)',
+								display2: 'Jim is 34',
 							},
 						},
 					],
