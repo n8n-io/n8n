@@ -83,6 +83,7 @@ export default mixins(genericHelpers)
 				selectedOption: undefined,
 			};
 		},
+
 		computed: {
 			getPlaceholderText (): string {
 				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);

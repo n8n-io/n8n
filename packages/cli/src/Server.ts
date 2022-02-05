@@ -281,6 +281,7 @@ class App {
 				shouldShow: false,
 			},
 			defaultLocale: config.get('defaultLocale'),
+			logLevel: config.get('logs.level'),
 		};
 	}
 
@@ -608,6 +609,8 @@ class App {
 
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
+			LoggerProxy.debug('Health check started!');
+
 			const connection = getConnectionManager().get();
 
 			try {
@@ -627,6 +630,8 @@ class App {
 			const responseData = {
 				status: 'ok',
 			};
+
+			LoggerProxy.debug('Health check completed successfully!');
 
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
