@@ -492,7 +492,6 @@
       "dist/nodes/LocalFileTrigger/LocalFileTrigger.node.js",
       "dist/nodes/Magento/Magento2.node.js",
       "dist/nodes/Mailcheck/Mailcheck.node.js",
-      "dist/nodes/Mailcheck/MailcheckTest.node.js",
       "dist/nodes/Mailchimp/Mailchimp.node.js",
       "dist/nodes/Mailchimp/MailchimpTrigger.node.js",
       "dist/nodes/MailerLite/MailerLite.node.js",
