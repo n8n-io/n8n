@@ -279,7 +279,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return false;
 			});
 
-			return !!nodesThatCanTest.length;
+			return !!nodesThatCanTest.length || (!!this.credentialType && !!this.credentialType.test);
 		},
 		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {

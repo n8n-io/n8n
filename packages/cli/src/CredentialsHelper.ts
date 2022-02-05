@@ -14,7 +14,7 @@ import {
 	ICredentialsExpressionResolveValues,
 	ICredentialsHelper,
 	ICredentialTestFunction,
-	ICredentialNodeTestRequest,
+	ICredentialTestRequestData,
 	IHttpRequestOptions,
 	INode,
 	INodeCredentialsDetails,
@@ -437,7 +437,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	getCredentialTestFunction(
 		credentialType: string,
 		nodeToTestWith?: string,
-	): ICredentialTestFunction | ICredentialNodeTestRequest | undefined {
+	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
 		const nodeTypes = NodeTypes();
 		const allNodes = nodeTypes.getAll();
 
@@ -481,6 +481,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 				}
 			}
 		}
+
+		// Check if test is defined on credentials
+		const type = this.credentialTypes.getByName(credentialType);
+		if (type.test) {
+			return {
+				testRequest: type.test,
+			};
+		}
+
 		return undefined;
 	}
 
@@ -510,11 +519,19 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// TODO: Temp worfklows get created at multiple locations (for example also LoadNodeParameterOptions),
 		//       check if some of them are identical enough that it can be combined
 
+		let nodeType: INodeType;
+		if (credentialTestFunction.nodeType) {
+			nodeType = credentialTestFunction.nodeType;
+		} else {
+			const nodeTypes = NodeTypes();
+			nodeType = nodeTypes.getByName('n8n-nodes-base.noOp') as INodeType;
+		}
+
 		const node: INode = {
 			parameters: {},
 			name: 'Temp-Node',
-			type: credentialTestFunction.nodeType.description.name,
-			typeVersion: credentialTestFunction.nodeType.description.version,
+			type: nodeType.description.name,
+			typeVersion: nodeType.description.version,
 			position: [0, 0],
 		};
 
@@ -523,9 +540,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 			connections: {},
 		};
 
-		const nodeType: INodeType = {
+		const nodeTypeCopy: INodeType = {
 			description: {
-				...credentialTestFunction.nodeType.description,
+				...nodeType.description,
+				credentials: [
+					{
+						name: credentialType,
+						required: true,
+					},
+				],
 				properties: [
 					{
 						displayName: 'Temp',
@@ -543,9 +566,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const nodeTypes: INodeTypes = {
 			...mockNodeTypes,
 			nodeTypes: {
-				[credentialTestFunction.nodeType.description.name]: {
+				[nodeTypeCopy.description.name]: {
 					sourcePath: '',
-					type: nodeType,
+					type: nodeTypeCopy,
 				},
 			},
 		};
@@ -584,7 +607,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			await routingNode.runNode(
 				inputData,
 				runIndex,
-				nodeType,
+				nodeTypeCopy,
 				NodeExecuteFunctions,
 				credentialsDecrypted,
 			);

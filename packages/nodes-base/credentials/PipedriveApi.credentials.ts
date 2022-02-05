@@ -1,5 +1,6 @@
 import {
 	IAuthenticateQueryAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';

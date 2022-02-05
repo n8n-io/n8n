@@ -61,4 +61,12 @@ export class AsanaApi implements ICredentialType {
 	// 		value: '={{$credentials.accessToken}}',
 	// 	},
 	// } as IAuthenticateQueryAuth;
+
+	// test = {
+	// 	request: {
+	// 		baseURL: 'https://app.asana.com/api/1.0',
+	// 		url: '/users/me',
+	// 		method: 'GET',
+	// 	},
+	// } as ICredentialTestRequest;
 }

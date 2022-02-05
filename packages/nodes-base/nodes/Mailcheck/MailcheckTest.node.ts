@@ -216,7 +216,7 @@ export class MailcheckTest implements INodeType {
 								properties: {
 									destinationProperty: '={{$value}}',
 								},
-							}
+							},
 						],
 					},
 				},
@@ -251,7 +251,7 @@ export class MailcheckTest implements INodeType {
 									value: '={{ { "success": true } }}',
 									// value: '={{ { "success": $response } }}', // Also possible to use the original response data
 								},
-							}
+							},
 						],
 						// Identical with the above
 						// async postReceive (this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
@@ -365,7 +365,7 @@ export class MailcheckTest implements INodeType {
 								properties: {
 									property: 'data',
 								},
-							}
+							},
 						],
 					},
 				},

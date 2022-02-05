@@ -251,8 +251,8 @@ export interface ICredentialTestRequest {
 	rules?: IAuthenticateRuleResponseCode[];
 }
 
-export interface ICredentialNodeTestRequest {
-	nodeType: INodeType;
+export interface ICredentialTestRequestData {
+	nodeType?: INodeType;
 	testRequest: ICredentialTestRequest;
 }
 
@@ -265,6 +265,7 @@ export interface ICredentialType {
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 	authenticate?: IAuthenticate;
+	test?: ICredentialTestRequest;
 }
 
 export interface ICredentialTypes {
