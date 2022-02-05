@@ -200,6 +200,8 @@ import {
 import {
 	NodeHelpers,
 	NodeParameterValue,
+	IHttpRequestOptions,
+	ILoadOptions,
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
@@ -517,7 +519,7 @@ export default mixins(
 				return this.getArgument('editor') as string;
 			},
 			parameterOptions (): INodePropertyOptions[] {
-				if (this.remoteMethod === undefined) {
+				if (this.hasRemoteMethod === false) {
 					// Options are already given
 					return this.parameter.options;
 				}
@@ -560,8 +562,8 @@ export default mixins(
 
 				return styles;
 			},
-			remoteMethod (): string | undefined {
-				return this.getArgument('loadOptionsMethod') as string | undefined;
+			hasRemoteMethod (): boolean {
+				return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 			},
 			shortPath (): string {
 				const shortPath = this.path.split('.');
@@ -590,7 +592,7 @@ export default mixins(
 			},
 
 			async loadRemoteParameterOptions () {
-				if (this.node === null || this.remoteMethod === undefined || this.remoteParameterOptionsLoading) {
+				if (this.node === null || this.hasRemoteMethod === false || this.remoteParameterOptionsLoading) {
 					return;
 				}
 				this.remoteParameterOptionsLoadingIssues = null;
@@ -602,7 +604,10 @@ export default mixins(
 				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
-					const options = await this.restApi().getNodeParameterOptions({name: this.node.type, version: this.node.typeVersion}, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
+					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
+					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
+
+					const options = await this.restApi().getNodeParameterOptions({ nodeTypeAndVersion: { name: this.node.type, version: this.node.typeVersion}, path: this.path, methodName: loadOptionsMethod, loadOptions, currentNodeParameters: resolvedNodeParameters, credentials: this.node.credentials });
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -771,7 +776,7 @@ export default mixins(
 				}
 			}
 
-			if (this.remoteMethod !== undefined && this.node !== null) {
+			if (this.hasRemoteMethod === true && this.node !== null) {
 				// Make sure to load the parameter options
 				// directly and whenever the credentials change
 				this.$watch(() => this.node!.credentials, () => {
