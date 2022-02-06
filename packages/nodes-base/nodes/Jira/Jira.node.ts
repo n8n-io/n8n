@@ -304,45 +304,29 @@ export class Jira implements INodeType {
 			// Get all the users to display them to user so that he can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
+				const query: IDataObject = {};
+				let endpoint = '/api/2/users/search';
+
 				if (jiraVersion === 'server') {
-					// the interface call must bring username
-					const users = await jiraSoftwareCloudApiRequest.call(this, '/api/2/user/search', 'GET', {},
-						{
-							username: '\'',
-						},
-					);
-					for (const user of users) {
-						const userName = user.displayName;
-						const userId = user.name;
-
-						returnData.push({
-							name: userName,
-							value: userId,
-						});
-					}
-				} else {
-					const users = await jiraSoftwareCloudApiRequest.call(this, '/api/2/users/search', 'GET');
-
-					for (const user of users) {
-						const userName = user.displayName;
-						const userId = user.accountId;
-
-						returnData.push({
-							name: userName,
-							value: userId,
-						});
-					}
+					endpoint = '/api/2/user/search';
+					query.username = '\'';
 				}
 
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
+				const users = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {}, query);
+
+				return users.reduce((activeUsers: INodePropertyOptions[], user: IDataObject) => {
+					if (user.active) {
+						activeUsers.push({
+							name: user.displayName as string,
+							value: (user.accountId || user.name) as string,
+						});
+					}
+					return activeUsers;
+				}, []).sort((a: INodePropertyOptions, b: INodePropertyOptions) => {
+					return a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1;
 				});
 
-				return returnData;
 			},
 
 			// Get all the groups to display them to user so that he can
