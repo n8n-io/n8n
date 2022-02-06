@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@fontsource/open-sans": "^4.5.0",
-    "n8n-design-system": "~0.10.0",
+    "n8n-design-system": "~0.11.0",
     "monaco-editor": "^0.29.1",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
@@ -75,7 +75,7 @@
     "lodash.debounce": "^4.0.8",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
-    "n8n-workflow": "~0.85.0",
+    "n8n-workflow": "~0.86.0",
     "monaco-editor-webpack-plugin": "^5.0.0",
     "normalize-wheel": "^1.0.1",
     "prismjs": "^1.17.1",
