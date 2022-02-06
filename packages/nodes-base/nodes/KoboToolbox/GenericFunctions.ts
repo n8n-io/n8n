@@ -21,7 +21,7 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 	const credentials = await this.getCredentials('koBoToolboxApi') as IDataObject;
 
 	// Set up pagination / scrolling
-	let scroll = !!option.scroll;
+	const scroll = !!option.scroll;
 	if(scroll) {
 		// Override manual pagination options
 		_.set(option,'qs.limit', 30000);
