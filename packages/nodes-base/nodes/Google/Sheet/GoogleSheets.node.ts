@@ -389,6 +389,28 @@ export class GoogleSheets implements INodeType {
 				},
 				description: 'The name of the property from which to read the RAW data.',
 			},
+			{
+				displayName: 'Update All',
+				name: 'updateAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'sheet',
+						],
+						operation: [
+							'update',
+						],
+					},
+					hide: {
+						rawData: [
+							true,
+						],
+					},
+				},
+				default: false,
+				description: 'Update all rows that match the key.',
+			},
 
 			// ----------------------------------
 			//         Read & Update & lookupColumn
@@ -663,7 +685,21 @@ export class GoogleSheets implements INodeType {
 						default: 'UNFORMATTED_VALUE',
 						description: 'Determines how values should be rendered in the output.',
 					},
-
+					{
+						displayName: 'Return Metadata',
+						name: 'returnMetadata',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'/operation': [
+									'update',
+									'append',
+								],
+							},
+						},
+						description: 'Whether to return metadata about the operation like the updated cells.',
+					},
 				],
 			},
 
@@ -1081,9 +1117,9 @@ export class GoogleSheets implements INodeType {
 					// Convert data into array format
 					const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode);
 
-					// TODO: Should add this data somewhere
-					// TODO: Should have something like add metadata which does not get passed through
-
+					if (options.returnMetadata) {
+						return [this.helpers.returnJsonArray(data)];
+					}
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -1302,6 +1338,7 @@ export class GoogleSheets implements INodeType {
 
 					const items = this.getInputData();
 
+					let data;
 					if (rawData === true) {
 						const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
 
@@ -1313,8 +1350,9 @@ export class GoogleSheets implements INodeType {
 							});
 						}
 
-						const data = await sheet.batchUpdate(updateData, valueInputMode);
+						data = await sheet.batchUpdate(updateData, valueInputMode);
 					} else {
+						const updateAll = this.getNodeParameter('updateAll', 0) as boolean;
 						const keyName = this.getNodeParameter('key', 0) as string;
 						const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
 						const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
@@ -1324,11 +1362,12 @@ export class GoogleSheets implements INodeType {
 							setData.push(item.json);
 						});
 
-						const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode);
+						data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode, updateAll);
 					}
-					// TODO: Should add this data somewhere
-					// TODO: Should have something like add metadata which does not get passed through
 
+					if (options.returnMetadata) {
+						return [this.helpers.returnJsonArray(data)];
+					}
 
 					return this.prepareOutputData(items);
 				} catch (error) {

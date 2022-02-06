@@ -245,7 +245,7 @@ export class GoogleSheet {
 	}
 
 
-	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption): Promise<string[][]> {
+	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption): Promise<IDataObject> {
 		const data = await this.convertStructuredDataToArray(inputData, range, keyRowIndex);
 		return this.appendData(range, data, valueInputMode);
 	}
@@ -268,7 +268,7 @@ export class GoogleSheet {
 	 * @returns {Promise<string[][]>}
 	 * @memberof GoogleSheet
 	 */
-	async updateSheetData(inputData: IDataObject[], indexKey: string, range: string, keyRowIndex: number, dataStartRowIndex: number, valueInputMode: ValueInputOption, valueRenderMode: ValueRenderOption): Promise<string[][]> {
+	async updateSheetData(inputData: IDataObject[], indexKey: string, range: string, keyRowIndex: number, dataStartRowIndex: number, valueInputMode: ValueInputOption, valueRenderMode: ValueRenderOption, updateAll: boolean): Promise<IDataObject> {
 		// Get current data in Google Sheet
 		let rangeStart: string, rangeEnd: string, rangeFull: string;
 		let sheet: string | undefined = undefined;
@@ -327,7 +327,7 @@ export class GoogleSheet {
 		let itemKey: string | number | undefined | null;
 		let propertyName: string;
 		let itemKeyIndex: number;
-		let updateRowIndex: number;
+		const updateRowIndices: number[] = [];
 		let updateColumnName: string;
 		for (const inputItem of inputData) {
 			itemKey = inputItem[indexKey] as string;
@@ -344,8 +344,16 @@ export class GoogleSheet {
 				continue;
 			}
 
-			// Get the row index in which the data should be updated
-			updateRowIndex = keyColumnIndexLookup.indexOf(itemKey) + dataStartRowIndex + 1;
+			// Get the row index, or indices, in which the data should be updated
+			if (updateAll) {
+				for(let i = 0; i < keyColumnIndexLookup.length; i++) {
+					if (keyColumnIndexLookup[i] === itemKey) {
+						updateRowIndices.push(i + dataStartRowIndex + 1);
+					}
+				}
+			} else  {
+				updateRowIndices.push(keyColumnIndexLookup.indexOf(itemKey) + dataStartRowIndex + 1);
+			}
 
 			// Check all the properties in the sheet and check which ones exist on the
 			// item and should be updated
@@ -365,14 +373,16 @@ export class GoogleSheet {
 				// Get the column name in which the property data can be found
 				updateColumnName = this.getColumnWithOffset(rangeStartSplit[1], keyColumnOrder.indexOf(propertyName));
 
-				updateData.push({
-					range: `${sheet ? sheet + '!' : ''}${updateColumnName}${updateRowIndex}`,
-					values: [
-						[
-							inputItem[propertyName] as string,
+				for (const row of updateRowIndices) {
+					updateData.push({
+						range: `${sheet ? sheet + '!' : ''}${updateColumnName}${row}`,
+						values: [
+							[
+								inputItem[propertyName] as string,
+							],
 						],
-					],
-				});
+					});
+				}
 
 			}
 		}
