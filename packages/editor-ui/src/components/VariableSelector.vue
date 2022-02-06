@@ -1,7 +1,7 @@
 <template>
 	<div @keydown.stop class="variable-selector-wrapper">
 		<div class="input-wrapper">
-			<n8n-input placeholder="Variable filter..." v-model="variableFilter" ref="inputField" size="small" type="text"></n8n-input>
+			<n8n-input :placeholder="$locale.baseText('variableSelector.variableFilter')" v-model="variableFilter" ref="inputField" size="small" type="text"></n8n-input>
 		</div>
 
 		<div class="result-wrapper">
@@ -525,14 +525,14 @@ export default mixins(
 
 				currentNodeData.push(
 					{
-						name: 'Parameters',
+						name: this.$locale.baseText('variableSelector.parameters'),
 						options: this.sortOptions(this.getNodeParameters(activeNode.name, initialPath, skipParameter, filterText) as IVariableSelectorOption[]),
 					},
 				);
 
 				returnData.push(
 					{
-						name: 'Current Node',
+						name: this.$locale.baseText('variableSelector.currentNode'),
 						options: this.sortOptions(currentNodeData),
 					},
 				);
@@ -546,7 +546,7 @@ export default mixins(
 				let nodeOptions: IVariableSelectorOption[];
 				const upstreamNodes = this.workflow.getParentNodes(activeNode.name, inputName);
 
-				for (const nodeName of Object.keys(this.workflow.nodes)) {
+				for (const [nodeName, node] of Object.entries(this.workflow.nodes)) {
 					// Add the parameters of all nodes
 					// TODO: Later have to make sure that no parameters can be referenced which have expression which use input-data (for nodes which are not parent nodes)
 
@@ -557,7 +557,7 @@ export default mixins(
 
 					nodeOptions = [
 						{
-							name: 'Parameters',
+							name: this.$locale.baseText('variableSelector.parameters'),
 							options: this.sortOptions(this.getNodeParameters(nodeName, `$node["${nodeName}"].parameter`, undefined, filterText)),
 						} as IVariableSelectorOption,
 					];
@@ -570,7 +570,7 @@ export default mixins(
 						if (tempOptions.length) {
 							nodeOptions = [
 								{
-									name: 'Context',
+									name: this.$locale.baseText('variableSelector.context'),
 									options: this.sortOptions(tempOptions),
 								} as IVariableSelectorOption,
 							];
@@ -583,16 +583,21 @@ export default mixins(
 						if (tempOutputData) {
 							nodeOptions.push(
 								{
-									name: 'Output Data',
+									name: this.$locale.baseText('variableSelector.outputData'),
 									options: this.sortOptions(tempOutputData),
 								} as IVariableSelectorOption,
 							);
 						}
 					}
 
+					const shortNodeType = this.$locale.shortNodeType(node.type);
+
 					allNodesData.push(
 						{
-							name: nodeName,
+							name: this.$locale.headerText({
+								key: `headers.${shortNodeType}.displayName`,
+								fallback: nodeName,
+							}),
 							options: this.sortOptions(nodeOptions),
 						},
 					);
@@ -600,7 +605,7 @@ export default mixins(
 
 				returnData.push(
 					{
-						name: 'Nodes',
+						name: this.$locale.baseText('variableSelector.nodes'),
 						options: this.sortOptions(allNodesData),
 					},
 				);

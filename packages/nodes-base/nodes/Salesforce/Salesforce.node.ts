@@ -132,7 +132,6 @@ export class Salesforce implements INodeType {
 		description: 'Consume Salesforce API',
 		defaults: {
 			name: 'Salesforce',
-			color: '#429fd9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1744,8 +1743,8 @@ export class Salesforce implements INodeType {
 						if (additionalFields.type !== undefined) {
 							body.Type = additionalFields.type as string;
 						}
-						if (additionalFields.ammount !== undefined) {
-							body.Amount = additionalFields.ammount as number;
+						if (additionalFields.amount !== undefined) {
+							body.Amount = additionalFields.amount as number;
 						}
 						if (additionalFields.owner !== undefined) {
 							body.OwnerId = additionalFields.owner as string;
@@ -1813,8 +1812,8 @@ export class Salesforce implements INodeType {
 						if (updateFields.type !== undefined) {
 							body.Type = updateFields.type as string;
 						}
-						if (updateFields.ammount !== undefined) {
-							body.Amount = updateFields.ammount as number;
+						if (updateFields.amount !== undefined) {
+							body.Amount = updateFields.amount as number;
 						}
 						if (updateFields.owner !== undefined) {
 							body.OwnerId = updateFields.owner as string;
@@ -1957,6 +1956,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.shippingCity !== undefined) {
 							body.ShippingCity = additionalFields.shippingCity as string;
 						}
+						if (additionalFields.accountNumber !== undefined) {
+							body.AccountNumber = additionalFields.accountNumber as string;
+						}
 						if (additionalFields.accountSource !== undefined) {
 							body.AccountSource = additionalFields.accountSource as string;
 						}
@@ -2064,6 +2066,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.shippingCity !== undefined) {
 							body.ShippingCity = updateFields.shippingCity as string;
+						}
+						if (updateFields.accountNumber !== undefined) {
+							body.AccountNumber = updateFields.accountNumber as string;
 						}
 						if (updateFields.accountSource !== undefined) {
 							body.AccountSource = updateFields.accountSource as string;

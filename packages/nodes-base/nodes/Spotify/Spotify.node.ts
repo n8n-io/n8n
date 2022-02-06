@@ -29,7 +29,6 @@ export class Spotify implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Spotify',
-			color: '#1DB954',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1037,6 +1036,7 @@ export class Spotify implements INodeType {
 
 						endpoint = '/browse/new-releases';
 						requestMethod = 'GET';
+						propertyName = 'albums.items';
 
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 

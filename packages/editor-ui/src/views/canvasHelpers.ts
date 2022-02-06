@@ -613,48 +613,6 @@ export const getZoomToFit = (nodes: INodeUi[]): {offset: XYPosition, zoomLevel: 
 	};
 };
 
-export const getUniqueNodeName = (nodes: INodeUi[], originalName: string, additinalUsedNames?: string[]) => {
-	// Check if node-name is unique else find one that is
-	additinalUsedNames = additinalUsedNames || [];
-
-	// Get all the names of the current nodes
-	const nodeNames = nodes.map((node: INodeUi) => {
-		return node.name;
-	});
-
-	// Check first if the current name is already unique
-	if (!nodeNames.includes(originalName) && !additinalUsedNames.includes(originalName)) {
-		return originalName;
-	}
-
-	const nameMatch = originalName.match(/(.*\D+)(\d*)/);
-	let ignore, baseName, nameIndex, uniqueName;
-	let index = 1;
-
-	if (nameMatch === null) {
-		// Name is only a number
-		index = parseInt(originalName, 10);
-		baseName = '';
-		uniqueName = baseName + index;
-	} else {
-		// Name is string or string/number combination
-		[ignore, baseName, nameIndex] = nameMatch;
-		if (nameIndex !== '') {
-			index = parseInt(nameIndex, 10);
-		}
-		uniqueName = baseName;
-	}
-
-	while (
-		nodeNames.includes(uniqueName) ||
-		additinalUsedNames.includes(uniqueName)
-	) {
-		uniqueName = baseName + (index++);
-	}
-
-	return uniqueName;
-};
-
 export const showDropConnectionState = (connection: Connection, targetEndpoint?: Endpoint) => {
 	if (connection && connection.connector) {
 		if (targetEndpoint) {

@@ -111,6 +111,7 @@ export class Merge implements INodeType {
 				name: 'propertyName1',
 				type: 'string',
 				default: '',
+				hint: 'The name of the field as text (e.g. “id”)',
 				required: true,
 				displayOptions: {
 					show: {
@@ -128,6 +129,7 @@ export class Merge implements INodeType {
 				name: 'propertyName2',
 				type: 'string',
 				default: '',
+				hint: 'The name of the field as text (e.g. “id”)',
 				required: true,
 				displayOptions: {
 					show: {
@@ -284,7 +286,7 @@ export class Merge implements INodeType {
 					}
 
 					for (const key of Object.keys(dataInput2[i].binary!)) {
-						newItem.binary[key] = dataInput2[i].binary![key];
+						newItem.binary[key] = dataInput2[i].binary![key] ?? newItem.binary[key];
 					}
 				}
 

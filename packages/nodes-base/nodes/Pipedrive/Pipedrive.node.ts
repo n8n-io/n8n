@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
@@ -60,7 +59,6 @@ export class Pipedrive implements INodeType {
 		description: 'Create and edit data in Pipedrive',
 		defaults: {
 			name: 'Pipedrive',
-			color: '#227722',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -73,6 +71,12 @@ export class Pipedrive implements INodeType {
 						authentication: [
 							'apiToken',
 						],
+					},
+				},
+				testedBy: {
+					request: {
+						method: 'GET',
+						url: '/users/me',
 					},
 				},
 			},
@@ -88,6 +92,10 @@ export class Pipedrive implements INodeType {
 				},
 			},
 		],
+		requestDefaults: {
+			baseURL: 'https://api.pipedrive.com/v1',
+			url: '',
+		},
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -4501,7 +4509,7 @@ export class Pipedrive implements INodeType {
 							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
 
-						const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+						const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						formData.file = {
 							value: fileBufferData,

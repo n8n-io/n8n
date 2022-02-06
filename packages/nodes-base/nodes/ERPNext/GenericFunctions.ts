@@ -89,7 +89,7 @@ export async function erpNextApiRequestAllItems(
 		returnData.push.apply(returnData, responseData[propertyName]);
 		query!.limit_start += query!.limit_page_length - 1;
 	} while (
-		responseData.data.length > 0
+		responseData.data && responseData.data.length > 0
 	);
 
 	return returnData;

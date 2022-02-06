@@ -28,7 +28,6 @@ export class AirtableTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'Airtable Trigger',
-			color: '#445599',
 		},
 		credentials: [
 			{
@@ -49,11 +48,11 @@ export class AirtableTrigger implements INodeType {
 				description: 'The ID of this base.',
 			},
 			{
-				displayName: 'Table',
+				displayName: 'Table ID',
 				name: 'tableId',
 				type: 'string',
 				default: '',
-				description: 'The name of table to access.',
+				description: 'The ID of the table to access.',
 				required: true,
 			},
 			{

@@ -7,10 +7,10 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -51,7 +51,6 @@ export class Grist implements INodeType {
 		description: 'Consume the Grist API',
 		defaults: {
 			name: 'Grist',
-			color: '#394650',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -81,7 +80,7 @@ export class Grist implements INodeType {
 			async gristApiTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
-			): Promise<NodeCredentialTestResult> {
+			): Promise<INodeCredentialTestResult> {
 				const {
 					apiKey,
 					planType,

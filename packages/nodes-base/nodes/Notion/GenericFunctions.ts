@@ -10,8 +10,12 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
 	IDisplayOptions,
+	INodeExecutionData,
 	INodeProperties,
 	IPollFunctions,
 	NodeApiError,
@@ -22,16 +26,27 @@ import {
 	capitalCase,
 } from 'change-case';
 
+import {
+	filters,
+} from './Filters';
+
 import * as moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
+
+import { snakeCase } from 'change-case';
+
+const apiVersion: { [key: number]: string } = {
+	1: '2021-05-13',
+	2: '2021-08-16',
+};
 
 export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	try {
 		let options: OptionsWithUri = {
 			headers: {
-				'Notion-Version': '2021-05-13',
+				'Notion-Version': apiVersion[this.getNode().typeVersion],
 			},
 			method,
 			qs,
@@ -39,10 +54,15 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 			uri: uri || `https://api.notion.com/v1${resource}`,
 			json: true,
 		};
-
 		options = Object.assign({}, options, option);
 		const credentials = await this.getCredentials('notionApi') as IDataObject;
-		options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
+		if (!uri) {
+			//do not include the API Key when downloading files, else the request fails
+			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
+		}
+		if (Object.keys(body).length === 0) {
+			delete options.body;
+		}
 		return this.helpers.request!(options);
 
 	} catch (error) {
@@ -209,7 +229,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 			object: 'block',
 			type: block.type,
 			[block.type as string]: {
-				...(block.type === 'to_do') ? { checked: block.checked } : { checked: false },
+				...(block.type === 'to_do') ? { checked: block.checked } : {},
 				//@ts-expect-error
 				// tslint:disable-next-line: no-any
 				text: (block.richText === false) ? formatText(block.textContent).text : getTexts(block.text.text as any || []),
@@ -220,7 +240,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 }
 
 // tslint:disable-next-line: no-any
-function getPropertyKeyValue(value: any, type: string, timezone: string) {
+function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
 	let result = {};
 	switch (type) {
 		case 'rich_text':
@@ -268,6 +288,11 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			};
 			break;
 		case 'people':
+			//if expression it's a single value, make it an array
+			if (!Array.isArray(value.peopleValue)) {
+				value.peopleValue = [value.peopleValue];
+			}
+
 			result = {
 				type: 'people', people: value.peopleValue.map((option: string) => ({ id: option })),
 			};
@@ -279,7 +304,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'select':
 			result = {
-				type: 'select', select: { id: value.selectValue },
+				type: 'select', select: (version === 1) ? { id: value.selectValue } : { name: value.selectValue },
 			};
 			break;
 		case 'date':
@@ -302,6 +327,20 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 					},
 				};
 			}
+
+			//if the date was left empty, set it to null so it resets the value in notion
+			if (value.date === '' ||
+				(value.dateStart === '' && value.dateEnd === '')) {
+				//@ts-ignore
+				result.date = null;
+			}
+
+			break;
+		case 'files':
+			result = {
+				type: 'files', files: value.fileUrls.fileUrl
+					.map((file: { name: string, url: string }) => ({ name: file.name, type: 'external', external: { url: file.url } })),
+			};
 			break;
 		default:
 	}
@@ -323,9 +362,9 @@ function getNameAndType(key: string) {
 	};
 }
 
-export function mapProperties(properties: IDataObject[], timezone: string) {
+export function mapProperties(properties: IDataObject[], timezone: string, version = 1) {
 	return properties.reduce((obj, value) => Object.assign(obj, {
-		[`${(value.key as string).split('|')[0]}`]: getPropertyKeyValue(value, (value.key as string).split('|')[1], timezone),
+		[`${(value.key as string).split('|')[0]}`]: getPropertyKeyValue(value, (value.key as string).split('|')[1], timezone, version),
 	}), {});
 }
 
@@ -339,6 +378,7 @@ export function mapSorting(data: [{ key: string, type: string, direction: string
 }
 
 export function mapFilters(filters: IDataObject[], timezone: string) {
+
 	// tslint:disable-next-line: no-any
 	return filters.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
@@ -352,12 +392,25 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		} else if (['past_week', 'past_month', 'past_year', 'next_week', 'next_month', 'next_year'].includes(value.condition as string)) {
 			valuePropertyName = {};
 		}
-		if (key === 'rich_text') {
+		if (key === 'rich_text' || key === 'text') {
 			key = 'text';
 		} else if (key === 'phone_number') {
 			key = 'phone';
 		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
 			valuePropertyName = (valuePropertyName !== undefined && !Object.keys(valuePropertyName).length) ? {} : moment.tz(value.date, timezone).utc().format();
+		} else if (key === 'number') {
+			key = 'text';
+		} else if (key === 'boolean') {
+			key = 'checkbox';
+		}
+
+		if (value.type === 'formula') {
+			const valuePropertyName = value[`${camelCase(value.returnType)}Value`];
+
+			return Object.assign(obj, {
+				['property']: getNameAndType(value.key).name,
+				[key]: { [value.returnType]: { [`${value.condition}`]: valuePropertyName } },
+			});
 		}
 
 		return Object.assign(obj, {
@@ -389,11 +442,11 @@ export function simplifyProperties(properties: any) {
 				results[`${key}`] = '';
 			}
 		} else if (['created_by', 'last_edited_by', 'select'].includes(properties[key].type)) {
-			results[`${key}`] = properties[key][type].name;
+			results[`${key}`] = (properties[key][type]) ? properties[key][type].name : null;
 		} else if (['people'].includes(properties[key].type)) {
 			if (Array.isArray(properties[key][type])) {
 				// tslint:disable-next-line: no-any
-				results[`${key}`] = properties[key][type].map((person: any) => person.person.email || {});
+				results[`${key}`] = properties[key][type].map((person: any) => person.person?.email || {});
 			} else {
 				results[`${key}`] = properties[key][type];
 			}
@@ -415,32 +468,49 @@ export function simplifyProperties(properties: any) {
 		} else if (['rollup'].includes(properties[key].type)) {
 			//TODO figure how to resolve rollup field type
 			// results[`${key}`] = properties[key][type][properties[key][type].type];
+		} else if (['files'].includes(properties[key].type)) {
+			// tslint:disable-next-line: no-any
+			results[`${key}`] = properties[key][type].map((file: { type: string, [key: string]: any }) => (file[file.type].url));
 		}
 	}
 	return results;
 }
 
 // tslint:disable-next-line: no-any
-export function simplifyObjects(objects: any) {
+export function simplifyObjects(objects: any, download = false, version = 2) {
 	if (!Array.isArray(objects)) {
 		objects = [objects];
 	}
 	const results: IDataObject[] = [];
-	for (const { object, id, properties, parent, title } of objects) {
+	for (const { object, id, properties, parent, title, json, binary, url, created_time, last_edited_time } of objects) {
 		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
 			results.push({
 				id,
-				title: properties.title.title[0].plain_text,
+				name: properties.title.title[0].plain_text,
+				...version === 2 ? { url } : {},
 			});
 		} else if (object === 'page' && parent.type === 'database_id') {
 			results.push({
 				id,
-				...simplifyProperties(properties),
+				...(version === 2) ? { name: getPropertyTitle(properties) } : {},
+				...(version === 2) ? { url } : {},
+				...(version === 2) ? { ...prepend('property', simplifyProperties(properties)) } : { ...simplifyProperties(properties) },
+			});
+		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
+			results.push({
+				json: {
+					id,
+					...(version === 2) ? { name: getPropertyTitle(json.properties) } : {},
+					...(version === 2) ? { url } : {},
+					...(version === 2) ? { ...prepend('property', simplifyProperties(json.properties)) } : { ...simplifyProperties(json.properties) },
+				},
+				binary,
 			});
 		} else if (object === 'database') {
 			results.push({
 				id,
-				title: title[0].plain_text,
+				...version === 2 ? { name: title[0]?.plain_text || '' } : { title: title[0]?.plain_text || '' },
+				...version === 2 ? { url } : {},
 			});
 		}
 	}
@@ -549,11 +619,20 @@ export function getConditions() {
 			'is_empty',
 			'is_not_empty',
 		],
-		formula: [
-			'contains',
-			'does_not_contain',
-			'is_empty',
-			'is_not_empty',
+	};
+
+	const formula: { [key: string]: string[] } = {
+		text: [
+			...typeConditions.rich_text,
+		],
+		checkbox: [
+			...typeConditions.checkbox,
+		],
+		number: [
+			...typeConditions.number,
+		],
+		date: [
+			...typeConditions.date,
 		],
 	};
 
@@ -576,5 +655,283 @@ export function getConditions() {
 			} as INodeProperties,
 		);
 	}
+
+	elements.push(
+		{
+			displayName: 'Return Type',
+			name: 'returnType',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: [
+						'formula',
+					],
+				},
+			} as IDisplayOptions,
+			options: Object.keys(formula).map((key: string) => ({ name: capitalCase(key), value: key })),
+			default: '',
+			description: 'The formula return type',
+		} as INodeProperties,
+	);
+
+	for (const key of Object.keys(formula)) {
+		elements.push(
+			{
+				displayName: 'Condition',
+				name: 'condition',
+				type: 'options',
+				displayOptions: {
+					show: {
+						type: [
+							'formula',
+						],
+						returnType: [
+							key,
+						],
+					},
+				} as IDisplayOptions,
+				options: formula[key].map((key: string) => ({ name: capitalCase(key), value: key })),
+				default: '',
+				description: 'The value of the property to filter by.',
+			} as INodeProperties,
+		);
+	}
+
 	return elements;
+}
+
+export function validateCrendetials(this: ICredentialTestFunctions, credentials: ICredentialDataDecryptedObject) {
+	const options: OptionsWithUri = {
+		headers: {
+			'Authorization': `Bearer ${credentials.apiKey}`,
+			'Notion-Version': apiVersion[2],
+		},
+		method: 'GET',
+		uri: `https://api.notion.com/v1/users/me`,
+		json: true,
+	};
+	return this.helpers.request!(options);
+}
+
+// tslint:disable-next-line: no-any
+export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string, type: string, files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> {
+	const elements: INodeExecutionData[] = [];
+	for (const record of records) {
+		const element: INodeExecutionData = { json: {}, binary: {} };
+		element.json = record as unknown as IDataObject;
+		for (const key of Object.keys(record.properties)) {
+			if (record.properties[key].type === 'files') {
+				if (record.properties[key].files.length) {
+					for (const [index, file] of record.properties[key].files.entries()) {
+						const data = await notionApiRequest.call(this, 'GET', '', {}, {}, file?.file?.url || file?.external?.url, { json: false, encoding: null });
+						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(data);
+					}
+				}
+			}
+		}
+		if (Object.keys(element.binary as IBinaryKeyData).length === 0) {
+			delete element.binary;
+		}
+		elements.push(element);
+	}
+	return elements;
+}
+
+export function extractPageId(page: string) {
+	if (page.includes('p=')) {
+		return page.split('p=')[1];
+	} else if (page.includes('-') && page.includes('https')) {
+		return page.split('-')[page.split('-').length - 1];
+	}
+	return page;
+}
+
+export function extractDatabaseId(database: string) {
+	if (database.includes('?v=')) {
+		const data = database.split('?v=')[0].split('/');
+		const index = data.length - 1;
+		return data[index];
+	} else if (database.includes('/')) {
+		const index = database.split('/').length - 1;
+		return database.split('/')[index];
+	} else {
+		return database;
+	}
+}
+
+// tslint:disable-next-line: no-any
+function prepend(stringKey: string, properties: { [key: string]: any }) {
+	for (const key of Object.keys(properties)) {
+		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
+		delete properties[key];
+	}
+	return properties;
+}
+
+// tslint:disable-next-line: no-any
+export function getPropertyTitle(properties: { [key: string]: any }) {
+	return Object.values(properties).filter(property => property.type === 'title')[0].title[0]?.plain_text || '';
+}
+
+export function getSearchFilters(resource: string) {
+	return [
+		{
+			displayName: 'Filter',
+			name: 'filterType',
+			type: 'options',
+			options: [
+				{
+					name: 'None',
+					value: 'none',
+				},
+				{
+					name: 'Build Manually',
+					value: 'manual',
+				},
+				{
+					name: 'JSON',
+					value: 'json',
+				},
+			],
+			displayOptions: {
+				show: {
+					version: [
+						2,
+					],
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+				},
+			},
+			default: 'none',
+		},
+		{
+			displayName: 'Must Match',
+			name: 'matchType',
+			type: 'options',
+			options: [
+				{
+					name: 'Any filter',
+					value: 'anyFilter',
+				},
+				{
+					name: 'All Filters',
+					value: 'allFilters',
+				},
+			],
+			displayOptions: {
+				show: {
+					version: [
+						2,
+					],
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					filterType: [
+						'manual',
+					],
+				},
+			},
+			default: 'anyFilter',
+		},
+		{
+			displayName: 'Filters',
+			name: 'filters',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			displayOptions: {
+				show: {
+					version: [
+						2,
+					],
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					filterType: [
+						'manual',
+					],
+				},
+			},
+			default: '',
+			placeholder: 'Add Condition',
+			options: [
+				{
+					displayName: 'Conditions',
+					name: 'conditions',
+					values: [
+						...filters(getConditions()),
+					],
+				},
+			],
+		},
+		{
+			displayName: 'See <a href="https://developers.notion.com/reference/post-database-query#post-database-query-filter" target="_blank">Notion guide</a> to creating filters',
+			name: 'jsonNotice',
+			type: 'notice',
+			displayOptions: {
+				show: {
+					version: [
+						2,
+					],
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					filterType: [
+						'json',
+					],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'Filters (JSON)',
+			name: 'filterJson',
+			type: 'string',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+			},
+			displayOptions: {
+				show: {
+					version: [
+						2,
+					],
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					filterType: [
+						'json',
+					],
+				},
+			},
+			default: '',
+			description: '',
+		},
+	];
+}
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }
