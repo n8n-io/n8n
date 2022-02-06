@@ -313,6 +313,13 @@ export class WorkflowRunnerProcess {
 			await sendToParentProcess('finishExecution', { executionId, result });
 
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
+
+			if (returnData!.error) {
+				const error = new Error(returnData!.error.message);
+				error.stack = returnData!.error.stack;
+				throw error;
+			}
+
 			return returnData!.data!.main;
 		};
 
