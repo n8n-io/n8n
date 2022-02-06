@@ -663,12 +663,32 @@ export class Jira implements INodeType {
 						qs.updateHistory = additionalFields.updateHistory as string;
 					}
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
+
 					if (additionalFields.resolveCustomFields) {
 						const mappedFields: IDataObject = {};
-						for (const field of Object.keys(responseData.fields)) {
+						// Sort custom fields last so we map them last
+						const customField = /^customfield_\d+$/;
+						const sortedFields: string[] = Object.keys(responseData.fields).sort((a, b) => {
+							if (customField.test(a) && customField.test(b)) {
+								return a > b ? 1 : -1;
+							}
+							if (customField.test(a)) {
+								return 1;
+							}
+							if (customField.test(b)) {
+								return -1;
+							}
+							return a > b ? 1 : -1;
+						});
+						for (const field of sortedFields) {
 							if (responseData.names[field] in mappedFields) {
-								// Duplicate fields, use original key
-								mappedFields[field] = responseData.fields[field];
+								let newField: string = responseData.names[field];
+								let counter = 0;
+								while (newField in mappedFields) {
+									counter++;
+									newField = `${responseData.names[field]}_${counter}`;
+								}
+								mappedFields[newField] = responseData.fields[field];
 							} else {
 								mappedFields[responseData.names[field] || field] = responseData.fields[field];
 							}
