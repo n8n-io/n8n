@@ -144,6 +144,11 @@ export class GoogleSheets implements INodeType {
 						description: 'Look up a specific column value and return the matching row',
 					},
 					{
+						name: 'List',
+						value: 'list',
+						description: 'List all sheets',
+					},
+					{
 						name: 'Read',
 						value: 'read',
 						description: 'Read data from a sheet',
@@ -195,6 +200,7 @@ export class GoogleSheets implements INodeType {
 						operation: [
 							'create',
 							'delete',
+							'list',
 							'remove',
 						],
 					},
@@ -435,6 +441,7 @@ export class GoogleSheets implements INodeType {
 							'create',
 							'clear',
 							'delete',
+							'list',
 							'remove',
 						],
 						rawData: [
@@ -466,6 +473,7 @@ export class GoogleSheets implements INodeType {
 							'clear',
 							'create',
 							'delete',
+							'list',
 							'remove',
 						],
 						rawData: [
@@ -1091,7 +1099,7 @@ export class GoogleSheets implements INodeType {
 			const sheet = new GoogleSheet(spreadsheetId, this);
 
 			let range = '';
-			if (!['create', 'delete', 'remove'].includes(operation)) {
+			if (!['create', 'delete', 'remove', 'list'].includes(operation)) {
 				range = this.getNodeParameter('range', 0) as string;
 			}
 
@@ -1223,6 +1231,27 @@ export class GoogleSheets implements INodeType {
 						return this.prepareOutputData([{json:{ error: error.message }}]);
 					}
 					throw error;
+				}
+			
+			} else if (operation === 'list') {
+				// ----------------------------------
+				//         list
+				// ----------------------------------
+				try {
+					const responseData = await sheet.spreadsheetGetSheets();
+					if (responseData === undefined) {
+						if (this.continueOnFail()) {
+							return this.prepareOutputData([{json:{ error: 'No sheets found' }}]);
+						}
+						throw new NodeOperationError(this.getNode(), 'No sheets found');
+					}
+					const sheets = responseData.sheets.map((sheet: IDataObject) => sheet.properties);
+					return [this.helpers.returnJsonArray(sheets)];
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json:{ error: 'No data returned' }}]);
+					}
+					throw new NodeOperationError(this.getNode(), error);
 				}
 			} else if (operation === 'lookup') {
 				// ----------------------------------
