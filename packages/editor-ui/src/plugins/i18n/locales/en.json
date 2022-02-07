@@ -1052,6 +1052,7 @@
 		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
 		"gotIt": "Got it"
 	},
+	"SETUP_SMTP_TO_INVITE_USERS_MESSAGE": "Set up SMTP to invite users.",
 	"SMTP_TO_ADD_USERS_WARNING": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management#smtp\">Instructions</a>",
 	"PASSWORD_REQUIREMENTS_MESSAGE": "At least 8 characters with 1 number and 1 uppercase",
 	"FIRST_NAME": "First name",
@@ -1074,5 +1075,14 @@
 	"SETTING_UP_OWNER_ERROR": "Problem setting up owner",
 	"OWNER_ACCOUNT_BENEFITS_MESSAGE": "By setting up an owner account, you can invite other users to join your instance. It also ensures your instance can’t be accessed without an account.",
 	"SKIP_OWNER_SETUP_QUESTION": "Skip owner account setup?",
-	"GO_BACK_LABEL": "Go back"
+	"GO_BACK_LABEL": "Go back",
+	"USER_MANAGEMENT_MISSING_WARNING": "You’re missing out on user management",
+	"SET_UP_TO_INVITE_USERS_WARNING": "Set up an owner account in order to invite other users. Once set up, each user will need to use a password to access this instance.",
+	"SET_UP_MY_ACCOUNT_LABEL": "Set up my owner account",
+	"USERS_LABEL": "Users",
+	"INSTRUCTIONS_LABEL": "Instructions",
+	"INVITE_RESENT_LABEL": "Invite resent",
+	"EMAIL_SENT_TO_MESSAGE": "To {email}",
+	"USER_INVITE_ERROR": "Problem inviting user",
+	"INVITE_LABEL": "Invite"
 }
