@@ -1305,6 +1305,26 @@ export default mixins(
 					parameters: {},
 				};
 
+				const credentialPerType = nodeTypeData.credentials && nodeTypeData.credentials
+					.map(type => this.$store.getters['credentials/getCredentialsByType'](type.name))
+					.filter(type => type.length === 1).map( item => item[0]);
+
+				if (credentialPerType && credentialPerType.length === 1) {
+					const defaultCredential = credentialPerType[0];
+
+					const selectedCredentials = this.$store.getters['credentials/getCredentialById'](defaultCredential.id);
+					const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
+					const credentials = {
+						[defaultCredential.type]: selected,
+					};
+					newNodeData.credentials = credentials;
+
+					if (Array.isArray(nodeTypeData.credentials)){
+						const authentication = nodeTypeData.credentials.find(type => type.name === defaultCredential.type);
+						newNodeData.parameters.authentication = authentication!.displayOptions!.show!.authentication![0];
+					}
+				}
+
 				// when pulling new connection from node or injecting into a connection
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode) {

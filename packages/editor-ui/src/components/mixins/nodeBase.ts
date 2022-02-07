@@ -281,49 +281,6 @@ export const nodeBase = mixins(
 		__addNode (node: INodeUi) {
 			let nodeTypeData = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
 
-			if (!node.credentials) {
-				const credentialPerType = nodeTypeData!.credentials && nodeTypeData!.credentials!
-					.map(cred => this.$store.getters['credentials/getCredentialsByType'](cred.name))
-					.filter(cred => cred.length === 1).map( item => item[0]);
-
-				// Check if node has only one available credential option
-				if (credentialPerType && credentialPerType.length === 1) {
-					const defaultCredential = credentialPerType[0];
-
-					const selectedCredentials = this.$store.getters['credentials/getCredentialById'](defaultCredential.id);
-					const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
-					const credentials = {
-						...(node.credentials || {}),
-						[defaultCredential.type]: selected,
-					};
-					node.credentials = credentials;
-					const updateInformation: INodeUpdatePropertiesInformation = {
-						name: node.name,
-						properties: {
-							credentials,
-						},
-					};
-					this.$store.commit('setNodeIssue', {
-						node: node.name,
-						type: 'credentials',
-						value: null,
-					});
-					this.$emit('credentialSelected', updateInformation);
-
-					const auth = nodeTypeData!.credentials!.map(cred => {
-						return {type: cred.name, name: cred.displayOptions!.show!.authentication![0]};
-					});
-					const updateParameters = {
-						name: node.name,
-						value: {
-							...node.parameters,
-							authentication: auth.find(auth => auth.type === defaultCredential.type)!.name,
-						},
-					};
-					this.$store.commit('setNodeParameters', updateParameters);
-				}
-			}
-
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
 				nodeTypeData = this.$store.getters.nodeType(NO_OP_NODE_TYPE) as INodeTypeDescription;
