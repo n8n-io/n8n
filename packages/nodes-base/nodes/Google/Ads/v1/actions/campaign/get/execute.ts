@@ -12,18 +12,16 @@ import {
 } from '../../../transport';
 
 export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+	const campaignId = this.getNodeParameter('campaignId', index) as string;
+	const customerId = this.getNodeParameter('customerId', index) as string;
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = 'reactions';
-	const body = {
-		user_id: this.getNodeParameter('userId', index),
-		post_id: this.getNodeParameter('postId', index),
-		emoji_name: (this.getNodeParameter('emojiName', index) as string).replace(/:/g, ''),
-		create_at: Date.now(),
-	} as { user_id: string; post_id: string; emoji_name: string; create_at: number };
+	const endpoint = `/customers/${customerId}/googleAds:search`;
+	const form = {
+		query: `SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC WHERE campaign.id = ${campaignId}`,
+	} as IDataObject;
 
-
-	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, form, qs);
 
 	return this.helpers.returnJsonArray(responseData);
 }

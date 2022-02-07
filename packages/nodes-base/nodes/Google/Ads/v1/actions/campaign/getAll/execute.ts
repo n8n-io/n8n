@@ -18,10 +18,11 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const endpoint = `/customers/${customerId}/googleAds:search`;
-	const body = {} as IDataObject;
-	body.query = 'SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC';
+	const form = {
+		query: 'SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC',
+	} as IDataObject;
 
-	let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	let responseData = await apiRequest.call(this, requestMethod, endpoint, form, qs);
 	if (limit > 0) {
 		responseData = responseData.slice(0, limit);
 	}
