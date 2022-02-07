@@ -156,7 +156,7 @@ export default Vue.extend({
 	font-size: var(--font-size-l);
 	font-weight: var(--font-weight-bold);
 	cursor: pointer;
-	z-index: 3000;
+	z-index: 2000;
 }
 
 .icon {
@@ -174,5 +174,6 @@ export default Vue.extend({
 .tooltip {
 	left: 10px;
 	position: relative;
+	z-index: 9999;
 }
 </style>

@@ -81,7 +81,7 @@ export default Vue.extend({
 	methods: {
 		abbreviateNumber,
 		redirectToCategory(tag: ITag) {
-			this.$router.push(`/templates?categoryId=${tag.id}`);
+			this.$router.push(`/templates?categories=${tag.id}`);
 		},
 		redirectToSearchPage(node: INode) {
 			this.$router.push(`/templates?search=${node.displayName}`);
