@@ -14,52 +14,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 
-const FORM_CONFIG: IFormBoxConfig = {
-	title: 'Set up owner account',
-	buttonText: 'Next',
-	secondaryButtonText: 'Skip setup for now',
-	inputs: [
-		{
-			name: 'email',
-			properties: {
-				label: 'Email',
-				type: 'email',
-				required: true,
-				validationRules: [{name: 'VALID_EMAIL'}],
-				autocomplete: 'email',
-			},
-		},
-		{
-			name: 'firstName',
-			properties: {
-				label: 'First name',
-				maxlength: 32,
-				required: true,
-				autocomplete: 'given-name',
-			},
-		},
-		{
-			name: 'lastName',
-			properties: {
-				label: 'Last name',
-				maxlength: 32,
-				required: true,
-				autocomplete: 'family-name',
-			},
-		},
-		{
-			name: 'password',
-			properties: {
-				label: 'Password',
-				type: 'password',
-				required: true,
-				validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-				infoText: 'At least 8 characters with 1 number and 1 uppercase',
-				autocomplete: 'new-password',
-			},
-		},
-	],
-};
 
 export default mixins(
 	showMessage,
@@ -69,6 +23,53 @@ export default mixins(
 		AuthView,
 	},
 	data() {
+		const FORM_CONFIG: IFormBoxConfig = {
+			title: this.$locale.baseText('SET_UP_OWNER_LABEL'),
+			buttonText: this.$locale.baseText('NEXT_LABEL'),
+			secondaryButtonText: this.$locale.baseText('SKIP_SETUP_TEMPORARILY_LABEL'),
+			inputs: [
+				{
+					name: 'email',
+					properties: {
+						label: this.$locale.baseText('EMAIL'),
+						type: 'email',
+						required: true,
+						validationRules: [{name: 'VALID_EMAIL'}],
+						autocomplete: 'email',
+					},
+				},
+				{
+					name: 'firstName',
+					properties: {
+						label: this.$locale.baseText('FIRST_NAME'),
+						maxlength: 32,
+						required: true,
+						autocomplete: 'given-name',
+					},
+				},
+				{
+					name: 'lastName',
+					properties: {
+						label: this.$locale.baseText('LAST_NAME'),
+						maxlength: 32,
+						required: true,
+						autocomplete: 'family-name',
+					},
+				},
+				{
+					name: 'password',
+					properties: {
+						label: this.$locale.baseText('PASSWORD'),
+						type: 'password',
+						required: true,
+						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+						infoText: this.$locale.baseText('PASSWORD_REQUIREMENTS_MESSAGE'),
+						autocomplete: 'new-password',
+					},
+				},
+			],
+		};
+
 		return {
 			FORM_CONFIG,
 			loading: false,
@@ -82,17 +83,17 @@ export default mixins(
 
 				await this.$router.push({ name: 'NodeViewNew' });
 			} catch (error) {
-				this.$showError(error, 'Problem setting up instance', 'There was a problem setting up the instance:');
+				this.$showError(error, this.$locale.baseText('SETTING_UP_OWNER_ERROR'));
 			}
 			this.loading = false;
 		},
 		async onSkip() {
 			const skip = await this.confirmMessage(
-				'By setting up an owner account, you can invite other users to join your instance. It also ensures your instance can’t be accessed without an account.',
-				'Skip owner account setup?',
+				this.$locale.baseText('OWNER_ACCOUNT_BENEFITS_MESSAGE'),
+				this.$locale.baseText('SKIP_OWNER_SETUP_QUESTION'),
 				null,
-				'Skip setup',
-				'Go back',
+				this.$locale.baseText('SKIP_SETUP_LABEL'),
+				this.$locale.baseText('GO_BACK_LABEL'),
 			);
 			if (skip) {
 				this.$router.push({

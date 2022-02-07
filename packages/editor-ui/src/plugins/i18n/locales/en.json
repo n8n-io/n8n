@@ -1066,5 +1066,13 @@
 	"SIGN_IN": "Sign in",
 	"FORGOT_MY_PASSWORD": "Forgot my password",
 	"EMAIL": "Email",
-	"LOGGING_IN_ERROR": "Problem logging in"
+	"LOGGING_IN_ERROR": "Problem logging in",
+	"SET_UP_OWNER_LABEL": "Set up owner account",
+	"NEXT_LABEL": "Next",
+	"SKIP_SETUP_TEMPORARILY_LABEL": "Skip setup for now",
+	"SKIP_SETUP_LABEL": "Skip setup",
+	"SETTING_UP_OWNER_ERROR": "Problem setting up owner",
+	"OWNER_ACCOUNT_BENEFITS_MESSAGE": "By setting up an owner account, you can invite other users to join your instance. It also ensures your instance can’t be accessed without an account.",
+	"SKIP_OWNER_SETUP_QUESTION": "Skip owner account setup?",
+	"GO_BACK_LABEL": "Go back"
 }
