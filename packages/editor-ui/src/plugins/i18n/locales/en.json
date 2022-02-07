@@ -1059,6 +1059,7 @@
 		"newButton": "New blank workflow",
 		"searchPlaceholder": "Search workflows",
 		"categoriesHeading": "Categories",
+		"collection": "Collection",
 		"collectionNotFound": "No collections found. Try adjusting your search to see more.",
 		"workflowsNotFound": "No workflows found. Try adjusting your search to see more."
 	},

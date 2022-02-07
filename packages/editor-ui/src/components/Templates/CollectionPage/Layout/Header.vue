@@ -4,6 +4,7 @@
 		<div :class="$style.wrapper">
 			<div :class="$style.title">
 				<n8n-heading v-if="!loading" tag="h1" size="2xlarge">{{ collection.name }}</n8n-heading>
+				<n8n-text v-if="!loading" :bold="true" size="small" color="text-base">{{ $locale.baseText('templates.collection') }}</n8n-text>
 				<n8n-loading :animated="true" :loading="loading" :rows="2" variant="h1" />
 			</div>
 		</div>

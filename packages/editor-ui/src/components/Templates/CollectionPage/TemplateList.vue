@@ -114,7 +114,7 @@ export default mixins(genericHelpers).extend({
 }
 
 .list {
-	padding-top: var(--spacing-m);
+	padding-top: var(--spacing-2xl);
 }
 
 .wrapper {
