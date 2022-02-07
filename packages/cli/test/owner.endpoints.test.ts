@@ -126,4 +126,24 @@ const INVALID_POST_OWNER_PAYLOADS = [
 		lastName: utils.randomName(),
 		password: utils.randomInvalidPassword(),
 	},
+	{
+		firstName: utils.randomName(),
+		lastName: utils.randomName(),
+	},
+	{
+		firstName: utils.randomName(),
+	},
+	{
+		lastName: utils.randomName(),
+	},
+	{
+		email: utils.randomEmail(),
+		firstName: 'John <script',
+		lastName: utils.randomName(),
+	},
+	{
+		email: utils.randomEmail(),
+		firstName: 'John <a',
+		lastName: utils.randomName(),
+	},
 ];
