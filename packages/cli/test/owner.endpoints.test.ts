@@ -22,8 +22,6 @@ describe('/owner endpoints', () => {
 
 			await Db.collections.User!.save({
 				id: uuid(),
-				firstName: 'default',
-				lastName: 'default',
 				createdAt: new Date(),
 				updatedAt: new Date(),
 				globalRole: role,
