@@ -54,7 +54,6 @@ export class Wise implements INodeType {
 		description: 'Consume the Wise API',
 		defaults: {
 			name: 'Wise',
-			color: '#37517e',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

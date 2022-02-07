@@ -179,6 +179,7 @@ export const nodeBase = mixins(
 							hover: false,
 							showOutputLabel: nodeTypeData.outputs.length === 1,
 							size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
+							hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 						},
 						endpointHoverStyle: {
 							fill: getStyleTokenValue('--color-primary'),
@@ -278,7 +279,7 @@ export const nodeBase = mixins(
 			});
 		},
 		__addNode (node: INodeUi) {
-			let nodeTypeData = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+			let nodeTypeData = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
 				nodeTypeData = this.$store.getters.nodeType(NO_OP_NODE_TYPE) as INodeTypeDescription;

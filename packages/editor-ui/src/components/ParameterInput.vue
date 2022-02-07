@@ -13,8 +13,8 @@
 		/>
 
 		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
-			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
-			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
+			<code-edit v-if="codeEditDialogVisible" :value="value" :parameter="parameter" :type="editorType" :codeAutocomplete="codeAutocomplete" :path="path" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
+			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
 			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
@@ -35,10 +35,10 @@
 				@focus="setFocus"
 				@blur="onBlur"
 				:title="displayTitle"
-				:placeholder="isValueExpression?'':parameter.placeholder"
+				:placeholder="isValueExpression ? '' : getPlaceholder()"
 			>
 				<div slot="suffix" class="expand-input-icon-container">
-					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
+					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$locale.baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
 				</div>
 			</n8n-input>
 		</div>
@@ -78,7 +78,7 @@
 			:value="displayValue"
 			:title="displayTitle"
 			:disabled="isReadOnly"
-			:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
+			:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.selectDateAndTime')"
 			:picker-options="dateTimePickerOptions"
 			@change="valueChanged"
 			@focus="setFocus"
@@ -94,7 +94,6 @@
 			:max="getArgument('maxValue')"
 			:min="getArgument('minValue')"
 			:precision="getArgument('numberPrecision')"
-			:step="getArgument('numberStepSize')"
 			:disabled="isReadOnly"
 			@change="valueChanged"
 			@input="onTextInputChange"
@@ -124,11 +123,13 @@
 				v-for="option in parameterOptions"
 				:value="option.value"
 				:key="option.value"
-				:label="option.name"
+				:label="getOptionsOptionDisplayName(option)"
 			>
 				<div class="list-option">
-					<div class="option-headline">{{ option.name }}</div>
-					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+					<div class="option-headline">
+						{{ getOptionsOptionDisplayName(option) }}
+					</div>
+					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
 				</div>
 			</n8n-option>
 		</n8n-select>
@@ -148,10 +149,10 @@
 			@blur="onBlur"
 			:title="displayTitle"
 		>
-			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
+			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="getOptionsOptionDisplayName(option)">
 				<div class="list-option">
-					<div class="option-headline">{{ option.name }}</div>
-					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+					<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
+					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
 				</div>
 			</n8n-option>
 		</n8n-select>
@@ -169,7 +170,7 @@
 
 	<div class="parameter-issues" v-if="getIssues.length">
 		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
+			<div slot="content" v-html="`${$locale.baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
 			<font-awesome-icon icon="exclamation-triangle" />
 		</n8n-tooltip>
 	</div>
@@ -177,13 +178,13 @@
 	<div class="parameter-options" v-if="displayOptionsComputed">
 			<el-dropdown trigger="click" @command="optionSelected" size="mini">
 				<span class="el-dropdown-link">
-					<font-awesome-icon icon="cogs" class="reset-icon clickable" title="Parameter Options"/>
+					<font-awesome-icon icon="cogs" class="reset-icon clickable" :title="$locale.baseText('parameterInput.parameterOptions')"/>
 				</span>
 				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
-					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">Refresh List</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
+					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $locale.baseText('parameterInput.addExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $locale.baseText('parameterInput.removeExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="refreshOptions" v-if="hasRemoteMethod">{{ $locale.baseText('parameterInput.refreshList') }}</el-dropdown-item>
+					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $locale.baseText('parameterInput.resetValue') }}</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
 	</div>
@@ -199,6 +200,8 @@ import {
 import {
 	NodeHelpers,
 	NodeParameterValue,
+	IHttpRequestOptions,
+	ILoadOptions,
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
@@ -240,6 +243,7 @@ export default mixins(
 			'value',
 			'hideIssues', // boolean
 			'errorHighlight',
+			'isForCredential', // boolean
 		],
 		data () {
 			return {
@@ -255,14 +259,14 @@ export default mixins(
 				dateTimePickerOptions: {
 					shortcuts: [
 						{
-							text: 'Today',
+							text: 'Today', // TODO
 							// tslint:disable-next-line:no-any
 							onClick (picker: any) {
 								picker.$emit('pick', new Date());
 							},
 						},
 						{
-							text: 'Yesterday',
+							text: 'Yesterday', // TODO
 							// tslint:disable-next-line:no-any
 							onClick (picker: any) {
 								const date = new Date();
@@ -271,7 +275,7 @@ export default mixins(
 							},
 						},
 						{
-							text: 'A week ago',
+							text: 'A week ago', // TODO
 							// tslint:disable-next-line:no-any
 							onClick (picker: any) {
 								const date = new Date();
@@ -298,6 +302,9 @@ export default mixins(
 			},
 		},
 		computed: {
+			codeAutocomplete (): string | undefined {
+				return this.getArgument('codeAutocomplete') as string | undefined;
+			},
 			showExpressionAsTextInput(): boolean {
 				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
 
@@ -325,20 +332,26 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			displayTitle (): string {
-				let title = `Parameter: "${this.shortPath}"`;
-				if (this.getIssues.length) {
-					title += ` has issues`;
-					if (this.isValueExpression === true) {
-						title += ` and expression`;
-					}
-					title += `!`;
-				} else {
-					if (this.isValueExpression === true) {
-						title += ` has expression`;
-					}
+				const interpolation = { interpolate: { shortPath: this.shortPath } };
+
+				if (this.getIssues.length && this.isValueExpression) {
+					return this.$locale.baseText(
+						'parameterInput.parameterHasIssuesAndExpression',
+						interpolation,
+					);
+				} else if (this.getIssues.length && !this.isValueExpression) {
+					return this.$locale.baseText(
+						'parameterInput.parameterHasIssues',
+						interpolation,
+					);
+				} else if (!this.getIssues.length && this.isValueExpression) {
+					return this.$locale.baseText(
+						'parameterInput.parameterHasExpression',
+						interpolation,
+					);
 				}
 
-				return title;
+				return this.$locale.baseText('parameterInput.parameter', interpolation);
 			},
 			displayValue (): string | number | boolean | null {
 				if (this.remoteParameterOptionsLoading === true) {
@@ -346,7 +359,7 @@ export default mixins(
 					// to user that the data is loading. If not it would
 					// display the user the key instead of the value it
 					// represents
-					return 'Loading options...';
+					return this.$locale.baseText('parameterInput.loadingOptions');
 				}
 
 				let returnValue;
@@ -415,7 +428,7 @@ export default mixins(
 				try {
 					computedValue = this.resolveExpression(this.value) as NodeParameterValue;
 				} catch (error) {
-					computedValue = `[ERROR: ${error.message}]`;
+					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
 				}
 
 				// Try to convert it into the corret type
@@ -491,7 +504,7 @@ export default mixins(
 				return this.parameter.default === this.value;
 			},
 			isEditor (): boolean {
-				return this.getArgument('editor') === 'code';
+				return ['code', 'json'].includes(this.editorType);
 			},
 			isValueExpression () {
 				if (this.parameter.noDataExpression === true) {
@@ -502,8 +515,11 @@ export default mixins(
 				}
 				return false;
 			},
+			editorType (): string {
+				return this.getArgument('editor') as string;
+			},
 			parameterOptions (): INodePropertyOptions[] {
-				if (this.remoteMethod === undefined) {
+				if (this.hasRemoteMethod === false) {
 					// Options are already given
 					return this.parameter.options;
 				}
@@ -546,8 +562,8 @@ export default mixins(
 
 				return styles;
 			},
-			remoteMethod (): string | undefined {
-				return this.getArgument('loadOptionsMethod') as string | undefined;
+			hasRemoteMethod (): boolean {
+				return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 			},
 			shortPath (): string {
 				const shortPath = this.path.split('.');
@@ -559,8 +575,24 @@ export default mixins(
 			},
 		},
 		methods: {
+			getPlaceholder(): string {
+				return this.isForCredential
+					? this.$locale.credText().placeholder(this.parameter)
+					: this.$locale.nodeText().placeholder(this.parameter, this.path);
+			},
+			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
+				return this.isForCredential
+					? this.$locale.credText().optionsOptionDisplayName(this.parameter, option)
+					: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
+			},
+			getOptionsOptionDescription(option: { value: string; description: string }): string {
+				return this.isForCredential
+					? this.$locale.credText().optionsOptionDescription(this.parameter, option)
+					: this.$locale.nodeText().optionsOptionDescription(this.parameter, option, this.path);
+			},
+
 			async loadRemoteParameterOptions () {
-				if (this.node === null || this.remoteMethod === undefined || this.remoteParameterOptionsLoading) {
+				if (this.node === null || this.hasRemoteMethod === false || this.remoteParameterOptionsLoading) {
 					return;
 				}
 				this.remoteParameterOptionsLoadingIssues = null;
@@ -572,7 +604,10 @@ export default mixins(
 				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
-					const options = await this.restApi().getNodeParameterOptions({name: this.node.type, version: this.node.typeVersion}, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
+					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
+					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
+
+					const options = await this.restApi().getNodeParameterOptions({ nodeTypeAndVersion: { name: this.node.type, version: this.node.typeVersion}, path: this.path, methodName: loadOptionsMethod, loadOptions, currentNodeParameters: resolvedNodeParameters, credentials: this.node.credentials });
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -741,7 +776,7 @@ export default mixins(
 				}
 			}
 
-			if (this.remoteMethod !== undefined && this.node !== null) {
+			if (this.hasRemoteMethod === true && this.node !== null) {
 				// Make sure to load the parameter options
 				// directly and whenever the credentials change
 				this.$watch(() => this.node!.credentials, () => {

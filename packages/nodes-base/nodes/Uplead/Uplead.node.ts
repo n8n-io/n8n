@@ -30,7 +30,6 @@ export class Uplead implements INodeType {
 		description: 'Consume Uplead API',
 		defaults: {
 			name: 'Uplead',
-			color: '#5d6f7b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

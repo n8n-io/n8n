@@ -51,7 +51,6 @@ export class Stripe implements INodeType {
 		description: 'Consume the Stripe API',
 		defaults: {
 			name: 'Stripe',
-			color: '#6772e5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

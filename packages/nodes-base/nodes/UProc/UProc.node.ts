@@ -33,7 +33,6 @@ export class UProc implements INodeType {
 		description: 'Consume uProc API',
 		defaults: {
 			name: 'uProc',
-			color: '#219ef9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

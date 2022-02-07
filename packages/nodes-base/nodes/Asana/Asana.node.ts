@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -37,7 +38,6 @@ export class Asana implements INodeType {
 		description: 'Consume Asana REST API',
 		defaults: {
 			name: 'Asana',
-			color: '#FC636B',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -50,6 +50,12 @@ export class Asana implements INodeType {
 						authentication: [
 							'accessToken',
 						],
+					},
+				},
+				testedBy: {
+					request: {
+						method: 'GET',
+						url: '/users/me',
 					},
 				},
 			},
@@ -65,6 +71,10 @@ export class Asana implements INodeType {
 				},
 			},
 		],
+		requestDefaults: {
+			baseURL: 'https://app.asana.com/api/1.0',
+			url: '',
+		},
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -1835,7 +1845,7 @@ export class Asana implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods = 'GET';
 
 		let body: IDataObject;
 		let qs: IDataObject;

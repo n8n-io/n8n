@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { ChildProcess } from 'child_process';
+import { stringify } from 'flatted';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as PCancelable from 'p-cancelable';
 // eslint-disable-next-line import/no-cycle
@@ -82,6 +83,7 @@ export class ActiveExecutions {
 
 			const execution = {
 				id: executionId,
+				data: stringify(executionData.executionData!),
 				waitTill: null,
 			};
 

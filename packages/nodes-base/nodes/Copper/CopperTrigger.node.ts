@@ -25,7 +25,6 @@ export class CopperTrigger implements INodeType {
 		description: 'Handle Copper events via webhooks',
 		defaults: {
 			name: 'Copper Trigger',
-			color: '#ff2564',
 		},
 		inputs: [],
 		outputs: ['main'],
