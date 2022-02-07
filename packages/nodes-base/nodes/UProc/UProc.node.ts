@@ -74,7 +74,7 @@ export class UProc implements INodeType {
 						displayName: 'Data Webhook',
 						name: 'dataWebhook',
 						type: 'string',
-						description: 'URL to send tool response when tool has resolved your request. You can create your own webhook at <a href="https://n8n.io/">n8n</a>',
+						description: 'URL to send tool response when tool has resolved your request',
 						default: '',
 					},
 				],
