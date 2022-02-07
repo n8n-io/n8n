@@ -1093,5 +1093,12 @@
 	"PERSONAL_SETTINGS_UPDATED_MESSAGE": "Updated your details",
 	"PERSONAL_SETTINGS_UPDATE_ERROR": "Problem updating your details",
 	"LOADING_LABEL": "Loading",
-	"ERROR_LABEL": "error"
+	"ERROR_LABEL": "Error",
+	"NO_SMTP_TO_SEND_EMAIL_WARNING": "Please contact your admin. n8n isn’t set up to send email right now.",
+	"RECOVER_PASSWORD_LABEL": "Recover password",
+	"RETURN_TO_SIGN_IN_LABEL": "Back to sign in",
+	"GET_RECOVERY_LINK_LABEL": "Email me a recovery link",
+	"RECOVERY_EMAIL_SENT_MESSAGE": "Recovery email sent",
+	"CHECK_INBOX_AND_SPAM_MESSAGE": "Please check your inbox (and perhaps your spam folder)",
+	"SENDING_EMAIL_ERROR": "Problem sending email"
 }
