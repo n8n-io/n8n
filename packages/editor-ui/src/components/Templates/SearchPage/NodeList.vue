@@ -8,7 +8,7 @@
 			<NodeIcon
 				:nodeType="node"
 				:title="node.name"
-				:size="18"
+				:size="nodeSize"
 			/>
 		</div>
 		<div :class="$style.button" v-if="filteredCoreNodes.length > nodesToBeShown + 1">
@@ -44,6 +44,10 @@ export default mixins(genericHelpers).extend({
 	name: 'TemplateCard',
 	props: {
 		nodes: Array,
+		nodeSize: {
+			type: Number,
+			default: 18,
+		},
 	},
 	data() {
 		return {

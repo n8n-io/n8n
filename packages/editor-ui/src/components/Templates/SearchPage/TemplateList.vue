@@ -28,15 +28,8 @@
 						:class="(index === workflows.length - 1 && !shouldShowLoadingState) ? $style.last : ''"
 					>
 						<template v-slot:button>
-							<div :class="$style.button">
-								<n8n-button
-									type="outline"
-									label="Use workflow"
-									@click.stop="navigateTo(workflow.id, 'WorkflowTemplate', $event)"
-								/>
-							</div>
 							<div :class="$style.nodes">
-								<NodeList :nodes="workflow.nodes" />
+								<NodeList :nodes="workflow.nodes" :nodeSize="24"/>
 							</div>
 						</template>
 
@@ -208,7 +201,7 @@ export default mixins(genericHelpers).extend({
 }
 
 .list {
-	padding-top: var(--spacing-m);
+	padding-top: var(--spacing-l);
 }
 
 .wrapper {
@@ -221,16 +214,6 @@ export default mixins(genericHelpers).extend({
 
 .card {
 	cursor: pointer;
-
-	&:hover {
-		.button {
-			display: block;
-		}
-
-		.nodes {
-			display: none;
-		}
-	}
 }
 
 .last {

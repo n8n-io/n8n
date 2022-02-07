@@ -90,7 +90,7 @@ export default mixins(genericHelpers).extend({
 				const scrollWidth = list.scrollWidth;
 				const scrollLeft = this.carouselScrollPosition;
 
-				if (scrollWidth - width <= scrollLeft) {
+				if (scrollWidth - width <= (scrollLeft + 10)) {
 					this.scrollEnd = true;
 				} else {
 					this.scrollEnd = false;
@@ -136,7 +136,7 @@ export default mixins(genericHelpers).extend({
 .buttons {
 	width: 100%;
 	height: 0;
-	top: 50%;
+	top: 45%;
 	position: absolute;
 	background: transparent;
 	border: none;
