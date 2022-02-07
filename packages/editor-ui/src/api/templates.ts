@@ -31,6 +31,13 @@ export async function getCollectionById(collectionId: string): Promise<IN8nColle
 					iconData
 					typeVersion: version
 				}
+				categories{
+					id
+					name
+				}
+				user{
+					username
+				}
 				totalViews: views
 			}
 			totalViews: views

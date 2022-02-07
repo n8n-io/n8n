@@ -31,11 +31,11 @@
 		<template-block v-if="!loading" :title="$locale.baseText('template.details.details')">
 			<template v-slot:content>
 				<div :class="$style.text">
-					<n8n-text v-if="template.user" size="small" color="text-base">
+					<n8n-text size="small" color="text-base">
 						{{ $locale.baseText('template.details.created') }}
 						<TimeAgo :date="template.created_at" />
-						{{ $locale.baseText('template.details.by') }}
-						{{ template.user.username }}
+						<span v-if="template.user" >{{ $locale.baseText('template.details.by') }}</span>
+						<span v-if="template.user" >{{ template.user.username }}</span>
 					</n8n-text>
 				</div>
 				<div :class="$style.text">
