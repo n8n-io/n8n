@@ -1,12 +1,12 @@
 
 import {
+	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
-	GenericValue,
-	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	ILoadOptions,
 	INode,
 	INodeCredentials,
 	INodeIssues,
@@ -19,6 +19,7 @@ import {
 	IRunData,
 	ITaskData,
 	ITelemetrySettings,
+	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -167,7 +168,7 @@ export interface IRestApi {
 	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
 	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
+	getNodeParameterOptions(sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> ;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -555,6 +556,7 @@ export interface IN8nUISettings {
 	telemetry: ITelemetrySettings;
 	userManagement: IUserManagementConfig;
 	defaultLocale: string;
+	logLevel: ILogLevel;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -700,7 +702,6 @@ export interface IRootState {
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
-	telemetry: ITelemetrySettings | null;
 }
 
 export interface ICredentialTypeMap {
@@ -737,6 +738,8 @@ export interface IUiState {
 	};
 	isPageLoading: boolean;
 }
+
+export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
 export interface ISettingsState {
 	settings: IN8nUISettings;

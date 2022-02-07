@@ -108,10 +108,10 @@ import {
 	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
+	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -279,7 +279,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return false;
 			});
 
-			return !!nodesThatCanTest.length;
+			return !!nodesThatCanTest.length || (!!this.credentialType && !!this.credentialType.test);
 		},
 		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {
@@ -566,7 +566,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 
 		async testCredential(credentialDetails: ICredentialsDecrypted) {
-			const result: NodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
+			const result: INodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
 			if (result.status === 'Error') {
 				this.authError = result.message;
 				this.testedSuccessfully = false;
