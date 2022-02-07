@@ -326,7 +326,11 @@ class LoadNodesAndCredentialsClass {
 		// Resolve relative path to absolute path
 		directory = path.resolve(directory);
 
-		const pattern = path.join(directory, '**/*.@(node|credentials).js').replace(/\\/g, '/')
+		let  pattern = path.join(directory, '**/*.@(node|credentials).js')
+		
+		// Fix windows path
+		pattern = pattern.replace(/\\/g, '/')
+
 		const files = await glob(pattern);
 
 		let fileName: string;
