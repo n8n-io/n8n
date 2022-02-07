@@ -150,6 +150,7 @@ export default Vue.extend({
   width: 24px;
 	height: 24px;
 	margin-right: var(--spacing-xs);
+	margin-bottom: var(--spacing-xs);
 	border-radius: var(--border-radius-small);
 	line-height: var(--font-line-height-xloose);
 	font-size: var(--font-size-l);

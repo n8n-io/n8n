@@ -31,6 +31,6 @@ export default Vue.extend({
 }
 
 .content {
-	padding: var(--spacing-xs) 0;
+	padding: var(--spacing-xs) 0 0;
 }
 </style>
