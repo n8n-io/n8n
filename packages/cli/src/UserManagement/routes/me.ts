@@ -10,6 +10,7 @@ import { isValidEmail, validatePassword, sanitizeUser } from '../UserManagementH
 import type { UpdateSelfRequest } from '../Interfaces';
 import { AuthenticatedRequest } from '../../requests';
 import { validateEntity } from '../../GenericHelpers';
+import { User } from '../../databases/entities/User';
 
 export function meNamespace(this: N8nApp): void {
 	/**
@@ -29,15 +30,21 @@ export function meNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/me`,
 		ResponseHelper.send(
 			async (req: UpdateSelfRequest.Settings, res: express.Response): Promise<PublicUser> => {
-				if (req.body.email && !isValidEmail(req.body.email)) {
+				if (!req.body.email) {
+					throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
+				}
+
+				if (!isValidEmail(req.body.email)) {
 					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}
 
-				req.user = Object.assign(req.user, req.body);
+				const newUser = new User();
 
-				await validateEntity(req.user);
+				Object.assign(newUser, req.user, req.body);
 
-				const user = await Db.collections.User!.save(req.user);
+				await validateEntity(newUser);
+
+				const user = await Db.collections.User!.save(newUser);
 
 				const userData = await issueJWT(user);
 
