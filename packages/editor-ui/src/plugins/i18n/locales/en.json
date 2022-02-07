@@ -1062,5 +1062,9 @@
 	"SET_UP_ACCOUNT_MESSAGE": "Set up your account",
 	"FINISH_SET_UP_MESSAGE": "Finish account setup",
 	"MISSING_INVITE_TOKEN_ERROR": "Missing invite token",
-	"SET_UP_ACCOUNT_ERROR": "Problem setting up your account"
+	"SET_UP_ACCOUNT_ERROR": "Problem setting up your account",
+	"SIGN_IN": "Sign in",
+	"FORGOT_MY_PASSWORD": "Forgot my password",
+	"EMAIL": "Email",
+	"LOGGING_IN_ERROR": "Problem logging in"
 }
