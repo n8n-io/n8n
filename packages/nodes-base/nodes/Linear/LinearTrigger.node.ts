@@ -20,7 +20,7 @@ export class LinearTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Linear Trigger',
 		name: 'linearTrigger',
-		icon: 'file:linear.png',
+		icon: 'file:linear.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["triggerOn"]}}',
