@@ -1052,5 +1052,15 @@
 		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
 		"gotIt": "Got it"
 	},
-	"SMTP_TO_ADD_USERS_WARNING": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management#smtp\">Instructions</a>"
+	"SMTP_TO_ADD_USERS_WARNING": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management#smtp\">Instructions</a>",
+	"PASSWORD_REQUIREMENTS_MESSAGE": "At least 8 characters with 1 number and 1 uppercase",
+	"FIRST_NAME": "First name",
+	"LAST_NAME": "Last name",
+	"PASSWORD": "Password",
+	"TOKEN_VALIDATION_ERROR": "Issue validating invite token",
+	"SIGN_UP_INVITER_INFO": "{firstName} {lastName} has invited you to n8n",
+	"SET_UP_ACCOUNT_MESSAGE": "Set up your account",
+	"FINISH_SET_UP_MESSAGE": "Finish account setup",
+	"MISSING_INVITE_TOKEN_ERROR": "Missing invite token",
+	"SET_UP_ACCOUNT_ERROR": "Problem setting up your account"
 }

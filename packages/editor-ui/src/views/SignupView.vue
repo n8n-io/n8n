@@ -14,42 +14,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 
-const FORM_CONFIG: IFormBoxConfig = {
-	title: 'Set up your account',
-	buttonText: 'Finish account setup',
-	inputs: [
-		{
-			name: 'firstName',
-			properties: {
-				label: 'First name',
-				maxlength: 32,
-				required: true,
-				autocomplete: 'given-name',
-			},
-		},
-		{
-			name: 'lastName',
-			properties: {
-				label: 'Last name',
-				maxlength: 32,
-				required: true,
-				autocomplete: 'family-name',
-			},
-		},
-		{
-			name: 'password',
-			properties: {
-				label: 'Password',
-				type: 'password',
-				validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-				required: true,
-				infoText: 'At least 8 characters with 1 number and 1 uppercase',
-				autocomplete: 'new-password',
-			},
-		},
-	],
-};
-
 export default mixins(
 	showMessage,
 ).extend({
@@ -58,6 +22,41 @@ export default mixins(
 		AuthView,
 	},
 	data() {
+		const FORM_CONFIG: IFormBoxConfig = {
+			title: this.$locale.baseText('SET_UP_ACCOUNT_MESSAGE'),
+			buttonText: this.$locale.baseText('FINISH_SET_UP_MESSAGE'),
+			inputs: [
+				{
+					name: 'firstName',
+					properties: {
+						label: this.$locale.baseText('FIRST_NAME'),
+						maxlength: 32,
+						required: true,
+						autocomplete: 'given-name',
+					},
+				},
+				{
+					name: 'lastName',
+					properties: {
+						label: this.$locale.baseText('LAST_NAME'),
+						maxlength: 32,
+						required: true,
+						autocomplete: 'family-name',
+					},
+				},
+				{
+					name: 'password',
+					properties: {
+						label: this.$locale.baseText('PASSWORD'),
+						type: 'password',
+						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+						required: true,
+						infoText: this.$locale.baseText('PASSWORD_REQUIREMENTS_MESSAGE'),
+						autocomplete: 'new-password',
+					},
+				},
+			],
+		};
 		return {
 			FORM_CONFIG,
 			loading: false,
@@ -69,13 +68,13 @@ export default mixins(
 		const inviteeId = this.$route.query.inviteeId;
 		try {
 			if (!inviterId || !inviteeId) {
-				throw new Error('Missing invite token');
+				throw new Error(this.$locale.baseText('MISSING_INVITE_TOKEN_ERROR'));
 			}
 
 			const invite = await this.$store.dispatch('users/validateSignupToken', {inviterId, inviteeId});
 			this.inviter = invite.inviter as {firstName: string, lastName: string};
 		} catch (e) {
-			this.$showError(e, 'Issue validating invite token');
+			this.$showError(e, this.$locale.baseText('TOKEN_VALIDATION_ERROR'));
 		}
 	},
 	computed: {
@@ -84,7 +83,10 @@ export default mixins(
 				return null;
 			}
 
-			return `${this.inviter.firstName} ${this.inviter.lastName} has invited you to n8n`;
+			return this.$locale.baseText(
+				'SIGN_UP_INVITER_INFO',
+				{ interpolate: { firstName: this.inviter.firstName, lastName: this.inviter.lastName }},
+			);
 		},
 	},
 	methods: {
@@ -97,7 +99,7 @@ export default mixins(
 
 				await this.$router.push({ name: 'SigninView' });
 			} catch (error) {
-				this.$showError(error, 'Problem setting up your account', 'There was a problem setting up your account:');
+				this.$showError(error, this.$locale.baseText('SET_UP_ACCOUNT_ERROR'));
 			}
 			this.loading = false;
 		},
