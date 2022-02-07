@@ -1084,5 +1084,12 @@
 	"INVITE_RESENT_LABEL": "Invite resent",
 	"EMAIL_SENT_TO_MESSAGE": "To {email}",
 	"USER_INVITE_ERROR": "Problem inviting user",
-	"INVITE_LABEL": "Invite"
+	"INVITE_LABEL": "Invite",
+	"PERSONAL_SETTINGS_LABEL": "Personal Settings",
+	"BASIC_INFORMATION_LABEL": "Basic Information",
+	"SECURITY_LABEL": "Security",
+	"CHANGE_PASSWORD_LABEL": "Change Password",
+	"SAVE_LABEL": "Save",
+	"PERSONAL_SETTINGS_UPDATED_MESSAGE": "Updated your details",
+	"PERSONAL_SETTINGS_UPDATE_ERROR": "Problem updating your details"
 }
