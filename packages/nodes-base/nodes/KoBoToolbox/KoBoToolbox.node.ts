@@ -3,14 +3,14 @@ import {
 } from 'n8n-core';
 
 import {
+	// LoggerProxy as Logger,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	// LoggerProxy as Logger,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -22,13 +22,12 @@ import {
 } from './GenericFunctions';
 
 import {
-	formQueryOptions,
-	generalOptions,
-	hookOptions,
-	operations,
-	options,
-	submissionOptions,
-	submissionQueryOptions,
+	formFields,
+	formOperations,
+	hookFields,
+	hookOperations,
+	submissionFields,
+	submissionOperations,
 } from './descriptions';
 
 export class KoBoToolbox implements INodeType {
@@ -74,34 +73,19 @@ export class KoBoToolbox implements INodeType {
 				],
 				default: 'submission',
 				required: true,
-				description: 'Resource to consume',
 			},
-			...operations,
-			...generalOptions,
-			...submissionOptions,
-			...formQueryOptions,
-			...hookOptions,
-			...submissionQueryOptions,
-			{
-				...options,
-				displayOptions: {
-					show: {
-						resource: [
-							'submission',
-						],
-						operation: [
-							'get',
-							'query',
-						],
-					},
-				},
-			},
+			...formOperations,
+			...formFields,
+			...hookOperations,
+			...hookFields,
+			...submissionOperations,
+			...submissionFields,
 		],
 	};
 
 	methods = {
 		credentialTest: {
-			async koBoToolboxApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async koBoToolboxApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 				try {
 					const response = await this.helpers.request({
@@ -114,7 +98,7 @@ export class KoBoToolbox implements INodeType {
 					});
 					// Logger.debug('KoBoToolboxTestCredentials', response);
 
-					if(response.hash) {
+					if (response.hash) {
 						return {
 							status: 'OK',
 							message: 'Connection successful!',
@@ -127,7 +111,7 @@ export class KoBoToolbox implements INodeType {
 						};
 					}
 				}
-				catch(err) {
+				catch (err) {
 					return {
 						status: 'Error',
 						message: `Credentials validation failed: ${err.message}`,
@@ -148,11 +132,44 @@ export class KoBoToolbox implements INodeType {
 		let returnData: any[] = [];
 		const binaryItems: INodeExecutionData[] = [];
 		const items = this.getInputData();
-		const resource  = this.getNodeParameter('resource', 0) as string;
+		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-
 		for (let i = 0; i < items.length; i++) {
+
+			if (resource === 'form') {
+				// *********************************************************************
+				//                             Form
+				// *********************************************************************
+
+				if (operation === 'get') {
+					// ----------------------------------
+					//          Form: get
+					// ----------------------------------
+					const assetUid = this.getNodeParameter('assetUid', i) as string;
+					responseData = [await koBoToolboxApiRequest.call(this, {
+						url: `/api/v2/assets/${assetUid}`,
+					})];
+				}
+
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//          Form: getAll
+					// ----------------------------------
+					const formQueryOptions = this.getNodeParameter('options', i) as IDataObject;
+					const formFilterOptions = this.getNodeParameter('filters', i) as IDataObject;
+
+					responseData = await koBoToolboxApiRequest.call(this, {
+						url: '/api/v2/assets/',
+						qs: {
+							limit: this.getNodeParameter('limit', i, 1000) as number,
+							...(formFilterOptions.filter && { q: formFilterOptions.filter }),
+							...(formQueryOptions.ordering && { ordering: (formQueryOptions.descending ? '-' : '') + formQueryOptions.ordering }),
+						},
+						scroll: this.getNodeParameter('returnAll', i) as boolean,
+					});
+				}
+			}
 			// tslint:disable-next-line:variable-name - to stay consistent with the Kobo API doc conventions
 			if (resource === 'submission') {
 				// *********************************************************************
@@ -165,31 +182,29 @@ export class KoBoToolbox implements INodeType {
 					//          Submissions: query
 					// ----------------------------------
 
-					const submissionQueryOptions = this.getNodeParameter('submissionQueryOptions', i) as IDataObject;
-					const formatOptions = this.getNodeParameter('formatOptions', i) as IDataObject;
+					const submissionQueryOptions = this.getNodeParameter('options', i) as IDataObject;
 
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${assetUid}/data/`,
 						qs: {
-							start: this.getNodeParameter('start', i, 0) as number,
 							limit: this.getNodeParameter('limit', i, 1000) as number,
-							...(submissionQueryOptions.query   && {query:  submissionQueryOptions.query}),
-							...(submissionQueryOptions.sort    && {sort:   submissionQueryOptions.sort}),
-							...(submissionQueryOptions.fields  && {fields: JSON.stringify(parseStringList(submissionQueryOptions.fields as string))}),
+							...(submissionQueryOptions.query && { query: submissionQueryOptions.query }),
+							...(submissionQueryOptions.sort && { sort: submissionQueryOptions.sort }),
+							...(submissionQueryOptions.fields && { fields: JSON.stringify(parseStringList(submissionQueryOptions.fields as string)) }),
 						},
-						scroll: this.getNodeParameter('scroll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i) as boolean,
 					});
 
-					if(formatOptions.reformat) {
-						responseData = responseData.map((submission : IDataObject) => {
-							return formatSubmission(submission, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string));
+					if (submissionQueryOptions.reformat) {
+						responseData = responseData.map((submission: IDataObject) => {
+							return formatSubmission(submission, parseStringList(submissionQueryOptions.selectMask as string), parseStringList(submissionQueryOptions.numberMask as string));
 						});
 					}
 
-					if(formatOptions.download) {
+					if (submissionQueryOptions.download) {
 						// Download related attachments
-						for(const submission of responseData) {
-							binaryItems.push(await downloadAttachments.call(this, submission, formatOptions));
+						for (const submission of responseData) {
+							binaryItems.push(await downloadAttachments.call(this, submission, submissionQueryOptions));
 						}
 					}
 				}
@@ -198,22 +213,22 @@ export class KoBoToolbox implements INodeType {
 					// ----------------------------------
 					//          Submissions: get
 					// ----------------------------------
-					const id = this.getNodeParameter('id', i) as string;
-					const formatOptions = this.getNodeParameter('formatOptions', i) as IDataObject;
+					const submissionId = this.getNodeParameter('submissionId', i) as string;
+					const formatOptions = this.getNodeParameter('options', i) as IDataObject;
 
 					responseData = [await koBoToolboxApiRequest.call(this, {
-						url: `/api/v2/assets/${assetUid}/data/${id}`,
+						url: `/api/v2/assets/${assetUid}/data/${submissionId}`,
 					})];
 
-					if(formatOptions.reformat) {
-						responseData = responseData.map((submission : IDataObject) => {
+					if (formatOptions.reformat) {
+						responseData = responseData.map((submission: IDataObject) => {
 							return formatSubmission(submission, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string));
 						});
 					}
 
-					if(formatOptions.download) {
+					if (formatOptions.download) {
 						// Download related attachments
-						for(const submission of responseData) {
+						for (const submission of responseData) {
 							binaryItems.push(await downloadAttachments.call(this, submission, formatOptions));
 						}
 					}
@@ -239,10 +254,10 @@ export class KoBoToolbox implements INodeType {
 					// ----------------------------------
 					//          Submissions: getValidation
 					// ----------------------------------
-					const id = this.getNodeParameter('id', i) as string;
+					const submissionId = this.getNodeParameter('submissionId', i) as string;
 
 					responseData = [await koBoToolboxApiRequest.call(this, {
-						url: `/api/v2/assets/${assetUid}/data/${id}/validation_status/`,
+						url: `/api/v2/assets/${assetUid}/data/${submissionId}/validation_status/`,
 					})];
 				}
 
@@ -250,51 +265,16 @@ export class KoBoToolbox implements INodeType {
 					// ----------------------------------
 					//          Submissions: setValidation
 					// ----------------------------------
-					const id = this.getNodeParameter('id', i) as string;
+					const submissionId = this.getNodeParameter('submissionId', i) as string;
 					const status = this.getNodeParameter('validationStatus', i) as string;
 
 					responseData = [await koBoToolboxApiRequest.call(this, {
 						method: 'PATCH',
-						url: `/api/v2/assets/${assetUid}/data/${id}/validation_status/`,
+						url: `/api/v2/assets/${assetUid}/data/${submissionId}/validation_status/`,
 						body: {
 							'validation_status.uid': status,
 						},
 					})];
-				}
-			}
-
-			if (resource === 'form') {
-				// *********************************************************************
-				//                             Form
-				// *********************************************************************
-
-				if (operation === 'get') {
-					// ----------------------------------
-					//          Form: get
-					// ----------------------------------
-					const assetUid = this.getNodeParameter('assetUid', i) as string;
-					responseData = [await koBoToolboxApiRequest.call(this, {
-						url: `/api/v2/assets/${assetUid}`,
-					})];
-				}
-
-				if (operation === 'getAll') {
-					// ----------------------------------
-					//          Form: getAll
-					// ----------------------------------
-					const formQueryOptions  = this.getNodeParameter('formQueryOptions', i)  as IDataObject;
-					const formFilterOptions = this.getNodeParameter('formFilterOptions', i) as IDataObject;
-
-					responseData = await koBoToolboxApiRequest.call(this, {
-						url: '/api/v2/assets/',
-						qs: {
-							start: this.getNodeParameter('start', i, 0) as number,
-							limit: this.getNodeParameter('limit', i, 1000) as number,
-							...(formFilterOptions.filter    && {q:     formFilterOptions.filter}),
-							...(formQueryOptions.ordering  && {ordering: (formQueryOptions.descending ? '-' : '') + formQueryOptions.ordering}),
-						},
-						scroll: this.getNodeParameter('scroll', i) as boolean,
-					});
 				}
 			}
 
@@ -311,10 +291,9 @@ export class KoBoToolbox implements INodeType {
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${assetUid}/hooks/`,
 						qs: {
-							start: this.getNodeParameter('start', i, 0) as number,
 							limit: this.getNodeParameter('limit', i, 1000) as number,
 						},
-						scroll: this.getNodeParameter('scroll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i) as boolean,
 					});
 				}
 
@@ -350,9 +329,9 @@ export class KoBoToolbox implements INodeType {
 						qs: {
 							start: this.getNodeParameter('start', i, 0) as number,
 							limit: this.getNodeParameter('limit', i, 1000) as number,
-							...(status !== '' && {status}),
+							...(status !== '' && { status }),
 						},
-						scroll: this.getNodeParameter('scroll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i) as boolean,
 					});
 				}
 

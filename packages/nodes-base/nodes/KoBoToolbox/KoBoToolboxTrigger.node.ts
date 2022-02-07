@@ -5,7 +5,6 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	// LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import {
@@ -19,7 +18,6 @@ import {
 import {
 	options,
 } from './descriptions';
-
 export class KoBoToolboxTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'KoBoToolbox Trigger',
@@ -57,24 +55,23 @@ export class KoBoToolboxTrigger implements INodeType {
 					loadOptionsMethod: 'loadSurveys',
 				},
 				required: true,
-				default:'',
-				description:'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+				default: '',
+				description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
 			},
 			{
 				displayName: 'Trigger On',
 				name: 'triggerOn',
 				type: 'options',
 				required: true,
-				default:'formSubmission',
+				default: 'formSubmission',
 				options: [
 					{
 						name: 'On Form Submission',
 						value: 'formSubmission',
 					},
 				],
-				description:'When to call the trigger',
 			},
-			{...options},
+			{ ...options },
 		],
 	};
 
@@ -106,12 +103,11 @@ export class KoBoToolboxTrigger implements INodeType {
 					method: 'POST',
 					url: `/api/v2/assets/${assetUid}/hooks/`,
 					body: {
-						name: `n8n Automatic Webhook`,
+						name: `n8n-webhook:${webhookUrl}`,
 						endpoint: webhookUrl,
 						email_notification: true,
 					},
 				});
-				// Logger.debug('KoBoToolboxTriggerCreate', response);
 
 				if (response.uid) {
 					webhookData.webhookId = response.uid;
@@ -154,7 +150,7 @@ export class KoBoToolboxTrigger implements INodeType {
 			? formatSubmission(req.body, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
 			: req.body;
 
-		if(formatOptions.download) {
+		if (formatOptions.download) {
 			// Download related attachments
 			return {
 				workflowData: [

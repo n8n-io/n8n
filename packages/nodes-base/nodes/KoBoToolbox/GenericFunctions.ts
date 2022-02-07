@@ -10,7 +10,6 @@ import {
 	INodeExecutionData,
 	INodePropertyOptions,
 	IWebhookFunctions,
-	// LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import * as _ from 'lodash';
@@ -21,13 +20,12 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 	const credentials = await this.getCredentials('koBoToolboxApi') as IDataObject;
 
 	// Set up pagination / scrolling
-	const scroll = !!option.scroll;
-	if(scroll) {
+	const returnAll = !!option.returnAll;
+	if (returnAll) {
 		// Override manual pagination options
-		_.set(option,'qs.limit', 30000);
-		_.unset(option,'qs.start');
+		_.set(option, 'qs.limit', 30000);
 		// Don't pass this custom param to helpers.httpRequest
-		delete option.scroll;
+		delete option.returnAll;
 	}
 
 	const options: IHttpRequestOptions = {
@@ -47,12 +45,12 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 
 	let results = null;
 	let keepLooking = true;
-	while(keepLooking) {
+	while (keepLooking) {
 		// Logger.debug('KoBoToolboxApiRequest', options);
 		const response = await this.helpers.httpRequest(options);
 		// Append or set results
 		results = response.results ? _.concat(results || [], response.results) : response;
-		if(scroll && response.next) {
+		if (returnAll && response.next) {
 			options.url = response.next;
 			continue;
 		}
@@ -78,11 +76,11 @@ function parseGeoPoint(geoPoint: string): null | number[] {
 }
 
 export function parseStringList(value: string): string[] {
-	return _.split(_.toString(value),/[\s,]+/);
+	return _.split(_.toString(value), /[\s,]+/);
 }
 
 const matchWildcard = (value: string, pattern: string): boolean => {
-	const regex = new RegExp(`^${_.escapeRegExp(pattern).replace('\\*','.*')}$`);
+	const regex = new RegExp(`^${_.escapeRegExp(pattern).replace('\\*', '.*')}$`);
 	return regex.test(value);
 };
 
@@ -93,7 +91,7 @@ const formatValue = (value: any, format: string): any => { //tslint:disable-line
 
 		// Parse geoPoints
 		const geoPoint = parseGeoPoint(value);
-		if(geoPoint) {
+		if (geoPoint) {
 			return {
 				type: 'Point',
 				coordinates: geoPoint,
@@ -106,7 +104,7 @@ const formatValue = (value: any, format: string): any => { //tslint:disable-line
 			// Using the GeoJSON format as per https://geojson.org/
 			const coordinates = _.compact(points.map(parseGeoPoint));
 			// Only return if all values are properly parsed
-			if(coordinates.length === points.length) {
+			if (coordinates.length === points.length) {
 				return {
 					type: _.first(points) === _.last(points) ? 'Polygon' : 'LineString',  // check if shape is closed or open
 					coordinates,
@@ -115,12 +113,12 @@ const formatValue = (value: any, format: string): any => { //tslint:disable-line
 		}
 
 		// Parse numbers
-		if('number' === format) {
+		if ('number' === format) {
 			return _.toNumber(value);
 		}
 
 		// Split multi-select
-		if('multiSelect' === format) {
+		if ('multiSelect' === format) {
 			return _.split(_.toString(value), ' ');
 		}
 	}
@@ -138,35 +136,33 @@ export function formatSubmission(submission: IDataObject, selectMasks: string[] 
 		let value = _.clone(submission[key]);
 		// Logger.debug(`Formatting ${key} : ${value}`);
 		// Sanitize key names: split by group, trim _
-		const sanitizedKey = key.split('/').map(k => _.trim(k,' _')).join('.');
+		const sanitizedKey = key.split('/').map(k => _.trim(k, ' _')).join('.');
 		const leafKey = sanitizedKey.split('.').pop() || '';
 		let format = 'string';
-		if(_.some(numberMasks, mask => matchWildcard(leafKey, mask))) {
+		if (_.some(numberMasks, mask => matchWildcard(leafKey, mask))) {
 			format = 'number';
 		}
-		if(_.some(selectMasks, mask => matchWildcard(leafKey, mask))) {
+		if (_.some(selectMasks, mask => matchWildcard(leafKey, mask))) {
 			format = 'multiSelect';
 		}
 
 		value = formatValue(value, format);
 
-		// Logger.debug(`Formatted to ${sanitizedKey} : ${value}`);
 		_.set(response, sanitizedKey, value);
 	}
 
 	// Reformat _geolocation
-	if(_.isArray(response.geolocation) && response.geolocation.length === 2 && response.geolocation[0] && response.geolocation[1]) {
+	if (_.isArray(response.geolocation) && response.geolocation.length === 2 && response.geolocation[0] && response.geolocation[1]) {
 		response.geolocation = {
 			type: 'Point',
 			coordinates: [response.geolocation[1], response.geolocation[0]],
 		};
 	}
 
-	// Logger.debug('KoBoToolboxFormatSubmission', response);
 	return response;
 }
 
-export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunctions , submission: IDataObject, options: IDataObject): Promise<INodeExecutionData> {
+export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunctions, submission: IDataObject, options: IDataObject): Promise<INodeExecutionData> {
 	// Initialize return object with the original submission JSON content
 	const binaryItem: INodeExecutionData = {
 		json: {
@@ -179,16 +175,12 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 
 	// Look for attachment links - there can be more than one
 	const attachmentList = (submission['_attachments'] || submission['attachments']) as any[];  // tslint:disable-line:no-any
-	if(attachmentList && attachmentList.length) {
-		for (const attachment of attachmentList) {
+	if (attachmentList && attachmentList.length) {
+		for (const [index, attachment] of attachmentList.entries()) {
 			// look for the question name linked to this attachment
 			const filename = attachment.filename;
-			let relatedQuestion = '';
-			// Logger.debug(`Found attachment ${filename}`);
 			Object.keys(submission).forEach(question => {
-				if(filename.endsWith('/' + _.toString(submission[question]).replace(/\s/g, '_'))) {
-					relatedQuestion = question;
-					// Logger.debug(`Found attachment for form question: ${relatedQuestion}`);
+				if (filename.endsWith('/' + _.toString(submission[question]).replace(/\s/g, '_'))) {
 				}
 			});
 
@@ -198,6 +190,18 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 			let response = null;
 			let attachmentUrl = attachment[options.version as string] || attachment.download_url;
 			let final = false, redir = 0;
+
+			// const axiosOptions = {
+			// 	url: attachmentUrl,
+			// 	method: 'GET',
+			// 	headers: {
+			// 		'Authorization': `Token ${credentials.token}`,
+			// 	},
+			// 	maxRedirects: 0,
+			// 	validateStatus: () => true,
+			// 	encoding: 'arraybuffer',
+			// };
+
 			const client = axios.create({
 				headers: {
 					'Authorization': 'Token ' + credentials.token,
@@ -207,24 +211,26 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 				responseType: 'arraybuffer',
 			});
 
-			while(!final && redir < 5) {
+			while (!final && redir < 5) {
 				response = await client.get(attachmentUrl);
-				if(response && response.headers.location) {
+				if (response && response.headers.location) {
 					// Follow redirect
 					attachmentUrl = response.headers.location;
 					redir++;
-				}
-				else {
+				} else {
 					final = true;
 				}
 			}
 
-			const binaryName = options.filename === 'filename' ? filename : relatedQuestion;
-			if(response && response.data) {
-				// Logger.debug(`Downloaded attachment ${filename}`);
-				binaryItem.binary![binaryName] = await this.helpers.prepareBinaryData(Buffer.from(response.data));
+			const dataPropertyAttachmentsPrefixName = this.getNodeParameter('dataPropertyAttachmentsPrefixName', 0, 'attachment_');
+			const fileName = filename.split('/').pop();
+
+			if (response && response.data) {
+				binaryItem.binary![`${dataPropertyAttachmentsPrefixName}${index}`] = await this.helpers.prepareBinaryData(Buffer.from(response.data), fileName);
 			}
 		}
+	} else {
+		delete binaryItem.binary;
 	}
 
 	// Add item to final output - even if there's no attachment retrieved
