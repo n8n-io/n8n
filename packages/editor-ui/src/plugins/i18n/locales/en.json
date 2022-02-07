@@ -1091,5 +1091,6 @@
 	"CHANGE_PASSWORD_LABEL": "Change Password",
 	"SAVE_LABEL": "Save",
 	"PERSONAL_SETTINGS_UPDATED_MESSAGE": "Updated your details",
-	"PERSONAL_SETTINGS_UPDATE_ERROR": "Problem updating your details"
+	"PERSONAL_SETTINGS_UPDATE_ERROR": "Problem updating your details",
+	"LOADING_LABEL": "Loading"
 }

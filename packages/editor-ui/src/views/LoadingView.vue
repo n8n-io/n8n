@@ -4,7 +4,7 @@
 			<n8n-spinner />
 		</div>
 		<n8n-heading>
-			Loading
+			{{ $locale.baseText('LOADING_LABEL') }}
 		</n8n-heading>
 	</div>
 </template>
