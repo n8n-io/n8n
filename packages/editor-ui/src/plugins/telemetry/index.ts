@@ -55,7 +55,7 @@ class Telemetry {
 		this.pageEventQueue = [];
 	}
 
-	init(options: ITelemetrySettings, instanceId: string, logLevel?: ILogLevel) {
+	init(options: ITelemetrySettings, {instanceId, logLevel, userId}: {instanceId: string, logLevel?: ILogLevel, userId?: string}) {
 		if (options.enabled && !this.telemetry) {
 			if(!options.config) {
 				return;
@@ -63,9 +63,14 @@ class Telemetry {
 
 			const logging = logLevel === 'debug' ? { logLevel: 'DEBUG'} : {};
 			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false, ...logging});
-			this.telemetry.identify(instanceId);
+			this.identify(instanceId, userId);
 			this.flushPageEvents();
 		}
+	}
+
+	identify(instanceId: string, userId?: string) {
+		const traits = {userId: userId || ''};
+		this.telemetry.identify(instanceId, traits);
 	}
 
 	track(event: string, properties?: IDataObject) {

@@ -11,12 +11,20 @@ export default Vue.extend({
 	name: 'Telemetry',
 	computed: {
 		...mapGetters('settings', ['telemetry']),
+		...mapGetters('users', ['currentUserId']),
 	},
 	watch: {
 		telemetry(opts) {
 			if (opts && opts.enabled) {
-				this.$telemetry.init(opts, this.$store.getters.instanceId, this.$store.getters['settings/logLevel']);
+				const instanceId = this.$store.getters.instanceId;
+				const currentUserId = this.$store.getters['users/currentUserId'];
+				const logLevel = this.$store.getters['settings/logLevel'];
+				this.$telemetry.init(opts, {instanceId, logLevel, userId: currentUserId});
 			}
+		},
+		currentUserId(userId) {
+			const instanceId = this.$store.getters.instanceId;
+			this.$telemetry.identify(instanceId, userId);
 		},
 	},
 });
