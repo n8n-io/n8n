@@ -130,11 +130,12 @@ describe('/me endpoints', () => {
 			const shell = await Db.collections.User!.findOneOrFail();
 			const shellAgent = await utils.createAgent(app, shell);
 
-			const invalidPayloads: Array<{ password?: string }> = Array.from({ length: 3 }, () => ({
-				password: utils.randomInvalidPassword(),
-			}));
-
-			invalidPayloads.push({});
+			const invalidPayloads = [
+				...Array.from({ length: 3 }, () => ({ password: utils.randomInvalidPassword() })),
+				{},
+				undefined,
+				'',
+			];
 
 			for (const invalidPayload of invalidPayloads) {
 				const response = await shellAgent.patch('/me/password').send(invalidPayload);
@@ -288,11 +289,12 @@ describe('/me endpoints', () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const ownerAgent = await utils.createAgent(app, owner);
 
-			const invalidPayloads: Array<{ password?: string }> = Array.from({ length: 3 }, () => ({
-				password: utils.randomInvalidPassword(),
-			}));
-
-			invalidPayloads.push({});
+			const invalidPayloads = [
+				...Array.from({ length: 3 }, () => ({ password: utils.randomInvalidPassword() })),
+				{},
+				undefined,
+				'',
+			];
 
 			for (const invalidPayload of invalidPayloads) {
 				const response = await ownerAgent.patch('/me/password').send(invalidPayload);
@@ -446,11 +448,12 @@ describe('/me endpoints', () => {
 			const member = await Db.collections.User!.findOneOrFail();
 			const memberAgent = await utils.createAgent(app, member);
 
-			const invalidPayloads: Array<{ password?: string }> = Array.from({ length: 3 }, () => ({
-				password: utils.randomInvalidPassword(),
-			}));
-
-			invalidPayloads.push({});
+			const invalidPayloads = [
+				...Array.from({ length: 3 }, () => ({ password: utils.randomInvalidPassword() })),
+				{},
+				undefined,
+				'',
+			];
 
 			for (const invalidPayload of invalidPayloads) {
 				const response = await memberAgent.patch('/me/password').send(invalidPayload);
