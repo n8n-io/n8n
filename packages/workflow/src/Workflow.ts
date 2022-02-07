@@ -412,43 +412,56 @@ export class Workflow {
 				// To not run the "expensive" regex stuff when it is not needed
 				// make a simple check first if it really contains the the node-name
 				if (parameterValue.includes(currentName)) {
-					// if new name contains trailing $ function would not work
-					// adding this substring temporarily will prevent errors
-					const trailingSpecial = 'TRAILINGxTRAILING';
-					if (newName[newName.length - 1] === '$') {
-						newName += trailingSpecial;
+					// replacement string can include some special replacement patterns
+					// if newName contains $ regEx would not work, need to be escaped by $$$$
+					let escapedReplacementPatterns: string | undefined;
+					if (newName.includes('$')) {
+						escapedReplacementPatterns = newName.replace(new RegExp('\\$', 'g'), '$$$$');
 					}
 					// Really contains node-name (even though we do not know yet if really as $node-expression)
 
 					// In case some special characters are used in name escape them
-					const currentNameEscaped = currentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+					const toEscapeForRegexMatch = /[.*+?^${}()|[\]\\]/g;
+
+					const currentNameEscaped = currentName.replace(
+						toEscapeForRegexMatch,
+						(matchedCharacter) => {
+							return `\\${matchedCharacter}`;
+						},
+					);
 
 					if (parameterValue.includes('$node')) {
 						parameterValue = parameterValue.replace(
-							new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.?|"\\]?|'\\]?))`, 'g'),
-							`$1${newName}$3`,
+							new RegExp(
+								String.raw`(\$node(\.|\["|\['))${currentNameEscaped}((\.?|"\]?|'\]?))`,
+								'g',
+							),
+							`$1${escapedReplacementPatterns || newName}$3`,
 						);
 					}
 					if (parameterValue.includes('$items')) {
 						parameterValue = parameterValue.replace(
 							new RegExp(
-								`(\\$items(\\.|\\("|\\('))${currentNameEscaped}(('\\,|"\\,|"\\)|'\\)))`,
+								String.raw`(\$items(\("|\('))${currentNameEscaped}(('\,|"\,|"\)|'\)))`,
 								'g',
 							),
-							`$1${newName}$3`,
+							`$1${escapedReplacementPatterns || newName}$3`,
 						);
 					}
 
-					const specialCharacters = /^(\d)|[ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
-					if (parameterValue.includes(newName) && specialCharacters.test(newName)) {
-						const newNameEscaped = newName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+					// if name includes those characters dot notation will be invalid
+					// need to be replaced with bracket notation
+					const bannedForDotNotation = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
+
+					if (parameterValue.includes(newName) && bannedForDotNotation.test(newName)) {
+						const newNameEscaped = newName.replace(toEscapeForRegexMatch, (matchedCharacter) => {
+							return `\\${matchedCharacter}`;
+						});
 						parameterValue = parameterValue.replace(
 							new RegExp(`.${newNameEscaped}( |\\.)`, 'g'),
-							`["${newName}"]$1`,
+							`["${escapedReplacementPatterns || newName}"]$1`,
 						);
 					}
-
-					parameterValue = parameterValue.replace(new RegExp(trailingSpecial, 'g'), '');
 				}
 			}
 			return parameterValue;
