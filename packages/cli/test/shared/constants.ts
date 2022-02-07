@@ -29,3 +29,9 @@ export const SUCCESS_RESPONSE_BODY: Readonly<object> = {
 		success: true,
 	},
 };
+
+export const LOGOUT_RESPONSE_BODY: Readonly<object> = {
+	data: {
+		loggedOut: true,
+	},
+};

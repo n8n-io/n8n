@@ -12,6 +12,7 @@ import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
 import { meNamespace as meEndpoints } from '../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../src/UserManagement/routes/users';
+import { authenticationMethods as authEndpoints } from '../../src/UserManagement/routes/auth';
 import { getConnection } from 'typeorm';
 import { issueJWT } from '../../src/UserManagement/auth/jwt';
 
@@ -23,7 +24,13 @@ export const MAX_PASSWORD_LENGTH = 64;
 
 const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
 
-export const initTestServer = (namespaces: { [K in 'me' | 'users']?: true } = {}) => {
+/**
+ * Initialize a test server to make requests from,
+ * passing in endpoints to enable in the test server.
+ */
+export const initTestServer = (
+	endpointNamespaces: { [K in 'me' | 'users' | 'auth']?: true } = {},
+) => {
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
@@ -37,8 +44,9 @@ export const initTestServer = (namespaces: { [K in 'me' | 'users']?: true } = {}
 
 	authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
 
-	if (namespaces.me) meEndpoints.apply(testServer);
-	if (namespaces.users) usersEndpoints.apply(testServer);
+	if (endpointNamespaces.me) meEndpoints.apply(testServer);
+	if (endpointNamespaces.users) usersEndpoints.apply(testServer);
+	if (endpointNamespaces.auth) authEndpoints.apply(testServer);
 
 	return testServer.app;
 };
@@ -84,6 +92,22 @@ export function prefix(pathSegment: string) {
 
 		return request;
 	};
+}
+
+/**
+ * Extract the value (token) of the auth cookie in a response.
+ */
+export function getAuthToken(response: request.Response, authCookieName = 'n8n-auth') {
+	const cookies: string[] = response.headers['set-cookie'];
+	const authCookie = cookies.find((c) => c.startsWith(`${authCookieName}=`));
+
+	if (!authCookie) return undefined;
+
+	const match = authCookie.match(new RegExp(`(^| )${authCookieName}=(?<token>[^;]+)`));
+
+	if (!match || !match.groups) return undefined;
+
+	return match.groups.token;
 }
 
 /**
