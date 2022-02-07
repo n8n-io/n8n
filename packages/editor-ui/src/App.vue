@@ -44,6 +44,7 @@ export default mixins(
 	async mounted() {
 		await this.initialize();
 		this.authenticate();
+		this.$telemetry.page('Editor', this.$route.name);
 	},
 	computed: {
 		...mapGetters('settings', ['isUserManagementEnabled', 'showSetupPage']),
@@ -116,9 +117,6 @@ export default mixins(
 
 			this.loading = false;
 		},
-	},
-	mounted() {
-		this.$telemetry.page('Editor', this.$route.name);
 	},
 	watch: {
 		'$route'(route) {
