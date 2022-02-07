@@ -323,7 +323,7 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<void>}
 	 */
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
-		const files = await glob(path.join(directory, '**/*.@(node|credentials).js'));
+		const files = await glob(path.join(directory, '**/*.@(node|credentials).js').replace(/\\/g, '/'));
 
 		let fileName: string;
 		let type: string;
