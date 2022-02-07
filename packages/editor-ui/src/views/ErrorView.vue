@@ -9,7 +9,7 @@
 			</div>
 			<div>
 				<n8n-text size="large" v-if="errorCode">
-					{{errorCode}} error
+					{{errorCode}} {{ $locale.baseText('error') }}
 				</n8n-text>
 			</div>
 		</div>
@@ -24,7 +24,7 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: 'ErroView',
+	name: 'ErrorView',
 	props: {
 		message: {
 			type: String,
