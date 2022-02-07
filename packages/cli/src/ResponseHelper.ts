@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
