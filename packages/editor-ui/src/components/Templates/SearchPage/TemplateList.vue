@@ -25,7 +25,7 @@
 					<TemplateCard
 						:title="workflow.name"
 						:loading="false"
-						:class="index === workflows.length - 1 ? $style.last : ''"
+						:class="(index === workflows.length - 1 && !shouldShowLoadingState) ? $style.last : ''"
 					>
 						<template v-slot:button>
 							<div :class="$style.button">
