@@ -25,8 +25,6 @@ describe('/me endpoints', () => {
 
 			await Db.collections.User!.save({
 				id: uuid(),
-				firstName: 'default',
-				lastName: 'default',
 				createdAt: new Date(),
 				updatedAt: new Date(),
 				globalRole: role,
@@ -62,8 +60,8 @@ describe('/me endpoints', () => {
 
 			expect(validator.isUUID(id)).toBe(true);
 			expect(email).toBeNull();
-			expect(firstName).toBe('default');
-			expect(lastName).toBe('default');
+			expect(firstName).toBeNull();
+			expect(lastName).toBeNull();
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(resetPasswordToken).toBeUndefined();
