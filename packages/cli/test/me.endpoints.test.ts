@@ -539,4 +539,14 @@ const INVALID_PATCH_ME_PAYLOADS = [
 	{
 		lastName: utils.randomName(),
 	},
+	{
+		email: utils.randomEmail(),
+		firstName: 'John <script',
+		lastName: utils.randomName(),
+	},
+	{
+		email: utils.randomEmail(),
+		firstName: 'John <a',
+		lastName: utils.randomName(),
+	},
 ];
