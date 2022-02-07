@@ -52,8 +52,6 @@ export class RssFeedRead implements INodeType {
 		],
 	};
 
-
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
@@ -110,7 +108,7 @@ export class RssFeedRead implements INodeType {
 	}
 }
 
-// Utility functionß
+// Utility function
 
 function validateURL (url: string) {
 	try {
