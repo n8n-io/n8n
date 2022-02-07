@@ -69,8 +69,8 @@ class Telemetry {
 	}
 
 	identify(instanceId: string, userId?: string) {
-		const traits = {userId: userId || ''};
-		this.telemetry.identify(instanceId, traits);
+		const userIdToAdd = userId ? `#${userId}` : '';
+		this.telemetry.identify(`${instanceId}${userIdToAdd}`);
 	}
 
 	track(event: string, properties?: IDataObject) {
