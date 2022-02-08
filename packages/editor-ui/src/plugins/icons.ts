@@ -16,6 +16,8 @@ import {
 	faCheckCircle,
 	faChevronDown,
 	faChevronUp,
+	faChevronLeft,
+	faChevronRight,
 	faCode,
 	faCodeBranch,
 	faCog,
@@ -65,6 +67,7 @@ import {
 	faRedo,
 	faRss,
 	faSave,
+	faShapes,
 	faSearch,
 	faSearchMinus,
 	faSearchPlus,
@@ -103,6 +106,8 @@ addIcon(faBug);
 addIcon(faCalendar);
 addIcon(faCheck);
 addIcon(faCheckCircle);
+addIcon(faChevronLeft);
+addIcon(faChevronRight);
 addIcon(faChevronDown);
 addIcon(faChevronUp);
 addIcon(faCode);
@@ -157,6 +162,7 @@ addIcon(faSave);
 addIcon(faSearch);
 addIcon(faSearchMinus);
 addIcon(faSearchPlus);
+addIcon(faShapes);
 addIcon(faServer);
 addIcon(faSignInAlt);
 addIcon(faSlidersH);

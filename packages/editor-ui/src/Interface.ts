@@ -513,6 +513,69 @@ export interface IN8nValueSurveyData {
 export interface IN8nPromptResponse {
 	updated: boolean;
 }
+export interface IN8nCollectionResponse {
+	data: IN8nCollectionData;
+}
+
+export interface IN8nCollectionData {
+	collection: IN8nCollection;
+}
+
+export interface IN8nCollection {
+	id: string;
+	image: ITemplateImage[];
+	name: string;
+	nodes: ITemplateNode[];
+	categories: ITemplateCategories[];
+	description: string;
+	workflows: IN8nTemplate[];
+	totalworkflow: number;
+}
+
+export interface IN8nTemplateResponse {
+	data: IN8nTemplateData;
+}
+export interface IN8nTemplateData {
+	workflow: IN8nTemplate;
+}
+export interface IN8nTemplate {
+	id: string;
+	categories: ITemplateCategories[];
+	createdAt: string;
+	description: string;
+	image: ITemplateImage[];
+	mainImage: ITemplateMainImage[];
+	name: string;
+	nodes: ITemplateNode[];
+	totalViews: number;
+	user: {
+		username: string;
+	};
+}
+
+export interface IN8nSearchResponse {
+	data: IN8nSearchData;
+}
+
+export interface IN8nSearchData {
+	categories: ITemplateCategory[];
+	collections: ITemplateCollection[];
+	totalworkflow: number;
+	workflows: IN8nTemplate[];
+}
+
+export interface ITemplateCategory {
+	id: string;
+	name: string;
+	selected?: boolean;
+}
+
+export interface ITemplateCollection {
+	id: string;
+	name: string;
+	workflowsCount: number;
+	nodes: ITemplateNode[];
+}
 
 export interface IN8nUISettings {
 	endpointWebhook: string;
@@ -547,6 +610,43 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
+}
+
+export interface ITemplateCategories {
+	id: string;
+	name: string;
+}
+
+export interface ITemplateImage {
+	id: string;
+	url: string;
+}
+
+export interface ITemplateMainImage {
+	image: ITemplateMainImageItem[];
+	workflowHash: string;
+}
+
+export interface ITemplateMainImageItem {
+	url: string;
+	metadata: ITemplateMetadata;
+}
+
+export interface ITemplateMetadata {
+	width: string;
+}
+export interface ITemplateNode {
+	displayName: string;
+	defaults: {
+		color: string;
+	};
+	icon: string;
+	iconData?: {
+		fileBuffer?: string;
+		type?: string;
+	};
+	name: string;
+	typeVersion: number;
 }
 
 export interface ITimeoutHMS {
@@ -724,6 +824,15 @@ export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
+}
+
+export interface ITemplateState {
+	categories: ITemplateCategory[];
+	collection: ITemplateCollection;
+	collections: ITemplateCollection[];
+	templates: IN8nTemplate[];
+	template: IN8nTemplate;
+	totalworkflow: number | null;
 }
 
 export interface IVersionsState {

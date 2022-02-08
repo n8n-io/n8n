@@ -104,7 +104,6 @@
 				@click.stop="clearExecutionData()"
 			/>
 		</div>
-		<Modals />
 	</div>
 </template>
 
@@ -130,7 +129,6 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import DataDisplay from '@/components/DataDisplay.vue';
-import Modals from '@/components/Modals.vue';
 import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -197,7 +195,6 @@ export default mixins(
 		name: 'NodeView',
 		components: {
 			DataDisplay,
-			Modals,
 			Node,
 			NodeCreator,
 			NodeSettings,
@@ -2269,11 +2266,13 @@ export default mixins(
 			deleteEveryEndpoint () {
 				// Check as it does not exist on first load
 				if (this.instance) {
-					const nodes = this.$store.getters.allNodes as INodeUi[];
-					// @ts-ignore
-					nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
+					try {
+						const nodes = this.$store.getters.allNodes as INodeUi[];
+						// @ts-ignore
+						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
 
-					this.instance.deleteEveryEndpoint();
+						this.instance.deleteEveryEndpoint();
+					} catch (e) {}
 				}
 			},
 			matchCredentials(node: INodeUi) {

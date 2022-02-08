@@ -31,7 +31,8 @@
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
     "vue-fragment": "^1.5.2",
-    "vue-i18n": "^8.26.7"
+    "vue-i18n": "^8.26.7",
+    "xss": "^1.0.10"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
@@ -62,7 +63,7 @@
     "babel-eslint": "^10.0.1",
     "cross-env": "^7.0.2",
     "dateformat": "^3.0.3",
-    "element-ui": "~2.13.0",
+    "element-ui": "~2.15.7",
     "eslint": "^7.32.0",
     "eslint-plugin-import": "^2.23.4",
     "eslint-plugin-vue": "^7.16.0",
@@ -89,6 +90,7 @@
     "typescript": "~4.3.5",
     "uuid": "^8.3.2",
     "vue": "^2.6.11",
+    "vue-agile": "^2.0.0",
     "vue-cli-plugin-webpack-bundle-analyzer": "^2.0.0",
     "vue-json-pretty": "1.7.1",
     "vue-prism-editor": "^0.3.0",

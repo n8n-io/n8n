@@ -24,55 +24,61 @@
 						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
 					</template>
 
-					<n8n-menu-item index="workflow-new">
+					<n8n-menu-item index="workflow-new" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>&nbsp;
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-open">
+					<n8n-menu-item index="template-new" style="padding-left: 30px;">
+						<template slot="title">
+							<font-awesome-icon icon="shapes"/>&nbsp;
+							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
+						</template>
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-open" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>&nbsp;
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-save">
+					<n8n-menu-item index="workflow-save" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.save') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-duplicate" :disabled="!currentWorkflow" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.duplicate') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-delete" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-delete" :disabled="!currentWorkflow" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.delete') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-download">
+					<n8n-menu-item index="workflow-download" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="file-download"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.download') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-url">
+					<n8n-menu-item index="workflow-import-url" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="cloud"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromUrl') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-file">
+					<n8n-menu-item index="workflow-import-file" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="hdd"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromFile') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.settings') }}</span>
@@ -80,19 +86,24 @@
 					</n8n-menu-item>
 				</el-submenu>
 
+				<n8n-menu-item index="templates">
+					<font-awesome-icon icon="shapes"/>&nbsp;
+					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
+				</n8n-menu-item>
+
 				<el-submenu index="credentials" :title="$locale.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="key"/>&nbsp;
 						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
 					</template>
 
-					<n8n-menu-item index="credentials-new">
+					<n8n-menu-item index="credentials-new" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="credentials-open">
+					<n8n-menu-item index="credentials-open" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
@@ -113,7 +124,7 @@
 
 					<MenuItemsIterator :items="helpMenuItems" :afterItemClick="trackHelpItemClick" />
 
-					<n8n-menu-item index="help-about">
+					<n8n-menu-item index="help-about" style="padding-left: 30px;">
 						<template slot="title">
 							<font-awesome-icon class="about-icon" icon="info"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.aboutN8n') }}</span>
@@ -124,7 +135,7 @@
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
 				<div class="footer-menu-items">
-					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
+					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel" style="padding-left: 30px;">
 						<div class="gift-container">
 							<GiftNotificationIcon />
 						</div>
@@ -492,6 +503,10 @@ export default mixins(
 						});
 					}
 					this.$titleReset();
+				} else if (key === 'templates' || key === 'template-new') {
+					if (this.$router.currentRoute.name !== 'TemplatesView') {
+						this.$router.push({ name: 'TemplatesView' });
+					}
 				} else if (key === 'credentials-open') {
 					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
 				} else if (key === 'credentials-new') {
@@ -566,7 +581,8 @@ export default mixins(
 			}
 			.item-title {
 				position: absolute;
-				left: 73px;
+				left: 56px;
+				font-size: var(--font-size-s);
 			}
 			.item-title-root {
 				position: absolute;

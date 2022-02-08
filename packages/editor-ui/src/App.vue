@@ -9,17 +9,20 @@
 		<div id="content">
 			<router-view />
 		</div>
+		<Modals />
 		<Telemetry />
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
+import Modals from '@/components/Modals.vue';
 import Telemetry from './components/Telemetry.vue';
 
 export default Vue.extend({
 	name: 'App',
 	components: {
+		Modals,
 		Telemetry,
 	},
 	mounted() {

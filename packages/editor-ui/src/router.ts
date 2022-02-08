@@ -1,8 +1,12 @@
 import Vue from 'vue';
 import Router from 'vue-router';
+
+import CollectionView from '@/views/CollectionView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
+import TemplateView from '@/views/TemplateView.vue';
+import TemplatesView from '@/views/TemplatesView.vue';
 
 Vue.use(Router);
 
@@ -12,11 +16,35 @@ export default new Router({
 	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
 	routes: [
 		{
+			path: '/collection/:id',
+			name: 'CollectionView',
+			components: {
+				default: CollectionView,
+				sidebar: MainSidebar,
+			},
+		},
+		{
 			path: '/execution/:id',
 			name: 'ExecutionById',
 			components: {
 				default: NodeView,
 				header: MainHeader,
+				sidebar: MainSidebar,
+			},
+		},
+		{
+			path: '/template/:id',
+			name: 'TemplateView',
+			components: {
+				default: TemplateView,
+				sidebar: MainSidebar,
+			},
+		},
+		{
+			path: '/templates/',
+			name: 'TemplatesView',
+			components: {
+				default: TemplatesView,
 				sidebar: MainSidebar,
 			},
 		},
