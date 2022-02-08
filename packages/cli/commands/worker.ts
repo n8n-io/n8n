@@ -7,6 +7,8 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // eslint-disable-next-line import/no-extraneous-dependencies
+import * as express from 'express';
+
 import * as PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
@@ -14,7 +16,7 @@ import { BinaryDataManager, IBinaryDataConfig, UserSettings, WorkflowExecute } f
 
 import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
 
-import { FindOneOptions } from 'typeorm';
+import { FindOneOptions, getConnectionManager } from 'typeorm';
 
 import * as Bull from 'bull';
 import {
@@ -328,6 +330,63 @@ export class Worker extends Command {
 						logger.error('Error from queue: ', error);
 					}
 				});
+
+				if (config.get('queue.health.active')) {
+					const port = config.get('queue.health.port');
+
+					const app = express();
+
+					app.get('/healthz', async (req: express.Request, res: express.Response) => {
+						LoggerProxy.debug('Health check started!');
+
+						const connection = getConnectionManager().get();
+
+						try {
+							if (!connection.isConnected) {
+								// Connection is not active
+								throw new Error('No active database connection!');
+							}
+							// DB ping
+							await connection.query('SELECT 1');
+						} catch (err) {
+							LoggerProxy.error('No Database connection!', err);
+							const error = new ResponseHelper.ResponseError(
+								'No Database connection!',
+								undefined,
+								503,
+							);
+							return ResponseHelper.sendErrorResponse(res, error);
+						}
+
+						// Just to be complete, generally will the worker stop automatically
+						// if it loses the conection to redis
+						try {
+							// Redis ping
+							await Worker.jobQueue.client.ping();
+						} catch (err) {
+							LoggerProxy.error('No Redis connection!', err);
+							const error = new ResponseHelper.ResponseError(
+								'No Redis connection!',
+								undefined,
+								503,
+							);
+							return ResponseHelper.sendErrorResponse(res, error);
+						}
+
+						// Everything fine
+						const responseData = {
+							status: 'ok',
+						};
+
+						LoggerProxy.debug('Health check completed successfully!');
+
+						ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
+					});
+
+					app.listen(port, () => {
+						console.info(`\nn8n worker health check via, port ${port}`);
+					});
+				}
 			} catch (error) {
 				logger.error(`Worker process cannot continue. "${error.message}"`);
 
