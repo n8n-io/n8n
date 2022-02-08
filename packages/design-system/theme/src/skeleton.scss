@@ -63,14 +63,7 @@
 }
 
 .el-skeleton.is-animated .el-skeleton__item {
-  background: -webkit-gradient(
-    linear,
-    left top,
-    right top,
-    color-stop(25%, #f2f2f2),
-    color-stop(37%, #e6e6e6),
-    color-stop(63%, #f2f2f2)
-  );
+  background: -webkit-gradient(linear, left top, right top, color-stop(25%, #f2f2f2), color-stop(37%, #e6e6e6), color-stop(63%, #f2f2f2));
   background: linear-gradient(90deg, #f2f2f2 25%, #e6e6e6 37%, #f2f2f2 63%);
   background-size: 400% 100%;
   -webkit-animation: el-skeleton-loading 1.4s ease infinite;
