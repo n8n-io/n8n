@@ -1,6 +1,5 @@
 <template>
 	<div id="side-menu">
-		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
@@ -10,7 +9,7 @@
 			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 
 				<n8n-menu-item index="logo" class="logo-item">
-					<a href="https://n8n.io" target="_blank" class="logo">
+					<a href="https://n8n.io" target="_blank">
 						<img :src="basePath + 'n8n-icon-small.png'" class="icon" alt="n8n.io"/>
 						<span class="logo-text" slot="title">n8n.io</span>
 					</a>
@@ -105,6 +104,11 @@
 					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.executions') }}</span>
 				</n8n-menu-item>
 
+				<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser">
+					<font-awesome-icon icon="cog"/>&nbsp;
+					<span slot="title" class="item-title-root">Settings</span>
+				</n8n-menu-item>
+
 				<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="question"/>&nbsp;
@@ -123,13 +127,35 @@
 
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
-				<div class="footer-menu-items">
+				<div :class="`footer-menu-items ${currentUser ? 'logged-in': ''}`">
 					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 						<div class="gift-container">
 							<GiftNotificationIcon />
 						</div>
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
 					</n8n-menu-item>
+					<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle" v-if="canUserAccessSidebarUserInfo && currentUser">
+						<n8n-menu-item class="user">
+							<div class="avatar">
+								<n8n-avatar :name="currentUser.fullName" size="small" />
+							</div>
+							<span slot="title" class="item-title-root" v-if="!isCollapsed">
+								{{currentUser.fullName}}
+							</span>
+						</n8n-menu-item>
+						<el-dropdown-menu slot="dropdown">
+							<el-dropdown-item
+								command="settings"
+							>
+								Settings
+							</el-dropdown-item>
+							<el-dropdown-item
+								command="logout"
+							>
+								Sign out
+							</el-dropdown-item>
+						</el-dropdown-menu>
+					</el-dropdown>
 				</div>
 			</n8n-menu>
 
@@ -146,9 +172,9 @@ import {
 	IExecutionResponse,
 	IWorkflowDataUpdate,
 	IMenuItem,
+	IUser,
 } from '../Interface';
 
-import About from '@/components/About.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
@@ -164,8 +190,8 @@ import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
-import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
-import { CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, EXECUTIONS_MODAL_KEY } from '@/constants';
+import MenuItemsIterator from './MenuItemsIterator.vue';
+import { ABOUT_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, EXECUTIONS_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -176,9 +202,8 @@ export default mixins(
 	workflowRun,
 )
 	.extend({
-		name: 'MainHeader',
+		name: 'MainSidebar',
 		components: {
-			About,
 			ExecutionsList,
 			GiftNotificationIcon,
 			WorkflowSettings,
@@ -186,7 +211,6 @@ export default mixins(
 		},
 		data () {
 			return {
-				aboutDialogVisible: false,
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
 				stopExecutionInProgress: false,
@@ -199,6 +223,11 @@ export default mixins(
 			...mapGetters('versions', [
 				'hasVersionUpdates',
 				'nextVersions',
+			]),
+			...mapGetters('users', [
+				'canUserAccessSettings',
+				'canUserAccessSidebarUserInfo',
+				'currentUser',
 			]),
 			helpMenuItems (): object[] {
 				return [
@@ -291,15 +320,29 @@ export default mixins(
 			trackHelpItemClick (itemType: string) {
 				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
 			},
+			async onUserActionToggle(action: string) {
+				if (action === 'logout') {
+					this.onLogout();
+				}
+				else {
+					this.$router.push({name: 'PersonalSettings'});
+				}
+			},
+			async onLogout() {
+				try {
+					await this.$store.dispatch('users/logout');
+
+					this.$router.push({name: 'SigninView'});
+				} catch (e) {
+					this.$showError(e, 'Could not sign out');
+				}
+			},
 			toggleCollapse () {
 				this.$store.commit('ui/toggleSidebarMenuCollapse');
 			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
-			},
-			closeAboutDialog () {
-				this.aboutDialogVisible = false;
 			},
 			openTagManager() {
 				this.$store.dispatch('ui/openModal', TAGS_MANAGER_MODAL_KEY);
@@ -452,10 +495,12 @@ export default mixins(
 				} else if (key === 'workflow-duplicate') {
 					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
 				} else if (key === 'help-about') {
-					this.aboutDialogVisible = true;
 					this.trackHelpItemClick('about');
+					this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 				} else if (key === 'workflow-settings') {
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+				} else if (key === 'user') {
+					this.$router.push({name: 'PersonalSettings'});
 				} else if (key === 'workflow-new') {
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
@@ -502,6 +547,13 @@ export default mixins(
 					}
 				} else if (key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+				} else if (key === 'settings') {
+					if ((this.currentUser as IUser).isDefaultUser) {
+						this.$router.push('/settings/users');
+					}
+					else {
+						this.$router.push('/settings/personal');
+					}
 				}
 			},
 		},
@@ -645,10 +697,6 @@ export default mixins(
 	transform: scale(1.1);
 }
 
-a.logo {
-	text-decoration: none;
-}
-
 .logo-text {
 	position: relative;
 	top: -3px;
@@ -694,6 +742,10 @@ a.logo {
 	flex-direction: column;
 	justify-content: flex-end;
 	padding-bottom: 32px;
+
+	&.logged-in {
+		padding-bottom: 8px;
+	}
 }
 
 .el-menu-item.updates {
@@ -713,6 +765,32 @@ a.logo {
 		align-items: center;
 		height: 100%;
 		width: 100%;
+	}
+}
+
+.el-menu-item.user {
+	position: relative;
+
+	&:hover {
+		background-color: unset;
+	}
+
+	.avatar {
+		top: 25%;
+		left: 18px;
+		position: absolute;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.item-title-root {
+		color: var(--color-text-base);
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-s);
+		max-width: 130px;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 }
 

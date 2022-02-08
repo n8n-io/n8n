@@ -1,7 +1,7 @@
 <template>
 	<Modal
 		:name="PERSONALIZATION_MODAL_KEY"
-		:title="!submitted? $locale.baseText('personalizationModal.getStarted') : $locale.baseText('personalizationModal.thanks')"
+		:title="!submitted? $locale.baseText('personalizationModal.customizeN8n') : $locale.baseText('personalizationModal.thanks')"
 		:subtitle="!submitted? $locale.baseText('personalizationModal.theseQuestionsHelpUs') : ''"
 		:centerTitle="true"
 		:showClose="false"
@@ -265,7 +265,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = true;
 
 			try {
-				await this.$store.dispatch('settings/submitPersonalizationSurvey', this.values);
+				await this.$store.dispatch('users/submitPersonalizationSurvey', this.values);
 
 				if (this.values[WORK_AREA_KEY] === null && this.values[COMPANY_SIZE_KEY] === null && this.values[CODING_SKILL_KEY] === null) {
 					this.closeDialog();

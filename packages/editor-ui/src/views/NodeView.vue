@@ -104,7 +104,6 @@
 				@click.stop="clearExecutionData()"
 			/>
 		</div>
-		<Modals />
 	</div>
 </template>
 
@@ -115,7 +114,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PERSONALIZATION_MODAL_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -130,7 +129,6 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import DataDisplay from '@/components/DataDisplay.vue';
-import Modals from '@/components/Modals.vue';
 import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -197,7 +195,6 @@ export default mixins(
 		name: 'NodeView',
 		components: {
 			DataDisplay,
-			Modals,
 			Node,
 			NodeCreator,
 			NodeSettings,
@@ -2270,8 +2267,11 @@ export default mixins(
 				// Check as it does not exist on first load
 				if (this.instance) {
 					const nodes = this.$store.getters.allNodes as INodeUi[];
-					// @ts-ignore
-					nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
+					try {
+						// @ts-ignore
+						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
+					} catch (e) {
+					}
 
 					this.instance.deleteEveryEndpoint();
 				}
@@ -2640,7 +2640,7 @@ export default mixins(
 				this.$store.commit('setActiveWorkflows', activeWorkflows);
 			},
 			async loadSettings (): Promise<void> {
-				await this.$store.dispatch('settings/getSettings');
+				await this.$store.dispatch('settings/fetchSettings');
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
@@ -2747,6 +2747,7 @@ export default mixins(
 				this.stopLoading();
 
 				setTimeout(() => {
+					this.$store.dispatch('users/showPersonalizationSurvey');
 					this.checkForNewVersions();
 				}, 0);
 			});
@@ -2756,6 +2757,7 @@ export default mixins(
 
 		destroyed () {
 			this.resetWorkspace();
+			this.$store.commit('setStateDirty', false);
 		},
 	});
 </script>
@@ -2804,6 +2806,7 @@ export default mixins(
 	left: 0;
 	top: 0;
 	overflow: hidden;
+	background-color: var(--color-canvas-background);
 }
 
 .node-view-wrapper {

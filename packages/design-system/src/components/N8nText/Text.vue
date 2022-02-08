@@ -1,7 +1,7 @@
 <template functional>
-	<span :class="$style[$options.methods.getClass(props)]" :style="$options.methods.getStyles(props)">
+	<component :is="props.tag" :class="$style[$options.methods.getClass(props)]" :style="$options.methods.getStyles(props)">
 		<slot></slot>
-	</span>
+	</component>
 </template>
 
 <script lang="ts">
@@ -29,6 +29,10 @@ export default Vue.extend({
 		compact: {
 			type: Boolean,
 			default: false,
+		},
+		tag: {
+			type: String,
+			default: 'span',
 		},
 	},
 	methods: {
@@ -75,7 +79,6 @@ export default Vue.extend({
 	composes: bold;
 	composes: body-xlarge;
 }
-
 
 .body-large {
 	font-size: var(--font-size-m);

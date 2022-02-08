@@ -666,6 +666,7 @@
 	"personalizationModal": {
 		"automationConsulting": "Automation consulting",
 		"continue": "Continue",
+		"customizeN8n": "Customize n8n to you",
 		"eCommerce": "eCommerce",
 		"errorWhileSubmittingResults": "Error while submitting results",
 		"executiveTeam": "Executive team",
@@ -1050,5 +1051,6 @@
 		"yourWorkflowWillNowRegularlyCheck": "Your workflow will now regularly check {serviceName} for events and trigger executions for them.",
 		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
 		"gotIt": "Got it"
-	}
+	},
+	"SMTP_TO_ADD_USERS_WARNING": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management#smtp\">Instructions</a>"
 }
