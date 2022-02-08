@@ -95,6 +95,13 @@ export const PERMISSIONS: IUserPermissions = {
 			},
 		},
 	},
+	TAGS: {
+		CAN_USE_TAGS: {
+			allow: {
+				role: [ROLE.Default],
+			},
+		},
+	},
 	PRIMARY_MENU: {
 		CAN_ACCESS_USER_INFO: {
 			allow: {
