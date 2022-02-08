@@ -73,6 +73,8 @@ export class User {
 	lastName: string;
 
 	@Column({ nullable: true })
+	@IsString({ message: 'Password must be of type string.' })
+	@Length(8, 64, { message: 'Password does not comply to security standards.' })
 	password?: string;
 
 	@Column({ type: String, nullable: true })

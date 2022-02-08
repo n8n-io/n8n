@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable import/no-cycle */
@@ -9,21 +6,21 @@ import cookieParser = require('cookie-parser');
 import * as passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
-import { genSaltSync, hashSync } from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
+
 import { JwtPayload, N8nApp } from '../Interfaces';
 import { authenticationMethods } from './auth';
 import config = require('../../../config');
-import { Db, ResponseHelper } from '../..';
+import { Db } from '../..';
 import { User } from '../../databases/entities/User';
-import { isValidEmail, sanitizeUser, validatePassword } from '../UserManagementHelper';
-import { issueCookie, issueJWT } from '../auth/jwt';
+import { issueCookie } from '../auth/jwt';
 import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
 import { isTestRun } from '../../../test/shared/utils';
+import { ownerNamespace } from './owner';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	this.app.use(cookieParser());
@@ -131,73 +128,9 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	// tests add endpoints namespaces separately
 	if (!isTestRun) {
 		authenticationMethods.apply(this);
+		ownerNamespace.apply(this);
 		meNamespace.apply(this);
 		passwordResetNamespace.apply(this);
 		usersNamespace.apply(this);
 	}
-
-	// ----------------------------------------
-	// Temporary code below - must be refactored
-	// and moved from here.
-	// ----------------------------------------
-
-	// ----------------------------------------
-	// Create instance owner
-	// ----------------------------------------
-
-	this.app.post(
-		`/${this.restEndpoint}/owner-setup`,
-		ResponseHelper.send(async (req: Request, res: Response) => {
-			if (config.get('userManagement.hasOwner') === true) {
-				throw new Error('Invalid request');
-			}
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (!req.body.email || !isValidEmail(req.body.email)) {
-				throw new Error('Invalid email address');
-			}
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (!req.body.firstName || !req.body.lastName) {
-				throw new Error('First and last names are mandatory');
-			}
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (!req.body.password || !validatePassword(req.body.password)) {
-				throw new Error('Password does not comply to security standards');
-			}
-
-			const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
-
-			const newUser = {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				email: req.body.email,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				firstName: req.body.firstName,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				lastName: req.body.lastName,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				password: hashSync(req.body.password, genSaltSync(10)),
-				globalRole: role,
-				// @ts-ignore
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				id: req.user.id,
-			};
-
-			const owner = await Db.collections.User!.save(newUser);
-			config.set('userManagement.hasOwner', true);
-			await Db.collections.Settings!.update(
-				{
-					key: 'userManagement.hasOwner',
-				},
-				{
-					value: JSON.stringify(true),
-				},
-			);
-
-			const userData = await issueJWT(owner);
-			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
-			return sanitizeUser(owner);
-		}),
-	);
 }

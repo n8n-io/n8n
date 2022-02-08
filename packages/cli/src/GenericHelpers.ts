@@ -195,9 +195,9 @@ export async function generateUniqueName(
 }
 
 export async function validateEntity(
-	credential: WorkflowEntity | CredentialsEntity | TagEntity | User,
+	entity: WorkflowEntity | CredentialsEntity | TagEntity | User,
 ): Promise<void> {
-	const errors = await validate(credential);
+	const errors = await validate(entity);
 
 	const errorMessages = errors
 		.reduce<string[]>((acc, cur) => {

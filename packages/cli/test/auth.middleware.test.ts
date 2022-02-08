@@ -25,3 +25,19 @@ describe('/me endpoints', () => {
 		});
 	});
 });
+
+describe('/owner endpoint', () => {
+	let app: express.Application;
+
+	beforeAll(async () => {
+		app = utils.initTestServer();
+	});
+
+	describe('Unauthorized requests', () => {
+		test(`POST /owner should return 401 Unauthorized`, async () => {
+			const response = await request(app).post('/owner').use(utils.prefix(REST_PATH_SEGMENT));
+
+			expect(response.statusCode).toBe(401);
+		});
+	});
+});
