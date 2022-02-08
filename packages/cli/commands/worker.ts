@@ -332,56 +332,60 @@ export class Worker extends Command {
 				});
 
 				if (config.get('queue.health.active')) {
-					const port = config.get('queue.health.port');
+					const port = config.get('queue.health.port') as number;
 
 					const app = express();
 
-					app.get('/healthz', async (req: express.Request, res: express.Response) => {
-						LoggerProxy.debug('Health check started!');
+					app.get(
+						'/healthz',
+						// eslint-disable-next-line consistent-return
+						async (req: express.Request, res: express.Response) => {
+							LoggerProxy.debug('Health check started!');
 
-						const connection = getConnectionManager().get();
+							const connection = getConnectionManager().get();
 
-						try {
-							if (!connection.isConnected) {
-								// Connection is not active
-								throw new Error('No active database connection!');
+							try {
+								if (!connection.isConnected) {
+									// Connection is not active
+									throw new Error('No active database connection!');
+								}
+								// DB ping
+								await connection.query('SELECT 1');
+							} catch (e) {
+								LoggerProxy.error('No Database connection!', e);
+								const error = new ResponseHelper.ResponseError(
+									'No Database connection!',
+									undefined,
+									503,
+								);
+								return ResponseHelper.sendErrorResponse(res, error);
 							}
-							// DB ping
-							await connection.query('SELECT 1');
-						} catch (err) {
-							LoggerProxy.error('No Database connection!', err);
-							const error = new ResponseHelper.ResponseError(
-								'No Database connection!',
-								undefined,
-								503,
-							);
-							return ResponseHelper.sendErrorResponse(res, error);
-						}
 
-						// Just to be complete, generally will the worker stop automatically
-						// if it loses the conection to redis
-						try {
-							// Redis ping
-							await Worker.jobQueue.client.ping();
-						} catch (err) {
-							LoggerProxy.error('No Redis connection!', err);
-							const error = new ResponseHelper.ResponseError(
-								'No Redis connection!',
-								undefined,
-								503,
-							);
-							return ResponseHelper.sendErrorResponse(res, error);
-						}
+							// Just to be complete, generally will the worker stop automatically
+							// if it loses the conection to redis
+							try {
+								// Redis ping
+								await Worker.jobQueue.client.ping();
+							} catch (e) {
+								LoggerProxy.error('No Redis connection!', e);
+								const error = new ResponseHelper.ResponseError(
+									'No Redis connection!',
+									undefined,
+									503,
+								);
+								return ResponseHelper.sendErrorResponse(res, error);
+							}
 
-						// Everything fine
-						const responseData = {
-							status: 'ok',
-						};
+							// Everything fine
+							const responseData = {
+								status: 'ok',
+							};
 
-						LoggerProxy.debug('Health check completed successfully!');
+							LoggerProxy.debug('Health check completed successfully!');
 
-						ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
-					});
+							ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
+						},
+					);
 
 					app.listen(port, () => {
 						console.info(`\nn8n worker health check via, port ${port}`);
