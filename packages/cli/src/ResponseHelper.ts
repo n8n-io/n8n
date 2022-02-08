@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -14,6 +15,7 @@ import {
 	IExecutionResponse,
 	IWorkflowDb,
 } from '.';
+import { isTestRun } from '../test/shared/utils';
 
 /**
  * Special Error which allows to return also an error code and http status code
@@ -101,7 +103,7 @@ export function sendErrorResponse(res: Response, error: ResponseError, shouldLog
 		httpStatusCode = error.httpStatusCode;
 	}
 
-	if (process.env.NODE_ENV !== 'production' && shouldLog) {
+	if (process.env.NODE_ENV !== 'production' && shouldLog && !isTestRun) {
 		console.error('ERROR RESPONSE');
 		console.error(error);
 	}

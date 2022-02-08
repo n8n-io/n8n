@@ -1281,6 +1281,7 @@ class App {
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
 
+					// @ts-ignore
 					additionalData.userId = req.user.id;
 
 					return loadDataInstance.getOptions(methodName, additionalData);

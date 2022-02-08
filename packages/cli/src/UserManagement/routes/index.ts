@@ -23,12 +23,9 @@ import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
+import { isTestRun } from '../../../test/shared/utils';
 
-export async function addRoutes(
-	this: N8nApp,
-	ignoredEndpoints: string[],
-	restEndpoint: string,
-): Promise<void> {
+export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	this.app.use(cookieParser());
 
 	const options = {
@@ -131,10 +128,13 @@ export async function addRoutes(
 		next();
 	});
 
-	authenticationMethods.apply(this);
-	meNamespace.apply(this);
-	passwordResetNamespace.apply(this);
-	usersNamespace.apply(this);
+	// tests add endpoints namespaces separately
+	if (!isTestRun) {
+		authenticationMethods.apply(this);
+		meNamespace.apply(this);
+		passwordResetNamespace.apply(this);
+		usersNamespace.apply(this);
+	}
 
 	// ----------------------------------------
 	// Temporary code below - must be refactored

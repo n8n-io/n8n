@@ -59,6 +59,7 @@ export class WorkflowEntity implements IWorkflowDb {
 	@PrimaryGeneratedColumn()
 	id: number;
 
+	// TODO: Add XSS check
 	@Index({ unique: true })
 	@Length(1, 128, {
 		message: 'Workflow name must be $constraint1 to $constraint2 characters long.',
