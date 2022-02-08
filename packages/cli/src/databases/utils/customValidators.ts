@@ -11,7 +11,7 @@ export function NoXss() {
 			options: { message: `Malicious ${propertyName}` },
 			validator: {
 				validate(value: string) {
-					return !/<(\s*)?(script|a)/.test(value);
+					return !/<(\s*)?(script|a|http)/.test(value);
 				},
 			},
 		});
