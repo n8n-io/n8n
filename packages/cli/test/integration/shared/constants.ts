@@ -1,7 +1,7 @@
 import { ConnectionOptions } from 'typeorm';
 
-import config = require('../../config');
-import { sqliteMigrations } from '../../src/databases/sqlite/migrations';
+import config = require('../../../config');
+import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
 
 export const REST_PATH_SEGMENT = config.get('endpoints.rest') as Readonly<string>;
 
@@ -27,5 +27,11 @@ export const TEST_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
 export const SUCCESS_RESPONSE_BODY: Readonly<object> = {
 	data: {
 		success: true,
+	},
+};
+
+export const LOGGED_OUT_RESPONSE_BODY: Readonly<object> = {
+	data: {
+		loggedOut: true,
 	},
 };

@@ -18,8 +18,8 @@ import { entities } from './databases/entities';
 import { postgresMigrations } from './databases/postgresdb/migrations';
 import { mysqlMigrations } from './databases/mysqldb/migrations';
 import { sqliteMigrations } from './databases/sqlite/migrations';
-import { TEST_CONNECTION_OPTIONS } from '../test/shared/constants';
-import { isTestRun } from '../test/shared/utils';
+import { TEST_CONNECTION_OPTIONS } from '../test/integration/shared/constants';
+import { isTestRun } from '../test/integration/shared/utils';
 
 export const collections: IDatabaseCollections = {
 	Credentials: null,

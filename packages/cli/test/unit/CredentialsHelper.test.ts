@@ -1,4 +1,4 @@
-import { CredentialsHelper, CredentialTypes } from '../src';
+import { CredentialsHelper, CredentialTypes } from '../../src';
 import * as Helpers from './Helpers';
 import {
 	IAuthenticateBasicAuth,

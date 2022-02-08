@@ -43,6 +43,7 @@ import {
 	Db,
 	ICredentialsDb,
 	NodeTypes,
+	WhereClause,
 	WorkflowExecuteAdditionalData,
 } from '.';
 // eslint-disable-next-line import/no-cycle
@@ -700,6 +701,7 @@ export async function getCredentialForUser(
 	credentialId: string,
 	user: User,
 ): Promise<ICredentialsDb | null> {
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	const sharedCredential = await Db.collections.SharedCredentials!.findOne({
 		relations: ['credentials'],
 		where: whereClause({

@@ -19,6 +19,10 @@ import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
 
+export const MIN_PASSWORD_LENGTH = 8;
+
+export const MAX_PASSWORD_LENGTH = 64;
+
 function resolveDataType(dataType: string) {
 	const dbType = config.get('database.type') as DatabaseType;
 
@@ -74,7 +78,9 @@ export class User {
 
 	@Column({ nullable: true })
 	@IsString({ message: 'Password must be of type string.' })
-	@Length(8, 64, { message: 'Password does not comply to security standards.' })
+	@Length(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, {
+		message: 'Password does not comply to security standards.',
+	})
 	password?: string;
 
 	@Column({ type: String, nullable: true })

@@ -4,18 +4,18 @@ import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
-import config = require('../config');
+import config = require('../../config');
 import * as utils from './shared/utils';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { Db } from '../src';
-import { User } from '../src/databases/entities/User';
+import { Db } from '../../src';
+import { User } from '../../src/databases/entities/User';
 
 describe('/me endpoints', () => {
 	describe('Shell requests', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ me: true });
+			app = utils.initTestServer({ me: true }, { applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 		});
@@ -41,7 +41,7 @@ describe('/me endpoints', () => {
 
 		test('GET /me should return sanitized shell', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAgent(app, shell);
+			const shellAgent = await utils.createAuthAgent(app, shell);
 
 			const response = await shellAgent.get('/me');
 
@@ -71,7 +71,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should succeed with valid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAgent(app, shell);
+			const shellAgent = await utils.createAuthAgent(app, shell);
 
 			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 				const response = await shellAgent.patch('/me').send(validPayload);
@@ -103,7 +103,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should fail with invalid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAgent(app, shell);
+			const shellAgent = await utils.createAuthAgent(app, shell);
 
 			for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
 				const response = await shellAgent.patch('/me').send(invalidPayload);
@@ -113,7 +113,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me/password should succeed with valid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAgent(app, shell);
+			const shellAgent = await utils.createAuthAgent(app, shell);
 
 			const validPayloads = Array.from({ length: 3 }, () => ({
 				password: utils.randomValidPassword(),
@@ -128,7 +128,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me/password should fail with invalid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAgent(app, shell);
+			const shellAgent = await utils.createAuthAgent(app, shell);
 
 			const invalidPayloads = [
 				...Array.from({ length: 3 }, () => ({ password: utils.randomInvalidPassword() })),
@@ -145,7 +145,7 @@ describe('/me endpoints', () => {
 
 		test('POST /me/survey should succeed with valid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAgent(app, shell);
+			const shellAgent = await utils.createAuthAgent(app, shell);
 
 			const validPayloads = [SURVEY, {}];
 
@@ -161,7 +161,7 @@ describe('/me endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ me: true, users: true });
+			app = utils.initTestServer({ me: true }, { applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 		});
@@ -200,7 +200,7 @@ describe('/me endpoints', () => {
 
 		test('GET /me should return sanitized member', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAgent(app, member);
+			const memberAgent = await utils.createAuthAgent(app, member);
 
 			const response = await memberAgent.get('/me');
 
@@ -230,7 +230,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should succeed with valid inputs', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAgent(app, member);
+			const memberAgent = await utils.createAuthAgent(app, member);
 
 			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 				const response = await memberAgent.patch('/me').send(validPayload);
@@ -262,7 +262,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should fail with invalid inputs', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAgent(app, member);
+			const memberAgent = await utils.createAuthAgent(app, member);
 
 			for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
 				const response = await memberAgent.patch('/me').send(invalidPayload);
@@ -272,7 +272,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me/password should succeed with valid inputs', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAgent(app, member);
+			const memberAgent = await utils.createAuthAgent(app, member);
 
 			const validPayloads = Array.from({ length: 3 }, () => ({
 				password: utils.randomValidPassword(),
@@ -287,7 +287,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me/password should fail with invalid inputs', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAgent(app, member);
+			const memberAgent = await utils.createAuthAgent(app, member);
 
 			const invalidPayloads = [
 				...Array.from({ length: 3 }, () => ({ password: utils.randomInvalidPassword() })),
@@ -304,7 +304,7 @@ describe('/me endpoints', () => {
 
 		test('POST /me/survey should succeed with valid inputs', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAgent(app, member);
+			const memberAgent = await utils.createAuthAgent(app, member);
 
 			const validPayloads = [SURVEY, {}];
 
@@ -320,7 +320,7 @@ describe('/me endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ me: true });
+			app = utils.initTestServer({ me: true }, { applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 		});
@@ -359,7 +359,7 @@ describe('/me endpoints', () => {
 
 		test('GET /me should return sanitized owner', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAgent(app, owner);
+			const ownerAgent = await utils.createAuthAgent(app, owner);
 
 			const response = await ownerAgent.get('/me');
 
@@ -389,7 +389,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should succeed with valid inputs', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAgent(app, owner);
+			const ownerAgent = await utils.createAuthAgent(app, owner);
 
 			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 				const response = await ownerAgent.patch('/me').send(validPayload);
