@@ -1,0 +1,350 @@
+import {
+	INodeProperties,
+} from 'n8n-workflow';
+
+export const updateEmployeeSharedDescription = (sync = false): INodeProperties[] => {
+	let elements = [
+		{
+			displayName: 'Address',
+			name: 'addasasress',
+			placeholder: 'Address',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: false,
+			},
+			default: {},
+			options: [
+				{
+					name: 'value',
+					displayName: 'Address',
+					values: [
+						{
+							displayName: 'Line 1',
+							name: 'address1',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'Line 2',
+							name: 'address2',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'City',
+							name: 'city',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'State',
+							name: 'state',
+							type: 'string',
+							default: '',
+							placeholder: 'Florida',
+							description: 'The full name of the state/province',
+						},
+						{
+							displayName: 'Country',
+							name: 'country',
+							type: 'string',
+							default: '',
+							placeholder: 'United States',
+							description: 'The name of the country. Must exist in the BambooHr country list',
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Date of Birth',
+			name: 'dateOfBirth',
+			type: 'dateTime',
+			default: '',
+		},
+		{
+			displayName: 'Department',
+			name: 'department',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getDepartments',
+			},
+			default: '',
+		},
+		{
+			displayName: 'Division',
+			name: 'division',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getDivisions',
+			},
+			default: '',
+		},
+		{
+			displayName: 'Employee Number',
+			name: 'employeeNumber',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'First Name',
+			name: 'firstName',
+			type: 'string',
+			displayOptions: {
+				show: {
+					'synced': [
+						false,
+					],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'Last Name',
+			name: 'lastName',
+			type: 'string',
+			displayOptions: {
+				show: {
+					'synced': [
+						false,
+					],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'FLSA Overtime Status',
+			name: 'exempt',
+			type: 'options',
+			options: [
+				{
+					name: 'Exempt',
+					value: 'exempt',
+				},
+				{
+					name: 'Non-exempt',
+					value: 'non-exempt',
+				},
+			],
+			default: '',
+		},
+		{
+			displayName: 'Gender',
+			name: 'gender',
+			type: 'options',
+			options: [
+				{
+					name: 'Female',
+					value: 'female',
+				},
+				{
+					name: 'Male',
+					value: 'male',
+				},
+			],
+			default: '',
+		},
+		{
+			displayName: 'Hire Date',
+			name: 'hireDate',
+			type: 'dateTime',
+			default: '',
+		},
+		{
+			displayName: 'Location',
+			name: 'location',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getEmployeeLocations',
+			},
+			default: '',
+		},
+		{
+			displayName: 'Marital Status',
+			name: 'maritalStatus',
+			type: 'options',
+			options: [
+				{
+					name: 'Single',
+					value: 'single',
+				},
+				{
+					name: 'Married',
+					value: 'married',
+				},
+				{
+					name: 'Domestic Partnership',
+					value: 'domesticPartnership',
+				},
+			],
+			default: '',
+		},
+		{
+			displayName: 'Mobile Phone',
+			name: 'mobilePhone',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Pay Per',
+			name: 'paidPer',
+			type: 'options',
+			options: [
+				{
+					name: 'Hour',
+					value: 'hour',
+				},
+				{
+					name: 'Day',
+					value: 'day',
+				},
+				{
+					name: 'Week',
+					value: 'week',
+				},
+				{
+					name: 'Month',
+					value: 'month',
+				},
+				{
+					name: 'Quater',
+					value: 'quater',
+				},
+				{
+					name: 'Year',
+					value: 'year',
+				},
+			],
+			default: '',
+		},
+		{
+			displayName: 'Pay Rate',
+			name: 'payRate',
+			placeholder: 'Add Pay Rate',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: false,
+			},
+			default: {},
+			options: [
+				{
+					name: 'value',
+					displayName: 'Pay Rate',
+					values: [
+						{
+							displayName: 'Value',
+							name: 'value',
+							type: 'string',
+							default: '',
+							placeholder: '20.00',
+						},
+						{
+							displayName: 'Currency',
+							name: 'currency',
+							type: 'string',
+							default: '',
+							placeholder: 'USD',
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Pay Type',
+			name: 'payType',
+			type: 'options',
+			options: [
+				{
+					name: 'Hourly',
+					value: 'hourly',
+				},
+				{
+					name: 'Salary',
+					value: 'salary',
+				},
+				{
+					name: 'Commission',
+					value: 'commission',
+				},
+				{
+					name: 'Exception Hourly',
+					value: 'exceptionHourly',
+				},
+				{
+					name: 'Monthly',
+					value: 'monthly',
+				},
+				{
+					name: 'Weekly',
+					value: 'weekly',
+				},
+				{
+					name: 'Piece Rate',
+					value: 'pieceRate',
+				},
+				{
+					name: 'Contract',
+					value: 'contract',
+				},
+				{
+					name: 'Daily',
+					value: 'daily',
+				},
+				{
+					name: 'Pro Rata',
+					value: 'proRata',
+				},
+			],
+			default: '',
+		},
+		{
+			displayName: 'Preferred Name',
+			name: 'preferredName',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Social Security Number',
+			name: 'ssn',
+			type: 'string',
+			default: '',
+			placeholder: '123-45-6789',
+			description: 'A standard United States Social Security number, with dashes',
+		},
+	] as INodeProperties[];
+
+	if (sync === true) {
+		elements = elements.map(element => {
+			return Object.assign(element, {
+				displayOptions: {
+					show: {
+						resource: [
+							'employee',
+						],
+						operation: [
+							'update',
+						],
+						synced: [
+							true,
+						],
+					},
+				},
+				required: true,
+			});
+		});
+		return elements;
+	} else {
+		elements = elements.map(element => {
+			return Object.assign(element, {
+				displayOptions: {
+					show: {
+						'/synced': [
+							false,
+						],
+					},
+				},
+			});
+		});
+	}
+	return elements;
+};

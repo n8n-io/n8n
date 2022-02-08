@@ -13,6 +13,7 @@ import { User } from '../../src/databases/entities/User';
 import { meNamespace as meEndpoints } from '../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../src/UserManagement/routes/auth';
+import { ownerNamespace as ownerEndpoints } from '../../src/UserManagement/routes/owner';
 import { getConnection } from 'typeorm';
 import { issueJWT } from '../../src/UserManagement/auth/jwt';
 
@@ -92,6 +93,14 @@ export function prefix(pathSegment: string) {
 
 		return request;
 	};
+}
+
+export async function getHasOwnerSetting() {
+	const { value } = await Db.collections.Settings!.findOneOrFail({
+		key: 'userManagement.hasOwner',
+	});
+
+	return Boolean(value);
 }
 
 /**

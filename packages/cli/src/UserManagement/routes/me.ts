@@ -3,12 +3,13 @@
 
 import { genSaltSync, hashSync } from 'bcryptjs';
 import express = require('express');
+import validator from 'validator';
+
 import { Db, ResponseHelper } from '../..';
 import { issueJWT } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { isValidEmail, validatePassword, sanitizeUser } from '../UserManagementHelper';
-import type { UpdateSelfRequest } from '../Interfaces';
-import { AuthenticatedRequest } from '../../requests';
+import { validatePassword, sanitizeUser } from '../UserManagementHelper';
+import type { AuthenticatedRequest, MeRequest } from '../../requests';
 import { validateEntity } from '../../GenericHelpers';
 import { User } from '../../databases/entities/User';
 
@@ -29,12 +30,12 @@ export function meNamespace(this: N8nApp): void {
 	this.app.patch(
 		`/${this.restEndpoint}/me`,
 		ResponseHelper.send(
-			async (req: UpdateSelfRequest.Settings, res: express.Response): Promise<PublicUser> => {
+			async (req: MeRequest.Settings, res: express.Response): Promise<PublicUser> => {
 				if (!req.body.email) {
 					throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 				}
 
-				if (!isValidEmail(req.body.email)) {
+				if (!validator.isEmail(req.body.email)) {
 					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}
 
@@ -60,7 +61,7 @@ export function meNamespace(this: N8nApp): void {
 	 */
 	this.app.patch(
 		`/${this.restEndpoint}/me/password`,
-		ResponseHelper.send(async (req: UpdateSelfRequest.Password, res: express.Response) => {
+		ResponseHelper.send(async (req: MeRequest.Password, res: express.Response) => {
 			const validPassword = validatePassword(req.body.password);
 			req.user.password = hashSync(validPassword, genSaltSync(10));
 
@@ -78,7 +79,7 @@ export function meNamespace(this: N8nApp): void {
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/me/survey`,
-		ResponseHelper.send(async (req: UpdateSelfRequest.SurveyAnswers) => {
+		ResponseHelper.send(async (req: MeRequest.SurveyAnswers) => {
 			const { body: personalizationAnswers } = req;
 
 			if (!personalizationAnswers) {

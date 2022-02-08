@@ -92,7 +92,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
-import { getStyleTokenValue } from './helpers';
+import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
@@ -131,7 +131,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					'node.waitingForYouToCreateAnEventIn',
 					{
 						interpolate: {
-							nodeType: this.nodeType && this.nodeType.displayName.replace(/Trigger/, ""),
+							nodeType: this.nodeType && getTriggerNodeServiceName(this.nodeType.displayName),
 						},
 					},
 				);
@@ -145,7 +145,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		isSingleActiveTriggerNode (): boolean {
 			const nodes = this.$store.getters.workflowTriggerNodes.filter((node: INodeUi) => {
-				const nodeType =  this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+				const nodeType =  this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
 			});
 
@@ -161,7 +161,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.node && this.node.disabled;
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters.nodeType(this.data.type);
+			return this.data && this.$store.getters.nodeType(this.data.type, this.data.typeVersion);
 		},
 		node (): INodeUi | undefined { // same as this.data but reactive..
 			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;

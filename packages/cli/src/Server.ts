@@ -29,7 +29,7 @@
 /* eslint-disable no-await-in-loop */
 
 import * as express from 'express';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -65,36 +65,29 @@ import {
 	BinaryDataManager,
 	Credentials,
 	IBinaryDataConfig,
-	ICredentialTestFunctions,
 	LoadNodeParameterOptions,
-	NodeExecuteFunctions,
 	UserSettings,
 } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
 	INodeCredentialsDetails,
+	INodeCredentialTestRequest,
+	INodeCredentialTestResult,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	INodeVersionedType,
 	ITelemetrySettings,
 	IWorkflowBase,
 	LoggerProxy,
-	NodeCredentialTestRequest,
-	NodeCredentialTestResult,
 	NodeHelpers,
 	Workflow,
-	ICredentialsEncrypted,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
-import { NodeVersionedType } from 'n8n-nodes-base';
 
 import * as basicAuth from 'basic-auth';
 import * as compression from 'compression';
@@ -326,6 +319,7 @@ class App {
 					config.get('userManagement.hasOwner') === true,
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
+			logLevel: config.get('logs.level'),
 		};
 	}
 
@@ -658,6 +652,8 @@ class App {
 
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
+			LoggerProxy.debug('Health check started!');
+
 			const connection = getConnectionManager().get();
 
 			try {
@@ -677,6 +673,8 @@ class App {
 			const responseData = {
 				status: 'ok',
 			};
+
+			LoggerProxy.debug('Health check completed successfully!');
 
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
@@ -964,10 +962,10 @@ class App {
 					}
 				}
 
-				// required due to atomic update
-				updateData.updatedAt = this.getCurrentDate();
-
-				await validateEntity(updateData);
+				if (Object.keys(updateData).length > 1 || updateData.active === undefined) {
+					updateData.updatedAt = this.getCurrentDate(); // required due to atomic update
+					await validateEntity(updateData);
+				}
 
 				await Db.collections.Workflow!.update(workflowId, updateData);
 
@@ -1284,7 +1282,19 @@ class App {
 					// @ts-ignore
 					additionalData.userId = req.user.id;
 
-					return loadDataInstance.getOptions(methodName, additionalData);
+					if (methodName) {
+						return loadDataInstance.getOptionsViaMethodName(methodName, additionalData);
+					}
+					// @ts-ignore
+					if (req.query.loadOptions) {
+						return loadDataInstance.getOptionsViaRequestProperty(
+							// @ts-ignore
+							JSON.parse(req.query.loadOptions as string),
+							additionalData,
+						);
+					}
+
+					return [];
 				},
 			),
 		);
@@ -1624,87 +1634,25 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/credentials-test`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<NodeCredentialTestResult> => {
-					const incomingData = req.body as NodeCredentialTestRequest;
+				async (req: express.Request, res: express.Response): Promise<INodeCredentialTestResult> => {
+					const incomingData = req.body as INodeCredentialTestRequest;
+
+					const encryptionKey = await UserSettings.getEncryptionKey();
+					if (encryptionKey === undefined) {
+						return {
+							status: 'Error',
+							message: 'No encryption key got found to decrypt the credentials!',
+						};
+					}
+
+					const credentialsHelper = new CredentialsHelper(encryptionKey);
+
 					const credentialType = incomingData.credentials.type;
-
-					// Find nodes that can test this credential.
-					const nodeTypes = NodeTypes();
-					const allNodes = nodeTypes.getAll();
-
-					let foundTestFunction:
-						| ((
-								this: ICredentialTestFunctions,
-								credential: ICredentialsDecrypted,
-						  ) => Promise<NodeCredentialTestResult>)
-						| undefined;
-					const nodeThatCanTestThisCredential = allNodes.find((node) => {
-						if (
-							incomingData.nodeToTestWith &&
-							node.description.name !== incomingData.nodeToTestWith
-						) {
-							return false;
-						}
-
-						if (node instanceof NodeVersionedType) {
-							const versionNames = Object.keys((node as INodeVersionedType).nodeVersions);
-							for (const versionName of versionNames) {
-								const nodeType = (node as INodeVersionedType).nodeVersions[
-									versionName as unknown as number
-								];
-								// eslint-disable-next-line @typescript-eslint/no-loop-func
-								const credentialTestable = nodeType.description.credentials?.find((credential) => {
-									const testFunctionSearch =
-										credential.name === credentialType && !!credential.testedBy;
-									if (testFunctionSearch) {
-										foundTestFunction = (nodeType as unknown as INodeType).methods!.credentialTest![
-											credential.testedBy!
-										];
-									}
-									return testFunctionSearch;
-								});
-								if (credentialTestable) {
-									return true;
-								}
-							}
-							return false;
-						}
-						const credentialTestable = (node as INodeType).description.credentials?.find(
-							(credential) => {
-								const testFunctionSearch =
-									credential.name === credentialType && !!credential.testedBy;
-								if (testFunctionSearch) {
-									foundTestFunction = (node as INodeType).methods!.credentialTest![
-										credential.testedBy!
-									];
-								}
-								return testFunctionSearch;
-							},
-						);
-						return !!credentialTestable;
-					});
-
-					if (!nodeThatCanTestThisCredential) {
-						return Promise.resolve({
-							status: 'Error',
-							message: 'There are no nodes that can test this credential.',
-						});
-					}
-
-					if (foundTestFunction === undefined) {
-						return Promise.resolve({
-							status: 'Error',
-							message: 'No testing function found for this credential.',
-						});
-					}
-
-					const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
-
-					const output = await foundTestFunction.call(
-						credentialTestFunctions,
+					return credentialsHelper.testCredentials(
+						credentialType,
 						incomingData.credentials,
+						incomingData.nodeToTestWith,
 					);
-					return Promise.resolve(output);
 				},
 			),
 		);
@@ -1975,124 +1923,122 @@ class App {
 		// Authorize OAuth Data
 		this.app.get(
 			`/${this.restEndpoint}/oauth1-credential/auth`,
-			ResponseHelper.send(
-				async (req: OAuthRequest.OAuth1CredentialAuth, res: express.Response): Promise<string> => {
-					const { id: credentialId } = req.query;
+			ResponseHelper.send(async (req: OAuthRequest.OAuth1Credential.Auth): Promise<string> => {
+				const { id: credentialId } = req.query;
 
-					if (!credentialId) {
-						throw new ResponseHelper.ResponseError(
-							'Required credential ID is missing',
-							undefined,
-							400,
-						);
-					}
-
-					const credential = await getCredentialForUser(credentialId, req.user);
-
-					if (!credential) {
-						throw new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-							undefined,
-							404,
-						);
-					}
-
-					const encryptionKey = await UserSettings.getEncryptionKey();
-
-					if (!encryptionKey) {
-						throw new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-							undefined,
-							500,
-						);
-					}
-
-					const mode: WorkflowExecuteMode = 'internal';
-					const credentialsHelper = new CredentialsHelper(encryptionKey);
-					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						credential as INodeCredentialsDetails,
-						credential.type,
-						mode,
-						true,
+				if (!credentialId) {
+					throw new ResponseHelper.ResponseError(
+						'Required credential ID is missing',
+						undefined,
+						400,
 					);
-					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
-						decryptedDataOriginal,
-						credential.type,
-						mode,
+				}
+
+				const credential = await getCredentialForUser(credentialId, req.user);
+
+				if (!credential) {
+					throw new ResponseHelper.ResponseError(
+						RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
+						undefined,
+						404,
 					);
+				}
 
-					const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
+				const encryptionKey = await UserSettings.getEncryptionKey();
 
-					const oAuthOptions: clientOAuth1.Options = {
-						consumer: {
-							key: _.get(oauthCredentials, 'consumerKey') as string,
-							secret: _.get(oauthCredentials, 'consumerSecret') as string,
-						},
-						signature_method: signatureMethod,
-						// eslint-disable-next-line @typescript-eslint/naming-convention
-						hash_function(base, key) {
-							const algorithm = signatureMethod === 'HMAC-SHA1' ? 'sha1' : 'sha256';
-							return createHmac(algorithm, key).update(base).digest('base64');
-						},
-					};
-
-					const oauthRequestData = {
-						oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${
-							this.restEndpoint
-						}/oauth1-credential/callback?cid=${credentialId}`,
-					};
-
-					await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
-
-					// eslint-disable-next-line new-cap
-					const oauth = new clientOAuth1(oAuthOptions);
-
-					const options: RequestOptions = {
-						method: 'POST',
-						url: _.get(oauthCredentials, 'requestTokenUrl') as string,
-						data: oauthRequestData,
-					};
-
-					const data = oauth.toHeader(oauth.authorize(options));
-
-					// @ts-ignore
-					options.headers = data;
-
-					const response = await requestPromise(options);
-
-					// Response comes as x-www-form-urlencoded string so convert it to JSON
-
-					const responseJson = querystring.parse(response);
-
-					const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${
-						responseJson.oauth_token
-					}`;
-
-					// Encrypt the data
-					const credentials = new Credentials(
-						credential as INodeCredentialsDetails,
-						credential.type,
-						credential.nodesAccess,
+				if (!encryptionKey) {
+					throw new ResponseHelper.ResponseError(
+						RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
+						undefined,
+						500,
 					);
+				}
 
-					credentials.setData(decryptedDataOriginal, encryptionKey);
-					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
+				const mode: WorkflowExecuteMode = 'internal';
+				const credentialsHelper = new CredentialsHelper(encryptionKey);
+				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
+					credential as INodeCredentialsDetails,
+					credential.type,
+					mode,
+					true,
+				);
+				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
+					decryptedDataOriginal,
+					credential.type,
+					mode,
+				);
 
-					// Add special database related data
-					newCredentialsData.updatedAt = this.getCurrentDate();
+				const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
 
-					// Update the credentials in DB
-					await Db.collections.Credentials!.update(credentialId, newCredentialsData);
+				const oAuthOptions: clientOAuth1.Options = {
+					consumer: {
+						key: _.get(oauthCredentials, 'consumerKey') as string,
+						secret: _.get(oauthCredentials, 'consumerSecret') as string,
+					},
+					signature_method: signatureMethod,
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					hash_function(base, key) {
+						const algorithm = signatureMethod === 'HMAC-SHA1' ? 'sha1' : 'sha256';
+						return createHmac(algorithm, key).update(base).digest('base64');
+					},
+				};
 
-					return returnUri;
-				},
-			),
+				const oauthRequestData = {
+					oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${
+						this.restEndpoint
+					}/oauth1-credential/callback?cid=${credentialId}`,
+				};
+
+				await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
+
+				// eslint-disable-next-line new-cap
+				const oauth = new clientOAuth1(oAuthOptions);
+
+				const options: RequestOptions = {
+					method: 'POST',
+					url: _.get(oauthCredentials, 'requestTokenUrl') as string,
+					data: oauthRequestData,
+				};
+
+				const data = oauth.toHeader(oauth.authorize(options));
+
+				// @ts-ignore
+				options.headers = data;
+
+				const response = await requestPromise(options);
+
+				// Response comes as x-www-form-urlencoded string so convert it to JSON
+
+				const responseJson = querystring.parse(response);
+
+				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${
+					responseJson.oauth_token
+				}`;
+
+				// Encrypt the data
+				const credentials = new Credentials(
+					credential as INodeCredentialsDetails,
+					credential.type,
+					credential.nodesAccess,
+				);
+
+				credentials.setData(decryptedDataOriginal, encryptionKey);
+				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
+
+				// Add special database related data
+				newCredentialsData.updatedAt = this.getCurrentDate();
+
+				// Update the credentials in DB
+				await Db.collections.Credentials!.update(credentialId, newCredentialsData);
+
+				return returnUri;
+			}),
 		);
 
 		// Verify and store app code. Generate access tokens and store for respective credential.
 		this.app.get(
 			`/${this.restEndpoint}/oauth1-credential/callback`,
-			async (req: OAuthRequest.OAuth1CredentialCallback, res: express.Response) => {
+			async (req: OAuthRequest.OAuth1Credential.Callback, res: express.Response) => {
 				try {
 					const { oauth_verifier, oauth_token, cid: credentialId } = req.query;
 
@@ -2198,111 +2144,109 @@ class App {
 		// Authorize OAuth Data
 		this.app.get(
 			`/${this.restEndpoint}/oauth2-credential/auth`,
-			ResponseHelper.send(
-				async (req: OAuthRequest.OAuth2CredentialAuth, res: express.Response): Promise<string> => {
-					const { id: credentialId } = req.query;
+			ResponseHelper.send(async (req: OAuthRequest.OAuth2Credential.Auth): Promise<string> => {
+				const { id: credentialId } = req.query;
 
-					if (!credentialId) {
-						throw new ResponseHelper.ResponseError(
-							'Required credential ID is missing',
-							undefined,
-							400,
-						);
-					}
-
-					const credential = await getCredentialForUser(credentialId, req.user);
-
-					if (!credential) {
-						throw new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-							undefined,
-							404,
-						);
-					}
-
-					const encryptionKey = await UserSettings.getEncryptionKey();
-
-					if (!encryptionKey) {
-						throw new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-							undefined,
-							500,
-						);
-					}
-
-					const mode: WorkflowExecuteMode = 'internal';
-					const credentialsHelper = new CredentialsHelper(encryptionKey);
-					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						credential as INodeCredentialsDetails,
-						credential.type,
-						mode,
-						true,
+				if (!credentialId) {
+					throw new ResponseHelper.ResponseError(
+						'Required credential ID is missing',
+						undefined,
+						400,
 					);
-					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
-						decryptedDataOriginal,
-						credential.type,
-						mode,
+				}
+
+				const credential = await getCredentialForUser(credentialId, req.user);
+
+				if (!credential) {
+					throw new ResponseHelper.ResponseError(
+						RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
+						undefined,
+						404,
 					);
+				}
 
-					const token = new csrf();
-					// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
-					const csrfSecret = token.secretSync();
-					const state = {
-						token: token.create(csrfSecret),
-						cid: req.query.id,
-					};
-					const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
+				const encryptionKey = await UserSettings.getEncryptionKey();
 
-					const oAuthOptions: clientOAuth2.Options = {
-						clientId: _.get(oauthCredentials, 'clientId') as string,
-						clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
-						accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
-						authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-						redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${
-							this.restEndpoint
-						}/oauth2-credential/callback`,
-						scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
-						state: stateEncodedStr,
-					};
-
-					await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
-
-					const oAuthObj = new clientOAuth2(oAuthOptions);
-
-					// Encrypt the data
-					const credentials = new Credentials(
-						credential as INodeCredentialsDetails,
-						credential.type,
-						credential.nodesAccess,
+				if (!encryptionKey) {
+					throw new ResponseHelper.ResponseError(
+						RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
+						undefined,
+						500,
 					);
-					decryptedDataOriginal.csrfSecret = csrfSecret;
+				}
 
-					credentials.setData(decryptedDataOriginal, encryptionKey);
-					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
+				const mode: WorkflowExecuteMode = 'internal';
+				const credentialsHelper = new CredentialsHelper(encryptionKey);
+				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
+					credential as INodeCredentialsDetails,
+					credential.type,
+					mode,
+					true,
+				);
+				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
+					decryptedDataOriginal,
+					credential.type,
+					mode,
+				);
 
-					// Add special database related data
-					newCredentialsData.updatedAt = this.getCurrentDate();
+				const token = new csrf();
+				// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
+				const csrfSecret = token.secretSync();
+				const state = {
+					token: token.create(csrfSecret),
+					cid: req.query.id,
+				};
+				const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
 
-					// Update the credentials in DB
-					await Db.collections.Credentials!.update(req.query.id as string, newCredentialsData);
+				const oAuthOptions: clientOAuth2.Options = {
+					clientId: _.get(oauthCredentials, 'clientId') as string,
+					clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
+					accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
+					authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
+					redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${
+						this.restEndpoint
+					}/oauth2-credential/callback`,
+					scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
+					state: stateEncodedStr,
+				};
 
-					const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
-					let returnUri = oAuthObj.code.getUri();
+				await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-					// if scope uses comma, change it as the library always return then with spaces
-					if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
-						const data = querystring.parse(returnUri.split('?')[1]);
-						data.scope = _.get(oauthCredentials, 'scope') as string;
-						returnUri = `${_.get(oauthCredentials, 'authUrl', '')}?${querystring.stringify(data)}`;
-					}
+				const oAuthObj = new clientOAuth2(oAuthOptions);
 
-					if (authQueryParameters) {
-						returnUri += `&${authQueryParameters}`;
-					}
+				// Encrypt the data
+				const credentials = new Credentials(
+					credential as INodeCredentialsDetails,
+					credential.type,
+					credential.nodesAccess,
+				);
+				decryptedDataOriginal.csrfSecret = csrfSecret;
 
-					return returnUri;
-				},
-			),
+				credentials.setData(decryptedDataOriginal, encryptionKey);
+				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
+
+				// Add special database related data
+				newCredentialsData.updatedAt = this.getCurrentDate();
+
+				// Update the credentials in DB
+				await Db.collections.Credentials!.update(req.query.id as string, newCredentialsData);
+
+				const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
+				let returnUri = oAuthObj.code.getUri();
+
+				// if scope uses comma, change it as the library always return then with spaces
+				if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
+					const data = querystring.parse(returnUri.split('?')[1]);
+					data.scope = _.get(oauthCredentials, 'scope') as string;
+					returnUri = `${_.get(oauthCredentials, 'authUrl', '')}?${querystring.stringify(data)}`;
+				}
+
+				if (authQueryParameters) {
+					returnUri += `&${authQueryParameters}`;
+				}
+
+				return returnUri;
+			}),
 		);
 
 		// ----------------------------------------
@@ -2312,7 +2256,7 @@ class App {
 		// Verify and store app code. Generate access tokens and store for respective credential.
 		this.app.get(
 			`/${this.restEndpoint}/oauth2-credential/callback`,
-			async (req: OAuthRequest.OAuth2CredentialCallback, res: express.Response) => {
+			async (req: OAuthRequest.OAuth2Credential.Callback, res: express.Response) => {
 				try {
 					// realmId it's currently just use for the quickbook OAuth2 flow
 					const { code, state: stateEncoded } = req.query;

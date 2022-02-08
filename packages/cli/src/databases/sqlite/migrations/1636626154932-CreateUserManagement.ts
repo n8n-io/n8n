@@ -28,6 +28,10 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 			'CREATE TABLE "settings" ("key"	TEXT NOT NULL,"value"	TEXT NOT NULL DEFAULT \'\',"loadOnStartup"	boolean NOT NULL default false,PRIMARY KEY("key"));',
 		);
 
+		await queryRunner.query(
+			`CREATE INDEX "IDX_xeendlvptc5jy4hbol17b5xery" ON "execution_entity" ("workflowId") `,
+		);
+
 		// Insert initial roles
 		await queryRunner.query(`
 			INSERT INTO role (name, scope)
@@ -52,8 +56,8 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		`);
 
 		await queryRunner.query(`
-			INSERT INTO user(id, firstName, lastName, createdAt, updatedAt, globalRoleId) values
-			('${uuid()}', 'default', 'default', DateTime('now'), DateTime('now'), ${insertedOwnerRole[0].insertId})
+			INSERT INTO user(id, globalRoleId) values
+			('${uuid()}', ${insertedOwnerRole[0].insertId})
 		`);
 
 		await queryRunner.query(`
@@ -69,5 +73,6 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "user"`);
 		await queryRunner.query(`DROP TABLE "role"`);
 		await queryRunner.query(`DROP TABLE "settings"`);
+		await queryRunner.query(`DROP INDEX "IDX_xeendlvptc5jy4hbol17b5xery"`);
 	}
 }
