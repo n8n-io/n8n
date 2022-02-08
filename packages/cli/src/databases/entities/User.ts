@@ -17,7 +17,7 @@ import { DatabaseType, IPersonalizationSurveyAnswers } from '../..';
 import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
-import { DoesNotContainLinkTag, DoesNotContainScriptTag } from '../utils/customValidators';
+import { NoXss } from '../utils/customValidators';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.get('database.type') as DatabaseType;
@@ -61,15 +61,13 @@ export class User {
 	email: string;
 
 	@Column({ length: 32, nullable: true })
-	@DoesNotContainScriptTag()
-	@DoesNotContainLinkTag()
+	@NoXss()
 	@IsString({ message: 'First name must be of type string.' })
 	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
 	@Column({ length: 32, nullable: true })
-	@DoesNotContainScriptTag()
-	@DoesNotContainLinkTag()
+	@NoXss()
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
