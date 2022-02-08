@@ -61,11 +61,10 @@ export function authenticationMethods(this: N8nApp): void {
 			if (cookieContents) {
 				// If logged in, return user data (basically cookie contents)
 				try {
-					const tokenInfo = jwt.verify(
+					return jwt.verify(
 						cookieContents,
 						config.get('userManagement.jwtSecret') as string,
 					) as PublicUser;
-					return tokenInfo;
 				} catch (error) {
 					throw new Error('Invalid login information');
 				}
@@ -93,6 +92,7 @@ export function authenticationMethods(this: N8nApp): void {
 
 			const userData = await issueJWT(user);
 			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+
 			return sanitizeUser(user);
 		}),
 	);
