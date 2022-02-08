@@ -16,7 +16,7 @@
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<TagsDropdown
-					v-if="canUserUseTags"
+					v-if="areTagsEnabled"
 					:createEnabled="true"
 					:currentTagIds="currentTagIds"
 					:eventBus="dropdownBus"
@@ -72,7 +72,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		this.$nextTick(() => this.focusOnNameInput());
 	},
 	computed: {
-		...mapGetters('users', ['canUserUseTags']),
+		...mapGetters('settings', ['areTagsEnabled']),
 	},
 	watch: {
 		isActive(active) {

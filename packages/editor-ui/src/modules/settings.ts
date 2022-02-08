@@ -52,6 +52,9 @@ const module: Module<ISettingsState, IRootState> = {
 		isTelemetryEnabled: (state) => {
 			return state.settings.telemetry && state.settings.telemetry.enabled;
 		},
+		areTagsEnabled: (state) => {
+			return state.settings.tagsEnabled !== undefined ? state.settings.tagsEnabled : true;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {

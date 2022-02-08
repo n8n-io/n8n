@@ -557,6 +557,7 @@ export interface IN8nUISettings {
 	userManagement: IUserManagementConfig;
 	defaultLocale: string;
 	logLevel: ILogLevel;
+	tagsEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -639,6 +640,7 @@ export interface ITagRow {
 	disable?: boolean;
 	update?: boolean;
 	delete?: boolean;
+	canDelete?: boolean;
 }
 
 export interface IVersion {

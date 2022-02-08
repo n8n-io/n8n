@@ -30,5 +30,6 @@ export async function getSettings(context: IRestApiContext): Promise<IN8nUISetti
 		smtpSetup: smtpSetup === 'true',
 	};
 	settings.personalizationSurveyEnabled = personalizationSurveyEnabled === 'true';
+	settings.tagsEnabled = true;
 	return settings;
 }

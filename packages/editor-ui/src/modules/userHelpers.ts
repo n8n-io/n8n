@@ -96,9 +96,9 @@ export const PERMISSIONS: IUserPermissions = {
 		},
 	},
 	TAGS: {
-		CAN_USE_TAGS: {
+		CAN_DELETE_TAGS: {
 			allow: {
-				role: [ROLE.Default],
+				role: [ROLE.Owner, ROLE.Default],
 			},
 		},
 	},

@@ -10,7 +10,7 @@
 					<n8n-heading tag="h1" size="xlarge" class="title">
 						{{ $locale.baseText('workflowOpen.openWorkflow') }}
 					</n8n-heading>
-					<div class="tags-filter" v-if="canUserUseTags">
+					<div class="tags-filter" v-if="areTagsEnabled">
 						<TagsDropdown
 							:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
 							:currentTagIds="filterTagIds"
@@ -34,7 +34,7 @@
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
-								<TagsContainer v-if="canUserUseTags" class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick" :clickable="true" :hoverable="true" />
+								<TagsContainer v-if="areTagsEnabled" class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick" :clickable="true" :hoverable="true" />
 							</div>
 						</template>
 					</el-table-column>
@@ -94,7 +94,7 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapGetters('users', ['canUserUseTags']),
+		...mapGetters('settings', ['areTagsEnabled']),
 		filteredWorkflows (): IWorkflowShortResponse[] {
 			return this.workflows
 				.filter((workflow: IWorkflowShortResponse) => {

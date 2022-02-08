@@ -23,7 +23,7 @@
 			</template>
 		</BreakpointsObserver>
 
-		<span v-if="canUserUseTags" class="tags">
+		<span v-if="areTagsEnabled" class="tags">
 			<div
 				v-if="isTagsEditEnabled">
 				<TagsDropdown
@@ -129,7 +129,7 @@ export default mixins(workflowHelpers).extend({
 			isDirty: "getStateIsDirty",
 			currentWorkflowTagIds: "workflowTags",
 		}),
-		...mapGetters('users', ['canUserUseTags']),
+		...mapGetters('settings', ['areTagsEnabled']),
 		isNewWorkflow(): boolean {
 			return !this.$route.params.name;
 		},
