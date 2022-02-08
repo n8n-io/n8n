@@ -26,7 +26,7 @@ describe('auth endpoints', () => {
 
 			const newOwner = new User();
 
-			const o = Object.assign(newOwner, {
+			Object.assign(newOwner, {
 				id: uuid(),
 				email: TEST_USER.email,
 				firstName: TEST_USER.firstName,
