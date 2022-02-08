@@ -5,17 +5,17 @@ import * as request from 'supertest';
 import { URL } from 'url';
 import bodyParser = require('body-parser');
 
-import config = require('../../config');
+import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
-import { addRoutes as authMiddleware } from '../../src/UserManagement/routes';
-import { Db } from '../../src';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../../src/databases/entities/User';
-import { meNamespace as meEndpoints } from '../../src/UserManagement/routes/me';
-import { usersNamespace as usersEndpoints } from '../../src/UserManagement/routes/users';
-import { authenticationMethods as authEndpoints } from '../../src/UserManagement/routes/auth';
-import { ownerNamespace as ownerEndpoints } from '../../src/UserManagement/routes/owner';
+import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
+import { Db } from '../../../src';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../../../src/databases/entities/User';
+import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
+import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
+import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
+import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { getConnection } from 'typeorm';
-import { issueJWT } from '../../src/UserManagement/auth/jwt';
+import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 
 export const isTestRun = process.argv[1].split('/').includes('jest');
 

@@ -4,11 +4,11 @@ import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
-import config = require('../config');
+import config = require('../../config');
 import * as utils from './shared/utils';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { Db } from '../src';
-import { User } from '../src/databases/entities/User';
+import { Db } from '../../src';
+import { User } from '../../src/databases/entities/User';
 
 describe('/me endpoints', () => {
 	describe('Shell requests', () => {

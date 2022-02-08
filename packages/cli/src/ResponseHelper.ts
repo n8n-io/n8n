@@ -15,7 +15,7 @@ import {
 	IExecutionResponse,
 	IWorkflowDb,
 } from '.';
-import { isTestRun } from '../test/shared/utils';
+import { isTestRun } from '../test/integration/shared/utils';
 
 /**
  * Special Error which allows to return also an error code and http status code

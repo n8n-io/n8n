@@ -5,11 +5,11 @@ import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 import * as request from 'supertest';
 
-import config = require('../config');
+import config = require('../../config');
 import * as utils from './shared/utils';
 import { LOGGED_OUT_RESPONSE_BODY, REST_PATH_SEGMENT } from './shared/constants';
-import { Db } from '../src';
-import { User } from '../src/databases/entities/User';
+import { Db } from '../../src';
+import { User } from '../../src/databases/entities/User';
 
 describe('auth endpoints', () => {
 	describe('Owner requests', () => {
@@ -110,7 +110,7 @@ describe('auth endpoints', () => {
 
 		test('GET /logout should log user out', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAgent(app, owner);
+			const ownerAgent = await utils.createAuthAgent(app, owner);
 
 			const response = await ownerAgent.get('/logout');
 

@@ -4,8 +4,8 @@ import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
 import * as utils from './shared/utils';
-import { Db } from '../src';
-import config = require('../config');
+import { Db } from '../../src';
+import config = require('../../config');
 
 describe('/owner endpoints', () => {
 	describe('Shell requests', () => {
