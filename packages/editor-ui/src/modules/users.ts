@@ -94,11 +94,6 @@ const module: Module<IUsersState, IRootState> = {
 		showUMSetupWarning(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, getters);
 		},
-		isDefaultUser(state: IUsersState, getters: any): boolean { // tslint:disable-line:no-any
-			const user = getters.currentUser as IUser | null;
-
-			return isDefaultUser(user);
-		},
 		isUMEnabled(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any): boolean { // tslint:disable-line:no-any
 			return rootGetters['settings/isUserManagementEnabled'];
 		},
