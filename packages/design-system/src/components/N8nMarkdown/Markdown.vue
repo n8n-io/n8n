@@ -160,17 +160,19 @@ export default {
 
 	h1, h2, h3, h4 {
 		margin-bottom: var(--spacing-s);
+		font-size: var(--font-size-m);
+		font-weight: var(--font-weight-bold);
 	}
 
 	h3, h4 {
-		font-weight: var(--font-weight-bold);;
+		font-weight: var(--font-weight-bold);
 	}
 
 	p,
 	span {
 		margin-bottom: var(--spacing-s);
 		font-size: var(--font-size-m);
-	line-height: var(--font-line-height-xloose);
+		line-height: var(--font-line-height-xloose);
 	}
 
 	ul, ol {
@@ -190,7 +192,8 @@ export default {
 	}
 
 	li > code,
-	p > code {
+	p > code,
+	pre > code {
 		display: block;
 		padding: var(--spacing-s);
 		color: #555555;
