@@ -5,7 +5,7 @@ import {
 } from 'n8n-workflow';
 
 type CampaignMap = {
-	campaign: 'get' | 'getAll';
+	campaign: 'get' | 'getAll' | 'custom';
 };
 
 export type Ads = AllEntities<CampaignMap>;

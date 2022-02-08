@@ -23,7 +23,6 @@ export async function apiRequest(
 	query: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials('googleAdsOAuth2Api');
-
 	if (!credentials) {
 		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
 	}
