@@ -307,8 +307,8 @@
 			"workflowNew": {
 				"cancelButtonText": "",
 				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Save your Changes?",
-				"message": "When you switch workflows your current workflow changes will be lost."
+				"headline": "Switch workflows without saving?",
+				"message": "When you switch workflows without saving, your current changes will be lost."
 			}
 		},
 		"credentials": "Credentials",
@@ -386,7 +386,8 @@
 		"issues": "Issues",
 		"nodeIsExecuting": "Node is executing",
 		"nodeIsWaitingTill": "Node is waiting till {date} {time}",
-		"theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall": "The node is waiting indefinitely for an incoming webhook call."
+		"theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall": "The node is waiting indefinitely for an incoming webhook call.",
+		"waitingForYouToCreateAnEventIn": "Waiting for you to create an event in {nodeType}"
 	},
 	"nodeCreator": {
 		"categoryNames": {
@@ -471,7 +472,7 @@
 		},
 		"clickOnTheQuestionMarkIcon": "Click the '?' icon to open this node on n8n.io",
 		"continueOnFail": {
-			"description": "If active, the workflow continues even if this node's <br />execution fails. When this occurs, the node passes along input data from<br />previous nodes - so your workflow should account for unexpected output data.",
+			"description": "If active, the workflow continues even if this node's execution fails. When this occurs, the node passes along input data from previous nodes - so your workflow should account for unexpected output data.",
 			"displayName": "Continue On Fail"
 		},
 		"executeOnce": {
@@ -511,14 +512,14 @@
 			"beforeRouteLeave": {
 				"cancelButtonText": "",
 				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Save your Changes?",
-				"message": "When you switch workflows your current workflow changes will be lost."
+				"headline": "Switch workflows without saving?",
+				"message": "When you switch workflows without saving, your current changes will be lost."
 			},
 			"initView": {
 				"cancelButtonText": "",
 				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Save your Changes?",
-				"message": "When you switch workflows your current workflow changes will be lost."
+				"headline": "Switch workflows without saving?",
+				"message": "When you switch workflows without saving, your current changes will be lost."
 			},
 			"receivedCopyPasteData": {
 				"cancelButtonText": "",
@@ -667,13 +668,13 @@
 		"continue": "Continue",
 		"eCommerce": "eCommerce",
 		"errorWhileSubmittingResults": "Error while submitting results",
-		"executiveTeam": "Executive Team",
-		"finance": "finance",
+		"executiveTeam": "Executive team",
+		"finance": "Finance",
 		"getStarted": "Get started",
 		"government": "Government",
 		"healthcare": "Healthcare",
-		"howAreYourCodingSkills": "How are your coding skills",
-		"howBigIsYourCompany": "How big is your company",
+		"howAreYourCodingSkills": "How are your coding skills?",
+		"howBigIsYourCompany": "How big is your company?",
 		"hr": "HR",
 		"iCanCodeSomeUsefulThingsBut": "2. I can code some useful things, but I spend a lot of time stuck",
 		"iCanDoAlmostAnythingIWant": "5. I can do almost anything I want, easily (pro coder)",
@@ -682,12 +683,12 @@
 		"iKnowEnoughToBeDangerousBut": "3. I know enough to be dangerous, but I'm no expert",
 		"imNotUsingN8nForWork": "I'm not using n8n for work",
 		"itEngineering": "IT / Engineering",
-		"legal": "legal",
-		"lessThan20people": "Less than 20 people",
+		"legal": "Legal",
+		"lessThan20People": "Less than 20 people",
 		"lookOutForThingsMarked": "Look out for things marked with a ✨. They are personalized to make n8n more relevant to you.",
 		"marketing": "Marketing",
 		"neverCoded": "0 (Never coded)",
-		"operations": "operations",
+		"operations": "Operations",
 		"otherPleaseSpecify": "Other (please specify)",
 		"people": "people",
 		"proCoder": "Pro coder",
@@ -704,7 +705,7 @@
 		"thanks": "Thanks!",
 		"theseQuestionsHelpUs": "These questions help us tailor n8n to you",
 		"whichIndustriesIsYourCompanyIn": "Which industries is your company in?",
-		"whichOfTheseAreasDoYouMainlyWorkIn": "Which of these areas do you mainly work in?"
+		"whichAreasDoYouMainlyWorkIn": "Which areas do you mainly work in?"
 	},
 	"pushConnection": {
 		"showMessage": {
@@ -890,12 +891,6 @@
 	},
 	"workflowActivator": {
 		"activateWorkflow": "Activate workflow",
-		"confirmMessage": {
-			"cancelButtonText": "",
-			"confirmButtonText": "Yes, activate and save!",
-			"headline": "Activate and save?",
-			"message": "When you activate the workflow all currently unsaved changes of the workflow will be saved."
-		},
 		"deactivateWorkflow": "Deactivate workflow",
 		"showError": {
 			"message": "There was a problem and the workflow could not be {newStateName}",
@@ -919,7 +914,8 @@
 				"title": "Problem activating workflow"
 			}
 		},
-		"theWorkflowIsSetToBeActiveBut": "The workflow is set to be active but could not be started.<br />Click to display error message."
+		"theWorkflowIsSetToBeActiveBut": "The workflow is set to be active but could not be started.<br />Click to display error message.",
+		"thisWorkflowHasNoTriggerNodes": "This workflow has no trigger nodes that require activation"
 	},
 	"workflowDetails": {
 		"active": "Active",
@@ -927,26 +923,27 @@
 		"showMessage": {
 			"message": "Please enter a name, or press 'esc' to go back to the old one.",
 			"title": "Name missing"
-		}
+		},
+		"chooseOrCreateATag": "Choose or create a tag"
 	},
 	"workflowHelpers": {
 		"showMessage": {
 			"message": "",
 			"title": "Problem saving workflow"
-		},
-		"chooseOrCreateATag": "Choose or create a tag"
+		}
 	},
 	"workflowOpen": {
 		"active": "Active",
 		"confirmMessage": {
 			"cancelButtonText": "",
 			"confirmButtonText": "Yes, switch workflows and forget changes",
-			"headline": "Save your Changes?",
-			"message": "When you switch workflows your current workflow changes will be lost."
+			"headline": "Switch workflows without saving?",
+			"message": "When you switch workflows without saving, your current changes will be lost."
 		},
 		"created": "Created",
 		"name": "@:reusableBaseText.name",
 		"openWorkflow": "Open Workflow",
+		"filterWorkflows": "Filter by tags",
 		"searchWorkflows": "Search workflows...",
 		"showError": {
 			"message": "There was a problem loading the workflows",
@@ -1039,5 +1036,19 @@
 		"timeoutAfter": "Timeout After",
 		"timeoutWorkflow": "Timeout Workflow",
 		"timezone": "Timezone"
+	},
+	"activationModal": {
+		"workflowActivated": "Workflow activated",
+		"theseExecutionsWillNotShowUp": "These executions will not show up immediately in the editor,",
+		"butYouCanSeeThem": "but you can see them in the",
+		"executionList": "execution list",
+		"ifYouChooseTo": "if you choose to",
+		"saveExecutions": "save executions.",
+		"dontShowAgain": "Don't show again",
+		"yourTriggersWillNowFire": "Your triggers will now fire production executions automatically.",
+		"yourTriggerWillNowFire": "Your trigger will now fire production executions automatically.",
+		"yourWorkflowWillNowRegularlyCheck": "Your workflow will now regularly check {serviceName} for events and trigger executions for them.",
+		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
+		"gotIt": "Got it"
 	}
 }

@@ -83,13 +83,13 @@ export class Airtable implements INodeType {
 				description: 'The ID of the base to access.',
 			},
 			{
-				displayName: 'Table',
+				displayName: 'Table ID',
 				name: 'table',
 				type: 'string',
 				default: '',
 				placeholder: 'Stories',
 				required: true,
-				description: 'The name of table to access.',
+				description: 'The ID of the table to access.',
 			},
 
 			// ----------------------------------

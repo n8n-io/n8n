@@ -2,7 +2,12 @@
 /* eslint-disable no-console */
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
-import { BinaryDataManager, IBinaryDataConfig, UserSettings } from 'n8n-core';
+import {
+	BinaryDataManager,
+	IBinaryDataConfig,
+	UserSettings,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from 'n8n-core';
 import { INode, LoggerProxy } from 'n8n-workflow';
 
 import {
@@ -96,8 +101,9 @@ export class Execute extends Command {
 				console.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			workflowId = workflowData.id!.toString();
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			workflowId = workflowData.id ? workflowData.id.toString() : PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		}
 
 		// Wait till the database is ready
@@ -128,15 +134,15 @@ export class Execute extends Command {
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
-		const instanceId = await UserSettings.getInstanceId();
-		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli);
-
 		// Add the found types to an instance other parts of the application can use
 		const nodeTypes = NodeTypes();
 		await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 		const credentialTypes = CredentialTypes();
 		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+		const instanceId = await UserSettings.getInstanceId();
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;

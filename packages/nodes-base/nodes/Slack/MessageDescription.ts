@@ -995,7 +995,7 @@ export const messageFields: INodeProperties[] = [
 										type: 'options',
 										options: [
 											{
-												name: 'Markdowm',
+												name: 'Markdown',
 												value: 'mrkwdn',
 											},
 											{
@@ -1073,7 +1073,7 @@ export const messageFields: INodeProperties[] = [
 										type: 'options',
 										options: [
 											{
-												name: 'Markdowm',
+												name: 'Markdown',
 												value: 'mrkwdn',
 											},
 											{

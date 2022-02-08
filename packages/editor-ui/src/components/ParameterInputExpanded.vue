@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="$locale.credText().topParameterDisplayName(parameter)"
-		:tooltipText="$locale.credText().topParameterDescription(parameter)"
+		:label="$locale.credText().inputLabelDisplayName(parameter)"
+		:tooltipText="$locale.credText().inputLabelDescription(parameter)"
 		:required="parameter.required"
 		:showTooltip="focused"
 	>
@@ -23,18 +23,21 @@
 		<div class="errors" v-if="showRequiredErrors">
 			{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }} <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $locale.baseText('parameterInputExpanded.openDocs') }}</a>
 		</div>
+		<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
 	</n8n-input-label>
 </template>
 
 <script lang="ts">
 import { IUpdateInformation } from '@/Interface';
 import ParameterInput from './ParameterInput.vue';
+import InputHint from './ParameterInputHint.vue';
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'ParameterInputExpanded',
 	components: {
 		ParameterInput,
+		InputHint,
 	},
 	props: {
 		parameter: {
@@ -94,3 +97,9 @@ export default Vue.extend({
 	},
 });
 </script>
+
+<style lang="scss" module>
+	.hint {
+		margin-top: var(--spacing-4xs);
+	}
+</style>
