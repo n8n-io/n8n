@@ -52,7 +52,9 @@ export default mixins(showMessage).extend({
 		PageAlert,
 	},
 	async mounted() {
-		await this.$store.dispatch('users/fetchUsers');
+		if (!this.showUMSetupWarning) {
+			await this.$store.dispatch('users/fetchUsers');
+		}
 	},
 	computed: {
 		...mapGetters('users', ['allUsers', 'currentUserId', 'showUMSetupWarning']),
