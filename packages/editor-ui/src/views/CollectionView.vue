@@ -101,7 +101,7 @@ export default mixins(workflowHelpers).extend({
 
 <style lang="scss" module>
 .template {
-	width: calc(100vw - 12px);
+	width: calc(100vw - 20px);
 	height: 100%;
 	min-height: 100vh;
 	position: relative;
