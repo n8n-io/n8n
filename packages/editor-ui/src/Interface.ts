@@ -512,11 +512,6 @@ export interface IN8nValueSurveyData {
 export interface IN8nPromptResponse {
 	updated: boolean;
 }
-
-export interface IN8nTemplateResponse {
-	data: IN8nTemplateWorkflow;
-}
-
 export interface IN8nCollectionResponse {
 	data: IN8nCollectionData;
 }
@@ -536,10 +531,12 @@ export interface IN8nCollection {
 	totalworkflow: number;
 }
 
-export interface IN8nTemplateWorkflow {
+export interface IN8nTemplateResponse {
+	data: IN8nTemplateData;
+}
+export interface IN8nTemplateData {
 	workflow: IN8nTemplate;
 }
-
 export interface IN8nTemplate {
 	id: string;
 	categories: ITemplateCategories[];
@@ -555,11 +552,11 @@ export interface IN8nTemplate {
 	};
 }
 
-export interface ISearchPayload {
-	data: ISearchResults;
+export interface IN8nSearchResponse {
+	data: IN8nSearchData;
 }
 
-export interface ISearchResults{
+export interface IN8nSearchData {
 	categories: ITemplateCategory[];
 	collections: ITemplateCollection[];
 	totalworkflow: number;
@@ -833,6 +830,7 @@ export interface ITemplateState {
 	collection: ITemplateCollection;
 	collections: ITemplateCollection[];
 	templates: IN8nTemplate[];
+	template: IN8nTemplate;
 	totalworkflow: number | null;
 }
 

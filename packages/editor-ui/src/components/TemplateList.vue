@@ -2,8 +2,8 @@
 	<div :class="$style.list">
 		<div :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
-				Workflows
-				<span v-if="!loading" v-text="`(${totalworkflows})`" />
+				{{ $locale.baseText('templates.workflows') }}
+				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
 			</n8n-heading>
 		</div>
 		<div v-if="loading" :class="$style.container">
@@ -19,26 +19,26 @@
 				<div
 					v-for="(workflow, index) in workflows"
 					:key="'workflow-' + index"
-					:class="$style.card"
-					@click="navigateTo(workflow.id, 'TemplatePage', $event)"
+					:class="[$style.card, useWorkflowButton ? $style.workflowButton : '']"
+					@click="navigateTo(workflow.id, 'TemplateView', $event)"
 				>
 					<TemplateCard
-						:title="workflow.name"
-						:loading="false"
 						:class="index === workflows.length - 1 && !shouldShowLoadingState ? $style.last : ''"
+						:loading="false"
+						:title="workflow.name"
 					>
 						<template v-slot:button>
+							<div :class="$style.button">
+								<n8n-button
+									v-if="useWorkflowButton"
+									type="outline"
+									label="Use workflow"
+									@click.stop="navigateTo(workflow.id, 'WorkflowTemplate', $event)"
+								/>
+							</div>
 							<div :class="$style.nodes">
-								<div
-									v-for="(node, index) in workflow.nodes"
-									:key="index"
-									:class="$style.icon"
-								>
-									<NodeIcon
-										:nodeType="node"
-										:title="node.name"
-										:size="24"
-									/>
+								<div v-for="(node, index) in workflow.nodes" :key="index" :class="$style.icon">
+									<TemplateNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
 								</div>
 							</div>
 						</template>
@@ -48,7 +48,7 @@
 								<span v-if="workflow.totalViews">
 									<n8n-text size="small" color="text-light">
 										<font-awesome-icon icon="eye" />
-										{{ truncate(workflow.totalViews) }}
+										{{ abbreviateNumber(workflow.totalViews) }}
 									</n8n-text>
 								</span>
 								<div v-if="workflow.totalViews" :class="$style.line" v-text="'|'" />
@@ -61,20 +61,18 @@
 						</template>
 					</TemplateCard>
 				</div>
-				<div v-infocus />
-				<div v-if="shouldShowLoadingState && !searchFinished">
+				<div v-if="infinityScroll" v-infocus />
+				<div v-if="infinityScroll && shouldShowLoadingState && !searchFinished">
 					<TemplateCard :loading="true" title="" />
 					<TemplateCard :loading="true" title="" />
 					<TemplateCard :loading="true" title="" />
 					<TemplateCard :loading="true" title="" />
 				</div>
 			</div>
-
-			<div :class="$style.text" v-if="!shouldShowLoadingState">
-				<n8n-text size="medium" color="text-base">End of results</n8n-text>
+			<div v-if="infinityScroll && !shouldShowLoadingState" :class="$style.text">
+				<n8n-text size="medium" color="text-base">{{ $locale.baseText('templates.endResult') }}</n8n-text>
 			</div>
 		</div>
-
 		<div v-else>
 			<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 		</div>
@@ -82,24 +80,47 @@
 </template>
 
 <script lang="ts">
-import NodeIcon from '@/components/Templates/WorkflowPage/TemplateDetails/NodeIcon/NodeIcon.vue';
-import TemplateCard from '@/components/Templates/SearchPage/TemplateCard.vue';
+import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
+import TemplateCard from '@/components/TemplateCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
 	props: {
+		abbreviateNumber: {
+			type: Function,
+		},
 		categories: {
 			type: Array,
+		},
+		infinityScroll: {
+			type: Boolean,
+			default: false,
 		},
 		loading: {
 			type: Boolean,
 		},
+		navigateTo: {
+			type: Function,
+		},
+		nodeIconSize: {
+			type: Number,
+			default: 24,
+		},
 		search: {
 			type: String,
+		},
+		totalWorkflows: {
+			type: Number,
+		},
+		useWorkflowButton: {
+			type: Boolean,
+			default: false,
+		},
+		workflows: {
+			type: Array,
 		},
 	},
 	watch: {
@@ -121,7 +142,7 @@ export default mixins(genericHelpers).extend({
 			inserted: (el, binding, vnode) => {
 				const f = () => {
 					if (vnode.context) {
-						if (vnode.context.$route.name === 'TemplateSearchPage') {
+						if (vnode.context.$props.infinityScroll) {
 							const rect = el.getBoundingClientRect();
 							if (el) {
 								const inView =
@@ -161,21 +182,12 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	components: {
-		NodeIcon,
+		TemplateNodeIcon,
 		TemplateCard,
 	},
 	computed: {
 		shouldShowLoadingState(): boolean | undefined {
-			if (this.workflows && this.totalworkflows) {
-				return this.totalworkflows > this.workflows.length;
-			}
-			return;
-		},
-		totalworkflows() {
-			return this.$store.getters['templates/getTotalWorkflows'];
-		},
-		workflows() {
-			return this.$store.getters['templates/getTemplates'];
+			return this.totalWorkflows > this.workflows.length;
 		},
 	},
 	data() {
@@ -185,82 +197,77 @@ export default mixins(genericHelpers).extend({
 			skip: 1,
 		};
 	},
-	methods: {
-		navigateTo(templateId: string, page: string, e: PointerEvent) {
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: page, params: { id: templateId } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				this.$router.push({ name: page, params: { id: templateId } });
-			}
-		},
-		truncate(views: number): string {
-			return new Intl.NumberFormat('en-GB', {
-				notation: 'compact',
-				compactDisplay: 'short',
-			}).format(views);
-		},
-	},
 });
 </script>
 
 <style lang="scss" module>
 .header {
-  padding-bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing-2xs);
 }
 
 .list {
-  padding-top: var(--spacing-l);
+	padding-top: var(--spacing-l);
 }
 
 .wrapper {
-  height: auto;
-  background-color: var(--color-white);
-  border-radius: var(--border-radius-large);
-  border: $--version-card-border;
-  overflow: auto;
+	height: auto;
+	background-color: var(--color-white);
+	border-radius: var(--border-radius-large);
+	border: $--version-card-border;
+	overflow: auto;
 }
 
 .nodes {
 	display: flex;
 	justify-content: center;
 	align-content: center;
-  flex-direction: row;
+	flex-direction: row;
 }
 
 .icon {
 	margin-left: var(--spacing-xs);
 }
 
+.workflowButton {
+	&:hover {
+		.button {
+			display: block;
+		}
+
+		.nodes {
+			display: none;
+		}
+	}
+}
+
 .card {
-  cursor: pointer;
+	cursor: pointer;
 }
 
 .last {
-  div {
-  	border: none;
-  }
+	div {
+		border: none;
+	}
 }
 
 .button {
-  display: none;
-  position: relative;
-  z-index: 100;
+	display: none;
+	position: relative;
+	z-index: 100;
 }
 
 .footer {
-  display: flex;
-  align-items: center;
+	display: flex;
+	align-items: center;
 }
 
 .line {
-  padding: 0 6px;
-  color: var(--color-foreground-base);
-  font-size: var(--font-size-2xs);
+	padding: 0 6px;
+	color: var(--color-foreground-base);
+	font-size: var(--font-size-2xs);
 }
 
 .text {
-  margin-top: var(--spacing-xl);
+	margin-top: var(--spacing-xl);
 }
 </style>

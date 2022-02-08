@@ -13,7 +13,7 @@
 						:key="node.name"
 						:class="$style.icon"
 					>
-						<NodeIcon
+						<TemplateNodeIcon
 							:nodeType="node"
 							:title="node.name"
 							:clickButton="redirectToSearchPage"
@@ -57,8 +57,9 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import TemplateBlock from './TemplateBlock/TemplateBlock.vue';
-import NodeIcon from './NodeIcon/NodeIcon.vue';
+import TemplateBlock from '@/components/TemplateBlock.vue';
+import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
+
 import { abbreviateNumber } from '@/components/helpers';
 
 interface ITag {
@@ -71,6 +72,7 @@ interface INode {
 }
 
 export default Vue.extend({
+	name: 'TemplateDetails',
 	props: {
 		loading: {
 			type: Boolean,
@@ -81,7 +83,7 @@ export default Vue.extend({
 	},
 	components: {
 		TemplateBlock,
-		NodeIcon,
+		TemplateNodeIcon,
 	},
 	methods: {
 		abbreviateNumber,

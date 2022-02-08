@@ -5,15 +5,14 @@ import {
 	IN8nCollectionResponse,
 	IN8nCollectionData,
 	IN8nCollection,
+	IN8nSearchResponse,
+	IN8nSearchData,
 	IN8nTemplate,
 	IN8nTemplateResponse,
-	IN8nTemplateWorkflow,
+	IN8nTemplateData,
 	ITemplateCategory,
 	ITemplateCollection,
 	ITemplateState,
-	ISearchPayload,
-	ISearchResults,
-
 } from '../Interface';
 
 import Vue from 'vue';
@@ -25,6 +24,7 @@ const module: Module<ITemplateState, IRootState> = {
 		collection: {} as ITemplateCollection,
 		collections: [],
 		templates: [],
+		template: {} as IN8nTemplate,
 		totalworkflow: null,
 	},
 	getters: {
@@ -39,6 +39,9 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		getTemplates(state: ITemplateState) {
 			return state.templates;
+		},
+		getTemplate(state: ITemplateState) {
+			return state.template;
 		},
 		getTotalWorkflows(state: ITemplateState) {
 			return state.totalworkflow;
@@ -58,7 +61,7 @@ const module: Module<ITemplateState, IRootState> = {
 			Vue.set(state, 'collections', collections);
 		},
 		setTemplate(state: ITemplateState, template: IN8nTemplate) {
-			state.templates.push(template);
+			Vue.set(state, 'template', template);
 		},
 		setTotalWorkflows(state: ITemplateState, totalworkflow: number) {
 			state.totalworkflow = totalworkflow;
@@ -83,7 +86,7 @@ const module: Module<ITemplateState, IRootState> = {
 		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
 			try {
 				const response: IN8nTemplateResponse = await getTemplateById(templateId);
-				const data: IN8nTemplateWorkflow = response.data;
+				const data: IN8nTemplateData = response.data;
 				const template: IN8nTemplate = data.workflow;
 
 				context.commit('setTemplate', template);
@@ -96,8 +99,8 @@ const module: Module<ITemplateState, IRootState> = {
 			const searchQuery = search.length || category ? true : false;
 			const allData = fetchCategories ? fetchCategories : !searchQuery;
 			try {
-				const payload: ISearchPayload = await getTemplates(numberOfResults, skip, category, search, allData, !allData);
-				const results : ISearchResults = payload.data;
+				const payload: IN8nSearchResponse = await getTemplates(numberOfResults, skip, category, search, allData, !allData);
+				const results : IN8nSearchData = payload.data;
 				if (allData) {
 					const categories = results.categories.map((category: ITemplateCategory) => {
 						category.selected = false;

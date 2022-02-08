@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<div :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
-				Collections
+				{{ $locale.baseText('templates.collections') }}
 				<span v-if="!loading" v-text="`(${collections.length})`" />
 			</n8n-heading>
 		</div>
@@ -20,11 +20,13 @@
 					:id="collection.id"
 					:key="collection.id"
 					:loading="loading"
+					:navigate-to="navigateTo"
 					:title="collection.name"
 				>
 					<template v-slot:footer>
 						<n8n-text size="small" color="text-light">
-							{{ collection.workflows.length }} Workflows
+							{{ collection.workflows.length }}
+							{{ $locale.baseText('templates.workflows') }}
 						</n8n-text>
 						<NodeList :nodes="collection.nodes" :showMore="false" />
 					</template>
@@ -47,31 +49,30 @@
 </template>
 
 <script lang="ts">
-import CollectionsCard from '@/components/Templates/SearchPage/CollectionsCard.vue';
-import NodeList from '@/components/Templates/SearchPage/NodeList.vue';
-
+import CollectionsCard from '@/components/CollectionsCard.vue';
+import NodeList from '@/components/NodeList.vue';
 import VueAgile from 'vue-agile';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
 	name: 'CollectionsCarousel',
 	props: {
+		collections: {
+			type: Array,
+		},
 		loading: {
 			type: Boolean,
+		},
+		navigateTo: {
+			type: Function,
 		},
 	},
 	components: {
 		CollectionsCard,
 		NodeList,
 		VueAgile,
-	},
-	computed: {
-		collections(): [] {
-			return this.$store.getters['templates/getCollections'];
-		},
 	},
 	data() {
 		return {

@@ -1,7 +1,6 @@
 <template>
 	<div :class="$style.filters" class="template-filters">
 		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
-
 		<div v-if="loading" :class="$style.list">
 			<div v-for="(block, index) in loadingBlocks" :key="'block-' + index">
 				<n8n-loading
@@ -48,7 +47,6 @@
 <script lang="ts">
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { ITemplateCategory } from '@/Interface';
-
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({

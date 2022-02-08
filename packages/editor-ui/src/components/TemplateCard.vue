@@ -27,7 +27,6 @@
 
 <script lang="ts">
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
@@ -46,9 +45,7 @@ export default mixins(genericHelpers).extend({
 		},
 		loadingRows: {
 			type: Number,
-			default: () => {
-				return 1;
-			},
+			default: 1,
 		},
 		title: String,
 	},

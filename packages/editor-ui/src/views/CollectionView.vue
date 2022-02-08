@@ -5,38 +5,36 @@
 				<go-back-button />
 				<div :class="$style.wrapper">
 					<div :class="$style.title">
-						<n8n-heading v-if="!loading" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
+						<n8n-heading v-if="!loading" tag="h1" size="2xlarge">{{ collection.name }}</n8n-heading>
+						<n8n-text v-if="!loading" color="text-base" size="small" :bold="true">
+							{{ $locale.baseText('templates.collection') }}
+						</n8n-text>
 						<n8n-loading :animated="true" :loading="loading" :rows="2" variant="h1" />
-					</div>
-					<div :class="$style.button">
-						<n8n-button
-							v-if="!loading"
-							:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
-							size="large"
-							@click="navigateTo(template.id, 'WorkflowTemplate', $event)"
-						/>
-						<n8n-loading :animated="true" :loading="loading" :rows="1" variant="button" />
 					</div>
 				</div>
 			</div>
-			<div>
-				<div :class="$style.image">
-					<n8n-image v-if="template.mainImage" :images="template.mainImage.image" />
+			<div :class="$style.content">
+				<div :class="$style.markdown">
+					<n8n-markdown
+						:content="collection.description"
+						:images="collection.image"
+						:loading="loading"
+					/>
+					<TemplateList
+						:abbreviate-number="abbreviateNumber"
+						:infinity-scroll="false"
+						:loading="loading"
+						:navigate-to="navigateTo"
+						:node-icon-size="18"
+						:use-workflow-button="true"
+						:workflows="collection.workflows"
+					/>
 				</div>
-				<div :class="$style.content">
-					<div :class="$style.markdown">
-						<n8n-markdown
-							:content="template.description"
-							:images="template.image"
-							:loading="loading"
-						/>
-					</div>
-					<div :class="$style.details">
-						<TemplateDetails
-							:loading="loading"
-							:template="template"
-						/>
-					</div>
+				<div :class="$style.details">
+					<TemplateDetails
+						:loading="loading"
+						:template="collection"
+					/>
 				</div>
 			</div>
 		</div>
@@ -46,23 +44,27 @@
 <script lang="ts">
 import GoBackButton from '@/components/GoBackButton.vue';
 import TemplateDetails from '@/components/TemplateDetails.vue';
+import TemplateList from '@/components/TemplateList.vue';
 
-import { IN8nTemplate } from '@/Interface';
+import { abbreviateNumber } from '@/components/helpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { IN8nCollection } from '@/Interface';
+
 import mixins from 'vue-typed-mixins';
 
 export default mixins(workflowHelpers).extend({
-	name: 'TemplateView',
+	name: 'CollectionView',
 	components: {
 		GoBackButton,
 		TemplateDetails,
+		TemplateList,
 	},
 	computed: {
+		collection(): IN8nCollection {
+			return this.$store.getters['templates/getCollection'];
+		},
 		isMenuCollapsed() {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
-		},
-		template(): IN8nTemplate {
-			return  this.$store.getters['templates/getTemplate'];
 		},
 	},
 	data() {
@@ -71,6 +73,7 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	methods: {
+		abbreviateNumber,
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (e.metaKey || e.ctrlKey) {
 				const route = this.$router.resolve({ name: page, params: { id } });
@@ -82,12 +85,12 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	async mounted() {
-		const templateId = this.$route.params.id;
-		const response = await this.$store.dispatch('templates/getTemplateById', templateId);
+		const collectionId = this.$route.params.id;
+		const response = await this.$store.dispatch('templates/getCollectionById', collectionId);
 		if (!response) {
 			this.$showMessage({
 				title: 'Error',
-				message: 'Could not find workflow template',
+				message: 'Could not find collection',
 				type: 'error',
 			});
 		}
@@ -141,23 +144,14 @@ export default mixins(workflowHelpers).extend({
 }
 
 .title {
-	width: 75%;
+	width: 100%;
 }
 
 .button {
 	display: block;
 }
 
-.image {
-	width: 100%;
-
-	img {
-		width: 100%;
-	}
-}
-
 .content {
-	padding: var(--spacing-2xl) 0;
 	display: flex;
 	justify-content: space-between;
 }

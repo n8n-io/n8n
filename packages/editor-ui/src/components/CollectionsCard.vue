@@ -1,7 +1,14 @@
 <template>
-	<div :class="$style.card" @click="redirectToCollectionPage(id)">
+	<div
+		:class="$style.card"
+		@click="navigateTo(id, 'CollectionView', $event)"
+	>
 		<div :class="$style.container">
-			<span :class="$style.title" v-if="!loading" v-text="title" />
+			<span
+				v-if="!loading"
+				v-text="title"
+				:class="$style.title"
+			/>
 			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
 			<div :class="$style.footer">
 				<slot name="footer"></slot>
@@ -12,19 +19,22 @@
 
 <script lang="ts">
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
 	name: 'CollectionsCard',
 	props: {
-		id: String,
-		loading: Boolean,
-		title: String,
-	},
-	methods: {
-		redirectToCollectionPage(collectionId: string) {
-			this.$router.push({ name: 'CollectionPage', params: { id: collectionId } });
+		id: {
+			type: String,
+		},
+		loading: {
+			type: Boolean,
+		},
+		navigateTo: {
+			type: Function,
+		},
+		title: {
+			type: String,
 		},
 	},
 });

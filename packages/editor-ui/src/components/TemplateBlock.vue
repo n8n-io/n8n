@@ -11,7 +11,9 @@
 
 <script lang="ts">
 import Vue from 'vue';
+
 export default Vue.extend({
+	name: 'TemplateBlock',
 	props: {
 		title: {
 			type: String,

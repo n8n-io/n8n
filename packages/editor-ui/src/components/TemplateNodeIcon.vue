@@ -2,9 +2,9 @@
 	<div
 		:class="$style.wrapper"
 		:style="iconStyleData"
-		@mouseover="showTooltip = true"
-    @mouseleave="showTooltip = false"
 		@click="clickButton(nodeType)"
+		@mouseover="showTooltip = true"
+		@mouseleave="showTooltip = false"
 	>
 		<div :class="$style.tooltip">
 			<n8n-tooltip placement="top" :manual="true" :value="showTooltip">
@@ -12,11 +12,7 @@
 				<span />
 			</n8n-tooltip>
 		</div>
-		<div
-			v-if="nodeIconData !== null"
-			:class="$style.icon"
-			title=""
-		>
+		<div v-if="nodeIconData !== null" :class="$style.icon" title="">
 			<img
 				v-if="nodeIconData.type === 'file'"
 				:src="nodeIconData.fileBuffer || nodeIconData.path"
@@ -29,13 +25,14 @@
 			/>
 		</div>
 		<div v-else :class="$style.placeholder">
-			{{nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
+			{{ nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
+
 import { IVersionNode } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
@@ -47,7 +44,7 @@ interface NodeIconData {
 }
 
 export default Vue.extend({
-	name: 'NodeIcon',
+	name: 'TemplateNodeIcon',
 	props: {
 		circle: {
 			type: Boolean,
@@ -68,11 +65,11 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		iconStyleData (): object {
+		iconStyleData(): object {
 			const nodeType = this.nodeType as IVersionNode | null;
 			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
 			if (!this.size) {
-				return {color};
+				return { color };
 			}
 
 			return {
@@ -81,33 +78,37 @@ export default Vue.extend({
 				height: this.size + 'px',
 				'font-size': this.size + 'px',
 				'line-height': this.size + 'px',
-				'border-radius': this.circle ? '50%': '2px',
+				'border-radius': this.circle ? '50%' : '2px',
 				...(this.disabled && {
 					color: '#ccc',
 					'-webkit-filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
-					'filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
+					filter: 'contrast(40%) brightness(1.5) grayscale(100%)',
 				}),
 			};
 		},
-		fontStyleData (): object {
+		fontStyleData(): object {
 			return {
 				'max-width': this.size + 'px',
 			};
 		},
-		imageStyleData (): object {
+		imageStyleData(): object {
 			return {
 				width: '100%',
 				'max-width': '100%',
 				'max-height': '100%',
 			};
 		},
-		isSvgIcon (): boolean {
-			if (this.nodeIconData && this.nodeIconData.type === 'file' && this.nodeIconData.fileExtension === 'svg') {
+		isSvgIcon(): boolean {
+			if (
+				this.nodeIconData &&
+				this.nodeIconData.type === 'file' &&
+				this.nodeIconData.fileExtension === 'svg'
+			) {
 				return true;
 			}
 			return false;
 		},
-		nodeIconData (): null | NodeIconData {
+		nodeIconData(): null | NodeIconData {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
 			if (nodeType === null) {
 				return null;
@@ -152,7 +153,7 @@ export default Vue.extend({
 }
 
 .icon {
-  height: 100%;
+	height: 100%;
 	width: 100%;
 	display: flex;
 	justify-content: center;

@@ -1,4 +1,4 @@
-import { IN8nCollectionResponse, IN8nTemplateResponse, ISearchPayload } from '@/Interface';
+import { IN8nCollectionResponse, IN8nTemplateResponse, IN8nSearchResponse } from '@/Interface';
 import { post } from './helpers';
 import { TEMPLATES_BASE_URL } from '@/constants';
 
@@ -96,7 +96,7 @@ export async function getTemplates(
 	search: string,
 	allData = true,
 	searchQuery = false,
-): Promise<ISearchPayload> {
+): Promise<IN8nSearchResponse> {
 	const queryCategory = category && category.length ? `${ '[' + category + ']'}` : null;
 	const query = `query {
 		categories: getTemplateCategories @include(if: ${allData}) @skip(if: ${searchQuery}){

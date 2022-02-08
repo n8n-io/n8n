@@ -1,14 +1,14 @@
 <template>
 	<div :class="$style.list">
 		<div
-			:class="$style.container"
 			v-for="node in filteredCoreNodes.slice(0, countNodesToBeSliced(filteredCoreNodes))"
+			:class="$style.container"
 			:key="node.name"
 		>
-			<NodeIcon
+			<TemplateNodeIcon
 				:nodeType="node"
-				:title="node.name"
 				:size="nodeSize"
+				:title="node.name"
 			/>
 		</div>
 		<div :class="$style.button" v-if="filteredCoreNodes.length > nodesToBeShown + 1">
@@ -18,7 +18,7 @@
 </template>
 
 <script lang="ts">
-import NodeIcon from '@/components/Templates/WorkflowPage/TemplateDetails/NodeIcon/NodeIcon.vue';
+import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { ITemplateCategories } from '@/Interface';
@@ -41,9 +41,11 @@ interface INode {
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
-	name: 'TemplateCard',
+	name: 'NodeList',
 	props: {
-		nodes: Array,
+		nodes: {
+			type: Array,
+		},
 		nodeSize: {
 			type: Number,
 			default: 18,
@@ -55,7 +57,7 @@ export default mixins(genericHelpers).extend({
 		};
 	},
 	components: {
-		NodeIcon,
+		TemplateNodeIcon,
 	},
 	computed: {
 		filteredCoreNodes() {

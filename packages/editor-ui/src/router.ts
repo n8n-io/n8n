@@ -1,18 +1,12 @@
 import Vue from 'vue';
 import Router from 'vue-router';
+
+import CollectionView from '@/views/CollectionView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import TemplateView from '@/views/TemplateView.vue';
-
-import CollectionPageHeader from '@/components/Templates/CollectionPage/Layout/Header.vue';
-import CollectionPageContent from '@/components/Templates/CollectionPage/Layout/Content.vue';
-
-import SearchPageHeader from '@/components/Templates/SearchPage/Layout/Header.vue';
-import SearchPageContent from '@/components/Templates/SearchPage/Layout/Content.vue';
-
-import WorkflowPageHeader from '@/components/Templates/WorkflowPage/Layout/Header.vue';
-import WorkflowPageContent from '@/components/Templates/WorkflowPage/Layout/Content.vue';
+import TemplatesView from '@/views/TemplatesView.vue';
 
 Vue.use(Router);
 
@@ -21,6 +15,14 @@ export default new Router({
 	// @ts-ignore
 	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
 	routes: [
+		{
+			path: '/collection/:id',
+			name: 'CollectionView',
+			components: {
+				default: CollectionView,
+				sidebar: MainSidebar,
+			},
+		},
 		{
 			path: '/execution/:id',
 			name: 'ExecutionById',
@@ -31,55 +33,20 @@ export default new Router({
 			},
 		},
 		{
-			path: '/collection/',
+			path: '/template/:id',
+			name: 'TemplateView',
 			components: {
 				default: TemplateView,
 				sidebar: MainSidebar,
 			},
-			children: [
-				{
-					path: ':id',
-					name: 'CollectionPage',
-					components: {
-						header: CollectionPageHeader,
-						default: CollectionPageContent,
-					},
-				},
-			],
-		},
-		{
-			path: '/template/',
-			components: {
-				default: TemplateView,
-				sidebar: MainSidebar,
-			},
-			children: [
-				{
-					path: ':id',
-					name: 'TemplatePage',
-					components: {
-						header: WorkflowPageHeader,
-						default: WorkflowPageContent,
-					},
-				},
-			],
 		},
 		{
 			path: '/templates/',
+			name: 'TemplatesView',
 			components: {
-				default: TemplateView,
+				default: TemplatesView,
 				sidebar: MainSidebar,
 			},
-			children: [
-				{
-					path: '',
-					name: 'TemplateSearchPage',
-					components: {
-						header: SearchPageHeader,
-						default: SearchPageContent,
-					},
-				},
-			],
 		},
 		{
 			path: '/workflow',
