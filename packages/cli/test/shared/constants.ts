@@ -30,7 +30,7 @@ export const SUCCESS_RESPONSE_BODY: Readonly<object> = {
 	},
 };
 
-export const LOGOUT_RESPONSE_BODY: Readonly<object> = {
+export const LOGGED_OUT_RESPONSE_BODY: Readonly<object> = {
 	data: {
 		loggedOut: true,
 	},
