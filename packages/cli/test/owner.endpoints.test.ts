@@ -12,7 +12,7 @@ describe('/owner endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ owner: true });
+			app = utils.initTestServer({ owner: true }, { applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 		});
@@ -36,9 +36,9 @@ describe('/owner endpoints', () => {
 			return getConnection().close();
 		});
 
-		test('POST /owner should promote shell to owner', async () => {
+		test('POST /owner should create owner and enable hasOwner setting', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAgent(app, shell);
+			const shellAgent = await utils.createAuthAgent(app, shell);
 
 			const response = await shellAgent.post('/owner').send(TEST_USER);
 
@@ -67,13 +67,6 @@ describe('/owner endpoints', () => {
 
 			const owner = await Db.collections.User!.findOneOrFail(id);
 			expect(owner.password).not.toBe(TEST_USER.password);
-		});
-
-		test('POST /owner should enable hasOwner setting', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAgent(app, shell);
-
-			await shellAgent.post('/owner').send(TEST_USER);
 
 			const hasOwnerConfig = config.get('userManagement.hasOwner');
 			expect(hasOwnerConfig).toBe(true);
@@ -84,7 +77,7 @@ describe('/owner endpoints', () => {
 
 		test('POST /owner should fail with invalid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAgent(app, shell);
+			const shellAgent = await utils.createAuthAgent(app, shell);
 
 			for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
 				const response = await shellAgent.post('/owner').send(invalidPayload);

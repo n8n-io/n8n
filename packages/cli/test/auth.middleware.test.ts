@@ -10,7 +10,7 @@ describe('/me endpoints', () => {
 	const meRoutes = ['GET /me', 'PATCH /me', 'PATCH /me/password', 'POST /me/survey'];
 
 	beforeAll(async () => {
-		app = utils.initTestServer();
+		app = utils.initTestServer({}, { applyAuth: true });
 	});
 
 	describe('Unauthorized requests', () => {
@@ -30,7 +30,7 @@ describe('/owner endpoint', () => {
 	let app: express.Application;
 
 	beforeAll(async () => {
-		app = utils.initTestServer();
+		app = utils.initTestServer({}, { applyAuth: true });
 	});
 
 	describe('Unauthorized requests', () => {

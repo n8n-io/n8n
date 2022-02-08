@@ -9,7 +9,7 @@ import config = require('../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../src/UserManagement/routes';
 import { Db } from '../../src';
-import { User } from '../../src/databases/entities/User';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../../src/databases/entities/User';
 import { meNamespace as meEndpoints } from '../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../src/UserManagement/routes/auth';
@@ -19,10 +19,6 @@ import { issueJWT } from '../../src/UserManagement/auth/jwt';
 
 export const isTestRun = process.argv[1].split('/').includes('jest');
 
-export const MIN_PASSWORD_LENGTH = 8;
-
-export const MAX_PASSWORD_LENGTH = 64;
-
 const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
 
 /**
@@ -30,7 +26,8 @@ const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
  * passing in endpoints to enable in the test server.
  */
 export const initTestServer = (
-	endpointNamespaces: { [K in 'me' | 'users' | 'auth']?: true } = {},
+	endpointNamespaces: { [K in 'me' | 'users' | 'auth' | 'owner']?: true } = {},
+	{ applyAuth } = { applyAuth: false },
 ) => {
 	const testServer = {
 		app: express(),
@@ -43,11 +40,14 @@ export const initTestServer = (
 	config.set('userManagement.jwtSecret', 'My JWT secret');
 	config.set('userManagement.hasOwner', false);
 
-	authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
+	if (applyAuth) {
+		authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
+	}
 
 	if (endpointNamespaces.me) meEndpoints.apply(testServer);
 	if (endpointNamespaces.users) usersEndpoints.apply(testServer);
 	if (endpointNamespaces.auth) authEndpoints.apply(testServer);
+	if (endpointNamespaces.owner) ownerEndpoints.apply(testServer);
 
 	return testServer.app;
 };
@@ -63,12 +63,19 @@ export async function truncateUserTable() {
 	await getConnection().query('PRAGMA foreign_keys=ON');
 }
 
-export async function createAgent(app: express.Application, user: User) {
+export async function createAuthAgent(app: express.Application, user: User) {
 	const agent = request.agent(app);
 	agent.use(prefix(REST_PATH_SEGMENT));
 
 	const { token } = await issueJWT(user);
 	agent.jar.setCookie(`n8n-auth=${token}`);
+
+	return agent;
+}
+
+export async function createAgent(app: express.Application, user: User) {
+	const agent = request.agent(app);
+	agent.use(prefix(REST_PATH_SEGMENT));
 
 	return agent;
 }

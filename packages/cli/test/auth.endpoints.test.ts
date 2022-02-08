@@ -7,7 +7,7 @@ import * as request from 'supertest';
 
 import config = require('../config');
 import * as utils from './shared/utils';
-import { LOGOUT_RESPONSE_BODY, REST_PATH_SEGMENT } from './shared/constants';
+import { LOGGED_OUT_RESPONSE_BODY, REST_PATH_SEGMENT } from './shared/constants';
 import { Db } from '../src';
 import { User } from '../src/databases/entities/User';
 
@@ -16,7 +16,7 @@ describe('auth endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ auth: true });
+			app = utils.initTestServer({ auth: true }, { applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 		});
@@ -91,22 +91,21 @@ describe('auth endpoints', () => {
 
 		test('GET /login should check cookie contents', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAgent(app, owner);
+			const ownerAgent = await utils.createAuthAgent(app, owner);
 
 			const response = await ownerAgent.get('/login');
 
 			expect(response.statusCode).toBe(200);
 
-			const { id, email, password, iat, exp } = response.body.data
+			const { id, email, password, iat: issuedAt, exp: expiration } = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
 			expect(email).toBe(TEST_USER.email);
 			expect(password).toBeDefined();
 
-			expect(response.body).toEqual(LOGOUT_RESPONSE_BODY);
-
-			const authToken = utils.getAuthToken(response);
-			expect(authToken).toBeUndefined();
+			expect(response.headers['set-cookie']).toBeUndefined();
+			expect(issuedAt).toBeDefined();
+			expect(expiration > new Date().getTime() / 1000).toBe(true);
 		});
 
 		test('GET /logout should log user out', async () => {
@@ -116,7 +115,7 @@ describe('auth endpoints', () => {
 			const response = await ownerAgent.get('/logout');
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body).toEqual(LOGOUT_RESPONSE_BODY);
+			expect(response.body).toEqual(LOGGED_OUT_RESPONSE_BODY);
 
 			const authToken = utils.getAuthToken(response);
 			expect(authToken).toBeUndefined();
