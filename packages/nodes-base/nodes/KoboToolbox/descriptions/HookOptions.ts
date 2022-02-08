@@ -22,6 +22,12 @@ export const hookOptions = [
 			},
 		},
 		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'loadHooks',
+			// loadOptionsDependsOn: [
+			// 	'assetUid',
+			// ],
+		},
 		description:'Hook ID (starts with h, e.g. hVehywQ2oXPYGHJHKtqth4)',
 	},
 	{

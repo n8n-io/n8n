@@ -17,6 +17,7 @@ import {
 	downloadAttachments,
 	formatSubmission,
 	koBoToolboxApiRequest,
+	loadHooks,
 	loadSurveys,
 	parseStringList,
 } from './GenericFunctions';
@@ -137,6 +138,7 @@ export class KoBoToolbox implements INodeType {
 		},
 
 		loadOptions: {
+			loadHooks,
 			loadSurveys,
 		},
 	};

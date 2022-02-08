@@ -244,3 +244,17 @@ export async function loadSurveys(this: ILoadOptionsFunctions): Promise<INodePro
 	// Logger.debug('LoadSurveys', responseData);
 	return responseData?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];  // tslint:disable-line:no-any
 }
+
+export async function loadHooks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const assetUid = this.getNodeParameter('assetUid') as string;
+	if(!assetUid) {
+		return [];
+	}
+
+	const responseData = await koBoToolboxApiRequest.call(this, {
+		url: `/api/v2/assets/${assetUid}/hooks/`,
+		scroll: true,
+	});
+
+	return responseData?.map((hook: any) => ({ name: hook.name, value: hook.uid })) || [];  // tslint:disable-line:no-any
+}
