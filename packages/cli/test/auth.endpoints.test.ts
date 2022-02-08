@@ -89,6 +89,26 @@ describe('auth endpoints', () => {
 			expect(authToken).not.toBeUndefined();
 		});
 
+		test('GET /login should check cookie contents', async () => {
+			const owner = await Db.collections.User!.findOneOrFail();
+			const ownerAgent = await utils.createAgent(app, owner);
+
+			const response = await ownerAgent.get('/login');
+
+			expect(response.statusCode).toBe(200);
+
+			const { id, email, password, iat, exp } = response.body.data
+
+			expect(validator.isUUID(id)).toBe(true);
+			expect(email).toBe(TEST_USER.email);
+			expect(password).toBeDefined();
+
+			expect(response.body).toEqual(LOGOUT_RESPONSE_BODY);
+
+			const authToken = utils.getAuthToken(response);
+			expect(authToken).toBeUndefined();
+		});
+
 		test('GET /logout should log user out', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const ownerAgent = await utils.createAgent(app, owner);
