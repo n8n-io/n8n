@@ -11,7 +11,7 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 				return;
 			}
 
-			if (typeof value === 'boolean' || typeof value === 'number') {
+			if (typeof value === 'number' || typeof value === 'boolean') {
 				return;
 			}
 			throw new Error('This field is required');

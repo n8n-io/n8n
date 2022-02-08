@@ -27,9 +27,7 @@ import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
 import { mapGetters } from 'vuex';
 
-export default mixins(
-	showMessage,
-).extend({
+export default mixins(showMessage).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -57,7 +55,8 @@ export default mixins(
 			} catch (e) {
 				this.$showToast({
 					title: 'Error connecting to n8n',
-					message: 'Could not connect to server. <a onclick="window.location.reload(false);">Refresh</a> to try again',
+					message:
+						'Could not connect to server. <a onclick="window.location.reload(false);">Refresh</a> to try again',
 					type: 'error',
 					duration: 0,
 				});
@@ -67,8 +66,7 @@ export default mixins(
 
 			try {
 				await this.$store.dispatch('users/loginWithCookie');
-			} catch (e) {
-			}
+			} catch (e) {}
 		},
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once
@@ -78,7 +76,7 @@ export default mixins(
 					return;
 				}
 
-				this.$router.push({name: 'SetupView'});
+				this.$router.push({ name: 'SetupView' });
 				setTimeout(() => {
 					this.$store.commit('settings/stopShowingSetupPage');
 				}, 0);
@@ -100,18 +98,19 @@ export default mixins(
 
 			const user = this.currentUser as IUser | null;
 			if (!user) {
-				const redirect = this.$route.query.redirect || encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.push({name: 'SigninView', query: { redirect }});
-			}
-			else {
+				const redirect =
+					this.$route.query.redirect ||
+					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+				this.$router.push({ name: 'SigninView', query: { redirect } });
+			} else {
 				if (typeof this.$route.query.redirect === 'string') {
 					const redirect = decodeURIComponent(this.$route.query.redirect);
-					if (redirect.startsWith('/')) { // protect against phishing
+					if (redirect.startsWith('/')) {
+						// protect against phishing
 						this.$router.push(redirect);
 					}
-				}
-				else {
-					this.$router.push({name: 'NodeViewNew'});
+				} else {
+					this.$router.push({ name: 'NodeViewNew' });
 				}
 			}
 
@@ -119,7 +118,7 @@ export default mixins(
 		},
 	},
 	watch: {
-		'$route'(route) {
+		$route(route) {
 			this.authenticate();
 			this.$telemetry.page('Editor', route.name);
 		},
@@ -143,4 +142,3 @@ export default mixins(
 	position: fixed;
 }
 </style>
-

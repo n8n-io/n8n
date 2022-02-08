@@ -19,7 +19,7 @@ export async function logout(context: IRestApiContext): Promise<void> {
 }
 
 export async function setupOwner(context: IRestApiContext, params: { firstName: string; lastName: string; email: string; password: string;}): Promise<IUserResponse> {
-	return await makeRestApiRequest(context, 'POST', '/owner-setup', params as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'POST', '/owner/setup', params as unknown as IDataObject);
 }
 
 export async function validateSignupToken(context: IRestApiContext, params: {inviterId: string; inviteeId: string}): Promise<{inviter: {firstName: string, lastName: string}}> {

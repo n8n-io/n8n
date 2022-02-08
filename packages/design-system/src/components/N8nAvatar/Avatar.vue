@@ -45,7 +45,7 @@ export default {
 	methods: {
 		getBlankStyles(size): {height: string, width: string} {
 			const px = sizes[size];
-			return {height: `${px}px`, width: `${px}px`};
+			return { height: `${px}px`, width: `${px}px` };
 		},
 		getColors(colors): string[] {
 			const style = getComputedStyle(document.body);
