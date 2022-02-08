@@ -69,7 +69,7 @@ export default mixins(showMessage).extend({
 			const getUserById = this.$store.getters['users/getUserById'];
 			const user = getUserById(userId) as IUser | null;
 			if (user) {
-				this.$store.dispatch('ui/openDeleteUserModal', {id: userId});
+				this.$store.dispatch('ui/openDeleteUserModal', { id: userId });
 			}
 		},
 		async onReinvite(userId: string) {
@@ -77,7 +77,7 @@ export default mixins(showMessage).extend({
 			const user = getUserById(userId) as IUser | null;
 			if (user) {
 				try {
-					await this.$store.dispatch('users/reinviteUser', {id: user.id});
+					await this.$store.dispatch('users/reinviteUser', { id: user.id });
 
 					this.$showToast({
 						type: 'success',
