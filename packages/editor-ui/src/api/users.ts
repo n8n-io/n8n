@@ -27,7 +27,8 @@ export function validateSignupToken(context: IRestApiContext, params: {inviterId
 }
 
 export function signup(context: IRestApiContext, params:  {inviterId: string; inviteeId: string; firstName: string; lastName: string; password: string}): Promise<IUserResponse> {
-	return makeRestApiRequest(context, 'POST', '/user', params as unknown as IDataObject);
+	const { inviteeId, ...props } = params;
+	return makeRestApiRequest(context, 'POST', `/users/${params.inviteeId}`, props as unknown as IDataObject);
 }
 
 export function sendForgotPasswordEmail(context: IRestApiContext, params: {email: string}): Promise<void> {
