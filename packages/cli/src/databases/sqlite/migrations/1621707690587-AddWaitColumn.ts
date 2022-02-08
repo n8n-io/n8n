@@ -1,6 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
-import { isTestRun } from '../../../../test/shared/utils';
 
 export class AddWaitColumn1621707690587 implements MigrationInterface {
 	name = 'AddWaitColumn1621707690587';

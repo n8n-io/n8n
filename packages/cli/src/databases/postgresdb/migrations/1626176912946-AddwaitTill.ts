@@ -1,6 +1,5 @@
 import {MigrationInterface, QueryRunner} from "typeorm";
 import * as config from '../../../../config';
-import { isTestRun } from "../../../../test/shared/utils";
 
 export class AddwaitTill1626176912946 implements MigrationInterface {
 	name = 'AddwaitTill1626176912946';
