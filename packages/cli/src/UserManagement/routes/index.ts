@@ -19,7 +19,6 @@ import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
-import { isTestRun } from '../../../test/shared/utils';
 import { ownerNamespace } from './owner';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
@@ -125,12 +124,9 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		next();
 	});
 
-	// tests add endpoints namespaces separately
-	if (!isTestRun) {
-		authenticationMethods.apply(this);
-		ownerNamespace.apply(this);
-		meNamespace.apply(this);
-		passwordResetNamespace.apply(this);
-		usersNamespace.apply(this);
-	}
+	authenticationMethods.apply(this);
+	ownerNamespace.apply(this);
+	meNamespace.apply(this);
+	passwordResetNamespace.apply(this);
+	usersNamespace.apply(this);
 }
