@@ -31,16 +31,16 @@ export function signup(context: IRestApiContext, params:  {inviterId: string; in
 	return makeRestApiRequest(context, 'POST', `/users/${params.inviteeId}`, props as unknown as IDataObject);
 }
 
-export function sendForgotPasswordEmail(context: IRestApiContext, params: {email: string}): Promise<void> {
-	makeRestApiRequest(context, 'POST', '/forgot-password', params);
+export async function sendForgotPasswordEmail(context: IRestApiContext, params: {email: string}): Promise<void> {
+	await makeRestApiRequest(context, 'POST', '/forgot-password', params);
 }
 
-export function validatePasswordToken(context: IRestApiContext, params: {token: string, userId: string}): Promise<void> {
-	makeRestApiRequest(context, 'GET', '/resolve-password-token', params);
+export async function validatePasswordToken(context: IRestApiContext, params: {token: string, userId: string}): Promise<void> {
+	await makeRestApiRequest(context, 'GET', '/resolve-password-token', params);
 }
 
-export function changePassword(context: IRestApiContext, params: {token: string, password: string, userId: string}): Promise<void> {
-	makeRestApiRequest(context, 'POST', '/change-password', params);
+export async function changePassword(context: IRestApiContext, params: {token: string, password: string, userId: string}): Promise<void> {
+	await makeRestApiRequest(context, 'POST', '/change-password', params);
 }
 
 export function updateCurrentUser(context: IRestApiContext, params: {id: string, firstName: string, lastName: string, email: string}): Promise<IUserResponse> {
@@ -51,8 +51,8 @@ export function updateCurrentUserPassword(context: IRestApiContext, params: {pas
 	return makeRestApiRequest(context, 'PATCH', `/me/password`, params);
 }
 
-export function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<void> {
-	makeRestApiRequest(context, 'DELETE', `/users/${id}`, transferId ? { transferId } : {});
+export async function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/users/${id}`, transferId ? { transferId } : {});
 }
 
 export function getUsers(context: IRestApiContext): Promise<IUserResponse[]> {
@@ -67,6 +67,6 @@ export async function reinvite(context: IRestApiContext, {id}: {id: string}): Pr
 	await makeRestApiRequest(context, 'POST', `/users/${id}/reinvite`);
 }
 
-export function submitPersonalizationSurvey(context: IRestApiContext, params: IPersonalizationSurveyAnswers): Promise<void> {
-	makeRestApiRequest(context, 'POST', '/me/survey', params as unknown as IDataObject);
+export async function submitPersonalizationSurvey(context: IRestApiContext, params: IPersonalizationSurveyAnswers): Promise<void> {
+	await makeRestApiRequest(context, 'POST', '/me/survey', params as unknown as IDataObject);
 }
