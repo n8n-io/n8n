@@ -851,6 +851,9 @@ export class HttpRequest implements INodeType {
 									}
 								};
 								requestOptions[optionName][parameterDataName] = computeNewValue(requestOptions[optionName][parameterDataName]);
+							} else if (optionName === 'headers') {
+								// @ts-ignore
+								requestOptions[optionName][parameterDataName.toString().toLowerCase()] = newValue;
 							} else {
 								// @ts-ignore
 								requestOptions[optionName][parameterDataName] = newValue;
