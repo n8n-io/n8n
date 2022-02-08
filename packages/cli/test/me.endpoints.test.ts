@@ -157,165 +157,6 @@ describe('/me endpoints', () => {
 		});
 	});
 
-	describe('Owner requests', () => {
-		let app: express.Application;
-
-		beforeAll(async () => {
-			app = utils.initTestServer({ me: true });
-			await utils.initTestDb();
-			await utils.truncateUserTable();
-		});
-
-		beforeEach(async () => {
-			const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
-
-			const newOwner = new User();
-
-			Object.assign(newOwner, {
-				id: uuid(),
-				email: TEST_USER.email,
-				firstName: TEST_USER.firstName,
-				lastName: TEST_USER.lastName,
-				password: hashSync(utils.randomValidPassword(), genSaltSync(10)),
-				globalRole: role,
-			});
-
-			await Db.collections.User!.save(newOwner);
-
-			config.set('userManagement.hasOwner', true);
-
-			await Db.collections.Settings!.update(
-				{ key: 'userManagement.hasOwner' },
-				{ value: JSON.stringify(true) },
-			);
-		});
-
-		afterEach(async () => {
-			await utils.truncateUserTable();
-		});
-
-		afterAll(() => {
-			return getConnection().close();
-		});
-
-		test('GET /me should return sanitized owner', async () => {
-			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAgent(app, owner);
-
-			const response = await ownerAgent.get('/me');
-
-			expect(response.statusCode).toBe(200);
-
-			const {
-				id,
-				email,
-				firstName,
-				lastName,
-				personalizationAnswers,
-				globalRole,
-				password,
-				resetPasswordToken,
-			} = response.body.data;
-
-			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(TEST_USER.email);
-			expect(firstName).toBe(TEST_USER.firstName);
-			expect(lastName).toBe(TEST_USER.lastName);
-			expect(personalizationAnswers).toBeNull();
-			expect(password).toBeUndefined();
-			expect(resetPasswordToken).toBeUndefined();
-			expect(globalRole.name).toBe('owner');
-			expect(globalRole.scope).toBe('global');
-		});
-
-		test('PATCH /me should succeed with valid inputs', async () => {
-			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAgent(app, owner);
-
-			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
-				const response = await ownerAgent.patch('/me').send(validPayload);
-
-				expect(response.statusCode).toBe(200);
-
-				const {
-					id,
-					email,
-					firstName,
-					lastName,
-					personalizationAnswers,
-					globalRole,
-					password,
-					resetPasswordToken,
-				} = response.body.data;
-
-				expect(validator.isUUID(id)).toBe(true);
-				expect(email).toBe(validPayload.email);
-				expect(firstName).toBe(validPayload.firstName);
-				expect(lastName).toBe(validPayload.lastName);
-				expect(personalizationAnswers).toBeNull();
-				expect(password).toBeUndefined();
-				expect(resetPasswordToken).toBeUndefined();
-				expect(globalRole.name).toBe('owner');
-				expect(globalRole.scope).toBe('global');
-			}
-		});
-
-		test('PATCH /me should fail with invalid inputs', async () => {
-			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAgent(app, owner);
-
-			for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
-				const response = await ownerAgent.patch('/me').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
-			}
-		});
-
-		test('PATCH /me/password should succeed with valid inputs', async () => {
-			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAgent(app, owner);
-
-			const validPayloads = Array.from({ length: 3 }, () => ({
-				password: utils.randomValidPassword(),
-			}));
-
-			for (const validPayload of validPayloads) {
-				const response = await ownerAgent.patch('/me/password').send(validPayload);
-				expect(response.statusCode).toBe(200);
-				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
-			}
-		});
-
-		test('PATCH /me/password should fail with invalid inputs', async () => {
-			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAgent(app, owner);
-
-			const invalidPayloads = [
-				...Array.from({ length: 3 }, () => ({ password: utils.randomInvalidPassword() })),
-				{},
-				undefined,
-				'',
-			];
-
-			for (const invalidPayload of invalidPayloads) {
-				const response = await ownerAgent.patch('/me/password').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
-			}
-		});
-
-		test('POST /me/survey should succeed with valid inputs', async () => {
-			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAgent(app, owner);
-
-			const validPayloads = [SURVEY, {}];
-
-			for (const validPayload of validPayloads) {
-				const response = await ownerAgent.post('/me/survey').send(validPayload);
-				expect(response.statusCode).toBe(200);
-				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
-			}
-		});
-	});
-
 	describe('Member requests', () => {
 		let app: express.Application;
 
@@ -471,6 +312,110 @@ describe('/me endpoints', () => {
 				const response = await memberAgent.post('/me/survey').send(validPayload);
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+			}
+		});
+	});
+
+	describe('Owner requests', () => {
+		let app: express.Application;
+
+		beforeAll(async () => {
+			app = utils.initTestServer({ me: true });
+			await utils.initTestDb();
+			await utils.truncateUserTable();
+		});
+
+		beforeEach(async () => {
+			const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+
+			const newOwner = new User();
+
+			Object.assign(newOwner, {
+				id: uuid(),
+				email: TEST_USER.email,
+				firstName: TEST_USER.firstName,
+				lastName: TEST_USER.lastName,
+				password: hashSync(utils.randomValidPassword(), genSaltSync(10)),
+				globalRole: role,
+			});
+
+			await Db.collections.User!.save(newOwner);
+
+			config.set('userManagement.hasOwner', true);
+
+			await Db.collections.Settings!.update(
+				{ key: 'userManagement.hasOwner' },
+				{ value: JSON.stringify(true) },
+			);
+		});
+
+		afterEach(async () => {
+			await utils.truncateUserTable();
+		});
+
+		afterAll(() => {
+			return getConnection().close();
+		});
+
+		test('GET /me should return sanitized owner', async () => {
+			const owner = await Db.collections.User!.findOneOrFail();
+			const ownerAgent = await utils.createAgent(app, owner);
+
+			const response = await ownerAgent.get('/me');
+
+			expect(response.statusCode).toBe(200);
+
+			const {
+				id,
+				email,
+				firstName,
+				lastName,
+				personalizationAnswers,
+				globalRole,
+				password,
+				resetPasswordToken,
+			} = response.body.data;
+
+			expect(validator.isUUID(id)).toBe(true);
+			expect(email).toBe(TEST_USER.email);
+			expect(firstName).toBe(TEST_USER.firstName);
+			expect(lastName).toBe(TEST_USER.lastName);
+			expect(personalizationAnswers).toBeNull();
+			expect(password).toBeUndefined();
+			expect(resetPasswordToken).toBeUndefined();
+			expect(globalRole.name).toBe('owner');
+			expect(globalRole.scope).toBe('global');
+		});
+
+		test('PATCH /me should succeed with valid inputs', async () => {
+			const owner = await Db.collections.User!.findOneOrFail();
+			const ownerAgent = await utils.createAgent(app, owner);
+
+			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
+				const response = await ownerAgent.patch('/me').send(validPayload);
+
+				expect(response.statusCode).toBe(200);
+
+				const {
+					id,
+					email,
+					firstName,
+					lastName,
+					personalizationAnswers,
+					globalRole,
+					password,
+					resetPasswordToken,
+				} = response.body.data;
+
+				expect(validator.isUUID(id)).toBe(true);
+				expect(email).toBe(validPayload.email);
+				expect(firstName).toBe(validPayload.firstName);
+				expect(lastName).toBe(validPayload.lastName);
+				expect(personalizationAnswers).toBeNull();
+				expect(password).toBeUndefined();
+				expect(resetPasswordToken).toBeUndefined();
+				expect(globalRole.name).toBe('owner');
+				expect(globalRole.scope).toBe('global');
 			}
 		});
 	});
