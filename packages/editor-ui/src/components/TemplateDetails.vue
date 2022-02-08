@@ -9,7 +9,7 @@
 			<template v-slot:content>
 				<div :class="$style.icons">
 					<div
-						v-for="node in template.nodes"
+						v-for="node in filterCoreNodes(template.nodes)"
 						:key="node.name"
 						:class="$style.icon"
 					>
@@ -61,6 +61,22 @@ import TemplateBlock from '@/components/TemplateBlock.vue';
 import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
 
 import { abbreviateNumber } from '@/components/helpers';
+import { ITemplateCategories } from '@/Interface';
+
+interface INode {
+	displayName: string;
+	defaults: {
+		color: string;
+	};
+	categories: ITemplateCategories[];
+	icon: string;
+	iconData?: {
+		fileBuffer?: string;
+		type?: string;
+	};
+	name: string;
+	typeVersion: number;
+}
 
 interface ITag {
 	id: string;
@@ -87,6 +103,18 @@ export default Vue.extend({
 	},
 	methods: {
 		abbreviateNumber,
+		filterCoreNodes(nodes: []) {
+			return nodes.filter((elem) => {
+				const node = elem as INode;
+				if (node.categories) {
+					return node.categories.some((category: ITemplateCategories) => {
+						return category.name !== 'Core Nodes';
+					});
+				} else {
+					return node;
+				}
+			});
+		},
 		redirectToCategory(tag: ITag) {
 			this.$router.push(`/templates?categories=${tag.id}`);
 		},

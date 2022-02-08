@@ -37,7 +37,11 @@
 								/>
 							</div>
 							<div :class="$style.nodes">
-								<div v-for="(node, index) in workflow.nodes" :key="index" :class="$style.icon">
+								<div
+									v-for="(node, index) in filterCoreNodes(workflow.nodes)"
+									:key="index"
+									:class="$style.icon"
+								>
 									<TemplateNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
 								</div>
 							</div>
@@ -70,7 +74,9 @@
 				</div>
 			</div>
 			<div v-if="infinityScroll && !shouldShowLoadingState" :class="$style.text">
-				<n8n-text size="medium" color="text-base">{{ $locale.baseText('templates.endResult') }}</n8n-text>
+				<n8n-text size="medium" color="text-base">{{
+					$locale.baseText('templates.endResult')
+				}}</n8n-text>
 			</div>
 		</div>
 		<div v-else>
@@ -84,7 +90,23 @@ import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
 import TemplateCard from '@/components/TemplateCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { ITemplateCategories } from '@/Interface';
 import mixins from 'vue-typed-mixins';
+
+interface INode {
+	displayName: string;
+	defaults: {
+		color: string;
+	};
+	categories: ITemplateCategories[];
+	icon: string;
+	iconData?: {
+		fileBuffer?: string;
+		type?: string;
+	};
+	name: string;
+	typeVersion: number;
+}
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
@@ -196,6 +218,20 @@ export default mixins(genericHelpers).extend({
 			searchFinished: true,
 			skip: 1,
 		};
+	},
+	methods: {
+		filterCoreNodes(nodes: []) {
+			return nodes.filter((elem) => {
+				const node = elem as INode;
+				if (node.categories) {
+					return node.categories.some((category: ITemplateCategories) => {
+						return category.name !== 'Core Nodes';
+					});
+				} else {
+					return node;
+				}
+			});
+		},
 	},
 });
 </script>
