@@ -1011,9 +1011,16 @@ export class GoogleSheets implements INodeType {
 			//         sheet:remove
 			// ----------------------------------
 			{
-				displayName: 'Sheet ID',
+				displayName: 'Sheet',
 				name: 'id',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getSheets',
+					loadOptionsDependsOn: [
+						'sheetId',
+					],
+				},
+				options: [],
 				default: '',
 				required: true,
 				displayOptions: {
@@ -1026,7 +1033,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the sheet to delete.',
+				description: 'The ID of the sheet to remove.',
 			},
 		],
 	};
