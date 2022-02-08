@@ -49,7 +49,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com${endpoint}`,
-		qsStringifyOptions:{
+		qsStringifyOptions: {
 			arrayFormat: 'repeat',
 		},
 		json: true,
@@ -156,6 +156,7 @@ export async function encodeEmail(email: IEmail) {
 		references: email.reference,
 		subject: email.subject,
 		text: email.body,
+		keepBcc: true,
 	} as IDataObject;
 	if (email.htmlBody) {
 		mailOptions.html = email.htmlBody;
@@ -172,14 +173,15 @@ export async function encodeEmail(email: IEmail) {
 		mailOptions.attachments = attachments;
 	}
 
+	const mail = new mailComposer(mailOptions).compile();
 
-	const mail = new mailComposer(mailOptions);
+	// by default the bcc headers are deleted when the mail is built.
+	// So add keepBcc flag to averride such behaviour. Only works when
+	// the flag is set after the compilation.
+	//https://nodemailer.com/extras/mailcomposer/#bcc
+	mail.keepBcc = true;
 
-	mailBody = await new Promise((resolve) => {
-		mail.compile().build(async (err: string, result: Buffer) => {
-			resolve(result);
-		});
-	});
+	mailBody = await mail.build();
 
 	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
 }

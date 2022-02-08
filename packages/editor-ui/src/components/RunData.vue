@@ -540,7 +540,7 @@ export default mixins(
 					return outputIndex + 1;
 				}
 
-				const nodeType = this.$store.getters.nodeType(this.node.type) as INodeTypeDescription | null;
+				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | null;
 				if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
 					return outputIndex + 1;
 				}

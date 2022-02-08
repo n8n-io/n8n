@@ -4,7 +4,7 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/naming-convention */
 import { UserSettings } from 'n8n-core';
-import { ConnectionOptions, createConnection, getRepository } from 'typeorm';
+import { ConnectionOptions, createConnection, getRepository, LoggerOptions } from 'typeorm';
 import { TlsOptions } from 'tls';
 import * as path from 'path';
 // eslint-disable-next-line import/no-cycle
@@ -112,6 +112,22 @@ export async function init(): Promise<IDatabaseCollections> {
 			throw new Error(`The database "${dbType}" is currently not supported!`);
 	}
 
+	let loggingOption: LoggerOptions = (await GenericHelpers.getConfigValue(
+		'database.logging.enabled',
+	)) as boolean;
+
+	if (loggingOption) {
+		const optionsString = (
+			(await GenericHelpers.getConfigValue('database.logging.options')) as string
+		).replace(/\s+/g, '');
+
+		if (optionsString === 'all') {
+			loggingOption = optionsString;
+		} else {
+			loggingOption = optionsString.split(',') as LoggerOptions;
+		}
+	}
+
 	if (isTestRun) {
 		connectionOptions = TEST_CONNECTION_OPTIONS;
 	}
@@ -119,7 +135,10 @@ export async function init(): Promise<IDatabaseCollections> {
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
 		synchronize: false,
-		logging: false,
+		logging: loggingOption,
+		maxQueryExecutionTime: (await GenericHelpers.getConfigValue(
+			'database.logging.maxQueryExecutionTime',
+		)) as string,
 	});
 
 	let connection = await createConnection(connectionOptions);

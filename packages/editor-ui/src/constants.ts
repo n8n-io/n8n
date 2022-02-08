@@ -28,6 +28,8 @@ export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
+export const EXECUTIONS_MODAL_KEY = 'executions';
+export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
@@ -135,4 +137,5 @@ export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
 export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
 
 export const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 

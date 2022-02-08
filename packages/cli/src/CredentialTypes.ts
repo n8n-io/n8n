@@ -1,21 +1,22 @@
-import { ICredentialType, ICredentialTypes as ICredentialTypesInterface } from 'n8n-workflow';
-
-// eslint-disable-next-line import/no-cycle
-import { ICredentialsTypeData } from '.';
+import {
+	ICredentialType,
+	ICredentialTypeData,
+	ICredentialTypes as ICredentialTypesInterface,
+} from 'n8n-workflow';
 
 class CredentialTypesClass implements ICredentialTypesInterface {
-	credentialTypes: ICredentialsTypeData = {};
+	credentialTypes: ICredentialTypeData = {};
 
-	async init(credentialTypes: ICredentialsTypeData): Promise<void> {
+	async init(credentialTypes: ICredentialTypeData): Promise<void> {
 		this.credentialTypes = credentialTypes;
 	}
 
 	getAll(): ICredentialType[] {
-		return Object.values(this.credentialTypes);
+		return Object.values(this.credentialTypes).map((data) => data.type);
 	}
 
 	getByName(credentialType: string): ICredentialType {
-		return this.credentialTypes[credentialType];
+		return this.credentialTypes[credentialType].type;
 	}
 }
 

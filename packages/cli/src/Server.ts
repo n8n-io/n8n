@@ -29,7 +29,7 @@
 /* eslint-disable no-await-in-loop */
 
 import * as express from 'express';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -65,36 +65,29 @@ import {
 	BinaryDataManager,
 	Credentials,
 	IBinaryDataConfig,
-	ICredentialTestFunctions,
 	LoadNodeParameterOptions,
-	NodeExecuteFunctions,
 	UserSettings,
 } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
 	INodeCredentialsDetails,
+	INodeCredentialTestRequest,
+	INodeCredentialTestResult,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	INodeVersionedType,
 	ITelemetrySettings,
 	IWorkflowBase,
 	LoggerProxy,
-	NodeCredentialTestRequest,
-	NodeCredentialTestResult,
 	NodeHelpers,
 	Workflow,
-	ICredentialsEncrypted,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
-import { NodeVersionedType } from 'n8n-nodes-base';
 
 import * as basicAuth from 'basic-auth';
 import * as compression from 'compression';
@@ -326,6 +319,7 @@ class App {
 					config.get('userManagement.hasOwner') === true,
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
+			logLevel: config.get('logs.level'),
 		};
 	}
 
@@ -658,6 +652,8 @@ class App {
 
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
+			LoggerProxy.debug('Health check started!');
+
 			const connection = getConnectionManager().get();
 
 			try {
@@ -677,6 +673,8 @@ class App {
 			const responseData = {
 				status: 'ok',
 			};
+
+			LoggerProxy.debug('Health check completed successfully!');
 
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
@@ -1284,7 +1282,19 @@ class App {
 					// @ts-ignore
 					additionalData.userId = req.user.id;
 
-					return loadDataInstance.getOptions(methodName, additionalData);
+					if (methodName) {
+						return loadDataInstance.getOptionsViaMethodName(methodName, additionalData);
+					}
+					// @ts-ignore
+					if (req.query.loadOptions) {
+						return loadDataInstance.getOptionsViaRequestProperty(
+							// @ts-ignore
+							JSON.parse(req.query.loadOptions as string),
+							additionalData,
+						);
+					}
+
+					return [];
 				},
 			),
 		);
@@ -1624,87 +1634,25 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/credentials-test`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<NodeCredentialTestResult> => {
-					const incomingData = req.body as NodeCredentialTestRequest;
+				async (req: express.Request, res: express.Response): Promise<INodeCredentialTestResult> => {
+					const incomingData = req.body as INodeCredentialTestRequest;
+
+					const encryptionKey = await UserSettings.getEncryptionKey();
+					if (encryptionKey === undefined) {
+						return {
+							status: 'Error',
+							message: 'No encryption key got found to decrypt the credentials!',
+						};
+					}
+
+					const credentialsHelper = new CredentialsHelper(encryptionKey);
+
 					const credentialType = incomingData.credentials.type;
-
-					// Find nodes that can test this credential.
-					const nodeTypes = NodeTypes();
-					const allNodes = nodeTypes.getAll();
-
-					let foundTestFunction:
-						| ((
-								this: ICredentialTestFunctions,
-								credential: ICredentialsDecrypted,
-						  ) => Promise<NodeCredentialTestResult>)
-						| undefined;
-					const nodeThatCanTestThisCredential = allNodes.find((node) => {
-						if (
-							incomingData.nodeToTestWith &&
-							node.description.name !== incomingData.nodeToTestWith
-						) {
-							return false;
-						}
-
-						if (node instanceof NodeVersionedType) {
-							const versionNames = Object.keys((node as INodeVersionedType).nodeVersions);
-							for (const versionName of versionNames) {
-								const nodeType = (node as INodeVersionedType).nodeVersions[
-									versionName as unknown as number
-								];
-								// eslint-disable-next-line @typescript-eslint/no-loop-func
-								const credentialTestable = nodeType.description.credentials?.find((credential) => {
-									const testFunctionSearch =
-										credential.name === credentialType && !!credential.testedBy;
-									if (testFunctionSearch) {
-										foundTestFunction = (nodeType as unknown as INodeType).methods!.credentialTest![
-											credential.testedBy!
-										];
-									}
-									return testFunctionSearch;
-								});
-								if (credentialTestable) {
-									return true;
-								}
-							}
-							return false;
-						}
-						const credentialTestable = (node as INodeType).description.credentials?.find(
-							(credential) => {
-								const testFunctionSearch =
-									credential.name === credentialType && !!credential.testedBy;
-								if (testFunctionSearch) {
-									foundTestFunction = (node as INodeType).methods!.credentialTest![
-										credential.testedBy!
-									];
-								}
-								return testFunctionSearch;
-							},
-						);
-						return !!credentialTestable;
-					});
-
-					if (!nodeThatCanTestThisCredential) {
-						return Promise.resolve({
-							status: 'Error',
-							message: 'There are no nodes that can test this credential.',
-						});
-					}
-
-					if (foundTestFunction === undefined) {
-						return Promise.resolve({
-							status: 'Error',
-							message: 'No testing function found for this credential.',
-						});
-					}
-
-					const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
-
-					const output = await foundTestFunction.call(
-						credentialTestFunctions,
+					return credentialsHelper.testCredentials(
+						credentialType,
 						incomingData.credentials,
+						incomingData.nodeToTestWith,
 					);
-					return Promise.resolve(output);
 				},
 			),
 		);
