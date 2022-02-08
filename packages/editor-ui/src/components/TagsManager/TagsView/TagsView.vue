@@ -51,7 +51,6 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapGetters('users', ['canUserDeleteTags']),
 		isCreateEnabled(): boolean {
 			return (this.$props.tags || []).length === 0 || this.$data.createEnabled;
 		},
@@ -77,7 +76,6 @@ export default Vue.extend({
 					disable: disabled && tag.id !== this.deleteId && tag.id !== this.$data.updateId,
 					update: disabled && tag.id === this.$data.updateId,
 					delete: disabled && tag.id === this.$data.deleteId,
-					canDelete: this.canUserDeleteTags,
 				}));
 
 			return this.isCreateEnabled

@@ -82,9 +82,6 @@ const module: Module<IUsersState, IRootState> = {
 		getUserById(state: IUsersState): (userId: string) => IUser | null {
 			return (userId: string): IUser | null => state.users[userId];
 		},
-		canUserDeleteTags(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, getters);
-		},
 		canUserAccessSidebarUserInfo(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, getters);
 		},

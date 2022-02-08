@@ -57,7 +57,7 @@
 					</div>
 					<div class="ops main" v-else-if="!scope.row.disable">
 						<n8n-icon-button :title="$locale.baseText('tagsTable.editTag')" @click.stop="enableUpdate(scope.row)" icon="pen" />
-						<n8n-icon-button v-if="scope.row.canDelete" :title="$locale.baseText('tagsTable.deleteTag')" @click.stop="enableDelete(scope.row)" icon="trash" />
+						<n8n-icon-button :title="$locale.baseText('tagsTable.deleteTag')" @click.stop="enableDelete(scope.row)" icon="trash" />
 					</div>
 				</transition>
 			</template>
@@ -118,7 +118,6 @@ export default Vue.extend({
 				this.focusOnDelete();
 			}
 		},
-
 		cancel(): void {
 			this.$emit('cancelOperation');
 		},

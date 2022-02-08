@@ -639,7 +639,6 @@ export interface ITagRow {
 	disable?: boolean;
 	update?: boolean;
 	delete?: boolean;
-	canDelete?: boolean;
 }
 
 export interface IVersion {
