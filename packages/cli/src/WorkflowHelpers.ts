@@ -16,8 +16,6 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IWorkflowCredentials,
 	LoggerProxy as Logger,
 	Workflow,
 } from 'n8n-workflow';
@@ -32,8 +30,6 @@ import {
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	ResponseHelper,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowRunner,
 } from '.';
 
@@ -212,6 +208,32 @@ export function getAllNodeTypeData(): ITransferNodeTypes {
 }
 
 /**
+ * Returns all the defined CredentialTypes
+ *
+ * @export
+ * @returns {ICredentialsTypeData}
+ */
+export function getAllCredentalsTypeData(): ICredentialsTypeData {
+	const credentialTypes = CredentialTypes();
+
+	// Get the data of all the credential types that they
+	// can be loaded again in the subprocess
+	const returnData: ICredentialsTypeData = {};
+	for (const credentialTypeName of Object.keys(credentialTypes.credentialTypes)) {
+		if (credentialTypes.credentialTypes[credentialTypeName] === undefined) {
+			throw new Error(`The CredentialType "${credentialTypeName}" could not be found!`);
+		}
+
+		returnData[credentialTypeName] = {
+			className: credentialTypes.credentialTypes[credentialTypeName].type.constructor.name,
+			sourcePath: credentialTypes.credentialTypes[credentialTypeName].sourcePath,
+		};
+	}
+
+	return returnData;
+}
+
+/**
  * Returns the data of the node types that are needed
  * to execute the given nodes
  *
@@ -256,7 +278,10 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
 	const credentialType = credentialTypes.getByName(type);
 
 	const credentialTypeData: ICredentialsTypeData = {};
-	credentialTypeData[type] = credentialType;
+	credentialTypeData[type] = {
+		className: credentialTypes.credentialTypes[type].type.constructor.name,
+		sourcePath: credentialTypes.credentialTypes[type].sourcePath,
+	};
 
 	if (credentialType === undefined || credentialType.extends === undefined) {
 		return credentialTypeData;
@@ -267,7 +292,10 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
 			continue;
 		}
 
-		credentialTypeData[typeName] = credentialTypes.getByName(typeName);
+		credentialTypeData[typeName] = {
+			className: credentialTypes.credentialTypes[typeName].type.constructor.name,
+			sourcePath: credentialTypes.credentialTypes[typeName].sourcePath,
+		};
 		Object.assign(credentialTypeData, getCredentialsDataWithParents(typeName));
 	}
 

@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
@@ -63,7 +63,6 @@
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "^3.4.0",
     "eslint-plugin-vue": "^7.16.0",
-    "fibers": "^5.0.0",
     "gulp": "^4.0.0",
     "markdown-it": "^12.3.2",
     "markdown-it-emoji": "^2.0.0",

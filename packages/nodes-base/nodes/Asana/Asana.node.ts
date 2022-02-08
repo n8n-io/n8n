@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -51,6 +52,12 @@ export class Asana implements INodeType {
 						],
 					},
 				},
+				testedBy: {
+					request: {
+						method: 'GET',
+						url: '/users/me',
+					},
+				},
 			},
 			{
 				name: 'asanaOAuth2Api',
@@ -64,6 +71,10 @@ export class Asana implements INodeType {
 				},
 			},
 		],
+		requestDefaults: {
+			baseURL: 'https://app.asana.com/api/1.0',
+			url: '',
+		},
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -1834,7 +1845,7 @@ export class Asana implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods = 'GET';
 
 		let body: IDataObject;
 		let qs: IDataObject;
