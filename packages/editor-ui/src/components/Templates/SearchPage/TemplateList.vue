@@ -25,11 +25,21 @@
 					<TemplateCard
 						:title="workflow.name"
 						:loading="false"
-						:class="(index === workflows.length - 1 && !shouldShowLoadingState) ? $style.last : ''"
+						:class="index === workflows.length - 1 && !shouldShowLoadingState ? $style.last : ''"
 					>
 						<template v-slot:button>
 							<div :class="$style.nodes">
-								<NodeList :nodes="workflow.nodes" :nodeSize="24"/>
+								<div
+									v-for="(node, index) in workflow.nodes"
+									:key="index"
+									:class="$style.icon"
+								>
+									<NodeIcon
+										:nodeType="node"
+										:title="node.name"
+										:size="24"
+									/>
+								</div>
 							</div>
 						</template>
 
@@ -72,7 +82,7 @@
 </template>
 
 <script lang="ts">
-import NodeList from '@/components/Templates/SearchPage/NodeList.vue';
+import NodeIcon from '@/components/Templates/WorkflowPage/TemplateDetails/NodeIcon/NodeIcon.vue';
 import TemplateCard from '@/components/Templates/SearchPage/TemplateCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -151,7 +161,7 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	components: {
-		NodeList,
+		NodeIcon,
 		TemplateCard,
 	},
 	computed: {
@@ -197,49 +207,60 @@ export default mixins(genericHelpers).extend({
 
 <style lang="scss" module>
 .header {
-	padding-bottom: var(--spacing-2xs);
+  padding-bottom: var(--spacing-2xs);
 }
 
 .list {
-	padding-top: var(--spacing-l);
+  padding-top: var(--spacing-l);
 }
 
 .wrapper {
-	height: auto;
-	background-color: var(--color-white);
-	border-radius: var(--border-radius-large);
-	border: $--version-card-border;
-	overflow: auto;
+  height: auto;
+  background-color: var(--color-white);
+  border-radius: var(--border-radius-large);
+  border: $--version-card-border;
+  overflow: auto;
+}
+
+.nodes {
+	display: flex;
+	justify-content: center;
+	align-content: center;
+  flex-direction: row;
+}
+
+.icon {
+	margin-left: var(--spacing-xs);
 }
 
 .card {
-	cursor: pointer;
+  cursor: pointer;
 }
 
 .last {
-	div {
-		border: none;
-	}
+  div {
+  	border: none;
+  }
 }
 
 .button {
-	display: none;
-	position: relative;
-	z-index: 100;
+  display: none;
+  position: relative;
+  z-index: 100;
 }
 
 .footer {
-	display: flex;
-	align-items: center;
+  display: flex;
+  align-items: center;
 }
 
 .line {
-	padding: 0 6px;
-	color: var(--color-foreground-base);
-	font-size: var(--font-size-2xs);
+  padding: 0 6px;
+  color: var(--color-foreground-base);
+  font-size: var(--font-size-2xs);
 }
 
 .text {
-	margin-top: var(--spacing-xl);
+  margin-top: var(--spacing-xl);
 }
 </style>

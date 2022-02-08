@@ -8,13 +8,18 @@
 		>
 			<template v-slot:content>
 				<div :class="$style.icons">
-					<NodeIcon
+					<div
 						v-for="node in template.nodes"
 						:key="node.name"
-						:nodeType="node"
-						:title="node.name"
-						:clickButton="redirectToSearchPage"
-					/>
+						:class="$style.icon"
+					>
+						<NodeIcon
+							:nodeType="node"
+							:title="node.name"
+							:clickButton="redirectToSearchPage"
+							:size="24"
+						/>
+					</div>
 				</div>
 			</template>
 		</template-block>
@@ -93,6 +98,11 @@ export default Vue.extend({
 .icons {
 	display: flex;
 	flex-wrap: wrap;
+}
+
+.icon {
+	margin-right: var(--spacing-xs);
+	margin-bottom: var(--spacing-xs);
 }
 
 .tags {

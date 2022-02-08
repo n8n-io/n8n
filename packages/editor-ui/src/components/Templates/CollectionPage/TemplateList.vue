@@ -35,7 +35,17 @@
 								/>
 							</div>
 							<div :class="$style.nodes">
-								<NodeList :nodes="workflow.nodes" />
+								<div
+									v-for="(node, index) in workflow.nodes"
+									:key="index"
+									:class="$style.icon"
+								>
+									<NodeIcon
+										:nodeType="node"
+										:title="node.name"
+										:size="18"
+									/>
+								</div>
 							</div>
 						</template>
 
@@ -67,7 +77,7 @@
 </template>
 
 <script lang="ts">
-import NodeList from '@/components/Templates/SearchPage/NodeList.vue';
+import NodeIcon from '@/components/Templates/WorkflowPage/TemplateDetails/NodeIcon/NodeIcon.vue';
 import TemplateCard from '@/components/Templates/SearchPage/TemplateCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -85,7 +95,7 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	components: {
-		NodeList,
+		NodeIcon,
 		TemplateCard,
 	},
 	methods: {
@@ -123,6 +133,17 @@ export default mixins(genericHelpers).extend({
 	border-radius: var(--border-radius-large);
 	border: $--version-card-border;
 	overflow: auto;
+}
+
+.nodes {
+	display: flex;
+	justify-content: center;
+	align-content: center;
+  flex-direction: row;
+}
+
+.icon {
+	margin-left: var(--spacing-xs);
 }
 
 .card {
