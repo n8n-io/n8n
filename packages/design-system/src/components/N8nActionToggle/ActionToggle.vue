@@ -42,7 +42,7 @@ export default {
 			type: String,
 			default: 'bottom',
 			validator: (value: string): boolean =>
-				['top', 'bottom'].indexOf(value) !== -1,
+				['top', 'bottom'].includes(value),
 		},
 	},
 	methods: {
