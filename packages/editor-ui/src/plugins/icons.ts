@@ -91,7 +91,6 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-
 function addIcon(icon: any) { // tslint:disable-line:no-any
 	library.add(icon as IconDefinition);
 }
