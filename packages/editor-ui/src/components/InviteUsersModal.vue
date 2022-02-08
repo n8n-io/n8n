@@ -133,7 +133,7 @@ export default mixins(showMessage).extend({
 				this.loading = true;
 
 				const emails = this.emails.split(',')
-					.map((email) => ({email: getEmail(email).trim()}))
+					.map((email) => ({email: getEmail(email)}))
 					.filter((invite) => !!invite.email);
 
 				if (emails.length === 0) {
