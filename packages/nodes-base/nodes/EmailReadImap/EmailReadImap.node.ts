@@ -30,7 +30,7 @@ import {
 
 export class EmailReadImap implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'EmailReadImap',
+		displayName: 'IMAP Email',
 		name: 'emailReadImap',
 		icon: 'fa:inbox',
 		group: ['trigger'],
