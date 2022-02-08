@@ -30,7 +30,6 @@ import {
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	WhereClause,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	WorkflowRunner,
 } from '.';
 
