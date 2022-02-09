@@ -2,17 +2,21 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
+const formID = {
+	displayName: 'Form ID',
+	name: 'assetUid',
+	type: 'options',
+	typeOptions: {
+		loadOptionsMethod: 'loadSurveys',
+	},
+	required: true,
+	default:'',
+	description:'Form ID. The list should auto-populate with the form names (including the number of submissions). The ID can also be provided directly (it should look like `aSAvYreNzVEkrWg5Gdcvg` - starting with `a`)',
+};
+
 export const generalOptions = [
 	{
-		displayName: 'Form ID',
-		name: 'assetUid',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadSurveys',
-		},
-		required: true,
-		default:'',
-		description:'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+		...formID,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,15 +29,7 @@ export const generalOptions = [
 		},
 	},
 	{
-		displayName: 'Form ID',
-		name: 'assetUid',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadSurveys',
-		},
-		required: true,
-		default:'',
-		description:'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+		...formID,
 		displayOptions: {
 			show: {
 				resource: [

@@ -60,6 +60,7 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 			keepLooking = false;
 		}
 	}
+	// Logger.debug('KoBoToolboxApiRequest', results);
 
 	return results;
 }
@@ -242,7 +243,7 @@ export async function loadSurveys(this: ILoadOptionsFunctions): Promise<INodePro
 	});
 
 	// Logger.debug('LoadSurveys', responseData);
-	return responseData?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];  // tslint:disable-line:no-any
+	return responseData?.map((survey: any) => ({ name: `${survey.name} (${survey.deployment__submission_count})`, value: survey.uid })) || [];  // tslint:disable-line:no-any
 }
 
 export async function loadHooks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -256,5 +257,5 @@ export async function loadHooks(this: ILoadOptionsFunctions): Promise<INodePrope
 		scroll: true,
 	});
 
-	return responseData?.map((hook: any) => ({ name: hook.name, value: hook.uid })) || [];  // tslint:disable-line:no-any
+	return responseData?.map((hook: any) => ({ name: `${hook.name} (${hook.success_count}/${hook.failed_count})`, value: hook.uid })) || [];  // tslint:disable-line:no-any
 }

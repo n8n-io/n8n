@@ -6,7 +6,7 @@ export const hookOptions = [
 	{
 		displayName: 'Hook ID',
 		name: 'id',
-		type: 'string',
+		type: 'options',
 		required: true,
 		displayOptions: {
 			show: {
@@ -24,11 +24,11 @@ export const hookOptions = [
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'loadHooks',
-			// loadOptionsDependsOn: [
-			// 	'assetUid',
-			// ],
+			loadOptionsDependsOn: [
+				'assetUid',
+			],
 		},
-		description:'Hook ID (starts with h, e.g. hVehywQ2oXPYGHJHKtqth4)',
+		description:'Hook ID. The list should auto-populate with the hook names, including the number of successful/failed hook executions. The ID can also be provided directly (it should start with `h`, e.g. `hVehywQ2oXPYGHJHKtqth4`)',
 	},
 	{
 		displayName: 'Hook log ID',
