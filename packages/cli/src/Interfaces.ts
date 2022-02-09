@@ -576,7 +576,7 @@ export interface IWorkflowExecutionDataProcess {
 	sessionId?: string;
 	startNodes?: string[];
 	workflowData: IWorkflowBase;
-	user: N8nUserData;
+	userId: string;
 }
 
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
@@ -584,7 +584,7 @@ export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExe
 	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
 	nodeTypeData: ITransferNodeTypes;
-	user: User;
+	userId: string;
 }
 
 export interface IWorkflowExecuteProcess {

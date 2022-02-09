@@ -1093,13 +1093,9 @@ class App {
 						startNodes.length === 0 ||
 						destinationNode === undefined
 					) {
-						const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user as User);
-						if (this.isUserManagementEnabled) {
-							// TODO UM: test this.
-							// TODO: test this.
-							// @ts-ignore
-							additionalData.userId = req.body.userId;
-						}
+						const additionalData = await WorkflowExecuteAdditionalData.getBase(
+							(req.user as User).id,
+						);
 						const nodeTypes = NodeTypes();
 						const workflowInstance = new Workflow({
 							id: workflowData.id,
@@ -1138,7 +1134,7 @@ class App {
 						sessionId,
 						startNodes,
 						workflowData,
-						user: req.user as User,
+						userId: (req.user as User).id,
 					};
 					const workflowRunner = new WorkflowRunner();
 					const executionId = await workflowRunner.run(data);
@@ -1277,7 +1273,7 @@ class App {
 					);
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user as User,
+						(req.user as User).id,
 						currentNodeParameters,
 					);
 
@@ -2645,7 +2641,7 @@ class App {
 					executionData: fullExecutionData.data,
 					retryOf: req.params.id,
 					workflowData: fullExecutionData.workflowData,
-					user: req.user as User,
+					userId: (req.user as User).id,
 				};
 
 				const { lastNodeExecuted } = data.executionData!.resultData;

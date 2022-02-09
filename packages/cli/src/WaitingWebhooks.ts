@@ -119,7 +119,7 @@ export class WaitingWebhooks {
 			throw new ResponseHelper.ResponseError('Could not find workflow', 404, 404);
 		}
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.id);
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,

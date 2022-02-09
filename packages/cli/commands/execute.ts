@@ -169,12 +169,13 @@ export class Execute extends Command {
 		}
 
 		try {
+			const user = await getInstanceOwner();
 			const runData: IWorkflowExecutionDataProcess = {
 				executionMode: 'cli',
 				startNodes: [startNode.name],
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				workflowData: workflowData!,
-				user: await getInstanceOwner(),
+				userId: user.id,
 			};
 
 			const workflowRunner = new WorkflowRunner();

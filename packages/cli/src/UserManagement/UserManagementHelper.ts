@@ -116,9 +116,17 @@ async function getCredentialIdByName(name: string): Promise<string | number | nu
 	return null;
 }
 
+export async function getUserById(userId: string) {
+	const user = await Db.collections.User!.findOneOrFail({
+		where: { id: userId },
+		relations: ['globalRole'],
+	});
+	return user;
+}
+
 export async function checkPermissionsForExecution(
 	workflow: Workflow,
-	user: N8nUserData,
+	userId: string,
 ): Promise<void> {
 	const credentialIds = new Set();
 	const nodeNames = Object.keys(workflow.nodes);
@@ -156,7 +164,7 @@ export async function checkPermissionsForExecution(
 
 	const credentialCount = await Db.collections.SharedCredentials!.count({
 		where: {
-			user,
+			user: { id: userId },
 			credentials: In(ids),
 		},
 	});

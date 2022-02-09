@@ -167,7 +167,7 @@ export class WaitTrackerClass {
 				executionMode: fullExecutionData.mode,
 				executionData: fullExecutionData.data,
 				workflowData: fullExecutionData.workflowData,
-				user,
+				userId: user.id,
 			};
 
 			// Start the execution again

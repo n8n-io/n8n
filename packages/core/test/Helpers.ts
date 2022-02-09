@@ -783,12 +783,6 @@ export function WorkflowExecuteAdditionalData(
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
-		user: {
-			id: '123',
-			globalRole: {
-				name: 'owner',
-				scope: 'global',
-			}
-		}
+		userId: '123',
 	};
 }

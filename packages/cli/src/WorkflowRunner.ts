@@ -247,7 +247,7 @@ export class WorkflowRunner {
 			staticData: data.workflowData.staticData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			data.user,
+			data.userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
@@ -268,7 +268,7 @@ export class WorkflowRunner {
 				{ executionId },
 			);
 
-			await checkPermissionsForExecution(workflow, data.user);
+			await checkPermissionsForExecution(workflow, data.userId);
 
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
 				data,

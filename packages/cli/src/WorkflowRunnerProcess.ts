@@ -87,7 +87,7 @@ export class WorkflowRunnerProcess {
 		LoggerProxy.init(logger);
 
 		this.data = inputData;
-		const { user } = inputData;
+		const { userId } = inputData;
 
 		logger.verbose('Initializing n8n sub-process', {
 			pid: process.pid,
@@ -210,11 +210,9 @@ export class WorkflowRunnerProcess {
 			staticData: this.data.workflowData.staticData,
 			settings: this.data.workflowData.settings,
 		});
-
-		await checkPermissionsForExecution(this.workflow, user);
-
+		await checkPermissionsForExecution(this.workflow, userId);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			user,
+			userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
@@ -252,10 +250,13 @@ export class WorkflowRunnerProcess {
 			additionalData: IWorkflowExecuteAdditionalData,
 			inputData?: INodeExecutionData[] | undefined,
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
-			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo, user);
+			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
+				workflowInfo,
+				userId,
+			);
 			const runData = await WorkflowExecuteAdditionalData.getRunData(
 				workflowData,
-				additionalData.user,
+				additionalData.userId,
 				inputData,
 			);
 			await sendToParentProcess('startExecution', { runData });

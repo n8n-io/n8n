@@ -97,6 +97,7 @@ export function isWorkflowIdValid(id: string | null | undefined | number): boole
 export async function executeErrorWorkflow(
 	workflowId: string,
 	workflowErrorData: IWorkflowErrorData,
+	runningUser: User,
 ): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
@@ -113,6 +114,13 @@ export async function executeErrorWorkflow(
 		}
 
 		const user = await getWorkflowOwner(workflowId);
+		if (user.id !== runningUser.id) {
+			// The error workflow could not be found
+			Logger.warn(
+				`An attempt to execute workflow ID ${workflowId} as error workflow was blocked due to wrong permission`,
+			);
+			return;
+		}
 
 		const executionMode = 'error';
 		const nodeTypes = NodeTypes();
@@ -177,7 +185,7 @@ export async function executeErrorWorkflow(
 			executionMode,
 			executionData: runExecutionData,
 			workflowData,
-			user,
+			userId: user.id,
 		};
 
 		const workflowRunner = new WorkflowRunner();

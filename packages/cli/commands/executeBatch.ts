@@ -672,7 +672,7 @@ export class ExecuteBatch extends Command {
 					executionMode: 'cli',
 					startNodes: [startNode!.name],
 					workflowData,
-					user: ExecuteBatch.instanceOwner,
+					userId: ExecuteBatch.instanceOwner.id,
 				};
 
 				const workflowRunner = new WorkflowRunner();

@@ -279,7 +279,9 @@ export class ActiveWorkflowRunner {
 			settings: workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowData.shared[0].user);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			workflowData.shared[0].user.id,
+		);
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,
@@ -544,7 +546,9 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowData.shared[0].user);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			workflowData.shared[0].user.id,
+		);
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
@@ -611,7 +615,7 @@ export class ActiveWorkflowRunner {
 
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
-			user: additionalData.user,
+			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
 			workflowData,
@@ -747,7 +751,7 @@ export class ActiveWorkflowRunner {
 
 			const mode = 'trigger';
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(
-				(workflowData as WorkflowEntity).shared[0].user,
+				(workflowData as WorkflowEntity).shared[0].user.id,
 			);
 			const getTriggerFunctions = this.getExecuteTriggerFunctions(
 				workflowData,

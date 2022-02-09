@@ -170,10 +170,10 @@ export class Worker extends Command {
 			settings: currentExecutionDb.workflowData.settings,
 		});
 
-		await checkPermissionsForExecution(workflow, workflowOwner);
+		await checkPermissionsForExecution(workflow, workflowOwner.id);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowOwner,
+			workflowOwner.id,
 			undefined,
 			executionTimeoutTimestamp,
 		);

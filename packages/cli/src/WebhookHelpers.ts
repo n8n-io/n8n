@@ -232,7 +232,7 @@ export async function executeWebhook(
 	}
 
 	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase(user);
+	const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
@@ -407,7 +407,7 @@ export async function executeWebhook(
 			executionData: runExecutionData,
 			sessionId,
 			workflowData,
-			user,
+			userId: user.id,
 		};
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;

@@ -62,7 +62,11 @@ import {
 	WorkflowHelpers,
 } from '.';
 // eslint-disable-next-line import/no-cycle
-import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
+import {
+	checkPermissionsForExecution,
+	getUserById,
+	getWorkflowOwner,
+} from './UserManagement/UserManagementHelper';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -123,20 +127,36 @@ function executeErrorWorkflow(
 				workflowId: workflowData.id,
 			});
 			// If a specific error workflow is set run only that one
+
+			// First, do permission checks.
+			if (!workflowData.id) {
+				// Manual executions do not trigger error workflows
+				// So this if should never happen. It was added to
+				// make sure there are no possible security gaps
+				return;
+			}
+
 			// eslint-disable-next-line @typescript-eslint/no-floating-promises
-			WorkflowHelpers.executeErrorWorkflow(
-				workflowData.settings.errorWorkflow as string,
-				workflowErrorData,
-			);
+			getWorkflowOwner(workflowData.id).then((user) => {
+				void WorkflowHelpers.executeErrorWorkflow(
+					workflowData.settings!.errorWorkflow as string,
+					workflowErrorData,
+					user,
+				);
+			});
 		} else if (
 			mode !== 'error' &&
 			workflowData.id !== undefined &&
 			workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)
 		) {
 			Logger.verbose(`Start internal error workflow`, { executionId, workflowId: workflowData.id });
-			// If the workflow contains
-			// eslint-disable-next-line @typescript-eslint/no-floating-promises
-			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
+			void getWorkflowOwner(workflowData.id).then((user) => {
+				void WorkflowHelpers.executeErrorWorkflow(
+					workflowData.id!.toString(),
+					workflowErrorData,
+					user,
+				);
+			});
 		}
 	}
 }
@@ -701,7 +721,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 export async function getRunData(
 	workflowData: IWorkflowBase,
-	user: N8nUserData,
+	userId: string,
 	inputData?: INodeExecutionData[],
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
@@ -755,7 +775,7 @@ export async function getRunData(
 		executionData: runExecutionData,
 		// @ts-ignore
 		workflowData,
-		user,
+		userId,
 	};
 
 	return runData;
@@ -763,7 +783,7 @@ export async function getRunData(
 
 export async function getWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
-	user: N8nUserData,
+	userId: string,
 ): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
 		throw new Error(
@@ -778,6 +798,7 @@ export async function getWorkflowData(
 			// to get initialized first
 			await Db.init();
 		}
+		const user = await getUserById(userId);
 		const qb = Db.collections.Workflow!.createQueryBuilder('w');
 		if (user.globalRole.name !== 'owner') {
 			qb.innerJoin('w.shared', 'shared');
@@ -820,7 +841,7 @@ export async function executeWorkflow(
 	const nodeTypes = NodeTypes();
 
 	const workflowData =
-		loadedWorkflowData ?? (await getWorkflowData(workflowInfo, additionalData.user));
+		loadedWorkflowData ?? (await getWorkflowData(workflowInfo, additionalData.userId));
 
 	const workflowName = workflowData ? workflowData.name : undefined;
 	const workflow = new Workflow({
@@ -833,7 +854,8 @@ export async function executeWorkflow(
 		staticData: workflowData.staticData,
 	});
 
-	const runData = loadedRunData ?? (await getRunData(workflowData, additionalData.user, inputData));
+	const runData =
+		loadedRunData ?? (await getRunData(workflowData, additionalData.userId, inputData));
 
 	let executionId;
 
@@ -848,11 +870,11 @@ export async function executeWorkflow(
 
 	let data;
 	try {
-		await checkPermissionsForExecution(workflow, additionalData.user);
+		await checkPermissionsForExecution(workflow, additionalData.userId);
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webooks
-		const additionalDataIntegrated = await getBase(additionalData.user);
+		const additionalDataIntegrated = await getBase(additionalData.userId);
 		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
 			runData.executionMode,
 			executionId,
@@ -924,6 +946,9 @@ export async function executeWorkflow(
 			stoppedAt: fullRunData.stoppedAt,
 			workflowData,
 		};
+		if (workflowData.id) {
+			fullExecutionData.workflowId = workflowData.id as string;
+		}
 
 		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
@@ -985,7 +1010,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
  * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */
 export async function getBase(
-	user: N8nUserData,
+	userId: string,
 	currentNodeParameters?: INodeParameters,
 	executionTimeoutTimestamp?: number,
 ): Promise<IWorkflowExecuteAdditionalData> {
@@ -1012,7 +1037,7 @@ export async function getBase(
 		webhookTestBaseUrl,
 		currentNodeParameters,
 		executionTimeoutTimestamp,
-		user,
+		userId,
 	};
 }
 
