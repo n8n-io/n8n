@@ -49,6 +49,7 @@ export default Vue.extend({
 	left: 0;
 	width: 100%;
 	height: 100%;
+	background-color: var(--color-background-light);
 }
 
 #header {

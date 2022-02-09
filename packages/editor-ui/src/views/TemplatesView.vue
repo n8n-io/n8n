@@ -133,6 +133,14 @@ export default mixins(genericHelpers).extend({
 			this.categories = selected;
 			await this.doSearch();
 		},
+		scrollToTop() {
+			setTimeout(() => {
+				window.scrollTo({
+					top: 0,
+					behavior: 'smooth',
+				});
+			}, 100);
+		},
 		updatQueryParam(search: string, category: string) {
 			const query = Object.assign({}, this.$route.query);
 
@@ -152,6 +160,8 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	async created() {
+		this.scrollToTop();
+
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
 			this.search = this.$route.query.search;
 		}

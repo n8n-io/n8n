@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.template">
+	<div ref="content" :class="$style.template">
 		<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
 			<div :class="$style.header">
 				<go-back-button />
@@ -31,10 +31,7 @@
 					/>
 				</div>
 				<div :class="$style.details">
-					<TemplateDetails
-						:loading="loading"
-						:template="collection"
-					/>
+					<TemplateDetails :loading="loading" :template="collection" />
 				</div>
 			</div>
 		</div>
@@ -83,6 +80,14 @@ export default mixins(workflowHelpers).extend({
 				this.$router.push({ name: page, params: { id } });
 			}
 		},
+		scrollToTop() {
+			setTimeout(() => {
+				window.scrollTo({
+					top: 0,
+					behavior: 'smooth',
+				});
+			}, 50);
+		},
 	},
 	async mounted() {
 		const collectionId = this.$route.params.id;
@@ -95,6 +100,7 @@ export default mixins(workflowHelpers).extend({
 			});
 		}
 		this.loading = false;
+		this.scrollToTop();
 	},
 });
 </script>

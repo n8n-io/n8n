@@ -32,10 +32,7 @@
 						/>
 					</div>
 					<div :class="$style.details">
-						<TemplateDetails
-							:loading="loading"
-							:template="template"
-						/>
+						<TemplateDetails :loading="loading" :template="template" />
 					</div>
 				</div>
 			</div>
@@ -62,7 +59,7 @@ export default mixins(workflowHelpers).extend({
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
 		template(): IN8nTemplate {
-			return  this.$store.getters['templates/getTemplate'];
+			return this.$store.getters['templates/getTemplate'];
 		},
 	},
 	data() {
@@ -80,6 +77,14 @@ export default mixins(workflowHelpers).extend({
 				this.$router.push({ name: page, params: { id } });
 			}
 		},
+		scrollToTop() {
+			setTimeout(() => {
+				window.scrollTo({
+					top: 0,
+					behavior: 'smooth',
+				});
+			}, 50);
+		},
 	},
 	async mounted() {
 		const templateId = this.$route.params.id;
@@ -92,6 +97,7 @@ export default mixins(workflowHelpers).extend({
 			});
 		}
 		this.loading = false;
+		this.scrollToTop();
 	},
 });
 </script>
