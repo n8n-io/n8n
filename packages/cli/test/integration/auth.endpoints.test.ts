@@ -91,9 +91,9 @@ describe('auth endpoints', () => {
 
 		test('GET /login should check cookie contents', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAuthAgent(app, owner);
+			const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-			const response = await ownerAgent.get('/login');
+			const response = await authOwnerAgent.get('/login');
 
 			expect(response.statusCode).toBe(200);
 
@@ -110,9 +110,9 @@ describe('auth endpoints', () => {
 
 		test('GET /logout should log user out', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAuthAgent(app, owner);
+			const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-			const response = await ownerAgent.get('/logout');
+			const response = await authOwnerAgent.get('/logout');
 
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(LOGGED_OUT_RESPONSE_BODY);

@@ -41,9 +41,9 @@ describe('/me endpoints', () => {
 
 		test('GET /me should return sanitized shell', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAuthAgent(app, shell);
+			const authShellAgent = await utils.createAuthAgent(app, shell);
 
-			const response = await shellAgent.get('/me');
+			const response = await authShellAgent.get('/me');
 
 			expect(response.statusCode).toBe(200);
 
@@ -71,10 +71,10 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should succeed with valid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAuthAgent(app, shell);
+			const authShellAgent = await utils.createAuthAgent(app, shell);
 
 			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
-				const response = await shellAgent.patch('/me').send(validPayload);
+				const response = await authShellAgent.patch('/me').send(validPayload);
 
 				expect(response.statusCode).toBe(200);
 
@@ -103,24 +103,24 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should fail with invalid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAuthAgent(app, shell);
+			const authShellAgent = await utils.createAuthAgent(app, shell);
 
 			for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
-				const response = await shellAgent.patch('/me').send(invalidPayload);
+				const response = await authShellAgent.patch('/me').send(invalidPayload);
 				expect(response.statusCode).toBe(400);
 			}
 		});
 
 		test('PATCH /me/password should succeed with valid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAuthAgent(app, shell);
+			const authShellAgent = await utils.createAuthAgent(app, shell);
 
 			const validPayloads = Array.from({ length: 3 }, () => ({
 				password: utils.randomValidPassword(),
 			}));
 
 			for (const validPayload of validPayloads) {
-				const response = await shellAgent.patch('/me/password').send(validPayload);
+				const response = await authShellAgent.patch('/me/password').send(validPayload);
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 			}
@@ -128,7 +128,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me/password should fail with invalid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAuthAgent(app, shell);
+			const authShellAgent = await utils.createAuthAgent(app, shell);
 
 			const invalidPayloads = [
 				...Array.from({ length: 3 }, () => ({ password: utils.randomInvalidPassword() })),
@@ -138,19 +138,19 @@ describe('/me endpoints', () => {
 			];
 
 			for (const invalidPayload of invalidPayloads) {
-				const response = await shellAgent.patch('/me/password').send(invalidPayload);
+				const response = await authShellAgent.patch('/me/password').send(invalidPayload);
 				expect(response.statusCode).toBe(400);
 			}
 		});
 
 		test('POST /me/survey should succeed with valid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAuthAgent(app, shell);
+			const authShellAgent = await utils.createAuthAgent(app, shell);
 
 			const validPayloads = [SURVEY, {}];
 
 			for (const validPayload of validPayloads) {
-				const response = await shellAgent.post('/me/survey').send(validPayload);
+				const response = await authShellAgent.post('/me/survey').send(validPayload);
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 			}
@@ -200,9 +200,9 @@ describe('/me endpoints', () => {
 
 		test('GET /me should return sanitized member', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAuthAgent(app, member);
+			const authMemberAgent = await utils.createAuthAgent(app, member);
 
-			const response = await memberAgent.get('/me');
+			const response = await authMemberAgent.get('/me');
 
 			expect(response.statusCode).toBe(200);
 
@@ -230,10 +230,10 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should succeed with valid inputs', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAuthAgent(app, member);
+			const authMemberAgent = await utils.createAuthAgent(app, member);
 
 			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
-				const response = await memberAgent.patch('/me').send(validPayload);
+				const response = await authMemberAgent.patch('/me').send(validPayload);
 
 				expect(response.statusCode).toBe(200);
 
@@ -262,24 +262,24 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should fail with invalid inputs', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAuthAgent(app, member);
+			const authMemberAgent = await utils.createAuthAgent(app, member);
 
 			for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
-				const response = await memberAgent.patch('/me').send(invalidPayload);
+				const response = await authMemberAgent.patch('/me').send(invalidPayload);
 				expect(response.statusCode).toBe(400);
 			}
 		});
 
 		test('PATCH /me/password should succeed with valid inputs', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAuthAgent(app, member);
+			const authMemberAgent = await utils.createAuthAgent(app, member);
 
 			const validPayloads = Array.from({ length: 3 }, () => ({
 				password: utils.randomValidPassword(),
 			}));
 
 			for (const validPayload of validPayloads) {
-				const response = await memberAgent.patch('/me/password').send(validPayload);
+				const response = await authMemberAgent.patch('/me/password').send(validPayload);
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 			}
@@ -287,7 +287,7 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me/password should fail with invalid inputs', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAuthAgent(app, member);
+			const authMemberAgent = await utils.createAuthAgent(app, member);
 
 			const invalidPayloads = [
 				...Array.from({ length: 3 }, () => ({ password: utils.randomInvalidPassword() })),
@@ -297,19 +297,19 @@ describe('/me endpoints', () => {
 			];
 
 			for (const invalidPayload of invalidPayloads) {
-				const response = await memberAgent.patch('/me/password').send(invalidPayload);
+				const response = await authMemberAgent.patch('/me/password').send(invalidPayload);
 				expect(response.statusCode).toBe(400);
 			}
 		});
 
 		test('POST /me/survey should succeed with valid inputs', async () => {
 			const member = await Db.collections.User!.findOneOrFail();
-			const memberAgent = await utils.createAuthAgent(app, member);
+			const authMemberAgent = await utils.createAuthAgent(app, member);
 
 			const validPayloads = [SURVEY, {}];
 
 			for (const validPayload of validPayloads) {
-				const response = await memberAgent.post('/me/survey').send(validPayload);
+				const response = await authMemberAgent.post('/me/survey').send(validPayload);
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 			}
@@ -359,9 +359,9 @@ describe('/me endpoints', () => {
 
 		test('GET /me should return sanitized owner', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAuthAgent(app, owner);
+			const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-			const response = await ownerAgent.get('/me');
+			const response = await authOwnerAgent.get('/me');
 
 			expect(response.statusCode).toBe(200);
 
@@ -389,10 +389,10 @@ describe('/me endpoints', () => {
 
 		test('PATCH /me should succeed with valid inputs', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const ownerAgent = await utils.createAuthAgent(app, owner);
+			const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
 			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
-				const response = await ownerAgent.patch('/me').send(validPayload);
+				const response = await authOwnerAgent.patch('/me').send(validPayload);
 
 				expect(response.statusCode).toBe(200);
 
