@@ -39,4 +39,22 @@ export const campaignDescription: CampaignProperties = [
 		},
 		description: 'Use the customer ID to specify which customer the campaign belongs to.',
 	},
+	{
+		displayName: 'Developer Token',
+		name: 'devToken',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'custom',
+				],
+				resource: [
+					'campaign',
+				],
+			},
+		},
+		default: '',
+		description: 'Your Google Ads developer token.',
+	},
 ];

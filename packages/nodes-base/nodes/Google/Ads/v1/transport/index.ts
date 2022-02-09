@@ -1,50 +1,51 @@
 import {
+	OptionsWithUri,
+} from 'request';
+
+import {
 	IExecuteFunctions,
-	IHookFunctions,
+	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
-	GenericValue,
-	IDataObject,
-	IHttpRequestOptions,
-	NodeApiError,
-	NodeOperationError,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
-/**
- * Make an API request to Google Ads API
- */
-export async function apiRequest(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
-	endpoint: string,
-	body: IDataObject | GenericValue | GenericValue[] = {},
-	query: IDataObject = {},
-) {
-	const credentials = await this.getCredentials('googleAdsOAuth2Api');
-	if (!credentials) {
-		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
-	}
-
-	const options: IHttpRequestOptions = {
+export async function apiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/json',
+		},
 		method,
 		body,
-		qs: query,
-		url: `https://googleads.googleapis.com/v9/${endpoint}`,
-		headers: {
-			authorization: `Bearer ${credentials.accessToken}`,
-			'content-type': 'application/json; charset=utf-8',
-		},
+		qs,
+		uri: uri || `https://googleads.googleapis.com/v9/${endpoint}`,
+		json: true,
 	};
-
 	try {
-		return await this.helpers.httpRequest(options);
+		if (Object.keys(headers).length !== 0) {
+			options.headers = Object.assign({}, options.headers, headers);
+		}
+		if (Object.keys(body).length === 0) {
+			delete options.body;
+		}
+		//@ts-ignore
+		return await this.helpers.requestOAuth2.call(this, 'googleAdsOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		if (error.response && error.response.body && error.response.body.error) {
+
+			let errors = error.response.body.error.errors;
+
+			errors = errors.map((e: IDataObject) => e.message);
+			// Try to return the error prettier
+			throw new Error(
+				`Google Ads error response [${error.statusCode}]: ${errors.join('|')}`,
+			);
+		}
+		throw error;
 	}
 }
-
 export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
