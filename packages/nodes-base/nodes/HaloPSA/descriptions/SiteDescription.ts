@@ -66,6 +66,23 @@ export const siteFields: INodeProperties[] = [
 		description: 'Enter site name',
 	},
 	{
+		displayName: 'Select Client by ID',
+		name: 'selectOption',
+		type: 'boolean',
+		default: false,
+		description: 'Whether client can be selected by id',
+		displayOptions: {
+			show: {
+				resource: [
+					'site',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
@@ -78,6 +95,32 @@ export const siteFields: INodeProperties[] = [
 				],
 				operation: [
 					'create',
+				],
+				selectOption: [
+					true
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Client Name',
+		name: 'clientId',
+		type: 'options',
+		default: '',
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getHaloPSAClients',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'site',
+				],
+				operation: [
+					'create',
+				],
+				selectOption: [
+					false
 				],
 			},
 		},
@@ -123,7 +166,7 @@ export const siteFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                site:delete                                 */
+	/*                                site:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Site ID',
@@ -139,6 +182,24 @@ export const siteFields: INodeProperties[] = [
 				operation: [
 					'delete',
 					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simplify',
+		type: 'boolean',
+		default: false,
+		description: 'Whether output should be simplified',
+		displayOptions: {
+			show: {
+				resource: [
+					'site',
+				],
+				operation: [
+					'get',
+					'getAll'
 				],
 			},
 		},
@@ -205,25 +266,34 @@ export const siteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Active',
-				name: 'includeactive',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to include active sites in the response',
+				displayName: 'Active status',
+				name: 'activeStatus',
+				type: 'options',
+				default: 'includeactive',
+				options: [
+					{
+						name: 'Active only',
+						value: 'active',
+						description: 'Whether to include active sites in the response',
+					},
+					{
+						name: 'All',
+						value: 'all',
+						description: 'Whether to include active and inactive sites in the response',
+					},
+					{
+						name: 'Inactive only',
+						value: 'inactive',
+						description: 'Whether to include inactive sites in the response',
+					}
+				]
 			},
 			{
-				displayName: 'Include Inactive',
-				name: 'includeinactive',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to include inactive sites in the response',
-			},
-			{
-				displayName: 'Text Search',
+				displayName: 'Text To Filter By',
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Filter by Customers like your search string',
+				description: 'Filter sites by your search string',
 			},
 		],
 	},

@@ -139,7 +139,7 @@ export const userFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                user:delete                                 */
+	/*                                user:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
@@ -155,6 +155,24 @@ export const userFields: INodeProperties[] = [
 				operation: [
 					'delete',
 					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simplify',
+		type: 'boolean',
+		default: false,
+		description: 'Whether output should be simplified',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'get',
+					'getAll'
 				],
 			},
 		},
@@ -221,25 +239,34 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Active',
-				name: 'includeactive',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to include active customers in the response',
+				displayName: 'Active status',
+				name: 'activeStatus',
+				type: 'options',
+				default: 'includeactive',
+				options: [
+					{
+						name: 'Active only',
+						value: 'active',
+						description: 'Whether to include active customers in the response',
+					},
+					{
+						name: 'All',
+						value: 'all',
+						description: 'Whether to include active and inactive customers in the response',
+					},
+					{
+						name: 'Inactive only',
+						value: 'inactive',
+						description: 'Whether to include inactive Customers in the response',
+					}
+				]
 			},
 			{
-				displayName: 'Include Inactive',
-				name: 'includeinactive',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to include inactive Customers in the response',
-			},
-			{
-				displayName: 'Text Search',
+				displayName: 'Text To Filter By',
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Search sites by text',
+				description: 'Filter users by your search string',
 			},
 		],
 	},

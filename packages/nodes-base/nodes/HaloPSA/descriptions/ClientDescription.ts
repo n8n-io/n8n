@@ -123,6 +123,47 @@ export const clientFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
+	/*                                client:delete                               */
+	/* -------------------------------------------------------------------------- */
+	// {
+	// 	displayName: 'Reasign tickets before deleting',
+	// 	name: 'reasign',
+	// 	type: 'boolean',
+	// 	default: false,
+	// 	description: 'Whether tickets assigned to client sould be reasigned',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'client',
+	// 			],
+	// 			operation: [
+	// 				'delete',
+	// 			],
+	// 		},
+	// 	},
+	// },
+
+	// {
+	// 	displayName: 'Client ID For Reasigment',
+	// 	name: 'reasigmentCliendId',
+	// 	type: 'string',
+	// 	default: '',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'client',
+	// 			],
+	// 			operation: [
+	// 				'delete',
+	// 			],
+	// 			reasign: [
+	// 				true
+	// 			]
+	// 		},
+	// 	},
+	// },
+
+	/* -------------------------------------------------------------------------- */
 	/*                                client:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
@@ -139,6 +180,25 @@ export const clientFields: INodeProperties[] = [
 				operation: [
 					'get',
 					'delete',
+				],
+			},
+		},
+	},
+
+	{
+		displayName: 'Simplify Output',
+		name: 'simplify',
+		type: 'boolean',
+		default: false,
+		description: 'Whether output should be simplified',
+		displayOptions: {
+			show: {
+				resource: [
+					'client',
+				],
+				operation: [
+					'get',
+					'getAll'
 				],
 			},
 		},
@@ -205,25 +265,34 @@ export const clientFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Active',
-				name: 'includeactive',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to include active customers in the response',
+				displayName: 'Active status',
+				name: 'activeStatus',
+				type: 'options',
+				default: 'active',
+				options: [
+					{
+						name: 'Active only',
+						value: 'active',
+						description: 'Whether to include active customers in the response',
+					},
+					{
+						name: 'All',
+						value: 'all',
+						description: 'Whether to include active and inactive customers in the response',
+					},
+					{
+						name: 'Inactive only',
+						value: 'inactive',
+						description: 'Whether to include inactive Customers in the response',
+					}
+				]
 			},
 			{
-				displayName: 'Include Inactive',
-				name: 'includeinactive',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to include inactive Customers in the response',
-			},
-			{
-				displayName: 'Text Search',
+				displayName: 'Text To Filter By',
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Filter clients using search string',
+				description: 'Filter clients by your search string',
 			},
 		],
 	},

@@ -13,11 +13,11 @@ export const ticketOperations: INodeProperties[] = [
 			},
 		},
 		options: [
-			// {
-			// 	name: 'Create',
-			// 	value: 'create',
-			// 	description: 'Create a ticket',
-			// },
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a ticket',
+			},
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -33,11 +33,11 @@ export const ticketOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Get all tickets',
 			},
-			// {
-			// 	name: 'Update',
-			// 	value: 'update',
-			// 	description: 'Update a ticket',
-			// },
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a ticket',
+			},
 		],
 		default: 'delete',
 	},
@@ -47,6 +47,26 @@ export const ticketFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                ticket:create                               */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Ticket Type',
+		name: 'ticketType',
+		type: 'options',
+		default: '',
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getHaloPSATicketsTypes',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Summary',
 		name: 'summary',
@@ -126,7 +146,7 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                site:delete                                 */
+	/*                                site:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ticket ID',
@@ -142,6 +162,25 @@ export const ticketFields: INodeProperties[] = [
 				operation: [
 					'delete',
 					'get',
+				],
+			},
+		},
+	},
+
+	{
+		displayName: 'Simplify Output',
+		name: 'simplify',
+		type: 'boolean',
+		default: false,
+		description: 'Whether output should be simplified',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'get',
+					'getAll'
 				],
 			},
 		},
@@ -208,25 +247,34 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Active',
-				name: 'includeactive',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to include active customers in the response',
+				displayName: 'Active status',
+				name: 'activeStatus',
+				type: 'options',
+				default: 'includeactive',
+				options: [
+					{
+						name: 'Active only',
+						value: 'active',
+						description: 'Whether to include active customers in the response',
+					},
+					{
+						name: 'All',
+						value: 'all',
+						description: 'Whether to include active and inactive customers in the response',
+					},
+					{
+						name: 'Inactive only',
+						value: 'inactive',
+						description: 'Whether to include inactive Customers in the responsee',
+					}
+				]
 			},
 			{
-				displayName: 'Include Inactive',
-				name: 'includeinactive',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to include inactive Customers in the response',
-			},
-			{
-				displayName: 'Text Search Summary',
-				name: 'search_summary',
+				displayName: 'Text To Filter By',
+				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Filter by Customers like your search string',
+				description: 'Filter tickets by your search string',
 			},
 		],
 	},

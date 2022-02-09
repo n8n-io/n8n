@@ -1,7 +1,4 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -14,9 +11,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 // Interfaces and Types -------------------------------------------------------------
 interface IHaloPSATokens {
@@ -71,8 +66,7 @@ export async function haloPSAApiRequest(
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-): Promise<IDataObject> {
-
+): Promise<any> {
 	const resourceApiUrl = ((await this.getCredentials('haloPSAApi')) as IDataObject)
 		.resourceApiUrl as string;
 
@@ -96,20 +90,77 @@ export async function haloPSAApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		console.log(options);
-		return await this.helpers.request!(options);
+		const result = await this.helpers.request!(options);
+		if (method === 'DELETE' && result.id) {
+			return { success: true };
+		}
+		return result;
 	} catch (error) {
+		const message = (error as JsonObject).message as string;
+		if (method === 'DELETE' || 'GET' || ('UPDATE' && message)) {
+			let newErrorMessage;
+			if (message.includes('400')) {
+				console.log(message);
+				newErrorMessage = JSON.parse(message.split(' - ')[1]);
+				(error as JsonObject).message = `For field ID, ${
+					newErrorMessage.id || newErrorMessage['[0].id']
+				}`;
+			}
+			if (message.includes('403')) {
+				(
+					error as JsonObject
+				).message = `You don\'t have permissions to ${method.toLowerCase()} ${resource
+					.split('/')[1]
+					.toLowerCase()}.`;
+			}
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function haloPSAApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+// export async function reasignTickets(
+// 	this:
+// 		| IHookFunctions
+// 		| IExecuteFunctions
+// 		| IExecuteSingleFunctions
+// 		| ILoadOptionsFunctions
+// 		| IPollFunctions,
+// 	clientId: string,
+// 	reasigmentCliendId: string,
+// 	accessToken: string,
+// ): Promise<any> {
+// 	const response = (await haloPSAApiRequest.call(
+// 		this,
+// 		'GET',
+// 		`/tickets`,
+// 		accessToken,
+// 		{},
+// 		{ client_id: reasigmentCliendId },
+// 	)) as IDataObject;
+
+// 	const { tickets } = response;
+// 	console.log((tickets as IDataObject[]).map(t => t.id));
+// 	const body: IDataObject = {
+// 		id: clientId,
+// 		client_id: reasigmentCliendId,
+// 	};
+
+// 	for (const ticket of (tickets as IDataObject[])) {
+// 		console.log(ticket.id);
+// 		await haloPSAApiRequest.call(this, 'DELETE', `/tickets/${ticket.id}`, accessToken);
+// 	}
+// }
+
+export async function haloPSAApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
 	method: string,
 	endpoint: string,
 	accessToken: string,
 	body = {},
-	query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	query: IDataObject = {},
+): Promise<any> {
+	// tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -119,7 +170,14 @@ export async function haloPSAApiRequestAllItems(this: IExecuteFunctions | ILoadO
 	query.pageinate = true;
 
 	do {
-		responseData = await haloPSAApiRequest.call(this, method, endpoint, accessToken, body, query) as IDataObject;
+		responseData = (await haloPSAApiRequest.call(
+			this,
+			method,
+			endpoint,
+			accessToken,
+			body,
+			query,
+		)) as IDataObject;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.page_no++;
 		//@ts-ignore
@@ -129,11 +187,43 @@ export async function haloPSAApiRequestAllItems(this: IExecuteFunctions | ILoadO
 }
 
 // Utilities ------------------------------------------------------------------------
-
 function getAuthUrl(credentials: IDataObject) {
 	return credentials.hostingType === 'on-premise'
 		? `${credentials.appUrl}/auth/token`
 		: `${credentials.authUrl}/token?tenant=${credentials.tenant}`;
+}
+
+export function simplifyHaloPSAGetOutput(
+	response: IDataObject[],
+	fieldsList: string[],
+): IDataObject[] {
+	const output = [];
+	for (const item of response) {
+		const simplifiedItem: IDataObject = {};
+		Object.keys(item).forEach((key: string) => {
+			if (fieldsList.includes(key)) {
+				simplifiedItem[key] = item[key];
+			}
+		});
+		output.push(simplifiedItem);
+	}
+	return output;
+}
+
+export function qsSetStatus(status: string) {
+	if (!status) return {};
+	const qs: IDataObject = {};
+	if (status === 'all') {
+		qs['includeinactive'] = true;
+		qs['includeactive'] = true;
+	} else if (status === 'active') {
+		qs['includeinactive'] = false;
+		qs['includeactive'] = true;
+	} else {
+		qs['includeinactive'] = true;
+		qs['includeactive'] = false;
+	}
+	return qs;
 }
 
 // Validation -----------------------------------------------------------------------

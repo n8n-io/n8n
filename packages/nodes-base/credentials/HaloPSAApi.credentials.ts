@@ -74,7 +74,7 @@ export class HaloPSAApi implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'edit:tickets edit:customers',
+			default: 'admin edit:tickets edit:customers',
 			required: true,
 		},
 	];
