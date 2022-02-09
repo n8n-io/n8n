@@ -16,7 +16,7 @@ describe('auth endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ auth: true }, { applyAuth: true });
+			app = utils.initTestServer({ namespaces: ['auth'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 		});

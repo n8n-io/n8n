@@ -15,7 +15,7 @@ describe('/me endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ me: true }, { applyAuth: true });
+			app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 		});
@@ -161,7 +161,7 @@ describe('/me endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ me: true }, { applyAuth: true });
+			app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 		});
@@ -320,7 +320,7 @@ describe('/me endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ me: true }, { applyAuth: true });
+			app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 		});

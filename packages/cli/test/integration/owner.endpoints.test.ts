@@ -12,7 +12,7 @@ describe('/owner endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ owner: true }, { applyAuth: true });
+			app = utils.initTestServer({ namespaces: ['owner'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 		});
