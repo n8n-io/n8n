@@ -30,6 +30,10 @@ export async function getCollectionById(collectionId: string): Promise<IN8nColle
 					icon
 					iconData
 					typeVersion: version
+					categories{
+						id
+						name
+					}
 				}
 				categories{
 					id
@@ -39,6 +43,7 @@ export async function getCollectionById(collectionId: string): Promise<IN8nColle
 					username
 				}
 				totalViews: views
+				created_at
 			}
 			totalViews: views
 			categories{

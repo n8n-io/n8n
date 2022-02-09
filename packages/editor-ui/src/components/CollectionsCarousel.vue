@@ -156,6 +156,7 @@ export default mixins(genericHelpers).extend({
 	background-color: #fbfcfe;
 	opacity: 1;
 	cursor: pointer;
+	z-index: 2;
 
 	&:nth-child(1) {
 		left: var(--spacing-2xs);
@@ -163,6 +164,18 @@ export default mixins(genericHelpers).extend({
 
 	&:nth-child(2) {
 		right: var(--spacing-2xs);
+
+		// &:after {
+		// 	content: '';
+		// 	width: 40px;
+		// 	height: 140px;
+		// 	top: -54px;
+		// 	right: -23px;
+		// 	position: absolute;
+		// 	position: absolute;
+		// 	background: linear-gradient(270deg, rgba(248, 249, 251, 1) 25%, rgba(255, 255, 255, 0.25) 100%);
+		// 	z-index: -1;
+		// }
 	}
 
 	svg {
