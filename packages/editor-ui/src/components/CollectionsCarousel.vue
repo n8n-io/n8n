@@ -69,6 +69,16 @@ export default mixins(genericHelpers).extend({
 			type: Function,
 		},
 	},
+	watch: {
+		collections(collections) {
+			const list = document.querySelector('.agile__list');
+			if (list) {
+				const width = list.clientWidth;
+				const collectionsWidth = collections.length * (this.carouselWidth + collections.length * 2);
+				this.scrollEnd = collectionsWidth < width;
+			}
+		},
+	},
 	components: {
 		CollectionsCard,
 		NodeList,
@@ -91,7 +101,7 @@ export default mixins(genericHelpers).extend({
 				const scrollWidth = list.scrollWidth;
 				const scrollLeft = this.carouselScrollPosition;
 
-				if (scrollWidth - width <= (scrollLeft + 10)) {
+				if (scrollWidth - width <= scrollLeft + 10) {
 					this.scrollEnd = true;
 				} else {
 					this.scrollEnd = false;
@@ -160,22 +170,38 @@ export default mixins(genericHelpers).extend({
 
 	&:nth-child(1) {
 		left: var(--spacing-2xs);
+
+		&:after {
+			content: '';
+			width: 40px;
+			height: 140px;
+			top: -54px;
+			left: -23px;
+			position: absolute;
+			position: absolute;
+			background: linear-gradient(270deg, rgba(255, 255, 255, 0.25) 0%, rgba(248, 249, 251, 1) 86%);
+			z-index: -1;
+		}
 	}
 
 	&:nth-child(2) {
 		right: var(--spacing-2xs);
 
-		// &:after {
-		// 	content: '';
-		// 	width: 40px;
-		// 	height: 140px;
-		// 	top: -54px;
-		// 	right: -23px;
-		// 	position: absolute;
-		// 	position: absolute;
-		// 	background: linear-gradient(270deg, rgba(248, 249, 251, 1) 25%, rgba(255, 255, 255, 0.25) 100%);
-		// 	z-index: -1;
-		// }
+		&:after {
+			content: '';
+			width: 40px;
+			height: 140px;
+			top: -54px;
+			right: -23px;
+			position: absolute;
+			position: absolute;
+			background: linear-gradient(
+				270deg,
+				rgba(248, 249, 251, 1) 25%,
+				rgba(255, 255, 255, 0.25) 100%
+			);
+			z-index: -1;
+		}
 	}
 
 	svg {
