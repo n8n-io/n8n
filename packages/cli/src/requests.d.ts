@@ -174,11 +174,10 @@ export declare namespace UserRequest {
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
 	export type Update = AuthenticatedRequest<
-		{},
+		{ id: string },
 		{},
 		{
 			inviterId: string;
-			inviteeId: string;
 			firstName: string;
 			lastName: string;
 			password: string;

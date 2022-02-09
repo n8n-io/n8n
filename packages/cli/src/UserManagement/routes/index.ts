@@ -65,7 +65,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			req.url.startsWith('/fonts/') ||
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
 			req.url.startsWith(`/${restEndpoint}/resolve-signup-token`) ||
-			new RegExp(`/${restEndpoint}/user(/?)$`).test(req.url)
+			new RegExp(`/${restEndpoint}/users/(\\d)+`).test(req.url)
 		) {
 			return next();
 		}

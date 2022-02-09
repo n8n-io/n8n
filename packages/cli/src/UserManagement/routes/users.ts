@@ -126,7 +126,7 @@ export function usersNamespace(this: N8nApp): void {
 	 * Fill out user shell with first name, last name, and password.
 	 */
 	this.app.post(
-		`/${this.restEndpoint}/user`,
+		`/${this.restEndpoint}/users/:id`,
 		ResponseHelper.send(async (req: UserRequest.Update, res: Response) => {
 			if (req.user) {
 				throw new ResponseHelper.ResponseError(
@@ -136,7 +136,9 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const { inviterId, inviteeId, firstName, lastName, password } = req.body;
+			const { id: inviteeId } = req.params;
+
+			const { inviterId, firstName, lastName, password } = req.body;
 
 			if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 500);
