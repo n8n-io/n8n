@@ -18,13 +18,13 @@ describe('/owner endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+			const ownerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
 
 			await Db.collections.User!.save({
 				id: uuid(),
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				globalRole: role,
+				globalRole: ownerRole,
 			});
 		});
 

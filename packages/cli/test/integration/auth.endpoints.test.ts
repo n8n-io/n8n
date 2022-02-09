@@ -22,7 +22,7 @@ describe('auth endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+			const ownerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
 
 			const newOwner = new User();
 
@@ -32,7 +32,7 @@ describe('auth endpoints', () => {
 				firstName: TEST_USER.firstName,
 				lastName: TEST_USER.lastName,
 				password: hashSync(TEST_USER.password, genSaltSync(10)),
-				globalRole: role,
+				globalRole: ownerRole,
 			});
 
 			await Db.collections.User!.save(newOwner);
