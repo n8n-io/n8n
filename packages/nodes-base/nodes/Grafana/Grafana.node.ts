@@ -7,12 +7,12 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -134,7 +134,7 @@ export class Grafana implements INodeType {
 			async grafanaApiTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
-			): Promise<NodeCredentialTestResult> {
+			): Promise<INodeCredentialTestResult> {
 				const { apiKey, baseUrl: rawBaseUrl } = credential.data as GrafanaCredentials;
 				const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
