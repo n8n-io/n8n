@@ -575,9 +575,9 @@ const config = convict({
 		},
 		emails: {
 			mode: {
-				doc: 'How to send emails. Possible values: smtp or empty (default)',
-				format: String,
-				default: '', // possible values: 'smtp' | ''
+				doc: 'How to send emails',
+				format: ['', 'smtp'],
+				default: '',
 				env: 'N8N_UM_EMAIL_MODE',
 			},
 			smtp: {
