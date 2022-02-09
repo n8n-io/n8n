@@ -57,14 +57,14 @@ export function initTestServer(
 		authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
 	}
 
-	const map = {
-		me: meEndpoints,
-		users: usersEndpoints,
-		auth: authEndpoints,
-		owner: ownerEndpoints,
-	};
-
 	if (namespaces) {
+		const map = {
+			me: meEndpoints,
+			users: usersEndpoints,
+			auth: authEndpoints,
+			owner: ownerEndpoints,
+		};
+
 		for (const namespace of namespaces) {
 			map[namespace].apply(testServer);
 		}
