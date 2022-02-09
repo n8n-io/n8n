@@ -762,10 +762,10 @@ const config = convict({
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
 		mode: {
-			format: String,
+			format: ['default', 'filesystem'],
 			default: 'default',
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
-			doc: 'Storage mode for binary data, default | filesystem',
+			doc: 'Storage mode for binary data',
 		},
 		localStoragePath: {
 			format: String,
