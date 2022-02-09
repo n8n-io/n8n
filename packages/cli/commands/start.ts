@@ -247,8 +247,6 @@ export class Start extends Command {
 							pass: AES.decrypt(auth.pass, encryptionKey).toString(enc.Utf8),
 						};
 
-						console.log({ ...rest, auth: decryptedAuth });
-
 						config.set('userManagement.emails.mode', 'smtp');
 						config.set('userManagement.emails.smtp', { ...rest, auth: decryptedAuth });
 					}
