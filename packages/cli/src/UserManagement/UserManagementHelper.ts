@@ -1,7 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import { N8nUserData, Workflow } from 'n8n-workflow';
@@ -46,7 +43,7 @@ export async function saveCredentialOwnership(
 	})) as SharedCredentials;
 }
 
-export async function getWorkflowOwner(workflowId: string | number) {
+export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
 	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
 		where: { workflow: { id: workflowId } },
 		relations: ['user', 'user.globalRole'],
@@ -55,7 +52,7 @@ export async function getWorkflowOwner(workflowId: string | number) {
 	return sharedWorkflow.user;
 }
 
-export async function getInstanceOwner() {
+export async function getInstanceOwner(): Promise<User> {
 	const qb = Db.collections.User!.createQueryBuilder('u');
 	qb.innerJoin('u.globalRole', 'gr');
 	qb.andWhere('gr.name = :name and gr.scope = :scope', { name: 'owner', scope: 'global' });
@@ -74,20 +71,14 @@ export async function isInstanceOwnerSetup(): Promise<boolean> {
 	return users.length !== 0;
 }
 
-export function isValidEmail(email: string): boolean {
-	return !!/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.exec(
-		String(email).toLowerCase(),
-	);
-}
-
-export function validatePassword(password?: string) {
+export function validatePassword(password?: string): string {
 	if (!password) {
 		throw new ResponseHelper.ResponseError('Password is mandatory', undefined, 400);
 	}
 
-	if (password.length <= 8 && password.length >= 64) {
+	if (password.length < 8 || password.length > 64) {
 		throw new ResponseHelper.ResponseError(
-			'Password length must be longer than or equal to 8 characters and shorter than or equal to 64 characters',
+			'Password must be 8 to 64 characters long',
 			undefined,
 			400,
 		);
@@ -116,7 +107,7 @@ async function getCredentialIdByName(name: string): Promise<string | number | nu
 	return null;
 }
 
-export async function getUserById(userId: string) {
+export async function getUserById(userId: string): Promise<User> {
 	const user = await Db.collections.User!.findOneOrFail({
 		where: { id: userId },
 		relations: ['globalRole'],

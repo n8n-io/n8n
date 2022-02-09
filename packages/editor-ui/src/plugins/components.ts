@@ -44,17 +44,25 @@ import lang from 'element-ui/lib/locale/lang/en';
 import locale from 'element-ui/lib/locale';
 
 import {
-	N8nIconButton,
+	N8nActionBox,
+	N8nAvatar,
+	N8nActionToggle,
 	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
 	N8nInfoTip,
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
-	N8nHeading,
+	N8nLink,
 	N8nMenu,
 	N8nMenuItem,
+	N8nOption,
 	N8nSelect,
 	N8nSpinner,
+	N8nFormInputs,
+	N8nFormBox,
 	N8nSquareButton,
 	N8nText,
 	N8nTooltip,
@@ -65,21 +73,30 @@ import { ElMessageBoxOptions } from "element-ui/types/message-box";
 Vue.use(Fragment.Plugin);
 
 // n8n design system
+Vue.use(N8nActionBox);
+Vue.use(N8nActionToggle);
+Vue.use(N8nAvatar);
 Vue.use(N8nButton);
+Vue.component('n8n-form-box', N8nFormBox);
+Vue.component('n8n-form-inputs', N8nFormInputs);
+Vue.use('n8n-icon', N8nIcon);
 Vue.use(N8nIconButton);
 Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
 Vue.use(N8nHeading);
+Vue.use(N8nLink);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
+Vue.use(N8nOption);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
 Vue.component('n8n-square-button', N8nSquareButton);
 Vue.component('n8n-text', N8nText);
 Vue.use(N8nTooltip);
 Vue.use(N8nOption);
+Vue.use(N8nText);
 
 // element io
 locale.use(lang);

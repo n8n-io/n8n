@@ -6,6 +6,7 @@ import {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteWorkflowInfo,
+	IHttpRequestOptions,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
@@ -24,17 +25,30 @@ import {
 import { Credentials, IExecuteFunctions } from '../src';
 
 export class CredentialsHelper extends ICredentialsHelper {
-	getDecrypted(
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		requestParams: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		return requestParams;
+	}
+
+	getParentTypes(name: string): string[] {
+		return [];
+	}
+
+	async getDecrypted(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		return new Promise((res) => res({}));
+		return {};
 	}
 
-	getCredentials(nodeCredentials: INodeCredentialsDetails, type: string): Promise<Credentials> {
-		return new Promise((res) => {
-			res(new Credentials({ id: null, name: '' }, '', [], ''));
-		});
+	async getCredentials(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+	): Promise<Credentials> {
+		return new Credentials({ id: null, name: '' }, '', [], '');
 	}
 
 	async updateCredentials(

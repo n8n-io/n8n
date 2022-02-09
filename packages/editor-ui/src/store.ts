@@ -12,7 +12,6 @@ import {
 	INodeIssueData,
 	INodeTypeDescription,
 	IRunData,
-	ITelemetrySettings,
 	ITaskData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
@@ -33,9 +32,10 @@ import {
 } from './Interface';
 
 import credentials from './modules/credentials';
-import tags from './modules/tags';
 import settings from './modules/settings';
+import tags from './modules/tags';
 import ui from './modules/ui';
+import users from './modules/users';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
 
@@ -89,7 +89,6 @@ const state: IRootState = {
 	},
 	sidebarMenuItems: [],
 	instanceId: '',
-	telemetry: null,
 };
 
 const modules = {
@@ -98,6 +97,7 @@ const modules = {
 	settings,
 	workflows,
 	versions,
+	users,
 	ui,
 };
 
@@ -545,9 +545,6 @@ export const store = new Vuex.Store({
 		setInstanceId(state, instanceId: string) {
 			Vue.set(state, 'instanceId', instanceId);
 		},
-		setTelemetry(state, telemetry: ITelemetrySettings) {
-			Vue.set(state, 'telemetry', telemetry);
-		},
 		setOauthCallbackUrls(state, urls: IDataObject) {
 			Vue.set(state, 'oauthCallbackUrls', urls);
 		},
@@ -659,10 +656,6 @@ export const store = new Vuex.Store({
 			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		},
 
-		isTelemetryEnabled: (state) => {
-			return state.telemetry && state.telemetry.enabled;
-		},
-
 		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
 			return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
 		},
@@ -730,9 +723,6 @@ export const store = new Vuex.Store({
 		versionCli: (state): string => {
 			return state.versionCli;
 		},
-		telemetry: (state): ITelemetrySettings | null => {
-			return state.telemetry;
-		},
 		oauthCallbackUrls: (state): object => {
 			return state.oauthCallbackUrls;
 		},
@@ -758,9 +748,11 @@ export const store = new Vuex.Store({
 
 		workflowTriggerNodes: (state, getters) => {
 			return state.workflow.nodes.filter(node => {
-				return getters.nodeType(node.type).group.includes('trigger');
+				const nodeType = getters.nodeType(node.type, node.typeVersion);
+				return nodeType && nodeType.group.includes('trigger');
 			});
 		},
+
 		// Node-Index
 		getNodeIndex: (state) => (nodeName: string): number => {
 			return state.nodeIndex.indexOf(nodeName);

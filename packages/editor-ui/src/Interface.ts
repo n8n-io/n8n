@@ -1,12 +1,12 @@
 
 import {
+	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
-	GenericValue,
-	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	ILoadOptions,
 	INode,
 	INodeCredentials,
 	INodeIssues,
@@ -19,6 +19,7 @@ import {
 	IRunData,
 	ITaskData,
 	ITelemetrySettings,
+	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -167,7 +168,7 @@ export interface IRestApi {
 	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
 	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
+	getNodeParameterOptions(sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> ;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -493,11 +494,6 @@ export type IPersonalizationSurveyAnswers = {
 	workArea: string[] | string | null;
 };
 
-export interface IPersonalizationSurvey {
-	answers?: IPersonalizationSurveyAnswers;
-	shouldShow: boolean;
-}
-
 export interface IN8nPrompts {
 	message: string;
 	title: string;
@@ -511,6 +507,29 @@ export interface IN8nValueSurveyData {
 
 export interface IN8nPromptResponse {
 	updated: boolean;
+}
+
+export interface IUserManagementConfig {
+	enabled: boolean;
+	showSetupOnFirstLoad?: boolean;
+	smtpSetup: boolean;
+}
+
+export interface IPermissionGroup {
+	loginStatus?: ILogInStatus[];
+	role?: IRole[];
+	um?: boolean;
+}
+
+export interface IPermissions {
+	allow?: IPermissionGroup;
+	deny?: IPermissionGroup;
+}
+
+export interface IUserPermissions {
+	[category: string]: {
+		[permission: string]: IPermissions;
+	};
 }
 
 export interface IN8nUISettings {
@@ -533,9 +552,12 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
-	personalizationSurvey?: IPersonalizationSurvey;
+	personalizationSurveyEnabled: boolean;
 	telemetry: ITelemetrySettings;
+	userManagement: IUserManagementConfig;
 	defaultLocale: string;
+	logLevel: ILogLevel;
+	tagsEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -618,6 +640,7 @@ export interface ITagRow {
 	disable?: boolean;
 	update?: boolean;
 	delete?: boolean;
+	canDelete?: boolean;
 }
 
 export interface IVersion {
@@ -680,7 +703,6 @@ export interface IRootState {
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
-	telemetry: ITelemetrySettings | null;
 }
 
 export interface ICredentialTypeMap {
@@ -718,15 +740,23 @@ export interface IUiState {
 	isPageLoading: boolean;
 }
 
+export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
+
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
+	userManagement: IUserManagementConfig;
 }
 
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
 	nextVersions: IVersion[];
 	currentVersion: IVersion | undefined;
+}
+
+export interface IUsersState {
+	currentUserId: null | string;
+	users: {[userId: string]: IUser};
 }
 
 export interface IWorkflowsState {
@@ -748,3 +778,70 @@ export interface IBounds {
 	maxX: number;
 	maxY: number;
 }
+
+export type ILogInStatus = 'LoggedIn' | 'LoggedOut';
+
+export type IRole = 'default' | 'owner' | 'member';
+
+export interface IUserResponse {
+	id: string;
+	firstName?: string;
+	lastName?: string;
+	email?: string;
+	globalRole?: {
+		name: IRole;
+		id: string;
+	};
+	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
+}
+
+export interface IUser extends IUserResponse {
+	isDefaultUser: boolean;
+	isCurrentUser: boolean;
+	isPendingUser: boolean;
+	isOwner: boolean;
+	fullName?: string;
+}
+
+export type Rule = { name: string; config?: any}; // tslint:disable-line:no-any
+
+export type RuleGroup = {
+	rules: Array<Rule | RuleGroup>;
+	defaultError?: string;
+};
+
+export type IValidator = {
+	validate: Function;
+};
+
+export type IFormInput = {
+	name: string;
+	initialValue?: string | number | boolean | null;
+	properties: {
+		label: string;
+		type?: "text" | "email" | "password" | 'select';
+		maxlength?: number;
+		required?: boolean;
+		showRequiredAsterisk?: boolean;
+		validators?: {
+			[name: string]: IValidator;
+		};
+		validationRules?: Array<Rule | RuleGroup>;
+		validateOnBlur?: boolean;
+		infoText?: string;
+		placeholder?: string;
+		options?: Array<{label: string; value: string}>;
+		autocomplete?: 'off' | 'new-password' | 'current-password' | 'given-name' | 'family-name' | 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
+	}
+};
+
+export type IFormInputs = IFormInput[];
+
+export type IFormBoxConfig = {
+	title: string;
+	buttonText?: string;
+	secondaryButtonText?: string;
+	inputs: IFormInputs;
+	redirectLink?: string;
+	redirectText?: string;
+};

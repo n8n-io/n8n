@@ -10,9 +10,9 @@
 					<n8n-heading tag="h1" size="xlarge" class="title">
 						{{ $locale.baseText('workflowOpen.openWorkflow') }}
 					</n8n-heading>
-					<div class="tags-filter">
+					<div class="tags-filter" v-if="areTagsEnabled">
 						<TagsDropdown
-							:placeholder="$locale.baseText('workflowOpen.openWorkflow')"
+							:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
@@ -34,7 +34,7 @@
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
-								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick" :clickable="true" :hoverable="true" />
+								<TagsContainer v-if="areTagsEnabled" class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick" :clickable="true" :hoverable="true" />
 							</div>
 						</template>
 					</el-table-column>
@@ -67,6 +67,7 @@ import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { convertToDisplayDate } from './helpers';
 import { WORKFLOW_OPEN_MODAL_KEY } from '../constants';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	genericHelpers,
@@ -93,6 +94,7 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapGetters('settings', ['areTagsEnabled']),
 		filteredWorkflows (): IWorkflowShortResponse[] {
 			return this.workflows
 				.filter((workflow: IWorkflowShortResponse) => {
@@ -183,7 +185,7 @@ export default mixins(
 						params: { name: data.id },
 					});
 				}
-				this.$store.commit('ui/closeTopModal');
+				this.$store.commit('ui/closeAllModals');
 			}
 		},
 		openDialog () {

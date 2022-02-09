@@ -9,6 +9,7 @@ import {
 	INode,
 	IWorkflowSettings,
 } from '../../workflow/dist/src';
+import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthenticatedRequest<
 	RouteParams = {},
@@ -17,17 +18,179 @@ export type AuthenticatedRequest<
 	RequestQuery = {},
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & { user: User };
 
-export declare namespace OAuthRequest {
-	type OAuth1CredentialAuth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
-	type OAuth2CredentialAuth = OAuth1CredentialAuth;
-	type OAuth1CredentialCallback = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{ oauth_verifier: string; oauth_token: string; cid: string }
-	>;
-	type OAuth2CredentialCallback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+// ----------------------------------
+//           /workflows
+// ----------------------------------
+
+export declare namespace WorkflowRequest {
+	type RequestBody = Partial<{
+		id: string; // delete if sent
+		name: string;
+		nodes: INode[];
+		connections: IConnections;
+		settings: IWorkflowSettings;
+		active: boolean;
+		tags: string[];
+	}>;
+
+	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
+
+	type Get = AuthenticatedRequest<{ id: string }>;
+
+	type Delete = Get;
+
+	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
+
+	type NewName = express.Request<{}, {}, {}, { name?: string }>;
+
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
+
+	type GetAllActive = AuthenticatedRequest;
+
+	type GetAllActivationErrors = Get;
 }
+
+// ----------------------------------
+//          /credentials
+// ----------------------------------
+
+export declare namespace CredentialRequest {
+	type RequestBody = Partial<{
+		id: string; // delete if sent
+		name: string;
+		type: string;
+		nodesAccess: ICredentialNodeAccess[];
+		data: ICredentialDataDecryptedObject;
+	}>;
+
+	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
+
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
+
+	type Delete = Get;
+
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string; includeData: string }>;
+
+	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
+
+	type NewName = WorkflowRequest.NewName;
+}
+
+// ----------------------------------
+//           /executions
+// ----------------------------------
+
+export declare namespace ExecutionRequest {
+	namespace QueryParam {
+		type GetAll = {
+			filter: string; // '{ waitTill: string; finished: boolean, [other: string]: string }'
+			limit: string;
+			lastId: string;
+			firstId: string;
+		};
+
+		type GetAllCurrent = {
+			filter: string; // '{ workflowId: string }'
+		};
+	}
+
+	type GetAll = AuthenticatedRequest<{}, {}, {}, QueryParam.GetAll>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { unflattedResponse: 'true' | 'false' }>;
+	type Delete = AuthenticatedRequest<{}, {}, IExecutionDeleteFilter>;
+	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow: boolean }, {}>;
+	type Stop = AuthenticatedRequest<{ id: string }>;
+	type GetAllCurrent = AuthenticatedRequest<{}, {}, {}, QueryParam.GetAllCurrent>;
+}
+
+// ----------------------------------
+//               /me
+// ----------------------------------
+
+export declare namespace MeRequest {
+	export type Settings = AuthenticatedRequest<
+		{},
+		{},
+		Pick<PublicUser, 'email' | 'firstName' | 'lastName'>
+	>;
+	export type Password = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'password'>>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
+}
+
+// ----------------------------------
+//             /owner
+// ----------------------------------
+
+export declare namespace OwnerRequest {
+	type Post = AuthenticatedRequest<
+		{},
+		{},
+		Partial<{
+			email: string;
+			password: string;
+			firstName: string;
+			lastName: string;
+		}>,
+		{}
+	>;
+}
+
+// ----------------------------------
+//     password reset endpoints
+// ----------------------------------
+
+export declare namespace PasswordResetRequest {
+	export type Email = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'email'>>;
+
+	export type Credentials = AuthenticatedRequest<{}, {}, {}, { userId?: string; token?: string }>;
+
+	export type NewPassword = AuthenticatedRequest<
+		{},
+		{},
+		Pick<PublicUser, 'password'> & { token?: string; id?: string }
+	>;
+}
+
+// ----------------------------------
+//             /users
+// ----------------------------------
+
+export declare namespace UserRequest {
+	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
+
+	export type SignUp = AuthenticatedRequest<
+		{ id: string },
+		{ inviterId?: string; inviteeId?: string }
+	>;
+
+	export type Delete = AuthenticatedRequest<{ id: string }, {}, {}, { transferId?: string }>;
+
+	export type Reinvite = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//          oauth endpoints
+// ----------------------------------
+
+export declare namespace OAuthRequest {
+	namespace OAuth1Credential {
+		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
+		type Callback = AuthenticatedRequest<
+			{},
+			{},
+			{},
+			{ oauth_verifier: string; oauth_token: string; cid: string }
+		>;
+	}
+
+	namespace OAuth2Credential {
+		type Auth = OAuth1Credential.Auth;
+		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+	}
+}
+
+// ----------------------------------
+//      /node-parameter-options
+// ----------------------------------
 
 export type NodeParameterOptionsRequest = AuthenticatedRequest<
 	{},
@@ -41,101 +204,3 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 		credentials: string;
 	}
 >;
-
-export declare namespace ExecutionRequest {
-	type GetAllQsParam = {
-		filter: string; // '{ waitTill: string; finished: boolean, [other: string]: string }'
-		limit: string;
-		lastId: string;
-		firstId: string;
-	};
-
-	type GetAllCurrentQsParam = {
-		filter: string; // '{ workflowId: string }'
-	};
-
-	type GetAll = AuthenticatedRequest<{}, {}, {}, GetAllQsParam>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { unflattedResponse: 'true' | 'false' }>;
-	type Delete = AuthenticatedRequest<{}, {}, IExecutionDeleteFilter>;
-	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow: boolean }, {}>;
-	type Stop = AuthenticatedRequest<{ id: string }>;
-	type GetAllCurrent = AuthenticatedRequest<{}, {}, {}, GetAllCurrentQsParam>;
-}
-
-// ----------------------------------
-//      requests to /workflows
-// ----------------------------------
-
-type CreateWorkflowPayload = Partial<{
-	id: string; // delete if sent
-	name: string;
-	nodes: INode[];
-	connections: object;
-	active: boolean;
-	settings: object;
-	tags: string[];
-}>;
-
-type UpdateWorkflowPayload = Partial<{
-	id: string;
-	name: string;
-	nodes: INode[];
-	connections: IConnections;
-	settings: IWorkflowSettings;
-	active: boolean;
-	tags: string[];
-}>;
-
-export declare namespace WorkflowRequest {
-	type Payload = Partial<{
-		id: string; // delete if sent
-		name: string;
-		nodes: INode[];
-		connections: IConnections;
-		settings: IWorkflowSettings;
-		active: boolean;
-		tags: string[];
-	}>;
-
-	type Create = AuthenticatedRequest<{}, {}, Payload>;
-
-	type Get = AuthenticatedRequest<{ id: string }>;
-
-	type Delete = Get;
-
-	type Update = AuthenticatedRequest<{ id: string }, {}, Payload>;
-
-	type NewName = express.Request<{}, {}, {}, { name?: string }>;
-
-	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
-
-	type GetAllActive = AuthenticatedRequest;
-
-	type GetAllActivationErrors = Get;
-}
-
-// ----------------------------------
-//      requests to /credentials
-// ----------------------------------
-
-export declare namespace CredentialRequest {
-	type Payload = Partial<{
-		id: string; // delete if sent
-		name: string;
-		type: string;
-		nodesAccess: ICredentialNodeAccess[];
-		data: ICredentialDataDecryptedObject;
-	}>;
-
-	type Create = AuthenticatedRequest<{}, {}, Payload>;
-
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
-
-	type Delete = Get;
-
-	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string; includeData: string }>;
-
-	type Update = AuthenticatedRequest<{ id: string }, {}, Payload>;
-
-	type NewName = WorkflowRequest.NewName;
-}

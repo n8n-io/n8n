@@ -5,12 +5,13 @@ import express = require('express');
 import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
+import validator from 'validator';
 
 import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
-import { isValidEmail, validatePassword } from '../UserManagementHelper';
+import { validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
-import type { PasswordResetRequest } from '../Interfaces';
+import type { PasswordResetRequest } from '../../requests';
 import { issueJWT } from '../auth/jwt';
 import { getBaseUrl } from '../../GenericHelpers';
 
@@ -27,7 +28,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 			}
 
-			if (!isValidEmail(email)) {
+			if (!validator.isEmail(email)) {
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 

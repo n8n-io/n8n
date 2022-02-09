@@ -184,7 +184,10 @@ export class Start extends Command {
 							baseKey += encryptionKey[i];
 						}
 					}
-					config.set('userManagement.jwtSecret', createHash('md5').update(baseKey).digest('hex'));
+					config.set(
+						'userManagement.jwtSecret',
+						createHash('sha256').update(baseKey).digest('hex'),
+					);
 				}
 
 				// Load all node and credential types

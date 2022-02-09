@@ -4,10 +4,12 @@ import { Request, Response } from 'express';
 import { getConnection, In } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 import { genSaltSync, hashSync } from 'bcryptjs';
+import validator from 'validator';
+
 import { Db, GenericHelpers, ResponseHelper } from '../..';
-import { N8nApp, UserRequest } from '../Interfaces';
-import { AuthenticatedRequest } from '../../requests';
-import { isEmailSetup, isValidEmail, sanitizeUser } from '../UserManagementHelper';
+import { N8nApp } from '../Interfaces';
+import { AuthenticatedRequest, UserRequest } from '../../requests';
+import { isEmailSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
@@ -34,7 +36,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			// Validate payload
 			invitations.forEach((invitation) => {
-				if (!isValidEmail(invitation.email)) {
+				if (!validator.isEmail(invitation.email)) {
 					throw new ResponseHelper.ResponseError(
 						`Invalid email address ${invitation.email}`,
 						undefined,
