@@ -54,7 +54,7 @@ declare module 'json-diff' {
 	export function diff(obj1: unknown, obj2: unknown, diffOptions: IDiffOptions): string;
 }
 
-export type SmtpConfig = {
+type SmtpConfig = {
 	host: string;
 	port: number;
 	secure: boolean;

@@ -35,7 +35,6 @@ import {
 
 import { getLogger } from '../src/Logger';
 import { RESPONSE_ERROR_MESSAGES } from '../src/constants';
-import { SmtpConfig } from './Interfaces';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
