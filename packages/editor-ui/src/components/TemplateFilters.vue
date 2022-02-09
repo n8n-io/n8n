@@ -21,7 +21,7 @@
 				/>
 			</li>
 			<li
-				v-for="category in collapsed ? sortedCategories.slice(0, 4) : sortedCategories"
+				v-for="category in collapsed ? sortedCategories.slice(0, 6) : sortedCategories"
 				:key="category.id"
 				:class="$style.item"
 			>
@@ -34,11 +34,11 @@
 		</ul>
 		<div
 			:class="$style.button"
-			v-if="sortedCategories.length > 4 && collapsed && !loading"
+			v-if="sortedCategories.length > 6 && collapsed && !loading"
 			@click="collapseAction"
 		>
 			<n8n-text size="small" color="primary">
-				+ {{ `${sortedCategories.length - 4} more` }}
+				+ {{ `${sortedCategories.length - 6} more` }}
 			</n8n-text>
 		</div>
 	</div>
