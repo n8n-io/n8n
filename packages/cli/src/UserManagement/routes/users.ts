@@ -101,19 +101,19 @@ export function usersNamespace(this: N8nApp): void {
 			const { inviterId, inviteeId } = req.query;
 
 			if (!inviterId || !inviteeId) {
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
 			const users = await Db.collections.User!.find({ where: { id: In([inviterId, inviteeId]) } });
 
 			if (users.length !== 2) {
-				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
 			}
 
 			const inviter = users.find((user) => user.id === inviterId);
 
 			if (!inviter || !inviter.email || !inviter.firstName) {
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
 			}
 
 			const { firstName, lastName } = inviter;
