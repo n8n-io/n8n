@@ -7,9 +7,7 @@ export const clientOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -55,12 +53,8 @@ export const clientFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['create'],
+				resource: ['client'],
 			},
 		},
 		description: 'Enter client name',
@@ -73,12 +67,8 @@ export const clientFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['create'],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -174,13 +164,8 @@ export const clientFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'get',
-					'delete',
-				],
+				resource: ['client'],
+				operation: ['get', 'delete'],
 			},
 		},
 	},
@@ -193,13 +178,8 @@ export const clientFields: INodeProperties[] = [
 		description: 'Whether output should be simplified',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'get',
-					'getAll'
-				],
+				resource: ['client'],
+				operation: ['get', 'getAll'],
 			},
 		},
 	},
@@ -212,12 +192,8 @@ export const clientFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['client'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -230,15 +206,9 @@ export const clientFields: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['client'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -255,12 +225,8 @@ export const clientFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['client'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -284,8 +250,8 @@ export const clientFields: INodeProperties[] = [
 						name: 'Inactive only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the response',
-					}
-				]
+					},
+				],
 			},
 			{
 				displayName: 'Text To Filter By',
@@ -307,12 +273,8 @@ export const clientFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['client'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -324,12 +286,8 @@ export const clientFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['client'],
+				operation: ['update'],
 			},
 		},
 		options: [

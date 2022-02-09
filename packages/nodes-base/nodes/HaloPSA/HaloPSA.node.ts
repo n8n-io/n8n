@@ -6,12 +6,12 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {

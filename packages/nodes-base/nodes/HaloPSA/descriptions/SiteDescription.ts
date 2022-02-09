@@ -7,9 +7,7 @@ export const siteOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
+				resource: ['site'],
 			},
 		},
 		options: [
@@ -55,12 +53,8 @@ export const siteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['site'],
+				operation: ['create'],
 			},
 		},
 		description: 'Enter site name',
@@ -73,12 +67,8 @@ export const siteFields: INodeProperties[] = [
 		description: 'Whether client can be selected by id',
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['site'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -90,15 +80,9 @@ export const siteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'create',
-				],
-				selectOption: [
-					true
-				],
+				resource: ['site'],
+				operation: ['create'],
+				selectOption: [true],
 			},
 		},
 	},
@@ -113,15 +97,9 @@ export const siteFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'create',
-				],
-				selectOption: [
-					false
-				],
+				resource: ['site'],
+				operation: ['create'],
+				selectOption: [false],
 			},
 		},
 	},
@@ -133,12 +111,8 @@ export const siteFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['site'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -176,13 +150,8 @@ export const siteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
+				resource: ['site'],
+				operation: ['delete', 'get'],
 			},
 		},
 	},
@@ -194,13 +163,8 @@ export const siteFields: INodeProperties[] = [
 		description: 'Whether output should be simplified',
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'get',
-					'getAll'
-				],
+				resource: ['site'],
+				operation: ['get', 'getAll'],
 			},
 		},
 	},
@@ -213,12 +177,8 @@ export const siteFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['site'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -231,15 +191,9 @@ export const siteFields: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['site'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -256,12 +210,8 @@ export const siteFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['site'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -285,8 +235,8 @@ export const siteFields: INodeProperties[] = [
 						name: 'Inactive only',
 						value: 'inactive',
 						description: 'Whether to include inactive sites in the response',
-					}
-				]
+					},
+				],
 			},
 			{
 				displayName: 'Text To Filter By',
@@ -307,12 +257,8 @@ export const siteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['site'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -324,12 +270,8 @@ export const siteFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'site',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['site'],
+				operation: ['update'],
 			},
 		},
 		options: [

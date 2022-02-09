@@ -7,9 +7,7 @@ export const ticketOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
+				resource: ['ticket'],
 			},
 		},
 		options: [
@@ -58,12 +56,8 @@ export const ticketFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -76,12 +70,8 @@ export const ticketFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		description: 'Enter summary',
@@ -95,12 +85,8 @@ export const ticketFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		description: 'Enter details',
@@ -113,12 +99,8 @@ export const ticketFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -156,13 +138,8 @@ export const ticketFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
+				resource: ['ticket'],
+				operation: ['delete', 'get'],
 			},
 		},
 	},
@@ -175,13 +152,8 @@ export const ticketFields: INodeProperties[] = [
 		description: 'Whether output should be simplified',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'get',
-					'getAll'
-				],
+				resource: ['ticket'],
+				operation: ['get', 'getAll'],
 			},
 		},
 	},
@@ -194,12 +166,8 @@ export const ticketFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -212,15 +180,9 @@ export const ticketFields: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -237,12 +199,8 @@ export const ticketFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -266,8 +224,8 @@ export const ticketFields: INodeProperties[] = [
 						name: 'Inactive only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the responsee',
-					}
-				]
+					},
+				],
 			},
 			{
 				displayName: 'Text To Filter By',
@@ -288,12 +246,8 @@ export const ticketFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['ticket'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -305,12 +259,8 @@ export const ticketFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['ticket'],
+				operation: ['update'],
 			},
 		},
 		options: [

@@ -7,9 +7,7 @@ export const userOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -56,12 +54,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -76,12 +70,8 @@ export const userFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -93,12 +83,8 @@ export const userFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -122,7 +108,8 @@ export const userFields: INodeProperties[] = [
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
+				description:
+					'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
 			},
 			{
 				displayName: 'Surname',
@@ -149,13 +136,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
+				resource: ['user'],
+				operation: ['delete', 'get'],
 			},
 		},
 	},
@@ -167,13 +149,8 @@ export const userFields: INodeProperties[] = [
 		description: 'Whether output should be simplified',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-					'getAll'
-				],
+				resource: ['user'],
+				operation: ['get', 'getAll'],
 			},
 		},
 	},
@@ -186,12 +163,8 @@ export const userFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -204,15 +177,9 @@ export const userFields: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -229,12 +196,8 @@ export const userFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -258,8 +221,8 @@ export const userFields: INodeProperties[] = [
 						name: 'Inactive only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the response',
-					}
-				]
+					},
+				],
 			},
 			{
 				displayName: 'Text To Filter By',
@@ -280,12 +243,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -297,12 +256,8 @@ export const userFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -336,7 +291,8 @@ export const userFields: INodeProperties[] = [
 					password: true,
 				},
 				default: '',
-				description: 'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
+				description:
+					'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
 			},
 			{
 				displayName: 'Site ID',
