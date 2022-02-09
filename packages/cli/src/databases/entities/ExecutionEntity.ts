@@ -23,6 +23,9 @@ function resolveDataType(dataType: string) {
 }
 
 @Entity()
+@Index(['id', 'workflowId'])
+@Index(['id', 'workflowId', 'finished'])
+@Index(['id', 'workflowId', 'waitTill'])
 export class ExecutionEntity implements IExecutionFlattedDb {
 	@PrimaryGeneratedColumn()
 	id: number;
