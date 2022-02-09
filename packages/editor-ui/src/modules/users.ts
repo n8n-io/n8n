@@ -12,7 +12,7 @@ import {
 } from '../Interface';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from './userHelpers';
 
-const isDefaultUser = (user: IUserResponse | null) => Boolean(user && !user.email);
+const isDefaultUser = (user: IUserResponse | null) => Boolean(user && !user.email && user.globalRole && user.globalRole.name === ROLE.Owner);
 
 const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.email && !user.firstName && !user.lastName);
 
