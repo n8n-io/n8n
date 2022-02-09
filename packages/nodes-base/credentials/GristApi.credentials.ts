@@ -29,7 +29,26 @@ export class GristApi implements ICredentialType {
 					name: 'Paid',
 					value: 'paid',
 				},
+				{
+					name: 'Self-hosted',
+					value: 'self-hosted',
+				},
 			],
+		},
+		{
+			displayName: 'Custom Instance',
+			name: 'customUrl',
+			type: 'string',
+			default: '',
+			required: true,
+			description: "URL of your self-hosted grist, e.g. 'https://grist.your.org'",
+			displayOptions: {
+				show: {
+					planType: [
+						'self-hosted',
+					],
+				},
+			},
 		},
 		{
 			displayName: 'Custom Subdomain',

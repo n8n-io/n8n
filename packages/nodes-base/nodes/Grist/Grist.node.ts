@@ -19,6 +19,7 @@ import {
 
 import {
 	gristApiRequest,
+	gristApiUrl,
 	parseAutoMappedInputs,
 	parseDefinedFields,
 	parseFilterProperties,
@@ -81,22 +82,16 @@ export class Grist implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const {
-					apiKey,
-					planType,
-					customSubdomain,
-				} = credential.data as GristCredentials;
-
-				const subdomain = planType === 'free' ? 'docs' : customSubdomain;
+				const credentials = credential.data as GristCredentials;
 
 				const endpoint = '/orgs';
 
 				const options: OptionsWithUri = {
 					headers: {
-						Authorization: `Bearer ${apiKey}`,
+						Authorization: `Bearer ${credentials.apiKey}`,
 					},
 					method: 'GET',
-					uri: `https://${subdomain}.getgrist.com/api${endpoint}`,
+					uri: `${gristApiUrl(credentials)}${endpoint}`,
 					qs: { limit: 1 },
 					json: true,
 				};

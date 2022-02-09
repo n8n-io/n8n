@@ -20,6 +20,18 @@ import {
 	GristSortProperties,
 } from './types';
 
+export function gristApiUrl(credentials: GristCredentials) {
+	let url
+	if (credentials.planType === 'self-hosted') {
+		url = credentials.customUrl
+		if (!url) throw new Error("Missing grist credential config: 'customUrl'")
+		if (url.endsWith('/')) url = url.substring(0, url.length - 1)
+	} else {
+		url = `https://${credentials.planType === 'free' ? 'docs' : credentials.customSubdomain}.getgrist.com`
+	}
+	return `${url}/api`
+}
+
 export async function gristApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -27,20 +39,14 @@ export async function gristApiRequest(
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
 ) {
-	const {
-		apiKey,
-		planType,
-		customSubdomain,
-	} = await this.getCredentials('gristApi') as GristCredentials;
-
-	const subdomain = planType === 'free' ? 'docs' : customSubdomain;
+	const credentials = await this.getCredentials('gristApi') as GristCredentials;
 
 	const options: OptionsWithUri = {
 		headers: {
-			Authorization: `Bearer ${apiKey}`,
+			Authorization: `Bearer ${credentials.apiKey}`,
 		},
 		method,
-		uri: `https://${subdomain}.getgrist.com/api${endpoint}`,
+		uri: `${gristApiUrl(credentials)}${endpoint}`,
 		qs,
 		body,
 		json: true,

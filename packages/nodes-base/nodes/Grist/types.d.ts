@@ -1,7 +1,8 @@
 export type GristCredentials = {
 	apiKey: string;
-	planType: 'free' | 'paid';
+	planType: 'free' | 'paid' | 'self-hosted';
 	customSubdomain?: string;
+	customUrl?: string;
 }
 
 export type GristColumns = {
