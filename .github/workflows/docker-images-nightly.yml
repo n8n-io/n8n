@@ -17,6 +17,11 @@ on:
         description: 'Name of the docker tag to create.'
         required: true
         default: 'nightly'
+      merge-master:
+        description: 'Merge with master.'
+        type: boolean
+        required: true
+        default: false
 
 jobs:
   build:
@@ -37,6 +42,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Merge Master - optionally
+        run: |
+          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git merge master || echo ""
+        shell: bash
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
