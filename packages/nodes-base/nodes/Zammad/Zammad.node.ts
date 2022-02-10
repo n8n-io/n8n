@@ -7,10 +7,10 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	INodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
