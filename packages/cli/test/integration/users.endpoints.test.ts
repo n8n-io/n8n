@@ -103,7 +103,7 @@ test('DELETE /users/:id should fail to delete self', async () => {
 	expect(response.statusCode).toBe(400);
 });
 
-test('DELETE /users/:id should fail if deletee equals transferee', async () => {
+test('DELETE /users/:id should fail if deleted equals transferee', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
@@ -217,32 +217,113 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 		globalRole: memberRole,
 	});
 
-	const firstResponse = await authOwnerAgent
+	const first = await authOwnerAgent
 		.get('/resolve-signup-token')
 		.query({ inviterId: INITIAL_TEST_USER.id });
 
-	expect(firstResponse.statusCode).toBe(400);
+	const second = await authOwnerAgent.get('/resolve-signup-token').query({ inviteeId });
 
-	const secondResponse = await authOwnerAgent
-		.get('/resolve-signup-token')
-		.query({ inviteeId });
-
-	expect(secondResponse.statusCode).toBe(400);
-
-	const thirdResponse = await authOwnerAgent
+	const third = await authOwnerAgent
 		.get('/resolve-signup-token')
 		.query({ inviterId: '123', inviteeId: '456' });
 
-	expect(thirdResponse.statusCode).toBe(400);
+	await Db.collections.User!.update(owner.id, { email: '' }); // cause inconsistent DB state
 
-	await Db.collections.User!.update(owner.id, { email: '' });
-
-	const fourthResponse = await authOwnerAgent
+	const fourth = await authOwnerAgent
 		.get('/resolve-signup-token')
 		.query({ inviterId: INITIAL_TEST_USER.id })
 		.query({ inviteeId });
 
-	expect(fourthResponse.statusCode).toBe(400);
+	for (const response of [first, second, third, fourth]) {
+		expect(response.statusCode).toBe(400);
+	}
+});
+
+test('POST /users/:id should fill out a user shell', async () => {
+	const authlessAgent = await utils.createAuthlessAgent(app);
+
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
+		name: 'member',
+		scope: 'global',
+	});
+
+	const userToFillOut = await Db.collections.User!.save({
+		email: utils.randomEmail(),
+		globalRole: globalMemberRole,
+	});
+
+	const response = await authlessAgent.post(`/users/${userToFillOut.id}`).send({
+		inviterId: INITIAL_TEST_USER.id,
+		firstName: utils.randomName(),
+		lastName: utils.randomName(),
+		password: utils.randomValidPassword(),
+	});
+
+	const {
+		id,
+		email,
+		firstName,
+		lastName,
+		personalizationAnswers,
+		password,
+		resetPasswordToken,
+		globalRole,
+	} = response.body.data;
+
+	expect(validator.isUUID(id)).toBe(true);
+	expect(email).toBeDefined();
+	expect(firstName).toBeDefined();
+	expect(lastName).toBeDefined();
+	expect(personalizationAnswers).toBeNull();
+	expect(password).toBeUndefined();
+	expect(resetPasswordToken).toBeUndefined();
+	expect(globalRole).toBeUndefined();
+
+	const authToken = utils.getAuthToken(response);
+	expect(authToken).toBeDefined();
+});
+
+test('POST /users/:id should fail with invalid inputs', async () => {
+	const authlessAgent = await utils.createAuthlessAgent(app);
+
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
+		name: 'member',
+		scope: 'global',
+	});
+
+	const userToFillOut = await Db.collections.User!.save({
+		email: utils.randomEmail(),
+		globalRole: globalMemberRole,
+	});
+
+	for (const invalidPayload of INVALID_FILL_OUT_USER_PAYLOADS) {
+		const response = await authlessAgent.post(`/users/${userToFillOut.id}`).send(invalidPayload);
+		expect(response.statusCode).toBe(400);
+	}
+});
+
+test('POST /users/:id should fail with already accepted invite', async () => {
+	const authlessAgent = await utils.createAuthlessAgent(app);
+
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
+		name: 'member',
+		scope: 'global',
+	});
+
+	const userToFillOut = await Db.collections.User!.save({
+		email: utils.randomEmail(),
+		password: utils.randomValidPassword(), // simulate accepted invite
+		globalRole: globalMemberRole,
+	});
+
+	const response = await authlessAgent.post(`/users/${userToFillOut.id}`).send({
+		inviterId: INITIAL_TEST_USER.id,
+		firstName: utils.randomName(),
+		lastName: utils.randomName(),
+		password: utils.randomValidPassword(),
+	});
+
+	expect(response.statusCode).toBe(400);
 });
 
 const INITIAL_TEST_USER = {
@@ -252,3 +333,32 @@ const INITIAL_TEST_USER = {
 	lastName: utils.randomName(),
 	password: utils.randomValidPassword(),
 };
+
+const INVALID_FILL_OUT_USER_PAYLOADS = [
+	{
+		firstName: utils.randomName(),
+		lastName: utils.randomName(),
+		password: utils.randomValidPassword(),
+	},
+	{
+		inviterId: INITIAL_TEST_USER.id,
+		firstName: utils.randomName(),
+		password: utils.randomValidPassword(),
+	},
+	{
+		inviterId: INITIAL_TEST_USER.id,
+		firstName: utils.randomName(),
+		password: utils.randomValidPassword(),
+	},
+	{
+		inviterId: INITIAL_TEST_USER.id,
+		firstName: utils.randomName(),
+		lastName: utils.randomName(),
+	},
+	{
+		inviterId: INITIAL_TEST_USER.id,
+		firstName: utils.randomName(),
+		lastName: utils.randomName(),
+		password: utils.randomInvalidPassword(),
+	},
+];

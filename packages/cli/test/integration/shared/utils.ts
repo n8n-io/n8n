@@ -94,7 +94,7 @@ export async function createAuthAgent(app: express.Application, user: User) {
 	return agent;
 }
 
-export async function createAgent(app: express.Application, user: User) {
+export async function createAuthlessAgent(app: express.Application) {
 	const agent = request.agent(app);
 	agent.use(prefix(REST_PATH_SEGMENT));
 
@@ -136,6 +136,11 @@ export async function getHasOwnerSetting() {
  */
 export function getAuthToken(response: request.Response, authCookieName = 'n8n-auth') {
 	const cookies: string[] = response.headers['set-cookie'];
+
+	if (!cookies) {
+		throw new Error('No \'set-cookie\' header found in response');
+	}
+
 	const authCookie = cookies.find((c) => c.startsWith(`${authCookieName}=`));
 
 	if (!authCookie) return undefined;
