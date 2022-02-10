@@ -41,7 +41,7 @@ export function initTestServer(
 	}: {
 		applyAuth: boolean;
 		namespaces?: EndpointNamespace[];
-	} = { applyAuth: false },
+	},
 ) {
 	const testServer = {
 		app: express(),
