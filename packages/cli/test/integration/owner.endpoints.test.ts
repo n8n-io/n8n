@@ -7,84 +7,80 @@ import * as utils from './shared/utils';
 import { Db } from '../../src';
 import config = require('../../config');
 
-describe('/owner endpoints', () => {
-	describe('Shell requests', () => {
-		let app: express.Application;
+let app: express.Application;
 
-		beforeAll(async () => {
-			app = utils.initTestServer({ owner: true }, { applyAuth: true });
-			await utils.initTestDb();
-			await utils.truncateUserTable();
-		});
+beforeAll(async () => {
+	app = utils.initTestServer({ owner: true }, { applyAuth: true });
+	await utils.initTestDb();
+	await utils.truncateUserTable();
+});
 
-		beforeEach(async () => {
-			const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+beforeEach(async () => {
+	const role = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
 
-			await Db.collections.User!.save({
-				id: uuid(),
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				globalRole: role,
-			});
-		});
-
-		afterEach(async () => {
-			await utils.truncateUserTable();
-		});
-
-		afterAll(() => {
-			return getConnection().close();
-		});
-
-		test('POST /owner should create owner and enable hasOwner setting', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAuthAgent(app, shell);
-
-			const response = await shellAgent.post('/owner').send(TEST_USER);
-
-			expect(response.statusCode).toBe(200);
-
-			const {
-				id,
-				email,
-				firstName,
-				lastName,
-				personalizationAnswers,
-				globalRole,
-				password,
-				resetPasswordToken,
-			} = response.body.data;
-
-			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(TEST_USER.email);
-			expect(firstName).toBe(TEST_USER.firstName);
-			expect(lastName).toBe(TEST_USER.lastName);
-			expect(personalizationAnswers).toBeNull();
-			expect(password).toBeUndefined();
-			expect(resetPasswordToken).toBeUndefined();
-			expect(globalRole.name).toBe('owner');
-			expect(globalRole.scope).toBe('global');
-
-			const owner = await Db.collections.User!.findOneOrFail(id);
-			expect(owner.password).not.toBe(TEST_USER.password);
-
-			const hasOwnerConfig = config.get('userManagement.hasOwner');
-			expect(hasOwnerConfig).toBe(true);
-
-			const hasOwnerSetting = await utils.getHasOwnerSetting();
-			expect(hasOwnerSetting).toBe(true);
-		});
-
-		test('POST /owner should fail with invalid inputs', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const shellAgent = await utils.createAuthAgent(app, shell);
-
-			for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
-				const response = await shellAgent.post('/owner').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
-			}
-		});
+	await Db.collections.User!.save({
+		id: uuid(),
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		globalRole: role,
 	});
+});
+
+afterEach(async () => {
+	await utils.truncateUserTable();
+});
+
+afterAll(() => {
+	return getConnection().close();
+});
+
+test('POST /owner should create owner and enable hasOwner setting', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const shellAgent = await utils.createAuthAgent(app, shell);
+
+	const response = await shellAgent.post('/owner').send(TEST_USER);
+
+	expect(response.statusCode).toBe(200);
+
+	const {
+		id,
+		email,
+		firstName,
+		lastName,
+		personalizationAnswers,
+		globalRole,
+		password,
+		resetPasswordToken,
+	} = response.body.data;
+
+	expect(validator.isUUID(id)).toBe(true);
+	expect(email).toBe(TEST_USER.email);
+	expect(firstName).toBe(TEST_USER.firstName);
+	expect(lastName).toBe(TEST_USER.lastName);
+	expect(personalizationAnswers).toBeNull();
+	expect(password).toBeUndefined();
+	expect(resetPasswordToken).toBeUndefined();
+	expect(globalRole.name).toBe('owner');
+	expect(globalRole.scope).toBe('global');
+
+	const owner = await Db.collections.User!.findOneOrFail(id);
+	expect(owner.password).not.toBe(TEST_USER.password);
+
+	const hasOwnerConfig = config.get('userManagement.hasOwner');
+	expect(hasOwnerConfig).toBe(true);
+
+	const hasOwnerSetting = await utils.getHasOwnerSetting();
+	expect(hasOwnerSetting).toBe(true);
+});
+
+test('POST /owner should fail with invalid inputs', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const shellAgent = await utils.createAuthAgent(app, shell);
+
+	for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
+		const response = await shellAgent.post('/owner').send(invalidPayload);
+		expect(response.statusCode).toBe(400);
+	}
 });
 
 const TEST_USER = {
