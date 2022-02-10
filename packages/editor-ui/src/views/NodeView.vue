@@ -193,7 +193,6 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	newVersions,
-	nodeHelpers,
 )
 	.extend({
 		name: 'NodeView',
@@ -520,7 +519,7 @@ export default mixins(
 					throw new Error('Invalid workflow object');
 				}
 				this.resetWorkspace();
-				data.workflow.nodes = this.getFixedNodesList(data.workflow.nodes);
+				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				this.$nextTick(() => {
 					this.zoomToFit();
@@ -555,7 +554,7 @@ export default mixins(
 					return;
 				}
 
-				data.workflow.nodes = this.getFixedNodesList(data.workflow.nodes);
+				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
 
 				this.blankRedirect = true;
 				this.$router.push({ name: 'NodeViewNew', query: { templateId } });
@@ -2702,7 +2701,7 @@ export default mixins(
 							await this.importWorkflowExact(json);
 						} catch (e) {
 							if (window.top) {
-								window.top.postMessage(JSON.stringify({command: 'errorImportingWorkflow'}), '*');
+								window.top.postMessage(JSON.stringify({command: 'error', message: 'Could not import workflow'}), '*');
 							}
 							this.$showMessage({
 								title: 'Could not import workflow',

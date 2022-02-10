@@ -4,6 +4,7 @@ import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
 	IConnection,
+	INode,
 	ITaskData,
 	INodeExecutionData,
 	NodeInputConnections,
@@ -686,4 +687,24 @@ export const getOutputEndpointUUID = (nodeIndex: string, outputIndex: number) =>
 
 export const getInputEndpointUUID = (nodeIndex: string, inputIndex: number) => {
 	return `${nodeIndex}${INPUT_UUID_KEY}${inputIndex}`;
+};
+
+export const getFixedNodesList = (workflowNodes: INode[]) => {
+	const nodes = [...workflowNodes];
+	const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
+
+	const leftmostTop = getLeftmostTopNode(nodes);
+
+	const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
+	const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+
+	nodes.map((node) => {
+		node.position[0] += diffX + (hasStartNode? 0 : NODE_SIZE * 2);
+		node.position[1] += diffY;
+	});
+
+	if (!hasStartNode) {
+		nodes.push({...DEFAULT_START_NODE});
+	}
+	return nodes;
 };
