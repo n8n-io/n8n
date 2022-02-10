@@ -672,7 +672,7 @@ export class WorkflowExecute {
 				executionLoop: while (
 					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
 				) {
-					await new Promise((delay) => setTimeout(delay, 250));
+					await new Promise((delay) => setTimeout(delay, 300));
 					if (
 						this.additionalData.executionTimeoutTimestamp !== undefined &&
 						Date.now() >= this.additionalData.executionTimeoutTimestamp
