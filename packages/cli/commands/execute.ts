@@ -102,6 +102,7 @@ export class Execute extends Command {
 				return;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			workflowId = workflowData.id ? workflowData.id.toString() : PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		}
 
