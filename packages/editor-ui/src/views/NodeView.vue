@@ -532,7 +532,7 @@ export default mixins(
 					});
 				} catch (error) {
 					this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
-					this.$router.push({ name: 'NodeViewNew' });
+					this.$router.replace({ name: 'NodeViewNew' });
 					return;
 				}
 
@@ -554,7 +554,7 @@ export default mixins(
 				}
 
 				this.blankRedirect = true;
-				this.$router.push({ name: 'NodeViewNew', query: { templateId } });
+				this.$router.replace({ name: 'NodeViewNew', query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
