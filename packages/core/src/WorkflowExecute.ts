@@ -672,6 +672,7 @@ export class WorkflowExecute {
 				executionLoop: while (
 					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
 				) {
+					await new Promise((delay) => setTimeout(delay, 250));
 					if (
 						this.additionalData.executionTimeoutTimestamp !== undefined &&
 						Date.now() >= this.additionalData.executionTimeoutTimestamp
@@ -1013,7 +1014,6 @@ export class WorkflowExecute {
 							}
 						}
 					}
-
 					// If we got here, it means that we did not stop executing from manual executions / destination.
 					// Execute hooks now to make sure that all hooks are executed properly
 					// Await is needed to make sure that we don't fall into concurrency problems
@@ -1024,7 +1024,6 @@ export class WorkflowExecute {
 						this.runExecutionData,
 					]);
 				}
-
 				return Promise.resolve();
 			})()
 				.then(async () => {
