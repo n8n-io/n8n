@@ -139,6 +139,7 @@
       "dist/credentials/HomeAssistantApi.credentials.js",
       "dist/credentials/HttpBasicAuth.credentials.js",
       "dist/credentials/HttpDigestAuth.credentials.js",
+      "dist/credentials/HttpBearerAuth.credentials.js",
       "dist/credentials/HttpHeaderAuth.credentials.js",
       "dist/credentials/HttpQueryAuth.credentials.js",
       "dist/credentials/HubspotApi.credentials.js",

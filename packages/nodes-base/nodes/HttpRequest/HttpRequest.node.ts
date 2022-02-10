@@ -62,6 +62,17 @@ export class HttpRequest implements INodeType {
 				},
 			},
 			{
+				name: 'httpBearerAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'bearerAuth',
+						],
+					},
+				},
+			},
+			{
 				name: 'httpHeaderAuth',
 				required: true,
 				displayOptions: {
@@ -119,6 +130,10 @@ export class HttpRequest implements INodeType {
 					{
 						name: 'Digest Auth',
 						value: 'digestAuth',
+					},
+					{
+						name: 'Bearer Auth',
+						value: 'bearerAuth',
 					},
 					{
 						name: 'Header Auth',
@@ -654,6 +669,7 @@ export class HttpRequest implements INodeType {
 
 		const httpBasicAuth = await this.getCredentials('httpBasicAuth');
 		const httpDigestAuth = await this.getCredentials('httpDigestAuth');
+		const httpBearerAuth = await this.getCredentials('httpBearerAuth');
 		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
 		const httpQueryAuth = await this.getCredentials('httpQueryAuth');
 		const oAuth1Api = await this.getCredentials('oAuth1Api');
@@ -920,6 +936,12 @@ export class HttpRequest implements INodeType {
 				requestOptions.auth = {
 					user: httpDigestAuth.user as string,
 					pass: httpDigestAuth.password as string,
+					sendImmediately: false,
+				};
+			}
+			if (httpBearerAuth !== undefined) {
+				requestOptions.auth = {
+					bearer: httpBearerAuth.token as string,
 					sendImmediately: false,
 				};
 			}
