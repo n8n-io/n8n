@@ -73,6 +73,12 @@ export class Pipedrive implements INodeType {
 						],
 					},
 				},
+				testedBy: {
+					request: {
+						method: 'GET',
+						url: '/users/me',
+					},
+				},
 			},
 			{
 				name: 'pipedriveOAuth2Api',
@@ -86,6 +92,10 @@ export class Pipedrive implements INodeType {
 				},
 			},
 		],
+		requestDefaults: {
+			baseURL: 'https://api.pipedrive.com/v1',
+			url: '',
+		},
 		properties: [
 			{
 				displayName: 'Authentication',
