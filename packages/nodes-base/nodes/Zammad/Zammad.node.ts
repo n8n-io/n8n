@@ -692,6 +692,7 @@ export class Zammad implements INodeType {
 							article: {},
 							title: this.getNodeParameter('title', i) as string,
 							group: this.getNodeParameter('group', i) as string,
+							customer: this.getNodeParameter('customer', i) as string,
 						};
 
 						const article = this.getNodeParameter('article', i) as ZammadTypes.Article;
@@ -712,49 +713,6 @@ export class Zammad implements INodeType {
 						responseData = await zammadApiRequest.call(this, 'POST', '/tickets', body);
 
 						const { id } = responseData;
-
-						responseData.articles = await zammadApiRequest.call(this, 'GET', `/ticket_articles/by_ticket/${id}`);
-
-					} else if (operation === 'update') {
-
-						// ----------------------------------
-						//           ticket:update
-						// ----------------------------------
-
-						// https://docs.zammad.org/en/latest/api/ticket/index.html#update
-
-						const id = this.getNodeParameter('id', i) as string;
-
-						const body: IDataObject = {};
-
-						const updateFields = this.getNodeParameter('updateFields', i) as { articleUi: ZammadTypes.Article };
-
-						if (!Object.keys(updateFields).length) {
-							throwOnEmptyUpdate.call(this, resource);
-						}
-
-						const { articleUi } = updateFields;
-
-						if (!articleUi?.articleDetails) {
-							throw new NodeOperationError(this.getNode(), 'Article is required.');
-						}
-
-						const {
-							articleDetails: {
-								visibility,
-								...restOfArticle
-							},
-							...remainingUpdateFields
-						} = articleUi;
-
-						Object.assign(body, remainingUpdateFields);
-
-						body.article = {
-							...restOfArticle,
-							internal: visibility === 'internal',
-						};
-
-						responseData = await zammadApiRequest.call(this, 'PUT', `/tickets/${id}`, body);
 
 						responseData.articles = await zammadApiRequest.call(this, 'GET', `/ticket_articles/by_ticket/${id}`);
 
