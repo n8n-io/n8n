@@ -20,6 +20,7 @@ import { authenticationMethods as authEndpoints } from '../../../src/UserManagem
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { getConnection } from 'typeorm';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
+import { N8nApp } from '../../../src/UserManagement/Interfaces';
 
 export const isTestRun = process.argv[1].split('/').includes('jest');
 
@@ -58,7 +59,7 @@ export function initTestServer(
 	}
 
 	if (namespaces) {
-		const map = {
+		const map: Readonly<Record<EndpointNamespace, (this: N8nApp) => void>> = {
 			me: meEndpoints,
 			users: usersEndpoints,
 			auth: authEndpoints,
@@ -138,7 +139,7 @@ export function getAuthToken(response: request.Response, authCookieName = 'n8n-a
 	const cookies: string[] = response.headers['set-cookie'];
 
 	if (!cookies) {
-		throw new Error('No \'set-cookie\' header found in response');
+		throw new Error("No 'set-cookie' header found in response");
 	}
 
 	const authCookie = cookies.find((c) => c.startsWith(`${authCookieName}=`));
