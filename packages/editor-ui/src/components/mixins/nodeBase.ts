@@ -1,4 +1,4 @@
-import { IEndpointOptions, INodeUi, INodeUpdatePropertiesInformation, XYPosition } from '@/Interface';
+import { IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 

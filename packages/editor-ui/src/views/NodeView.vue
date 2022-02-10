@@ -1319,9 +1319,11 @@ export default mixins(
 					};
 					newNodeData.credentials = credentials;
 
-					if (Array.isArray(nodeTypeData.credentials)){
+					if (nodeTypeData.credentials){
 						const authentication = nodeTypeData.credentials.find(type => type.name === defaultCredential.type);
-						newNodeData.parameters.authentication = authentication!.displayOptions!.show!.authentication![0];
+						if(authentication!.displayOptions) {
+							newNodeData.parameters.authentication = authentication!.displayOptions!.show!.authentication![0];
+						}
 					}
 				}
 
