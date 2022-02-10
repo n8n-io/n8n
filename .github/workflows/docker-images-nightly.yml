@@ -44,7 +44,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Merge Master - optionally
         run: |
-          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git merge master || echo ""
+          [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream git@github.com:n8n-io/n8n.git -f; git merge upstream/master; git merge master || echo ""
         shell: bash
       - name: Build and push
         uses: docker/build-push-action@v2
