@@ -93,12 +93,9 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User Login/ID',
+		displayName: 'User ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadUsers',
-		},
+		type: 'string',
 		description: 'User to update. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
@@ -114,12 +111,9 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User Login/ID',
+		displayName: 'User ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadUsers',
-		},
+		type: 'string',
 		description: 'User to delete. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
@@ -135,12 +129,9 @@ export const userDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User Login/ID',
+		displayName: 'User ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadUsers',
-		},
+		type: 'string',
 		description: 'User to retrieve. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
@@ -182,6 +173,7 @@ export const userDescription: INodeProperties[] = [
 				displayName: 'Address',
 				name: 'addressUi',
 				type: 'fixedCollection',
+				placeholder: 'Add Address',
 				default: {},
 				options: [
 					{
@@ -235,7 +227,7 @@ export const userDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -245,7 +237,7 @@ export const userDescription: INodeProperties[] = [
 								description: 'Name of the custom field to set',
 							},
 							{
-								displayName: 'Value',
+								displayName: 'Field Value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -358,6 +350,7 @@ export const userDescription: INodeProperties[] = [
 				displayName: 'Address',
 				name: 'addressUi',
 				type: 'fixedCollection',
+				placeholder: 'Add Address',
 				default: {},
 				options: [
 					{
@@ -411,7 +404,7 @@ export const userDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -421,7 +414,7 @@ export const userDescription: INodeProperties[] = [
 								description: 'Name of the custom field to set',
 							},
 							{
-								displayName: 'Value',
+								displayName: 'Field Value',
 								name: 'value',
 								type: 'string',
 								default: '',

@@ -69,12 +69,9 @@ export const groupDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group Name/ID',
+		displayName: 'Group ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadGroups',
-		},
+		type: 'string',
 		description: 'Group to update. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
@@ -90,12 +87,9 @@ export const groupDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group Name/ID',
+		displayName: 'Group ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadGroups',
-		},
+		type: 'string',
 		description: 'Group to delete. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
@@ -111,12 +105,9 @@ export const groupDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group Name/ID',
+		displayName: 'Group ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadGroups',
-		},
+		type: 'string',
 		description: 'Group to retrieve. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
@@ -170,7 +161,7 @@ export const groupDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -180,7 +171,7 @@ export const groupDescription: INodeProperties[] = [
 								description: 'Name of the custom field to set',
 							},
 							{
-								displayName: 'Value',
+								displayName: 'Field Value',
 								name: 'value',
 								type: 'string',
 								default: '',
@@ -239,7 +230,7 @@ export const groupDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -249,7 +240,7 @@ export const groupDescription: INodeProperties[] = [
 								description: 'Name of the custom field to set',
 							},
 							{
-								displayName: 'Value',
+								displayName: 'Field Value',
 								name: 'value',
 								type: 'string',
 								default: '',

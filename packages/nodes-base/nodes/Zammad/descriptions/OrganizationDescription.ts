@@ -69,12 +69,9 @@ export const organizationDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Organization Name/ID',
+		displayName: 'Organization ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadOrganizations',
-		},
+		type: 'string',
 		description: 'Organization to update. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
@@ -90,12 +87,9 @@ export const organizationDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Organization Name/ID',
+		displayName: 'Organization ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadOrganizations',
-		},
+		type: 'string',
 		description: 'Organization to delete. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
@@ -111,12 +105,9 @@ export const organizationDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Organization Name/ID',
+		displayName: 'Organization ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadOrganizations',
-		},
+		type: 'string',
 		description: 'Organization to retrieve. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
