@@ -44,7 +44,7 @@ export const campaignDescription: CampaignProperties = [
 		name: 'devToken',
 		type: 'string',
 		required: true,
-		displayOptions: {
+		displayOptions:{
 			show: {
 				operation: [
 					'custom',

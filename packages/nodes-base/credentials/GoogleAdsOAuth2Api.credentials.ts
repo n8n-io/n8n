@@ -1,5 +1,8 @@
 import {
+	// IAuthenticateHeaderAuth,
+	ICredentialDataDecryptedObject,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -12,9 +15,15 @@ export class GoogleAdsOAuth2Api implements ICredentialType {
 	extends = [
 		'googleOAuth2Api',
 	];
-	displayName = 'Google Ads OAuth2 API';
+	displayName = 'Google Ads OAuth2 API test';
 	documentationUrl = 'google';
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Developer Token',
+			name: 'developerToken',
+			type: 'string',
+			default: '',
+		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
@@ -22,4 +31,13 @@ export class GoogleAdsOAuth2Api implements ICredentialType {
 			default: scopes.join(' '),
 		},
 	];
+
+
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		console.log('GoogleAds.authenticate');
+		requestOptions.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+		requestOptions.headers!['developer-token'] = `${credentials.developerToken}`;
+		requestOptions.headers!['Content-Type'] = `application/x-www-form-urlencoded`;
+		return requestOptions;
+	}
 }
