@@ -10,7 +10,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
+	INodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -256,7 +256,7 @@ export class Zammad implements INodeType {
 			async zammadBasicAuthApiTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
-			): Promise<NodeCredentialTestResult> {
+			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ZammadTypes.BasicAuthCredentials;
 
 				const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
@@ -289,7 +289,7 @@ export class Zammad implements INodeType {
 			async zammadTokenAuthApiTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
-			): Promise<NodeCredentialTestResult> {
+			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ZammadTypes.TokenAuthCredentials;
 
 				const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
