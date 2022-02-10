@@ -54,10 +54,9 @@ describe('auth endpoints', () => {
 		});
 
 		test('POST /login should log user in', async () => {
-			const cookieLessAgent = request.agent(app);
-			cookieLessAgent.use(utils.prefix(REST_PATH_SEGMENT));
+			const authlessAgent = await utils.createAuthlessAgent(app);
 
-			const response = await cookieLessAgent.post('/login').send({
+			const response = await authlessAgent.post('/login').send({
 				email: TEST_USER.email,
 				password: TEST_USER.password,
 			});
