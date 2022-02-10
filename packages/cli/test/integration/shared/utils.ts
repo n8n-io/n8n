@@ -4,6 +4,8 @@ import * as superagent from 'superagent';
 import * as request from 'supertest';
 import { URL } from 'url';
 import bodyParser = require('body-parser');
+import * as util from 'util';
+import { createTestAccount } from 'nodemailer';
 
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
@@ -21,6 +23,12 @@ import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/ro
 import { getConnection } from 'typeorm';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { N8nApp } from '../../../src/UserManagement/Interfaces';
+import type { SmtpTestAccount } from './types';
+
+/**
+ * Get an SMTP test account from https://ethereal.email to test sending emails.
+ */
+export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
 
 export const isTestRun = process.argv[1].split('/').includes('jest');
 

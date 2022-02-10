@@ -7,6 +7,11 @@ import config = require('../../config');
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
 import { PublicUser } from './Interfaces';
 
+// TODO: Find permanent solution
+if (process.argv[1].split('/').includes('jest')) {
+	config.set('userManagement.emails.mode', 'smtp');
+}
+
 export const isEmailSetUp = Boolean(config.get('userManagement.emails.mode'));
 
 export function getInstanceDomain(): string {

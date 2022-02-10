@@ -17,7 +17,10 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	const globalOwnerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+	const globalOwnerRole = await Db.collections.Role!.findOneOrFail({
+		name: 'owner',
+		scope: 'global',
+	});
 
 	await Db.collections.User!.save({
 		id: INITIAL_TEST_USER.id,
@@ -76,7 +79,11 @@ test('DELETE /users/:id should delete the user', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
+		name: 'member',
+		scope: 'global',
+	});
+
 	const { id: idToDelete } = await Db.collections.User!.save({
 		id: uuid(),
 		email: utils.randomEmail(),
@@ -107,7 +114,11 @@ test('DELETE /users/:id should fail if deleted equals transferee', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
+		name: 'member',
+		scope: 'global',
+	});
+
 	const { id: idToDelete } = await Db.collections.User!.save({
 		id: uuid(),
 		email: utils.randomEmail(),
@@ -173,7 +184,11 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
+		name: 'member',
+		scope: 'global',
+	});
+
 	const { id: inviteeId } = await Db.collections.User!.save({
 		id: uuid(),
 		email: utils.randomEmail(),
@@ -205,7 +220,11 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
+		name: 'member',
+		scope: 'global',
+	});
+
 	const { id: inviteeId } = await Db.collections.User!.save({
 		id: uuid(),
 		email: utils.randomEmail(),
@@ -326,6 +345,115 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 	expect(response.statusCode).toBe(400);
 });
 
+// test('POST /users should fail if emailing is not set up', async () => {
+// 	const owner = await Db.collections.User!.findOneOrFail();
+// 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+
+// 	config.set('userManagement.emails.mode', ''); // TODO: This line has no effect
+
+// 	const response = await authOwnerAgent.post('/users').send([{ email: utils.randomEmail() }]);
+
+// 	expect(response.statusCode).toBe(500);
+// });
+
+
+// test('POST /users should report error due to wrong SMTP config', async () => {
+// 	const owner = await Db.collections.User!.findOneOrFail();
+// 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+
+// 	config.set('userManagement.emails.mode', 'smtp');
+// 	config.set('userManagement.emails.smtp.host', 'XYZ'); // TODO: This breaks following test
+
+// 	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e }));
+
+// 	const response = await authOwnerAgent.post('/users').send(payload);
+
+// 	expect(response.statusCode).toBe(500);
+// });
+
+test('POST /users should email invites and create user shells', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+
+	const {
+		user,
+		pass,
+		smtp: { host, port, secure },
+	} = await utils.getSmtpTestAccount();
+
+	config.set('userManagement.emails.mode', 'smtp');
+	config.set('userManagement.emails.smtp.host', host);
+	config.set('userManagement.emails.smtp.port', port);
+	config.set('userManagement.emails.smtp.secure', secure);
+	config.set('userManagement.emails.smtp.auth.user', user);
+	config.set('userManagement.emails.smtp.auth.pass', pass);
+
+	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e }));
+
+	const response = await authOwnerAgent.post('/users').send(payload);
+
+	expect(response.statusCode).toBe(200);
+
+	for (const { id, email: receivedEmail } of response.body.data) {
+		expect(validator.isUUID(id)).toBe(true);
+		expect(TEST_EMAILS_TO_CREATE_USER_SHELLS.some((e) => e === receivedEmail)).toBe(true);
+
+		const user = await Db.collections.User!.findOneOrFail(id);
+		const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } = user;
+
+		expect(firstName).toBeNull();
+		expect(lastName).toBeNull();
+		expect(personalizationAnswers).toBeNull();
+		expect(password).toBeNull();
+		expect(resetPasswordToken).toBeNull();
+	}
+});
+
+test('POST /users should fail with invalid inputs', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+
+	const invalidPayloads = [
+		utils.randomEmail(),
+		[utils.randomEmail()],
+		{},
+		[{ name: utils.randomName() }],
+		[{ email: utils.randomName() }],
+	];
+
+	for (const invalidPayload of invalidPayloads) {
+		const response = await authOwnerAgent.post('/users').send(invalidPayload);
+		expect(response.statusCode).toBe(400);
+	}
+});
+
+test('POST /users should error if user email already exists', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+
+	const email = utils.randomEmail();
+	const role = await Db.collections.Role!.findOneOrFail({ scope: 'global', name: 'member' });
+	await Db.collections.User?.save({ email, globalRole: role });
+
+	const response = await authOwnerAgent.post('/users').send([{ email }]);
+
+	expect(response.statusCode).toBe(400);
+});
+
+test('POST /users should ignore an empty payload', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+
+	const response = await authOwnerAgent.post('/users').send([]);
+
+	const { data } = response.body;
+
+	expect(response.statusCode).toBe(200);
+	expect(Array.isArray(data)).toBe(true);
+	expect(data.length).toBe(0);
+});
+
+
 const INITIAL_TEST_USER = {
 	id: uuid(),
 	email: utils.randomEmail(),
@@ -361,4 +489,10 @@ const INVALID_FILL_OUT_USER_PAYLOADS = [
 		lastName: utils.randomName(),
 		password: utils.randomInvalidPassword(),
 	},
+];
+
+const TEST_EMAILS_TO_CREATE_USER_SHELLS = [
+	utils.randomEmail(),
+	utils.randomEmail(),
+	utils.randomEmail(),
 ];

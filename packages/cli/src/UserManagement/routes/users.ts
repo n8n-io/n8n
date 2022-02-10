@@ -40,6 +40,15 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
+			if (!req.body.length) return [];
+
+			// eslint-disable-next-line no-restricted-syntax
+			for (const invite of req.body) {
+				if (typeof invite !== 'object' || !invite.email) {
+					throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
+				}
+			}
+
 			const invites = req.body;
 
 			invites.forEach(({ email }) => {
@@ -84,7 +93,11 @@ export function usersNamespace(this: N8nApp): void {
 					});
 
 					if (!result.success) {
-						throw new ResponseHelper.ResponseError(`Email to ${email} could not be sent`);
+						throw new ResponseHelper.ResponseError(
+							`Email to ${email} could not be sent. Please recheck your SMTP config.`,
+							undefined,
+							500,
+						);
 					}
 
 					return { id, email };
