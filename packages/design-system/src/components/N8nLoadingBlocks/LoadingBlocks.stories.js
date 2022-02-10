@@ -1,12 +1,18 @@
-import N8nLoading from './Loading.vue';
+import N8nLoadingBlocks from './LoadingBlocks.vue';
 
 export default {
-	title: 'Atoms/Loading',
-	component: N8nLoading,
+	title: 'Atoms/LoadingBlocks',
+	component: N8nLoadingBlocks,
 	argTypes: {
 		animated: {
 			control: {
 				type: 'boolean',
+			},
+		},
+		blocks: {
+			control: {
+				type: 'select',
+				options: [1, 2, 3, 4, 5],
 			},
 		},
 		loading: {
@@ -18,6 +24,12 @@ export default {
 			control: {
 				type: 'select',
 				options: [1, 2, 3, 4, 5],
+			},
+		},
+		tag: {
+			control: {
+				type: 'select',
+				options: ['div', 'span'],
 			},
 		},
 		variant: {
@@ -32,9 +44,9 @@ export default {
 const Template = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
-		N8nLoading,
+		N8nLoadingBlocks,
 	},
-	template: '<n8n-loading v-bind="$props"></n8n-loading>',
+	template: '<n8n-loading-blocks v-bind="$props"></n8n-loading-blocks>',
 });
 
-export const Loading = Template.bind({});
+export const LoadingBlocks = Template.bind({});

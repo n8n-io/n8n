@@ -1,27 +1,16 @@
 <template>
 	<div>
 		<div v-if="loading" :class="$style.loading">
-			<div v-for="(block, index) in loadingBlocks" :key="'block-' + index">
-				<n8n-loading
-					:animated="loadingAnimated"
-					:loading="loading"
-					:rows="loadingRows"
-					variant="p"
-				/>
-				<div :class="$style.spacer" />
-			</div>
+			<n8n-loading-blocks :blocks="2" :loading="loading" />
 		</div>
-		<div v-else :class="$style.card">
-			<div :class="$style.body">
-				<n8n-heading :bold="true" size="small">{{ title }}</n8n-heading>
-				<div :class="$style.content">
-					<slot name="footer"></slot>
-				</div>
-			</div>
-			<div>
+		<n8n-card :title="title" v-else>
+			<template v-slot:button>
 				<slot name="button"></slot>
-			</div>
-		</div>
+			</template>
+			<template v-slot:content>
+				<slot name="content"></slot>
+			</template>
+		</n8n-card>
 	</div>
 </template>
 
@@ -35,19 +24,10 @@ export default mixins(genericHelpers).extend({
 		loading: {
 			type: Boolean,
 		},
-		loadingAnimated: {
-			type: Boolean,
-			default: true,
+		title: {
+			type: String,
+			default: '',
 		},
-		loadingBlocks: {
-			type: Number,
-			default: 2,
-		},
-		loadingRows: {
-			type: Number,
-			default: 1,
-		},
-		title: String,
 	},
 });
 </script>
@@ -59,23 +39,5 @@ export default mixins(genericHelpers).extend({
 	border-bottom: $--version-card-border;
 	margin-right: var(--spacing-2xs);
 	padding: 0 var(--spacing-s) var(--spacing-s);
-}
-
-.card {
-	width: 100%;
-	min-height: 68px;
-	margin-right: var(--spacing-2xs);
-	padding: var(--spacing-s);
-	background-color: var(--color-background-xlight);
-	border-bottom: $--version-card-border;
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.content {
-	display: flex;
-	flex-direction: column;
-	justify-content: space-around;
 }
 </style>

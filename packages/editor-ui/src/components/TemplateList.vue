@@ -8,10 +8,7 @@
 		</div>
 		<div v-if="loading" :class="$style.container">
 			<div :class="$style.wrapper">
-				<TemplateCard :loading="loading" title="" />
-				<TemplateCard :loading="loading" title="" />
-				<TemplateCard :loading="loading" title="" />
-				<TemplateCard :loading="loading" title="" />
+				<TemplateCard v-for="n in 4" :key="'index-' + n" :loading="loading" />
 			</div>
 		</div>
 		<div v-else-if="workflows.length" :class="$style.container">
@@ -27,6 +24,22 @@
 						:loading="false"
 						:title="workflow.name"
 					>
+						<template v-slot:content>
+							<div :class="$style.content">
+								<span v-if="workflow.totalViews">
+									<n8n-text size="small" color="text-light">
+										<font-awesome-icon icon="eye" />
+										{{ abbreviateNumber(workflow.totalViews) }}
+									</n8n-text>
+								</span>
+								<div v-if="workflow.totalViews" :class="$style.line" v-text="'|'" />
+								<n8n-text size="small" color="text-light">
+									<TimeAgo :date="workflow.created_at" />
+								</n8n-text>
+								<div :class="$style.line" v-text="'|'" />
+								<n8n-text size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
+							</div>
+						</template>
 						<template v-slot:button>
 							<div :class="$style.button">
 								<n8n-button
@@ -46,37 +59,17 @@
 								</div>
 							</div>
 						</template>
-
-						<template v-slot:footer>
-							<div :class="$style.footer">
-								<span v-if="workflow.totalViews">
-									<n8n-text size="small" color="text-light">
-										<font-awesome-icon icon="eye" />
-										{{ abbreviateNumber(workflow.totalViews) }}
-									</n8n-text>
-								</span>
-								<div v-if="workflow.totalViews" :class="$style.line" v-text="'|'" />
-								<n8n-text size="small" color="text-light">
-									<TimeAgo :date="workflow.created_at" />
-								</n8n-text>
-								<div :class="$style.line" v-text="'|'" />
-								<n8n-text size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
-							</div>
-						</template>
 					</TemplateCard>
 				</div>
 				<div v-if="infinityScroll" v-infocus />
 				<div v-if="infinityScroll && shouldShowLoadingState && !searchFinished">
-					<TemplateCard :loading="true" title="" />
-					<TemplateCard :loading="true" title="" />
-					<TemplateCard :loading="true" title="" />
-					<TemplateCard :loading="true" title="" />
+					<TemplateCard v-for="n in 4" :key="'index-' + n" :loading="true" />
 				</div>
 			</div>
 			<div v-if="infinityScroll && !shouldShowLoadingState" :class="$style.text">
-				<n8n-text size="medium" color="text-base">{{
-					$locale.baseText('templates.endResult')
-				}}</n8n-text>
+				<n8n-text size="medium" color="text-base">
+					{{ $locale.baseText('templates.endResult') }}
+				</n8n-text>
 			</div>
 		</div>
 		<div v-else>
@@ -241,6 +234,9 @@ export default mixins(genericHelpers).extend({
 	padding-bottom: var(--spacing-2xs);
 }
 
+.l {
+}
+
 .list {
 	padding-top: var(--spacing-l);
 }
@@ -251,6 +247,12 @@ export default mixins(genericHelpers).extend({
 	border-radius: var(--border-radius-large);
 	border: $--version-card-border;
 	overflow: auto;
+
+	.loading {
+		&:last-child {
+			border-bottom: none !important;
+		}
+	}
 }
 
 .nodes {
@@ -276,10 +278,6 @@ export default mixins(genericHelpers).extend({
 	}
 }
 
-.card {
-	cursor: pointer;
-}
-
 .last {
 	div {
 		border: none;
@@ -292,7 +290,7 @@ export default mixins(genericHelpers).extend({
 	z-index: 100;
 }
 
-.footer {
+.content {
 	display: flex;
 	align-items: center;
 }

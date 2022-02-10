@@ -1,4 +1,5 @@
 import N8nButton from './N8nButton';
+import N8nCard from './N8nCard';
 import N8nIcon from './N8nIcon';
 import N8nIconButton from './N8nIconButton';
 import N8nImage from './N8nImage';
@@ -7,6 +8,7 @@ import N8nInfoTip from './N8nInfoTip';
 import N8nInputNumber from './N8nInputNumber';
 import N8nInputLabel from './N8nInputLabel';
 import N8nLoading from './N8nLoading';
+import N8nLoadingBlocks from './N8nLoadingBlocks';
 import N8nHeading from './N8nHeading';
 import N8nMarkdown from './N8nMarkdown';
 import N8nMenu from './N8nMenu';
@@ -22,6 +24,7 @@ import N8nOption from './N8nOption';
 
 export {
 	N8nButton,
+	N8nCard,
 	N8nIcon,
 	N8nIconButton,
 	N8nImage,
@@ -30,6 +33,7 @@ export {
 	N8nInputLabel,
 	N8nInputNumber,
 	N8nLoading,
+	N8nLoadingBlocks,
 	N8nMarkdown,
 	N8nHeading,
 	N8nMenu,

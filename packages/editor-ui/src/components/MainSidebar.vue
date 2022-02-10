@@ -24,61 +24,61 @@
 						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.workflows') }}</span>
 					</template>
 
-					<n8n-menu-item index="workflow-new" style="padding-left: 30px;">
+					<n8n-menu-item index="workflow-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>&nbsp;
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="template-new" style="padding-left: 30px;">
+					<n8n-menu-item index="template-new">
 						<template slot="title">
 							<font-awesome-icon icon="shapes"/>&nbsp;
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-open" style="padding-left: 30px;">
+					<n8n-menu-item index="workflow-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>&nbsp;
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-save" style="padding-left: 30px;">
+					<n8n-menu-item index="workflow-save">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.save') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-duplicate" :disabled="!currentWorkflow" style="padding-left: 30px;">
+					<n8n-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.duplicate') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-delete" :disabled="!currentWorkflow" style="padding-left: 30px;">
+					<n8n-menu-item index="workflow-delete" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.delete') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-download" style="padding-left: 30px;">
+					<n8n-menu-item index="workflow-download">
 						<template slot="title">
 							<font-awesome-icon icon="file-download"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.download') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-url" style="padding-left: 30px;">
+					<n8n-menu-item index="workflow-import-url">
 						<template slot="title">
 							<font-awesome-icon icon="cloud"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromUrl') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-file" style="padding-left: 30px;">
+					<n8n-menu-item index="workflow-import-file">
 						<template slot="title">
 							<font-awesome-icon icon="hdd"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromFile') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow" style="padding-left: 30px;">
+					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.settings') }}</span>
@@ -97,13 +97,13 @@
 						<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.credentials') }}</span>
 					</template>
 
-					<n8n-menu-item index="credentials-new" style="padding-left: 30px;">
+					<n8n-menu-item index="credentials-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="credentials-open" style="padding-left: 30px;">
+					<n8n-menu-item index="credentials-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
@@ -124,7 +124,7 @@
 
 					<MenuItemsIterator :items="helpMenuItems" :afterItemClick="trackHelpItemClick" />
 
-					<n8n-menu-item index="help-about" style="padding-left: 30px;">
+					<n8n-menu-item index="help-about">
 						<template slot="title">
 							<font-awesome-icon class="about-icon" icon="info"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.aboutN8n') }}</span>
@@ -135,7 +135,7 @@
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
 				<div class="footer-menu-items">
-					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel" style="padding-left: 30px;">
+					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 						<div class="gift-container">
 							<GiftNotificationIcon />
 						</div>
@@ -588,6 +588,12 @@ export default mixins(
 				position: absolute;
 				left: 60px;
 				top: 1px;
+			}
+		}
+
+		.el-menu--inline {
+			.el-menu-item {
+				padding-left: 30px!important;
 			}
 		}
 
