@@ -356,7 +356,6 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 // 	expect(response.statusCode).toBe(500);
 // });
 
-
 // test('POST /users should report error due to wrong SMTP config', async () => {
 // 	const owner = await Db.collections.User!.findOneOrFail();
 // 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
@@ -452,7 +451,6 @@ test('POST /users should ignore an empty payload', async () => {
 	expect(Array.isArray(data)).toBe(true);
 	expect(data.length).toBe(0);
 });
-
 
 const INITIAL_TEST_USER = {
 	id: uuid(),
