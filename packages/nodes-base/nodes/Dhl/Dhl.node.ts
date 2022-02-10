@@ -7,10 +7,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -101,7 +101,7 @@ export class Dhl implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async dhlApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async dhlApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
