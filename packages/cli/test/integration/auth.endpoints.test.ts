@@ -83,13 +83,15 @@ describe('auth endpoints', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(resetPasswordToken).toBeUndefined();
-			expect(globalRole).toBeUndefined();
+			expect(globalRole).toBeDefined();
+			expect(globalRole.name).toBe('owner');
+			expect(globalRole.scope).toBe('global');
 
 			const authToken = utils.getAuthToken(response);
 			expect(authToken).not.toBeUndefined();
 		});
 
-		test('GET /login should check cookie contents', async () => {
+		test('GET /login should receive logged in user', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const ownerAgent = await utils.createAuthAgent(app, owner);
 
@@ -97,15 +99,30 @@ describe('auth endpoints', () => {
 
 			expect(response.statusCode).toBe(200);
 
-			const { id, email, password, iat: issuedAt, exp: expiration } = response.body.data;
+			const {
+				id,
+				email,
+				firstName,
+				lastName,
+				password,
+				personalizationAnswers,
+				globalRole,
+				resetPasswordToken,
+			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
 			expect(email).toBe(TEST_USER.email);
-			expect(password).toBeDefined();
+			expect(firstName).toBe(TEST_USER.firstName);
+			expect(lastName).toBe(TEST_USER.lastName);
+			expect(password).toBeUndefined();
+			expect(personalizationAnswers).toBeNull();
+			expect(password).toBeUndefined();
+			expect(resetPasswordToken).toBeUndefined();
+			expect(globalRole).toBeDefined();
+			expect(globalRole.name).toBe('owner');
+			expect(globalRole.scope).toBe('global');
 
 			expect(response.headers['set-cookie']).toBeUndefined();
-			expect(issuedAt).toBeDefined();
-			expect(expiration > new Date().getTime() / 1000).toBe(true);
 		});
 
 		test('GET /logout should log user out', async () => {
