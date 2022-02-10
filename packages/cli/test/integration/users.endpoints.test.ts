@@ -110,7 +110,7 @@ test('DELETE /users/:id should fail to delete self', async () => {
 	expect(response.statusCode).toBe(400);
 });
 
-test('DELETE /users/:id should fail if deleted equals transferee', async () => {
+test('DELETE /users/:id should fail if user to delete is transferee', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
