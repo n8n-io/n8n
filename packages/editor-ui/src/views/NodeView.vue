@@ -125,6 +125,7 @@ import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { newVersions } from '@/components/mixins/newVersions';
+import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
@@ -192,6 +193,7 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	newVersions,
+	nodeHelpers,
 )
 	.extend({
 		name: 'NodeView',
@@ -278,10 +280,7 @@ export default mixins(
 				return this.$store.getters.executionWaitingForWebhook;
 			},
 			isDemo (): boolean {
-				if (this.$route.name === 'WorkflowDemo') {
-					return true;
-				}
-				return false;
+				return this.$route.name === 'WorkflowDemo';
 			},
 			lastSelectedNode (): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
@@ -516,31 +515,12 @@ export default mixins(
 					});
 				}
 			},
-			orientNodes(workflowNodes: INode[]) {
-				const nodes = workflowNodes;
-				const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
-
-				const leftmostTop = CanvasHelpers.getLeftmostTopNode(nodes);
-
-				const diffX = CanvasHelpers.DEFAULT_START_POSITION_X - leftmostTop.position[0];
-				const diffY = CanvasHelpers.DEFAULT_START_POSITION_Y - leftmostTop.position[1];
-
-				nodes.map((node) => {
-					node.position[0] += diffX + (hasStartNode? 0 : CanvasHelpers.NODE_SIZE * 2);
-					node.position[1] += diffY;
-				});
-
-				if (!hasStartNode) {
-					nodes.push({...CanvasHelpers.DEFAULT_START_NODE});
-				}
-				return nodes;
-			},
 			async importWorkflowExact(data: {workflow: IWorkflowDataUpdate}) {
 				if (!data.workflow.nodes || !data.workflow.connections) {
 					throw new Error('Invalid workflow object');
 				}
 				this.resetWorkspace();
-				data.workflow.nodes = this.orientNodes(data.workflow.nodes);
+				data.workflow.nodes = this.getFixedNodesList(data.workflow.nodes);
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				this.$nextTick(() => {
 					this.zoomToFit();
@@ -575,7 +555,7 @@ export default mixins(
 					return;
 				}
 
-				data.workflow.nodes = this.orientNodes(data.workflow.nodes);
+				data.workflow.nodes = this.getFixedNodesList(data.workflow.nodes);
 
 				this.blankRedirect = true;
 				this.$router.push({ name: 'NodeViewNew', query: { templateId } });
@@ -1811,18 +1791,6 @@ export default mixins(
 				if (this.blankRedirect) {
 					this.blankRedirect = false;
 				}
-				else if (this.isDemo && this.$route.query.workflow && typeof this.$route.query.workflow === 'string') {
-					try {
-						const workflow = JSON.parse(decodeURIComponent(this.$route.query.workflow));
-						await this.importWorkflowExact({workflow});
-					} catch (e) {
-						this.$showMessage({
-							title: 'Could not import workflow',
-							message: (e as Error).message,
-							type: 'error',
-						});
-					}
-				}
 				else if (this.$route.name === 'WorkflowTemplate') {
 					const templateId = this.$route.params.id;
 					await this.openWorkflowTemplate(templateId);
@@ -2733,6 +2701,9 @@ export default mixins(
 						try {
 							await this.importWorkflowExact(json);
 						} catch (e) {
+							if (window.top) {
+								window.top.postMessage(JSON.stringify({command: 'errorImportingWorkflow'}), '*');
+							}
 							this.$showMessage({
 								title: 'Could not import workflow',
 								message: (e as Error).message,

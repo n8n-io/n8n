@@ -1,5 +1,6 @@
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	START_NODE_TYPE,
 } from '@/constants';
 
 import {
@@ -26,6 +27,8 @@ import {
 	ICredentialsResponse,
 	INodeUi,
 } from '../../Interface';
+
+import * as CanvasHelpers from '@/views/canvasHelpers';
 
 import { restApi } from '@/components/mixins/restApi';
 
@@ -388,6 +391,25 @@ export const nodeHelpers = mixins(
 					return optionData.name;
 				}
 				return undefined;
+			},
+			getFixedNodesList(workflowNodes: INode[]) {
+				const nodes = [...workflowNodes];
+				const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
+
+				const leftmostTop = CanvasHelpers.getLeftmostTopNode(nodes);
+
+				const diffX = CanvasHelpers.DEFAULT_START_POSITION_X - leftmostTop.position[0];
+				const diffY = CanvasHelpers.DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+
+				nodes.map((node) => {
+					node.position[0] += diffX + (hasStartNode? 0 : CanvasHelpers.NODE_SIZE * 2);
+					node.position[1] += diffY;
+				});
+
+				if (!hasStartNode) {
+					nodes.push({...CanvasHelpers.DEFAULT_START_NODE});
+				}
+				return nodes;
 			},
 		},
 	});
