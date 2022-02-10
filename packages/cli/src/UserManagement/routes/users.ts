@@ -13,6 +13,7 @@ import {
 	isEmailSetUp,
 	isFailedQuery,
 	sanitizeUser,
+	validatePassword,
 } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
@@ -124,47 +125,43 @@ export function usersNamespace(this: N8nApp): void {
 
 	/**
 	 * Fill out user shell with first name, last name, and password.
+	 *
+	 * Authless endpoint.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/users/:id`,
 		ResponseHelper.send(async (req: UserRequest.Update, res: Response) => {
-			if (req.user) {
-				throw new ResponseHelper.ResponseError(
-					'Please log out before accepting another invite',
-					undefined,
-					500,
-				);
-			}
-
 			const { id: inviteeId } = req.params;
 
 			const { inviterId, firstName, lastName, password } = req.body;
 
 			if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
+
+			const validPassword = validatePassword(password);
 
 			const users = await Db.collections.User!.find({
 				where: { id: In([inviterId, inviteeId]) },
 			});
 
 			if (users.length !== 2) {
-				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid payload or URL', undefined, 400);
 			}
 
-			const invitee = users.find((user) => user.id === inviteeId);
+			const invitee = users.find((user) => user.id === inviteeId) as User;
 
-			if (!invitee || invitee.password) {
+			if (invitee.password) {
 				throw new ResponseHelper.ResponseError(
 					'This invite has been accepted already',
 					undefined,
-					500,
+					400,
 				);
 			}
 
 			invitee.firstName = firstName;
 			invitee.lastName = lastName;
-			invitee.password = hashSync(password, genSaltSync(10));
+			invitee.password = hashSync(validPassword, genSaltSync(10));
 
 			const updatedUser = await Db.collections.User!.save(invitee);
 
