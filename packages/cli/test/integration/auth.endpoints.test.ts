@@ -86,7 +86,7 @@ describe('auth endpoints', () => {
 			expect(globalRole).toBeUndefined();
 
 			const authToken = utils.getAuthToken(response);
-			expect(authToken).not.toBeUndefined();
+			expect(authToken).toBeDefined();
 		});
 
 		test('GET /login should check cookie contents', async () => {
