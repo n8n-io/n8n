@@ -112,6 +112,7 @@ export const ticketDescription: INodeProperties[] = [
 		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
+		description: 'Ticket to retrieve. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -130,6 +131,7 @@ export const ticketDescription: INodeProperties[] = [
 		name: 'id',
 		type: 'string',
 		default: '',
+		description: 'Ticket to delete. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 		displayOptions: {
 			show: {

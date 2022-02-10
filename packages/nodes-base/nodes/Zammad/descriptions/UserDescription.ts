@@ -96,7 +96,7 @@ export const userDescription: INodeProperties[] = [
 		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
-		description: 'User to update. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'User to update. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -114,7 +114,7 @@ export const userDescription: INodeProperties[] = [
 		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
-		description: 'User to delete. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'User to delete. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -132,7 +132,7 @@ export const userDescription: INodeProperties[] = [
 		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
-		description: 'User to retrieve. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'User to retrieve. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
