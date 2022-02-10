@@ -17,7 +17,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	const ownerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+	const globalOwnerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
 
 	await Db.collections.User!.save({
 		id: INITIAL_TEST_USER.id,
@@ -27,7 +27,7 @@ beforeEach(async () => {
 		lastName: INITIAL_TEST_USER.lastName,
 		createdAt: new Date(),
 		updatedAt: new Date(),
-		globalRole: ownerRole,
+		globalRole: globalOwnerRole,
 	});
 
 	config.set('userManagement.hasOwner', true);
@@ -76,7 +76,7 @@ test('DELETE /users/:id should delete the user', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const memberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
 	const { id: idToDelete } = await Db.collections.User!.save({
 		id: uuid(),
 		email: utils.randomEmail(),
@@ -85,7 +85,7 @@ test('DELETE /users/:id should delete the user', async () => {
 		lastName: utils.randomName(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
-		globalRole: memberRole,
+		globalRole: globalMemberRole,
 	});
 
 	const response = await authOwnerAgent.delete(`/users/${idToDelete}`);
@@ -107,7 +107,7 @@ test('DELETE /users/:id should fail if deleted equals transferee', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const memberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
 	const { id: idToDelete } = await Db.collections.User!.save({
 		id: uuid(),
 		email: utils.randomEmail(),
@@ -116,7 +116,7 @@ test('DELETE /users/:id should fail if deleted equals transferee', async () => {
 		lastName: utils.randomName(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
-		globalRole: memberRole,
+		globalRole: globalMemberRole,
 	});
 
 	const response = await authOwnerAgent.delete(`/users/${idToDelete}`).query({
@@ -173,7 +173,7 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const memberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
 	const { id: inviteeId } = await Db.collections.User!.save({
 		id: uuid(),
 		email: utils.randomEmail(),
@@ -182,7 +182,7 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 		lastName: utils.randomName(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
-		globalRole: memberRole,
+		globalRole: globalMemberRole,
 	});
 
 	const response = await authOwnerAgent
@@ -205,7 +205,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const memberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
+	const globalMemberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
 	const { id: inviteeId } = await Db.collections.User!.save({
 		id: uuid(),
 		email: utils.randomEmail(),
@@ -214,7 +214,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 		lastName: utils.randomName(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
-		globalRole: memberRole,
+		globalRole: globalMemberRole,
 	});
 
 	const first = await authOwnerAgent

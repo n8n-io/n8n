@@ -21,13 +21,13 @@ describe('/me endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const ownerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+			const globalOwnerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
 
 			await Db.collections.User!.save({
 				id: uuid(),
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				globalRole: ownerRole,
+				globalRole: globalOwnerRole,
 			});
 		});
 
@@ -167,7 +167,7 @@ describe('/me endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const memberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
+			const globalMemberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
 
 			const newMember = new User();
 
@@ -177,7 +177,7 @@ describe('/me endpoints', () => {
 				firstName: TEST_USER.firstName,
 				lastName: TEST_USER.lastName,
 				password: hashSync(utils.randomValidPassword(), genSaltSync(10)),
-				globalRole: memberRole,
+				globalRole: globalMemberRole,
 			});
 
 			await Db.collections.User!.save(newMember);
@@ -326,7 +326,7 @@ describe('/me endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const ownerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+			const globalOwnerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
 
 			const newOwner = new User();
 
@@ -336,7 +336,7 @@ describe('/me endpoints', () => {
 				firstName: TEST_USER.firstName,
 				lastName: TEST_USER.lastName,
 				password: hashSync(utils.randomValidPassword(), genSaltSync(10)),
-				globalRole: ownerRole,
+				globalRole: globalOwnerRole,
 			});
 
 			await Db.collections.User!.save(newOwner);
