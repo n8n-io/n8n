@@ -575,9 +575,9 @@ const config = convict({
 		},
 		emails: {
 			mode: {
-				doc: 'How to send emails. Possible values: smtp or empty (default)',
-				format: String,
-				default: '', // possible values: 'smtp' | ''
+				doc: 'How to send emails',
+				format: ['', 'smtp'],
+				default: '',
 				env: 'N8N_UM_EMAIL_MODE',
 			},
 			smtp: {
@@ -700,8 +700,8 @@ const config = convict({
 
 	logs: {
 		level: {
-			doc: 'Log output level. Options are error, warn, info, verbose and debug.',
-			format: String,
+			doc: 'Log output level',
+			format: ['error', 'warn', 'info', 'verbose', 'debug'],
 			default: 'info',
 			env: 'N8N_LOG_LEVEL',
 		},
@@ -762,10 +762,10 @@ const config = convict({
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
 		mode: {
-			format: String,
+			format: ['default', 'filesystem'],
 			default: 'default',
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
-			doc: 'Storage mode for binary data, default | filesystem',
+			doc: 'Storage mode for binary data',
 		},
 		localStoragePath: {
 			format: String,

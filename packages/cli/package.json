@@ -107,6 +107,7 @@
     "connect-history-api-fallback": "^1.6.0",
     "convict": "^6.0.1",
     "cookie-parser": "^1.4.6",
+    "crypto-js": "^4.1.1",
     "csrf": "^3.1.0",
     "dotenv": "^8.0.0",
     "express": "^4.16.4",
@@ -138,8 +139,8 @@
     "sse-channel": "^3.1.1",
     "tslib": "1.14.1",
     "typeorm": "0.2.30",
-    "validator": "13.7.0",
     "uuid": "^8.3.0",
+    "validator": "13.7.0",
     "winston": "^3.3.3"
   }
 }

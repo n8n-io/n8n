@@ -11,7 +11,6 @@ import { UserRequest } from '../../requests';
 import {
 	getInstanceDomain,
 	isEmailSetUp,
-	isFailedQuery,
 	sanitizeUser,
 	validatePassword,
 } from '../UserManagementHelper';
@@ -50,6 +49,21 @@ export function usersNamespace(this: N8nApp): void {
 				}
 			}
 
+			const createUsers: { [key: string]: string | null } = {};
+			// Validate payload
+			req.body.forEach((invitation) => {
+				if (!validator.isEmail(invitation.email)) {
+					throw new ResponseHelper.ResponseError(
+						`Invalid email address ${invitation.email}`,
+						undefined,
+						400,
+					);
+				}
+				createUsers[invitation.email] = null;
+			});
+
+			const role = await Db.collections.Role!.findOne({ scope: 'global', name: 'member' });
+
 			const invites = req.body;
 
 			invites.forEach(({ email }) => {
@@ -58,51 +72,65 @@ export function usersNamespace(this: N8nApp): void {
 				}
 			});
 
-			const role = await Db.collections.Role!.findOneOrFail({ scope: 'global', name: 'member' });
+			// remove/exclude existing users from creation
+			const existingUsers = await Db.collections.User!.find({
+				where: { email: In(Object.keys(createUsers)) },
+			});
+			existingUsers.forEach((user) => {
+				if (user.password) {
+					delete createUsers[user.email];
+					return;
+				}
+				createUsers[user.email] = user.id;
+			});
 
-			let createdUsers: User[] = [];
 			try {
-				createdUsers = await getConnection().transaction(async (transactionManager) => {
+				await getConnection().transaction(async (transactionManager) => {
 					return Promise.all(
-						invites.map(async ({ email }) => {
-							const newUser = new User();
-							Object.assign(newUser, { email, globalRole: role });
-							return transactionManager.save<User>(newUser);
-						}),
+						Object.keys(createUsers)
+							.filter((email) => createUsers[email] === null)
+							.map(async (email) => {
+								const newUser = Object.assign(new User(), {
+									email,
+									globalRole: role,
+								});
+								const savedUser = await transactionManager.save<User>(newUser);
+								createUsers[savedUser.email] = savedUser.id;
+								return savedUser;
+							}),
 					);
 				});
 			} catch (error) {
-				if (isFailedQuery(error)) {
-					throw new ResponseHelper.ResponseError(
-						`Email address ${error.parameters[1]} already exists`,
-						undefined,
-						400,
-					);
-				}
+				// TODO: Logger
+				throw new ResponseHelper.ResponseError(`An error occurred during user creation`);
 			}
 
 			const domain = getInstanceDomain();
+
+			// send invite email to new or not yet setup users
 			const mailer = getInstance();
 
 			return Promise.all(
-				createdUsers.map(async ({ id, email }) => {
-					const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
-					const result = await mailer.invite({
-						email,
-						inviteAcceptUrl,
-						domain,
-					});
-
-					if (!result.success) {
-						throw new ResponseHelper.ResponseError(
-							`Email to ${email} could not be sent. Please recheck your SMTP config.`,
-							undefined,
-							500,
-						);
-					}
-
-					return { id, email };
-				}),
+				Object.entries(createUsers)
+					.filter(([email, id]) => id && email)
+					.map(async ([email, id]) => {
+						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+						const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
+						const result = await mailer.invite({
+							email,
+							inviteAcceptUrl,
+							domain,
+						});
+						const resp: { id: string | null; email: string; error?: string } = {
+							id,
+							email,
+						};
+						if (!result.success) {
+							// TODO: Logger
+							resp.error = `Email could not be sent`;
+						}
+						return resp;
+					}),
 			);
 		}),
 	);

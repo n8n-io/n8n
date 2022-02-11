@@ -7,14 +7,12 @@ import * as passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
-import { createHash } from 'crypto';
 
 import { JwtPayload, N8nApp } from '../Interfaces';
 import { authenticationMethods } from './auth';
 import config = require('../../../config');
-import { Db } from '../..';
 import { User } from '../../databases/entities/User';
-import { issueCookie } from '../auth/jwt';
+import { issueCookie, resolveJwtContent } from '../auth/jwt';
 import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
@@ -34,22 +32,12 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 
 	passport.use(
 		new Strategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
-			// We will assign the `sub` property on the JWT to the database ID of user
-			const user = await Db.collections.User!.findOne(jwtPayload.id, { relations: ['globalRole'] });
-
-			let passwordHash = null;
-			if (user?.password) {
-				passwordHash = createHash('sha256')
-					.update(user.password.slice(user.password.length / 2))
-					.digest('hex');
-			}
-
-			if (!user || jwtPayload.password !== passwordHash || user.email !== jwtPayload.email) {
-				// When owner hasn't been set up, the default user
-				// won't have email nor password (both equals null)
+			try {
+				const user = await resolveJwtContent(jwtPayload);
+				return done(null, user);
+			} catch (error) {
 				return done(null, false, { message: 'User not found' });
 			}
-			return done(null, user);
 		}),
 	);
 

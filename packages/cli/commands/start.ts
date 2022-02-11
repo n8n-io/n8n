@@ -11,6 +11,7 @@ import { BinaryDataManager, IBinaryDataConfig, TUNNEL_SUBDOMAIN_ENV, UserSetting
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
+import { AES, enc } from 'crypto-js';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import { createHash } from 'crypto';
@@ -33,6 +34,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { RESPONSE_ERROR_MESSAGES } from '../src/constants';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -211,20 +213,41 @@ export class Start extends Command {
 				// Wait till the database is ready
 				await startDbInitPromise;
 
+				const encryptionKey = await UserSettings.getEncryptionKey();
+
+				if (!encryptionKey) {
+					throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
+				}
+
 				if (config.get('userManagement.emails.mode') === 'smtp') {
-					const smtpConfiguration = config.get('userManagement.emails.smtp');
+					const { auth, ...rest } = config.get('userManagement.emails.smtp');
+
+					const encryptedAuth = {
+						user: auth.user,
+						pass: AES.encrypt(auth.pass, encryptionKey).toString(),
+					};
+
 					await Db.collections.Settings!.save({
 						key: 'userManagement.emails.smtp',
-						value: JSON.stringify(smtpConfiguration),
+						value: JSON.stringify({ ...rest, auth: encryptedAuth }),
 						loadOnStartup: false,
 					});
 				} else {
 					// If we don't have SMTP settings, try loading from db.
-					const smtpSettings = await Db.collections.Settings!.findOne({
+					const smtpSetting = await Db.collections.Settings!.findOne({
 						key: 'userManagement.emails.smtp',
 					});
-					if (smtpSettings) {
-						config.set('userManagement.emails.smtp', JSON.parse(smtpSettings.value));
+
+					if (smtpSetting) {
+						const { auth, ...rest } = JSON.parse(smtpSetting.value) as SmtpConfig;
+
+						const decryptedAuth = {
+							user: auth.user,
+							pass: AES.decrypt(auth.pass, encryptionKey).toString(enc.Utf8),
+						};
+
+						config.set('userManagement.emails.mode', 'smtp');
+						config.set('userManagement.emails.smtp', { ...rest, auth: decryptedAuth });
 					}
 				}
 
