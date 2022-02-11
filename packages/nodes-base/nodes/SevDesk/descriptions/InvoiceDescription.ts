@@ -36,11 +36,6 @@ export const invoiceOperations: INodeProperties[] = [
 				value: 'delete',
 			},
 			{
-				name: 'Deprecated: Book',
-				value: 'deprecatedBook',
-				description: 'This endpoint can be used to book invoices.<br> Invoices are booked on payment accounts where (bank) transactions are located and might be linked to the transactions by using this endpoint.<br> For more detailed information about booking invoices, please refer to <a href="https://5677.extern.sevdesk.dev/apiOverview/index.html#/doc-vouchers#booking">this</a> section of our API-Overview.<br> Be aware, that this endpoint is deprecated and the new endpoint "bookAmount" should be used instead',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Returns a single invoice',

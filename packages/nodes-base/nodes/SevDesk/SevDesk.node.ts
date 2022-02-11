@@ -33,8 +33,6 @@ import {
 	contactOperations,
 	invoiceFields,
 	invoiceOperations,
-	invoicePoFields,
-	invoicePoOperations,
 	orderFields,
 	orderOperations,
 	orderPoFields,
@@ -105,10 +103,6 @@ export class SevDesk implements INodeType {
 						value: 'invoice',
 					},
 					{
-						name: 'InvoicePo',
-						value: 'invoicePo',
-					},
-					{
 						name: 'Order',
 						value: 'order',
 					},
@@ -146,8 +140,6 @@ export class SevDesk implements INodeType {
 			...contactAddressFields,
 			...invoiceOperations,
 			...invoiceFields,
-			...invoicePoOperations,
-			...invoicePoFields,
 			...orderOperations,
 			...orderFields,
 			...orderPoOperations,
@@ -226,8 +218,28 @@ export class SevDesk implements INodeType {
 						//           checkAccount: getAll
 						// ----------------------------------------
 
-						const body = {};
-						responseData = await sevDeskApiRequest.call(this, 'GET', '/CheckAccount', body);
+						responseData = await sevDeskApiRequest.call(this, 'GET', '/CheckAccount');
+
+					} else if (operation === 'create') {
+
+						// ----------------------------------------
+						//           checkAccount: create
+						// ----------------------------------------
+
+						// required fields
+						const name = this.getNodeParameter('name', i);
+						const type = this.getNodeParameter('type', i);
+						const currency = this.getNodeParameter('currency', i);
+						const status = this.getNodeParameter('status', i);
+
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						// fill body
+						const body = { name, type, currency, status, ...additionalFields };
+
+						const endpoint = `/CheckAccount`;
+						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
 
 					} else if (operation === 'update') {
 
@@ -237,8 +249,13 @@ export class SevDesk implements INodeType {
 
 						const checkAccountId = this.getNodeParameter('checkAccountId', i);
 
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						// fill body
+						const body = { ...additionalFields };
+
 						const endpoint = `/CheckAccount/${checkAccountId}`;
-						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'PUT', endpoint, body);
 
 					}
@@ -255,8 +272,13 @@ export class SevDesk implements INodeType {
 						// checkAccountTransaction: bookCollective
 						// ----------------------------------------
 
+						// required fields
+						const documents = this.getNodeParameter('documents', i);
+
+						// fill body
+						const body = { documents };
+
 						const endpoint = '/CheckAccountTransaction/{id}/bookCollective';
-						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'PUT', endpoint, body);
 
 					} else if (operation === 'getAll') {
@@ -265,16 +287,29 @@ export class SevDesk implements INodeType {
 						//     checkAccountTransaction: getAll
 						// ----------------------------------------
 
-						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const endpoint = '/CheckAccountTransaction';
+						responseData = await sevDeskApiRequest.call(this, 'GET', endpoint);
 
-						if (Object.keys(filters).length) {
-							Object.assign(qs, filters);
-						}
+					} else if (operation === 'create') {
+
+						// ----------------------------------------
+						//     checkAccountTransaction: create
+						// ----------------------------------------
+
+						// required fields
+						const valueDate = this.getNodeParameter('valueDate', i);
+						const amount = this.getNodeParameter('amount', i);
+						const payeePayerName = this.getNodeParameter('payeePayerName', i);
+						const checkAccount = this.getNodeParameter('checkAccount', i);
+
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						// fill body
+						const body = { valueDate, amount, payeePayerName, checkAccount, ...additionalFields };
 
 						const endpoint = '/CheckAccountTransaction';
-						const body = {};
-						responseData = await sevDeskApiRequest.call(this, 'GET', endpoint, body, qs);
+						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
 
 					}
 
@@ -482,7 +517,6 @@ export class SevDesk implements INodeType {
 						//         invoice: createByFactory
 						// ----------------------------------------
 
-						const endpoint = '/Invoice/Factory/saveInvoice';
 						// required fields
 						const objectName = this.getNodeParameter('objectName', i);
 						const contact = this.getNodeParameter('contact', i);
@@ -504,13 +538,15 @@ export class SevDesk implements INodeType {
 						// additional fields
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-
+						// fill body
 						const body = {
 							objectName, contact, invoiceDate, discount, deliveryDate, status, smallSettlement,
 							contactPerson, taxRate, taxText, taxType, invoiceType, currency, mapAll,
 							invoicePosSave, invoicePosDelete, discountSave, discountDelete,
 							...additionalFields,
 						};
+
+						const endpoint = '/Invoice/Factory/saveInvoice';
 						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
 
 					} else if (operation === 'delete') {
@@ -629,23 +665,6 @@ export class SevDesk implements INodeType {
 						const body = { toEmail, subject, text, ...additionalFields };
 						const endpoint = `/Invoice/${invoiceId}/sendViaEmail`;
 						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
-
-					}
-
-				} else if (resource === 'invoicePo') {
-
-					// **********************************************************************
-					//                               invoicePo
-					// **********************************************************************
-
-					if (operation === 'creates') {
-
-						// ----------------------------------------
-						//            invoicePo: creates
-						// ----------------------------------------
-
-						const body = {};
-						responseData = await sevDeskApiRequest.call(this, 'POST', '/InvoicePos', body);
 
 					}
 
