@@ -34,6 +34,7 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
+			const createUsers: { [key: string]: string | null } = {};
 			// Validate payload
 			invitations.forEach((invitation) => {
 				if (!validator.isEmail(invitation.email)) {
@@ -43,6 +44,7 @@ export function usersNamespace(this: N8nApp): void {
 						400,
 					);
 				}
+				createUsers[invitation.email] = null;
 			});
 
 			const role = await Db.collections.Role!.findOne({ scope: 'global', name: 'member' });
@@ -55,47 +57,67 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
+			// remove/exclude existing users from creation
+			const existingUsers = await Db.collections.User!.find({
+				where: { email: In(Object.keys(createUsers)) },
+			});
+			existingUsers.forEach((user) => {
+				if (user.password) {
+					delete createUsers[user.email];
+					return;
+				}
+				createUsers[user.email] = user.id;
+			});
+
+			try {
+				await getConnection().transaction(async (transactionManager) => {
+					return Promise.all(
+						Object.keys(createUsers)
+							.filter((email) => createUsers[email] === null)
+							.map(async (email) => {
+								const newUser = Object.assign(new User(), {
+									email,
+									globalRole: role,
+								});
+								const savedUser = await transactionManager.save<User>(newUser);
+								createUsers[savedUser.email] = savedUser.id;
+								return savedUser;
+							}),
+					);
+				});
+			} catch (error) {
+				// TODO: Logger
+				throw new ResponseHelper.ResponseError(`An error occurred during user creation`);
+			}
+
 			let domain = GenericHelpers.getBaseUrl();
 			if (domain.endsWith('/')) {
 				domain = domain.slice(0, domain.length - 1);
 			}
 
-			let createdUsers = [];
-			try {
-				createdUsers = await getConnection().transaction(async (transactionManager) => {
-					return Promise.all(
-						invitations.map(async ({ email }) => {
-							const newUser = Object.assign(new User(), {
-								email,
-								globalRole: role,
-							});
-							return transactionManager.save<User>(newUser);
-						}),
-					);
-				});
-			} catch (error) {
-				throw new ResponseHelper.ResponseError(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-					`Email address ${error.parameters[1]} already exists`,
-					undefined,
-					400,
-				);
-			}
-
+			// send invite email to new or not yet setup users
 			const mailer = getInstance();
 			return Promise.all(
-				createdUsers.map(async ({ id, email }) => {
-					const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
-					const result = await mailer.invite({
-						email,
-						inviteAcceptUrl,
-						domain,
-					});
-					if (!result.success) {
-						throw new ResponseHelper.ResponseError(`Email to ${email} could not be sent`);
-					}
-					return { id, email };
-				}),
+				Object.entries(createUsers)
+					.filter(([email, id]) => id && email)
+					.map(async ([email, id]) => {
+						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+						const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
+						const result = await mailer.invite({
+							email,
+							inviteAcceptUrl,
+							domain,
+						});
+						const resp: { id: string | null; email: string; error?: string } = {
+							id,
+							email,
+						};
+						if (!result.success) {
+							// TODO: Logger
+							resp.error = `Email could not be sent`;
+						}
+						return resp;
+					}),
 			);
 		}),
 	);
