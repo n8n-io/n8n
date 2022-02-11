@@ -1079,5 +1079,13 @@
 		"yourWorkflowWillNowRegularlyCheck": "Your workflow will now regularly check {serviceName} for events and trigger executions for them.",
 		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
 		"gotIt": "Got it"
+	},
+	"workflowPreview": {
+		"showError": {
+			"previewError": {
+				"message": "Unable to preview workflow",
+				"title": "Preview error"
+			}
+		}
 	}
 }

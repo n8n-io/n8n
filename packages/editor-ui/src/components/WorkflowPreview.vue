@@ -1,40 +1,46 @@
 <template>
 	<iframe
-		:class="{ workflow_iframe: !this.nodeView, workflow_iframe_node_view: this.nodeView }"
-		id="preview_iframe"
+		:class="{ workflow: !this.nodeView, openNDV: this.nodeView }"
+		ref="preview_iframe"
 		href="/workflows/demo"
 	></iframe>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
+import { showMessage } from '@/components/mixins/showMessage';
 
-export default Vue.extend({
+export default mixins(showMessage).extend({
+	name: 'WorkflowPreview',
 	props: ['workflow'],
 	methods: {
 		loadWorkflow() {
 			try {
 				const workflow = JSON.parse(this.workflow);
 
-				// Workflow Check
 				if (!workflow) {
 					throw new Error('Missing workflow');
 				}
 				if (!workflow.nodes || !Array.isArray(workflow.nodes)) {
 					throw new Error('Must have an array of nodes');
 				}
-				const iframe = document.getElementById('int_iframe') as HTMLIFrameElement;
 
-				// set workflow in canvas
-				iframe.contentWindow!.postMessage(
-					JSON.stringify({
-						command: 'openWorkflow',
-						workflow,
-					}),
-					'*',
+				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
+				if (iframe.contentWindow) {
+					iframe.contentWindow.postMessage(
+						JSON.stringify({
+							command: 'openWorkflow',
+							workflow,
+						}),
+						'*',
+					);
+				}
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('workflowPreview.showError.previewError.title'),
+					this.$locale.baseText('workflowPreview.showError.previewError.message'),
 				);
-			} catch (e) {
-				console.log('error invalid json');
 			}
 		},
 		receiveMessage({ data }: MessageEvent) {
@@ -44,19 +50,19 @@ export default Vue.extend({
 					this.loadWorkflow();
 				} else if (json.command === 'openNDV') {
 					// expand iframe
-					this.nodeView = true;
+					this.nodeViewDetailsOpened = true;
 				} else if (json.command === 'closeNDV') {
 					// close iframe
-					this.nodeView = false;
+					this.nodeViewDetailsOpened = false;
 				}
-			} catch (e) {
-				console.log('loading');
+			} catch (error) {
+				this.nodeViewDetailsOpened = false;
 			}
 		},
 	},
 	data() {
 		return {
-			nodeView: false,
+			nodeViewDetailsOpened: false,
 		};
 	},
 	mounted() {
@@ -69,13 +75,13 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.workflow_iframe {
+.workflow {
 	width: 100%;
 	height: 100%;
 	border: 0;
 	padding: 10px;
 }
-.workflow_iframe_node_view {
+.openNDV {
 	position: fixed;
 	top: 0;
 	left: 0;
