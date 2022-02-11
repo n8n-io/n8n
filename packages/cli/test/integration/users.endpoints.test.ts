@@ -417,21 +417,6 @@ test('POST /users should fail with invalid inputs', async () => {
 	}
 });
 
-test('POST /users should error if user email already exists', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAuthAgent(app, owner);
-
-	config.set('userManagement.emails.mode', 'smtp');
-
-	const email = utils.randomEmail();
-	const role = await Db.collections.Role!.findOneOrFail({ scope: 'global', name: 'member' });
-	await Db.collections.User?.save({ email, globalRole: role });
-
-	const response = await authOwnerAgent.post('/users').send([{ email }]);
-
-	expect(response.statusCode).toBe(400);
-});
-
 test('POST /users should ignore an empty payload', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
