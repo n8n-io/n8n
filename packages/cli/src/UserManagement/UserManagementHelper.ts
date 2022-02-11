@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
-import { IsNull, Not, QueryFailedError } from 'typeorm';
+import { IsNull, Not } from 'typeorm';
 import { Db, GenericHelpers, ResponseHelper } from '..';
 import config = require('../../config');
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
@@ -17,11 +17,6 @@ export function getInstanceDomain(): string {
 
 	return domain;
 }
-
-export const isFailedQuery = (
-	error: unknown,
-): error is QueryFailedError & { parameters: Array<string | number> } =>
-	error instanceof QueryFailedError;
 
 export async function isInstanceOwnerSetup(): Promise<boolean> {
 	const users = await Db.collections.User!.find({ email: Not(IsNull()) });
