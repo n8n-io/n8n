@@ -19,6 +19,11 @@
 		],
 		"generic": [
 			{
+				"label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+				"icon": "👥",
+				"url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+			},
+			{
 				"label": "5 tasks you can automate with the new Notion API ",
 				"icon": "⚡️",
 				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
