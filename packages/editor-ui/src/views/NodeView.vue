@@ -115,7 +115,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -242,20 +242,27 @@ export default mixins(
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;
 			if(result) {
-				const importConfirm = await this.confirmMessage(
+				const confirmModal = await this.confirmModal(
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.message'),
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.headline'),
 					'warning',
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText'),
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText'),
+					true,
 				);
-				if (importConfirm === false) {
-					next(false);
-				} else {
-					// Prevent other popups from displaying
+
+				if (confirmModal === MODAL_CONFIRMED) {
+					const saved = await this.saveCurrentWorkflow();
+					if (saved) this.$store.dispatch('settings/fetchPromptsData');
 					this.$store.commit('setStateDirty', false);
 					next();
+				} else if (confirmModal === MODAL_CANCEL) {
+					this.$store.commit('setStateDirty', false);
+					next();
+				} else if (confirmModal === MODAL_CLOSE) {
+					next(false);
 				}
+
 			} else {
 				next();
 			}
@@ -1802,14 +1809,20 @@ export default mixins(
 
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
-						const importConfirm = await this.confirmMessage(
+						const confirmModal = await this.confirmModal(
 							this.$locale.baseText('nodeView.confirmMessage.initView.message'),
 							this.$locale.baseText('nodeView.confirmMessage.initView.headline'),
 							'warning',
 							this.$locale.baseText('nodeView.confirmMessage.initView.confirmButtonText'),
 							this.$locale.baseText('nodeView.confirmMessage.initView.cancelButtonText'),
+							true,
 						);
-						if (importConfirm === false) {
+
+						if (confirmModal === MODAL_CONFIRMED) {
+							const saved = await this.saveCurrentWorkflow();
+							if (saved) this.$store.dispatch('settings/fetchPromptsData');
+						} else if (confirmModal === MODAL_CLOSE) {
+							console.log('CLOSING');
 							return Promise.resolve();
 						}
 					}
