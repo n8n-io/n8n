@@ -1822,7 +1822,6 @@ export default mixins(
 							const saved = await this.saveCurrentWorkflow();
 							if (saved) this.$store.dispatch('settings/fetchPromptsData');
 						} else if (confirmModal === MODAL_CLOSE) {
-							console.log('CLOSING');
 							return Promise.resolve();
 						}
 					}
