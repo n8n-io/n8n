@@ -58,6 +58,7 @@ export class SevDesk implements INodeType {
 		description: 'Consume the sevDesk API',
 		defaults: {
 			name: 'sevDesk',
+			color: '#d80f16',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -194,7 +195,6 @@ export class SevDesk implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
 
 				if (resource === 'accountingContact') {
@@ -450,8 +450,19 @@ export class SevDesk implements INodeType {
 
 						const invoiceId = this.getNodeParameter('invoiceId', i);
 
+						// required fields
+						const amount = this.getNodeParameter('amount', i);
+						const date = this.getNodeParameter('date', i)?.valueOf();
+						const type = this.getNodeParameter('type', i);
+						const checkAccount = this.getNodeParameter('checkAccount', i);
+
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const body = {
+							amount, date, type, checkAccount, ...additionalFields,
+						};
 						const endpoint = `/Invoice/${invoiceId}/bookAmount`;
-						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'PUT', endpoint, body);
 
 					} else if (operation === 'cancel') {
@@ -472,7 +483,34 @@ export class SevDesk implements INodeType {
 						// ----------------------------------------
 
 						const endpoint = '/Invoice/Factory/saveInvoice';
-						const body = {};
+						// required fields
+						const objectName = this.getNodeParameter('objectName', i);
+						const contact = this.getNodeParameter('contact', i);
+						const invoiceDate = this.getNodeParameter('invoiceDate', i)?.valueOf();
+						const discount = this.getNodeParameter('discount', i);
+						const deliveryDate = this.getNodeParameter('deliveryDate', i)?.valueOf();
+						const status = this.getNodeParameter('status', i);
+						const smallSettlement = this.getNodeParameter('smallSettlement', i);
+						const contactPerson = this.getNodeParameter('contactPerson', i);
+						const taxRate = this.getNodeParameter('taxRate', i);
+						const taxText = this.getNodeParameter('taxText', i);
+						const taxType = this.getNodeParameter('taxType', i);
+						const invoiceType = this.getNodeParameter('invoiceType', i);
+						const currency = this.getNodeParameter('currency', i);
+						const mapAll = this.getNodeParameter('mapAll', i);
+						const { invoicePosSave, invoicePosDelete } = this.getNodeParameter('invoicePositions', i) as any;
+						const { discountSave, discountDelete } = this.getNodeParameter('discounts', i) as any;
+
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+
+						const body = {
+							objectName, contact, invoiceDate, discount, deliveryDate, status, smallSettlement,
+							contactPerson, taxRate, taxText, taxType, invoiceType, currency, mapAll,
+							invoicePosSave, invoicePosDelete, discountSave, discountDelete,
+							...additionalFields,
+						};
 						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
 
 					} else if (operation === 'delete') {
@@ -485,18 +523,6 @@ export class SevDesk implements INodeType {
 
 						const endpoint = `/Invoice/${invoiceId}/delete`;
 						responseData = await sevDeskApiRequest.call(this, 'DELETE', endpoint);
-
-					} else if (operation === 'deprecatedBook') {
-
-						// ----------------------------------------
-						//         invoice: deprecatedBook
-						// ----------------------------------------
-
-						const invoiceId = this.getNodeParameter('invoiceId', i);
-
-						const endpoint = `/Invoice/${invoiceId}/bookAmmount`;
-						const body = {};
-						responseData = await sevDeskApiRequest.call(this, 'PUT', endpoint, body);
 
 					} else if (operation === 'get') {
 
@@ -554,7 +580,10 @@ export class SevDesk implements INodeType {
 						// ----------------------------------------
 
 						const invoiceId = this.getNodeParameter('invoiceId', i);
-						const body = {};
+
+						const forceReload = this.getNodeParameter('forceReload', i);
+
+						const body = { forceReload };
 						responseData = await sevDeskApiRequest.call(this, 'POST', `/Invoice/${invoiceId}/render`, body);
 
 					} else if (operation === 'invoiceSendBy') {
@@ -565,8 +594,11 @@ export class SevDesk implements INodeType {
 
 						const invoiceId = this.getNodeParameter('invoiceId', i);
 
+						const sendType = this.getNodeParameter('sendType', i);
+						const sendDraft = this.getNodeParameter('sendDraft', i);
+
+						const body = { sendType, sendDraft };
 						const endpoint = `/Invoice/${invoiceId}/sendBy`;
-						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'PUT', endpoint, body);
 
 					} else if (operation === 'markAsSent') {
@@ -588,8 +620,14 @@ export class SevDesk implements INodeType {
 
 						const invoiceId = this.getNodeParameter('invoiceId', i);
 
+						const toEmail = this.getNodeParameter('toEmail', i);
+						const subject = this.getNodeParameter('subject', i);
+						const text = this.getNodeParameter('text', i);
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const body = { toEmail, subject, text, ...additionalFields };
 						const endpoint = `/Invoice/${invoiceId}/sendViaEmail`;
-						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
 
 					}
@@ -754,18 +792,6 @@ export class SevDesk implements INodeType {
 						const endpoint = '/Voucher/Factory/saveVoucher';
 						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
-
-					} else if (operation === 'deprecatedBook') {
-
-						// ----------------------------------------
-						//         voucher: deprecatedBook
-						// ----------------------------------------
-
-						const voucherId = this.getNodeParameter('voucherId', i);
-
-						const endpoint = `/Voucher/${voucherId}/bookAmmount`;
-						const body = {};
-						responseData = await sevDeskApiRequest.call(this, 'PUT', endpoint, body);
 
 					} else if (operation === 'get') {
 
