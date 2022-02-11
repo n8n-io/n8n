@@ -17,6 +17,13 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+	jest.isolateModules(() => {
+		jest.mock('../../config');
+	});
+
+	config.set('userManagement.hasOwner', true);
+	config.set('userManagement.emails.mode', '');
+
 	const globalOwnerRole = await Db.collections.Role!.findOneOrFail({
 		name: 'owner',
 		scope: 'global',
@@ -32,8 +39,6 @@ beforeEach(async () => {
 		updatedAt: new Date(),
 		globalRole: globalOwnerRole,
 	});
-
-	config.set('userManagement.hasOwner', true);
 });
 
 afterEach(async () => {
@@ -345,30 +350,14 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 	expect(response.statusCode).toBe(400);
 });
 
-// test('POST /users should fail if emailing is not set up', async () => {
-// 	const owner = await Db.collections.User!.findOneOrFail();
-// 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+test('POST /users should fail if emailing is not set up', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-// 	config.set('userManagement.emails.mode', ''); // TODO: This line has no effect
+	const response = await authOwnerAgent.post('/users').send([{ email: utils.randomEmail() }]);
 
-// 	const response = await authOwnerAgent.post('/users').send([{ email: utils.randomEmail() }]);
-
-// 	expect(response.statusCode).toBe(500);
-// });
-
-// test('POST /users should report error due to wrong SMTP config', async () => {
-// 	const owner = await Db.collections.User!.findOneOrFail();
-// 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
-
-// 	config.set('userManagement.emails.mode', 'smtp');
-// 	config.set('userManagement.emails.smtp.host', 'XYZ'); // TODO: This breaks following test
-
-// 	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e }));
-
-// 	const response = await authOwnerAgent.post('/users').send(payload);
-
-// 	expect(response.statusCode).toBe(500);
-// });
+	expect(response.statusCode).toBe(500);
+});
 
 test('POST /users should email invites and create user shells', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
@@ -412,6 +401,8 @@ test('POST /users should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
+	config.set('userManagement.emails.mode', 'smtp');
+
 	const invalidPayloads = [
 		utils.randomEmail(),
 		[utils.randomEmail()],
@@ -430,6 +421,8 @@ test('POST /users should error if user email already exists', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
+	config.set('userManagement.emails.mode', 'smtp');
+
 	const email = utils.randomEmail();
 	const role = await Db.collections.Role!.findOneOrFail({ scope: 'global', name: 'member' });
 	await Db.collections.User?.save({ email, globalRole: role });
@@ -443,6 +436,8 @@ test('POST /users should ignore an empty payload', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
+	config.set('userManagement.emails.mode', 'smtp');
+
 	const response = await authOwnerAgent.post('/users').send([]);
 
 	const { data } = response.body;
@@ -451,6 +446,21 @@ test('POST /users should ignore an empty payload', async () => {
 	expect(Array.isArray(data)).toBe(true);
 	expect(data.length).toBe(0);
 });
+
+// TODO: UserManagementMailer is a singleton - cannot reinstantiate with wrong creds
+// test('POST /users should error for wrong SMTP config', async () => {
+// 	const owner = await Db.collections.User!.findOneOrFail();
+// 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+
+// 	config.set('userManagement.emails.mode', 'smtp');
+// 	config.set('userManagement.emails.smtp.host', 'XYZ'); // break SMTP config
+
+// 	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e }));
+
+// 	const response = await authOwnerAgent.post('/users').send(payload);
+
+// 	expect(response.statusCode).toBe(500);
+// });
 
 const INITIAL_TEST_USER = {
 	id: uuid(),
