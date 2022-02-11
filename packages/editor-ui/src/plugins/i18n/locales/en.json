@@ -68,11 +68,9 @@
 			"saving": "Saving",
 			"showError": {
 				"createCredential": {
-					"message": "",
 					"title": "Problem creating credential"
 				},
 				"deleteCredential": {
-					"message": "",
 					"title": "Problem deleting credential"
 				},
 				"generateAuthorizationUrl": {
@@ -80,16 +78,13 @@
 					"title": "OAuth Authorization Error"
 				},
 				"loadCredential": {
-					"message": "",
 					"title": "Problem loading credential"
 				},
 				"updateCredential": {
-					"message": "",
 					"title": "Problem updating credential"
 				}
 			},
 			"showMessage": {
-				"message": "",
 				"title": "Credential deleted"
 			},
 			"testing": "Testing"
@@ -128,12 +123,10 @@
 		"operations": "Operations",
 		"showError": {
 			"deleteCredential": {
-				"message": "",
 				"title": "Problem deleting credential"
 			}
 		},
 		"showMessage": {
-			"message": "",
 			"title": "Credential deleted"
 		},
 		"type": "Type",
@@ -210,41 +203,32 @@
 		"selected": "Selected",
 		"showError": {
 			"handleDeleteSelected": {
-				"message": "",
 				"title": "Problem deleting executions"
 			},
 			"loadMore": {
-				"message": "",
 				"title": "Problem loading workflows"
 			},
 			"loadWorkflows": {
-				"message": "",
 				"title": "Problem loading workflows"
 			},
 			"refreshData": {
-				"message": "",
 				"title": "Problem loading data"
 			},
 			"retryExecution": {
-				"message": "",
 				"title": "Problem with retry"
 			},
 			"stopExecution": {
-				"message": "",
 				"title": "Problem stopping execution"
 			}
 		},
 		"showMessage": {
 			"handleDeleteSelected": {
-				"message": "",
 				"title": "Execution deleted"
 			},
 			"retrySuccessfulFalse": {
-				"message": "",
 				"title": "Retry unsuccessful"
 			},
 			"retrySuccessfulTrue": {
-				"message": "",
 				"title": "Retry successful"
 			},
 			"stopExecution": {
@@ -337,7 +321,6 @@
 		"settings": "Settings",
 		"showError": {
 			"stopExecution": {
-				"message": "",
 				"title": "Problem stopping execution"
 			}
 		},
@@ -347,19 +330,15 @@
 				"title": "Could not import file"
 			},
 			"handleSelect1": {
-				"message": "",
 				"title": "Workflow deleted"
 			},
 			"handleSelect2": {
-				"message": "",
 				"title": "Workflow created"
 			},
 			"handleSelect3": {
-				"message": "",
 				"title": "Workflow created"
 			},
 			"stopExecution": {
-				"message": "",
 				"title": "Execution stopped"
 			}
 		},
@@ -455,7 +434,6 @@
 		"error": "ERROR",
 		"httpCode": "HTTP Code",
 		"showMessage": {
-			"message": "",
 			"title": "Copied to clipboard"
 		},
 		"stack": "Stack",
@@ -552,11 +530,9 @@
 		},
 		"showError": {
 			"getWorkflowDataFromUrl": {
-				"message": "",
 				"title": "Problem loading workflow"
 			},
 			"importWorkflowData": {
-				"message": "",
 				"title": "Problem importing workflow"
 			},
 			"mounted1": {
@@ -568,19 +544,15 @@
 				"title": "Init Problem"
 			},
 			"openExecution": {
-				"message": "",
 				"title": "Problem loading execution"
 			},
 			"openWorkflow": {
-				"message": "",
 				"title": "Problem opening workflow"
 			},
 			"stopExecution": {
-				"message": "",
 				"title": "Problem stopping execution"
 			},
 			"stopWaitingForWebhook": {
-				"message": "",
 				"title": "Problem deleting test webhook"
 			}
 		},
@@ -590,7 +562,6 @@
 				"title": "Could not create node"
 			},
 			"keyDown": {
-				"message": "",
 				"title": "Workflow created"
 			},
 			"showMaxNodeTypeError": {
@@ -605,11 +576,9 @@
 				"title": "Workflow finished executing"
 			},
 			"stopExecutionTry": {
-				"message": "",
 				"title": "Execution stopped"
 			},
 			"stopWaitingForWebhook": {
-				"message": "",
 				"title": "Webhook deleted"
 			}
 		},
@@ -632,7 +601,6 @@
 		"invalidExpression": "[INVALID EXPRESSION]",
 		"productionUrl": "Production URL",
 		"showMessage": {
-			"message": "",
 			"title": "URL copied"
 		},
 		"testUrl": "Test URL",
@@ -709,7 +677,6 @@
 	},
 	"pushConnection": {
 		"showMessage": {
-			"message": "",
 			"title": "Workflow executed successfully"
 		}
 	},
@@ -798,11 +765,9 @@
 		},
 		"showMessage": {
 			"onDelete": {
-				"message": "",
 				"title": "Tag deleted"
 			},
 			"onUpdate": {
-				"message": "",
 				"title": "Tag updated"
 			}
 		},
@@ -893,7 +858,6 @@
 		"activateWorkflow": "Activate workflow",
 		"deactivateWorkflow": "Deactivate workflow",
 		"showError": {
-			"message": "",
 			"title": "Workflow could not be {newStateName}"
 		},
 		"showMessage": {
@@ -928,7 +892,6 @@
 	},
 	"workflowHelpers": {
 		"showMessage": {
-			"message": "",
 			"title": "Problem saving workflow"
 		}
 	},
@@ -946,7 +909,6 @@
 		"filterWorkflows": "Filter by tags",
 		"searchWorkflows": "Search workflows...",
 		"showError": {
-			"message": "",
 			"title": "Problem loading workflows"
 		},
 		"showMessage": {
@@ -958,7 +920,6 @@
 	"workflowRun": {
 		"noActiveConnectionToTheServer": "Lost connection to the server",
 		"showError": {
-			"message": "",
 			"title": "Problem running workflow"
 		},
 		"showMessage": {
@@ -1023,13 +984,11 @@
 				"title": "Problem saving settings"
 			},
 			"saveSettings3": {
-				"message": "",
 				"title": "Problem saving settings"
 			}
 		},
 		"showMessage": {
 			"saveSettings": {
-				"message": "",
 				"title": "Workflow settings saved"
 			}
 		},
