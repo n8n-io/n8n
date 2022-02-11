@@ -222,7 +222,8 @@ export async function odooGet(
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
 					[+itemsID] || [],
-					(fieldsToReturn && processResponceFields(fieldsToReturn)) || [],
+					// (fieldsToReturn && processResponceFields(fieldsToReturn)) || [],
+					fieldsToReturn || [],
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -245,7 +246,6 @@ export async function odooGetAll(
 	url: string,
 	filters?: IOdooFilterOperations,
 	fieldsToReturn?: IDataObject,
-	offset = 0,
 	limit = 0,
 ) {
 	try {
@@ -262,8 +262,9 @@ export async function odooGetAll(
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
 					(filters && processFilters(filters)) || [],
-					(fieldsToReturn && processResponceFields(fieldsToReturn)) || [],
-					offset,
+					// (fieldsToReturn && processResponceFields(fieldsToReturn)) || [],
+					fieldsToReturn || [],
+					0, // offset
 					limit,
 				],
 			},
@@ -309,7 +310,7 @@ export async function odooUpdate(
 		};
 
 		const result = await odooJSONRPCRequest.call(this, body, url);
-		return { success: result };
+		return { success: true };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -345,7 +346,7 @@ export async function odooDelete(
 		};
 
 		const result = await odooJSONRPCRequest.call(this, body, url);
-		return { success: result };
+		return { success: true };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

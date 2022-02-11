@@ -92,6 +92,21 @@ export const noteDescription: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Fields To Include',
+		name: 'fieldsList',
+		type: 'multiOptions',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getModelFields',
+		},
+		displayOptions: {
+			show: {
+				resource: ['note'],
+				operation: ['get', 'getAll'],
+			},
+		},
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                note:getAll                              */
 	/* -------------------------------------------------------------------------- */
@@ -108,25 +123,6 @@ export const noteDescription: INodeProperties[] = [
 		},
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-	},
-
-	{
-		displayName: 'Offset',
-		name: 'offset',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: ['note'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 0,
-			maxValue: 1000,
-		},
-		description: 'The offset of results to return',
 	},
 
 	{
@@ -176,8 +172,6 @@ export const noteDescription: INodeProperties[] = [
 				resource: ['note'],
 			},
 		},
-		options: [
-			...noteFields,
-		],
+		options: [...noteFields],
 	},
 ];

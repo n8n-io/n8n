@@ -1,4 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
+import { options } from 'rhea';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -44,12 +45,6 @@ export const contactOperations: INodeProperties[] = [
 
 const contactFields: INodeProperties[] = [
 	{
-		displayName: 'Phone',
-		name: 'phone',
-		type: 'string',
-		default: '',
-	},
-	{
 		displayName: 'Address Street',
 		name: 'street',
 		type: 'string',
@@ -66,6 +61,24 @@ const contactFields: INodeProperties[] = [
 		name: 'city',
 		type: 'string',
 		default: '',
+	},
+	{
+		displayName: 'Country',
+		name: 'country_id',
+		type: 'options',
+		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getCountries',
+		},
+	},
+	{
+		displayName: 'State',
+		name: 'state_id',
+		type: 'options',
+		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getStates',
+		},
 	},
 	{
 		displayName: 'Tax ID',
@@ -106,6 +119,12 @@ const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Internal Notes',
 		name: 'comment',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Zip Code',
+		name: 'zip',
 		type: 'string',
 		default: '',
 	},
@@ -161,6 +180,22 @@ export const contactDescription: INodeProperties[] = [
 			},
 		},
 	},
+
+	{
+		displayName: 'Fields To Include',
+		name: 'fieldsList',
+		type: 'multiOptions',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getModelFields',
+		},
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['get', 'getAll'],
+			},
+		},
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:getAll                              */
 	/* -------------------------------------------------------------------------- */
@@ -177,25 +212,6 @@ export const contactDescription: INodeProperties[] = [
 		},
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-	},
-
-	{
-		displayName: 'Offset',
-		name: 'offset',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: ['contact'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 0,
-			maxValue: 1000,
-		},
-		description: 'The offset of results to return',
 	},
 
 	{

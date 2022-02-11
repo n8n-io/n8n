@@ -43,13 +43,29 @@ export const customResourceOperations: INodeProperties[] = [
 ];
 
 export const customResourceDescription: INodeProperties[] = [
+	// {
+	// 	displayName: 'Custom Resource',
+	// 	name: 'customResource',
+	// 	type: 'string',
+	// 	default: '',
+	// 	description: 'Specify custom resource',
+	// 	required: true,
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: ['custom'],
+	// 		},
+	// 	},
+	// },
+
 	{
 		displayName: 'Custom Resource',
 		name: 'customResource',
-		type: 'string',
+		type: 'options',
 		default: '',
-		description: 'Specify custom resource',
-		required: true,
+		noDataExpression: true,
+		typeOptions: {
+			loadOptionsMethod: 'getModels',
+		},
 		displayOptions: {
 			show: {
 				resource: ['custom'],
@@ -123,64 +139,18 @@ export const customResourceDescription: INodeProperties[] = [
 	{
 		displayName: 'Fields To Include',
 		name: 'fieldsList',
-		type: 'fixedCollection',
+		type: 'multiOptions',
+		default: [],
 		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add Field',
+			loadOptionsMethod: 'getModelFields',
+			loadOptionsDependsOn: ['customResource'],
 		},
-		default: {},
-		description: 'Choose fields to be returned',
-		placeholder: '',
 		displayOptions: {
 			show: {
 				resource: ['custom'],
 				operation: ['get', 'getAll'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Fields To Be Returnedd',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Choose From List',
-						name: 'fromList',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to use options from list',
-					},
-					{
-						displayName: 'Field:',
-						name: 'field',
-						type: 'string',
-						default: '',
-						description: 'Enter field name',
-						placeholder: '',
-						displayOptions: {
-							show: {
-								fromList: [false],
-							},
-						},
-					},
-					{
-						displayName: 'Field',
-						name: 'field',
-						type: 'options',
-						default: '',
-						noDataExpression: true,
-						typeOptions: {
-							loadOptionsDependsOn: ['customResource'],
-							loadOptionsMethod: 'getModelFields',
-						},
-						displayOptions: {
-							show: {
-								fromList: [true],
-							},
-						},
-					},
-				],
-			},
-		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                custom:getAll                              */
@@ -290,25 +260,6 @@ export const customResourceDescription: INodeProperties[] = [
 		},
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-	},
-
-	{
-		displayName: 'Offset',
-		name: 'offset',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: ['custom'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 0,
-			maxValue: 1000,
-		},
-		description: 'The offset of results to return',
 	},
 
 	{

@@ -62,7 +62,7 @@ const opportunityFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Expected Closing',
+		displayName: 'Expected Closing Date',
 		name: 'date_deadline',
 		type: 'dateTime',
 		default: '',
@@ -154,6 +154,21 @@ export const opportunityDescription: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Fields To Include',
+		name: 'fieldsList',
+		type: 'multiOptions',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getModelFields',
+		},
+		displayOptions: {
+			show: {
+				resource: ['opportunity'],
+				operation: ['get', 'getAll'],
+			},
+		},
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                opportunity:getAll                          */
 	/* -------------------------------------------------------------------------- */
@@ -170,25 +185,6 @@ export const opportunityDescription: INodeProperties[] = [
 		},
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-	},
-
-	{
-		displayName: 'Offset',
-		name: 'offset',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: ['opportunity'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 0,
-			maxValue: 1000,
-		},
-		description: 'The offset of results to return',
 	},
 
 	{

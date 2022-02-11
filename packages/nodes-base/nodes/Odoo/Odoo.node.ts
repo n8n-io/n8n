@@ -6,12 +6,12 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -33,6 +33,7 @@ import {
 	odooGetAll,
 	odooGetModelFields,
 	odooGetUserID,
+	odooJSONRPCRequest,
 	odooUpdate,
 	processNameValueFields,
 } from './GenericFunctions';
@@ -102,7 +103,11 @@ export class Odoo implements INodeType {
 	methods = {
 		loadOptions: {
 			async getModelFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const customResource = this.getCurrentNodeParameter('customResource') as string;
+				let resource;
+				resource = this.getCurrentNodeParameter('resource') as string;
+				if (resource === 'custom') {
+					resource = this.getCurrentNodeParameter('customResource') as string;
+				}
 
 				const credentials = await this.getCredentials('odooApi');
 				const url = credentials?.url as string;
@@ -111,14 +116,7 @@ export class Odoo implements INodeType {
 				const db = (credentials?.db || url.split('//')[1].split('.')[0]) as string;
 				const userID = await odooGetUserID.call(this, db, username, password, url);
 
-				const responce = await odooGetModelFields.call(
-					this,
-					db,
-					userID,
-					password,
-					customResource,
-					url,
-				);
+				const responce = await odooGetModelFields.call(this, db, userID, password, resource, url);
 
 				const options = Object.values(responce).map((field) => {
 					const optionField = field as { [key: string]: string };
@@ -132,12 +130,109 @@ export class Odoo implements INodeType {
 
 				return options.sort((a, b) => a.name?.localeCompare(b.name) || 0);
 			},
+			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const credentials = await this.getCredentials('odooApi');
+				const url = credentials?.url as string;
+				const username = credentials?.username as string;
+				const password = credentials?.password as string;
+				const db = (credentials?.db || url.split('//')[1].split('.')[0]) as string;
+				const userID = await odooGetUserID.call(this, db, username, password, url);
+
+				const body = {
+					jsonrpc: '2.0',
+					method: 'call',
+					params: {
+						service: 'object',
+						method: 'execute',
+						args: [
+							db,
+							userID,
+							password,
+							'ir.model',
+							'search_read',
+							[],
+							['name', 'model', 'modules'],
+						],
+					},
+					id: Math.floor(Math.random() * 100),
+				};
+
+				const responce = (await odooJSONRPCRequest.call(this, body, url)) as IDataObject[];
+
+				const options = responce.map((model) => {
+					return {
+						name: model.name,
+						value: model.model,
+						description: `model: ${model.model}<br> modules: ${model.modules}`,
+					};
+				});
+				return options as INodePropertyOptions[];
+			},
+			async getStates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const credentials = await this.getCredentials('odooApi');
+				const url = credentials?.url as string;
+				const username = credentials?.username as string;
+				const password = credentials?.password as string;
+				const db = (credentials?.db || url.split('//')[1].split('.')[0]) as string;
+				const userID = await odooGetUserID.call(this, db, username, password, url);
+
+				const body = {
+					jsonrpc: '2.0',
+					method: 'call',
+					params: {
+						service: 'object',
+						method: 'execute',
+						args: [db, userID, password, 'res.country.state', 'search_read', [], ['id', 'name']],
+					},
+					id: Math.floor(Math.random() * 100),
+				};
+
+				const responce = (await odooJSONRPCRequest.call(this, body, url)) as IDataObject[];
+
+				const options = responce.map((state) => {
+					return {
+						name: state.name as string,
+						value: state.id,
+					};
+				});
+				return options.sort((a, b) => a.name?.localeCompare(b.name) || 0) as INodePropertyOptions[];
+			},
+			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const credentials = await this.getCredentials('odooApi');
+				const url = credentials?.url as string;
+				const username = credentials?.username as string;
+				const password = credentials?.password as string;
+				const db = (credentials?.db || url.split('//')[1].split('.')[0]) as string;
+				const userID = await odooGetUserID.call(this, db, username, password, url);
+
+				const body = {
+					jsonrpc: '2.0',
+					method: 'call',
+					params: {
+						service: 'object',
+						method: 'execute',
+						args: [db, userID, password, 'res.country', 'search_read', [], ['id', 'name']],
+					},
+					id: Math.floor(Math.random() * 100),
+				};
+
+				const responce = (await odooJSONRPCRequest.call(this, body, url)) as IDataObject[];
+
+				const options = responce.map((country) => {
+					return {
+						name: country.name as string,
+						value: country.id,
+					};
+				});
+
+				return options.sort((a, b) => a.name?.localeCompare(b.name) || 0) as INodePropertyOptions[];
+			},
 		},
 		credentialTest: {
 			async odooApiTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
-			): Promise<NodeCredentialTestResult> {
+			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 
 				const body = {
@@ -165,7 +260,6 @@ export class Odoo implements INodeType {
 				};
 				try {
 					const result = await this.helpers.request!(options);
-					console.log(result);
 					if (result.error || !result.result) {
 						return {
 							status: 'Error',
@@ -249,6 +343,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
+						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
 						responseData = await odooGet.call(
 							this,
 							db,
@@ -258,11 +353,13 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							contactId,
+							fields,
 						);
 					}
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
 						if (returnAll) {
 							responseData = await odooGetAll.call(
 								this,
@@ -272,9 +369,10 @@ export class Odoo implements INodeType {
 								resource,
 								operation,
 								url,
+								undefined,
+								fields,
 							);
 						} else {
-							const offset = this.getNodeParameter('offset', i) as number;
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = await odooGetAll.call(
 								this,
@@ -285,8 +383,7 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								undefined, // filters, only for custom resource
-								{}, // selected fields to return, only for custom resource
-								offset,
+								fields,
 								limit,
 							);
 						}
@@ -372,7 +469,6 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const offset = this.getNodeParameter('offset', i) as number;
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = await odooGetAll.call(
 								this,
@@ -384,7 +480,6 @@ export class Odoo implements INodeType {
 								url,
 								filter,
 								fields,
-								offset,
 								limit,
 							);
 						}
@@ -438,6 +533,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const noteId = this.getNodeParameter('noteId', i) as string;
+						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
 						responseData = await odooGet.call(
 							this,
 							db,
@@ -447,11 +543,13 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							noteId,
+							fields,
 						);
 					}
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
 						if (returnAll) {
 							responseData = await odooGetAll.call(
 								this,
@@ -461,9 +559,10 @@ export class Odoo implements INodeType {
 								resource,
 								operation,
 								url,
+								undefined,
+								fields,
 							);
 						} else {
-							const offset = this.getNodeParameter('offset', i) as number;
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = await odooGetAll.call(
 								this,
@@ -474,8 +573,7 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								undefined, // filters, only for custom resource
-								{}, // selected fields to return, only for custom resource
-								offset,
+								fields,
 								limit,
 							);
 						}
@@ -534,6 +632,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
+						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
 						responseData = await odooGet.call(
 							this,
 							db,
@@ -543,11 +642,13 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							opportunityId,
+							fields,
 						);
 					}
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
 						if (returnAll) {
 							responseData = await odooGetAll.call(
 								this,
@@ -557,9 +658,10 @@ export class Odoo implements INodeType {
 								resource,
 								operation,
 								url,
+								undefined,
+								fields,
 							);
 						} else {
-							const offset = this.getNodeParameter('offset', i) as number;
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = await odooGetAll.call(
 								this,
@@ -570,8 +672,7 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								undefined, // filters, only for custom resource
-								{}, // selected fields to return, only for custom resource
-								offset,
+								fields,
 								limit,
 							);
 						}
