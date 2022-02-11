@@ -231,7 +231,7 @@ export const clientFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Active status',
+				displayName: 'Active Status',
 				name: 'activeStatus',
 				type: 'options',
 				default: 'active',

@@ -121,7 +121,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'User is Inactive',
 				name: 'inactive',
 				type: 'boolean',
-				default: true,
+				default: false,
 			},
 		],
 	},
@@ -202,10 +202,10 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Active status',
+				displayName: 'Active Status',
 				name: 'activeStatus',
 				type: 'options',
-				default: 'includeactive',
+				default: 'all',
 				options: [
 					{
 						name: 'Active only',
@@ -313,7 +313,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'User is Inactive',
 				name: 'inactive',
 				type: 'boolean',
-				default: true,
+				default: false,
 			},
 		],
 	},

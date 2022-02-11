@@ -74,7 +74,6 @@ export const ticketFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		description: 'Enter summary',
 	},
 	{
 		displayName: 'Details',
@@ -89,7 +88,6 @@ export const ticketFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		description: 'Enter details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -205,10 +203,10 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Active status',
+				displayName: 'Active Status',
 				name: 'activeStatus',
 				type: 'options',
-				default: 'includeactive',
+				default: 'all',
 				options: [
 					{
 						name: 'Active only',

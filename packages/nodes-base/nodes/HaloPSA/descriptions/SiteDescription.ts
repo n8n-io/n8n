@@ -216,10 +216,10 @@ export const siteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Active status',
+				displayName: 'Active Status',
 				name: 'activeStatus',
 				type: 'options',
-				default: 'includeactive',
+				default: 'all',
 				options: [
 					{
 						name: 'Active only',

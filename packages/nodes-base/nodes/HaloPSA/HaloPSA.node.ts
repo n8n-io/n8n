@@ -279,7 +279,7 @@ export class HaloPSA implements INodeType {
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
 							: response;
 					}
 
@@ -387,7 +387,7 @@ export class HaloPSA implements INodeType {
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
 							: response;
 					}
 
@@ -497,7 +497,7 @@ export class HaloPSA implements INodeType {
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
 							: response;
 					}
 
@@ -606,7 +606,7 @@ export class HaloPSA implements INodeType {
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
 							: response;
 					}
 
