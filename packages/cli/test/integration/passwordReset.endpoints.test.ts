@@ -48,7 +48,7 @@ afterAll(() => {
 	return getConnection().close();
 });
 
-test('POST /forgot-password should send owner password reset email', async () => {
+test('POST /forgot-password should send password reset email', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
