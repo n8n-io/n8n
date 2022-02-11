@@ -159,7 +159,7 @@ export const siteFields: INodeProperties[] = [
 		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
-		default: false,
+		default: true,
 		description: 'Whether output should be simplified',
 		displayOptions: {
 			show: {
