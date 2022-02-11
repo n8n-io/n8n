@@ -10,7 +10,7 @@ import { compare } from 'bcryptjs';
 let app: express.Application;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
+	app = utils.initTestServer({ namespaces: ['passwordReset'], applyAuth: true });
 	await utils.initTestDb();
 	await utils.truncateUserTable();
 });

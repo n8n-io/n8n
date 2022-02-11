@@ -20,6 +20,7 @@ import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/m
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
+import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { getConnection } from 'typeorm';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { N8nApp } from '../../../src/UserManagement/Interfaces';
@@ -34,7 +35,7 @@ export const isTestRun = process.argv[1].split('/').includes('jest');
 
 const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
 
-type EndpointNamespace = 'me' | 'users' | 'auth' | 'owner';
+type EndpointNamespace = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset';
 
 /**
  * Initialize a test server to make requests to.
@@ -72,6 +73,7 @@ export function initTestServer(
 			users: usersEndpoints,
 			auth: authEndpoints,
 			owner: ownerEndpoints,
+			passwordReset: passwordResetEndpoints,
 		};
 
 		for (const namespace of namespaces) {
