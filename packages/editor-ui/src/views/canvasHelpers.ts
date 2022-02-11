@@ -4,6 +4,7 @@ import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
 	IConnection,
+	INode,
 	ITaskData,
 	INodeExecutionData,
 	NodeInputConnections,
@@ -587,25 +588,27 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 };
 
 
-export const getZoomToFit = (nodes: INodeUi[]): {offset: XYPosition, zoomLevel: number} => {
+export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
+	const sidebarWidth = addComponentPadding? SIDEBAR_WIDTH: 0;
+	const headerHeight = addComponentPadding? HEADER_HEIGHT: 0;
 
 	const PADDING = NODE_SIZE * 4;
 
 	const editorWidth = window.innerWidth;
-	const diffX = maxX - minX + SIDEBAR_WIDTH + PADDING;
+	const diffX = maxX - minX + sidebarWidth + PADDING;
 	const scaleX = editorWidth / diffX;
 
 	const editorHeight = window.innerHeight;
-	const diffY = maxY - minY + HEADER_HEIGHT + PADDING;
+	const diffY = maxY - minY + headerHeight + PADDING;
 	const scaleY = editorHeight / diffY;
 
 	const zoomLevel = Math.min(scaleX, scaleY, 1);
-	let xOffset = (minX * -1) * zoomLevel + SIDEBAR_WIDTH; // find top right corner
-	xOffset += (editorWidth - SIDEBAR_WIDTH - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
+	let xOffset = (minX * -1) * zoomLevel + sidebarWidth; // find top right corner
+	xOffset += (editorWidth - sidebarWidth - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
 
-	let yOffset = (minY * -1) * zoomLevel + HEADER_HEIGHT; // find top right corner
-	yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+	let yOffset = (minY * -1) * zoomLevel + headerHeight; // find top right corner
+	yOffset += (editorHeight - headerHeight - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
 
 	return {
 		zoomLevel,
@@ -684,4 +687,24 @@ export const getOutputEndpointUUID = (nodeIndex: string, outputIndex: number) =>
 
 export const getInputEndpointUUID = (nodeIndex: string, inputIndex: number) => {
 	return `${nodeIndex}${INPUT_UUID_KEY}${inputIndex}`;
+};
+
+export const getFixedNodesList = (workflowNodes: INode[]) => {
+	const nodes = [...workflowNodes];
+	const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
+
+	const leftmostTop = getLeftmostTopNode(nodes);
+
+	const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
+	const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+
+	nodes.map((node) => {
+		node.position[0] += diffX + (hasStartNode? 0 : NODE_SIZE * 2);
+		node.position[1] += diffY;
+	});
+
+	if (!hasStartNode) {
+		nodes.push({...DEFAULT_START_NODE});
+	}
+	return nodes;
 };

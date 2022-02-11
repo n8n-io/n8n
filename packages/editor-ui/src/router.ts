@@ -51,5 +51,12 @@ export default new Router({
 				sidebar: MainSidebar,
 			},
 		},
+		{
+			path: '/workflows/demo',
+			name: 'WorkflowDemo',
+			components: {
+				default: NodeView,
+			},
+		},
 	],
 });
