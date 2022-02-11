@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as express from 'express';
-
+import * as http from 'http';
 import * as PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
@@ -335,6 +335,7 @@ export class Worker extends Command {
 					const port = config.get('queue.health.port') as number;
 
 					const app = express();
+					const server = http.createServer(app);
 
 					app.get(
 						'/healthz',
@@ -387,8 +388,17 @@ export class Worker extends Command {
 						},
 					);
 
-					app.listen(port, () => {
+					server.listen(port, () => {
 						console.info(`\nn8n worker health check via, port ${port}`);
+					});
+
+					server.on('error', (error: Error & { code: string }) => {
+						if (error.code === 'EADDRINUSE') {
+							console.log(
+								`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`,
+							);
+							process.exit(1);
+						}
 					});
 				}
 			} catch (error) {
