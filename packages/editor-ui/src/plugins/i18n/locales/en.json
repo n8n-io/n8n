@@ -288,8 +288,8 @@
 	},
 	"genericHelpers": {
 		"loading": "Loading",
-		"min": "min.",
-		"sec": "sec.",
+		"min": "min",
+		"sec": "sec",
 		"showMessage": {
 			"message": "This is a read-only version of the workflow. To make changes, either open the original workflow or save it under a new name.",
 			"title": "Workflow cannot be changed"
@@ -343,7 +343,7 @@
 		},
 		"showMessage": {
 			"handleFileImport": {
-				"message": "The file does not contain valid JSON data.",
+				"message": "The file does not contain valid JSON data",
 				"title": "Could not import file"
 			},
 			"handleSelect1": {
@@ -385,8 +385,8 @@
 		"executeNode": "Execute Node",
 		"issues": "Issues",
 		"nodeIsExecuting": "Node is executing",
-		"nodeIsWaitingTill": "Node is waiting till {date} {time}",
-		"theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall": "The node is waiting indefinitely for an incoming webhook call.",
+		"nodeIsWaitingTill": "Node is waiting until {date} {time}",
+		"theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall": "The node is waiting for an incoming webhook call (indefinitely)",
 		"waitingForYouToCreateAnEventIn": "Waiting for you to create an event in {nodeType}"
 	},
 	"nodeCreator": {
@@ -459,7 +459,7 @@
 			"title": "Copied to clipboard"
 		},
 		"stack": "Stack",
-		"theErrorCauseIsTooLargeToBeDisplayed": "The error cause is too large to be displayed.",
+		"theErrorCauseIsTooLargeToBeDisplayed": "The error cause is too large to be displayed",
 		"time": "Time"
 	},
 	"nodeBase": {
@@ -467,7 +467,7 @@
 	},
 	"nodeSettings": {
 		"alwaysOutputData": {
-			"description": "If active, the node will return an empty item even if the <br />node returns no data during an initial execution. Be careful setting <br />this on IF-Nodes as it could cause an infinite loop.",
+      "description": "If active, will output a single, empty item when the output would have been empty. Be careful setting this on 'if' nodes, as it could cause an infinite loop.",
 			"displayName": "Always Output Data"
 		},
 		"clickOnTheQuestionMarkIcon": "Click the '?' icon to open this node on n8n.io",
@@ -476,34 +476,34 @@
 			"displayName": "Continue On Fail"
 		},
 		"executeOnce": {
-			"description": "If active, the node executes only once, with data<br /> from the first item it recieves.",
+			"description": "If active, the node executes only once, with data from the first item it recieves",
 			"displayName": "Execute Once"
 		},
 		"maxTries": {
-			"description": "Number of times Retry On Fail should attempt to execute the node <br />before stopping and returning the execution as failed.",
+			"description": "Number of times to attempt to execute the node before failing the execution",
 			"displayName": "Max. Tries"
 		},
 		"noDescriptionFound": "No description found",
 		"nodeDescription": "Node Description",
 		"notes": {
-			"description": "Optional note to save with the node.",
+			"description": "Optional note to save with the node",
 			"displayName": "Notes"
 		},
 		"notesInFlow": {
-			"description": "If active, the note above will display in the flow as a subtitle.",
+			"description": "If active, the note above will display in the flow as a subtitle",
 			"displayName": "Display note in flow?"
 		},
 		"parameters": "Parameters",
 		"retryOnFail": {
-			"description": "If active, the node tries to execute a failed attempt <br /> multiple times until it succeeds.",
+			"description": "If active, the node tries to execute again when it fails",
 			"displayName": "Retry On Fail"
 		},
 		"settings": "Settings",
-		"theNodeIsNotValidAsItsTypeIsUnknown": "The node is not valid as its type {nodeType} is unknown.",
-		"thisNodeDoesNotHaveAnyParameters": "This node does not have any parameters.",
+		"theNodeIsNotValidAsItsTypeIsUnknown": "The node is not valid as its type ({nodeType}) is unknown",
+		"thisNodeDoesNotHaveAnyParameters": "This node does not have any parameters",
 		"waitBetweenTries": {
-			"description": "How long to wait between each attempt. Value in ms.",
-			"displayName": "Wait Between Tries"
+			"description": "How long to wait between each attempt (in milliseconds)",
+			"displayName": "Wait Between Tries (ms)"
 		}
 	},
 	"nodeView": {
@@ -524,17 +524,17 @@
 			"receivedCopyPasteData": {
 				"cancelButtonText": "",
 				"confirmButtonText": "Yes, import",
-				"headline": "Import Workflow from URL?",
-				"message": "Import workflow from this URL:<br /><i>{plainTextData}<i>"
+				"headline": "Import Workflow?",
+				"message": "Workflow will be imported from<br /><i>{plainTextData}<i>"
 			}
 		},
-		"couldntImportWorkflow": "Couldn't import workflow",
-		"deletesTheCurrentExecutionData": "Deletes the current Execution Data.",
-		"executesTheWorkflowFromTheStartOrWebhookNode": "Executes the Workflow from the Start or Webhook Node.",
-		"itLooksLikeYouHaveBeenEditingSomething": "It looks like you have been editing something. If you leave before saving, your changes will be lost.",
+		"couldntImportWorkflow": "Could not import workflow",
+		"deletesTheCurrentExecutionData": "Deletes the current execution data",
+		"executesTheWorkflowFromTheStartOrWebhookNode": "Executes the workflow from the 'start' or 'webhook' node",
+		"itLooksLikeYouHaveBeenEditingSomething": "It looks like you made some edits. If you leave before saving, your changes will be lost.",
 		"loadingTemplate": "Loading template",
 		"moreInfo": "More info",
-		"noNodesGivenToAdd": "No to add specified",
+		"noNodesGivenToAdd": "No nodes to add specified",
 		"prompt": {
 			"cancel": "@:reusableBaseText.cancel",
 			"invalidName": "Invalid Name",
@@ -552,11 +552,11 @@
 		},
 		"showError": {
 			"getWorkflowDataFromUrl": {
-				"message": "There was a problem loading the workflow data from URL",
+				"message": "",
 				"title": "Problem loading workflow"
 			},
 			"importWorkflowData": {
-				"message": "There was a problem importing workflow data",
+				"message": "",
 				"title": "Problem importing workflow"
 			},
 			"mounted1": {
@@ -581,12 +581,12 @@
 			},
 			"stopWaitingForWebhook": {
 				"message": "",
-				"title": "Problem deleting the test-webhook"
+				"title": "Problem deleting test webhook"
 			}
 		},
 		"showMessage": {
 			"addNodeButton": {
-				"message": "'{nodeTypeName}' is an unknown node type.",
+				"message": "'{nodeTypeName}' is an unknown node type",
 				"title": "Could not create node"
 			},
 			"keyDown": {
@@ -614,21 +614,21 @@
 			}
 		},
 		"stopCurrentExecution": "Stop current execution",
-		"stopWaitingForWebhookCall": "Stop waiting for Webhook call",
+		"stopWaitingForWebhookCall": "Stop waiting for webhook call",
 		"stoppingCurrentExecution": "Stopping current execution",
-		"thereWasAProblemLoadingTheNodeParametersOfNode": "There was a problem loading the node-parameters of node",
+		"thereWasAProblemLoadingTheNodeParametersOfNode": "There was a problem loading the parameters of the node",
 		"thisExecutionHasntFinishedYet": "This execution hasn't finished yet",
 		"toSeeTheLatestStatus": "to see the latest status",
-		"workflowTemplateWithIdCouldNotBeFound": "Workflow template with id \"{templateId}\" could not be found",
-		"workflowWithIdCouldNotBeFound": "Workflow with id \"{workflowId}\" could not be found",
+		"workflowTemplateWithIdCouldNotBeFound": "Workflow template with ID \"{templateId}\" could not be found",
+		"workflowWithIdCouldNotBeFound": "Workflow with ID \"{workflowId}\" could not be found",
 		"zoomIn": "Zoom In",
 		"zoomOut": "Zoom Out",
 		"zoomToFit": "Zoom to Fit"
 	},
 	"nodeWebhooks": {
-		"clickToCopyWebhookUrls": "Click to copy Webhook URLs",
-		"clickToDisplayWebhookUrls": "Click to display Webhook URLs",
-		"clickToHideWebhookUrls": "Click to hide Webhook URLs",
+		"clickToCopyWebhookUrls": "Click to copy webhook URLs",
+		"clickToDisplayWebhookUrls": "Click to display webhook URLs",
+		"clickToHideWebhookUrls": "Click to hide webhook URLs",
 		"invalidExpression": "[INVALID EXPRESSION]",
 		"productionUrl": "Production URL",
 		"showMessage": {
@@ -735,9 +735,9 @@
 		"copyToClipboard": "Copy to Clipboard",
 		"copyValue": "Copy Value",
 		"dataOfExecution": "Data of Execution",
-		"dataReturnedByThisNodeWillDisplayHere": "Data returned by this node will display here.",
+		"dataReturnedByThisNodeWillDisplayHere": "Data returned by this node will display here",
 		"displayDataAnyway": "Display Data Anyway",
-		"entriesExistButThey": "Entries exist but they do not contain any JSON data.",
+		"entriesExistButThey": "Entries exist but they do not contain any JSON data",
 		"executeNode": "Execute Node",
 		"executesThisNodeAfterExecuting": "Executes this {nodeName} node after executing any previous nodes that have not yet returned data",
 		"executionTime": "Execution Time",
@@ -774,7 +774,7 @@
 		"noTagsExist": "No tags exist",
 		"showError": {
 			"message": "A problem occurred when trying to create the '{name}' tag",
-			"title": "Couldn't create tag"
+			"title": "Could not create tag"
 		},
 		"typeToCreateATag": "Type to create a tag"
 	},
@@ -785,15 +785,15 @@
 		"showError": {
 			"onCreate": {
 				"message": "A problem occurred when trying to create the tag '{escapedName}'",
-				"title": "Couldn't create tag"
+				"title": "Could not create tag"
 			},
 			"onDelete": {
 				"message": "A problem occurred when trying to delete the tag '{escapedName}'",
-				"title": "Couldn't delete tag"
+				"title": "Could not delete tag"
 			},
 			"onUpdate": {
 				"message": "A problem occurred when trying to update the tag '{escapedName}'",
-				"title": "Couldn't update tag"
+				"title": "Could not update tag"
 			}
 		},
 		"showMessage": {
@@ -921,7 +921,7 @@
 		"active": "Active",
 		"addTag": "Add tag",
 		"showMessage": {
-			"message": "Please enter a name, or press 'esc' to go back to the old one.",
+			"message": "Please enter a name, or press 'esc' to go back to the old one",
 			"title": "Name missing"
 		},
 		"chooseOrCreateATag": "Choose or create a tag"
@@ -972,12 +972,12 @@
 		"errorWorkflow": "Error Workflow",
 		"helpTexts": {
 			"errorWorkflow": "A second workflow to run if the current one fails.<br />The second workflow should an 'Error Trigger' node.",
-			"executionTimeout": "How long the workflow should wait before timing out.",
+			"executionTimeout": "How long the workflow should wait before timing out",
 			"executionTimeoutToggle": "Whether to cancel workflow execution after a defined time",
-			"saveDataErrorExecution": "Whether to save data of executions that fail.",
-			"saveDataSuccessExecution": "Whether to save data of executions that finish successfully.",
+			"saveDataErrorExecution": "Whether to save data of executions that fail",
+			"saveDataSuccessExecution": "Whether to save data of executions that finish successfully",
 			"saveExecutionProgress": "Whether to save data after each node execution. This allows you to resume from where execution stopped if there is an error, but may increase latency.",
-			"saveManualExecutions": "Whether to save data of executions that are started manually from the editor.",
+			"saveManualExecutions": "Whether to save data of executions that are started manually from the editor",
 			"timezone": "The timezone in which the workflow should run. Used by 'cron' node, for example."
 		},
 		"hours": "hours",
@@ -1019,7 +1019,7 @@
 			},
 			"saveSettings2": {
 				"errorMessage": "Maximum Timeout is: {hours} hours, {minutes} minutes, {seconds} seconds",
-				"message": "The timeout is larger than allowed.",
+				"message": "The timeout is longer than allowed",
 				"title": "Problem saving settings"
 			},
 			"saveSettings3": {
