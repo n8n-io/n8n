@@ -1,16 +1,14 @@
 {
 	"compilerOptions": {
 		"lib": [
-			"es2017"
+			"es2019"
 		],
 		"types": [
 			"node",
 			"jest"
 		],
 		"module": "commonjs",
-		"noImplicitAny": true,
 		"removeComments": true,
-		"strictNullChecks": true,
 		"forceConsistentCasingInFileNames": true,
 		"noImplicitReturns": true,
 		"strict": true,
@@ -18,7 +16,7 @@
 		"preserveConstEnums": true,
 		"declaration": true,
 		"outDir": "./dist/",
-		"target": "es2017",
+		"target": "es2019",
 		"sourceMap": true
 	},
 	"include": [

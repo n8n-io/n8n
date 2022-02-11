@@ -1,21 +1,19 @@
 {
 	"compilerOptions": {
 		"lib": [
-			"es2017"
+			"es2019"
 		],
 		"types": [
 			"node"
 		],
 		"module": "commonjs",
 		"esModuleInterop": true,
-		"noImplicitAny": true,
 		"removeComments": true,
-		"strictNullChecks": true,
 		"strict": true,
 		"preserveConstEnums": true,
 		"declaration": true,
 		"outDir": "./dist/",
-		"target": "es2017",
+		"target": "es2019",
 		"sourceMap": true
 	},
 	"include": [

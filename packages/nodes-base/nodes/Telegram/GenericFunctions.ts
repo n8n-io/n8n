@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,

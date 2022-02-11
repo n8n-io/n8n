@@ -80,12 +80,15 @@ export default Vue.extend({
 				this.$emit('enter');
 			}
 		},
-		close() {
+		async close() {
 			if (this.beforeClose) {
-				this.beforeClose();
-				return;
+				const shouldClose = await this.beforeClose();
+				if (shouldClose === false) { // must be strictly false to stop modal from closing
+					return;
+				}
 			}
-			this.$store.commit('ui/closeTopModal');
+
+			this.$store.commit('ui/closeModal', this.$props.name);
 		},
 	},
 	computed: {

@@ -15,6 +15,7 @@
 /* eslint-disable no-param-reassign */
 import {
 	GenericValue,
+	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IBinaryData,
 	IContextObject,
@@ -29,6 +30,8 @@ import {
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INode,
+	INodeCredentialDescription,
+	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -44,6 +47,7 @@ import {
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowMetadata,
+	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
 	NodeParameterValue,
@@ -59,6 +63,8 @@ import { stringify } from 'qs';
 import * as clientOAuth1 from 'oauth-1.0a';
 import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
+import * as crypto from 'crypto';
+import * as url from 'url';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -71,7 +77,13 @@ import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
-import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
+import axios, {
+	AxiosPromise,
+	AxiosProxyConfig,
+	AxiosRequestConfig,
+	AxiosResponse,
+	Method,
+} from 'axios';
 import { URL, URLSearchParams } from 'url';
 import { BinaryDataManager } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
@@ -470,6 +482,49 @@ async function parseRequestObject(requestObject: IDataObject) {
 	return axiosConfig;
 }
 
+function digestAuthAxiosConfig(
+	axiosConfig: AxiosRequestConfig,
+	response: AxiosResponse,
+	auth: AxiosRequestConfig['auth'],
+): AxiosRequestConfig {
+	const authDetails = response.headers['www-authenticate']
+		.split(',')
+		.map((v: string) => v.split('='));
+	if (authDetails) {
+		const nonceCount = `000000001`;
+		const cnonce = crypto.randomBytes(24).toString('hex');
+		const realm: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
+			.replace(/"/g, '');
+		const nonce: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
+			.replace(/"/g, '');
+		const ha1 = crypto
+			.createHash('md5')
+			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
+			.digest('hex');
+		const path = new url.URL(axiosConfig.url!).pathname;
+		const ha2 = crypto
+			.createHash('md5')
+			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
+			.digest('hex');
+		const response = crypto
+			.createHash('md5')
+			.update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
+			.digest('hex');
+		const authorization =
+			`Digest username="${auth?.username as string}",realm="${realm}",` +
+			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
+			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
+		if (axiosConfig.headers) {
+			axiosConfig.headers.authorization = authorization;
+		} else {
+			axiosConfig.headers = { authorization };
+		}
+	}
+	return axiosConfig;
+}
+
 async function proxyRequestToAxios(
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
@@ -483,8 +538,13 @@ async function proxyRequestToAxios(
 	}
 
 	let axiosConfig: AxiosRequestConfig = {};
-
-	let configObject: IDataObject;
+	let axiosPromise: AxiosPromise;
+	type ConfigObject = {
+		auth?: { sendImmediately: boolean };
+		resolveWithFullResponse?: boolean;
+		simple?: boolean;
+	};
+	let configObject: ConfigObject;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
 		axiosConfig.url = uriOrObject;
 	}
@@ -496,13 +556,41 @@ async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
-	Logger.debug('Proxying request to axios', {
-		originalConfig: configObject,
-		parsedConfig: axiosConfig,
-	});
+	Logger.debug(
+		'Proxying request to axios',
+		// {
+		// 	originalConfig: configObject,
+		// 	parsedConfig: axiosConfig,
+		// }
+	);
+
+	if (configObject.auth?.sendImmediately === false) {
+		// for digest-auth
+		const { auth } = axiosConfig;
+		delete axiosConfig.auth;
+		// eslint-disable-next-line no-async-promise-executor
+		axiosPromise = new Promise(async (resolve, reject) => {
+			try {
+				const result = await axios(axiosConfig);
+				resolve(result);
+			} catch (resp: any) {
+				if (
+					resp.response === undefined ||
+					resp.response.status !== 401 ||
+					!resp.response.headers['www-authenticate']?.includes('nonce')
+				) {
+					reject(resp);
+				}
+				axiosConfig = digestAuthAxiosConfig(axiosConfig, resp.response, auth);
+				resolve(axios(axiosConfig));
+			}
+		});
+	} else {
+		axiosPromise = axios(axiosConfig);
+	}
 
 	return new Promise((resolve, reject) => {
-		axios(axiosConfig)
+		axiosPromise
 			.then((response) => {
 				if (configObject.resolveWithFullResponse === true) {
 					let body = response.data;
@@ -592,6 +680,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 
 	axiosRequest.params = n8nRequest.qs;
 
+	if (n8nRequest.baseURL !== undefined) {
+		axiosRequest.baseURL = n8nRequest.baseURL;
+	}
+
 	if (n8nRequest.disableFollowRedirect === true) {
 		axiosRequest.maxRedirects = 0;
 	}
@@ -649,12 +741,11 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 }
 
 async function httpRequest(
-	requestParams: IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
-	// tslint:disable-line:no-any
-	const axiosRequest = convertN8nRequestToAxios(requestParams);
+	const axiosRequest = convertN8nRequestToAxios(requestOptions);
 	const result = await axios(axiosRequest);
-	if (requestParams.returnFullResponse) {
+	if (requestOptions.returnFullResponse) {
 		return {
 			body: result.data,
 			headers: result.headers,
@@ -769,10 +860,11 @@ export async function prepareBinaryData(
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions | IHttpRequestOptions,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	oAuth2Options?: IOAuth2Options,
+	isN8nRequest = false,
 ) {
 	const credentials = (await this.getCredentials(
 		credentialsType,
@@ -868,7 +960,9 @@ export async function requestOAuth2(
 
 			// Make the request again with the new token
 			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
-
+			if (isN8nRequest) {
+				return this.helpers.httpRequest(newRequestOptions);
+			}
 			return this.helpers.request!(newRequestOptions);
 		}
 
@@ -888,7 +982,12 @@ export async function requestOAuth2(
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUrl | OptionsWithUri | requestPromise.RequestPromiseOptions,
+	requestOptions:
+		| OptionsWithUrl
+		| OptionsWithUri
+		| requestPromise.RequestPromiseOptions
+		| IHttpRequestOptions,
+	isN8nRequest = false,
 ) {
 	const credentials = (await this.getCredentials(
 		credentialsType,
@@ -936,10 +1035,69 @@ export async function requestOAuth1(
 	// @ts-ignore
 	requestOptions.headers = oauth.toHeader(oauth.authorize(requestOptions, token));
 
+	if (isN8nRequest) {
+		return this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
+	}
+
 	return this.helpers.request!(requestOptions).catch(async (error: IResponseError) => {
 		// Unknown error so simply throw it
 		throw error;
 	});
+}
+
+export async function httpRequestWithAuthentication(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	requestOptions: IHttpRequestOptions,
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
+) {
+	try {
+		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
+		if (parentTypes.includes('oAuth1Api')) {
+			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
+		}
+		if (parentTypes.includes('oAuth2Api')) {
+			return await requestOAuth2.call(
+				this,
+				credentialsType,
+				requestOptions,
+				node,
+				additionalData,
+				additionalCredentialOptions?.oauth2,
+				true,
+			);
+		}
+
+		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+		if (additionalCredentialOptions?.credentialsDecrypted) {
+			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
+		} else {
+			credentialsDecrypted = await this.getCredentials(credentialsType);
+		}
+
+		if (credentialsDecrypted === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+			);
+		}
+
+		requestOptions = await additionalData.credentialsHelper.authenticate(
+			credentialsDecrypted,
+			credentialsType,
+			requestOptions,
+			workflow,
+			node,
+		);
+
+		return await httpRequest(requestOptions);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
 }
 
 /**
@@ -961,6 +1119,62 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	});
 
 	return returnData;
+}
+
+// TODO: Move up later
+export async function requestWithAuthentication(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
+) {
+	try {
+		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
+		if (parentTypes.includes('oAuth1Api')) {
+			return await requestOAuth1.call(this, credentialsType, requestOptions, false);
+		}
+		if (parentTypes.includes('oAuth2Api')) {
+			return await requestOAuth2.call(
+				this,
+				credentialsType,
+				requestOptions,
+				node,
+				additionalData,
+				additionalCredentialOptions?.oauth2,
+				false,
+			);
+		}
+
+		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+		if (additionalCredentialOptions?.credentialsDecrypted) {
+			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
+		} else {
+			credentialsDecrypted = await this.getCredentials(credentialsType);
+		}
+
+		if (credentialsDecrypted === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+			);
+		}
+
+		requestOptions = await additionalData.credentialsHelper.authenticate(
+			credentialsDecrypted,
+			credentialsType,
+			requestOptions as IHttpRequestOptions,
+			workflow,
+			node,
+		);
+
+		return await proxyRequestToAxios(requestOptions as IDataObject);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
 }
 
 /**
@@ -1010,39 +1224,46 @@ export async function getCredentials(
 		);
 	}
 
-	if (nodeType.description.credentials === undefined) {
-		throw new NodeOperationError(
-			node,
-			`Node type "${node.type}" does not have any credentials defined!`,
-		);
-	}
+	// Hardcode for now for security reasons that only a single node can access
+	// all credentials
+	const fullAccess = ['n8n-nodes-base.httpRequest'].includes(node.type);
 
-	const nodeCredentialDescription = nodeType.description.credentials.find(
-		(credentialTypeDescription) => credentialTypeDescription.name === type,
-	);
-	if (nodeCredentialDescription === undefined) {
-		throw new NodeOperationError(
-			node,
-			`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
-		);
-	}
+	let nodeCredentialDescription: INodeCredentialDescription | undefined;
+	if (!fullAccess) {
+		if (nodeType.description.credentials === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node type "${node.type}" does not have any credentials defined!`,
+			);
+		}
 
-	if (
-		!NodeHelpers.displayParameter(
-			additionalData.currentNodeParameters || node.parameters,
-			nodeCredentialDescription,
-			node.parameters,
-		)
-	) {
-		// Credentials should not be displayed so return undefined even if they would be defined
-		return undefined;
+		nodeCredentialDescription = nodeType.description.credentials.find(
+			(credentialTypeDescription) => credentialTypeDescription.name === type,
+		);
+		if (nodeCredentialDescription === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
+			);
+		}
+
+		if (
+			!NodeHelpers.displayParameter(
+				additionalData.currentNodeParameters || node.parameters,
+				nodeCredentialDescription,
+				node.parameters,
+			)
+		) {
+			// Credentials should not be displayed so return undefined even if they would be defined
+			return undefined;
+		}
 	}
 
 	// Check if node has any credentials defined
-	if (!node.credentials || !node.credentials[type]) {
+	if (!fullAccess && (!node.credentials || !node.credentials[type])) {
 		// If none are defined check if the credentials are required or not
 
-		if (nodeCredentialDescription.required === true) {
+		if (nodeCredentialDescription?.required === true) {
 			// Credentials are required so error
 			if (!node.credentials) {
 				throw new NodeOperationError(node, 'Node does not have any credentials set!');
@@ -1054,6 +1275,12 @@ export async function getCredentials(
 			// Credentials are not required so resolve with undefined
 			return undefined;
 		}
+	}
+
+	if (fullAccess && (!node.credentials || !node.credentials[type])) {
+		// Make sure that fullAccess nodes still behave like before that if they
+		// request access to credentials that are currently not set it returns undefined
+		return undefined;
 	}
 
 	let expressionResolveValues: ICredentialsExpressionResolveValues | undefined;
@@ -1068,7 +1295,9 @@ export async function getCredentials(
 		} as ICredentialsExpressionResolveValues;
 	}
 
-	const nodeCredentials = node.credentials[type];
+	const nodeCredentials = node.credentials
+		? node.credentials[type]
+		: ({} as INodeCredentialsDetails);
 
 	// TODO: solve using credentials via expression
 	// if (name.charAt(0) === '=') {
@@ -1382,6 +1611,22 @@ export function getExecutePollFunctions(
 					);
 				},
 				request: proxyRequestToAxios,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -1403,6 +1648,22 @@ export function getExecutePollFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 				returnJsonArray,
 			},
@@ -1486,6 +1747,22 @@ export function getExecuteTriggerFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -1521,6 +1798,22 @@ export function getExecuteTriggerFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 				returnJsonArray,
 			},
@@ -1700,6 +1993,22 @@ export function getExecuteFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -1742,6 +2051,22 @@ export function getExecuteFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 				returnJsonArray,
 			},
@@ -1893,6 +2218,22 @@ export function getExecuteSingleFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -1928,6 +2269,22 @@ export function getExecuteSingleFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 			},
 		};
@@ -2020,6 +2377,22 @@ export function getLoadOptionsFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -2042,6 +2415,22 @@ export function getLoadOptionsFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 			},
 		};
@@ -2140,6 +2529,22 @@ export function getExecuteHookFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -2162,6 +2567,22 @@ export function getExecuteHookFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 			},
 		};
@@ -2286,6 +2707,22 @@ export function getExecuteWebhookFunctions(
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
 				httpRequest,
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -2321,6 +2758,22 @@ export function getExecuteWebhookFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async httpRequestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
+				): Promise<any> {
+					return httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					);
 				},
 				returnJsonArray,
 			},

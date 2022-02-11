@@ -67,7 +67,7 @@
 					<el-radio-button :label="$locale.baseText('runData.binary')" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder" class="select-button">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === $locale.baseText('runData.json') && state.path !== deselectedPlaceholder" class="select-button">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
 						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" />
@@ -111,14 +111,14 @@
 						<n8n-button
 							icon="eye"
 							:label="$locale.baseText('runData.displayDataAnyway')"
-							@click="displayMode = 'Table';showData = true;"
+							@click="displayMode = $locale.baseText('runData.table');showData = true;"
 						/>
 					</div>
-					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
+					<div v-else-if="[$locale.baseText('runData.json'), $locale.baseText('runData.table')].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
 							{{ $locale.baseText('runData.noTextDataFound') }}
 						</div>
-						<div v-else-if="displayMode === 'Table'">
+						<div v-else-if="displayMode === $locale.baseText('runData.table')">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
 								{{ $locale.baseText('runData.entriesExistButThey') }}
 							</div>
@@ -132,7 +132,7 @@
 							</table>
 						</div>
 						<vue-json-pretty
-							v-else-if="displayMode === 'JSON'"
+							v-else-if="displayMode === $locale.baseText('runData.json')"
 							:data="jsonData"
 							:deep="10"
 							v-model="state.path"
@@ -146,7 +146,7 @@
 							class="json-data"
 						/>
 					</div>
-					<div v-else-if="displayMode === 'Binary'">
+					<div v-else-if="displayMode === $locale.baseText('runData.binary')">
 						<div v-if="binaryData.length === 0" class="no-data">
 							{{ $locale.baseText('runData.noBinaryDataFound') }}
 						</div>
@@ -264,7 +264,7 @@ export default mixins(
 				binaryDataPreviewActive: false,
 				dataSize: 0,
 				deselectedPlaceholder,
-				displayMode: 'Table',
+				displayMode: this.$locale.baseText('runData.table'),
 				state: {
 					value: '' as object | number | string,
 					path: deselectedPlaceholder,
@@ -441,10 +441,10 @@ export default mixins(
 				this.outputIndex = 0;
 				this.maxDisplayItems = 25;
 				this.refreshDataSize();
-				if (this.displayMode === 'Binary') {
+				if (this.displayMode === this.$locale.baseText('runData.binary')) {
 					this.closeBinaryDataDisplay();
 					if (this.binaryData.length === 0) {
-						this.displayMode = 'Table';
+						this.displayMode = this.$locale.baseText('runData.table');
 					}
 				}
 			},
@@ -540,7 +540,7 @@ export default mixins(
 					return outputIndex + 1;
 				}
 
-				const nodeType = this.$store.getters.nodeType(this.node.type) as INodeTypeDescription | null;
+				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | null;
 				if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
 					return outputIndex + 1;
 				}
