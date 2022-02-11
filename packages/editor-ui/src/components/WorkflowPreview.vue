@@ -32,8 +32,7 @@
 					console.log('error invalid json');
 				}
 			},
-			// @ts-ignore
-			receiveMessage ({ data }) {
+			receiveMessage ({ data }: MessageEvent) {
 				try {
 					const json = JSON.parse(data);
 					if (json.command === 'n8nReady') {
