@@ -412,6 +412,10 @@ export interface IN8nUISettings {
 	personalizationSurvey: IPersonalizationSurvey;
 	defaultLocale: string;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {
