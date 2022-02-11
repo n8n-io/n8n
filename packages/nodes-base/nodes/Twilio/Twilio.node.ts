@@ -207,7 +207,7 @@ export class Twilio implements INodeType {
 						body.From = this.getNodeParameter('from', i) as string;
 						body.To = this.getNodeParameter('to', i) as string;
 						body.Body = this.getNodeParameter('message', i) as string;
-						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as IDataObject;
+						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 
 						const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
 
