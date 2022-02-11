@@ -454,7 +454,7 @@
 			"displayName": "Continue On Fail"
 		},
 		"executeOnce": {
-			"description": "If active, the node executes only once, with data from the first item it recieves",
+			"description": "If active, the node executes only once, with data from the first item it receives",
 			"displayName": "Execute Once"
 		},
 		"maxTries": {
