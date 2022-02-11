@@ -40,6 +40,21 @@ import {
 } from './ContactSegmentDescription';
 
 import {
+	contactPointFields,
+	contactPointOperations,
+} from './ContactPointDescription';
+
+import {
+	contactDncFields,
+	contactDncOperations,
+} from './ContactDncDescription';
+
+import {
+	sendEmailFields,
+	sendEmailOperations,
+} from './SendEmailDescription';
+
+import {
 	campaignContactFields,
 	campaignContactOperations,
 } from './CampaignContactDescription';
@@ -59,6 +74,7 @@ export class Mautic implements INodeType {
 		description: 'Consume Mautic API',
 		defaults: {
 			name: 'Mautic',
+			color: '#52619b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -133,6 +149,21 @@ export class Mautic implements INodeType {
 						value: 'contactSegment',
 						description: 'Add/remove contacts to/from a segment',
 					},
+					{
+						name: 'Contact Points',
+						value: 'contactPoint',
+						description: 'Add/remove points to/from a contact',
+					},
+					{
+						name: 'Contact Do Not Contact',
+						value: 'contactDnc',
+						description: 'Add/remove Contact to/from Do Not Contact',
+					},
+					{
+						name: 'Send Email',
+						value: 'sendEmail',
+						description: 'Send Email to a Contact or Segment',
+					},
 				],
 				default: 'contact',
 				description: 'Resource to consume.',
@@ -143,10 +174,16 @@ export class Mautic implements INodeType {
 			...contactFields,
 			...contactSegmentOperations,
 			...contactSegmentFields,
+			...contactPointOperations,
+			...contactPointFields,
+			...contactDncOperations,
+			...contactDncFields,
 			...campaignContactOperations,
 			...campaignContactFields,
 			...companyContactOperations,
 			...companyContactFields,
+			...sendEmailOperations,
+			...sendEmailFields,
 		],
 	};
 
@@ -255,6 +292,49 @@ export class Mautic implements INodeType {
 						name: campaign.name,
 						value: campaign.id,
 					});
+				}
+				return returnData;
+			},
+			// Get all the available emails to display them to user so that he can
+			// select them easily
+			async getEmails(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const emails = await mauticApiRequestAllItems.call(this, 'emails', 'GET', '/emails');
+				for (const email of emails) {
+					returnData.push({
+						name: email.name,
+						value: email.id,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available list / segment emails to display them to user so that he can
+			// select them easily
+			async getSegmentEmails(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const emails = await mauticApiRequestAllItems.call(this, 'emails', 'GET', '/emails');
+				for (const email of emails) {
+					if (email.emailType == 'list'){
+						returnData.push({
+							name: email.name,
+							value: email.id,
+						});
+					}
+				}
+				return returnData;
+			},
+			// Get all the available campaign / template emails to display them to user so that he can
+			// select them easily
+			async getCampaignEmails(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const emails = await mauticApiRequestAllItems.call(this, 'emails', 'GET', '/emails');
+				for (const email of emails) {
+					if (email.emailType == 'template'){
+						returnData.push({
+							name: email.name,
+							value: email.id,
+						});
+					}
 				}
 				return returnData;
 			},
@@ -798,6 +878,41 @@ export class Mautic implements INodeType {
 					}
 				}
 
+				if (resource === 'contactPoint') {
+					//https://developer.mautic.org/#add-points
+					if (operation === 'add') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const points = this.getNodeParameter('points', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/points/plus/${points}`);
+					}
+					//https://developer.mautic.org/#subtract-points
+					if (operation === 'remove') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const points = this.getNodeParameter('points', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/points/minus/${points}`);
+					}
+				}
+
+				if (resource === 'contactDnc') {
+					//https://developer.mautic.org/#add-do-not-contact
+					if (operation === 'add') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const channel = this.getNodeParameter('channel', i) as string;
+						const reason = this.getNodeParameter('reason', i) as string;
+						const comments = this.getNodeParameter('comments', i) as string;
+						let body: IDataObject = {};
+						body.comments = comments;
+						body.reason = reason;
+						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/dnc/${channel}/add`, body);
+					}
+					//https://developer.mautic.org/#remove-from-do-not-contact
+					if (operation === 'remove') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const channel = this.getNodeParameter('channel', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/dnc/${channel}/remove`);
+					}
+				}
+
 				if (resource === 'campaignContact') {
 					//https://developer.mautic.org/#add-contact-to-a-campaign
 					if (operation === 'add') {
@@ -810,6 +925,20 @@ export class Mautic implements INodeType {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
 						responseData = await mauticApiRequest.call(this, 'POST', `/campaigns/${campaignId}/contact/${contactId}/remove`);
+					}
+				}
+
+				if (resource === 'sendEmail') {
+					//https://developer.mautic.org/#send-email-to-contact
+					if (operation === 'contact') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const campaignEmailId = this.getNodeParameter('campaignEmailId', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/emails/${campaignEmailId}/contact/${contactId}/send`);
+					}
+					//hhttps://developer.mautic.org/#send-email-to-segment
+					if (operation === 'segment') {
+						const segmentEmailId = this.getNodeParameter('segmentEmailId', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/emails/${segmentEmailId}/send`);
 					}
 				}
 
