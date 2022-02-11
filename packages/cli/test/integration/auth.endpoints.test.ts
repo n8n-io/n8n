@@ -125,11 +125,11 @@ describe('auth endpoints', () => {
 			expect(response.headers['set-cookie']).toBeUndefined();
 		});
 
-		test('GET /logout should log user out', async () => {
+		test('POST /logout should log user out', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const ownerAgent = await utils.createAuthAgent(app, owner);
 
-			const response = await ownerAgent.get('/logout');
+			const response = await ownerAgent.post('/logout');
 
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(LOGGED_OUT_RESPONSE_BODY);

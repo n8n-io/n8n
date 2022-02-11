@@ -6,7 +6,7 @@ import { compare } from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { IDataObject } from 'n8n-workflow';
 import { Db, ResponseHelper } from '../..';
-import { issueJWT, resolveJwtContent } from '../auth/jwt';
+import { issueCookie, resolveJwtContent } from '../auth/jwt';
 import { JwtPayload, N8nApp, PublicUser } from '../Interfaces';
 import config = require('../../../config');
 import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
@@ -49,8 +49,7 @@ export function authenticationMethods(this: N8nApp): void {
 				throw error;
 			}
 
-			const userData = await issueJWT(user);
-			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+			await issueCookie(res, user);
 
 			return sanitizeUser(user);
 		}),
@@ -97,14 +96,13 @@ export function authenticationMethods(this: N8nApp): void {
 				throw new Error('Invalid database state - user has password set.');
 			}
 
-			const userData = await issueJWT(user);
-			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+			await issueCookie(res, user);
 
 			return sanitizeUser(user);
 		}),
 	);
 
-	this.app.get(
+	this.app.post(
 		`/${this.restEndpoint}/logout`,
 		ResponseHelper.send(async (req: Request, res: Response): Promise<IDataObject> => {
 			res.clearCookie('n8n-auth');

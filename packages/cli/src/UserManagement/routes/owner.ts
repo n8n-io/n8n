@@ -9,7 +9,7 @@ import config = require('../../../config');
 import { User } from '../../databases/entities/User';
 import { validateEntity } from '../../GenericHelpers';
 import { OwnerRequest } from '../../requests';
-import { issueJWT } from '../auth/jwt';
+import { issueCookie } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
 import { sanitizeUser } from '../UserManagementHelper';
 
@@ -75,8 +75,7 @@ export function ownerNamespace(this: N8nApp): void {
 				{ value: JSON.stringify(true) },
 			);
 
-			const { token, expiresIn } = await issueJWT(owner);
-			res.cookie('n8n-auth', token, { maxAge: expiresIn, httpOnly: true });
+			await issueCookie(res, owner);
 
 			return sanitizeUser(owner);
 		}),

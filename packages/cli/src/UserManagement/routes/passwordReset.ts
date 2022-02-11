@@ -12,7 +12,7 @@ import { N8nApp } from '../Interfaces';
 import { validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
-import { issueJWT } from '../auth/jwt';
+import { issueCookie } from '../auth/jwt';
 import { getBaseUrl } from '../../GenericHelpers';
 
 export function passwordResetNamespace(this: N8nApp): void {
@@ -104,8 +104,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				resetPasswordToken: null,
 			});
 
-			const userData = await issueJWT(req.user);
-			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+			await issueCookie(res, req.user);
 		}),
 	);
 }
