@@ -88,6 +88,7 @@ export default mixins(
 			if (!this.$refs.code) return;
 
 			this.monacoInstance = monaco.editor.create(this.$refs.code as HTMLElement, {
+				automaticLayout: true,
 				value: this.value,
 				language: this.type === 'code' ? 'javascript' : 'json',
 				tabSize: 2,
