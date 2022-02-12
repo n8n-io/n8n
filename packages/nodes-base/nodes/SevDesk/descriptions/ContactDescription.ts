@@ -430,7 +430,7 @@ export const contactFields: INodeProperties[] = [
 					'contact',
 				],
 				operation: [
-					'create',
+					'update',
 				],
 			},
 		},
@@ -448,7 +448,7 @@ export const contactFields: INodeProperties[] = [
 							'contact',
 						],
 						operation: [
-							'create',
+							'update',
 						],
 					},
 				},
@@ -466,7 +466,7 @@ export const contactFields: INodeProperties[] = [
 							'contact',
 						],
 						operation: [
-							'create',
+							'update',
 						],
 					},
 				},

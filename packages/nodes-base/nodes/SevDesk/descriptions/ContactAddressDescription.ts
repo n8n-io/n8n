@@ -28,8 +28,76 @@ export const contactAddressOperations: INodeProperties[] = [
 
 export const contactAddressFields: INodeProperties[] = [
 	{
-		displayName: 'Required Fields',
-		name: 'requiredFields',
+		displayName: 'Contact',
+		name: 'contact',
+		description: 'The contact to which this contact address belongs',
+		type: 'collection',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contactAddress',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'ID',
+				name: 'id',
+				description: 'Unique identifier of the contact',
+				type: 'string',
+				default: 0,
+			},
+			{
+				displayName: 'Object Name',
+				name: 'objectName',
+				description: 'Model name, which is "Contact"',
+				type: 'string',
+				default: 'Contact',
+			},
+		],
+	},
+	{
+		displayName: 'Country',
+		name: 'country',
+		description: 'Country of the contact address. For all countries, send a GET to /StaticCountry.',
+		type: 'collection',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contactAddress',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'ID',
+				name: 'id',
+				description: 'Unique identifier of the contact',
+				type: 'string',
+				default: 0,
+			},
+			{
+				displayName: 'Object Name',
+				name: 'objectName',
+				description: 'Model name, which is "StaticCountry"',
+				type: 'string',
+				default: 'StaticCountry',
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -44,6 +112,79 @@ export const contactAddressFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Street',
+				name: 'street',
+				description: 'Street name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Zip Code',
+				name: 'zip',
+				description: 'Zip Code',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'City',
+				name: 'city',
+				description: 'City Name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Category',
+				name: 'category',
+				description: 'Category of the contact address. For all categories, send a GET to /Category?objectType=ContactAddress.',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'ID',
+						name: 'id',
+						description: 'Unique identifier of the category',
+						type: 'string',
+						default: 0,
+					},
+					{
+						displayName: 'Object Name',
+						name: 'objectName',
+						description: 'Model name, which is "Category"',
+						type: 'string',
+						default: 'Category',
+					},
+				],
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				description: 'Name in address',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Second Name',
+				name: 'name2',
+				description: 'Second Name in address',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Third Name',
+				name: 'name3',
+				description: 'Third Name in address',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Fourth Name',
+				name: 'name4',
+				description: 'Fourth Name in address',
+				type: 'string',
+				default: '',
+			},
 		],
 	},
 ];

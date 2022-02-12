@@ -28,8 +28,43 @@ export const accountingContactOperations: INodeProperties[] = [
 
 export const accountingContactFields: INodeProperties[] = [
 	{
-		displayName: 'Required Fields',
-		name: 'requiredFields',
+		displayName: 'Contact',
+		name: 'contact',
+		description: 'The contact to which this communication way belongs',
+		type: 'collection',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'accountingContact',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'ID',
+				name: 'id',
+				description: 'Unique identifier of the contact',
+				type: 'string',
+				default: 0,
+			},
+			{
+				displayName: 'Object Name',
+				name: 'objectName',
+				description: 'Model name, which is "Contact"',
+				type: 'string',
+				default: 'Contact',
+			},
+		],
+	},
+
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -44,6 +79,20 @@ export const accountingContactFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Debitor Number',
+				name: 'debitorNumber',
+				description: 'Debitor number of the accounting contact.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Creditor Number',
+				name: 'creditorNumber',
+				description: 'Creditor number of the accounting contact.',
+				type: 'string',
+				default: '',
+			},
 		],
 	},
 ];

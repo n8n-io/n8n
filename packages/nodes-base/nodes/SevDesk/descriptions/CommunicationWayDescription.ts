@@ -17,8 +17,14 @@ export const communicationWayOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new contact communication way',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Deletes a communication way',
 			},
 			{
 				name: 'Get All',
@@ -31,6 +37,130 @@ export const communicationWayOperations: INodeProperties[] = [
 ];
 
 export const communicationWayFields: INodeProperties[] = [
+	// ----------------------------------------
+	//         communicationWay: create
+	// ----------------------------------------
+	{
+		displayName: 'Contact',
+		name: 'contact',
+		description: 'The contact to which this communication way belongs',
+		type: 'collection',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'communicationWay',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'ID',
+				name: 'id',
+				description: 'Unique identifier of the contact',
+				type: 'string',
+				default: 0,
+			},
+			{
+				displayName: 'Object Name',
+				name: 'objectName',
+				description: 'Model name, which is "Contact"',
+				type: 'string',
+				default: 'Contact',
+			},
+		],
+	},
+	{
+		displayName: 'Type',
+		name: 'type',
+		description: 'Type of the communication way. One of "EMAIL", "PHONE", "WEB", "MOBILE"',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'communicationWay',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Value',
+		name: 'value',
+		description: 'The value of the communication way. For example the phone number, e-mail address or website.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'communicationWay',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Key',
+		name: 'key',
+		description: 'The key of the communication way. Similar to the category of addresses. For all communication way keys please send a GET to /CommunicationWayKey.',
+		type: 'collection',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'communicationWay',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'ID',
+				name: 'id',
+				description: 'Unique identifier of the key',
+				type: 'string',
+				default: 0,
+			},
+			{
+				displayName: 'Object Name',
+				name: 'objectName',
+				description: 'Model name, which is "CommunicationWayKey"',
+				type: 'string',
+				default: 'CommunicationWayKey',
+			},
+		],
+	},
+	{
+		displayName: 'Main',
+		name: 'main',
+		description: 'Defines whether the communication way is the main communication way for the contact',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'communicationWay',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
 	// ----------------------------------------
 	//         communicationWay: delete
 	// ----------------------------------------
@@ -56,91 +186,6 @@ export const communicationWayFields: INodeProperties[] = [
 	// ----------------------------------------
 	//         communicationWay: getAll
 	// ----------------------------------------
-	{
-		displayName: 'Contact[id]',
-		name: 'contact[id]',
-		description: 'ID of contact for which you want the communication ways',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'communicationWay',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'contact[objectName]',
-		name: 'contact[objectName]',
-		description: 'Object name. Only needed if you also defined the ID of a contact.',
-		type: 'string',
-		default: 'Contact',
-		displayOptions: {
-			show: {
-				resource: [
-					'communicationWay',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Type',
-		name: 'type',
-		description: 'Type of the communication ways you want to get',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'communicationWay',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Main',
-		name: 'main',
-		description: 'Define if you only want the main communication way',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: [
-					'communicationWay',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: [
-					'communicationWay',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
