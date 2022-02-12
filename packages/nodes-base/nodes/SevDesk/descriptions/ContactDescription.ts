@@ -17,19 +17,9 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Contact Add Address',
-				value: 'contactAddAddress',
-				description: 'Adds an address to a contact',
-			},
-			{
-				name: 'Contact Add Email',
-				value: 'contactAddEmail',
-				description: 'Adds an email to a contact',
-			},
-			{
-				name: 'Contact Add Phone',
-				value: 'contactAddPhone',
-				description: 'Adds a phone number to a contact',
+				name: 'Get Next Customer Number',
+				value: 'getNextCustomerNumber',
+				description: 'Retrieves the next available customer number. Avoids duplicates.',
 			},
 			{
 				name: 'Contact Customer Number Availability Check',
@@ -37,9 +27,9 @@ export const contactOperations: INodeProperties[] = [
 				description: 'Checks if a given customer number is available or already used',
 			},
 			{
-				name: 'Contact Get Communication Ways',
-				value: 'contactGetCommunicationWays',
-				description: 'Returns all communication ways of a given contact',
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new contact',
 			},
 			{
 				name: 'Get',
@@ -52,9 +42,9 @@ export const contactOperations: INodeProperties[] = [
 				description: 'There are a multitude of parameter which can be used to filter.<br> A few of them are attached but for a complete list please check out <a href="https://5677.extern.sevdesk.dev/apiOverview/index.html#/doc-contacts#filtering">this</a> list',
 			},
 			{
-				name: 'Get Next Customer Number',
-				value: 'getNextCustomerNumber',
-				description: 'Retrieves the next available customer number. Avoids duplicates.',
+				name: 'Update',
+				value: 'update',
+				description: 'There are a multitude of parameter which can be used to filter.<br> A few of them are attached but for a complete list please check out <a href="https://5677.extern.sevdesk.dev/apiOverview/index.html#/doc-contacts#filtering">this</a> list',
 			},
 		],
 		default: 'get',
@@ -65,84 +55,23 @@ export const contactOperations: INodeProperties[] = [
 
 export const contactFields: INodeProperties[] = [
 	// ----------------------------------------
-	//        contact: contactAddAddress
+	//               contact: getNextCustomerNumber
 	// ----------------------------------------
-	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of contact to which address is added',
-		type: 'number',
-		required: true,
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: [
-					'Contact',
-				],
-				operation: [
-					'contactAddAddress',
-				],
-			},
-		},
-	},
 
 	// ----------------------------------------
-	//         contact: contactAddEmail
+	//               contact: contactCustomerNumberAvailabilityCheck
 	// ----------------------------------------
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of contact to which email is added',
-		type: 'number',
-		required: true,
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: [
-					'Contact',
-				],
-				operation: [
-					'contactAddEmail',
-				],
-			},
-		},
-	},
-
-	// ----------------------------------------
-	//         contact: contactAddPhone
-	// ----------------------------------------
-	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of contact to which phone number is added',
-		type: 'number',
-		required: true,
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: [
-					'Contact',
-				],
-				operation: [
-					'contactAddPhone',
-				],
-			},
-		},
-	},
-
-	// ----------------------------------------
-	// contact: contactCustomerNumberAvailabilityCheck
-	// ----------------------------------------
-	{
-		displayName: 'customerNumber',
+		displayName: 'Customer Number',
 		name: 'customerNumber',
 		description: 'The customer number to be checked',
 		type: 'string',
-		default: '',
+		required: true,
+		default: 0,
 		displayOptions: {
 			show: {
 				resource: [
-					'Contact',
+					'contact',
 				],
 				operation: [
 					'contactCustomerNumberAvailabilityCheck',
@@ -152,27 +81,301 @@ export const contactFields: INodeProperties[] = [
 	},
 
 	// ----------------------------------------
-	//   contact: contactGetCommunicationWays
+	//               contact: getAll
 	// ----------------------------------------
+
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of contact for which you want the communication ways',
-		type: 'number',
-		required: true,
-		default: 0,
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
-					'Contact',
+					'contact',
 				],
 				operation: [
-					'contactGetCommunicationWays',
+					'getAll',
 				],
 			},
 		},
+		options: [
+			{
+				displayName: 'Depth',
+				name: 'depth',
+				description: 'Defines if both organizations and persons should be returned. "0" -> only organizations, "1" -> organizations and persons.',
+				type: 'number',
+				default: '',
+			},
+			{
+				displayName: 'Customer Number',
+				name: 'customerNumber',
+				description: 'Retrieve all contacts with this customer number',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 
+	// ----------------------------------------
+	//               contact: create
+	// ----------------------------------------
+	{
+		displayName: 'Category',
+		name: 'category',
+		description: 'Category of the contact. For more information, see <a href="https://my.sevdesk.de/apiOverview/index.html#/doc-contacts#types">here</a>.',
+		type: 'collection',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'ID',
+				name: 'id',
+				description: 'Unique identifier of the category',
+				type: 'string',
+				default: 0,
+			},
+			{
+				displayName: 'Object Name',
+				name: 'objectName',
+				description: 'Model name, which is "Category"',
+				type: 'string',
+				default: 'Category',
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				description: 'The organization name. Be aware that the type of contact will depend on this attribute. If it holds a value, the contact will be regarded as an organization.',
+				type: 'string',
+				default: 0,
+			},
+			{
+				displayName: 'Customer Number',
+				name: 'customerNumber',
+				description: 'The customer number',
+				type: 'string',
+				default: 0,
+			},
+			{
+				displayName: 'Parent',
+				name: 'parent',
+				description: 'The parent contact to which this contact belongs. Must be an organization.',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'ID',
+						name: 'id',
+						description: 'Unique identifier of the parent contact',
+						type: 'string',
+						default: 0,
+					},
+					{
+						displayName: 'Object Name',
+						name: 'objectName',
+						description: 'Model name, which is "Contact"',
+						type: 'string',
+						default: 'Contact',
+					},
+				],
+			},
+			{
+				displayName: 'First Name',
+				name: 'surename',
+				description: 'The first name of the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Second Name',
+				name: 'name2',
+				description: 'The second name of the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'familyname',
+				description: 'The last name of the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'titel',
+				description: 'A non-academic title for the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				description: 'A description for the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Academic Title',
+				name: 'academicTitle',
+				description: 'A academic title for the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Gender',
+				name: 'gender',
+				description: 'Gender of the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Birthday',
+				name: 'birthday',
+				description: 'Birthday of the contact. Not to be used for organizations.',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Vat Number',
+				name: 'vatNumber',
+				description: 'Vat Number of the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Bank Account',
+				name: 'bankAccount',
+				description: 'Bank account number (IBAN) of the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Bank Number',
+				name: 'bankNumber',
+				description: 'Bank number of the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Default Cashback Time',
+				name: 'defaultCashbackTime',
+				description: 'Absolute time in days which the contact has to pay his invoices and subsequently get a cashback',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Default Cashback Percent',
+				name: 'defaultCashbackPercent',
+				description: 'Percentage of the invoice sum the contact gets back if he payed invoices in time',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Default Time To Pay',
+				name: 'defaultTimeToPay',
+				description: 'The payment goal in days which is set for every invoice of the contact',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Tax Number',
+				name: 'taxNumber',
+				description: 'The tax number of the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax Office',
+				name: 'taxOffice',
+				description: 'The tax office responsible for the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Exempt Vat',
+				name: 'exemptVat',
+				description: 'Defines if the contact is freed from paying vat',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Tax Type',
+				name: 'taxType',
+				description: 'Defines which tax regulation the contact is using. One of "default", "eu", "noteu", "custom" ]',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax Set',
+				name: 'taxSet',
+				description: 'Tax set which is used in every invoice of the contact',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'ID',
+						name: 'id',
+						description: 'Unique identifier of the parent contact',
+						type: 'string',
+						default: 0,
+					},
+					{
+						displayName: 'Object Name',
+						name: 'objectName',
+						description: 'Model name, which is "TaxSet"',
+						type: 'string',
+						default: 'TaxSet',
+					},
+				],
+			},
+			{
+				displayName: 'Default Discount Amount',
+				name: 'defaultDiscountAmount',
+				description: 'The default discount the contact gets for every invoice. Depending on defaultDiscountPercentage attribute, in percent or absolute value.',
+				type: 'number',
+				default: '',
+			},
+			{
+				displayName: 'Default Discount Percentage',
+				name: 'defaultDiscountPercentage',
+				description: 'Defines if the discount is a percentage (true) or an absolute value (false).',
+				type: 'boolean',
+				default: false,
+			},
+		],
+	},
 	// ----------------------------------------
 	//               contact: get
 	// ----------------------------------------
@@ -186,7 +389,7 @@ export const contactFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'Contact',
+					'contact',
 				],
 				operation: [
 					'get',
@@ -194,82 +397,298 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 	},
-
 	// ----------------------------------------
-	//             contact: getAll
+	//               contact: update
 	// ----------------------------------------
 	{
-		displayName: 'Depth',
-		name: 'depth',
-		description: 'Defines if both organizations <b>and</b> persons should be returned.<br> "0" -> only organizations, "1" -> organizations and persons',
+		displayName: 'Contact ID',
+		name: 'contactId',
+		description: 'ID of contact to return',
 		type: 'number',
+		required: true,
 		default: 0,
 		displayOptions: {
 			show: {
 				resource: [
-					'Contact',
+					'contact',
 				],
 				operation: [
-					'getAll',
+					'update',
 				],
 			},
 		},
 	},
 	{
-		displayName: 'customerNumber',
-		name: 'customerNumber',
-		description: 'Retrieve all contacts with this customer number',
-		type: 'string',
-		default: '',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
-					'Contact',
+					'contact',
 				],
 				operation: [
-					'getAll',
+					'create',
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: [
-					'Contact',
-				],
-				operation: [
-					'getAll',
+		options: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				description: 'The organization name. Be aware that the type of contact will depend on this attribute. If it holds a value, the contact will be regarded as an organization.',
+				type: 'string',
+				required: true,
+				default: 0,
+				displayOptions: {
+					show: {
+						resource: [
+							'contact',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Category',
+				name: 'category',
+				description: 'Category of the contact. For more information, see <a href="https://my.sevdesk.de/apiOverview/index.html#/doc-contacts#types">here</a>.',
+				type: 'collection',
+				required: true,
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'contact',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'ID',
+						name: 'id',
+						description: 'Unique identifier of the category',
+						type: 'string',
+						default: 0,
+					},
+					{
+						displayName: 'Object Name',
+						name: 'objectName',
+						description: 'Model name, which is "Category"',
+						type: 'string',
+						default: 'Category',
+					},
 				],
 			},
-		},
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 50,
-		description: 'Max number of results to return',
-		typeOptions: {
-			minValue: 1,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'Contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
+			{
+				displayName: 'Name',
+				name: 'name',
+				description: 'The organization name. Be aware that the type of contact will depend on this attribute. If it holds a value, the contact will be regarded as an organization.',
+				type: 'string',
+				default: 0,
+			},
+			{
+				displayName: 'Customer Number',
+				name: 'customerNumber',
+				description: 'The customer number',
+				type: 'string',
+				default: 0,
+			},
+			{
+				displayName: 'Parent',
+				name: 'parent',
+				description: 'The parent contact to which this contact belongs. Must be an organization.',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'ID',
+						name: 'id',
+						description: 'Unique identifier of the parent contact',
+						type: 'string',
+						default: 0,
+					},
+					{
+						displayName: 'Object Name',
+						name: 'objectName',
+						description: 'Model name, which is "Contact"',
+						type: 'string',
+						default: 'Contact',
+					},
 				],
 			},
-		},
+			{
+				displayName: 'First Name',
+				name: 'surename',
+				description: 'The first name of the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Second Name',
+				name: 'name2',
+				description: 'The second name of the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'familyname',
+				description: 'The last name of the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'titel',
+				description: 'A non-academic title for the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				description: 'A description for the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Academic Title',
+				name: 'academicTitle',
+				description: 'A academic title for the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Gender',
+				name: 'gender',
+				description: 'Gender of the contact. Not to be used for organizations.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Birthday',
+				name: 'birthday',
+				description: 'Birthday of the contact. Not to be used for organizations.',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Vat Number',
+				name: 'vatNumber',
+				description: 'Vat Number of the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Bank Account',
+				name: 'bankAccount',
+				description: 'Bank account number (IBAN) of the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Bank Number',
+				name: 'bankNumber',
+				description: 'Bank number of the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Default Cashback Time',
+				name: 'defaultCashbackTime',
+				description: 'Absolute time in days which the contact has to pay his invoices and subsequently get a cashback',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Default Cashback Percent',
+				name: 'defaultCashbackPercent',
+				description: 'Percentage of the invoice sum the contact gets back if he payed invoices in time',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Default Time To Pay',
+				name: 'defaultTimeToPay',
+				description: 'The payment goal in days which is set for every invoice of the contact',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Tax Number',
+				name: 'taxNumber',
+				description: 'The tax number of the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax Office',
+				name: 'taxOffice',
+				description: 'The tax office responsible for the contact',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Exempt Vat',
+				name: 'exemptVat',
+				description: 'Defines if the contact is freed from paying vat',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Tax Type',
+				name: 'taxType',
+				description: 'Defines which tax regulation the contact is using. One of "default", "eu", "noteu", "custom" ]',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax Set',
+				name: 'taxSet',
+				description: 'Tax set which is used in every invoice of the contact',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'ID',
+						name: 'id',
+						description: 'Unique identifier of the parent contact',
+						type: 'string',
+						default: 0,
+					},
+					{
+						displayName: 'Object Name',
+						name: 'objectName',
+						description: 'Model name, which is "TaxSet"',
+						type: 'string',
+						default: 'TaxSet',
+					},
+				],
+			},
+			{
+				displayName: 'Default Discount Amount',
+				name: 'defaultDiscountAmount',
+				description: 'The default discount the contact gets for every invoice. Depending on defaultDiscountPercentage attribute, in percent or absolute value.',
+				type: 'number',
+				default: '',
+			},
+			{
+				displayName: 'Default Discount Percentage',
+				name: 'defaultDiscountPercentage',
+				description: 'Defines if the discount is a percentage (true) or an absolute value (false).',
+				type: 'boolean',
+				default: false,
+			},
+		],
 	},
 ];

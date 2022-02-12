@@ -352,42 +352,14 @@ export class SevDesk implements INodeType {
 					// **********************************************************************
 					//                                contact
 					// **********************************************************************
-
-					if (operation === 'contactAddAddress') {
-
-						// ----------------------------------------
-						//        contact: contactAddAddress
-						// ----------------------------------------
-
-						const contactId = this.getNodeParameter('contactId', i);
-
-						const endpoint = `/Contact/${contactId}/addAddress`;
-						const body = {};
-						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
-
-					} else if (operation === 'contactAddEmail') {
+					if (operation === 'getNextCustomerNumber') {
 
 						// ----------------------------------------
-						//         contact: contactAddEmail
+						//      contact: getNextCustomerNumber
 						// ----------------------------------------
 
-						const contactId = this.getNodeParameter('contactId', i);
-
-						const endpoint = `/Contact/${contactId}/addEmail`;
-						const body = {};
-						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
-
-					} else if (operation === 'contactAddPhone') {
-
-						// ----------------------------------------
-						//         contact: contactAddPhone
-						// ----------------------------------------
-
-						const contactId = this.getNodeParameter('contactId', i);
-
-						const endpoint = `/Contact/${contactId}/addPhone`;
-						const body = {};
-						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
+						const endpoint = '/Contact/Factory/getNextCustomerNumber';
+						responseData = await sevDeskApiRequest.call(this, 'GET', endpoint);
 
 					} else if (operation === 'contactCustomerNumberAvailabilityCheck') {
 
@@ -395,12 +367,8 @@ export class SevDesk implements INodeType {
 						// contact: contactCustomerNumberAvailabilityCheck
 						// ----------------------------------------
 
-						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-						if (Object.keys(filters).length) {
-							Object.assign(qs, filters);
-						}
+						const customerNumber = this.getNodeParameter('customerNumber', i);
+						const qs = { customerNumber } as IDataObject;
 
 						const endpoint = '/Contact/Mapper/checkCustomerNumberAvailability';
 						responseData = await sevDeskApiRequest.call(this, 'GET', endpoint, {}, qs);
@@ -416,6 +384,30 @@ export class SevDesk implements INodeType {
 						const endpoint = `/Contact/${contactId}/getCommunicationWays`;
 						responseData = await sevDeskApiRequest.call(this, 'GET', endpoint);
 
+					} else if (operation === 'create') {
+
+						// ----------------------------------------
+						//               contact: create
+						// ----------------------------------------
+
+						const category = this.getNodeParameter('category', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const body = { category, ...additionalFields };
+						responseData = await sevDeskApiRequest.call(this, 'GET', `/Contact`, body);
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------------
+						//               contact: update
+						// ----------------------------------------
+						const contactId = this.getNodeParameter('contactId', i);
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const body = { ...additionalFields };
+						responseData = await sevDeskApiRequest.call(this, 'GET', `/Contact/${contactId}`, body);
+
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
@@ -424,8 +416,7 @@ export class SevDesk implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i);
 
-						const body = {};
-						responseData = await sevDeskApiRequest.call(this, 'GET', `/Contact/${contactId}`, body);
+						responseData = await sevDeskApiRequest.call(this, 'GET', `/Contact/${contactId}`);
 
 					} else if (operation === 'getAll') {
 
@@ -433,24 +424,12 @@ export class SevDesk implements INodeType {
 						//             contact: getAll
 						// ----------------------------------------
 
-						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						if (Object.keys(filters).length) {
-							Object.assign(qs, filters);
-						}
+						const qs = { ...additionalFields } as IDataObject;
 
 						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'GET', '/Contact', body, qs);
-
-					} else if (operation === 'getNextCustomerNumber') {
-
-						// ----------------------------------------
-						//      contact: getNextCustomerNumber
-						// ----------------------------------------
-
-						const endpoint = '/Contact/Factory/getNextCustomerNumber';
-						responseData = await sevDeskApiRequest.call(this, 'GET', endpoint);
 
 					}
 
