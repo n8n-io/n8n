@@ -661,7 +661,34 @@ export class Github implements INodeType {
 				description: 'Name of the binary property in which to save the binary data of the received file.',
 			},
 
-
+			{
+				displayName: 'Additional Parameters',
+				name: 'additionalParameters',
+				placeholder: 'Add Parameter',
+				description: 'Additional fields to add.',
+				type: 'collection',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Reference',
+						name: 'reference',
+						type: 'string',
+						default: '',
+						placeholder: 'master',
+						description: 'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
+					}
+				],
+			},
 
 			// ----------------------------------
 			//         issue
@@ -1929,7 +1956,11 @@ export class Github implements INodeType {
 						requestMethod = 'GET';
 
 						const filePath = this.getNodeParameter('filePath', i) as string;
+						const additionalParameters = this.getNodeParameter('additionalParameters', i) as IDataObject;
 
+						if (additionalParameters.reference) {
+							qs.ref = additionalParameters.reference;
+						}
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
 					}
 				} else if (resource === 'issue') {
