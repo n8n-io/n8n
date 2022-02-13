@@ -8,13 +8,11 @@ import {
 	BeforeUpdate,
 	Column,
 	ColumnOptions,
-	CreateDateColumn,
 	Entity,
 	Index,
 	JoinTable,
 	ManyToMany,
 	PrimaryGeneratedColumn,
-	UpdateDateColumn,
 } from 'typeorm';
 
 import config = require('../../../config');
@@ -71,10 +69,15 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column(resolveDataType('json'))
 	connections: IConnections;
 
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
+	@Column({
+		type: resolveDataType('datetime') as ColumnOptions['type'],
+		precision: 3,
+		default: () => getTimestampSyntax(),
+	})
 	createdAt: Date;
 
-	@UpdateDateColumn({
+	@Column({
+		type: resolveDataType('datetime') as ColumnOptions['type'],
 		precision: 3,
 		default: () => getTimestampSyntax(),
 		onUpdate: getTimestampSyntax(),

@@ -5,11 +5,10 @@ import { ICredentialNodeAccess } from 'n8n-workflow';
 import {
 	BeforeUpdate,
 	Column,
-	CreateDateColumn,
+	ColumnOptions,
 	Entity,
 	Index,
 	PrimaryGeneratedColumn,
-	UpdateDateColumn,
 } from 'typeorm';
 
 import config = require('../../../config');
@@ -68,10 +67,15 @@ export class CredentialsEntity implements ICredentialsDb {
 	@Column(resolveDataType('json'))
 	nodesAccess: ICredentialNodeAccess[];
 
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
+	@Column({
+		type: resolveDataType('datetime') as ColumnOptions['type'],
+		precision: 3,
+		default: () => getTimestampSyntax(),
+	})
 	createdAt: Date;
 
-	@UpdateDateColumn({
+	@Column({
+		type: resolveDataType('datetime') as ColumnOptions['type'],
 		precision: 3,
 		default: () => getTimestampSyntax(),
 		onUpdate: getTimestampSyntax(),

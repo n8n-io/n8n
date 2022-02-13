@@ -3,12 +3,11 @@
 import {
 	BeforeUpdate,
 	Column,
-	CreateDateColumn,
+	ColumnOptions,
 	Entity,
 	Index,
 	ManyToMany,
 	PrimaryGeneratedColumn,
-	UpdateDateColumn,
 } from 'typeorm';
 import { IsDate, IsOptional, IsString, Length } from 'class-validator';
 
@@ -16,6 +15,23 @@ import config = require('../../../config');
 import { DatabaseType } from '../../index';
 import { ITagDb } from '../../Interfaces';
 import { WorkflowEntity } from './WorkflowEntity';
+
+function resolveDataType(dataType: string) {
+	const dbType = config.get('database.type') as DatabaseType;
+
+	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
+		sqlite: {
+			json: 'simple-json',
+		},
+		postgresdb: {
+			datetime: 'timestamptz',
+		},
+		mysqldb: {},
+		mariadb: {},
+	};
+
+	return typeMap[dbType][dataType] ?? dataType;
+}
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 function getTimestampSyntax() {
@@ -42,12 +58,17 @@ export class TagEntity implements ITagDb {
 	@Length(1, 24, { message: 'Tag name must be 1 to 24 characters long.' })
 	name: string;
 
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
+	@Column({
+		type: resolveDataType('datetime') as ColumnOptions['type'],
+		precision: 3,
+		default: () => getTimestampSyntax(),
+	})
 	@IsOptional() // ignored by validation because set at DB level
 	@IsDate()
 	createdAt: Date;
 
-	@UpdateDateColumn({
+	@Column({
+		type: resolveDataType('datetime') as ColumnOptions['type'],
 		precision: 3,
 		default: () => getTimestampSyntax(),
 		onUpdate: getTimestampSyntax(),
