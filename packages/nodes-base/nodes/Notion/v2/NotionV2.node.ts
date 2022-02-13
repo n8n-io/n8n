@@ -240,6 +240,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const blockId = extractPageId(this.getNodeParameter('blockId', i) as string);
+					const returnAsArray = this.getNodeParameter('returnAsArray', i) as boolean;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', `/blocks/${blockId}/children`, {});
@@ -248,7 +249,12 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequest.call(this, 'GET', `/blocks/${blockId}/children`, {}, qs);
 						responseData = responseData.results;
 					}
-					returnData.push.apply(returnData, responseData);
+					if(returnAsArray) {
+						returnData.push(responseData);
+					}
+					else {
+						returnData.push.apply(returnData, responseData);
+					}
 				}
 			}
 		}

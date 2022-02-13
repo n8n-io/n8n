@@ -120,4 +120,21 @@ export const blockFields = [
 		default: 50,
 		description: 'How many results to return',
 	},
+	{
+		displayName: 'Return as Array',
+		name: 'returnAsArray',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'block',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If each all results should be returned as an array in one item',
+	},
 ] as INodeProperties[];
