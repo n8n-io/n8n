@@ -686,7 +686,7 @@ export class Github implements INodeType {
 						default: '',
 						placeholder: 'master',
 						description: 'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
-					}
+					},
 				],
 			},
 
