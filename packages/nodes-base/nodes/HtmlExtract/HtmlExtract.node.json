@@ -23,6 +23,11 @@
 				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
 			},
 			{
+				"label": "How uProc scraped a multi-page website with a low-code workflow",
+				"icon": " 🕸️",
+				"url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/"
+			},
+			{
 				"label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation",
 				"icon": "🧰",
 				"url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/"
