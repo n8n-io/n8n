@@ -206,7 +206,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		let types: string[] = [];
 		credentialType.extends.forEach((type: string) => {
-			types = [...types, typeName, ...this.getParentTypes(type)];
+			types = [...types, type, ...this.getParentTypes(type)];
 		});
 
 		return types;
