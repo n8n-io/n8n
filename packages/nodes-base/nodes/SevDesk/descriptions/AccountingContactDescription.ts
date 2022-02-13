@@ -61,7 +61,6 @@ export const accountingContactFields: INodeProperties[] = [
 			},
 		],
 	},
-
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

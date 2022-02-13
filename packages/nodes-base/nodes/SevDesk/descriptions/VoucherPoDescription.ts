@@ -30,40 +30,40 @@ export const voucherPoFields: INodeProperties[] = [
 	// ----------------------------------------
 	//            voucherPo: getAll
 	// ----------------------------------------
-	{
-		displayName: 'Voucher[id]',
-		name: 'voucher[id]',
-		description: 'Retrieve all vouchers positions belonging to this voucher. Must be provided with voucher[objectName].',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: [
-					'VoucherPo',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'voucher[objectName]',
-		name: 'voucher[objectName]',
-		description: 'Only required if voucher[id] was provided. \'Voucher\' should be used as value.',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'VoucherPo',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
+	// {
+	// 	displayName: 'Voucher[id]',
+	// 	name: 'voucher[id]',
+	// 	description: 'Retrieve all vouchers positions belonging to this voucher. Must be provided with voucher[objectName].',
+	// 	type: 'number',
+	// 	default: 0,
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'VoucherPo',
+	// 			],
+	// 			operation: [
+	// 				'getAll',
+	// 			],
+	// 		},
+	// 	},
+	// },
+	// {
+	// 	displayName: 'voucher[objectName]',
+	// 	name: 'voucher[objectName]',
+	// 	description: 'Only required if voucher[id] was provided. \'Voucher\' should be used as value.',
+	// 	type: 'string',
+	// 	default: '',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'VoucherPo',
+	// 			],
+	// 			operation: [
+	// 				'getAll',
+	// 			],
+	// 		},
+	// 	},
+	// },
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

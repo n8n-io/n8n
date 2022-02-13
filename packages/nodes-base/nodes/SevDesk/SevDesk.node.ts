@@ -667,7 +667,39 @@ export class SevDesk implements INodeType {
 					//                                 order
 					// **********************************************************************
 
-					if (operation === 'delete') {
+					if (operation === 'create') {
+
+						// ----------------------------------------
+						//              order: create
+						// ----------------------------------------
+
+						// required fields
+						const orderNumber = this.getNodeParameter('orderNumber', i);
+						const contact = this.getNodeParameter('contact', i);
+						const orderDate = this.getNodeParameter('orderDate', i)?.valueOf();
+						const status = this.getNodeParameter('status', i);
+						const smallSettlement = this.getNodeParameter('smallSettlement', i);
+						const header = this.getNodeParameter('header', i);
+						const version = this.getNodeParameter('version', i);
+						const contactPerson = this.getNodeParameter('contactPerson', i);
+						const taxText = this.getNodeParameter('taxText', i);
+						const taxType = this.getNodeParameter('taxType', i);
+						const currency = this.getNodeParameter('currency', i);
+
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						// fill body
+						const body = {
+							orderNumber, contact, orderDate, status, header, smallSettlement,
+							version, contactPerson, taxText, taxType, currency,
+							...additionalFields,
+						};
+
+						const endpoint = `/Order/`;
+						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint);
+
+					} else if (operation === 'delete') {
 
 						// ----------------------------------------
 						//              order: delete
@@ -695,15 +727,28 @@ export class SevDesk implements INodeType {
 						//              order: getAll
 						// ----------------------------------------
 
-						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						// additional fields
+						const additionalFields = {}; // this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						if (Object.keys(filters).length) {
-							Object.assign(qs, filters);
-						}
+						const qs = { ...additionalFields } as IDataObject;
 
 						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'GET', '/Order', body, qs);
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------------
+						//              order: update
+						// ----------------------------------------
+
+						const orderId = this.getNodeParameter('orderId', i);
+
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const qs = { ...additionalFields } as IDataObject;
+
+						responseData = await sevDeskApiRequest.call(this, 'GET', `/Order/${orderId}`, {}, qs);
 
 					}
 
@@ -713,18 +758,35 @@ export class SevDesk implements INodeType {
 					//                                orderPo
 					// **********************************************************************
 
-					if (operation === 'getAll') {
+					if (operation === 'create') {
+
+						// ----------------------------------------
+						//             orderPo: create
+						// ----------------------------------------
+
+						// required fields
+						const order = this.getNodeParameter('order', i);
+						const quantity = this.getNodeParameter('quantity', i);
+						const unity = this.getNodeParameter('unity', i)?.valueOf();
+						const taxRate = this.getNodeParameter('taxRate', i);
+
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						// fill body
+						const body = { order, quantity, unity, taxRate, ...additionalFields, };
+
+						responseData = await sevDeskApiRequest.call(this, 'POST', '/OrderPos', body);
+
+					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
 						//             orderPo: getAll
 						// ----------------------------------------
 
-						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = {}; //this.getNodeParameter('filters', i) as IDataObject;
 
-						if (Object.keys(filters).length) {
-							Object.assign(qs, filters);
-						}
+						const qs = { ...filters } as IDataObject;
 
 						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'GET', '/OrderPos', body, qs);
@@ -824,8 +886,19 @@ export class SevDesk implements INodeType {
 
 						const voucherId = this.getNodeParameter('voucherId', i);
 
+						// required fields
+						const amount = this.getNodeParameter('amount', i);
+						const date = this.getNodeParameter('date', i);
+						const type = this.getNodeParameter('type', i);
+						const collection = this.getNodeParameter('collection', i);
+
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						// fill body
+						const body = { amount, date, type, collection, ...additionalFields };
+
 						const endpoint = `/Voucher/${voucherId}/bookAmount`;
-						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'PUT', endpoint, body);
 
 					} else if (operation === 'createByFactory') {
@@ -834,8 +907,24 @@ export class SevDesk implements INodeType {
 						//         voucher: createByFactory
 						// ----------------------------------------
 
+						// required fields
+						const status = this.getNodeParameter('status', i);
+						const taxType = this.getNodeParameter('taxType', i);
+						const creditDebit = this.getNodeParameter('creditDebit', i);
+						const voucherType = this.getNodeParameter('voucherType', i);
+						const voucherPosSave = this.getNodeParameter('voucherPosSave', i);
+						const voucherPosDelete = this.getNodeParameter('voucherPosDelete', i);
+						const mapAll = this.getNodeParameter('mapAll', i);
+						const file = this.getNodeParameter('file', i, null);
+
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						// fill body
+						const body = { status, taxType, creditDebit, voucherType, voucherPosSave, voucherPosDelete, mapAll, ...additionalFields, file };
+
+
 						const endpoint = '/Voucher/Factory/saveVoucher';
-						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
 
 					} else if (operation === 'get') {
@@ -846,8 +935,7 @@ export class SevDesk implements INodeType {
 
 						const voucherId = this.getNodeParameter('voucherId', i);
 
-						const body = {};
-						responseData = await sevDeskApiRequest.call(this, 'GET', `/Voucher/${voucherId}`, body);
+						responseData = await sevDeskApiRequest.call(this, 'GET', `/Voucher/${voucherId}`);
 
 					} else if (operation === 'getAll') {
 
@@ -855,15 +943,28 @@ export class SevDesk implements INodeType {
 						//             voucher: getAll
 						// ----------------------------------------
 
-						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = {}; // this.getNodeParameter('filters', i) as IDataObject;
 
-						if (Object.keys(filters).length) {
-							Object.assign(qs, filters);
-						}
+						const qs = { ...filters } as IDataObject;
 
 						const body = {};
 						responseData = await sevDeskApiRequest.call(this, 'GET', '/Voucher', body, qs);
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------------
+						//        voucher: update
+						// ----------------------------------------
+						const voucherId = this.getNodeParameter('voucherId', i);
+
+						// additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						// fill body
+						const body = { ...additionalFields };
+
+						const endpoint = `/Voucher/${voucherId}`;
+						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
 
 					} else if (operation === 'voucherUploadFile') {
 
@@ -871,8 +972,10 @@ export class SevDesk implements INodeType {
 						//        voucher: voucherUploadFile
 						// ----------------------------------------
 
+						const file = this.getNodeParameter('file', i) as IDataObject;
+
 						const endpoint = '/Voucher/Factory/uploadTempFile';
-						const body = {};
+						const body = { ...file };
 						responseData = await sevDeskApiRequest.call(this, 'POST', endpoint, body);
 
 					}
@@ -889,12 +992,9 @@ export class SevDesk implements INodeType {
 						//            voucherPo: getAll
 						// ----------------------------------------
 
-						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = {}; //this.getNodeParameter('filters', i) as IDataObject;
 
-						if (Object.keys(filters).length) {
-							Object.assign(qs, filters);
-						}
+						const qs = { ...filters } as IDataObject;
 
 						responseData = await sevDeskApiRequest.call(this, 'GET', '/VoucherPos', {}, qs);
 

@@ -332,7 +332,7 @@ export const contactFields: INodeProperties[] = [
 			{
 				displayName: 'Tax Type',
 				name: 'taxType',
-				description: 'Defines which tax regulation the contact is using. One of "default", "eu", "noteu", "custom" ]',
+				description: 'Defines which tax regulation the contact is using. One of "default", "eu", "noteu", "custom"',
 				type: 'string',
 				default: '',
 			},
@@ -647,7 +647,7 @@ export const contactFields: INodeProperties[] = [
 			{
 				displayName: 'Tax Type',
 				name: 'taxType',
-				description: 'Defines which tax regulation the contact is using. One of "default", "eu", "noteu", "custom" ]',
+				description: 'Defines which tax regulation the contact is using. One of "default", "eu", "noteu", "custom"',
 				type: 'string',
 				default: '',
 			},
