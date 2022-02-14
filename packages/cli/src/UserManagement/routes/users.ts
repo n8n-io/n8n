@@ -61,14 +61,6 @@ export function usersNamespace(this: N8nApp): void {
 
 			const role = await Db.collections.Role!.findOne({ scope: 'global', name: 'member' });
 
-			const invites = req.body;
-
-			invites.forEach(({ email }) => {
-				if (!validator.isEmail(email)) {
-					throw new ResponseHelper.ResponseError(`Invalid email address: ${email}`, undefined, 400);
-				}
-			});
-
 			// remove/exclude existing users from creation
 			const existingUsers = await Db.collections.User!.find({
 				where: { email: In(Object.keys(createUsers)) },
