@@ -21,6 +21,7 @@
 			</div>
 			<div>
 				<div :class="$style.image">
+					<workflow-preview :workflow="template.workflow" />
 					<n8n-image v-if="template.mainImage" :images="template.mainImage.image" />
 				</div>
 				<div :class="$style.content">
@@ -43,6 +44,7 @@
 <script lang="ts">
 import GoBackButton from '@/components/GoBackButton.vue';
 import TemplateDetails from '@/components/TemplateDetails.vue';
+import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 import { IN8nTemplate } from '@/Interface';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -53,6 +55,7 @@ export default mixins(workflowHelpers).extend({
 	components: {
 		GoBackButton,
 		TemplateDetails,
+		WorkflowPreview,
 	},
 	computed: {
 		isMenuCollapsed() {
