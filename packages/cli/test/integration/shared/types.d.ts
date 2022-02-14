@@ -10,6 +10,6 @@ export type SmtpTestAccount = {
 	};
 };
 
-export type EndpointNamespace = 'me' | 'users' | 'auth' | 'owner';
+export type EndpointNamespace = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset';
 
 export type NamespacesMap = Readonly<Record<EndpointNamespace, (this: N8nApp) => void>>;
