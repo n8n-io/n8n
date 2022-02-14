@@ -26,8 +26,8 @@ import type { EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types'
 /**
  * Initialize a test server to make requests to.
  *
- * @param namespaces Namespaces of endpoints to apply to the test server.
  * @param applyAuth Whether to apply auth middleware to the test server.
+ * @param namespaces Namespaces of endpoints to apply to the test server.
  */
 export function initTestServer({
 	applyAuth,
