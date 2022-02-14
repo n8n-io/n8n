@@ -130,6 +130,9 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 	});
 
 	expect(response.statusCode).toBe(400);
+
+	const user = await Db.collections.User!.findOne(idToDelete);
+	expect(user).toBeDefined();
 });
 
 test('DELETE /users/:id with transferId should perform transfer', async () => {
