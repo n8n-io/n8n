@@ -188,7 +188,7 @@ test('POST /change-password should succeed with valid inputs', async () => {
 
 	const response = await authOwnerAgent.post('/change-password').send({
 		token: resetPasswordToken,
-		id: INITIAL_TEST_USER.id,
+		userId: INITIAL_TEST_USER.id,
 		password: passwordToSend,
 	});
 
