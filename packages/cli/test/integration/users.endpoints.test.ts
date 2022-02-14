@@ -25,7 +25,7 @@ let globalMemberRole: Role;
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
 	await utils.initTestDb();
-	await utils.truncateUserTable();
+
 
 	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
 		name: 'owner',
@@ -43,6 +43,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+	await utils.truncateUserTable();
+
 	jest.isolateModules(() => {
 		jest.mock('../../config');
 	});
@@ -74,9 +76,12 @@ test('GET /users should return all users', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
+	await createMember(globalMemberRole);
+
 	const response = await authOwnerAgent.get('/users');
 
 	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(2);
 
 	for (const user of response.body.data) {
 		const {
