@@ -16,12 +16,10 @@ export default mixins(showMessage).extend({
 	methods: {
 		loadWorkflow() {
 			try {
-				const workflow = JSON.parse(this.workflow);
-
-				if (!workflow) {
+				if (!this.workflow) {
 					throw new Error('Missing workflow');
 				}
-				if (!workflow.nodes || !Array.isArray(workflow.nodes)) {
+				if (!this.workflow.nodes || !Array.isArray(this.workflow.nodes)) {
 					throw new Error('Must have an array of nodes');
 				}
 
@@ -30,7 +28,7 @@ export default mixins(showMessage).extend({
 					iframe.contentWindow.postMessage(
 						JSON.stringify({
 							command: 'openWorkflow',
-							workflow,
+							workflow: this.workflow,
 						}),
 						'*',
 					);
