@@ -6,14 +6,26 @@ import * as utils from './shared/utils';
 import { Db } from '../../src';
 import config = require('../../config');
 import { compare } from 'bcryptjs';
-import { randomEmail, randomInvalidPassword, randomName, randomValidPassword } from './shared/random';
+import {
+	randomEmail,
+	randomInvalidPassword,
+	randomName,
+	randomValidPassword,
+} from './shared/random';
+import { Role } from '../../src/databases/entities/Role';
 
 let app: express.Application;
+let globalOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['passwordReset'], applyAuth: true });
 	await utils.initTestDb();
 	await utils.truncateUserTable();
+
+	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
+		name: 'owner',
+		scope: 'global',
+	});
 });
 
 beforeEach(async () => {
@@ -23,11 +35,6 @@ beforeEach(async () => {
 
 	config.set('userManagement.hasOwner', true);
 	config.set('userManagement.emails.mode', '');
-
-	const globalOwnerRole = await Db.collections.Role!.findOneOrFail({
-		name: 'owner',
-		scope: 'global',
-	});
 
 	await Db.collections.User!.save({
 		id: INITIAL_TEST_USER.id,
@@ -111,9 +118,7 @@ test('POST /forgot-password should fail if user is not found', async () => {
 
 	config.set('userManagement.emails.mode', 'smtp');
 
-	const response = await authOwnerAgent
-		.post('/forgot-password')
-		.send({ email: randomEmail() });
+	const response = await authOwnerAgent.post('/forgot-password').send({ email: randomEmail() });
 
 	expect(response.statusCode).toBe(404);
 });
