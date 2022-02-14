@@ -119,6 +119,13 @@ export async function getWorkflowOwnerRole() {
 	});
 }
 
+export async function getCredentialOwnerRole() {
+	return await Db.collections.Role!.findOneOrFail({
+		name: 'owner',
+		scope: 'credential',
+	});
+}
+
 // ----------------------------------
 //           request agent
 // ----------------------------------

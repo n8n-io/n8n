@@ -16,7 +16,15 @@ import {
 	randomName,
 	randomInvalidPassword,
 } from './shared/random';
-import { createMember, getGlobalMemberRole, getGlobalOwnerRole, getWorkflowOwnerRole } from './shared/utils';
+import {
+	createMember,
+	getCredentialOwnerRole,
+	getGlobalMemberRole,
+	getGlobalOwnerRole,
+	getWorkflowOwnerRole,
+} from './shared/utils';
+import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
+import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 
 let app: express.Application;
 let globalOwnerRole: Role;
@@ -143,6 +151,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
 	const workflowOwnerRole = await getWorkflowOwnerRole();
+	const credentialOwnerRole = await getCredentialOwnerRole();
 
 	const userToDelete = await Db.collections.User!.save({
 		id: uuid(),
@@ -155,16 +164,37 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 		globalRole: workflowOwnerRole,
 	});
 
-	const savedWorkflow = await Db.collections.Workflow!.save({
+	const newWorkflow = new WorkflowEntity();
+
+	Object.assign(newWorkflow, {
 		name: randomName(),
 		active: false,
 		connections: {},
 	});
 
+	const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
+
 	await Db.collections.SharedWorkflow!.save({
 		role: workflowOwnerRole,
 		user: userToDelete,
 		workflow: savedWorkflow,
+	});
+
+	const newCredential = new CredentialsEntity();
+
+	Object.assign(newCredential, {
+		name: randomName(),
+		data: '',
+		type: '',
+		nodesAccess: [],
+	});
+
+	const savedCredential = await Db.collections.Credentials!.save(newCredential);
+
+	await Db.collections.SharedCredentials!.save({
+		role: credentialOwnerRole,
+		user: userToDelete,
+		credentials: savedCredential,
 	});
 
 	const response = await authOwnerAgent.delete(`/users/${userToDelete.id}`).query({
@@ -173,12 +203,21 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	const shared = await Db.collections.SharedWorkflow!.findOneOrFail({
+	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
 		relations: ['user'],
 		where: { user: owner },
 	});
 
-	expect(shared.user.id).toBe(owner.id);
+	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
+		relations: ['user'],
+		where: { user: owner },
+	});
+
+	const deletedUser = await Db.collections.User!.findOne(userToDelete);
+
+	expect(sharedWorkflow.user.id).toBe(owner.id);
+	expect(sharedCredential.user.id).toBe(owner.id);
+	expect(deletedUser).toBeUndefined();
 });
 
 test('GET /resolve-signup-token should validate invite token', async () => {
