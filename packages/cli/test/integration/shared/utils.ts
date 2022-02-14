@@ -19,12 +19,9 @@ import { getConnection } from 'typeorm';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import type { EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
 
-/**
- * Get an SMTP test account from https://ethereal.email to test sending emails.
- */
-export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
-
-export const isTestRun = process.argv[1].split('/').includes('jest');
+// ----------------------------------
+//            test server
+// ----------------------------------
 
 /**
  * Initialize a test server to make requests to.
@@ -70,6 +67,10 @@ export function initTestServer({
 	return testServer.app;
 }
 
+// ----------------------------------
+//            test DB
+// ----------------------------------
+
 export async function initTestDb() {
 	await Db.init();
 	await getConnection().runMigrations({ transaction: 'none' });
@@ -80,6 +81,10 @@ export async function truncateUserTable() {
 	await Db.collections.User!.clear();
 	await getConnection().query('PRAGMA foreign_keys=ON');
 }
+
+// ----------------------------------
+//           request agent
+// ----------------------------------
 
 export async function createAuthAgent(app: express.Application, user: User) {
 	const agent = request.agent(app);
@@ -101,8 +106,7 @@ export async function createAuthlessAgent(app: express.Application) {
 /**
  * Plugin to prefix a path segment into a request URL pathname.
  *
- * Example:
- * http://127.0.0.1:62100/me/password → http://127.0.0.1:62100/rest/me/password
+ * Example: http://127.0.0.1:62100/me/password → http://127.0.0.1:62100/rest/me/password
  */
 export function prefix(pathSegment: string) {
 	return function (request: superagent.SuperAgentRequest) {
@@ -118,14 +122,6 @@ export function prefix(pathSegment: string) {
 
 		return request;
 	};
-}
-
-export async function getHasOwnerSetting() {
-	const { value } = await Db.collections.Settings!.findOneOrFail({
-		key: 'userManagement.hasOwner',
-	});
-
-	return Boolean(value);
 }
 
 /**
@@ -148,3 +144,26 @@ export function getAuthToken(response: request.Response, authCookieName = 'n8n-a
 
 	return match.groups.token;
 }
+
+// ----------------------------------
+//            settings
+// ----------------------------------
+
+export async function getHasOwnerSetting() {
+	const { value } = await Db.collections.Settings!.findOneOrFail({
+		key: 'userManagement.hasOwner',
+	});
+
+	return Boolean(value);
+}
+
+// ----------------------------------
+//              SMTP
+// ----------------------------------
+
+/**
+ * Get an SMTP test account from https://ethereal.email to test sending emails.
+ */
+export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
+
+export const isTestRun = process.argv[1].split('/').includes('jest');
