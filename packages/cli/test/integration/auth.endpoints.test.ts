@@ -3,17 +3,20 @@ import express = require('express');
 import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
-import * as request from 'supertest';
 
 import config = require('../../config');
 import * as utils from './shared/utils';
-import { LOGGED_OUT_RESPONSE_BODY, REST_PATH_SEGMENT } from './shared/constants';
+import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
+import { Role } from '../../src/databases/entities/Role';
+import { randomEmail, randomValidPassword, randomName } from './shared/random';
+import { getGlobalOwnerRole } from './shared/utils';
 
 describe('auth endpoints', () => {
 	describe('Owner requests', () => {
 		let app: express.Application;
+		let globalOwnerRole: Role;
 
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['auth'], applyAuth: true });
@@ -22,11 +25,9 @@ describe('auth endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const globalOwnerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+			globalOwnerRole = await getGlobalOwnerRole();
 
-			const newOwner = new User();
-
-			Object.assign(newOwner, {
+			await Db.collections.User!.save({
 				id: uuid(),
 				email: TEST_USER.email,
 				firstName: TEST_USER.firstName,
@@ -34,8 +35,6 @@ describe('auth endpoints', () => {
 				password: hashSync(TEST_USER.password, genSaltSync(10)),
 				globalRole: globalOwnerRole,
 			});
-
-			await Db.collections.User!.save(newOwner);
 
 			config.set('userManagement.hasOwner', true);
 
@@ -124,7 +123,7 @@ describe('auth endpoints', () => {
 			expect(response.headers['set-cookie']).toBeUndefined();
 		});
 
-		test('GET /logout should log user out', async () => {
+		test('POST /logout should log user out', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
@@ -140,8 +139,8 @@ describe('auth endpoints', () => {
 });
 
 const TEST_USER = {
-	email: utils.randomEmail(),
-	password: utils.randomValidPassword(),
-	firstName: utils.randomName(),
-	lastName: utils.randomName(),
+	email: randomEmail(),
+	password: randomValidPassword(),
+	firstName: randomName(),
+	lastName: randomName(),
 };

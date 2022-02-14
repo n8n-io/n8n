@@ -9,7 +9,7 @@ import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
 import { UserRequest } from '../../requests';
 import {
-	getInstanceDomain,
+	getInstanceBaseUrl,
 	isEmailSetUp,
 	sanitizeUser,
 	validatePassword,
@@ -18,8 +18,10 @@ import { User } from '../../databases/entities/User';
 import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import { getInstance } from '../email/UserManagementMailer';
-import { issueJWT } from '../auth/jwt';
+
 import config = require('../../../config');
+import { LoggerProxy } from '../../../../workflow/dist/src';
+import { issueCookie } from '../auth/jwt';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -42,35 +44,24 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (!req.body.length) return [];
 
-			// eslint-disable-next-line no-restricted-syntax
-			for (const invite of req.body) {
+			const createUsers: { [key: string]: string | null } = {};
+			// Validate payload
+			req.body.forEach((invite) => {
 				if (typeof invite !== 'object' || !invite.email) {
 					throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 				}
-			}
 
-			const createUsers: { [key: string]: string | null } = {};
-			// Validate payload
-			req.body.forEach((invitation) => {
-				if (!validator.isEmail(invitation.email)) {
+				if (!validator.isEmail(invite.email)) {
 					throw new ResponseHelper.ResponseError(
-						`Invalid email address ${invitation.email}`,
+						`Invalid email address ${invite.email}`,
 						undefined,
 						400,
 					);
 				}
-				createUsers[invitation.email] = null;
+				createUsers[invite.email] = null;
 			});
 
 			const role = await Db.collections.Role!.findOne({ scope: 'global', name: 'member' });
-
-			const invites = req.body;
-
-			invites.forEach(({ email }) => {
-				if (!validator.isEmail(email)) {
-					throw new ResponseHelper.ResponseError(`Invalid email address: ${email}`, undefined, 400);
-				}
-			});
 
 			// remove/exclude existing users from creation
 			const existingUsers = await Db.collections.User!.find({
@@ -105,7 +96,7 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError(`An error occurred during user creation`);
 			}
 
-			const domain = getInstanceDomain();
+			const baseUrl = getInstanceBaseUrl();
 
 			// send invite email to new or not yet setup users
 			const mailer = getInstance();
@@ -115,11 +106,11 @@ export function usersNamespace(this: N8nApp): void {
 					.filter(([email, id]) => id && email)
 					.map(async ([email, id]) => {
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-						const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
+						const inviteAcceptUrl = `${baseUrl}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
 						const result = await mailer.invite({
 							email,
 							inviteAcceptUrl,
-							domain,
+							domain: baseUrl,
 						});
 						const resp: { id: string | null; email: string; error?: string } = {
 							id,
@@ -144,6 +135,10 @@ export function usersNamespace(this: N8nApp): void {
 			const { inviterId, inviteeId } = req.query;
 
 			if (!inviterId || !inviteeId) {
+				LoggerProxy.error('Invalid invite URL - did not receive user IDs', {
+					inviterId,
+					inviteeId,
+				});
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
@@ -207,8 +202,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const updatedUser = await Db.collections.User!.save(invitee);
 
-			const userData = await issueJWT(updatedUser);
-			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+			await issueCookie(res, updatedUser);
 
 			return sanitizeUser(updatedUser);
 		}),
@@ -237,7 +231,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const { transferId } = req.query;
 
-			if (transferId && transferId === idToDelete) {
+			if (transferId === idToDelete) {
 				throw new ResponseHelper.ResponseError(
 					'User to delete and transferee cannot be the same',
 					undefined,
@@ -325,12 +319,12 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const domain = getInstanceDomain();
+			const baseUrl = getInstanceBaseUrl();
 
 			const result = await getInstance().invite({
 				email: reinvitee.email,
-				inviteAcceptUrl: `${domain}/signup/inviterId=${req.user.id}&inviteeId=${reinvitee.id}`,
-				domain,
+				inviteAcceptUrl: `${baseUrl}/signup/inviterId=${req.user.id}&inviteeId=${reinvitee.id}`,
+				domain: baseUrl,
 			});
 
 			if (!result.success) {

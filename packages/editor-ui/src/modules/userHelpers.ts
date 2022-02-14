@@ -139,6 +139,9 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 				return false;
 			}
 		}
+		else if (permissions.deny.role) {
+			return false;
+		}
 	}
 
 	if (permissions.allow) {
