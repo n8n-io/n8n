@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
+import { LoggerProxy } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -16,6 +17,9 @@ import {
 	IWorkflowDb,
 } from '.';
 import { isTestRun } from '../test/integration/shared/utils';
+import { getLogger } from './Logger';
+
+LoggerProxy.init(getLogger());
 
 /**
  * Special Error which allows to return also an error code and http status code
@@ -55,6 +59,8 @@ export class ResponseError extends Error {
 		if (hint) {
 			this.hint = hint;
 		}
+
+		LoggerProxy.verbose('Sent error response sent to client', { errorResponse: this });
 	}
 }
 

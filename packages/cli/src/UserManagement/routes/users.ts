@@ -15,12 +15,16 @@ import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import { getInstance } from '../email/UserManagementMailer';
 import { issueCookie } from '../auth/jwt';
+import { getLogger } from '../../Logger';
+
+LoggerProxy.init(getLogger());
 
 export function usersNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: UserRequest.Invite) => {
 			if (!isEmailSetup()) {
+				LoggerProxy.error('Attempted to send invite email without emailing being set up');
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
 					undefined,
@@ -38,6 +42,7 @@ export function usersNamespace(this: N8nApp): void {
 			// Validate payload
 			invitations.forEach((invitation) => {
 				if (!validator.isEmail(invitation.email)) {
+					LoggerProxy.error('Invalid email in payload at POST /users');
 					throw new ResponseHelper.ResponseError(
 						`Invalid email address ${invitation.email}`,
 						undefined,
@@ -50,6 +55,7 @@ export function usersNamespace(this: N8nApp): void {
 			const role = await Db.collections.Role!.findOne({ scope: 'global', name: 'member' });
 
 			if (!role) {
+				LoggerProxy.error('Failed to find global member role in DB at POST /users');
 				throw new ResponseHelper.ResponseError(
 					'Members role not found in database - inconsistent state',
 					undefined,
@@ -69,6 +75,8 @@ export function usersNamespace(this: N8nApp): void {
 				createUsers[user.email] = user.id;
 			});
 
+			LoggerProxy.debug('Creating user shells at POST /users', { createUsers });
+
 			try {
 				await getConnection().transaction(async (transactionManager) => {
 					return Promise.all(
@@ -86,9 +94,11 @@ export function usersNamespace(this: N8nApp): void {
 					);
 				});
 			} catch (error) {
-				// TODO: Logger
+				LoggerProxy.error('Failed to create user shells at POST /users', { createUsers });
 				throw new ResponseHelper.ResponseError(`An error occurred during user creation`);
 			}
+
+			LoggerProxy.debug('Created user shells successfully at POST /users', { createUsers });
 
 			let domain = GenericHelpers.getBaseUrl();
 			if (domain.endsWith('/')) {
@@ -97,7 +107,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			// send invite email to new or not yet setup users
 			const mailer = getInstance();
-			return Promise.all(
+			await Promise.all(
 				Object.entries(createUsers)
 					.filter(([email, id]) => id && email)
 					.map(async ([email, id]) => {
@@ -113,12 +123,19 @@ export function usersNamespace(this: N8nApp): void {
 							email,
 						};
 						if (!result.success) {
-							// TODO: Logger
+							LoggerProxy.debug('Failed to send email', { inviteAcceptUrl, domain, email, result });
 							resp.error = `Email could not be sent`;
 						}
 						return resp;
 					}),
 			);
+
+			const emails =
+				Object.entries(createUsers).filter(([email, id]) => id && email).length > 1
+					? 'emails'
+					: 'email';
+
+			LoggerProxy.debug(`Sent invite ${emails} successfully at POST /users`, { createUsers });
 		}),
 	);
 
@@ -129,7 +146,7 @@ export function usersNamespace(this: N8nApp): void {
 			const inviteeId = req.query.inviteeId as string;
 
 			if (!inviterId || !inviteeId) {
-				LoggerProxy.error('Invalid invite URL - did not receive user IDs', {
+				LoggerProxy.error('Missing user IDs at GET /resolve-signup-token', {
 					inviterId,
 					inviteeId,
 				});
@@ -139,17 +156,22 @@ export function usersNamespace(this: N8nApp): void {
 			const users = await Db.collections.User!.find({ where: { id: In([inviterId, inviteeId]) } });
 
 			if (users.length !== 2) {
-				LoggerProxy.error('Invalid invite URL - did not find users', { inviterId, inviteeId });
+				LoggerProxy.error('Invalid user IDs at GET /resolve-signup-token', {
+					inviterId,
+					inviteeId,
+				});
 				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 500);
 			}
 
 			const inviter = users.find((user) => user.id === inviterId);
 
 			if (!inviter || !inviter.email || !inviter.firstName) {
-				LoggerProxy.error('Invalid invite URL - inviter does not have email set', {
-					inviterId,
-					inviteeId,
-				});
+				LoggerProxy.error(
+					'Missing inviter or inviter email or inviter firstName at GET /resolve-signup-token',
+					{
+						inviter,
+					},
+				);
 				throw new ResponseHelper.ResponseError('Invalid request', undefined, 500);
 			}
 			const { firstName, lastName } = inviter;
@@ -178,6 +200,7 @@ export function usersNamespace(this: N8nApp): void {
 			};
 
 			if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
+				LoggerProxy.error('Invalid payload at POST /users/:id', { payload: req.body });
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 500);
 			}
 
@@ -186,12 +209,19 @@ export function usersNamespace(this: N8nApp): void {
 			});
 
 			if (users.length !== 2) {
+				LoggerProxy.error('Invalid user IDs at POST /users/:id', {
+					inviterId,
+					inviteeId,
+				});
 				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 500);
 			}
 
 			const invitee = users.find((user) => user.id === inviteeId);
 
 			if (!invitee || invitee.password) {
+				LoggerProxy.error('Attempted to accept already accepted invite at POST /users/:id', {
+					inviteeId,
+				});
 				throw new ResponseHelper.ResponseError(
 					'This invite has been accepted already',
 					undefined,
@@ -224,6 +254,7 @@ export function usersNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/users/:id`,
 		ResponseHelper.send(async (req: UserRequest.Delete) => {
 			if (req.user.id === req.params.id) {
+				LoggerProxy.error('Attempted to delete self', { userId: req.user.id });
 				throw new ResponseHelper.ResponseError('You cannot delete your own user', undefined, 400);
 			}
 
@@ -288,6 +319,9 @@ export function usersNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/users/:id/reinvite`,
 		ResponseHelper.send(async (req: UserRequest.Reinvite) => {
 			if (!isEmailSetup()) {
+				LoggerProxy.error(
+					'Attempted to send reinvite user without email sending being set up at /users/:id/reinvite',
+				);
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
 					undefined,
@@ -298,10 +332,19 @@ export function usersNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ id: req.params.id });
 
 			if (!user) {
+				LoggerProxy.error(
+					'Attempted to send reinvite user without email sending being set up at /users/:id/reinvite',
+				);
 				throw new ResponseHelper.ResponseError('User not found', undefined, 404);
 			}
 
 			if (user.password) {
+				LoggerProxy.error(
+					'Attempted to accept already accepted invite at POST /users/:id/reinvite',
+					{
+						userId: user.id,
+					},
+				);
 				throw new ResponseHelper.ResponseError(
 					'User has already accepted the invite',
 					undefined,
@@ -324,6 +367,12 @@ export function usersNamespace(this: N8nApp): void {
 			});
 
 			if (!result.success) {
+				LoggerProxy.debug('Failed to send email', {
+					inviteAcceptUrl,
+					email: user.email,
+					domain,
+					result,
+				});
 				throw new ResponseHelper.ResponseError(
 					`Failed to send email to ${user.email}`,
 					undefined,

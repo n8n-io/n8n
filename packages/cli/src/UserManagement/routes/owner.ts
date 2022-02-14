@@ -3,6 +3,7 @@
 import { hashSync, genSaltSync } from 'bcryptjs';
 import * as express from 'express';
 import validator from 'validator';
+import { LoggerProxy } from 'n8n-workflow';
 
 import { Db, ResponseHelper } from '../..';
 import config = require('../../../config');
@@ -12,6 +13,9 @@ import { OwnerRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
 import { sanitizeUser } from '../UserManagementHelper';
+import { getLogger } from '../../Logger';
+
+LoggerProxy.init(getLogger());
 
 export function ownerNamespace(this: N8nApp): void {
 	/**
@@ -25,14 +29,22 @@ export function ownerNamespace(this: N8nApp): void {
 			const { id: userId } = req.user;
 
 			if (config.get('userManagement.hasOwner')) {
+				LoggerProxy.error('Attempted to create owner when owner already exists at POST /owner', {
+					userId,
+				});
 				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 			}
 
 			if (!email || !validator.isEmail(email)) {
+				LoggerProxy.error('Invalid email in payload at POST /owner', {
+					userId,
+					email,
+				});
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
 			if (!password) {
+				LoggerProxy.error('Empty password in payload at POST /owner', { userId });
 				throw new ResponseHelper.ResponseError(
 					'Password does not comply to security standards',
 					undefined,
@@ -41,6 +53,10 @@ export function ownerNamespace(this: N8nApp): void {
 			}
 
 			if (!firstName || !lastName) {
+				LoggerProxy.error('Missing firstName or lastName in payload at POST /owner', {
+					firstName,
+					lastName,
+				});
 				throw new ResponseHelper.ResponseError(
 					'First and last names are mandatory',
 					undefined,
@@ -68,12 +84,16 @@ export function ownerNamespace(this: N8nApp): void {
 
 			const owner = await Db.collections.User!.save(newUser);
 
+			LoggerProxy.debug('Owner saved successfully at POST /owner', { userId: req.user.id });
+
 			config.set('userManagement.hasOwner', true);
 
 			await Db.collections.Settings!.update(
 				{ key: 'userManagement.hasOwner' },
 				{ value: JSON.stringify(true) },
 			);
+
+			LoggerProxy.debug('Setting hasOwner updated successfully at POST /owner', { hasOwner: true });
 
 			await issueCookie(res, owner);
 
