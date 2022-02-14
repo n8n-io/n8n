@@ -17,8 +17,7 @@ import { authenticationMethods as authEndpoints } from '../../../src/UserManagem
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { getConnection } from 'typeorm';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
-import { N8nApp } from '../../../src/UserManagement/Interfaces';
-import type { SmtpTestAccount } from './types';
+import type { EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
 
 /**
  * Get an SMTP test account from https://ethereal.email to test sending emails.
@@ -26,8 +25,6 @@ import type { SmtpTestAccount } from './types';
 export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
 
 export const isTestRun = process.argv[1].split('/').includes('jest');
-
-type EndpointNamespace = 'me' | 'users' | 'auth' | 'owner';
 
 /**
  * Initialize a test server to make requests to.
@@ -58,7 +55,7 @@ export function initTestServer({
 	}
 
 	if (namespaces) {
-		const map: Readonly<Record<EndpointNamespace, (this: N8nApp) => void>> = {
+		const map: NamespacesMap = {
 			me: meEndpoints,
 			users: usersEndpoints,
 			auth: authEndpoints,

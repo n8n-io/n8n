@@ -1,3 +1,5 @@
+import type { N8nApp } from "../../../src/UserManagement/Interfaces";
+
 export type SmtpTestAccount = {
 	user: string;
 	pass: string;
@@ -7,3 +9,7 @@ export type SmtpTestAccount = {
 		secure: boolean;
 	};
 };
+
+export type EndpointNamespace = 'me' | 'users' | 'auth' | 'owner';
+
+export type NamespacesMap = Readonly<Record<EndpointNamespace, (this: N8nApp) => void>>;
