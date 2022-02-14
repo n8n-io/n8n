@@ -10,10 +10,12 @@ import * as utils from './shared/utils';
 import { LOGGED_OUT_RESPONSE_BODY, REST_PATH_SEGMENT } from './shared/constants';
 import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
+import { Role } from '../../src/databases/entities/Role';
 
 describe('auth endpoints', () => {
 	describe('Owner requests', () => {
 		let app: express.Application;
+		let globalOwnerRole: Role;
 
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['auth'], applyAuth: true });
@@ -22,7 +24,10 @@ describe('auth endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const globalOwnerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+			globalOwnerRole = await Db.collections.Role!.findOneOrFail({
+				name: 'owner',
+				scope: 'global',
+			});
 
 			const newOwner = new User();
 

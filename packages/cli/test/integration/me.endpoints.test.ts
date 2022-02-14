@@ -9,6 +9,9 @@ import * as utils from './shared/utils';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
+import { Role } from '../../src/databases/entities/Role';
+
+let globalOwnerRole: Role;
 
 describe('/me endpoints', () => {
 	describe('Shell requests', () => {
@@ -18,11 +21,14 @@ describe('/me endpoints', () => {
 			app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
+
+			globalOwnerRole = await Db.collections.Role!.findOneOrFail({
+				name: 'owner',
+				scope: 'global',
+			});
 		});
 
 		beforeEach(async () => {
-			const globalOwnerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
-
 			await Db.collections.User!.save({
 				id: uuid(),
 				createdAt: new Date(),
@@ -167,7 +173,10 @@ describe('/me endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const globalMemberRole = await Db.collections.Role!.findOneOrFail({ name: 'member', scope: 'global' });
+			const globalMemberRole = await Db.collections.Role!.findOneOrFail({
+				name: 'member',
+				scope: 'global',
+			});
 
 			const newMember = new User();
 
@@ -326,7 +335,10 @@ describe('/me endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const globalOwnerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
+			const globalOwnerRole = await Db.collections.Role!.findOneOrFail({
+				name: 'owner',
+				scope: 'global',
+			});
 
 			const newOwner = new User();
 

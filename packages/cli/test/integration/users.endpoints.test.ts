@@ -9,13 +9,21 @@ import config = require('../../config');
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { getLogger } from '../../src/Logger';
 import { LoggerProxy } from 'n8n-workflow';
+import { Role } from '../../src/databases/entities/Role';
 
 let app: express.Application;
+let globalOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
 	await utils.initTestDb();
 	await utils.truncateUserTable();
+
+	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
+		name: 'owner',
+		scope: 'global',
+	});
+
 	config.set('logs.output', 'file'); // declutter console output
 	const logger = getLogger();
 	LoggerProxy.init(logger);
@@ -28,11 +36,6 @@ beforeEach(async () => {
 
 	config.set('userManagement.hasOwner', true);
 	config.set('userManagement.emails.mode', '');
-
-	const globalOwnerRole = await Db.collections.Role!.findOneOrFail({
-		name: 'owner',
-		scope: 'global',
-	});
 
 	await Db.collections.User!.save({
 		id: INITIAL_TEST_USER.id,

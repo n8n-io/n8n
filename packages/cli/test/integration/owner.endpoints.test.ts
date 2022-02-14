@@ -6,6 +6,9 @@ import { v4 as uuid } from 'uuid';
 import * as utils from './shared/utils';
 import { Db } from '../../src';
 import config = require('../../config');
+import { Role } from '../../src/databases/entities/Role';
+
+let globalOwnerRole: Role;
 
 describe('/owner endpoints', () => {
 	describe('Shell requests', () => {
@@ -15,11 +18,14 @@ describe('/owner endpoints', () => {
 			app = utils.initTestServer({ namespaces: ['owner'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
+
+			globalOwnerRole = await Db.collections.Role!.findOneOrFail({
+				name: 'owner',
+				scope: 'global',
+			});
 		});
 
 		beforeEach(async () => {
-			const globalOwnerRole = await Db.collections.Role!.findOneOrFail({ name: 'owner', scope: 'global' });
-
 			await Db.collections.User!.save({
 				id: uuid(),
 				createdAt: new Date(),
