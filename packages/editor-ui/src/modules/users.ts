@@ -1,4 +1,4 @@
-import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
+import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
@@ -12,7 +12,7 @@ import {
 } from '../Interface';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from './userHelpers';
 
-const isDefaultUser = (user: IUserResponse | null) => Boolean(user && !user.email);
+const isDefaultUser = (user: IUserResponse | null) => Boolean(user && !user.email && user.globalRole && user.globalRole.name === ROLE.Owner);
 
 const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.email && !user.firstName && !user.lastName);
 
