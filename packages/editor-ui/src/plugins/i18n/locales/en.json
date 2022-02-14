@@ -305,10 +305,10 @@
 				"message": "Are you sure that you want to delete the workflow {workflowName}?"
 			},
 			"workflowNew": {
-				"cancelButtonText": "",
-				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Unsaved changes",
-				"message": "You are about to close this workflow without saving. All unsaved changes will be lost."
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
 			}
 		},
 		"credentials": "Credentials",
@@ -512,16 +512,16 @@
 		"addNode": "Add node",
 		"confirmMessage": {
 			"beforeRouteLeave": {
-				"cancelButtonText": "",
-				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Unsaved changes",
-				"message": "You are about to close this workflow without saving. All unsaved changes will be lost."
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
 			},
 			"initView": {
-				"cancelButtonText": "",
-				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Unsaved changes",
-				"message": "You are about to close this workflow without saving. All unsaved changes will be lost."
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
 			},
 			"receivedCopyPasteData": {
 				"cancelButtonText": "",
@@ -964,10 +964,10 @@
 	"workflowOpen": {
 		"active": "Active",
 		"confirmMessage": {
-			"cancelButtonText": "",
-			"confirmButtonText": "Yes, switch workflows and forget changes",
-			"headline": "Unsaved changes",
-			"message": "You are about to close this workflow without saving. All unsaved changes will be lost."
+			"cancelButtonText": "Leave without saving",
+			"confirmButtonText": "Save",
+			"headline": "Save changes before leaving?",
+			"message": "If you don't save, you will lose your changes."
 		},
 		"created": "Created",
 		"name": "@:reusableBaseText.name",

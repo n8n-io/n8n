@@ -157,7 +157,8 @@ Vue.prototype.$confirm = async (message: string, configOrTitle: string | ElMessa
 		roundButton: true,
 		cancelButtonClass: 'btn--cancel',
 		confirmButtonClass: 'btn--confirm',
-		showClose: false,
+		distinguishCancelAndClose: true,
+		showClose: config.showClose ? config.showClose : false,
 		closeOnClickModal: false,
 	};
 

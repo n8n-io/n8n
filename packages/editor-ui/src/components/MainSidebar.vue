@@ -176,7 +176,19 @@ import { saveAs } from 'file-saver';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
-import { CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, EXECUTIONS_MODAL_KEY } from '@/constants';
+import {
+	CREDENTIAL_LIST_MODAL_KEY,
+	CREDENTIAL_SELECT_MODAL_KEY,
+	DUPLICATE_MODAL_KEY,
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRMED,
+	TAGS_MANAGER_MODAL_KEY,
+	VERSIONS_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_OPEN_MODAL_KEY,
+	EXECUTIONS_MODAL_KEY,
+} from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -470,14 +482,31 @@ export default mixins(
 				} else if (key === 'workflow-new') {
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
-						const importConfirm = await this.confirmMessage(
+						const confirmModal = await this.confirmModal(
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.message'),
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.headline'),
 							'warning',
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.confirmButtonText'),
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.cancelButtonText'),
+							true,
 						);
-						if (importConfirm === true) {
+
+						if (confirmModal === MODAL_CONFIRMED) {
+							const saved = await this.saveCurrentWorkflow();
+							if (saved) this.$store.dispatch('settings/fetchPromptsData');
+
+							if (this.$router.currentRoute.name === 'NodeViewNew') {
+								this.$root.$emit('newWorkflow');
+							} else {
+								this.$router.push({ name: 'NodeViewNew' });
+							}
+
+							this.$showMessage({
+								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
+								message: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.message'),
+								type: 'success',
+							});
+						} else if (confirmModal === MODAL_CANCEL) {
 							this.$store.commit('setStateDirty', false);
 							if (this.$router.currentRoute.name === 'NodeViewNew') {
 								this.$root.$emit('newWorkflow');
@@ -490,6 +519,8 @@ export default mixins(
 								message: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.message'),
 								type: 'success',
 							});
+						} else if (confirmModal === MODAL_CLOSE) {
+							return;
 						}
 					} else {
 						if (this.$router.currentRoute.name !== 'NodeViewNew') {
