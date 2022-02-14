@@ -127,7 +127,7 @@ describe('auth endpoints', () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-			const response = await authOwnerAgent.get('/logout');
+			const response = await authOwnerAgent.post('/logout');
 
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(LOGGED_OUT_RESPONSE_BODY);
