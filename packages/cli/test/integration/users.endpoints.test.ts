@@ -382,6 +382,9 @@ test('POST /users should ignore an empty payload', async () => {
 	expect(response.statusCode).toBe(200);
 	expect(Array.isArray(data)).toBe(true);
 	expect(data.length).toBe(0);
+
+	const users = await Db.collections.User!.find();
+	expect(users.length).toBe(1);
 });
 
 // TODO: UserManagementMailer is a singleton - cannot reinstantiate with wrong creds
