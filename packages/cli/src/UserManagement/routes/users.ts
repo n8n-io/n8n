@@ -20,6 +20,7 @@ import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import { getInstance } from '../email/UserManagementMailer';
 import { issueJWT } from '../auth/jwt';
 import config = require('../../../config');
+import { LoggerProxy } from '../../../../workflow/dist/src';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -133,6 +134,10 @@ export function usersNamespace(this: N8nApp): void {
 			const { inviterId, inviteeId } = req.query;
 
 			if (!inviterId || !inviteeId) {
+				LoggerProxy.error('Invalid invite URL - did not receive user IDs', {
+					inviterId,
+					inviteeId,
+				});
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
