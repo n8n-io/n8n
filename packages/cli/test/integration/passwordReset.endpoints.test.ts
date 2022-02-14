@@ -6,6 +6,7 @@ import * as utils from './shared/utils';
 import { Db } from '../../src';
 import config = require('../../config');
 import { compare } from 'bcryptjs';
+import { randomEmail, randomInvalidPassword, randomName, randomValidPassword } from './shared/random';
 
 let app: express.Application;
 
@@ -91,11 +92,11 @@ test('POST /forgot-password should fail with invalid inputs', async () => {
 	config.set('userManagement.emails.mode', 'smtp');
 
 	const invalidPayloads = [
-		utils.randomEmail(),
-		[utils.randomEmail()],
+		randomEmail(),
+		[randomEmail()],
 		{},
-		[{ name: utils.randomName() }],
-		[{ email: utils.randomName() }],
+		[{ name: randomName() }],
+		[{ email: randomName() }],
 	];
 
 	for (const invalidPayload of invalidPayloads) {
@@ -112,7 +113,7 @@ test('POST /forgot-password should fail if user is not found', async () => {
 
 	const response = await authOwnerAgent
 		.post('/forgot-password')
-		.send({ email: utils.randomEmail() });
+		.send({ email: randomEmail() });
 
 	expect(response.statusCode).toBe(404);
 });
@@ -169,7 +170,7 @@ test('POST /change-password should succeed with valid inputs', async () => {
 	const resetPasswordToken = uuid();
 	await Db.collections.User!.update(INITIAL_TEST_USER.id, { resetPasswordToken });
 
-	const passwordToSet = utils.randomValidPassword();
+	const passwordToSet = randomValidPassword();
 
 	const response = await authOwnerAgent.post('/change-password').send({
 		token: resetPasswordToken,
@@ -200,18 +201,18 @@ test('POST /change-password should fail with invalid inputs', async () => {
 	const invalidPayloads = [
 		{ token: uuid() },
 		{ id: INITIAL_TEST_USER.id },
-		{ password: utils.randomValidPassword() },
+		{ password: randomValidPassword() },
 		{ token: uuid(), id: INITIAL_TEST_USER.id },
-		{ token: uuid(), password: utils.randomValidPassword() },
-		{ id: INITIAL_TEST_USER.id, password: utils.randomValidPassword() },
+		{ token: uuid(), password: randomValidPassword() },
+		{ id: INITIAL_TEST_USER.id, password: randomValidPassword() },
 		{
 			id: INITIAL_TEST_USER.id,
-			password: utils.randomInvalidPassword(),
+			password: randomInvalidPassword(),
 			token: resetPasswordToken,
 		},
 		{
 			id: INITIAL_TEST_USER.id,
-			password: utils.randomValidPassword(),
+			password: randomValidPassword(),
 			token: uuid(),
 		},
 	];
@@ -224,8 +225,8 @@ test('POST /change-password should fail with invalid inputs', async () => {
 
 const INITIAL_TEST_USER = {
 	id: uuid(),
-	email: utils.randomEmail(),
-	firstName: utils.randomName(),
-	lastName: utils.randomName(),
-	password: utils.randomValidPassword(),
+	email: randomEmail(),
+	firstName: randomName(),
+	lastName: randomName(),
+	password: randomValidPassword(),
 };
