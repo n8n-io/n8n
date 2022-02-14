@@ -123,8 +123,8 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 		const ownerUserId = uuid();
 		await queryRunner.query(
 			'INSERT INTO `' + tablePrefix + 'user` ' +
-			  '(id, firstName, lastName, createdAt, updatedAt, globalRoleId) values  ' +
-				'("' +  ownerUserId + '", "default", "default", NOW(), NOW(), ' + instanceOwnerRole[0].insertId + ')'
+			  '(id, globalRoleId) values  ' +
+				'("' +  ownerUserId + '", ' + instanceOwnerRole[0].insertId + ')'
 		);
 
 		await queryRunner.query(
