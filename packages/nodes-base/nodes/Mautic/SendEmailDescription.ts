@@ -7,6 +7,7 @@ export const sendEmailOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,7 @@ export const sendEmailOperations: INodeProperties[] = [
 			},
 		],
 		default: 'contact',
-		description: 'The operation to perform.',
+		description: 'Send email to contact or segment',
 	},
 ];
 
@@ -55,7 +56,6 @@ export const sendEmailFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCampaignEmails',
 		},
 		default: '',
-		description: 'Campaign Email ID',
 	},
 	{
 		displayName: 'Segment Email ID',
@@ -76,7 +76,6 @@ export const sendEmailFields: INodeProperties[] = [
 			loadOptionsMethod: 'getSegmentEmails',
 		},
 		default: '',
-		description: 'Segment Email ID',
 	},
 	{
 		displayName: 'Contact ID',
@@ -94,6 +93,5 @@ export const sendEmailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 ];

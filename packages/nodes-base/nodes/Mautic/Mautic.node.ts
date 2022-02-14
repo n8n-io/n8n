@@ -124,6 +124,7 @@ export class Mautic implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Campaign Contact',
@@ -146,9 +147,9 @@ export class Mautic implements INodeType {
 						description: 'Create & modify contacts',
 					},
 					{
-						name: 'Contact Segment',
-						value: 'contactSegment',
-						description: 'Add/remove contacts to/from a segment',
+						name: 'Contact Do Not Contact',
+						value: 'contactDnc',
+						description: 'Add/remove Contact to/from Do Not Contact',
 					},
 					{
 						name: 'Contact Point',
@@ -156,9 +157,9 @@ export class Mautic implements INodeType {
 						description: 'Add/remove points to/from a contact',
 					},
 					{
-						name: 'Contact Do Not Contact',
-						value: 'contactDnc',
-						description: 'Add/remove Contact to/from Do Not Contact',
+						name: 'Contact Segment',
+						value: 'contactSegment',
+						description: 'Add/remove contacts to/from a segment',
 					},
 					{
 						name: 'Send Email',
@@ -167,7 +168,7 @@ export class Mautic implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'Resource to consume.',
+				description: 'Resource to consume',
 			},
 			...companyOperations,
 			...companyFields,

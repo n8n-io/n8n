@@ -7,6 +7,7 @@ export const contactDncOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,7 @@ export const contactDncOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
+		description: 'Add or remove from Do Not Contact',
 	},
 ];
 
@@ -53,7 +54,6 @@ export const contactDncFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Channel',

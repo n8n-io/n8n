@@ -7,6 +7,7 @@ export const contactPointOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,7 @@ export const contactPointOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
+		description: 'Add or remove points',
 	},
 ];
 
@@ -53,7 +54,6 @@ export const contactPointFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'Points',
@@ -72,6 +72,5 @@ export const contactPointFields: INodeProperties[] = [
 			},
 		},
 		default: '0',
-		description: 'Points',
 	},
 ];
