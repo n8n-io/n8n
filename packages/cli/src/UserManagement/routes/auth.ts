@@ -6,8 +6,8 @@ import { compare } from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { IDataObject } from 'n8n-workflow';
 import { Db, ResponseHelper } from '../..';
-import { issueJWT } from '../auth/jwt';
-import { N8nApp, PublicUser } from '../Interfaces';
+import { issueJWT, resolveJwtContent } from '../auth/jwt';
+import { JwtPayload, N8nApp, PublicUser } from '../Interfaces';
 import config = require('../../../config');
 import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
@@ -30,9 +30,14 @@ export function authenticationMethods(this: N8nApp): void {
 
 			let user;
 			try {
-				user = await Db.collections.User!.findOne({
-					email: req.body.email as string,
-				});
+				user = await Db.collections.User!.findOne(
+					{
+						email: req.body.email as string,
+					},
+					{
+						relations: ['globalRole'],
+					},
+				);
 			} catch (error) {
 				throw new Error('Unable to access database.');
 			}
@@ -58,13 +63,16 @@ export function authenticationMethods(this: N8nApp): void {
 
 			const cookieContents = req.cookies?.['n8n-auth'] as string | undefined;
 
+			let user: User;
 			if (cookieContents) {
-				// If logged in, return user data (basically cookie contents)
+				// If logged in, return user
 				try {
-					return jwt.verify(
+					const jwtPayload = jwt.verify(
 						cookieContents,
-						config.get('userManagement.jwtSecret') as string,
-					) as PublicUser;
+						config.get('userManagement.jwtSecret'),
+					) as JwtPayload;
+					user = await resolveJwtContent(jwtPayload);
+					return sanitizeUser(user);
 				} catch (error) {
 					throw new Error('Invalid login information');
 				}
@@ -77,9 +85,8 @@ export function authenticationMethods(this: N8nApp): void {
 				throw error;
 			}
 
-			let user: User;
 			try {
-				user = await Db.collections.User!.findOneOrFail();
+				user = await Db.collections.User!.findOneOrFail({ relations: ['globalRole'] });
 			} catch (error) {
 				throw new Error(
 					'No users found in database - did you wipe the users table? Create at least one user.',
