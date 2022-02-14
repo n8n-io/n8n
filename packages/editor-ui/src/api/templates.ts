@@ -67,10 +67,7 @@ export async function getTemplateById(templateId: string): Promise<IN8nTemplateR
 				id
 				url
 			}
-			mainImage {
-				image:provider_metadata
-				workflowHash: hash
-			}
+			workflowInfo
 			nodes{
 				defaults
 				name
