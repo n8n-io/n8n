@@ -280,8 +280,8 @@ test('POST /users/:id should fill out a user shell', async () => {
 
 	const response = await authlessAgent.post(`/users/${userToFillOut.id}`).send({
 		inviterId: INITIAL_TEST_USER.id,
-		firstName: randomName(),
-		lastName: randomName(),
+		firstName: INITIAL_TEST_USER.firstName,
+		lastName: INITIAL_TEST_USER.lastName,
 		password: randomValidPassword(),
 	});
 
@@ -298,8 +298,8 @@ test('POST /users/:id should fill out a user shell', async () => {
 
 	expect(validator.isUUID(id)).toBe(true);
 	expect(email).toBeDefined();
-	expect(firstName).toBeDefined();
-	expect(lastName).toBeDefined();
+	expect(firstName).toBe(INITIAL_TEST_USER.firstName);
+	expect(lastName).toBe(INITIAL_TEST_USER.lastName);
 	expect(personalizationAnswers).toBeNull();
 	expect(password).toBeUndefined();
 	expect(resetPasswordToken).toBeUndefined();
