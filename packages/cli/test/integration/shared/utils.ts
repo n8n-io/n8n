@@ -112,6 +112,13 @@ export async function getGlobalMemberRole() {
 	});
 }
 
+export async function getWorkflowOwnerRole() {
+	return await Db.collections.Role!.findOneOrFail({
+		name: 'owner',
+		scope: 'workflow',
+	});
+}
+
 // ----------------------------------
 //           request agent
 // ----------------------------------

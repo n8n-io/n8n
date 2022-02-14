@@ -10,7 +10,13 @@ import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
 import { Role } from '../../src/databases/entities/Role';
-import { randomValidPassword, randomInvalidPassword, randomEmail, randomName, randomString } from './shared/random';
+import {
+	randomValidPassword,
+	randomInvalidPassword,
+	randomEmail,
+	randomName,
+	randomString,
+} from './shared/random';
 import { getGlobalOwnerRole } from './shared/utils';
 
 let globalOwnerRole: Role;
@@ -334,14 +340,9 @@ describe('/me endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const globalOwnerRole = await Db.collections.Role!.findOneOrFail({
-				name: 'owner',
-				scope: 'global',
-			});
+			const globalOwnerRole = await getGlobalOwnerRole();
 
-			const newOwner = new User();
-
-			Object.assign(newOwner, {
+			await Db.collections.User!.save({
 				id: uuid(),
 				email: TEST_USER.email,
 				firstName: TEST_USER.firstName,
@@ -349,8 +350,6 @@ describe('/me endpoints', () => {
 				password: hashSync(randomValidPassword(), genSaltSync(10)),
 				globalRole: globalOwnerRole,
 			});
-
-			await Db.collections.User!.save(newOwner);
 
 			config.set('userManagement.hasOwner', true);
 

@@ -16,7 +16,7 @@ import {
 	randomName,
 	randomInvalidPassword,
 } from './shared/random';
-import { createMember, getGlobalMemberRole, getGlobalOwnerRole } from './shared/utils';
+import { createMember, getGlobalMemberRole, getGlobalOwnerRole, getWorkflowOwnerRole } from './shared/utils';
 
 let app: express.Application;
 let globalOwnerRole: Role;
@@ -136,10 +136,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const workflowOwnerRole = await Db.collections.Role!.findOneOrFail({
-		name: 'owner',
-		scope: 'workflow',
-	});
+	const workflowOwnerRole = await getWorkflowOwnerRole();
 
 	const userToDelete = await Db.collections.User!.save({
 		id: uuid(),
