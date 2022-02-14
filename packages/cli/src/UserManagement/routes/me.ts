@@ -6,7 +6,7 @@ import express = require('express');
 import validator from 'validator';
 
 import { Db, ResponseHelper } from '../..';
-import { issueJWT } from '../auth/jwt';
+import { issueCookie } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { validatePassword, sanitizeUser } from '../UserManagementHelper';
 import type { AuthenticatedRequest, MeRequest } from '../../requests';
@@ -47,9 +47,7 @@ export function meNamespace(this: N8nApp): void {
 
 				const user = await Db.collections.User!.save(newUser);
 
-				const userData = await issueJWT(user);
-
-				res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+				await issueCookie(res, user);
 
 				return sanitizeUser(user);
 			},
@@ -67,8 +65,7 @@ export function meNamespace(this: N8nApp): void {
 
 			const user = await Db.collections.User!.save(req.user);
 
-			const userData = await issueJWT(user);
-			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+			await issueCookie(res, user);
 
 			return { success: true };
 		}),

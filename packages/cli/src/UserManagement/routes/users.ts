@@ -18,9 +18,10 @@ import { User } from '../../databases/entities/User';
 import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import { getInstance } from '../email/UserManagementMailer';
-import { issueJWT } from '../auth/jwt';
+
 import config = require('../../../config');
 import { LoggerProxy } from '../../../../workflow/dist/src';
+import { issueCookie } from '../auth/jwt';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -201,8 +202,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const updatedUser = await Db.collections.User!.save(invitee);
 
-			const userData = await issueJWT(updatedUser);
-			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+			await issueCookie(res, updatedUser);
 
 			return sanitizeUser(updatedUser);
 		}),

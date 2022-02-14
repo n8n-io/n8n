@@ -45,6 +45,8 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 
 	this.app.use((req: Request, res: Response, next: NextFunction) => {
 		if (
+			// skip authentication for preflight requests
+			req.method === 'OPTIONS' ||
 			req.url.includes('login') ||
 			req.url.includes('logout') ||
 			req.url === '/index.html' ||

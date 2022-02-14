@@ -123,7 +123,7 @@ describe('auth endpoints', () => {
 			expect(response.headers['set-cookie']).toBeUndefined();
 		});
 
-		test('GET /logout should log user out', async () => {
+		test('POST /logout should log user out', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const authOwnerAgent = await utils.createAuthAgent(app, owner);
 

@@ -622,6 +622,7 @@ class App {
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				// Allow access also from frontend when developing
 				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
+				res.header('Access-Control-Allow-Credentials', true);
 				res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 				res.header(
 					'Access-Control-Allow-Headers',
