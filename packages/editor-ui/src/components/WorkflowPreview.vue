@@ -1,6 +1,6 @@
 <template>
 	<iframe
-		:class="{ workflow: !this.nodeView, openNDV: this.nodeView }"
+		:class="{ workflow: !this.nodeViewDetailsOpened, openNDV: this.nodeViewDetailsOpened }"
 		ref="preview_iframe"
 		href="/workflows/demo"
 	></iframe>
