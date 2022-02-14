@@ -3,11 +3,10 @@ import express = require('express');
 import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
-import * as request from 'supertest';
 
 import config = require('../../config');
 import * as utils from './shared/utils';
-import { LOGGED_OUT_RESPONSE_BODY, REST_PATH_SEGMENT } from './shared/constants';
+import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
 import { Role } from '../../src/databases/entities/Role';
