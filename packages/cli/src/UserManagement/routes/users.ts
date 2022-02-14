@@ -42,24 +42,21 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (!req.body.length) return [];
 
-			// eslint-disable-next-line no-restricted-syntax
-			for (const invite of req.body) {
+			const createUsers: { [key: string]: string | null } = {};
+			// Validate payload
+			req.body.forEach((invite) => {
 				if (typeof invite !== 'object' || !invite.email) {
 					throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 				}
-			}
 
-			const createUsers: { [key: string]: string | null } = {};
-			// Validate payload
-			req.body.forEach((invitation) => {
-				if (!validator.isEmail(invitation.email)) {
+				if (!validator.isEmail(invite.email)) {
 					throw new ResponseHelper.ResponseError(
-						`Invalid email address ${invitation.email}`,
+						`Invalid email address ${invite.email}`,
 						undefined,
 						400,
 					);
 				}
-				createUsers[invitation.email] = null;
+				createUsers[invite.email] = null;
 			});
 
 			const role = await Db.collections.Role!.findOne({ scope: 'global', name: 'member' });
