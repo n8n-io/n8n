@@ -9,13 +9,12 @@ import { PublicUser } from './Interfaces';
 
 export const isEmailSetUp = Boolean(config.get('userManagement.emails.mode'));
 
-export function getInstanceDomain(): string {
-	let domain = GenericHelpers.getBaseUrl();
-	if (domain.endsWith('/')) {
-		domain = domain.slice(0, domain.length - 1);
-	}
-
-	return domain;
+/**
+ * Return the n8n instance base URL without trailing slash.
+ */
+export function getInstanceBaseUrl(): string {
+	const baseUrl = GenericHelpers.getBaseUrl();
+	return baseUrl.endsWith('/') ? baseUrl.slice(0, baseUrl.length - 1) : baseUrl;
 }
 
 export async function isInstanceOwnerSetup(): Promise<boolean> {

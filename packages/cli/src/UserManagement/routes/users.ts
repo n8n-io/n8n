@@ -9,7 +9,7 @@ import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
 import { UserRequest } from '../../requests';
 import {
-	getInstanceDomain,
+	getInstanceBaseUrl,
 	isEmailSetUp,
 	sanitizeUser,
 	validatePassword,
@@ -105,7 +105,7 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError(`An error occurred during user creation`);
 			}
 
-			const domain = getInstanceDomain();
+			const baseUrl = getInstanceBaseUrl();
 
 			// send invite email to new or not yet setup users
 			const mailer = getInstance();
@@ -115,11 +115,11 @@ export function usersNamespace(this: N8nApp): void {
 					.filter(([email, id]) => id && email)
 					.map(async ([email, id]) => {
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-						const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
+						const inviteAcceptUrl = `${baseUrl}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
 						const result = await mailer.invite({
 							email,
 							inviteAcceptUrl,
-							domain,
+							domain: baseUrl,
 						});
 						const resp: { id: string | null; email: string; error?: string } = {
 							id,
@@ -325,12 +325,12 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const domain = getInstanceDomain();
+			const baseUrl = getInstanceBaseUrl();
 
 			const result = await getInstance().invite({
 				email: reinvitee.email,
-				inviteAcceptUrl: `${domain}/signup/inviterId=${req.user.id}&inviteeId=${reinvitee.id}`,
-				domain,
+				inviteAcceptUrl: `${baseUrl}/signup/inviterId=${req.user.id}&inviteeId=${reinvitee.id}`,
+				domain: baseUrl,
 			});
 
 			if (!result.success) {
