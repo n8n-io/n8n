@@ -21,7 +21,7 @@
 			</div>
 			<div>
 				<div :class="$style.image">
-					<workflow-preview :workflow="template.workflow" />
+					<workflow-preview v-if="showPreview" :workflow="template.workflow" @close="onHidePreview" />
 					<n8n-image v-if="template.mainImage" :images="template.mainImage.image" />
 				</div>
 				<div :class="$style.content">
@@ -68,9 +68,13 @@ export default mixins(workflowHelpers).extend({
 	data() {
 		return {
 			loading: true,
+			showPreview: true,
 		};
 	},
 	methods: {
+		onHidePreview() {
+			this.showPreview = false;
+		},
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (page === 'WorkflowTemplate') {
 				this.$store.dispatch('templates/setTemplateSessionId', null);

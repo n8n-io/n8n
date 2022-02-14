@@ -1,8 +1,8 @@
 <template>
 	<iframe
-		:class="{ workflow: !this.nodeViewDetailsOpened, openNDV: this.nodeViewDetailsOpened }"
+		:class="{ [$style.workflow]: !this.nodeViewDetailsOpened, [$style.openNDV]: this.nodeViewDetailsOpened }"
 		ref="preview_iframe"
-		href="/workflows/demo"
+		src="/workflows/demo"
 	></iframe>
 </template>
 
@@ -52,6 +52,8 @@ export default mixins(showMessage).extend({
 				} else if (json.command === 'closeNDV') {
 					// close iframe
 					this.nodeViewDetailsOpened = false;
+				} else if (json.command === 'error') {
+					this.$emit('close');
 				}
 			} catch (error) {
 				this.nodeViewDetailsOpened = false;
