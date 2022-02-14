@@ -79,6 +79,9 @@ test('POST /forgot-password should send password reset email', async () => {
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual({});
+
+	const shell = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
+	expect(shell.resetPasswordToken).toBeDefined();
 });
 
 test('POST /forgot-password should fail if emailing is not set up', async () => {
@@ -90,6 +93,9 @@ test('POST /forgot-password should fail if emailing is not set up', async () => 
 		.send({ email: INITIAL_TEST_USER.email });
 
 	expect(response.statusCode).toBe(500);
+
+	const shell = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
+	expect(shell.resetPasswordToken).toBeNull();
 });
 
 test('POST /forgot-password should fail with invalid inputs', async () => {
@@ -109,6 +115,9 @@ test('POST /forgot-password should fail with invalid inputs', async () => {
 	for (const invalidPayload of invalidPayloads) {
 		const response = await authOwnerAgent.post('/forgot-password').send(invalidPayload);
 		expect(response.statusCode).toBe(400);
+
+		const shell = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
+		expect(shell.resetPasswordToken).toBeNull();
 	}
 });
 
@@ -175,12 +184,12 @@ test('POST /change-password should succeed with valid inputs', async () => {
 	const resetPasswordToken = uuid();
 	await Db.collections.User!.update(INITIAL_TEST_USER.id, { resetPasswordToken });
 
-	const passwordToSet = randomValidPassword();
+	const passwordToSend = randomValidPassword();
 
 	const response = await authOwnerAgent.post('/change-password').send({
 		token: resetPasswordToken,
 		id: INITIAL_TEST_USER.id,
-		password: passwordToSet,
+		password: passwordToSend,
 	});
 
 	expect(response.statusCode).toBe(200);
@@ -192,8 +201,9 @@ test('POST /change-password should succeed with valid inputs', async () => {
 		INITIAL_TEST_USER.id,
 	);
 
-	const comparisonResult = await compare(passwordToSet, storedPassword!);
+	const comparisonResult = await compare(passwordToSend, storedPassword!);
 	expect(comparisonResult).toBe(true);
+	expect(storedPassword).not.toBe(passwordToSend);
 });
 
 test('POST /change-password should fail with invalid inputs', async () => {
