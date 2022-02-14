@@ -7,6 +7,7 @@ import * as utils from './shared/utils';
 import { Db } from '../../src';
 import config = require('../../config');
 import { Role } from '../../src/databases/entities/Role';
+import { randomEmail, randomName, randomValidPassword, randomInvalidPassword } from './shared/random';
 
 let globalOwnerRole: Role;
 
@@ -94,55 +95,55 @@ describe('/owner endpoints', () => {
 });
 
 const TEST_USER = {
-	email: utils.randomEmail(),
-	firstName: utils.randomName(),
-	lastName: utils.randomName(),
-	password: utils.randomValidPassword(),
+	email: randomEmail(),
+	firstName: randomName(),
+	lastName: randomName(),
+	password: randomValidPassword(),
 };
 
 const INVALID_POST_OWNER_PAYLOADS = [
 	{
 		email: '',
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
-		password: utils.randomValidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
+		password: randomValidPassword(),
 	},
 	{
-		email: utils.randomEmail(),
+		email: randomEmail(),
 		firstName: '',
-		lastName: utils.randomName(),
-		password: utils.randomValidPassword(),
+		lastName: randomName(),
+		password: randomValidPassword(),
 	},
 	{
-		email: utils.randomEmail(),
-		firstName: utils.randomName(),
+		email: randomEmail(),
+		firstName: randomName(),
 		lastName: '',
-		password: utils.randomValidPassword(),
+		password: randomValidPassword(),
 	},
 	{
-		email: utils.randomEmail(),
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
-		password: utils.randomInvalidPassword(),
+		email: randomEmail(),
+		firstName: randomName(),
+		lastName: randomName(),
+		password: randomInvalidPassword(),
 	},
 	{
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
+		firstName: randomName(),
+		lastName: randomName(),
 	},
 	{
-		firstName: utils.randomName(),
+		firstName: randomName(),
 	},
 	{
-		lastName: utils.randomName(),
+		lastName: randomName(),
 	},
 	{
-		email: utils.randomEmail(),
+		email: randomEmail(),
 		firstName: 'John <script',
-		lastName: utils.randomName(),
+		lastName: randomName(),
 	},
 	{
-		email: utils.randomEmail(),
+		email: randomEmail(),
 		firstName: 'John <a',
-		lastName: utils.randomName(),
+		lastName: randomName(),
 	},
 ];

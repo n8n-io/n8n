@@ -10,6 +10,7 @@ import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { getLogger } from '../../src/Logger';
 import { LoggerProxy } from 'n8n-workflow';
 import { Role } from '../../src/databases/entities/Role';
+import { randomEmail, randomValidPassword, randomName, randomInvalidPassword } from './shared/random';
 
 let app: express.Application;
 let globalOwnerRole: Role;
@@ -99,10 +100,10 @@ test('DELETE /users/:id should delete the user', async () => {
 
 	const { id: idToDelete } = await Db.collections.User!.save({
 		id: uuid(),
-		email: utils.randomEmail(),
-		password: utils.randomValidPassword(),
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
+		email: randomEmail(),
+		password: randomValidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		globalRole: globalMemberRole,
@@ -134,10 +135,10 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 
 	const { id: idToDelete } = await Db.collections.User!.save({
 		id: uuid(),
-		email: utils.randomEmail(),
-		password: utils.randomValidPassword(),
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
+		email: randomEmail(),
+		password: randomValidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		globalRole: globalMemberRole,
@@ -161,17 +162,17 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	const userToDelete = await Db.collections.User!.save({
 		id: uuid(),
-		email: utils.randomEmail(),
-		password: utils.randomValidPassword(),
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
+		email: randomEmail(),
+		password: randomValidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		globalRole: workflowOwnerRole,
 	});
 
 	const savedWorkflow = await Db.collections.Workflow!.save({
-		name: utils.randomName(),
+		name: randomName(),
 		active: false,
 		connections: {},
 	});
@@ -204,10 +205,10 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 
 	const { id: inviteeId } = await Db.collections.User!.save({
 		id: uuid(),
-		email: utils.randomEmail(),
-		password: utils.randomValidPassword(),
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
+		email: randomEmail(),
+		password: randomValidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		globalRole: globalMemberRole,
@@ -240,10 +241,10 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 
 	const { id: inviteeId } = await Db.collections.User!.save({
 		id: uuid(),
-		email: utils.randomEmail(),
-		password: utils.randomValidPassword(),
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
+		email: randomEmail(),
+		password: randomValidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		globalRole: globalMemberRole,
@@ -280,15 +281,15 @@ test('POST /users/:id should fill out a user shell', async () => {
 	});
 
 	const userToFillOut = await Db.collections.User!.save({
-		email: utils.randomEmail(),
+		email: randomEmail(),
 		globalRole: globalMemberRole,
 	});
 
 	const response = await authlessAgent.post(`/users/${userToFillOut.id}`).send({
 		inviterId: INITIAL_TEST_USER.id,
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
-		password: utils.randomValidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
+		password: randomValidPassword(),
 	});
 
 	const {
@@ -324,7 +325,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 	});
 
 	const userToFillOut = await Db.collections.User!.save({
-		email: utils.randomEmail(),
+		email: randomEmail(),
 		globalRole: globalMemberRole,
 	});
 
@@ -343,16 +344,16 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 	});
 
 	const userToFillOut = await Db.collections.User!.save({
-		email: utils.randomEmail(),
-		password: utils.randomValidPassword(), // simulate accepted invite
+		email: randomEmail(),
+		password: randomValidPassword(), // simulate accepted invite
 		globalRole: globalMemberRole,
 	});
 
 	const response = await authlessAgent.post(`/users/${userToFillOut.id}`).send({
 		inviterId: INITIAL_TEST_USER.id,
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
-		password: utils.randomValidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
+		password: randomValidPassword(),
 	});
 
 	expect(response.statusCode).toBe(400);
@@ -362,7 +363,7 @@ test('POST /users should fail if emailing is not set up', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const response = await authOwnerAgent.post('/users').send([{ email: utils.randomEmail() }]);
+	const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
 
 	expect(response.statusCode).toBe(500);
 });
@@ -412,11 +413,11 @@ test('POST /users should fail with invalid inputs', async () => {
 	config.set('userManagement.emails.mode', 'smtp');
 
 	const invalidPayloads = [
-		utils.randomEmail(),
-		[utils.randomEmail()],
+		randomEmail(),
+		[randomEmail()],
 		{},
-		[{ name: utils.randomName() }],
-		[{ email: utils.randomName() }],
+		[{ name: randomName() }],
+		[{ email: randomName() }],
 	];
 
 	for (const invalidPayload of invalidPayloads) {
@@ -457,43 +458,43 @@ test('POST /users should ignore an empty payload', async () => {
 
 const INITIAL_TEST_USER = {
 	id: uuid(),
-	email: utils.randomEmail(),
-	firstName: utils.randomName(),
-	lastName: utils.randomName(),
-	password: utils.randomValidPassword(),
+	email: randomEmail(),
+	firstName: randomName(),
+	lastName: randomName(),
+	password: randomValidPassword(),
 };
 
 const INVALID_FILL_OUT_USER_PAYLOADS = [
 	{
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
-		password: utils.randomValidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
+		password: randomValidPassword(),
 	},
 	{
 		inviterId: INITIAL_TEST_USER.id,
-		firstName: utils.randomName(),
-		password: utils.randomValidPassword(),
+		firstName: randomName(),
+		password: randomValidPassword(),
 	},
 	{
 		inviterId: INITIAL_TEST_USER.id,
-		firstName: utils.randomName(),
-		password: utils.randomValidPassword(),
+		firstName: randomName(),
+		password: randomValidPassword(),
 	},
 	{
 		inviterId: INITIAL_TEST_USER.id,
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
+		firstName: randomName(),
+		lastName: randomName(),
 	},
 	{
 		inviterId: INITIAL_TEST_USER.id,
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
-		password: utils.randomInvalidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
+		password: randomInvalidPassword(),
 	},
 ];
 
 const TEST_EMAILS_TO_CREATE_USER_SHELLS = [
-	utils.randomEmail(),
-	utils.randomEmail(),
-	utils.randomEmail(),
+	randomEmail(),
+	randomEmail(),
+	randomEmail(),
 ];

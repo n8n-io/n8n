@@ -10,6 +10,7 @@ import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
 import { Role } from '../../src/databases/entities/Role';
+import { randomEmail, randomValidPassword, randomName } from './shared/random';
 
 describe('auth endpoints', () => {
 	describe('Owner requests', () => {
@@ -144,8 +145,8 @@ describe('auth endpoints', () => {
 });
 
 const TEST_USER = {
-	email: utils.randomEmail(),
-	password: utils.randomValidPassword(),
-	firstName: utils.randomName(),
-	lastName: utils.randomName(),
+	email: randomEmail(),
+	password: randomValidPassword(),
+	firstName: randomName(),
+	lastName: randomName(),
 };

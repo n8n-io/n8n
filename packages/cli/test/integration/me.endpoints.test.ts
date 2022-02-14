@@ -10,6 +10,7 @@ import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
 import { Role } from '../../src/databases/entities/Role';
+import { randomValidPassword, randomInvalidPassword, randomEmail, randomName, randomString } from './shared/random';
 
 let globalOwnerRole: Role;
 
@@ -122,7 +123,7 @@ describe('/me endpoints', () => {
 			const authShellAgent = await utils.createAuthAgent(app, shell);
 
 			const validPayloads = Array.from({ length: 3 }, () => ({
-				password: utils.randomValidPassword(),
+				password: randomValidPassword(),
 			}));
 
 			for (const validPayload of validPayloads) {
@@ -137,7 +138,7 @@ describe('/me endpoints', () => {
 			const authShellAgent = await utils.createAuthAgent(app, shell);
 
 			const invalidPayloads = [
-				...Array.from({ length: 3 }, () => ({ password: utils.randomInvalidPassword() })),
+				...Array.from({ length: 3 }, () => ({ password: randomInvalidPassword() })),
 				{},
 				undefined,
 				'',
@@ -185,7 +186,7 @@ describe('/me endpoints', () => {
 				email: TEST_USER.email,
 				firstName: TEST_USER.firstName,
 				lastName: TEST_USER.lastName,
-				password: hashSync(utils.randomValidPassword(), genSaltSync(10)),
+				password: hashSync(randomValidPassword(), genSaltSync(10)),
 				globalRole: globalMemberRole,
 			});
 
@@ -284,7 +285,7 @@ describe('/me endpoints', () => {
 			const authMemberAgent = await utils.createAuthAgent(app, member);
 
 			const validPayloads = Array.from({ length: 3 }, () => ({
-				password: utils.randomValidPassword(),
+				password: randomValidPassword(),
 			}));
 
 			for (const validPayload of validPayloads) {
@@ -299,7 +300,7 @@ describe('/me endpoints', () => {
 			const authMemberAgent = await utils.createAuthAgent(app, member);
 
 			const invalidPayloads = [
-				...Array.from({ length: 3 }, () => ({ password: utils.randomInvalidPassword() })),
+				...Array.from({ length: 3 }, () => ({ password: randomInvalidPassword() })),
 				{},
 				undefined,
 				'',
@@ -347,7 +348,7 @@ describe('/me endpoints', () => {
 				email: TEST_USER.email,
 				firstName: TEST_USER.firstName,
 				lastName: TEST_USER.lastName,
-				password: hashSync(utils.randomValidPassword(), genSaltSync(10)),
+				password: hashSync(randomValidPassword(), genSaltSync(10)),
 				globalRole: globalOwnerRole,
 			});
 
@@ -434,9 +435,9 @@ describe('/me endpoints', () => {
 });
 
 const TEST_USER = {
-	email: utils.randomEmail(),
-	firstName: utils.randomName(),
-	lastName: utils.randomName(),
+	email: randomEmail(),
+	firstName: randomName(),
+	lastName: randomName(),
 };
 
 const SURVEY = [
@@ -447,63 +448,63 @@ const SURVEY = [
 	'otherWorkArea',
 	'workArea',
 ].reduce<Record<string, string>>((acc, cur) => {
-	return (acc[cur] = utils.randomString(1, 10)), acc;
+	return (acc[cur] = randomString(1, 10)), acc;
 }, {});
 
 const VALID_PATCH_ME_PAYLOADS = [
 	{
-		email: utils.randomEmail(),
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
-		password: utils.randomValidPassword(),
+		email: randomEmail(),
+		firstName: randomName(),
+		lastName: randomName(),
+		password: randomValidPassword(),
 	},
 	{
-		email: utils.randomEmail(),
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
-		password: utils.randomValidPassword(),
+		email: randomEmail(),
+		firstName: randomName(),
+		lastName: randomName(),
+		password: randomValidPassword(),
 	},
 ];
 
 const INVALID_PATCH_ME_PAYLOADS = [
 	{
 		email: 'invalid',
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
+		firstName: randomName(),
+		lastName: randomName(),
 	},
 	{
-		email: utils.randomEmail(),
+		email: randomEmail(),
 		firstName: '',
-		lastName: utils.randomName(),
+		lastName: randomName(),
 	},
 	{
-		email: utils.randomEmail(),
-		firstName: utils.randomName(),
+		email: randomEmail(),
+		firstName: randomName(),
 		lastName: '',
 	},
 	{
-		email: utils.randomEmail(),
+		email: randomEmail(),
 		firstName: 123,
-		lastName: utils.randomName(),
+		lastName: randomName(),
 	},
 	{
-		firstName: utils.randomName(),
-		lastName: utils.randomName(),
+		firstName: randomName(),
+		lastName: randomName(),
 	},
 	{
-		firstName: utils.randomName(),
+		firstName: randomName(),
 	},
 	{
-		lastName: utils.randomName(),
+		lastName: randomName(),
 	},
 	{
-		email: utils.randomEmail(),
+		email: randomEmail(),
 		firstName: 'John <script',
-		lastName: utils.randomName(),
+		lastName: randomName(),
 	},
 	{
-		email: utils.randomEmail(),
+		email: randomEmail(),
 		firstName: 'John <a',
-		lastName: utils.randomName(),
+		lastName: randomName(),
 	},
 ];

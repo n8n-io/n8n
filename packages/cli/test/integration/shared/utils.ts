@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto';
 import express = require('express');
 import * as superagent from 'superagent';
 import * as request from 'supertest';
@@ -11,11 +10,7 @@ import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db } from '../../../src';
-import {
-	MAX_PASSWORD_LENGTH,
-	MIN_PASSWORD_LENGTH,
-	User,
-} from '../../../src/databases/entities/User';
+import { User } from '../../../src/databases/entities/User';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
@@ -32,8 +27,6 @@ export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAcco
 
 export const isTestRun = process.argv[1].split('/').includes('jest');
 
-const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
-
 type EndpointNamespace = 'me' | 'users' | 'auth' | 'owner';
 
 /**
@@ -42,15 +35,13 @@ type EndpointNamespace = 'me' | 'users' | 'auth' | 'owner';
  * @param namespaces Namespaces of endpoints to apply to the test server.
  * @param applyAuth Whether to apply auth middleware to the test server.
  */
-export function initTestServer(
-	{
-		applyAuth,
-		namespaces,
-	}: {
-		applyAuth: boolean;
-		namespaces?: EndpointNamespace[];
-	},
-) {
+export function initTestServer({
+	applyAuth,
+	namespaces,
+}: {
+	applyAuth: boolean;
+	namespaces?: EndpointNamespace[];
+}) {
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
@@ -160,27 +151,3 @@ export function getAuthToken(response: request.Response, authCookieName = 'n8n-a
 
 	return match.groups.token;
 }
-
-/**
- * Create a random string of random length between two limits, both inclusive.
- */
-export function randomString(min: number, max: number) {
-	const randomInteger = Math.floor(Math.random() * (max - min) + min) + 1;
-	return randomBytes(randomInteger / 2).toString('hex');
-}
-
-const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
-
-export const randomValidPassword = () => randomString(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH);
-
-export const randomInvalidPassword = () =>
-	chooseRandomly([
-		randomString(1, MIN_PASSWORD_LENGTH - 1),
-		randomString(MAX_PASSWORD_LENGTH + 1, 100),
-	]);
-
-export const randomEmail = () => `${randomName()}@${randomName()}.${randomTopLevelDomain()}`;
-
-const randomTopLevelDomain = () => chooseRandomly(POPULAR_TOP_LEVEL_DOMAINS);
-
-export const randomName = () => randomString(3, 7);
