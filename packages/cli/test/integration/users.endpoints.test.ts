@@ -10,10 +10,17 @@ import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { getLogger } from '../../src/Logger';
 import { LoggerProxy } from 'n8n-workflow';
 import { Role } from '../../src/databases/entities/Role';
-import { randomEmail, randomValidPassword, randomName, randomInvalidPassword } from './shared/random';
+import {
+	randomEmail,
+	randomValidPassword,
+	randomName,
+	randomInvalidPassword,
+} from './shared/random';
+import { createMember } from './shared/utils';
 
 let app: express.Application;
 let globalOwnerRole: Role;
+let globalMemberRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
@@ -22,6 +29,11 @@ beforeAll(async () => {
 
 	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
 		name: 'owner',
+		scope: 'global',
+	});
+
+	globalMemberRole = await Db.collections.Role!.findOneOrFail({
+		name: 'member',
 		scope: 'global',
 	});
 
@@ -93,21 +105,7 @@ test('DELETE /users/:id should delete the user', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
-		name: 'member',
-		scope: 'global',
-	});
-
-	const { id: idToDelete } = await Db.collections.User!.save({
-		id: uuid(),
-		email: randomEmail(),
-		password: randomValidPassword(),
-		firstName: randomName(),
-		lastName: randomName(),
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: globalMemberRole,
-	});
+	const { id: idToDelete } = await createMember(globalMemberRole);
 
 	const response = await authOwnerAgent.delete(`/users/${idToDelete}`);
 
@@ -128,21 +126,7 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
-		name: 'member',
-		scope: 'global',
-	});
-
-	const { id: idToDelete } = await Db.collections.User!.save({
-		id: uuid(),
-		email: randomEmail(),
-		password: randomValidPassword(),
-		firstName: randomName(),
-		lastName: randomName(),
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: globalMemberRole,
-	});
+	const { id: idToDelete } = await createMember(globalMemberRole);
 
 	const response = await authOwnerAgent.delete(`/users/${idToDelete}`).query({
 		transferId: idToDelete,
@@ -198,21 +182,7 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
-		name: 'member',
-		scope: 'global',
-	});
-
-	const { id: inviteeId } = await Db.collections.User!.save({
-		id: uuid(),
-		email: randomEmail(),
-		password: randomValidPassword(),
-		firstName: randomName(),
-		lastName: randomName(),
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: globalMemberRole,
-	});
+	const { id: inviteeId } = await createMember(globalMemberRole);
 
 	const response = await authOwnerAgent
 		.get('/resolve-signup-token')
@@ -234,21 +204,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAuthAgent(app, owner);
 
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
-		name: 'member',
-		scope: 'global',
-	});
-
-	const { id: inviteeId } = await Db.collections.User!.save({
-		id: uuid(),
-		email: randomEmail(),
-		password: randomValidPassword(),
-		firstName: randomName(),
-		lastName: randomName(),
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: globalMemberRole,
-	});
+	const { id: inviteeId } = await createMember(globalMemberRole);
 
 	const first = await authOwnerAgent
 		.get('/resolve-signup-token')
@@ -274,11 +230,6 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 
 test('POST /users/:id should fill out a user shell', async () => {
 	const authlessAgent = await utils.createAuthlessAgent(app);
-
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
-		name: 'member',
-		scope: 'global',
-	});
 
 	const userToFillOut = await Db.collections.User!.save({
 		email: randomEmail(),
@@ -318,11 +269,6 @@ test('POST /users/:id should fill out a user shell', async () => {
 
 test('POST /users/:id should fail with invalid inputs', async () => {
 	const authlessAgent = await utils.createAuthlessAgent(app);
-
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
-		name: 'member',
-		scope: 'global',
-	});
 
 	const userToFillOut = await Db.collections.User!.save({
 		email: randomEmail(),
@@ -493,8 +439,4 @@ const INVALID_FILL_OUT_USER_PAYLOADS = [
 	},
 ];
 
-const TEST_EMAILS_TO_CREATE_USER_SHELLS = [
-	randomEmail(),
-	randomEmail(),
-	randomEmail(),
-];
+const TEST_EMAILS_TO_CREATE_USER_SHELLS = [randomEmail(), randomEmail(), randomEmail()];

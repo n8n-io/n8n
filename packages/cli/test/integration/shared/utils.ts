@@ -5,6 +5,7 @@ import { URL } from 'url';
 import bodyParser = require('body-parser');
 import * as util from 'util';
 import { createTestAccount } from 'nodemailer';
+import { v4 as uuid } from 'uuid';
 
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
@@ -17,7 +18,9 @@ import { authenticationMethods as authEndpoints } from '../../../src/UserManagem
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { getConnection } from 'typeorm';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
+import { randomEmail, randomValidPassword, randomName } from './random';
 import type { EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
+import { Role } from '../../../src/databases/entities/Role';
 
 // ----------------------------------
 //            test server
@@ -80,6 +83,19 @@ export async function truncateUserTable() {
 	await getConnection().query('PRAGMA foreign_keys=OFF');
 	await Db.collections.User!.clear();
 	await getConnection().query('PRAGMA foreign_keys=ON');
+}
+
+export async function createMember(globalMemberRole: Role) {
+	return await Db.collections.User!.save({
+		id: uuid(),
+		email: randomEmail(),
+		password: randomValidPassword(),
+		firstName: randomName(),
+		lastName: randomName(),
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		globalRole: globalMemberRole,
+	});
 }
 
 // ----------------------------------
