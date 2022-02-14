@@ -2484,7 +2484,7 @@ class App {
 					}
 
 					if (executingWorkflowIds.length > 0) {
-						Object.assign(findOptions.where, { id: !In(executingWorkflowIds) });
+						Object.assign(findOptions.where, { id: Not(In(executingWorkflowIds)) });
 					}
 
 					const executions = await Db.collections.Execution!.find(findOptions);

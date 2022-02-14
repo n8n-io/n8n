@@ -15,11 +15,20 @@ import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import { getInstance } from '../email/UserManagementMailer';
 import { issueJWT } from '../auth/jwt';
+import config = require('../../../config');
 
 export function usersNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: UserRequest.Invite) => {
+			if (!config.get('userManagement.hasOwner')) {
+				throw new ResponseHelper.ResponseError(
+					'You must set up your own account before inviting others',
+					undefined,
+					400,
+				);
+			}
+
 			if (!isEmailSetup()) {
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
