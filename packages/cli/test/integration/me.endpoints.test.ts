@@ -352,11 +352,6 @@ describe('/me endpoints', () => {
 			});
 
 			config.set('userManagement.hasOwner', true);
-
-			await Db.collections.Settings!.update(
-				{ key: 'userManagement.hasOwner' },
-				{ value: JSON.stringify(true) },
-			);
 		});
 
 		afterEach(async () => {
