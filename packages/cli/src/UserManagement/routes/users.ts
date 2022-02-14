@@ -145,13 +145,18 @@ export function usersNamespace(this: N8nApp): void {
 			const users = await Db.collections.User!.find({ where: { id: In([inviterId, inviteeId]) } });
 
 			if (users.length !== 2) {
+				LoggerProxy.error('Invalid invite URL - did not find users', { inviterId, inviteeId });
 				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
 			}
 
 			const inviter = users.find((user) => user.id === inviterId);
 
 			if (!inviter || !inviter.email || !inviter.firstName) {
-				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
+				LoggerProxy.error('Invalid invite URL - inviter does not have email set', {
+					inviterId,
+					inviteeId,
+				});
+				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 			}
 
 			const { firstName, lastName } = inviter;
@@ -211,7 +216,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async () => {
-			const users = await Db.collections.User!.find();
+			const users = await Db.collections.User!.find({ relations: ['globalRole'] });
 
 			return users.map(sanitizeUser);
 		}),
