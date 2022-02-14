@@ -31,7 +31,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          name: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
+          repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
           ref: ${{ github.event.inputs.branch || 'master' }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
