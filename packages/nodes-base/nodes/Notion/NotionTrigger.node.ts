@@ -122,13 +122,10 @@ export class NotionTrigger implements INodeType {
 		const event = this.getNodeParameter('event') as string;
 		const simple = this.getNodeParameter('simple') as boolean;
 
-		const now = moment().utc().format();
-
-		const startDate = webhookData.lastTimeChecked as string || now;
-
-		const endDate = now;
-
-		webhookData.lastTimeChecked = endDate;
+		const lastProcessedRecordTime = webhookData.lastProcessedRecordTime
+			? moment(webhookData.lastProcessedRecordTime as string)
+			: moment().set({ second:0, millisecond:0 });  // Notion timestamp accuracy is only down to the minute
+		const lastRecordsProcessed = webhookData.lastRecordsProcessed as string[] ?? [];
 
 		const sortProperty = (event === 'pageAddedToDatabase') ? 'created_time' : 'last_edited_time';
 
@@ -140,6 +137,12 @@ export class NotionTrigger implements INodeType {
 					direction: 'descending',
 				},
 			],
+			filter: {
+				property: sortProperty,
+				number: {
+					on_or_after: lastProcessedRecordTime.utc().format(),
+				},
+			},
 		};
 
 		let records: IDataObject[] = [];
@@ -159,7 +162,8 @@ export class NotionTrigger implements INodeType {
 		}
 
 		// if something changed after the last check
-		if (Object.keys(data[0]).length !== 0 && webhookData.lastRecordProccesed !== data[0].id) {
+		if (Object.keys(data[0]).length !== 0) {
+
 			do {
 				body.page_size = 10;
 				const { results, has_more, next_cursor } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
@@ -168,17 +172,31 @@ export class NotionTrigger implements INodeType {
 				if (next_cursor !== null) {
 					body['start_cursor'] = next_cursor;
 				}
-			} while (!moment(records[records.length - 1][sortProperty] as string).isSameOrBefore(startDate) && hasMore === true);
+			// Only stop when we reach records strictly before last recorded time to be sure we catch records from the same minute
+			} while (!moment(records[records.length - 1][sortProperty] as string).isBefore(lastProcessedRecordTime) && hasMore === true);
 
-			if (this.getMode() !== 'manual') {
-				records = records.filter((record: IDataObject) => moment(record[sortProperty] as string).isBetween(startDate, endDate));
-			}
+			// Filter out already processed left over records:
+			// with a time strictly before the last record processed
+			// or from the same minute not present in the list of processed records
+			records = records.filter((record: IDataObject) => {
+				const recordDate = moment(record[sortProperty] as string);
+				return recordDate.isBefore(lastProcessedRecordTime) ||
+					(recordDate.isSame(lastProcessedRecordTime) && lastRecordsProcessed.includes(record.id as string));
+			});
+
+			// Save the time of the most recent record processed
+			webhookData.lastProcessedRecordTime = records[0][sortProperty];
+			const newLastProcessedRecordTime = moment(webhookData.lastProcessedRecordTime as string);
+
+			// Save 10 processed record ids with the same timestamp (accuracy is down to the minute) as the latest processed records
+			webhookData.lastRecordsProcessed = records
+				.filter((record: IDataObject) => moment(record[sortProperty] as string).isSame(newLastProcessedRecordTime))
+				.slice(0, 10)
+				.map((record: IDataObject) => record.id);
 
 			if (simple === true) {
 				records = simplifyObjects(records, false, 1);
 			}
-
-			webhookData.lastRecordProccesed = data[0].id;
 
 			if (Array.isArray(records) && records.length) {
 				return [this.helpers.returnJsonArray(records)];
