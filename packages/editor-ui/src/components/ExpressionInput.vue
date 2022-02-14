@@ -55,6 +55,9 @@ export default mixins(
 					'height': Math.max((rows * 26 + 10), 40) + 'px',
 				};
 			},
+			isDemo (): boolean {
+				return this.$route.name === 'WorkflowDemo';
+			},
 			workflow (): Workflow {
 				return this.getWorkflow();
 			},
@@ -151,7 +154,9 @@ export default mixins(
 
 				let value;
 				try {
-					value = this.resolveExpression(`=${variableName}`);
+					if (!this.isDemo) {
+						value = this.resolveExpression(`=${variableName}`);
+					}
 
 					if (value !== undefined) {
 						returnData.classes.push('valid');
@@ -169,6 +174,9 @@ export default mixins(
 			resolveParameterString (variableName: string) {
 				let returnValue;
 				try {
+					if (this.isDemo) {
+						return variableName;
+					}
 					returnValue = this.resolveExpression(`=${variableName}`);
 				} catch (error) {
 					return `[invalid (${error.message})]`;

@@ -419,6 +419,10 @@ export default mixins(
 				return false;
 			},
 			expressionValueComputed (): NodeParameterValue | null {
+				if (this.isDemo) {
+					return this.value;
+				}
+
 				if (this.node === null) {
 					return null;
 				}
@@ -502,6 +506,9 @@ export default mixins(
 			},
 			isDefault (): boolean {
 				return this.parameter.default === this.value;
+			},
+			isDemo (): boolean {
+				return this.$route.name === 'WorkflowDemo';
 			},
 			isEditor (): boolean {
 				return ['code', 'json'].includes(this.editorType);
