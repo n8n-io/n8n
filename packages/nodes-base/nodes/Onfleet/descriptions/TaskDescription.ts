@@ -21,11 +21,6 @@ export const taskOperations: INodeProperties[] = [
 				description: 'Create a new Onfleet task',
 			},
 			{
-				name: 'Create Multiple Tasks',
-				value: 'createBatch',
-				description: 'Creating multiple tasks in batch',
-			},
-			{
 				name: 'Clone',
 				value: 'clone',
 				description: 'Clone an Onfleet task',
@@ -137,7 +132,6 @@ export const taskFields: INodeProperties[] = [
 			hide: {
 				operation: [
 					'create',
-					'createBatch',
 					'getAll',
 				],
 			},
@@ -151,40 +145,11 @@ export const taskFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'task' ],
-				operation: [
-					'create',
-					'createBatch',
-				],
+				operation: [ 'create' ],
 			},
 		},
 		default: {},
-	},
-	{
-		...recipientExternalField,
-		displayOptions: {
-			show: {
-				resource: [ 'task' ],
-				operation: [
-					'create',
-					'createBatch',
-				],
-			},
-		},
-		default: {},
-	},
-	{
-		displayName: 'Short ID',
-		name: 'shortId',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [ 'task' ],
-				operation: [ 'get' ],
-			},
-		},
 		required: true,
-		description: 'Whether the task short ID is used for lookup',
-		default: false,
 	},
 	{
 		displayName: 'From',
@@ -198,7 +163,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		description: 'The starting time of the range. Tasks created or completed at or after this time will be included.',
 		required: true,
-		default: null,
+		default: '',
 	},
 	{
 		displayName: 'Success',
@@ -215,10 +180,10 @@ export const taskFields: INodeProperties[] = [
 		default: true,
 	},
 	{
-		displayName: 'Filter Fields',
-		name: 'filterFields',
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -256,7 +221,7 @@ export const taskFields: INodeProperties[] = [
 						value: 0,
 					},
 				],
-				default: '',
+				default: [],
 				description: 'The state of the tasks',
 			},
 			{
@@ -269,10 +234,10 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add options',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -300,39 +265,24 @@ export const taskFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Overrides',
-				name: 'overrides',
-				type: 'fixedCollection',
-				default: {},
-				options: [
-					{
-						displayName: 'Override Properties',
-						name: 'overrideProperties',
-						default: {},
-						values: [
-							{
-								...notesField,
-								required: false,
-							},
-							{
-								...pickupTaskField,
-								required: false,
-							},
-							{
-								...serviceTimeField,
-								required: false,
-							},
-							{
-								...completeAfterField,
-								required: false,
-							},
-							{
-								...completeBeforeField,
-								required: false,
-							},
-						],
-					},
-				],
+				...notesField,
+				required: false,
+			},
+			{
+				...pickupTaskField,
+				required: false,
+			},
+			{
+				...serviceTimeField,
+				required: false,
+			},
+			{
+				...completeAfterField,
+				required: false,
+			},
+			{
+				...completeBeforeField,
+				required: false,
 			},
 		],
 	},
@@ -382,7 +332,7 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Task Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -390,13 +340,11 @@ export const taskFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'task' ],
-				operation: [
-					'create',
-					'createBatch',
-				],
+				operation: [ 'create' ],
 			},
 		},
 		options: [
+			recipientExternalField,
 			merchantIdField,
 			executorIdField,
 			completeAfterField,

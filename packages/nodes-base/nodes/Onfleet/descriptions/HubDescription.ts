@@ -83,10 +83,7 @@ export const hubFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'hub' ],
-				operation: [
-					'create',
-					'update',
-				],
+				operation: [ 'create' ],
 			},
 		},
 	},
@@ -125,6 +122,10 @@ export const hubFields: INodeProperties[] = [
 			nameField,
 			{
 				...teamsField,
+				required: false,
+			},
+			{
+				...destinationExternalField,
 				required: false,
 			},
 		],

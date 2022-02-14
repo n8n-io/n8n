@@ -128,7 +128,13 @@ const serviceTimeField = {
 const routeEndField = {
 	displayName: 'Route End',
 	name: 'routeEnd',
-	type: 'string',
+	type: 'options',
+	options: [
+		{ name: 'Team’s Hub', value: 'team_hub' },
+		{ name: 'Worker Routing Address', value: 'worker_routing_address' },
+		{ name: 'Hub', value: 'hub' },
+		{ name: 'End Anywhere', value: 'anywhere' },
+	],
 	default: '',
 	description: 'Where the route will end',
 } as INodeProperties;
@@ -144,26 +150,26 @@ const maxAllowedDelayField = {
 	},
 } as INodeProperties;
 
-const longitudeDropoffField = {
-	displayName: 'Dropoff Longitude',
-	name: 'dropoffLongitude',
+const longitudeDropOffField = {
+	displayName: 'Drop Off Longitude',
+	name: 'dropOffLongitude',
 	type: 'number',
 	typeOptions: {
 		numberPrecision: 14,
 	},
 	default: 0,
-	description: 'The longitude for dropoff location',
+	description: 'The longitude for drop off location',
 } as INodeProperties;
 
-const latitudeDropoffField = {
-	displayName: 'Dropoff Latitude',
-	name: 'dropoffLatitude',
+const latitudeDropOffField = {
+	displayName: 'Drop Off Latitude',
+	name: 'dropOffLatitude',
 	type: 'number',
 	typeOptions: {
 		numberPrecision: 14,
 	},
 	default: 0,
-	description: 'The latitude for dropoff location',
+	description: 'The latitude for drop off location',
 } as INodeProperties;
 
 const longitudePickupField = {
@@ -336,7 +342,35 @@ export const teamFields: INodeProperties[] = [
 		options: [
 			maxAllowedDelayField,
 			maxTasksPerRouteField,
-			routeEndField,
+			{
+				displayName: 'Ending Route',
+				name: 'endingRoute',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Ending Route Properties',
+						name: 'endingRouteProperties',
+						type: 'fixedCollection',
+						default: {},
+						values: [
+							{
+								...routeEndField,
+								required: true,
+							},
+							{
+								...hubField,
+								displayOptions: {
+									show: {
+										routeEnd: [ 'hub' ],
+									},
+								},
+								required: false,
+							},
+						],
+					},
+				],
+			},
 			{
 				displayName: 'Schedule Time Window',
 				name: 'scheduleTimeWindow',
@@ -397,64 +431,62 @@ export const teamFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Dropoff',
-		name: 'dropoff',
-		type: 'fixedCollection',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Fields',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [ 'team' ],
 				operation: [ 'getTimeEstimates' ],
 			},
 		},
-		default: {},
 		options: [
 			{
-				displayName: 'Dropoff Properties',
-				name: 'dropoffProperties',
-				values: [
+				displayName: 'Drop Off',
+				name: 'dropOff',
+				type: 'fixedCollection',
+				default: {},
+				options: [
 					{
-						...longitudeDropoffField,
-						required: true,
-					},
-					{
-						...latitudeDropoffField,
-						required: true,
+						displayName: 'DropOff Properties',
+						name: 'dropOffProperties',
+						type: 'fixedCollection',
+						default: {},
+						values: [
+							{
+								...longitudeDropOffField,
+								required: true,
+							},
+							{
+								...latitudeDropOffField,
+								required: true,
+							},
+						],
 					},
 				],
 			},
-		],
-	},
-	{
-		displayName: 'Pick Up',
-		name: 'pickUp',
-		type: 'fixedCollection',
-		displayOptions: {
-			show: {
-				resource: [ 'team' ],
-				operation: [ 'getTimeEstimates' ],
-			},
-		},
-		default: {},
-		options: [
 			{
-				displayName: 'Pick Up Properties',
-				name: 'pickUpProperties',
-				values: [
+				displayName: 'Pick Up',
+				name: 'pickUp',
+				type: 'fixedCollection',
+				default: {},
+				options: [
 					{
-						...longitudePickupField,
-						required: true,
-					},
-					{
-						...latitudePickupField,
-						required: true,
-					},
-					{
-						displayName: 'Additional Fields',
-						name: 'additionalFields',
-						type: 'collection',
-						placeholder: 'Add Field',
+						displayName: 'Pick Up Properties',
+						name: 'pickUpProperties',
+						type: 'fixedCollection',
 						default: {},
-						options: [
+						values: [
+							{
+								...longitudePickupField,
+								required: true,
+							},
+							{
+								...latitudePickupField,
+								required: true,
+							},
 							{
 								...pickupTimeField,
 								required: false,
@@ -463,21 +495,6 @@ export const teamFields: INodeProperties[] = [
 					},
 				],
 			},
-		],
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add fields',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [ 'team' ],
-				operation: [ 'getTimeEstimates' ],
-			},
-		},
-		options: [
 			{
 				...restrictedVehicleTypesField,
 				required: false,

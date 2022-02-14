@@ -94,7 +94,7 @@ const indexField = {
 } as INodeProperties;
 
 const tasksField = {
-	displayName: 'Tasks',
+	displayName: 'Task IDs',
 	name: 'tasks',
 	type: 'string',
 	typeOptions: {

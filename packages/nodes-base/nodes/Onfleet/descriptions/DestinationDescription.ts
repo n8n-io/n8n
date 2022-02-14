@@ -170,39 +170,25 @@ export const destinationExternalField = {
 					required: true,
 				},
 				{
-					displayName: 'Additional Fields',
-					name: 'additionalFields',
-					type: 'collection',
-					placeholder: 'Add Field',
-					default: {},
-					displayOptions: {
-						show: {
-							unparsed: [ true ],
-						},
-					},
-					options: [
-						addressNameField,
-						addressApartmentField,
-						addressNoteField,
-					],
+					...addressNameField,
+					required: false,
 				},
 				{
-					displayName: 'Additional Fields',
-					name: 'additionalFields',
-					type: 'collection',
-					placeholder: 'Add Field',
-					default: {},
+					...addressApartmentField,
+					required: false,
+				},
+				{
+					...addressNoteField,
+					required: false,
+				},
+				{
 					displayOptions: {
 						show: {
 							unparsed: [ false ],
 						},
 					},
-					options: [
-						addressNameField,
-						addressApartmentField,
-						addressNoteField,
-						addressPostalCodeField,
-					],
+					...addressPostalCodeField,
+					required: false,
 				},
 			],
 		},

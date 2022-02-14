@@ -8,14 +8,17 @@ import {
 	IWebhookResponseData,
 	NodeApiError,
 	NodeCredentialTestResult,
-	NodeOperationError,
+	NodeOperationError
 } from 'n8n-workflow';
 import {
 	IHookFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
+import {
+	eventDisplay,
+	eventNameField,
+} from './descriptions/OnfleetWebhookDescription';
 import { onfleetApiRequest } from './GenericFunctions';
 import { webhookMapping } from './WebhookMapping';
 import { OptionsWithUri } from 'request';
@@ -143,7 +146,7 @@ export class OnfleetTrigger implements INodeType {
 						return false;
 					}
 
-					// Some error occured
+					// Some error occurred
 					throw error;
 				}
 
@@ -153,7 +156,6 @@ export class OnfleetTrigger implements INodeType {
 				const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
 				const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
 				const event = this.getNodeParameter('event', 0) as string;
-				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('//localhost')) {
@@ -210,8 +212,7 @@ export class OnfleetTrigger implements INodeType {
 	};
 
 	/**
-	 * Triggered function when a Onfleet webhook is executed
-	 * @param this Webhook functions
+	 * Triggered function when an Onfleet webhook is executed
 	 * @returns {Promise<IWebhookResponseData>} Response data
 	 */
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
@@ -225,8 +226,7 @@ export class OnfleetTrigger implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		const bodyData = this.getBodyData();
-		const returnData: IDataObject = bodyData;
+		const returnData: IDataObject = this.getBodyData();
 
 		return {
 			workflowData: [

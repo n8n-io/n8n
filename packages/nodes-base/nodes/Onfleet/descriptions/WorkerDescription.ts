@@ -183,7 +183,7 @@ const statesFilterField = {
 			value: 0,
 		},
 	],
-	default: '',
+	default: [],
 	description: 'List of worker states',
 } as INodeProperties;
 
@@ -285,7 +285,7 @@ const filterField = {
 			value: 'id',
 		},
 	],
-	default: '',
+	default: [],
 	description: 'A list of fields to show in the response, if all are not desired',
 } as INodeProperties;
 
