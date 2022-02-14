@@ -7,6 +7,8 @@ import * as utils from './shared/utils';
 import { Db } from '../../src';
 import config = require('../../config');
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
+import { getLogger } from '../../src/Logger';
+import { LoggerProxy } from 'n8n-workflow';
 
 let app: express.Application;
 
@@ -14,6 +16,9 @@ beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
 	await utils.initTestDb();
 	await utils.truncateUserTable();
+	config.set('logs.output', 'file'); // declutter console output
+	const logger = getLogger();
+	LoggerProxy.init(logger);
 });
 
 beforeEach(async () => {
