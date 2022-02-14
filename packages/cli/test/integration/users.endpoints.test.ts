@@ -106,7 +106,7 @@ test('GET /users should return all users', async () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
-		expect(globalRole).toBeUndefined();
+		expect(globalRole).toBeDefined();
 	}
 });
 
