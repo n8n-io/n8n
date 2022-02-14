@@ -173,7 +173,10 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	const shared = await Db.collections.SharedWorkflow!.findOneOrFail({ relations: ['user'] });
+	const shared = await Db.collections.SharedWorkflow!.findOneOrFail({
+		relations: ['user'],
+		where: { user: owner },
+	});
 
 	expect(shared.user.id).toBe(owner.id);
 });
