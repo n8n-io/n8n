@@ -11,6 +11,7 @@ import { Db } from '../../src';
 import { User } from '../../src/databases/entities/User';
 import { Role } from '../../src/databases/entities/Role';
 import { randomEmail, randomValidPassword, randomName } from './shared/random';
+import { getGlobalOwnerRole } from './shared/utils';
 
 describe('auth endpoints', () => {
 	describe('Owner requests', () => {
@@ -24,14 +25,9 @@ describe('auth endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			globalOwnerRole = await Db.collections.Role!.findOneOrFail({
-				name: 'owner',
-				scope: 'global',
-			});
+			globalOwnerRole = await getGlobalOwnerRole();
 
-			const newOwner = new User();
-
-			Object.assign(newOwner, {
+			await Db.collections.User!.save({
 				id: uuid(),
 				email: TEST_USER.email,
 				firstName: TEST_USER.firstName,
@@ -39,8 +35,6 @@ describe('auth endpoints', () => {
 				password: hashSync(TEST_USER.password, genSaltSync(10)),
 				globalRole: globalOwnerRole,
 			});
-
-			await Db.collections.User!.save(newOwner);
 
 			config.set('userManagement.hasOwner', true);
 

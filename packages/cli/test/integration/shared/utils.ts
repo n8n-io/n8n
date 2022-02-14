@@ -98,6 +98,20 @@ export async function createMember(globalMemberRole: Role) {
 	});
 }
 
+export async function getGlobalOwnerRole() {
+	return await Db.collections.Role!.findOneOrFail({
+		name: 'owner',
+		scope: 'global',
+	});
+}
+
+export async function getGlobalMemberRole() {
+	return await Db.collections.Role!.findOneOrFail({
+		name: 'member',
+		scope: 'global',
+	});
+}
+
 // ----------------------------------
 //           request agent
 // ----------------------------------

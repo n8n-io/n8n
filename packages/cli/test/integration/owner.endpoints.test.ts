@@ -8,6 +8,7 @@ import { Db } from '../../src';
 import config = require('../../config');
 import { Role } from '../../src/databases/entities/Role';
 import { randomEmail, randomName, randomValidPassword, randomInvalidPassword } from './shared/random';
+import { getGlobalOwnerRole } from './shared/utils';
 
 let globalOwnerRole: Role;
 
@@ -20,10 +21,7 @@ describe('/owner endpoints', () => {
 			await utils.initTestDb();
 			await utils.truncateUserTable();
 
-			globalOwnerRole = await Db.collections.Role!.findOneOrFail({
-				name: 'owner',
-				scope: 'global',
-			});
+			globalOwnerRole = await getGlobalOwnerRole();
 		});
 
 		beforeEach(async () => {

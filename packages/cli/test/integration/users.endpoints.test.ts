@@ -16,7 +16,7 @@ import {
 	randomName,
 	randomInvalidPassword,
 } from './shared/random';
-import { createMember } from './shared/utils';
+import { createMember, getGlobalMemberRole, getGlobalOwnerRole } from './shared/utils';
 
 let app: express.Application;
 let globalOwnerRole: Role;
@@ -26,16 +26,8 @@ beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
 	await utils.initTestDb();
 
-
-	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
-		name: 'owner',
-		scope: 'global',
-	});
-
-	globalMemberRole = await Db.collections.Role!.findOneOrFail({
-		name: 'member',
-		scope: 'global',
-	});
+	globalOwnerRole = await getGlobalOwnerRole();
+	globalMemberRole = await getGlobalMemberRole();
 
 	config.set('logs.output', 'file'); // declutter console output
 	const logger = getLogger();
@@ -49,9 +41,6 @@ beforeEach(async () => {
 		jest.mock('../../config');
 	});
 
-	config.set('userManagement.hasOwner', true);
-	config.set('userManagement.emails.mode', '');
-
 	await Db.collections.User!.save({
 		id: INITIAL_TEST_USER.id,
 		email: INITIAL_TEST_USER.email,
@@ -62,6 +51,9 @@ beforeEach(async () => {
 		updatedAt: new Date(),
 		globalRole: globalOwnerRole,
 	});
+
+	config.set('userManagement.hasOwner', true);
+	config.set('userManagement.emails.mode', '');
 });
 
 afterEach(async () => {
