@@ -231,7 +231,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const { transferId } = req.query;
 
-			if (transferId && transferId === idToDelete) {
+			if (transferId === idToDelete) {
 				throw new ResponseHelper.ResponseError(
 					'User to delete and transferee cannot be the same',
 					undefined,
