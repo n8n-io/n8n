@@ -33,8 +33,9 @@ export class GoogleAds implements INodeType {
 		],
 		requestDefaults: {
 			baseURL: 'https://googleads.googleapis.com',
-			// Possible to use expressions and reference data from credentials
-			// baseURL: '={{$credentials.host}}',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+			},
 		},
 		properties: [
 			{

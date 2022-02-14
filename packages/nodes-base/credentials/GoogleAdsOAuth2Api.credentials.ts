@@ -1,5 +1,5 @@
 import {
-	// IAuthenticateHeaderAuth,
+	IAuthenticateHeaderAuth,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	IHttpRequestOptions,
@@ -15,7 +15,7 @@ export class GoogleAdsOAuth2Api implements ICredentialType {
 	extends = [
 		'googleOAuth2Api',
 	];
-	displayName = 'Google Ads OAuth2 API test';
+	displayName = 'Google Ads OAuth2 API';
 	documentationUrl = 'google';
 	properties: INodeProperties[] = [
 		{
@@ -32,12 +32,20 @@ export class GoogleAdsOAuth2Api implements ICredentialType {
 		},
 	];
 
+	// authenticate = {
+	// 	type: 'headerAuth',
+	// 	properties: {
+	// 		name: 'Authorization',
+	// 		value: '=Bearer {{$credentials.oauthTokenData.access_token}}',
+	// 	},
+	// } as IAuthenticateHeaderAuth;
 
 	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		console.log('GoogleAds.authenticate');
-		requestOptions.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-		requestOptions.headers!['developer-token'] = `${credentials.developerToken}`;
+		// @ts-ignore
+		requestOptions.headers!['Authorization'] = `Bearer ${credentials.oauthTokenData!.access_token}`;
 		requestOptions.headers!['Content-Type'] = `application/x-www-form-urlencoded`;
+		requestOptions.headers!['developer-token'] = credentials.developerToken;
 		return requestOptions;
 	}
+
 }

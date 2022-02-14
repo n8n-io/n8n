@@ -21,15 +21,24 @@ export const campaignOperations: INodeProperties[] = [
 				description: 'Get all the campaigns linked to that user',
 				routing: {
 					request: {
-						method: 'GET',
+						method: 'POST',
 						url: '/v9/customers/9846033527/googleAds:search',
+						body: {
+							query: 'SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC',
+						},
 					},
-				}
+				},
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a specific campaign',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v9/customers:listAccessibleCustomers',
+					},
+				},
 			},
 			{
 				name: 'Custom Query',
