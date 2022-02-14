@@ -214,7 +214,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async () => {
-			const users = await Db.collections.User!.find();
+			const users = await Db.collections.User!.find({ relations: ['globalRole'] });
 
 			return users.map((user) => sanitizeUser(user));
 		}),
