@@ -157,7 +157,7 @@ export default mixins(genericHelpers).extend({
 			inserted: (el, binding, vnode) => {
 				const f = () => {
 					if (vnode.context) {
-						if (vnode.context.$props.infinityScroll) {
+						if (vnode.context.$props.infinityScroll && vnode.context.$route.name === 'TemplatesView') {
 							const rect = el.getBoundingClientRect();
 							if (el) {
 								const inView =

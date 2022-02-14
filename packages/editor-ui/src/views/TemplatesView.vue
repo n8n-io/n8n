@@ -65,6 +65,7 @@ import TemplateList from '@/components/TemplateList.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { abbreviateNumber } from '@/components/helpers';
 import mixins from 'vue-typed-mixins';
+import { IDataObject } from 'n8n-workflow';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplatesView',
@@ -74,11 +75,17 @@ export default mixins(genericHelpers).extend({
 		TemplateList,
 	},
 	computed: {
+		allCategories(): [] {
+			return this.$store.getters['templates/getCategories'];
+		},
 		collections(): [] {
 			return this.$store.getters['templates/getCollections'];
 		},
 		isMenuCollapsed(): boolean {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
+		},
+		templateSessionId(): number {
+			return this.$store.getters['templates/getTemplateSessionId'];
 		},
 		totalWorkflows(): number {
 			return this.$store.getters['templates/getTotalWorkflows'];
@@ -103,16 +110,31 @@ export default mixins(genericHelpers).extend({
 			const category = this.categories;
 			const search = this.search;
 
-			this.updatQueryParam(search, category.join(','));
+			this.updateQueryParam(search, category.join(','));
 
 			const response = await this.$store.dispatch('templates/getSearchResults', {
 				search,
 				category,
 			});
 
+			const templateEvent = await this.generateTemplateEvent();
+			this.$telemetry.track('User searched workflow templates', templateEvent);
+
 			if (response) {
 				this.loading = false;
 			}
+		},
+		async generateTemplateEvent() {
+			if (!this.templateSessionId) {
+				await this.$store.dispatch('templates/setTemplateSessionId', new Date().valueOf());
+			}
+
+			return {
+				search_string: this.search,
+				results_counts: this.numberOfResults,
+				categories_applied: this.categories,
+				wf_template_repo_session_id: this.templateSessionId,
+			};
 		},
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (e.metaKey || e.ctrlKey) {
@@ -141,7 +163,7 @@ export default mixins(genericHelpers).extend({
 				});
 			}, 100);
 		},
-		updatQueryParam(search: string, category: string) {
+		updateQueryParam(search: string, category: string) {
 			const query = Object.assign({}, this.$route.query);
 
 			if (category.length) {
@@ -178,6 +200,9 @@ export default mixins(genericHelpers).extend({
 			category,
 			fetchCategories: true,
 		});
+
+		const templateEvent = await this.generateTemplateEvent();
+		this.$telemetry.track('User searched workflow templates', templateEvent);
 
 		this.loadingCategories = false;
 		this.loading = false;

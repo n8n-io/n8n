@@ -832,6 +832,7 @@ export interface ITemplateState {
 	collections: ITemplateCollection[];
 	templates: IN8nTemplate[];
 	template: IN8nTemplate;
+	templateSessionId: number | null;
 	totalworkflow: number | null;
 }
 
