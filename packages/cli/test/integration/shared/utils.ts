@@ -166,4 +166,5 @@ export async function getHasOwnerSetting() {
  */
 export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
 
+// TODO: Phase out
 export const isTestRun = process.argv[1].split('/').includes('jest');
