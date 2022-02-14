@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Request, Response } from 'express';
@@ -150,7 +151,7 @@ export function usersNamespace(this: N8nApp): void {
 					inviterId,
 					inviteeId,
 				});
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
 			const users = await Db.collections.User!.find({ where: { id: In([inviterId, inviteeId]) } });
@@ -225,7 +226,7 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError(
 					'This invite has been accepted already',
 					undefined,
-					500,
+					400,
 				);
 			}
 
@@ -244,7 +245,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async () => {
-			const users = await Db.collections.User!.find();
+			const users = await Db.collections.User!.find({ relations: ['globalRole'] });
 
 			return users.map((user) => sanitizeUser(user));
 		}),

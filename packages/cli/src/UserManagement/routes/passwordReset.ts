@@ -100,28 +100,28 @@ export function passwordResetNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/change-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.NewPassword, res: express.Response) => {
-			const { token: resetPasswordToken, id, password } = req.body;
+			const { token: resetPasswordToken, userId, password } = req.body;
 
-			if (!resetPasswordToken || !id || !password) {
+			if (!resetPasswordToken || !userId || !password) {
 				throw new ResponseHelper.ResponseError('Parameter missing', undefined, 400);
 			}
 
 			const validPassword = validatePassword(password);
 
-			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
+			const user = await Db.collections.User!.findOne({ id: userId, resetPasswordToken });
 
 			if (!user) {
 				LoggerProxy.error('Missing password reset token or user ID at POST /change-password');
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			await Db.collections.User!.update(id, {
+			await Db.collections.User!.update(userId, {
 				password: hashSync(validPassword, genSaltSync(10)),
 				resetPasswordToken: null,
 			});
 
 			LoggerProxy.debug('User password updated successfully at POST /change-password', {
-				userId: id,
+				userId,
 			});
 
 			await issueCookie(res, req.user);
