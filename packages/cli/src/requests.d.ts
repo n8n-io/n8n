@@ -146,7 +146,7 @@ export declare namespace PasswordResetRequest {
 	export type NewPassword = AuthenticatedRequest<
 		{},
 		{},
-		Pick<PublicUser, 'password'> & { token?: string; id?: string }
+		Pick<PublicUser, 'password'> & { token?: string; userId?: string }
 	>;
 }
 
