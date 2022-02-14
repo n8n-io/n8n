@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -150,7 +151,7 @@ export class Mautic implements INodeType {
 						description: 'Add/remove contacts to/from a segment',
 					},
 					{
-						name: 'Contact Points',
+						name: 'Contact Point',
 						value: 'contactPoint',
 						description: 'Add/remove points to/from a contact',
 					},
@@ -314,7 +315,7 @@ export class Mautic implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const emails = await mauticApiRequestAllItems.call(this, 'emails', 'GET', '/emails');
 				for (const email of emails) {
-					if (email.emailType == 'list'){
+					if (email.emailType === 'list'){
 						returnData.push({
 							name: email.name,
 							value: email.id,
@@ -329,7 +330,7 @@ export class Mautic implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const emails = await mauticApiRequestAllItems.call(this, 'emails', 'GET', '/emails');
 				for (const email of emails) {
-					if (email.emailType == 'template'){
+					if (email.emailType === 'template'){
 						returnData.push({
 							name: email.name,
 							value: email.id,
@@ -900,7 +901,7 @@ export class Mautic implements INodeType {
 						const channel = this.getNodeParameter('channel', i) as string;
 						const reason = this.getNodeParameter('reason', i) as string;
 						const comments = this.getNodeParameter('comments', i) as string;
-						let body: IDataObject = {};
+						const body: IDataObject = {};
 						body.comments = comments;
 						body.reason = reason;
 						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/dnc/${channel}/add`, body);
@@ -972,7 +973,7 @@ export class Mautic implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

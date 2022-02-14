@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const sendEmailOperations = [
+export const sendEmailOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -16,12 +16,12 @@ export const sendEmailOperations = [
 		},
 		options: [
 			{
-				name: 'Send to Contact',
+				name: 'Send To Contact',
 				value: 'contact',
 				description: 'Send email to contact',
 			},
 			{
-				name: 'Send to Segment',
+				name: 'Send To Segment',
 				value: 'segment',
 				description: 'Send email to segment',
 			},
@@ -29,9 +29,9 @@ export const sendEmailOperations = [
 		default: 'contact',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const sendEmailFields = [
+export const sendEmailFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                               sendEmail:send                            */
@@ -96,4 +96,4 @@ export const sendEmailFields = [
 		default: '',
 		description: 'Contact ID',
 	},
-] as INodeProperties[];
+];

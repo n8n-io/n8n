@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactDncOperations = [
+export const contactDncOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -18,7 +18,7 @@ export const contactDncOperations = [
 			{
 				name: 'Add',
 				value: 'add',
-				description: 'Add contact to Do not Contact',
+				description: 'Add contact to Do Not Contact',
 			},
 			{
 				name: 'Remove',
@@ -29,9 +29,9 @@ export const contactDncOperations = [
 		default: 'add',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactDncFields = [
+export const contactDncFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                               contactDnc:add                           */
@@ -73,7 +73,7 @@ export const contactDncFields = [
 		},
 		options: [
 			{
-				name: 'E-mail',
+				name: 'Email',
 				value: 'email',
 			},
 			{
@@ -84,7 +84,7 @@ export const contactDncFields = [
 		default: 'email',
 	},
 	{
-		displayName: 'Reason',
+		displayName: 'Reason To Do Not Contact',
 		name: 'reason',
 		type: 'options',
 		required: true,
@@ -130,6 +130,6 @@ export const contactDncFields = [
 			},
 		},
 		default: 'Unsubscribed via API',
-		description: 'A text describing details of DNC entry',
+		description: 'A text describing details of Do Not Contact entry',
 	},
-] as INodeProperties[];
+];
