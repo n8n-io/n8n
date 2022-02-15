@@ -86,9 +86,9 @@ export async function initTestDb() {
 	await getConnection().runMigrations({ transaction: 'none' });
 }
 
-export async function truncate(entity: keyof IDatabaseCollections) {
+export async function truncate(entities: Array<keyof IDatabaseCollections>) {
 	await getConnection().query('PRAGMA foreign_keys=OFF');
-	await Db.collections[entity]!.clear();
+	await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
 	await getConnection().query('PRAGMA foreign_keys=ON');
 }
 
@@ -103,7 +103,14 @@ export async function createUser(
 		firstName,
 		lastName,
 		role,
-	}: { id: string; email: string; password: string; firstName: string; lastName: string; role?: Role } = {
+	}: {
+		id: string;
+		email: string;
+		password: string;
+		firstName: string;
+		lastName: string;
+		role?: Role;
+	} = {
 		id: uuid(),
 		email: randomEmail(),
 		password: randomValidPassword(),
@@ -194,6 +201,10 @@ export async function createAgent(
 ) {
 	const agent = request.agent(app);
 	agent.use(prefix(REST_PATH_SEGMENT));
+
+	if (auth && !user) {
+		throw new Error('User required for auth agent creation')
+	}
 
 	if (auth && user) {
 		const { token } = await issueJWT(user);

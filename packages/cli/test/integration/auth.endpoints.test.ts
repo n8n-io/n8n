@@ -22,7 +22,7 @@ describe('auth endpoints', () => {
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['auth'], applyAuth: true });
 			await utils.initTestDb();
-			await utils.truncate('User');
+			await utils.truncate(['User']);
 
 			globalOwnerRole = await getGlobalOwnerRole();
 		});
@@ -46,7 +46,7 @@ describe('auth endpoints', () => {
 		});
 
 		afterEach(async () => {
-			await utils.truncate('User');
+			await utils.truncate(['User']);
 		});
 
 		afterAll(() => {
