@@ -39,6 +39,7 @@ export const nodeBase = mixins(
 		'instance',
 		'isReadOnly',
 		'isActive',
+		'isDemo',
 		'hideActions',
 	],
 	methods: {
