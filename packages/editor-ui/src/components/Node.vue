@@ -1,5 +1,5 @@
 <template>
-	<div class="node-wrapper" :class="{'node-demo-wrapper': isDemo}" :style="nodePosition">
+	<div class="node-wrapper" :style="nodePosition">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
@@ -381,6 +381,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	position: absolute;
 	width: 100px;
 	height: 100px;
+	pointer-events: all;
 
 	.node-description {
 		position: absolute;
@@ -536,10 +537,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 		}
 	}
-}
-
-.node-demo-wrapper {
-	pointer-events: all;
 }
 
 .select-background {

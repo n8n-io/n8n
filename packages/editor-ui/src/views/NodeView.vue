@@ -29,7 +29,6 @@
 				:isReadOnly="isReadOnly"
 				:instance="instance"
 				:isActive="!!activeNode && activeNode.name === nodeData.name"
-				:isDemo="isDemo"
 				:hideActions="pullConnActive"
 				></node>
 			</div>
