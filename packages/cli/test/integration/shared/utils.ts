@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid';
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
-import { Db } from '../../../src';
+import { Db, IDatabaseCollections } from '../../../src';
 import { User } from '../../../src/databases/entities/User';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
@@ -81,22 +81,49 @@ export async function initTestDb() {
 	await getConnection().runMigrations({ transaction: 'none' });
 }
 
-export async function truncateUserTable() {
+export async function truncate(entity: keyof IDatabaseCollections) {
 	await getConnection().query('PRAGMA foreign_keys=OFF');
-	await Db.collections.User!.clear();
+	await Db.collections[entity]!.clear();
 	await getConnection().query('PRAGMA foreign_keys=ON');
 }
 
-export async function createMember(globalMemberRole: Role) {
-	return await Db.collections.User!.save({
+/**
+ * Store a user in the DB, defaulting to a `member`.
+ */
+export async function createUser(
+	{
+		id,
+		email,
+		password,
+		firstName,
+		lastName,
+		role,
+	}: { id: string; email: string; password: string; firstName: string; lastName: string; role?: Role } = {
 		id: uuid(),
 		email: randomEmail(),
 		password: randomValidPassword(),
 		firstName: randomName(),
 		lastName: randomName(),
+	},
+) {
+	return await Db.collections.User!.save({
+		id,
+		email,
+		password,
+		firstName,
+		lastName,
 		createdAt: new Date(),
 		updatedAt: new Date(),
-		globalRole: globalMemberRole,
+		globalRole: role ?? (await getGlobalMemberRole()),
+	});
+}
+
+export async function createOwnerShell() {
+	await Db.collections.User!.save({
+		id: uuid(),
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		globalRole: await getGlobalOwnerRole(),
 	});
 }
 
@@ -128,23 +155,45 @@ export async function getCredentialOwnerRole() {
 	});
 }
 
+export async function getAllRoles() {
+	const roles = await Promise.all([
+		getGlobalOwnerRole(),
+		getGlobalMemberRole(),
+		getWorkflowOwnerRole(),
+		getCredentialOwnerRole(),
+	]);
+
+	return {
+		globalOwnerRole: roles.find(
+			({ scope, name }) => scope === 'global' && name === 'owner',
+		) as Role,
+		globalMemberRole: roles.find(
+			({ scope, name }) => scope === 'global' && name === 'member',
+		) as Role,
+		workflowOwnerRole: roles.find(
+			({ scope, name }) => scope === 'workflow' && name === 'owner',
+		) as Role,
+		credentialOwnerRole: roles.find(
+			({ scope, name }) => scope === 'credential' && name === 'owner',
+		) as Role,
+	};
+}
+
 // ----------------------------------
 //           request agent
 // ----------------------------------
 
-export async function createAuthAgent(app: express.Application, user: User) {
+export async function createAgent(
+	app: express.Application,
+	{ auth, user }: { auth: boolean; user?: User } = { auth: false },
+) {
 	const agent = request.agent(app);
 	agent.use(prefix(REST_PATH_SEGMENT));
 
-	const { token } = await issueJWT(user);
-	agent.jar.setCookie(`n8n-auth=${token}`);
-
-	return agent;
-}
-
-export async function createAuthlessAgent(app: express.Application) {
-	const agent = request.agent(app);
-	agent.use(prefix(REST_PATH_SEGMENT));
+	if (auth && user) {
+		const { token } = await issueJWT(user);
+		agent.jar.setCookie(`n8n-auth=${token}`);
+	}
 
 	return agent;
 }

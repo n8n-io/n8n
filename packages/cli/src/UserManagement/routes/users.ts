@@ -252,7 +252,7 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Could not find user', undefined, 404);
 			}
 
-			const userToDelete = users.find((user) => user.id === req.params.id)!;
+			const userToDelete = users.find((user) => user.id === req.params.id) as User;
 
 			if (transferId) {
 				const transferee = users.find((user) => user.id === transferId);

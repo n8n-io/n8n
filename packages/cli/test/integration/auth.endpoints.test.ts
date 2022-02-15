@@ -13,27 +13,28 @@ import { Role } from '../../src/databases/entities/Role';
 import { randomEmail, randomValidPassword, randomName } from './shared/random';
 import { getGlobalOwnerRole } from './shared/utils';
 
+let globalOwnerRole: Role;
+
 describe('auth endpoints', () => {
 	describe('Owner requests', () => {
 		let app: express.Application;
-		let globalOwnerRole: Role;
 
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['auth'], applyAuth: true });
 			await utils.initTestDb();
-			await utils.truncateUserTable();
+			await utils.truncate('User');
+
+			globalOwnerRole = await getGlobalOwnerRole();
 		});
 
 		beforeEach(async () => {
-			globalOwnerRole = await getGlobalOwnerRole();
-
-			await Db.collections.User!.save({
+			await utils.createUser({
 				id: uuid(),
 				email: TEST_USER.email,
 				firstName: TEST_USER.firstName,
 				lastName: TEST_USER.lastName,
 				password: hashSync(TEST_USER.password, genSaltSync(10)),
-				globalRole: globalOwnerRole,
+				role: globalOwnerRole,
 			});
 
 			config.set('userManagement.hasOwner', true);
@@ -45,7 +46,7 @@ describe('auth endpoints', () => {
 		});
 
 		afterEach(async () => {
-			await utils.truncateUserTable();
+			await utils.truncate('User');
 		});
 
 		afterAll(() => {
@@ -53,7 +54,7 @@ describe('auth endpoints', () => {
 		});
 
 		test('POST /login should log user in', async () => {
-			const authlessAgent = await utils.createAuthlessAgent(app);
+			const authlessAgent = await utils.createAgent(app, { auth: false });
 
 			const response = await authlessAgent.post('/login').send({
 				email: TEST_USER.email,
@@ -91,7 +92,7 @@ describe('auth endpoints', () => {
 
 		test('GET /login should receive logged in user', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const authOwnerAgent = await utils.createAuthAgent(app, owner);
+			const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
 			const response = await authOwnerAgent.get('/login');
 
@@ -125,7 +126,7 @@ describe('auth endpoints', () => {
 
 		test('POST /logout should log user out', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const authOwnerAgent = await utils.createAuthAgent(app, owner);
+			const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
 			const response = await authOwnerAgent.post('/logout');
 

@@ -19,22 +19,16 @@ describe('/owner endpoints', () => {
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['owner'], applyAuth: true });
 			await utils.initTestDb();
-			await utils.truncateUserTable();
 
 			globalOwnerRole = await getGlobalOwnerRole();
 		});
 
 		beforeEach(async () => {
-			await Db.collections.User!.save({
-				id: uuid(),
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				globalRole: globalOwnerRole,
-			});
+			await utils.createOwnerShell();
 		});
 
 		afterEach(async () => {
-			await utils.truncateUserTable();
+			await utils.truncate('User');
 		});
 
 		afterAll(() => {
@@ -43,7 +37,7 @@ describe('/owner endpoints', () => {
 
 		test('POST /owner should create owner and enable hasOwner setting', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAuthAgent(app, shell);
+			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
 
 			const response = await authShellAgent.post('/owner').send(TEST_USER);
 
@@ -82,7 +76,7 @@ describe('/owner endpoints', () => {
 
 		test('POST /owner should fail with invalid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAuthAgent(app, shell);
+			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
 
 			for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
 				const response = await authShellAgent.post('/owner').send(invalidPayload);
