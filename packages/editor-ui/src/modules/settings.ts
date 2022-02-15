@@ -52,7 +52,7 @@ const module: Module<ISettingsState, IRootState> = {
 			return state.settings.telemetry && state.settings.telemetry.enabled;
 		},
 		areTagsEnabled: (state) => {
-			return state.settings.tagsEnabled !== undefined ? state.settings.tagsEnabled : true;
+			return state.settings.workflowTagsDisabled !== undefined ? !state.settings.workflowTagsDisabled : true;
 		},
 	},
 	mutations: {

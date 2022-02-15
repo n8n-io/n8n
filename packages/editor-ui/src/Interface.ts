@@ -556,8 +556,8 @@ export interface IN8nUISettings {
 	telemetry: ITelemetrySettings;
 	userManagement: IUserManagementConfig;
 	defaultLocale: string;
+	workflowTagsDisabled: boolean;
 	logLevel: ILogLevel;
-	tagsEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
