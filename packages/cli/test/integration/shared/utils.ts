@@ -26,7 +26,7 @@ const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
 export const initLogger = () => {
 	config.set('logs.output', 'file'); // declutter console output during tests
 	LoggerProxy.init(getLogger());
-};;
+};
 
 /**
  * Initialize a test server to make requests from,
