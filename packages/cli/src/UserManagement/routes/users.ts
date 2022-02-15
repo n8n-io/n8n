@@ -113,8 +113,7 @@ export function usersNamespace(this: N8nApp): void {
 			const mailer = getInstance();
 			await Promise.all(
 				notYetSetUpUsers.map(async ([email, id]) => {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
+					const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${id!}`;
 					const result = await mailer.invite({
 						email,
 						inviteAcceptUrl,
