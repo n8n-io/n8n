@@ -70,7 +70,7 @@ export function meNamespace(this: N8nApp): void {
 
 			const user = await Db.collections.User!.save(req.user);
 
-			Logger.info('User password saved successfully', { userId: user.id });
+			Logger.info('User password updated successfully', { userId: user.id });
 
 			await issueCookie(res, user);
 
