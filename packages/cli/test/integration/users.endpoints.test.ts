@@ -31,12 +31,12 @@ beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
 	await utils.initTestDb();
 
-	const {
-		globalOwnerRole: fetchedGlobalOwnerRole,
-		globalMemberRole: fetchedGlobalMemberRole,
-		workflowOwnerRole: fetchedWorkflowOwnerRole,
-		credentialOwnerRole: fetchedCredentialOwnerRole,
-	} = await utils.getAllRoles();
+	const [
+		fetchedGlobalOwnerRole,
+		fetchedGlobalMemberRole,
+		fetchedWorkflowOwnerRole,
+		fetchedCredentialOwnerRole,
+	] = await utils.getAllRoles();
 
 	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
@@ -44,12 +44,11 @@ beforeAll(async () => {
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
 	config.set('logs.output', 'file'); // declutter console output
-	const logger = getLogger();
-	LoggerProxy.init(logger);
+	utils.initLogger();
 });
 
 beforeEach(async () => {
-	await utils.truncate('User');
+	await utils.truncate(['User']);
 
 	jest.isolateModules(() => {
 		jest.mock('../../config');
@@ -69,7 +68,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate('User');
+	await utils.truncate(['User']);
 });
 
 afterAll(() => {
@@ -274,7 +273,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 	expect(sharedCredential.user.id).toBe(owner.id);
 	expect(deletedUser).toBeUndefined();
 
-	await Promise.all([utils.truncate('Credentials'), utils.truncate('Workflow')]);
+	await utils.truncate(['Credentials', 'Workflow']);
 });
 
 test('GET /resolve-signup-token should validate invite token', async () => {

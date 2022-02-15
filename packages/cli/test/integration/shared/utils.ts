@@ -6,6 +6,7 @@ import bodyParser = require('body-parser');
 import * as util from 'util';
 import { createTestAccount } from 'nodemailer';
 import { v4 as uuid } from 'uuid';
+import { LoggerProxy } from 'n8n-workflow';
 
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
@@ -22,10 +23,16 @@ import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { randomEmail, randomValidPassword, randomName } from './random';
 import type { EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
 import { Role } from '../../../src/databases/entities/Role';
+import { getLogger } from '../../../src/Logger';
 
 // ----------------------------------
 //            test server
 // ----------------------------------
+
+export const initLogger = () => {
+	config.set('logs.output', 'file'); // declutter console output during tests
+	LoggerProxy.init(getLogger());
+};
 
 /**
  * Initialize a test server to make requests to.
@@ -81,9 +88,9 @@ export async function initTestDb() {
 	await getConnection().runMigrations({ transaction: 'none' });
 }
 
-export async function truncate(entity: keyof IDatabaseCollections) {
+export async function truncate(entities: Array<keyof IDatabaseCollections>) {
 	await getConnection().query('PRAGMA foreign_keys=OFF');
-	await Db.collections[entity]!.clear();
+	await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
 	await getConnection().query('PRAGMA foreign_keys=ON');
 }
 
@@ -98,7 +105,14 @@ export async function createUser(
 		firstName,
 		lastName,
 		role,
-	}: { id: string; email: string; password: string; firstName: string; lastName: string; role?: Role } = {
+	}: {
+		id: string;
+		email: string;
+		password: string;
+		firstName: string;
+		lastName: string;
+		role?: Role;
+	} = {
 		id: uuid(),
 		email: randomEmail(),
 		password: randomValidPassword(),
@@ -155,28 +169,13 @@ export async function getCredentialOwnerRole() {
 	});
 }
 
-export async function getAllRoles() {
-	const roles = await Promise.all([
+export function getAllRoles() {
+	return Promise.all([
 		getGlobalOwnerRole(),
 		getGlobalMemberRole(),
 		getWorkflowOwnerRole(),
 		getCredentialOwnerRole(),
 	]);
-
-	return {
-		globalOwnerRole: roles.find(
-			({ scope, name }) => scope === 'global' && name === 'owner',
-		) as Role,
-		globalMemberRole: roles.find(
-			({ scope, name }) => scope === 'global' && name === 'member',
-		) as Role,
-		workflowOwnerRole: roles.find(
-			({ scope, name }) => scope === 'workflow' && name === 'owner',
-		) as Role,
-		credentialOwnerRole: roles.find(
-			({ scope, name }) => scope === 'credential' && name === 'owner',
-		) as Role,
-	};
 }
 
 // ----------------------------------
@@ -189,6 +188,10 @@ export async function createAgent(
 ) {
 	const agent = request.agent(app);
 	agent.use(prefix(REST_PATH_SEGMENT));
+
+	if (auth && !user) {
+		throw new Error('User required for auth agent creation');
+	}
 
 	if (auth && user) {
 		const { token } = await issueJWT(user);
