@@ -40,7 +40,7 @@ export function usersNamespace(this: N8nApp): void {
 			// Validate payload
 			invitations.forEach((invitation) => {
 				if (!validator.isEmail(invitation.email)) {
-					Logger.debug('Invalid email in payload', { payload: req.body });
+					Logger.debug('Invalid email in payload', { invalidEmail: invitation.email });
 					throw new ResponseHelper.ResponseError(
 						`Invalid email address ${invitation.email}`,
 						undefined,
