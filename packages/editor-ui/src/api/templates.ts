@@ -67,6 +67,7 @@ export async function getTemplateById(templateId: string): Promise<IN8nTemplateR
 				id
 				url
 			}
+			workflow
 			workflowInfo
 			nodes{
 				defaults
