@@ -16,13 +16,7 @@ import {
 	randomName,
 	randomInvalidPassword,
 } from './shared/random';
-import {
-	createMember,
-	getCredentialOwnerRole,
-	getGlobalMemberRole,
-	getGlobalOwnerRole,
-	getWorkflowOwnerRole,
-} from './shared/utils';
+import { createMember } from './shared/utils';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 
@@ -36,10 +30,17 @@ beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
 	await utils.initTestDb();
 
-	globalOwnerRole = await getGlobalOwnerRole();
-	globalMemberRole = await getGlobalMemberRole();
-	workflowOwnerRole = await getWorkflowOwnerRole();
-	credentialOwnerRole = await getCredentialOwnerRole();
+	const {
+		globalOwnerRole: fetchedGlobalOwnerRole,
+		globalMemberRole: fetchedGlobalMemberRole,
+		workflowOwnerRole: fetchedWorkflowOwnerRole,
+		credentialOwnerRole: fetchedCredentialOwnerRole,
+	} = await utils.getAllRoles();
+
+	globalOwnerRole = fetchedGlobalOwnerRole;
+	globalMemberRole = fetchedGlobalMemberRole;
+	workflowOwnerRole = fetchedWorkflowOwnerRole;
+	credentialOwnerRole = fetchedCredentialOwnerRole;
 
 	config.set('logs.output', 'file'); // declutter console output
 	const logger = getLogger();

@@ -126,6 +126,30 @@ export async function getCredentialOwnerRole() {
 	});
 }
 
+export async function getAllRoles() {
+	const roles = await Promise.all([
+		getGlobalOwnerRole(),
+		getGlobalMemberRole(),
+		getWorkflowOwnerRole(),
+		getCredentialOwnerRole(),
+	]);
+
+	return {
+		globalOwnerRole: roles.find(
+			({ scope, name }) => scope === 'global' && name === 'owner',
+		) as Role,
+		globalMemberRole: roles.find(
+			({ scope, name }) => scope === 'global' && name === 'member',
+		) as Role,
+		workflowOwnerRole: roles.find(
+			({ scope, name }) => scope === 'workflow' && name === 'owner',
+		) as Role,
+		credentialOwnerRole: roles.find(
+			({ scope, name }) => scope === 'credential' && name === 'owner',
+		) as Role,
+	};
+}
+
 // ----------------------------------
 //           request agent
 // ----------------------------------
