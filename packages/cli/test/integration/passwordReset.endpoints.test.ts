@@ -20,7 +20,7 @@ let globalOwnerRole: Role;
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['passwordReset'], applyAuth: true });
 	await utils.initTestDb();
-	await utils.truncate('User');
+	await utils.truncate(['User']);
 
 	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
 		name: 'owner',
@@ -47,7 +47,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate('User');
+	await utils.truncate(['User']);
 });
 
 afterAll(() => {
