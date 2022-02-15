@@ -31,7 +31,7 @@ export function ownerNamespace(this: N8nApp): void {
 			}
 
 			if (!email || !validator.isEmail(email)) {
-				Logger.debug('Invalid email in payload', { userId, email });
+				Logger.debug('Invalid email in payload', { userId, invalidEmail: email });
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
@@ -45,7 +45,7 @@ export function ownerNamespace(this: N8nApp): void {
 			}
 
 			if (!firstName || !lastName) {
-				Logger.debug('Missing firstName or lastName in payload', { firstName, lastName });
+				Logger.debug('Missing firstName or lastName in payload', { userId, payload: req.body });
 				throw new ResponseHelper.ResponseError(
 					'First and last names are mandatory',
 					undefined,
@@ -82,7 +82,7 @@ export function ownerNamespace(this: N8nApp): void {
 				{ value: JSON.stringify(true) },
 			);
 
-			Logger.info('Setting hasOwner updated successfully');
+			Logger.info('Setting hasOwner updated successfully', { userId: req.user.id });
 
 			await issueCookie(res, owner);
 

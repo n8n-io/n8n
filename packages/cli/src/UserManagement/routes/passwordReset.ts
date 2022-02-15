@@ -26,19 +26,19 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { email } = req.body;
 
 			if (!email) {
-				Logger.debug('Missing email in payload', { payload: req.body });
+				Logger.debug('Missing email in payload', { userId: req.user.id, payload: req.body });
 				throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 			}
 
 			if (!validator.isEmail(email)) {
-				Logger.debug('Invalid email in payload', { payload: req.body });
+				Logger.debug('Invalid email in payload', { userId: req.user.id, invalidEmail: email });
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
 			const user = await Db.collections.User!.findOne({ email });
 
 			if (!user) {
-				Logger.debug('User not found for email', { payload: req.body });
+				Logger.debug('User not found for email', { userId: req.user.id, invalidEmail: email });
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
@@ -61,7 +61,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				domain: baseUrl,
 			});
 
-			Logger.info('Sent password reset email successfully');
+			Logger.info('Sent password reset email successfully', { userId: req.user.id });
 		}),
 	);
 
@@ -74,14 +74,20 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { token: resetPasswordToken, userId: id } = req.query;
 
 			if (!resetPasswordToken || !id) {
-				Logger.debug('Missing password reset token or user ID');
+				Logger.debug('Missing password reset token or user ID in query string', {
+					userId: req.user.id,
+					queryString: req.query,
+				});
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
 			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
 
 			if (!user) {
-				Logger.debug('User not found for user ID and reset password token', { userId: id });
+				Logger.debug('User not found for user ID and reset password token', {
+					userId: req.user.id,
+					queryString: req.query,
+				});
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
@@ -98,6 +104,10 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { token: resetPasswordToken, userId, password } = req.body;
 
 			if (!resetPasswordToken || !userId || !password) {
+				Logger.debug('User ID or password or reset password token missing from payload', {
+					userId: req.user.id,
+					payload: req.body,
+				});
 				throw new ResponseHelper.ResponseError('Parameter missing', undefined, 400);
 			}
 
@@ -106,7 +116,10 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ id: userId, resetPasswordToken });
 
 			if (!user) {
-				Logger.debug('Missing password reset token or user ID', { userId });
+				Logger.debug('User not found for user ID and reset password token', {
+					userId: req.user.id,
+					queryString: req.query,
+				});
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 

@@ -33,12 +33,15 @@ export function meNamespace(this: N8nApp): void {
 		ResponseHelper.send(
 			async (req: MeRequest.Settings, res: express.Response): Promise<PublicUser> => {
 				if (!req.body.email) {
-					Logger.debug('Email not found in payload', { userId: req.user.id });
+					Logger.debug('Email not found in payload', { userId: req.user.id, payload: req.body });
 					throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 				}
 
 				if (!validator.isEmail(req.body.email)) {
-					Logger.debug('Invalid email in payload', { userId: req.user.id, email: req.body.email });
+					Logger.debug('Invalid email in payload', {
+						userId: req.user.id,
+						invalidEmail: req.body.email,
+					});
 					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}
 
