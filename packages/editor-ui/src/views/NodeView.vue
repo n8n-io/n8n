@@ -2724,7 +2724,6 @@ export default mixins(
 			},
 		},
 
-
 		async mounted () {
 			window.addEventListener('message', this.onPostMessageReceived);
 
