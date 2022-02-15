@@ -106,12 +106,12 @@ export function usersNamespace(this: N8nApp): void {
 				domain = domain.slice(0, domain.length - 1);
 			}
 
-			const notYetSetUpUsers = Object.entries(createUsers).filter(([email, id]) => id && email);
+			const usersPendingSetup = Object.entries(createUsers).filter(([email, id]) => id && email);
 
 			// send invite email to new or not yet setup users
 			const mailer = getInstance();
 			await Promise.all(
-				notYetSetUpUsers.map(async ([email, id]) => {
+				usersPendingSetup.map(async ([email, id]) => {
 					const inviteAcceptUrl = `${domain}/signup/inviterId=${req.user.id}&inviteeId=${id!}`;
 					const result = await mailer.invite({
 						email,
@@ -136,8 +136,8 @@ export function usersNamespace(this: N8nApp): void {
 			);
 
 			Logger.debug(
-				notYetSetUpUsers.length > 1
-					? `Sent ${notYetSetUpUsers.length} emails successfully`
+				usersPendingSetup.length > 1
+					? `Sent ${usersPendingSetup.length} emails successfully`
 					: `Sent 1 email successfully`,
 				{ userShells: createUsers },
 			);
