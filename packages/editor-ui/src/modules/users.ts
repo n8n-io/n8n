@@ -26,12 +26,17 @@ const module: Module<IUsersState, IRootState> = {
 	mutations: {
 		addUsers: (state: IUsersState, users: IUserResponse[]) => {
 			users.forEach((userResponse: IUserResponse) => {
-				const user: IUser = {
+				const prevUser = state.users[userResponse.id] || {};
+				const updatedUser = {
+					...prevUser,
 					...userResponse,
-					fullName: userResponse.firstName? `${userResponse.firstName} ${userResponse.lastName || ''}`: undefined,
-					isDefaultUser: isDefaultUser(userResponse),
-					isPendingUser: isPendingUser(userResponse),
-					isOwner: Boolean(userResponse.globalRole && userResponse.globalRole.name === ROLE.Owner),
+				};
+				const user: IUser = {
+					...updatedUser,
+					fullName: userResponse.firstName? `${updatedUser.firstName} ${updatedUser.lastName || ''}`: undefined,
+					isDefaultUser: isDefaultUser(updatedUser),
+					isPendingUser: isPendingUser(updatedUser),
+					isOwner: Boolean(updatedUser.globalRole && updatedUser.globalRole.name === ROLE.Owner),
 				};
 				Vue.set(state.users, user.id, user);
 			});
