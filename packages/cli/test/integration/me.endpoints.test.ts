@@ -340,8 +340,6 @@ describe('/me endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			const globalOwnerRole = await getGlobalOwnerRole();
-
 			await Db.collections.User!.save({
 				id: uuid(),
 				email: TEST_USER.email,

@@ -13,20 +13,21 @@ import { Role } from '../../src/databases/entities/Role';
 import { randomEmail, randomValidPassword, randomName } from './shared/random';
 import { getGlobalOwnerRole } from './shared/utils';
 
+let globalOwnerRole: Role;
+
 describe('auth endpoints', () => {
 	describe('Owner requests', () => {
 		let app: express.Application;
-		let globalOwnerRole: Role;
 
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['auth'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
+
+			globalOwnerRole = await getGlobalOwnerRole();
 		});
 
 		beforeEach(async () => {
-			globalOwnerRole = await getGlobalOwnerRole();
-
 			await Db.collections.User!.save({
 				id: uuid(),
 				email: TEST_USER.email,
