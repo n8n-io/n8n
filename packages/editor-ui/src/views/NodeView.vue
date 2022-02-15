@@ -2,7 +2,7 @@
 	<div class="node-view-root">
 		<div
 			class="node-view-wrapper"
-			:class="workflowClasses"
+			:class="{workflowClasses, 'demo-node-view-wrapper': isDemo}"
 			@touchstart="mouseDown"
 			@touchend="mouseUp"
 			@touchmove="mouseMoveNodeWorkflow"
@@ -252,7 +252,7 @@ export default mixins(
 					const saved = await this.saveCurrentWorkflow();
 					if (saved) this.$store.dispatch('settings/fetchPromptsData');
 					this.$store.commit('setStateDirty', false);
-					next();
+					this.$router.back();
 				} else if (confirmModal === MODAL_CANCEL) {
 					this.$store.commit('setStateDirty', false);
 					next();
@@ -2855,6 +2855,10 @@ export default mixins(
 	position: fixed;
 	width: 100%;
 	height: 100%;
+}
+
+.demo-node-view-wrapper {
+	pointer-events: none;
 }
 
 .node-view {
