@@ -104,7 +104,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		) {
 			Logger.verbose('User attempted to access endpoint without authorization', {
 				endpoint: `${req.method} ${trimmedUrl}`,
-				userId: isAuthenticatedRequest(req) ? req.user?.id : 'unknown',
+				userId: isAuthenticatedRequest(req) ? req.user.id : 'unknown',
 			});
 			res.status(403).json({ status: 'error', message: 'Unauthorized' });
 			return;
