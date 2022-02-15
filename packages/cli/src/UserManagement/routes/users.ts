@@ -136,12 +136,12 @@ export function usersNamespace(this: N8nApp): void {
 				}),
 			);
 
-			const emailSendingMessage =
+			Logger.debug(
 				notYetSetUpUsers.length > 1
 					? `Sent ${notYetSetUpUsers.length} emails successfully`
-					: `Sent 1 email successfully`;
-
-			Logger.debug(emailSendingMessage, { userShells: createUsers });
+					: `Sent 1 email successfully`,
+				{ userShells: createUsers },
+			);
 		}),
 	);
 
