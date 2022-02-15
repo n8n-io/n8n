@@ -15,6 +15,7 @@ describe('/owner endpoints', () => {
 			app = utils.initTestServer({ owner: true }, { applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
+			utils.initLogger();
 		});
 
 		beforeEach(async () => {

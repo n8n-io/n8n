@@ -19,6 +19,7 @@ describe('auth endpoints', () => {
 			app = utils.initTestServer({ auth: true }, { applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncateUserTable();
+			utils.initLogger();
 		});
 
 		beforeEach(async () => {
