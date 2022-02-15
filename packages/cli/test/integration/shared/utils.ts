@@ -17,6 +17,7 @@ import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/m
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
+import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { getConnection } from 'typeorm';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { randomEmail, randomValidPassword, randomName } from './random';
@@ -67,6 +68,7 @@ export function initTestServer({
 			users: usersEndpoints,
 			auth: authEndpoints,
 			owner: ownerEndpoints,
+			passwordReset: passwordResetEndpoints,
 		};
 
 		for (const namespace of namespaces) {
@@ -175,6 +177,7 @@ export function getAllRoles() {
 		getCredentialOwnerRole(),
 	]);
 }
+
 
 // ----------------------------------
 //           request agent

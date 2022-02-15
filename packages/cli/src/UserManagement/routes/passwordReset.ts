@@ -14,6 +14,7 @@ import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
 import { getBaseUrl } from '../../GenericHelpers';
+import config = require('../../../config');
 
 export function passwordResetNamespace(this: N8nApp): void {
 	/**
@@ -22,6 +23,14 @@ export function passwordResetNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/forgot-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.Email) => {
+			if (config.get('userManagement.emails.mode') === '') {
+				throw new ResponseHelper.ResponseError(
+					'Email sending must be set up in order to request a password reset email',
+					undefined,
+					500,
+				);
+			}
+
 			const { email } = req.body;
 
 			if (!email) {
