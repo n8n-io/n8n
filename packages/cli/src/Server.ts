@@ -511,7 +511,7 @@ class App {
 					token = token.replace(`${jwtHeaderValuePrefix} `, '').trimLeft();
 				}
 				// eslint-disable-next-line no-inner-declarations, @typescript-eslint/ban-types
-				function getKey(header: any, callback: Function): void {
+				function getKey(header: any, callback: Function) {
 					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => {
 						// eslint-disable-next-line @typescript-eslint/no-throw-literal
 						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
@@ -3062,7 +3062,4 @@ async function getExecutionsCount(
 
 	const count = await Db.collections.Execution!.count(countFilter);
 	return { count, estimate: false };
-}
-function res(res: any, message: string) {
-	throw new Error('Function not implemented.');
 }
