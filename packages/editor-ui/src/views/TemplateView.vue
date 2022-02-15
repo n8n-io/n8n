@@ -71,9 +71,6 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	methods: {
-		onHidePreview() {
-			this.showPreview = false;
-		},
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (page === 'WorkflowTemplate') {
 				this.$store.dispatch('templates/setTemplateSessionId', null);
@@ -91,6 +88,9 @@ export default mixins(workflowHelpers).extend({
 			} else {
 				this.$router.push({ name: page, params: { id } });
 			}
+		},
+		onHidePreview() {
+			this.showPreview = false;
 		},
 		scrollToTop() {
 			setTimeout(() => {
