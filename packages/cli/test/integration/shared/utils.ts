@@ -6,6 +6,7 @@ import bodyParser = require('body-parser');
 import * as util from 'util';
 import { createTestAccount } from 'nodemailer';
 import { v4 as uuid } from 'uuid';
+import { LoggerProxy } from 'n8n-workflow';
 
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
@@ -21,10 +22,16 @@ import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { randomEmail, randomValidPassword, randomName } from './random';
 import type { EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
 import { Role } from '../../../src/databases/entities/Role';
+import { getLogger } from '../../../src/Logger';
 
 // ----------------------------------
 //            test server
 // ----------------------------------
+
+export const initLogger = () => {
+	config.set('logs.output', 'file'); // declutter console output during tests
+	LoggerProxy.init(getLogger());
+};
 
 /**
  * Initialize a test server to make requests to.

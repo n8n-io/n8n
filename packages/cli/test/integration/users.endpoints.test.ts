@@ -44,8 +44,7 @@ beforeAll(async () => {
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
 	config.set('logs.output', 'file'); // declutter console output
-	const logger = getLogger();
-	LoggerProxy.init(logger);
+	utils.initLogger();
 });
 
 beforeEach(async () => {
