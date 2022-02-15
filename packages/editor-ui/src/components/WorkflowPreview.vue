@@ -71,8 +71,7 @@ export default mixins(showMessage).extend({
 				} else if (json.command === 'error') {
 					this.$emit('close');
 				}
-			} catch (error) {
-				this.nodeViewDetailsOpened = false;
+			} catch (e) {
 			}
 		},
 	},
@@ -100,8 +99,11 @@ export default mixins(showMessage).extend({
 }
 
 .openNDV {
+	position: fixed;
+	top: 0;
+	left: 0;
+	height: 100%;
 	width: 100%;
-	height: 607px;
-	z-index: 2;
+	z-index: 9999999;
 }
 </style>
