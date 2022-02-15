@@ -1,9 +1,16 @@
 <template>
-	<iframe
-		:class="{ [$style.workflow]: !this.nodeViewDetailsOpened, [$style.openNDV]: this.nodeViewDetailsOpened }"
-		ref="preview_iframe"
-		src="/workflows/demo"
-	></iframe>
+	<div>
+		<iframe
+			v-show="!loading"
+			:class="{
+				[$style.workflow]: !this.nodeViewDetailsOpened,
+				[$style.openNDV]: this.nodeViewDetailsOpened,
+			}"
+			ref="preview_iframe"
+			src="/workflows/demo"
+		></iframe>
+		<n8n-loading animated :loading="loading" :rows="1" variant="image" />
+	</div>
 </template>
 
 <script lang="ts">
@@ -12,15 +19,15 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 export default mixins(showMessage).extend({
 	name: 'WorkflowPreview',
-	props: ['workflow'],
+	props: ['loading', 'workflow'],
 	methods: {
 		loadWorkflow() {
 			try {
 				if (!this.workflow) {
-					throw new Error('Missing workflow');
+					throw new Error(this.$locale.baseText('workflowPreview.showError.missingWorkflow'));
 				}
 				if (!this.workflow.nodes || !Array.isArray(this.workflow.nodes)) {
-					throw new Error('Must have an array of nodes');
+					throw new Error(this.$locale.baseText('workflowPreview.showError.arrayEmpty'));
 				}
 
 				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
@@ -47,10 +54,8 @@ export default mixins(showMessage).extend({
 				if (json.command === 'n8nReady') {
 					this.loadWorkflow();
 				} else if (json.command === 'openNDV') {
-					// expand iframe
 					this.nodeViewDetailsOpened = true;
 				} else if (json.command === 'closeNDV') {
-					// close iframe
 					this.nodeViewDetailsOpened = false;
 				} else if (json.command === 'error') {
 					this.$emit('close');
@@ -77,10 +82,10 @@ export default mixins(showMessage).extend({
 <style lang="scss" module>
 .workflow {
 	width: 100%;
-	height: 100%;
+	height: 607px;
 	border: 0;
-	padding: 10px;
 }
+
 .openNDV {
 	position: fixed;
 	top: 0;

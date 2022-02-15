@@ -21,8 +21,7 @@
 			</div>
 			<div>
 				<div :class="$style.image">
-					<workflow-preview v-if="showPreview" :workflow="template.workflow" @close="onHidePreview" />
-					<n8n-image v-if="template.mainImage" :images="template.mainImage.image" />
+					<workflow-preview v-if="showPreview" :workflow="template.workflow" @close="onHidePreview" :loading="loading"/>
 				</div>
 				<div :class="$style.content">
 					<div :class="$style.markdown">
