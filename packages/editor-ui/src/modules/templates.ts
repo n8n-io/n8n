@@ -80,8 +80,8 @@ const module: Module<ITemplateState, IRootState> = {
 	actions: {
 		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string) {
 			try {
-				// context.rootGetters['settings/templatesHost']
-				const response: IN8nCollectionResponse = await getCollectionById(collectionId);
+				const apiEndpoint: string = await context.rootGetters['settings/templatesHost'];
+				const response: IN8nCollectionResponse = await getCollectionById(collectionId, apiEndpoint);
 				const data: IN8nCollectionData = response.data;
 				const collection: IN8nCollection = data.collection;
 
@@ -93,8 +93,8 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
 			try {
-				// context.rootGetters['settings/templatesHost']
-				const response: IN8nTemplateResponse = await getTemplateById(templateId);
+				const apiEndpoint: string = await context.rootGetters['settings/templatesHost'];
+				const response: IN8nTemplateResponse = await getTemplateById(templateId, apiEndpoint);
 				const data: IN8nTemplateData = response.data;
 				const template: IN8nTemplate = data.workflow;
 
@@ -108,8 +108,8 @@ const module: Module<ITemplateState, IRootState> = {
 			const searchQuery = search.length || category ? true : false;
 			const allData = fetchCategories ? fetchCategories : !searchQuery;
 			try {
-				// context.rootGetters['settings/templatesHost']
-				const payload: IN8nSearchResponse = await getTemplates(numberOfResults, skip, category, search, allData, !allData);
+				const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+				const payload: IN8nSearchResponse = await getTemplates(numberOfResults, skip, category, search, allData, !allData, apiEndpoint);
 				const results : IN8nSearchData = payload.data;
 				if (allData) {
 					const categories = results.categories.map((category: ITemplateCategory) => {

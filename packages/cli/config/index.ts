@@ -700,7 +700,7 @@ const config = convict({
 		host: {
 			doc: 'Endpoint host to retrieve workflow templates from graphql endpoint.',
 			format: String,
-			default: 'https://api-staging.n8n.io/',
+			default: 'https://api.n8n.io/',
 			env: 'N8N_TEMPLATES_HOST',
 		},
 	},
