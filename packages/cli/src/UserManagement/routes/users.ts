@@ -73,11 +73,8 @@ export function usersNamespace(this: N8nApp): void {
 				createUsers[user.email] = user.id;
 			});
 
-			const numberOfUsers = Object.keys(createUsers).length;
-
-			Logger.debug(
-				numberOfUsers > 1 ? `Creating ${numberOfUsers} user shells...` : `Creating 1 user shell...`,
-			);
+			const total = Object.keys(createUsers).length;
+			Logger.debug(total > 1 ? `Creating ${total} user shells...` : `Creating 1 user shell...`);
 
 			try {
 				await getConnection().transaction(async (transactionManager) => {
