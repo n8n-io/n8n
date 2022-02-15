@@ -76,7 +76,7 @@ export default mixins(showMessage).extend({
 					return;
 				}
 
-				this.$router.push({ name: 'SetupView' });
+				this.$router.replace({ name: 'SetupView' });
 				setTimeout(() => {
 					this.$store.commit('settings/stopShowingSetupPage');
 				}, 0);
@@ -84,7 +84,7 @@ export default mixins(showMessage).extend({
 			}
 
 			if (this.$route.name === 'SetupView' && !this.isUserManagementEnabled) {
-				this.$router.push('/');
+				this.$router.replace('/');
 
 				this.loading = false;
 				return;
@@ -101,16 +101,16 @@ export default mixins(showMessage).extend({
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.push({ name: 'SigninView', query: { redirect } });
+				this.$router.replace({ name: 'SigninView', query: { redirect } });
 			} else {
 				if (typeof this.$route.query.redirect === 'string') {
 					const redirect = decodeURIComponent(this.$route.query.redirect);
 					if (redirect.startsWith('/')) {
 						// protect against phishing
-						this.$router.push(redirect);
+						this.$router.replace(redirect);
 					}
 				} else {
-					this.$router.push({ name: 'NodeViewNew' });
+					this.$router.replace({ name: 'NodeViewNew' });
 				}
 			}
 
