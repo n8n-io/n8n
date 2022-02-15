@@ -302,6 +302,9 @@ export default mixins(
 			},
 		},
 		computed: {
+			areExpressionsDisabled(): boolean {
+				return this.$store.getters['ui/areExpressionsDisabled'];
+			},
 			codeAutocomplete (): string | undefined {
 				return this.getArgument('codeAutocomplete') as string | undefined;
 			},
@@ -419,6 +422,10 @@ export default mixins(
 				return false;
 			},
 			expressionValueComputed (): NodeParameterValue | null {
+				if (this.areExpressionsDisabled) {
+					return this.value;
+				}
+
 				if (this.node === null) {
 					return null;
 				}
@@ -661,6 +668,10 @@ export default mixins(
 				this.valueChanged(value);
 			},
 			openExpressionEdit() {
+				if (this.areExpressionsDisabled) {
+					return;
+				}
+
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					this.trackExpressionEditOpen();
