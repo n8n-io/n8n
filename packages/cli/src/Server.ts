@@ -712,7 +712,7 @@ class App {
 
 				const { tags: tagIds } = req.body;
 
-				if (tagIds?.length) {
+				if (tagIds?.length && !config.get('workflowTagsDisabled')) {
 					newWorkflow.tags = await Db.collections.Tag!.findByIds(tagIds, {
 						select: ['id', 'name'],
 					});
@@ -742,10 +742,10 @@ class App {
 				});
 
 				if (!savedWorkflow) {
-					throw new ResponseHelper.ResponseError('Failed to save workflow', undefined, 500);
+					throw new ResponseHelper.ResponseError('Failed to save workflow');
 				}
 
-				if (tagIds) {
+				if (tagIds && !config.get('workflowTagsDisabled')) {
 					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
 						requestOrder: tagIds,
 					});
@@ -885,10 +885,10 @@ class App {
 			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 				const { id: workflowId } = req.params;
 
-				const relations = ['workflow', 'workflow.tags'];
+				let relations = ['workflow', 'workflow.tags'];
 
 				if (config.get('workflowTagsDisabled')) {
-					relations.pop();
+					relations = relations.filter((relation) => relation !== 'workflow.tags');
 				}
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
@@ -1183,7 +1183,7 @@ class App {
 					res: express.Response,
 				): Promise<TagEntity[] | ITagWithCountDb[]> => {
 					if (config.get('workflowTagsDisabled')) {
-						return [];
+						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 					if (req.query.withUsageCount === 'true') {
 						const tablePrefix = config.get('database.tablePrefix');
@@ -1204,7 +1204,7 @@ class App {
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
 					if (config.get('workflowTagsDisabled')) {
-						throw new ResponseHelper.ResponseError('Workflow tags are disabled', undefined, 500);
+						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 					const newTag = new TagEntity();
 					newTag.name = req.body.name.trim();
@@ -1229,7 +1229,7 @@ class App {
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
 					if (config.get('workflowTagsDisabled')) {
-						throw new ResponseHelper.ResponseError('Workflow tags are disabled', undefined, 500);
+						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 
 					const { name } = req.body;
@@ -1258,7 +1258,7 @@ class App {
 			`/${this.restEndpoint}/tags/:id`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 				if (config.get('workflowTagsDisabled')) {
-					throw new ResponseHelper.ResponseError('Workflow tags are disabled', undefined, 500);
+					throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 				}
 				if (
 					config.get('userManagement.hasOwner') === true &&
