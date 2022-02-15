@@ -69,12 +69,13 @@ class Telemetry {
 	}
 
 	identify(instanceId: string, userId?: string) {
+		this.telemetry.reset();
 		const traits = { instanceId };
 		if (userId) {
 			this.telemetry.identify(`${instanceId}#${userId}`, traits);
 		}
 		else {
-			this.telemetry.identify('', traits);
+			this.telemetry.identify(undefined, traits);
 		}
 	}
 
