@@ -43,7 +43,7 @@ describe('/owner endpoints', () => {
 
 		test('POST /owner should create owner and enable hasOwner setting', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAuthAgent(app, shell);
+			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
 
 			const response = await authShellAgent.post('/owner').send(TEST_USER);
 
@@ -82,7 +82,7 @@ describe('/owner endpoints', () => {
 
 		test('POST /owner should fail with invalid inputs', async () => {
 			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAuthAgent(app, shell);
+			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
 
 			for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
 				const response = await authShellAgent.post('/owner').send(invalidPayload);

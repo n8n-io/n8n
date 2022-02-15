@@ -53,7 +53,7 @@ describe('auth endpoints', () => {
 		});
 
 		test('POST /login should log user in', async () => {
-			const authlessAgent = await utils.createAuthlessAgent(app);
+			const authlessAgent = await utils.createAgent(app, { auth: false });
 
 			const response = await authlessAgent.post('/login').send({
 				email: TEST_USER.email,
@@ -91,7 +91,7 @@ describe('auth endpoints', () => {
 
 		test('GET /login should receive logged in user', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const authOwnerAgent = await utils.createAuthAgent(app, owner);
+			const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
 			const response = await authOwnerAgent.get('/login');
 
@@ -125,7 +125,7 @@ describe('auth endpoints', () => {
 
 		test('POST /logout should log user out', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
-			const authOwnerAgent = await utils.createAuthAgent(app, owner);
+			const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
 			const response = await authOwnerAgent.post('/logout');
 

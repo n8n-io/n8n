@@ -130,19 +130,17 @@ export async function getCredentialOwnerRole() {
 //           request agent
 // ----------------------------------
 
-export async function createAuthAgent(app: express.Application, user: User) {
+export async function createAgent(
+	app: express.Application,
+	{ auth, user }: { auth: boolean; user?: User } = { auth: false },
+) {
 	const agent = request.agent(app);
 	agent.use(prefix(REST_PATH_SEGMENT));
 
-	const { token } = await issueJWT(user);
-	agent.jar.setCookie(`n8n-auth=${token}`);
-
-	return agent;
-}
-
-export async function createAuthlessAgent(app: express.Application) {
-	const agent = request.agent(app);
-	agent.use(prefix(REST_PATH_SEGMENT));
+	if (auth && user) {
+		const { token } = await issueJWT(user);
+		agent.jar.setCookie(`n8n-auth=${token}`);
+	}
 
 	return agent;
 }
