@@ -31,7 +31,6 @@ const module: Module<IUsersState, IRootState> = {
 					fullName: userResponse.firstName? `${userResponse.firstName} ${userResponse.lastName || ''}`: undefined,
 					isDefaultUser: isDefaultUser(userResponse),
 					isPendingUser: isPendingUser(userResponse),
-					isCurrentUser: userResponse.id === state.currentUserId,
 					isOwner: Boolean(userResponse.globalRole && userResponse.globalRole.name === ROLE.Owner),
 				};
 				Vue.set(state.users, user.id, user);
