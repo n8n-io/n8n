@@ -49,6 +49,11 @@
 				"url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/"
 			},
 			{
+				"label": "How to synchronize data between two systems (one-way vs. two-way sync",
+				"icon": "🏬",
+				"url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/"
+			},
+			{
 				"label": "Database Monitoring and Alerting with n8n",
 				"icon": "📡",
 				"url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/"
