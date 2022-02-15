@@ -2702,11 +2702,7 @@ export default mixins(
 					this.stopLoading();
 				}
 			},
-		},
-
-
-		async mounted () {
-			window.addEventListener('message', async (message) => {
+			async onPostMessageReceived(message: MessageEvent) {
 				try {
 					const json = JSON.parse(message.data);
 					if (json && json.command === 'openWorkflow') {
@@ -2725,7 +2721,12 @@ export default mixins(
 					}
 				} catch (e) {
 				}
-			});
+			},
+		},
+
+
+		async mounted () {
+			window.addEventListener('message', this.onPostMessageReceived);
 
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
 				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
@@ -2797,6 +2798,7 @@ export default mixins(
 		destroyed () {
 			this.resetWorkspace();
 			this.$store.commit('setStateDirty', false);
+			window.removeEventListener('message', this.onPostMessageReceived);
 		},
 	});
 </script>
