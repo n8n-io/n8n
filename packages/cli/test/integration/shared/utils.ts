@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid';
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
-import { Db } from '../../../src';
+import { Db, IDatabaseCollections } from '../../../src';
 import { User } from '../../../src/databases/entities/User';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
@@ -79,9 +79,9 @@ export async function initTestDb() {
 	await getConnection().runMigrations({ transaction: 'none' });
 }
 
-export async function truncateUserTable() {
+export async function truncate(entity: keyof IDatabaseCollections) {
 	await getConnection().query('PRAGMA foreign_keys=OFF');
-	await Db.collections.User!.clear();
+	await Db.collections[entity]!.clear();
 	await getConnection().query('PRAGMA foreign_keys=ON');
 }
 

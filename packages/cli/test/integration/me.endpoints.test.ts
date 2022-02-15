@@ -37,7 +37,7 @@ describe('/me endpoints', () => {
 		});
 
 		afterEach(async () => {
-			await utils.truncateUserTable();
+			await utils.truncate('User');
 		});
 
 		afterAll(() => {
@@ -168,7 +168,7 @@ describe('/me endpoints', () => {
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
 			await utils.initTestDb();
-			await utils.truncateUserTable();
+			await utils.truncate('User');
 		});
 
 		beforeEach(async () => {
@@ -199,7 +199,7 @@ describe('/me endpoints', () => {
 		});
 
 		afterEach(async () => {
-			await utils.truncateUserTable();
+			await utils.truncate('User');
 		});
 
 		afterAll(() => {
@@ -330,7 +330,7 @@ describe('/me endpoints', () => {
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
 			await utils.initTestDb();
-			await utils.truncateUserTable();
+			await utils.truncate('User');
 		});
 
 		beforeEach(async () => {
@@ -347,7 +347,7 @@ describe('/me endpoints', () => {
 		});
 
 		afterEach(async () => {
-			await utils.truncateUserTable();
+			await utils.truncate('User');
 		});
 
 		afterAll(() => {

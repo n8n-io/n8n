@@ -48,7 +48,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await utils.truncateUserTable();
+	await utils.truncate('User');
 
 	jest.isolateModules(() => {
 		jest.mock('../../config');
@@ -68,7 +68,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncateUserTable();
+	await utils.truncate('User');
 });
 
 afterAll(() => {

@@ -28,7 +28,7 @@ describe('/owner endpoints', () => {
 		});
 
 		afterEach(async () => {
-			await utils.truncateUserTable();
+			await utils.truncate('User');
 		});
 
 		afterAll(() => {
