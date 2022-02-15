@@ -2,7 +2,7 @@
 	<div class="node-view-root">
 		<div
 			class="node-view-wrapper"
-			:class="{workflowClasses, 'demo-node-view-wrapper': isDemo}"
+			:class="{workflowClasses}"
 			@touchstart="mouseDown"
 			@touchend="mouseUp"
 			@touchmove="mouseMoveNodeWorkflow"
@@ -2858,10 +2858,6 @@ export default mixins(
 	position: fixed;
 	width: 100%;
 	height: 100%;
-}
-
-.demo-node-view-wrapper {
-	pointer-events: none;
 }
 
 .node-view {
