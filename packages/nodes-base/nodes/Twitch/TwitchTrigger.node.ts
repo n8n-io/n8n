@@ -11,10 +11,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	snakeCase
-} from 'change-case';
-
-import {
  twitchApiRequest,
 } from './GenericFunctions';
 

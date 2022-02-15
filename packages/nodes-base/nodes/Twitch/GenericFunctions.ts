@@ -36,6 +36,9 @@ export async function twitchApiRequest(this: IExecuteFunctions | IWebhookFunctio
 
 	let appTokenResponse = null;
 
+	// TODO: save app token somewhere and validate it before asking for a new one 👇
+	
+
 	try {
 		appTokenResponse = await this.helpers.request!(optionsForAppToken);
 	} catch (errorObject:any) {
