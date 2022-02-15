@@ -463,11 +463,23 @@ const config = convict({
 				env: 'N8N_JWT_AUTH_HEADER_VALUE_PREFIX',
 				doc: 'The request header value prefix to strip (optional)',
 			},
+			jwtCookie: {
+				format: String,
+				default: '',
+				env: 'N8N_JWT_AUTH_COOKIE',
+				doc: 'The request cookie containing a signed JWT',
+			},
 			jwksUri: {
 				format: String,
 				default: '',
 				env: 'N8N_JWKS_URI',
 				doc: 'The URI to fetch JWK Set for JWT authentication',
+			},
+			jwksEllipticCurve: {
+				format: 'Boolean',
+				default: false,
+				env: 'N8N_JWKS_USE_EC',
+				doc: 'If the keys used for the JWT are Elliptic Curve signed keys',
 			},
 			jwtIssuer: {
 				format: String,

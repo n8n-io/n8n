@@ -80,6 +80,7 @@ import * as basicAuth from 'basic-auth';
 import * as compression from 'compression';
 import * as jwt from 'jsonwebtoken';
 import * as jwks from 'jwks-rsa';
+import * as jwks_ec from 'jwks-ec';
 // @ts-ignore
 import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
@@ -407,8 +408,18 @@ class App {
 			const jwtAuthHeader = (await GenericHelpers.getConfigValue(
 				'security.jwtAuth.jwtHeader',
 			)) as string;
-			if (jwtAuthHeader === '') {
-				throw new Error('JWT auth is activated but no request header was defined. Please set one!');
+			const jwtAuthCookie = (await GenericHelpers.getConfigValue(
+				'security.jwtAuth.jwtCookie',
+			)) as string;
+			if (jwtAuthHeader === '' && jwtAuthCookie === '') {
+				throw new Error(
+					'JWT auth is activated but no request header or auth cookie was defined. Please set one!',
+				);
+			}
+			if (jwtAuthHeader !== '' && jwtAuthCookie !== '') {
+				throw new Error(
+					'JWT auth is activated and both the request header and auth cookie was defined. Please set only one!',
+				);
 			}
 			const jwksUri = (await GenericHelpers.getConfigValue('security.jwtAuth.jwksUri')) as string;
 			if (jwksUri === '') {
@@ -429,12 +440,20 @@ class App {
 			const jwtAllowedTenant = (await GenericHelpers.getConfigValue(
 				'security.jwtAuth.jwtAllowedTenant',
 			)) as string;
+			const jwksEllipticCurve = (await GenericHelpers.getConfigValue(
+				'security.jwtAuth.jwksEllipticCurve',
+			)) as string;
+
+			let jwkClient: any;
+			if (jwksEllipticCurve) {
+				jwkClient = jwks_ec({ cache: true, jwksUri });
+			} else {
+				jwkClient = jwks({ cache: true, jwksUri });
+			}
 
 			// eslint-disable-next-line no-inner-declarations
 			function isTenantAllowed(decodedToken: object): boolean {
-				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '')
-					return true;
-
+				if (jwtAllowedTenantKey === '' || jwtAllowedTenant === '') return true;
 				for (const [k, v] of Object.entries(decodedToken)) {
 					if (k === jwtNamespace) {
 						for (const [kn, kv] of Object.entries(v)) {
@@ -442,10 +461,30 @@ class App {
 								return true;
 							}
 						}
+					} else if (k === jwtAllowedTenantKey && v === jwtAllowedTenant) {
+						return true;
 					}
 				}
-
 				return false;
+			}
+			// eslint-disable-next-line no-inner-declarations
+			function parseCookie(cookies: string) {
+				if (cookies === '') {
+					return {};
+				}
+				let pairs = cookies.split(';');
+				let splittedPairs = pairs.map((cookie) => cookie.split('='));
+				const cookieObj = splittedPairs.reduce(function trimCookie(
+					obj: { [index: string]: string },
+					cookie,
+				) {
+					obj[decodeURIComponent(cookie[0].trim())] = decodeURIComponent(cookie[1].trim());
+
+					return obj;
+				},
+				{});
+
+				return cookieObj;
 			}
 
 			// eslint-disable-next-line consistent-return
@@ -454,26 +493,32 @@ class App {
 					return next();
 				}
 
-				let token = req.header(jwtAuthHeader) as string;
+				let token = '' as string;
+				if (jwtAuthCookie !== '') {
+					const cookies = parseCookie(req.headers.cookie as string) as object;
+					for (const [cookie, data] of Object.entries(cookies)) {
+						if (cookie === jwtAuthCookie) {
+							token = data as string;
+						}
+					}
+				} else {
+					token = req.header(jwtAuthHeader) as string;
+				}
 				if (token === undefined || token === '') {
 					return ResponseHelper.jwtAuthAuthorizationError(res, 'Missing token');
 				}
 				if (jwtHeaderValuePrefix !== '' && token.startsWith(jwtHeaderValuePrefix)) {
 					token = token.replace(`${jwtHeaderValuePrefix} `, '').trimLeft();
 				}
-
-				const jwkClient = jwks({ cache: true, jwksUri });
-				// eslint-disable-next-line @typescript-eslint/ban-types
-				function getKey(header: any, callback: Function) {
+				// eslint-disable-next-line no-inner-declarations, @typescript-eslint/ban-types
+				function getKey(header: any, callback: Function): void {
 					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => {
 						// eslint-disable-next-line @typescript-eslint/no-throw-literal
 						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
-
 						const signingKey = key.publicKey || key.rsaPublicKey;
 						callback(null, signingKey);
 					});
 				}
-
 				const jwtVerifyOptions: jwt.VerifyOptions = {
 					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
 					ignoreExpiration: false,
@@ -3017,4 +3062,7 @@ async function getExecutionsCount(
 
 	const count = await Db.collections.Execution!.count(countFilter);
 	return { count, estimate: false };
+}
+function res(res: any, message: string) {
+	throw new Error('Function not implemented.');
 }
