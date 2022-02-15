@@ -560,6 +560,13 @@ const config = convict({
 		},
 	},
 
+	workflowTagsDisabled: {
+		format: Boolean,
+		default: false,
+		env: 'N8N_WORKFLOW_TAGS_DISABLED',
+		doc: 'Disable worfklow tags.',
+	},
+
 	userManagement: {
 		disabled: {
 			doc: 'Disable user management and hide it completely.',

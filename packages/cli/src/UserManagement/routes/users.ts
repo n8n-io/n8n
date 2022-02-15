@@ -133,14 +133,14 @@ export function usersNamespace(this: N8nApp): void {
 					inviterId,
 					inviteeId,
 				});
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
 			const users = await Db.collections.User!.find({ where: { id: In([inviterId, inviteeId]) } });
 
 			if (users.length !== 2) {
 				LoggerProxy.error('Invalid invite URL - did not find users', { inviterId, inviteeId });
-				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
 			}
 
 			const inviter = users.find((user) => user.id === inviterId);
@@ -150,7 +150,7 @@ export function usersNamespace(this: N8nApp): void {
 					inviterId,
 					inviteeId,
 				});
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 			}
 			const { firstName, lastName } = inviter;
 
@@ -178,7 +178,7 @@ export function usersNamespace(this: N8nApp): void {
 			};
 
 			if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
 			const users = await Db.collections.User!.find({
@@ -186,7 +186,7 @@ export function usersNamespace(this: N8nApp): void {
 			});
 
 			if (users.length !== 2) {
-				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
 			}
 
 			const invitee = users.find((user) => user.id === inviteeId);
@@ -195,7 +195,7 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError(
 					'This invite has been accepted already',
 					undefined,
-					500,
+					400,
 				);
 			}
 
@@ -214,7 +214,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async () => {
-			const users = await Db.collections.User!.find();
+			const users = await Db.collections.User!.find({ relations: ['globalRole'] });
 
 			return users.map((user) => sanitizeUser(user));
 		}),

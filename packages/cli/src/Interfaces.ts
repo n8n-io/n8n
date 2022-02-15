@@ -432,6 +432,7 @@ export interface IN8nUISettings {
 	personalizationSurvey: IPersonalizationSurvey;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
+	workflowTagsDisabled: boolean;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 }
 
