@@ -327,7 +327,7 @@ export class ItemLists implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Field to Compare',
+				placeholder: 'Add Field To Compare',
 				default: {},
 				displayOptions: {
 					show: {

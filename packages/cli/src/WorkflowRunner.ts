@@ -592,7 +592,7 @@ export class WorkflowRunner {
 		// be needed and so have to load all of them in the workflowRunnerProcess
 		let loadAllNodeTypes = false;
 		for (const node of data.workflowData.nodes) {
-			if (node.type === 'n8n-nodes-base.executeWorkflow') {
+			if (node.type === 'n8n-nodes-base.executeWorkflow' && node.disabled !== true) {
 				loadAllNodeTypes = true;
 				break;
 			}
@@ -604,8 +604,7 @@ export class WorkflowRunner {
 		if (loadAllNodeTypes) {
 			// Supply all nodeTypes and credentialTypes
 			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
-			const credentialTypes = CredentialTypes();
-			credentialTypeData = credentialTypes.credentialTypes;
+			credentialTypeData = WorkflowHelpers.getAllCredentalsTypeData();
 		} else {
 			// Supply only nodeTypes, credentialTypes and overwrites that the workflow needs
 			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
