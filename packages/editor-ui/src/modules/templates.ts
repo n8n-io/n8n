@@ -80,7 +80,7 @@ const module: Module<ITemplateState, IRootState> = {
 	actions: {
 		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string) {
 			try {
-				const apiEndpoint: string = await context.rootGetters['settings/templatesHost'];
+				const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 				const response: IN8nCollectionResponse = await getCollectionById(collectionId, apiEndpoint);
 				const data: IN8nCollectionData = response.data;
 				const collection: IN8nCollection = data.collection;
@@ -93,7 +93,7 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
 			try {
-				const apiEndpoint: string = await context.rootGetters['settings/templatesHost'];
+				const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 				const response: IN8nTemplateResponse = await getTemplateById(templateId, apiEndpoint);
 				const data: IN8nTemplateData = response.data;
 				const template: IN8nTemplate = data.workflow;
