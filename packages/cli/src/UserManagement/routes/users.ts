@@ -33,6 +33,7 @@ export function usersNamespace(this: N8nApp): void {
 			const invitations = req.body;
 
 			if (!Array.isArray(invitations)) {
+				Logger.debug('Invalid payload', { payload: req.body });
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
