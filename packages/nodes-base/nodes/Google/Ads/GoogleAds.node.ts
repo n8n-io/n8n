@@ -1,4 +1,3 @@
-import { descriptions } from './../../SyncroMSP/v1/actions/ticket/index';
 import {
 	INodeType,
 	INodeTypeDescription,
@@ -9,6 +8,11 @@ import {
 	campaignFields,
 	campaignOperations,
 } from './CampaignDescription';
+
+import {
+	invoiceFields,
+	invoiceOperations,
+} from './InvoiceDescription';
 
 export class GoogleAds implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,12 +51,24 @@ export class GoogleAds implements INodeType {
 						name: 'Campaign',
 						value: 'campaign',
 					},
+					{
+						name: 'Invoice',
+						value: 'invoice',
+					},
 				],
 				default: 'Campaign',
 				description: 'The resource to operate on.',
 			},
+			//-------------------------------
+			// Campaign Operations
+			//-------------------------------
 			...campaignOperations,
 			...campaignFields,
+			//-------------------------------
+			// Invoice Operations
+			//-------------------------------
+			...invoiceOperations,
+			...invoiceFields,
 		],
 	};
 }
