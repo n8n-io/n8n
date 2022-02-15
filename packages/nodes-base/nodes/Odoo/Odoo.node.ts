@@ -38,6 +38,7 @@ import {
 	processNameValueFields,
 } from './GenericFunctions';
 
+import { capitalCase } from 'change-case';
 export class Odoo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Odoo',
@@ -121,7 +122,7 @@ export class Odoo implements INodeType {
 				const options = Object.values(responce).map((field) => {
 					const optionField = field as { [key: string]: string };
 					return {
-						name: optionField.name,
+						name: capitalCase(optionField.name),
 						value: optionField.name,
 						// nodelinter-ignore-next-line
 						description: `${optionField?.string}, type: ${optionField?.type} required: ${optionField?.required}`,
@@ -359,7 +360,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
+						const fields = this.getNodeParameter('options.fieldsList', i, {}) as IDataObject;
 						if (returnAll) {
 							responseData = await odooGetAll.call(
 								this,

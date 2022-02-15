@@ -181,21 +181,6 @@ export const contactDescription: INodeProperties[] = [
 		},
 	},
 
-	{
-		displayName: 'Fields To Include',
-		name: 'fieldsList',
-		type: 'multiOptions',
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getModelFields',
-		},
-		displayOptions: {
-			show: {
-				resource: ['contact'],
-				operation: ['get', 'getAll'],
-			},
-		},
-	},
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:getAll                              */
 	/* -------------------------------------------------------------------------- */
@@ -231,6 +216,30 @@ export const contactDescription: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: ['getAll', 'get'],
+				resource: ['contact'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Fields To Include',
+				name: 'fieldsList',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getModelFields',
+				},
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
