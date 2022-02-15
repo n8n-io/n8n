@@ -1010,6 +1010,9 @@ export default mixins(
 			setZoomLevel (zoomLevel: number) {
 				this.nodeViewScale = zoomLevel; // important for background
 				const element = this.instance.getContainer() as HTMLElement;
+				if (!element) {
+					return;
+				}
 
 				// https://docs.jsplumbtoolkit.com/community/current/articles/zooming.html
 				const prependProperties = ['webkit', 'moz', 'ms', 'o'];

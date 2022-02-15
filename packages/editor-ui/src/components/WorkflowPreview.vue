@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<iframe
-			v-show="!loading"
+			v-show="showPreview"
 			:class="{
 				[$style.workflow]: !this.nodeViewDetailsOpened,
 				[$style.openNDV]: this.nodeViewDetailsOpened,
@@ -9,7 +9,7 @@
 			ref="preview_iframe"
 			src="/workflows/demo"
 		></iframe>
-		<n8n-loading animated :loading="loading" :rows="1" variant="image" />
+		<n8n-loading animated :loading="!showPreview" :rows="1" variant="image" />
 	</div>
 </template>
 
@@ -20,6 +20,17 @@ import { showMessage } from '@/components/mixins/showMessage';
 export default mixins(showMessage).extend({
 	name: 'WorkflowPreview',
 	props: ['loading', 'workflow'],
+	data() {
+		return {
+			nodeViewDetailsOpened: false,
+			ready: false,
+		};
+	},
+	computed: {
+		showPreview(): boolean {
+			return !this.loading && !!this.workflow && this.ready;
+		},
+	},
 	methods: {
 		loadWorkflow() {
 			try {
@@ -52,7 +63,7 @@ export default mixins(showMessage).extend({
 			try {
 				const json = JSON.parse(data);
 				if (json.command === 'n8nReady') {
-					this.loadWorkflow();
+					this.ready = true;
 				} else if (json.command === 'openNDV') {
 					this.nodeViewDetailsOpened = true;
 				} else if (json.command === 'closeNDV') {
@@ -65,10 +76,12 @@ export default mixins(showMessage).extend({
 			}
 		},
 	},
-	data() {
-		return {
-			nodeViewDetailsOpened: false,
-		};
+	watch: {
+		showPreview(show) {
+			if (show) {
+				this.loadWorkflow();
+			}
+		},
 	},
 	mounted() {
 		window.addEventListener('message', this.receiveMessage);
