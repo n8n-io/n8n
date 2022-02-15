@@ -60,7 +60,7 @@ export class ResponseError extends Error {
 			this.hint = hint;
 		}
 
-		LoggerProxy.verbose('Sent error response sent to client', { errorResponse: this });
+		LoggerProxy.verbose('Sent error response to client', { errorResponse: this });
 	}
 }
 
