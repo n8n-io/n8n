@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties
+} from 'n8n-workflow';
 
 export const invoiceOperations: INodeProperties[] = [
 	{
@@ -20,12 +22,12 @@ export const invoiceOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '/v10/customers/{{$customerId}}/invoices',
+						url: '/v10/customers/invoices',
 						qs: {
-							billingSetup: '{{$billingSetupId}}',
-							issueMonth: '{{$issueMonth}}',
-							issueYear: '{{$issueYear}}',
-						}
+							billingSetup: '={{$billingSetupId}}',
+							issueMonth: '={{$issueMonth}}',
+							issueYear: '=${issueYear}',
+						},
 					},
 				},
 			},
@@ -46,11 +48,8 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				ressource: [
+				resource: [
 					'invoice',
-				],
-				operation: [
-					'returnInvoices',
 				],
 			},
 		},
@@ -64,7 +63,7 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				ressource: [
+				resource: [
 					'invoice',
 				],
 				operation: [
@@ -82,7 +81,7 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				ressource: [
+				resource: [
 					'invoice',
 				],
 				operation: [
@@ -100,8 +99,11 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				ressource: [
+				resource: [
 					'invoice',
+				],
+				operation: [
+					'returnInvoices',
 				],
 			},
 		},

@@ -56,7 +56,7 @@ export class GoogleAds implements INodeType {
 						value: 'invoice',
 					},
 				],
-				default: 'Campaign',
+				default: 'invoice',
 				description: 'The resource to operate on.',
 			},
 			//-------------------------------
