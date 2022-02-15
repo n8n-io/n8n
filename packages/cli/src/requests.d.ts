@@ -1,14 +1,15 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
-import { User } from './databases/entities/User';
-import { IExecutionDeleteFilter } from '.';
 import {
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
 	INode,
 	IWorkflowSettings,
-} from '../../workflow/dist/src';
+} from 'n8n-workflow';
+
+import { User } from './databases/entities/User';
+import { IExecutionDeleteFilter } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthenticatedRequest<
