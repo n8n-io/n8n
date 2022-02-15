@@ -221,9 +221,14 @@ test('POST /change-password should fail with invalid inputs', async () => {
 		},
 	];
 
+	const { password: originalHashedPassword } = await Db.collections.User!.findOneOrFail();
+
 	for (const invalidPayload of invalidPayloads) {
 		const response = await authlessAgent.post('/change-password').query(invalidPayload);
 		expect(response.statusCode).toBe(400);
+
+		const { password: fetchedHashedPassword } = await Db.collections.User!.findOneOrFail();
+		expect(originalHashedPassword).toBe(fetchedHashedPassword);
 	}
 });
 
