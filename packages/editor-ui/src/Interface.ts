@@ -601,6 +601,10 @@ export interface IN8nUISettings {
 	telemetry: ITelemetrySettings;
 	defaultLocale: string;
 	logLevel: ILogLevel;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
