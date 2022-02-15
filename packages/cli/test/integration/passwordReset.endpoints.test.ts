@@ -20,7 +20,7 @@ let globalOwnerRole: Role;
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['passwordReset'], applyAuth: true });
 	await utils.initTestDb();
-	await utils.truncateUserTable();
+	await utils.truncate('User');
 
 	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
 		name: 'owner',
@@ -36,20 +36,18 @@ beforeEach(async () => {
 	config.set('userManagement.hasOwner', true);
 	config.set('userManagement.emails.mode', '');
 
-	await Db.collections.User!.save({
+	await utils.createUser({
 		id: INITIAL_TEST_USER.id,
 		email: INITIAL_TEST_USER.email,
 		password: INITIAL_TEST_USER.password,
 		firstName: INITIAL_TEST_USER.firstName,
 		lastName: INITIAL_TEST_USER.lastName,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: globalOwnerRole,
+		role: globalOwnerRole,
 	});
 });
 
 afterEach(async () => {
-	await utils.truncateUserTable();
+	await utils.truncate('User');
 });
 
 afterAll(() => {
@@ -57,8 +55,7 @@ afterAll(() => {
 });
 
 test('POST /forgot-password should send password reset email', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+	const authlessAgent = await utils.createAgent(app);
 
 	const {
 		user,
@@ -73,34 +70,32 @@ test('POST /forgot-password should send password reset email', async () => {
 	config.set('userManagement.emails.smtp.auth.user', user);
 	config.set('userManagement.emails.smtp.auth.pass', pass);
 
-	const response = await authOwnerAgent
+	const response = await authlessAgent
 		.post('/forgot-password')
 		.send({ email: INITIAL_TEST_USER.email });
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual({});
 
-	const shell = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
-	expect(shell.resetPasswordToken).toBeDefined();
+	const owner = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
+	expect(owner.resetPasswordToken).toBeDefined();
 });
 
 test('POST /forgot-password should fail if emailing is not set up', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+	const authlessAgent = await utils.createAgent(app);
 
-	const response = await authOwnerAgent
+	const response = await authlessAgent
 		.post('/forgot-password')
 		.send({ email: INITIAL_TEST_USER.email });
 
 	expect(response.statusCode).toBe(500);
 
-	const shell = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
-	expect(shell.resetPasswordToken).toBeNull();
+	const owner = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
+	expect(owner.resetPasswordToken).toBeNull();
 });
 
 test('POST /forgot-password should fail with invalid inputs', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+	const authlessAgent = await utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -113,34 +108,32 @@ test('POST /forgot-password should fail with invalid inputs', async () => {
 	];
 
 	for (const invalidPayload of invalidPayloads) {
-		const response = await authOwnerAgent.post('/forgot-password').send(invalidPayload);
+		const response = await authlessAgent.post('/forgot-password').send(invalidPayload);
 		expect(response.statusCode).toBe(400);
 
-		const shell = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
-		expect(shell.resetPasswordToken).toBeNull();
+		const owner = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
+		expect(owner.resetPasswordToken).toBeNull();
 	}
 });
 
 test('POST /forgot-password should fail if user is not found', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+	const authlessAgent = await utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
-	const response = await authOwnerAgent.post('/forgot-password').send({ email: randomEmail() });
+	const response = await authlessAgent.post('/forgot-password').send({ email: randomEmail() });
 
 	expect(response.statusCode).toBe(404);
 });
 
 test('GET /resolve-password-token should succeed with valid inputs', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+	const authlessAgent = await utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 
 	await Db.collections.User!.update(INITIAL_TEST_USER.id, { resetPasswordToken });
 
-	const response = await authOwnerAgent
+	const response = await authlessAgent
 		.get('/resolve-password-token')
 		.query({ userId: INITIAL_TEST_USER.id, token: resetPasswordToken });
 
@@ -148,14 +141,13 @@ test('GET /resolve-password-token should succeed with valid inputs', async () =>
 });
 
 test('GET /resolve-password-token should fail with invalid inputs', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+	const authlessAgent = await utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
-	const first = await authOwnerAgent.get('/resolve-password-token').query({ token: uuid() });
+	const first = await authlessAgent.get('/resolve-password-token').query({ token: uuid() });
 
-	const second = await authOwnerAgent
+	const second = await authlessAgent
 		.get('/resolve-password-token')
 		.query({ userId: INITIAL_TEST_USER.id });
 
@@ -165,12 +157,11 @@ test('GET /resolve-password-token should fail with invalid inputs', async () => 
 });
 
 test('GET /resolve-password-token should fail if user is not found', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+	const authlessAgent = await utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
-	const response = await authOwnerAgent
+	const response = await authlessAgent
 		.get('/resolve-password-token')
 		.query({ userId: INITIAL_TEST_USER.id, token: uuid() });
 
@@ -178,18 +169,17 @@ test('GET /resolve-password-token should fail if user is not found', async () =>
 });
 
 test('POST /change-password should succeed with valid inputs', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+	const authlessAgent = await utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	await Db.collections.User!.update(INITIAL_TEST_USER.id, { resetPasswordToken });
 
-	const passwordToSend = randomValidPassword();
+	const passwordToStore = randomValidPassword();
 
-	const response = await authOwnerAgent.post('/change-password').send({
+	const response = await authlessAgent.post('/change-password').send({
 		token: resetPasswordToken,
 		userId: INITIAL_TEST_USER.id,
-		password: passwordToSend,
+		password: passwordToStore,
 	});
 
 	expect(response.statusCode).toBe(200);
@@ -201,14 +191,13 @@ test('POST /change-password should succeed with valid inputs', async () => {
 		INITIAL_TEST_USER.id,
 	);
 
-	const comparisonResult = await compare(passwordToSend, storedPassword!);
+	const comparisonResult = await compare(passwordToStore, storedPassword!);
 	expect(comparisonResult).toBe(true);
-	expect(storedPassword).not.toBe(passwordToSend);
+	expect(storedPassword).not.toBe(passwordToStore);
 });
 
 test('POST /change-password should fail with invalid inputs', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAuthAgent(app, owner);
+	const authlessAgent = await utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	await Db.collections.User!.update(INITIAL_TEST_USER.id, { resetPasswordToken });
@@ -233,7 +222,7 @@ test('POST /change-password should fail with invalid inputs', async () => {
 	];
 
 	for (const invalidPayload of invalidPayloads) {
-		const response = await authOwnerAgent.post('/change-password').query(invalidPayload);
+		const response = await authlessAgent.post('/change-password').query(invalidPayload);
 		expect(response.statusCode).toBe(400);
 	}
 });
