@@ -310,9 +310,7 @@ export function usersNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/users/:id/reinvite`,
 		ResponseHelper.send(async (req: UserRequest.Reinvite) => {
 			if (!isEmailSetup()) {
-				Logger.error(
-					'Attempted to send reinvite user without email sending being set up at /users/:id/reinvite',
-				);
+				Logger.error('Attempted to send reinvite user without email sending being set up');
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
 					undefined,
@@ -323,16 +321,12 @@ export function usersNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ id: req.params.id });
 
 			if (!user) {
-				Logger.debug(
-					'Attempted to send reinvite user without email sending being set up at /users/:id/reinvite',
-				);
+				Logger.debug('Attempted to send reinvite user without email sending being set up');
 				throw new ResponseHelper.ResponseError('User not found', undefined, 404);
 			}
 
 			if (user.password) {
-				Logger.debug('Attempted to accept already accepted invite at POST /users/:id/reinvite', {
-					userId: user.id,
-				});
+				Logger.debug('Attempted to accept already accepted invite', { userId: user.id });
 				throw new ResponseHelper.ResponseError(
 					'User has already accepted the invite',
 					undefined,
