@@ -75,6 +75,10 @@ export async function getTemplateById(templateId: string, apiEndpoint: string): 
 				icon
 				iconData
 				typeVersion: version
+				categories{
+					id
+					name
+				}
 			}
 			totalViews: views
 			categories{
