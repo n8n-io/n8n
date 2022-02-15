@@ -324,14 +324,14 @@ export function usersNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ id: req.params.id });
 
 			if (!user) {
-				Logger.error(
+				Logger.debug(
 					'Attempted to send reinvite user without email sending being set up at /users/:id/reinvite',
 				);
 				throw new ResponseHelper.ResponseError('User not found', undefined, 404);
 			}
 
 			if (user.password) {
-				Logger.error('Attempted to accept already accepted invite at POST /users/:id/reinvite', {
+				Logger.debug('Attempted to accept already accepted invite at POST /users/:id/reinvite', {
 					userId: user.id,
 				});
 				throw new ResponseHelper.ResponseError(
