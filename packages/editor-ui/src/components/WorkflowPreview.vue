@@ -95,7 +95,8 @@ export default mixins(showMessage).extend({
 .workflow {
 	width: 100%;
 	height: 607px;
-	border: 0;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
 }
 
 .openNDV {
