@@ -74,9 +74,10 @@ export function usersNamespace(this: N8nApp): void {
 			});
 
 			const numberOfUsers = Object.keys(createUsers).length;
-			const userCreationMessage =
-				numberOfUsers > 1 ? `Creating ${numberOfUsers} user shells...` : `Creating 1 user shell...`;
-			Logger.debug(userCreationMessage);
+
+			Logger.debug(
+				numberOfUsers > 1 ? `Creating ${numberOfUsers} user shells...` : `Creating 1 user shell...`,
+			);
 
 			try {
 				await getConnection().transaction(async (transactionManager) => {
