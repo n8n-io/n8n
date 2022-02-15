@@ -4,7 +4,7 @@
 import { genSaltSync, hashSync } from 'bcryptjs';
 import express = require('express');
 import validator from 'validator';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, ResponseHelper } from '../..';
 import { issueCookie } from '../auth/jwt';
@@ -13,9 +13,6 @@ import { validatePassword, sanitizeUser } from '../UserManagementHelper';
 import type { AuthenticatedRequest, MeRequest } from '../../requests';
 import { validateEntity } from '../../GenericHelpers';
 import { User } from '../../databases/entities/User';
-import { getLogger } from '../../Logger';
-
-LoggerProxy.init(getLogger());
 
 export function meNamespace(this: N8nApp): void {
 	/**
@@ -36,15 +33,12 @@ export function meNamespace(this: N8nApp): void {
 		ResponseHelper.send(
 			async (req: MeRequest.Settings, res: express.Response): Promise<PublicUser> => {
 				if (!req.body.email) {
-					LoggerProxy.error('Email not found in payload at PATCH /me', { userId: req.user.id });
+					Logger.debug('Email not found in payload', { userId: req.user.id });
 					throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 				}
 
 				if (!validator.isEmail(req.body.email)) {
-					LoggerProxy.error('Invalid email in payload at PATCH /me', {
-						userId: req.user.id,
-						email: req.body.email,
-					});
+					Logger.debug('Invalid email in payload', { userId: req.user.id, email: req.body.email });
 					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}
 
@@ -56,7 +50,7 @@ export function meNamespace(this: N8nApp): void {
 
 				const user = await Db.collections.User!.save(newUser);
 
-				LoggerProxy.debug('User saved successfully at PATCH /me', { userId: user.id });
+				Logger.info('User updated successfully', { userId: user.id });
 
 				await issueCookie(res, user);
 
@@ -76,9 +70,7 @@ export function meNamespace(this: N8nApp): void {
 
 			const user = await Db.collections.User!.save(req.user);
 
-			LoggerProxy.debug('User password saved successfully at PATCH /me/password', {
-				userId: user.id,
-			});
+			Logger.info('User password saved successfully', { userId: user.id });
 
 			await issueCookie(res, user);
 
@@ -95,7 +87,7 @@ export function meNamespace(this: N8nApp): void {
 			const { body: personalizationAnswers } = req;
 
 			if (!personalizationAnswers) {
-				LoggerProxy.error('Empty survey in payload at PATCH /me/survey', { userId: req.user.id });
+				Logger.debug('Empty survey in payload', { userId: req.user.id });
 				throw new ResponseHelper.ResponseError(
 					'Personalization answers are mandatory',
 					undefined,
@@ -108,9 +100,7 @@ export function meNamespace(this: N8nApp): void {
 				personalizationAnswers,
 			});
 
-			LoggerProxy.debug('User survey saved successfully at POST /me/survey', {
-				userId: req.user.id,
-			});
+			Logger.info('User survey updated successfully', { userId: req.user.id });
 
 			return { success: true };
 		}),

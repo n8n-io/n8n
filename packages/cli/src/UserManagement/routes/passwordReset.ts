@@ -6,7 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
@@ -15,9 +15,6 @@ import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
 import { getBaseUrl } from '../../GenericHelpers';
-import { getLogger } from '../../Logger';
-
-LoggerProxy.init(getLogger());
 
 export function passwordResetNamespace(this: N8nApp): void {
 	/**
@@ -29,18 +26,19 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { email } = req.body;
 
 			if (!email) {
-				LoggerProxy.error('Missing email in payload at POST /forgot-password');
+				Logger.debug('Missing email in payload', { payload: req.body });
 				throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 			}
 
 			if (!validator.isEmail(email)) {
-				LoggerProxy.error('Invalid email in payload at POST /forgot-password');
+				Logger.debug('Invalid email in payload', { payload: req.body });
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
 			const user = await Db.collections.User!.findOne({ email });
 
 			if (!user) {
+				Logger.debug('User not found for email', { payload: req.body });
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
@@ -63,7 +61,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				domain: baseUrl,
 			});
 
-			LoggerProxy.debug('Sent password reset email successfully at POST /forgot-password');
+			Logger.info('Sent password reset email successfully');
 		}),
 	);
 
@@ -76,21 +74,18 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { token: resetPasswordToken, userId: id } = req.query;
 
 			if (!resetPasswordToken || !id) {
-				LoggerProxy.error('Missing password reset token or user ID at GET /resolve-password-token');
+				Logger.debug('Missing password reset token or user ID');
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
 			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
 
 			if (!user) {
-				LoggerProxy.error('User not found at GET /resolve-password-token');
+				Logger.debug('User not found for user ID and reset password token', { userId: id });
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			LoggerProxy.debug('Password token resolved successfully at GET /resolve-password-token', {
-				resetPasswordToken,
-				userId: id,
-			});
+			Logger.info('Password token resolved successfully', { userId: id });
 		}),
 	);
 
@@ -111,7 +106,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ id: userId, resetPasswordToken });
 
 			if (!user) {
-				LoggerProxy.error('Missing password reset token or user ID at POST /change-password');
+				Logger.debug('Missing password reset token or user ID', { userId });
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
@@ -120,9 +115,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				resetPasswordToken: null,
 			});
 
-			LoggerProxy.debug('User password updated successfully at POST /change-password', {
-				userId,
-			});
+			Logger.info('User password updated successfully', { userId });
 
 			await issueCookie(res, req.user);
 		}),

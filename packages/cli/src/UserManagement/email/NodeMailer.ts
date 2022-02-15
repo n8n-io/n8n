@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { createTransport, Transporter } from 'nodemailer';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import config = require('../../../config');
 import { MailData, SendEmailResult, UserManagementMailerImplementation } from './Interfaces';
-import { getLogger } from '../../Logger';
-
-LoggerProxy.init(getLogger());
 
 export class NodeMailer implements UserManagementMailerImplementation {
 	private transport: Transporter;
@@ -32,9 +29,9 @@ export class NodeMailer implements UserManagementMailerImplementation {
 				text: mailData.textOnly,
 				html: mailData.body,
 			});
-			LoggerProxy.verbose('Email sent successfully', { mailData });
+			Logger.info('Email sent successfully', { recipients: mailData.emailRecipients });
 		} catch (error) {
-			LoggerProxy.verbose('Failed to send email', { mailData, error });
+			Logger.error('Failed to send email', { recipients: mailData.emailRecipients, error });
 			return {
 				success: false,
 				error,
