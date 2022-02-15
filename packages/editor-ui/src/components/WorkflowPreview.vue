@@ -8,6 +8,8 @@
 			}"
 			ref="preview_iframe"
 			src="/workflows/demo"
+			@mouseenter="onMouseEnter"
+			@mouseleave="onMouseLeave"
 		></iframe>
 		<n8n-loading animated :loading="!showPreview" :rows="1" variant="image" />
 	</div>
@@ -24,6 +26,9 @@ export default mixins(showMessage).extend({
 		return {
 			nodeViewDetailsOpened: false,
 			ready: false,
+			insideIframe: false,
+			scrollX: 0,
+			scrollY: 0,
 		};
 	},
 	computed: {
@@ -32,6 +37,14 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
+		onMouseEnter() {
+			this.insideIframe = true;
+			this.scrollX = window.scrollX;
+			this.scrollY = window.scrollY;
+		},
+		onMouseLeave() {
+			this.insideIframe = false;
+		},
 		loadWorkflow() {
 			try {
 				if (!this.workflow) {
@@ -74,6 +87,11 @@ export default mixins(showMessage).extend({
 			} catch (e) {
 			}
 		},
+		onDocumentScroll() {
+			if (this.insideIframe) {
+				window.scrollTo(this.scrollX, this.scrollY);
+			}
+		},
 	},
 	watch: {
 		showPreview(show) {
@@ -84,9 +102,11 @@ export default mixins(showMessage).extend({
 	},
 	mounted() {
 		window.addEventListener('message', this.receiveMessage);
+		document.addEventListener('scroll', this.onDocumentScroll);
 	},
 	beforeDestroy() {
 		window.removeEventListener('message', this.receiveMessage);
+		window.removeEventListener('scroll', this.onDocumentScroll);
 	},
 });
 </script>
