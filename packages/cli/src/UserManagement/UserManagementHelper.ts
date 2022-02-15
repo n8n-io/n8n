@@ -30,7 +30,7 @@ export function validatePassword(password?: string): string {
 
 	if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
 		throw new ResponseHelper.ResponseError(
-			'Password must be 8 to 64 characters long',
+			`Password must be ${MIN_PASSWORD_LENGTH} to ${MAX_PASSWORD_LENGTH} characters long`,
 			undefined,
 			400,
 		);
