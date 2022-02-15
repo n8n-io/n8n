@@ -360,7 +360,6 @@ export function usersNamespace(this: N8nApp): void {
 					inviteAcceptUrl,
 					email: user.email,
 					domain,
-					result,
 				});
 				throw new ResponseHelper.ResponseError(
 					`Failed to send email to ${user.email}`,
