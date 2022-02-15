@@ -252,7 +252,7 @@ export default mixins(
 					const saved = await this.saveCurrentWorkflow();
 					if (saved) this.$store.dispatch('settings/fetchPromptsData');
 					this.$store.commit('setStateDirty', false);
-					next();
+					this.$router.back();
 				} else if (confirmModal === MODAL_CANCEL) {
 					this.$store.commit('setStateDirty', false);
 					next();
