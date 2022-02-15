@@ -28,18 +28,12 @@ describe('/me endpoints', () => {
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
 			await utils.initTestDb();
-			await utils.truncateUserTable();
 
 			globalOwnerRole = await getGlobalOwnerRole();
 		});
 
 		beforeEach(async () => {
-			await Db.collections.User!.save({
-				id: uuid(),
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				globalRole: globalOwnerRole,
-			});
+			await utils.createOwnerShell();
 		});
 
 		afterEach(async () => {

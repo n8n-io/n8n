@@ -85,16 +85,43 @@ export async function truncateUserTable() {
 	await getConnection().query('PRAGMA foreign_keys=ON');
 }
 
-export async function createMember(globalMemberRole: Role) {
-	return await Db.collections.User!.save({
+/**
+ * Store a user in the DB, defaulting to a `member`.
+ */
+export async function createUser(
+	{
+		id,
+		email,
+		password,
+		firstName,
+		lastName,
+		role,
+	}: { id: string; email: string; password: string; firstName: string; lastName: string; role?: Role } = {
 		id: uuid(),
 		email: randomEmail(),
 		password: randomValidPassword(),
 		firstName: randomName(),
 		lastName: randomName(),
+	},
+) {
+	return await Db.collections.User!.save({
+		id,
+		email,
+		password,
+		firstName,
+		lastName,
 		createdAt: new Date(),
 		updatedAt: new Date(),
-		globalRole: globalMemberRole,
+		globalRole: role ?? (await getGlobalMemberRole()),
+	});
+}
+
+export async function createOwnerShell() {
+	await Db.collections.User!.save({
+		id: uuid(),
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		globalRole: await getGlobalOwnerRole(),
 	});
 }
 

@@ -28,13 +28,13 @@ describe('auth endpoints', () => {
 		});
 
 		beforeEach(async () => {
-			await Db.collections.User!.save({
+			await utils.createUser({
 				id: uuid(),
 				email: TEST_USER.email,
 				firstName: TEST_USER.firstName,
 				lastName: TEST_USER.lastName,
 				password: hashSync(TEST_USER.password, genSaltSync(10)),
-				globalRole: globalOwnerRole,
+				role: globalOwnerRole,
 			});
 
 			config.set('userManagement.hasOwner', true);

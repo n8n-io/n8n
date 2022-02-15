@@ -16,7 +16,7 @@ import {
 	randomName,
 	randomInvalidPassword,
 } from './shared/random';
-import { createMember } from './shared/utils';
+import { createUser } from './shared/utils';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 
@@ -54,15 +54,13 @@ beforeEach(async () => {
 		jest.mock('../../config');
 	});
 
-	await Db.collections.User!.save({
+	await createUser({
 		id: INITIAL_TEST_USER.id,
 		email: INITIAL_TEST_USER.email,
 		password: INITIAL_TEST_USER.password,
 		firstName: INITIAL_TEST_USER.firstName,
 		lastName: INITIAL_TEST_USER.lastName,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: globalOwnerRole,
+		role: globalOwnerRole,
 	});
 
 	config.set('userManagement.hasOwner', true);
@@ -81,7 +79,7 @@ test('GET /users should return all users', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	await createMember(globalMemberRole);
+	await createUser();
 
 	const response = await authOwnerAgent.get('/users');
 
@@ -115,7 +113,7 @@ test('DELETE /users/:id should delete the user', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	const userToDelete = await createMember(globalMemberRole);
+	const userToDelete = await createUser();
 
 	const newWorkflow = new WorkflowEntity();
 
@@ -193,7 +191,7 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	const { id: idToDelete } = await createMember(globalMemberRole);
+	const { id: idToDelete } = await createUser();
 
 	const response = await authOwnerAgent.delete(`/users/${idToDelete}`).query({
 		transferId: idToDelete,
@@ -280,7 +278,7 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	const { id: inviteeId } = await createMember(globalMemberRole);
+	const { id: inviteeId } = await createUser();
 
 	const response = await authOwnerAgent
 		.get('/resolve-signup-token')
@@ -302,7 +300,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	const { id: inviteeId } = await createMember(globalMemberRole);
+	const { id: inviteeId } = await createUser();
 
 	const first = await authOwnerAgent
 		.get('/resolve-signup-token')
