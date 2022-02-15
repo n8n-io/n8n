@@ -160,7 +160,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (users.length !== 2) {
 				Logger.debug('User ID(s) not found in DB', { inviterId, inviteeId });
-				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
 			}
 
 			const inviter = users.find((user) => user.id === inviterId);
@@ -169,7 +169,7 @@ export function usersNamespace(this: N8nApp): void {
 				Logger.error('Missing inviter or inviter email or inviter firstName', {
 					inviterId: inviter?.id,
 				});
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 500);
+				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 			}
 			const { firstName, lastName } = inviter;
 
