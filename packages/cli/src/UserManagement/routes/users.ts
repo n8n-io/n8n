@@ -122,7 +122,7 @@ export function usersNamespace(this: N8nApp): void {
 						email,
 					};
 					if (!result.success) {
-						Logger.debug('Failed to send email', {
+						Logger.error('Failed to send email', {
 							userId: req.user.id,
 							inviteAcceptUrl,
 							domain,
@@ -354,7 +354,7 @@ export function usersNamespace(this: N8nApp): void {
 			});
 
 			if (!result.success) {
-				Logger.debug('Failed to send email', {
+				Logger.error('Failed to send email', {
 					inviteAcceptUrl,
 					email: user.email,
 					domain,
