@@ -100,7 +100,8 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('An error occurred during user creation');
 			}
 
-			Logger.info('Created user shells successfully', { userShells: createUsers });
+			Logger.info('Created user shells successfully');
+			Logger.verbose('User shells created', { userShells: createUsers });
 
 			let domain = GenericHelpers.getBaseUrl();
 			if (domain.endsWith('/')) {
