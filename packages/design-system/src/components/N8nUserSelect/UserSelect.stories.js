@@ -65,4 +65,5 @@ UserSelect.args = {
 		},
 	],
 	placeholder: 'Select user to transfer to',
+	currentUserId: "1",
 };

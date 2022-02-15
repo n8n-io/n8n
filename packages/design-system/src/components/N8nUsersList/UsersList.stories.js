@@ -37,7 +37,6 @@ UsersList.args = {
 			email: "sunny@n8n.io",
 			isDefaultUser: false,
 			isPendingUser: false,
-			isCurrentUser: true,
 			isOwner: true,
 			globalRole: {
 				name: 'owner',
@@ -52,7 +51,6 @@ UsersList.args = {
 			email: "kobi@n8n.io",
 			isDefaultUser: false,
 			isPendingUser: false,
-			isCurrentUser: false,
 			isOwner: false,
 			globalRole: {
 				name: 'member',
@@ -64,7 +62,6 @@ UsersList.args = {
 			email: "invited@n8n.io",
 			isDefaultUser: false,
 			isPendingUser: true,
-			isCurrentUser: false,
 			isOwner: false,
 			globalRole: {
 				name: 'member',
