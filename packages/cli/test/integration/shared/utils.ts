@@ -167,28 +167,13 @@ export async function getCredentialOwnerRole() {
 	});
 }
 
-export async function getAllRoles() {
-	const roles = await Promise.all([
+export function getAllRoles() {
+	return Promise.all([
 		getGlobalOwnerRole(),
 		getGlobalMemberRole(),
 		getWorkflowOwnerRole(),
 		getCredentialOwnerRole(),
 	]);
-
-	return {
-		globalOwnerRole: roles.find(
-			({ scope, name }) => scope === 'global' && name === 'owner',
-		) as Role,
-		globalMemberRole: roles.find(
-			({ scope, name }) => scope === 'global' && name === 'member',
-		) as Role,
-		workflowOwnerRole: roles.find(
-			({ scope, name }) => scope === 'workflow' && name === 'owner',
-		) as Role,
-		credentialOwnerRole: roles.find(
-			({ scope, name }) => scope === 'credential' && name === 'owner',
-		) as Role,
-	};
 }
 
 // ----------------------------------
@@ -203,7 +188,7 @@ export async function createAgent(
 	agent.use(prefix(REST_PATH_SEGMENT));
 
 	if (auth && !user) {
-		throw new Error('User required for auth agent creation')
+		throw new Error('User required for auth agent creation');
 	}
 
 	if (auth && user) {

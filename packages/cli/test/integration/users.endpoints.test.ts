@@ -31,12 +31,12 @@ beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
 	await utils.initTestDb();
 
-	const {
-		globalOwnerRole: fetchedGlobalOwnerRole,
-		globalMemberRole: fetchedGlobalMemberRole,
-		workflowOwnerRole: fetchedWorkflowOwnerRole,
-		credentialOwnerRole: fetchedCredentialOwnerRole,
-	} = await utils.getAllRoles();
+	const [
+		fetchedGlobalOwnerRole,
+		fetchedGlobalMemberRole,
+		fetchedWorkflowOwnerRole,
+		fetchedCredentialOwnerRole,
+	] = await utils.getAllRoles();
 
 	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
