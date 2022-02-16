@@ -74,6 +74,7 @@ class Telemetry {
 			this.telemetry.identify(`${instanceId}#${userId}`, traits);
 		}
 		else {
+			this.telemetry.reset();
 			this.telemetry.identify(undefined, traits);
 		}
 	}
