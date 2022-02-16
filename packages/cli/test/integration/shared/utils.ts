@@ -25,6 +25,7 @@ import { randomEmail, randomValidPassword, randomName } from './random';
 import type { EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
 import { Role } from '../../../src/databases/entities/Role';
 import { getLogger } from '../../../src/Logger';
+import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 
 // ----------------------------------
 //            test server
@@ -97,6 +98,21 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>) {
 	await getConnection().query('PRAGMA foreign_keys=OFF');
 	await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
 	await getConnection().query('PRAGMA foreign_keys=ON');
+}
+
+/**
+ * Save a credential to the DB, sharing it with a user.
+ */
+export async function saveCredential(credData: object, { user, role }: { user: User; role: Role }) {
+	const savedCredential = (await Db.collections.Credentials!.save(credData)) as CredentialsEntity;
+
+	await Db.collections.SharedCredentials!.save({
+		user,
+		credentials: savedCredential,
+		role,
+	});
+
+	return savedCredential;
 }
 
 /**
