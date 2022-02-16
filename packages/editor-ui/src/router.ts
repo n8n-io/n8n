@@ -33,7 +33,7 @@ export default new Router({
 			},
 		},
 		{
-			path: '/template/:id',
+			path: '/templates/:id',
 			name: 'TemplateView',
 			components: {
 				default: TemplateView,

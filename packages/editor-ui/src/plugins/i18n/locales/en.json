@@ -764,6 +764,14 @@
 		"saved": "Saved",
 		"saving": "Saving"
 	},
+	"settings": {
+		"errors": {
+			"connectionError": {
+				"title": "Error connecting to n8n",
+				"message": "Could not connect to server. <a onclick='window.location.reload(false);'>Refresh</a> to try again"
+			}
+		}
+	},
 	"showMessage": {
 		"cancel": "@:reusableBaseText.cancel",
 		"ok": "OK",

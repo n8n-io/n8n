@@ -39,9 +39,8 @@ export default mixins(showMessage).extend({
 				this.loading = false;
 			} catch (e) {
 				this.$showToast({
-					title: 'Error connecting to n8n',
-					message:
-						'Could not connect to server. <a onclick="window.location.reload(false);">Refresh</a> to try again',
+					title: this.$locale.baseText('settings.errors.connectionError.title'),
+					message: this.$locale.baseText('settings.errors.connectionError.message'),
 					type: 'error',
 					duration: 0,
 				});
