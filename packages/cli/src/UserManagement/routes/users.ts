@@ -4,6 +4,7 @@ import { Response } from 'express';
 import { getConnection, In } from 'typeorm';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
+import { LoggerProxy } from 'n8n-workflow';
 
 import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
@@ -18,9 +19,7 @@ import { User } from '../../databases/entities/User';
 import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
 import { getInstance } from '../email/UserManagementMailer';
-
 import config = require('../../../config');
-import { LoggerProxy } from '../../../../workflow/dist/src';
 import { issueCookie } from '../auth/jwt';
 
 export function usersNamespace(this: N8nApp): void {
