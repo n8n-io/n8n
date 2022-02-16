@@ -35,7 +35,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ email });
 
 			if (!user) {
-				throw new ResponseHelper.ResponseError('', undefined, 404);
+				return;
 			}
 
 			user.resetPasswordToken = uuid();
