@@ -332,7 +332,7 @@ export default mixins(
 				try {
 					await this.$store.dispatch('users/logout');
 
-					const route = this.$router.resolve({name: 'SigninView'});
+					const route = this.$router.resolve({ name: 'SigninView' });
 					window.open(route.href, '_self');
 				} catch (e) {
 					this.$showError(e, 'Could not sign out');
