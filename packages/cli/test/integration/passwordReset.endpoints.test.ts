@@ -123,6 +123,7 @@ test('POST /forgot-password should fail if user is not found', async () => {
 
 	const response = await authlessAgent.post('/forgot-password').send({ email: randomEmail() });
 
+	// response should have 200 to not provide any information to the requester
 	expect(response.statusCode).toBe(200);
 });
 

@@ -459,9 +459,12 @@ test('POST /users should email invites and create user shells', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	for (const { id, email: receivedEmail } of response.body.data) {
+	for (const {
+		user: { id, email: receivedEmail, error },
+	} of response.body.data) {
 		expect(validator.isUUID(id)).toBe(true);
 		expect(TEST_EMAILS_TO_CREATE_USER_SHELLS.some((e) => e === receivedEmail)).toBe(true);
+		expect(error).toBeUndefined();
 
 		const user = await Db.collections.User!.findOneOrFail(id);
 		const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } = user;

@@ -13,7 +13,7 @@
 			</div>
 			<Modals />
 		</div>
-		<Telemetry />
+		<Telemetry v-if="!loading" />
 	</div>
 </template>
 
