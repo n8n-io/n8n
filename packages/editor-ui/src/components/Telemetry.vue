@@ -23,7 +23,7 @@ export default Vue.extend({
 				const instanceId = this.$store.getters.instanceId;
 				const currentUserId = this.$store.getters['users/currentUserId'];
 				const logLevel = this.$store.getters['settings/logLevel'];
-				this.$telemetry.init(opts, {instanceId, logLevel, userId: currentUserId});
+				this.$telemetry.init(opts, { instanceId, logLevel, userId: currentUserId });
 			}
 		},
 	},
