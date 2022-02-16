@@ -139,7 +139,7 @@ export class NotionTrigger implements INodeType {
 			],
 			filter: {
 				property: sortProperty,
-				number: {
+				date: {
 					on_or_after: lastProcessedRecordTime.utc().format(),
 				},
 			},
