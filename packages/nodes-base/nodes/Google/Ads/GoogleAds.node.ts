@@ -37,6 +37,7 @@ export class GoogleAds implements INodeType {
 		],
 		requestDefaults: {
 			baseURL: 'https://googleads.googleapis.com',
+			//baseURL: 'https://newone.free.beeceptor.com',
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded',
 			},
