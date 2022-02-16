@@ -55,7 +55,7 @@ class Telemetry {
 		this.pageEventQueue = [];
 	}
 
-	init(options: ITelemetrySettings, {instanceId, logLevel, userId}: {instanceId: string, logLevel?: ILogLevel, userId?: string}) {
+	init(options: ITelemetrySettings, { instanceId, logLevel, userId }: { instanceId: string, logLevel?: ILogLevel, userId?: string }) {
 		if (options.enabled && !this.telemetry) {
 			if(!options.config) {
 				return;
