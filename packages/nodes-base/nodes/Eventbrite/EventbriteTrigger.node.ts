@@ -96,7 +96,6 @@ export class EventbriteTrigger implements INodeType {
 				displayName: 'Event',
 				name: 'event',
 				type: 'options',
-				required: true,
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'organization',
@@ -262,8 +261,10 @@ export class EventbriteTrigger implements INodeType {
 				const body: IDataObject = {
 					endpoint_url: webhookUrl,
 					actions: actions.join(','),
-					event_id: event,
 				};
+				if (event.length) {
+					body.event_id = event;
+				}
 
 				const responseData = await eventbriteApiRequest.call(this, 'POST', endpoint, body);
 
