@@ -25,7 +25,7 @@ import type { N8nApp } from '../UserManagement/Interfaces';
 
 export function credentialsEndpoints(this: N8nApp): void {
 	/**
-	 * Return a unique credential name.
+	 * Generate a unique credential name.
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/credentials/new`,
@@ -40,35 +40,25 @@ export function credentialsEndpoints(this: N8nApp): void {
 	);
 
 	/**
-	 * Delete a credential.
+	 * Test a credential.
 	 */
-	this.app.delete(
-		`/${this.restEndpoint}/credentials/:id`,
-		ResponseHelper.send(async (req: CredentialRequest.Delete) => {
-			const { id: credentialId } = req.params;
+	this.app.post(
+		`/${this.restEndpoint}/credentials-test`,
+		ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
+			const { credentials, nodeToTestWith } = req.body;
 
-			const shared = await Db.collections.SharedCredentials!.findOne({
-				relations: ['credentials'],
-				where: whereClause({
-					user: req.user,
-					entityType: 'credentials',
-					entityId: credentialId,
-				}),
-			});
+			const encryptionKey = await UserSettings.getEncryptionKey();
 
-			if (!shared) {
-				throw new ResponseHelper.ResponseError(
-					`Credential with ID "${credentialId}" could not be found to be deleted.`,
-					undefined,
-					404,
-				);
+			if (!encryptionKey) {
+				return {
+					status: 'Error',
+					message: RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
+				};
 			}
 
-			await this.externalHooks.run('credentials.delete', [credentialId]);
+			const helper = new CredentialsHelper(encryptionKey);
 
-			await Db.collections.Credentials!.delete(credentialId);
-
-			return true;
+			return helper.testCredentials(credentials.type, credentials, nodeToTestWith);
 		}),
 	);
 
@@ -145,25 +135,35 @@ export function credentialsEndpoints(this: N8nApp): void {
 	);
 
 	/**
-	 * Test a credential.
+	 * Delete a credential.
 	 */
-	this.app.post(
-		`/${this.restEndpoint}/credentials-test`,
-		ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
-			const { credentials, nodeToTestWith } = req.body;
+	this.app.delete(
+		`/${this.restEndpoint}/credentials/:id`,
+		ResponseHelper.send(async (req: CredentialRequest.Delete) => {
+			const { id: credentialId } = req.params;
 
-			const encryptionKey = await UserSettings.getEncryptionKey();
+			const shared = await Db.collections.SharedCredentials!.findOne({
+				relations: ['credentials'],
+				where: whereClause({
+					user: req.user,
+					entityType: 'credentials',
+					entityId: credentialId,
+				}),
+			});
 
-			if (!encryptionKey) {
-				return {
-					status: 'Error',
-					message: RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				};
+			if (!shared) {
+				throw new ResponseHelper.ResponseError(
+					`Credential with ID "${credentialId}" could not be found to be deleted.`,
+					undefined,
+					404,
+				);
 			}
 
-			const helper = new CredentialsHelper(encryptionKey);
+			await this.externalHooks.run('credentials.delete', [credentialId]);
 
-			return helper.testCredentials(credentials.type, credentials, nodeToTestWith);
+			await Db.collections.Credentials!.delete(credentialId);
+
+			return true;
 		}),
 	);
 
