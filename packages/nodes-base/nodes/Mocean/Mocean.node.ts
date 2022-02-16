@@ -189,7 +189,7 @@ export class Mocean implements INodeType {
 						],
 					},
 				},
-				description: 'The message to send',
+				description: 'Delivery report URL',
 			},
 		],
 
