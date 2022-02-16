@@ -327,7 +327,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 });
 
 test('POST /users/:id should fill out a user shell', async () => {
-	const authlessAgent = await utils.createAgent(app, { auth: false });
+	const authlessAgent = await utils.createAgent(app);
 
 	const userToFillOut = await Db.collections.User!.save({
 		email: randomEmail(),
@@ -373,7 +373,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 });
 
 test('POST /users/:id should fail with invalid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app, { auth: false });
+	const authlessAgent = await utils.createAgent(app);
 
 	const emailToStore = randomEmail();
 
@@ -394,7 +394,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 });
 
 test('POST /users/:id should fail with already accepted invite', async () => {
-	const authlessAgent = await utils.createAgent(app, { auth: false });
+	const authlessAgent = await utils.createAgent(app);
 
 	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
 		name: 'member',

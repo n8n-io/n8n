@@ -54,7 +54,7 @@ describe('auth endpoints', () => {
 		});
 
 		test('POST /login should log user in', async () => {
-			const authlessAgent = await utils.createAgent(app, { auth: false });
+			const authlessAgent = await utils.createAgent(app);
 
 			const response = await authlessAgent.post('/login').send({
 				email: TEST_USER.email,

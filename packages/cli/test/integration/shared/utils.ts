@@ -183,19 +183,18 @@ export function getAllRoles() {
 //           request agent
 // ----------------------------------
 
+/**
+ * Create a request agent, optionally with an auth cookie.
+ */
 export async function createAgent(
 	app: express.Application,
-	{ auth, user }: { auth: boolean; user?: User } = { auth: false },
+	options?: { auth: true; user: User },
 ) {
 	const agent = request.agent(app);
 	agent.use(prefix(REST_PATH_SEGMENT));
 
-	if (auth && !user) {
-		throw new Error('User required for auth agent creation');
-	}
-
-	if (auth && user) {
-		const { token } = await issueJWT(user);
+	if (options?.auth && options?.user) {
+		const { token } = await issueJWT(options.user);
 		agent.jar.setCookie(`n8n-auth=${token}`);
 	}
 
