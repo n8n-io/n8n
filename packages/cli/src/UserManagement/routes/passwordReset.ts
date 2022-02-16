@@ -34,7 +34,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const user = await Db.collections.User!.findOne({ email });
 
-			if (!user) {
+			if (!user || !user.password) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
@@ -42,7 +42,9 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const { id, firstName, lastName, resetPasswordToken } = user;
 
-			await Db.collections.User!.update(id, { resetPasswordToken });
+			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
+
+			await Db.collections.User!.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
 
 			const baseUrl = getBaseUrl();
 			const url = new URL('/change-password', baseUrl);
@@ -73,7 +75,13 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
 
-			if (!user) {
+			if (!user || !user.resetPasswordTokenExpiration) {
+				throw new ResponseHelper.ResponseError('', undefined, 404);
+			}
+
+			// Timestamp is saved in seconds
+			const currentTimestamp = Math.floor(Date.now() / 1000);
+			if (currentTimestamp > user.resetPasswordTokenExpiration) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 		}),
@@ -95,16 +103,23 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
 
-			if (!user) {
+			if (!user || !user.resetPasswordTokenExpiration) {
+				throw new ResponseHelper.ResponseError('', undefined, 404);
+			}
+
+			// Timestamp is saved in seconds
+			const currentTimestamp = Math.floor(Date.now() / 1000);
+			if (currentTimestamp > user.resetPasswordTokenExpiration) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
 			await Db.collections.User!.update(id, {
 				password: hashSync(validPassword, genSaltSync(10)),
 				resetPasswordToken: null,
+				resetPasswordTokenExpiration: null,
 			});
 
-			const userData = await issueJWT(req.user);
+			const userData = await issueJWT(user);
 			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
 		}),
 	);

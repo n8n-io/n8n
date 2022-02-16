@@ -148,7 +148,6 @@ import {
 import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
-import * as PersonalizationSurvey from './PersonalizationSurvey';
 
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
@@ -309,9 +308,9 @@ class App {
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
-			personalizationSurvey: {
-				shouldShow: false,
-			},
+			personalizationSurveyEnabled:
+				(config.get('personalization.enabled') as boolean) &&
+				(config.get('diagnostics.enabled') as boolean),
 			defaultLocale: config.get('defaultLocale'),
 			userManagement: {
 				enabled:
@@ -348,9 +347,6 @@ class App {
 		this.frontendSettings.versionCli = this.versions.cli;
 
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
-
-		this.frontendSettings.personalizationSurvey =
-			await PersonalizationSurvey.preparePersonalizationSurvey();
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 

@@ -429,7 +429,7 @@ export interface IN8nUISettings {
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
 	telemetry: ITelemetrySettings;
-	personalizationSurvey: IPersonalizationSurvey;
+	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -442,11 +442,6 @@ export interface IPersonalizationSurveyAnswers {
 	otherCompanyIndustry: string | null;
 	otherWorkArea: string | null;
 	workArea: string[] | string | null;
-}
-
-export interface IPersonalizationSurvey {
-	answers?: IPersonalizationSurveyAnswers;
-	shouldShow: boolean;
 }
 
 export interface IUserManagementSettings {

@@ -1,6 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import config = require('../../../../config');
+import { loadSurveyFromDisk } from '../../utils/migrationHelpers';
 
 export class CreateUserManagement1636626154933 implements MigrationInterface {
 	name = 'CreateUserManagement1636626154932';
@@ -28,6 +29,7 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 				'`lastName` VARCHAR(32) NULL DEFAULT NULL, ' +
 				'`password` VARCHAR(200) NULL DEFAULT NULL, ' +
 				'`resetPasswordToken` VARCHAR(200) NULL DEFAULT NULL, ' +
+				'`resetPasswordTokenExpiration` INT NULL DEFAULT NULL, ' +
 				'`personalizationAnswers` VARCHAR(200) NULL DEFAULT NULL, ' +
 				'`createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
 				'`updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
@@ -120,11 +122,14 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 
 		const credentialOwnerRole = await queryRunner.query('SELECT LAST_INSERT_ID() as insertId');
 
+		const survey = loadSurveyFromDisk();
+
 		const ownerUserId = uuid();
 		await queryRunner.query(
 			'INSERT INTO `' + tablePrefix + 'user` ' +
-			  '(id, globalRoleId) values  ' +
-				'("' +  ownerUserId + '", ' + instanceOwnerRole[0].insertId + ')'
+			  '(id, globalRoleId, personalizationAnswers) values  ' +
+				'(?, ?, ?)',
+				[ownerUserId, instanceOwnerRole[0].insertId, survey ?? null]
 		);
 
 		await queryRunner.query(

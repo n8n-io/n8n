@@ -1,13 +1,13 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import config = require('../../../../config');
+import { loadSurveyFromDisk } from '../../utils/migrationHelpers';
 
 export class CreateUserManagement1636626154934 implements MigrationInterface {
 	name = 'CreateUserManagement1636626154934';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.get('database.tablePrefix');
-		let i = 0;
 		await queryRunner.query(
 			'CREATE TABLE "' + tablePrefix + 'role" (' +
 				'"id" serial NOT NULL,' +
@@ -28,6 +28,7 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 				'"lastName" VARCHAR(32) NULL DEFAULT null,' +
 				'"password" VARCHAR(200) NULL DEFAULT null,' +
 				'"resetPasswordToken" VARCHAR(200) NULL DEFAULT null,' +
+				'"resetPasswordTokenExpiration" int NULL DEFAULT null,' +
 				'"personalizationAnswers" text NULL DEFAULT null,' +
 				'"createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,' +
 				'"updatedAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,' +
@@ -111,11 +112,13 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 
 		const credentialOwnerRole = await queryRunner.query('SELECT lastval() as "insertId"');
 
+		const survey = loadSurveyFromDisk();
+
 		const ownerUserId = uuid();
 		await queryRunner.query(
 			'INSERT INTO "' + tablePrefix + 'user" ' +
-			  '("id", "firstName", "lastName", "createdAt", "updatedAt", "globalRoleId") values  ' +
-				'(\'' +  ownerUserId + '\', \'default\', \'default\', NOW(), NOW(), ' + instanceOwnerRole[0].insertId + ')'
+			  '("id", "globalRoleId", "personalizationAnswers") values ($1, $2, $3)',
+				[ownerUserId, instanceOwnerRole[0].insertId, survey ?? null]
 		);
 				await queryRunner.query(
 			'INSERT INTO "' + tablePrefix + 'shared_workflow" ("createdAt", "updatedAt", "roleId", "userId", "workflowId")  ' +

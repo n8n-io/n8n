@@ -1,6 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import config = require('../../../../config');
+import { loadSurveyFromDisk } from '../../utils/migrationHelpers';
 
 export class CreateUserManagement1636626154932 implements MigrationInterface {
 	name = 'CreateUserManagement1636626154932';
@@ -13,7 +14,7 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`CREATE TABLE "${tablePrefix}user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(254), "firstName" varchar(32), "lastName" varchar(32), "password" varchar, "resetPasswordToken" varchar, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer NOT NULL, CONSTRAINT "FK_${tablePrefix}f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+			`CREATE TABLE "${tablePrefix}user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(254), "firstName" varchar(32), "lastName" varchar(32), "password" varchar, "resetPasswordToken" varchar, "resetPasswordTokenExpiration" integer DEFAULT NULL, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer NOT NULL, CONSTRAINT "FK_${tablePrefix}f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
 		);
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "IDX_${tablePrefix}e12875dfb3b1d92d7d7c5377e2" ON "${tablePrefix}user" ("email") `,
@@ -59,11 +60,13 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 
 		const credentialOwnerRole = await queryRunner.query('SELECT last_insert_rowid() as insertId');
 
+		const survey = loadSurveyFromDisk();
+
 		const ownerUserId = uuid();
 		await queryRunner.query(`
-			INSERT INTO "${tablePrefix}user" (id, globalRoleId) values
-			('${uuid()}', ${instanceOwnerRole[0].insertId})
-		`);
+			INSERT INTO "${tablePrefix}user" (id, globalRoleId, personalizationAnswers) values
+			(?, ?, ?)
+		`, [ownerUserId, instanceOwnerRole[0].insertId, survey ?? null]);
 
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}shared_workflow" (createdAt, updatedAt, roleId, userId, workflowId)
