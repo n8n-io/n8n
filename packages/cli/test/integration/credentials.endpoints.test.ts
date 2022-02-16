@@ -5,11 +5,12 @@ import { Db } from '../../src';
 import { Role } from '../../src/databases/entities/Role';
 import { randomName, randomString } from './shared/random';
 import * as utils from './shared/utils';
-import { getCredentialOwnerRole, getGlobalOwnerRole } from './shared/utils';
+import { getCredentialOwnerRole } from './shared/utils';
+
+const { UserSettings } = require('n8n-core');
 
 let app: express.Application;
 let credentialOwnerRole: Role;
-let globalOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({
@@ -19,7 +20,6 @@ beforeAll(async () => {
 	});
 	await utils.initTestDb();
 	credentialOwnerRole = await getCredentialOwnerRole();
-	globalOwnerRole = await getGlobalOwnerRole();
 });
 
 beforeEach(async () => {
@@ -78,7 +78,6 @@ test('POST /credentials should fail with invalid inputs', async () => {
 });
 
 test('POST /credentials should fail with missing encryption key', async () => {
-	const { UserSettings } = require('n8n-core');
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
 	mock.mockReturnValue(undefined);
 
@@ -294,7 +293,6 @@ test('PATCH /credentials/:id should fail if cred not found', async () => {
 });
 
 test('PATCH /credentials/:id should fail with missing encryption key', async () => {
-	const { UserSettings } = require('n8n-core');
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
 	mock.mockReturnValue(undefined);
 
@@ -461,7 +459,6 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 		role: credentialOwnerRole,
 	});
 
-	const { UserSettings } = require('n8n-core');
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
 	mock.mockReturnValue(undefined);
 
