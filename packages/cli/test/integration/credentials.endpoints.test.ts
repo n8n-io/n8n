@@ -4,7 +4,6 @@ import { getConnection } from 'typeorm';
 import { Db } from '../../src';
 import { randomName, randomString } from './shared/random';
 import * as utils from './shared/utils';
-import * as core from 'n8n-core';
 
 let app: express.Application;
 
@@ -62,7 +61,43 @@ test('POST /credentials should create a credential', async () => {
 	expect(sharedCredential.credentials.name).toBe(CREATE_CRED_PAYLOAD.name);
 });
 
-test('POST /credentials should fail due to missing encryption key', async () => {
+test('POST /credentials should fail with invalid inputs', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+
+	const invalidPayloads = [
+		{
+			type: randomName(),
+			nodesAccess: [{ nodeType: randomName() }],
+			data: { accessToken: randomString(5, 15) },
+		},
+		{
+			name: randomName(),
+			nodesAccess: [{ nodeType: randomName() }],
+			data: { accessToken: randomString(5, 15) },
+		},
+		{
+			name: randomName(),
+			type: randomName(),
+			data: { accessToken: randomString(5, 15) },
+		},
+		{
+			name: randomName(),
+			type: randomName(),
+			nodesAccess: [{ nodeType: randomName() }],
+		},
+		{},
+		[],
+		undefined,
+	];
+
+	for (const invalidPayload of invalidPayloads) {
+		const response = await authShellAgent.post('/credentials').send(invalidPayload);
+		expect(response.statusCode).toBe(400);
+	}
+});
+
+test('POST /credentials should fail with missing encryption key', async () => {
 	const { UserSettings } = require('n8n-core');
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
 	mock.mockReturnValue(undefined);
