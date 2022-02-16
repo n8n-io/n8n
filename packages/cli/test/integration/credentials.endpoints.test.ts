@@ -471,6 +471,16 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 	mock.mockRestore();
 });
 
+test('GET /credentials/:id should return empty if cred not found', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const authMemberAgent = await utils.createAgent(app, { auth: true, user: shell });
+
+	const response = await authMemberAgent.get('/credentials/789');
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body).toEqual({ data: {} });
+});
+
 const credentialPayload = () => ({
 	name: randomName(),
 	type: randomName(),
