@@ -467,9 +467,21 @@ export class WorkflowDataProxy {
 
 		const getNodeInput = (runIndex?: number, inputConnectorIndex?: number, itemIndex?: number) => {
 			let executionData: INodeExecutionData[];
+			// const outputIndex = that.workflow.getNodeConnectionOutputIndex(
+			// 	that.activeNodeName,
+			// 	that.activeNodeName,
+			// 	'main',
+			// );
+			// const taskData = that.runExecutionData!.resultData.runData[that.activeNodeName];
+			// // eslint-disable-next-line no-console
+			// console.log(outputIndex, taskData);
 
 			const parentNodes = that.workflow.getParentNodes(that.activeNodeName);
 			const nodeName = parentNodes[parentNodes.length - 1];
+			// eslint-disable-next-line no-console
+			console.log(`--------------------------------------------------------`);
+			// eslint-disable-next-line no-console
+			console.log(`${that.activeNodeName} ===>`, that.connectionInputData);
 
 			if (nodeName === undefined) {
 				executionData = that.connectionInputData;
@@ -524,6 +536,11 @@ export class WorkflowDataProxy {
 			},
 			//------------------------------------------------------------------------------------------------
 			$in: new Proxy(
+				// $in.thisItem
+				// $in.item(itemIndex?, runIndex?, inputConnectorIndex?)
+				// $in.first(runIndex?, inputConnectorIndex?)
+				// $in.last(runIndex?, inputConnectorIndex?)
+				// $in.all(runIndex?, inputConnectorIndex?)
 				{},
 				{
 					get(target, property, receiver) {

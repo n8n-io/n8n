@@ -173,12 +173,32 @@ export default mixins(
 				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, activeNode!.name, connectionInputData || [], {}, mode, additionalProxyKeys);
 				const proxy = dataProxy.getDataProxy();
 
+				const autoComplete$ = `
+				{
+					item: (itemIndex?: number, branchIndex?: number, runIndex?: number) => {},\n
+					first: (branchIndex?: number, runIndex?: number): {} => {},\n
+					last: (branchIndex?: number, runIndex?: number): {} => {},\n
+					all: (branchIndex?: number, runIndex?: number): {} => {},\n
+				}
+				`;
+
+				const autoComplete$in = `
+				{
+					item: (itemIndex?: number, runIndex?: number, inputConnectorIndex?: number) => {},\n
+					first: (runIndex?: number, inputConnectorIndex?: number): {} => {},\n
+					last: (runIndex?: number, inputConnectorIndex?: number): {} => {},\n
+					all: (runIndex?: number, inputConnectorIndex?: number): {} => {},\n
+				}
+				`;
+
 				const autoCompleteItems = [
 					`function $evaluateExpression(expression: string, itemIndex?: number): any {};`,
 					`function getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): any {};`,
 					`function getWorkflowStaticData(type: string): object {};`,
 					`function $item(itemIndex: number, runIndex?: number) {};`,
 					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number) {};`,
+					`function $(nodeName?: string): ${autoComplete$}`,
+					`const $in = ${autoComplete$in}`,
 				];
 
 				const baseKeys = ['$env', '$executionId', '$mode', '$parameter', '$position', '$resumeWebhookUrl', '$workflow'];
