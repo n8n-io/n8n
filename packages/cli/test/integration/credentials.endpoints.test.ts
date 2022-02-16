@@ -28,7 +28,7 @@ afterAll(() => {
 	return getConnection().close();
 });
 
-test('POST /credentials should create a credential', async () => {
+test('POST /credentials should create cred', async () => {
 	const shell = await Db.collections.User!.findOneOrFail();
 	const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
 
@@ -128,6 +128,30 @@ test('POST /credentials should ignore ID in payload', async () => {
 
 	expect(secondResponse.body.data.id).not.toBe(8);
 });
+
+// DELETE /credentials/:id should delete cred for owner
+// DELETE /credentials/:id should delete cred for owning member
+// DELETE /credentials/:id should fail to delete cred for non-owning member
+// DELETE /credentials/:id should fail if credential not found
+
+// PATCH /credentials/:id should update cred for owner
+// PATCH /credentials/:id should update cred for owning member
+// PATCH /credentials/:id should fail to update cred for non-owning member
+// PATCH /credentials/:id should fail with invalid inputs
+// PATCH /credentials/:id should fail if credential not found
+// PATCH /credentials/:id should fail with missing encryption key
+
+// GET /credentials/:id should retrieve cred for owner
+// GET /credentials/:id should retrieve cred for owning member
+// GET /credentials/:id should return empty for non-owning member
+// GET /credentials/:id should fail with missing encryption key
+// GET /credentials/:id with includeData should retrieve cred and data
+
+// GET /credentials should retrieve all creds for owner
+// GET /credentials should retrieve owned creds for member
+// GET /credentials should not return non-owned creds for member
+// GET /credentials should fail with missing encryption key
+// GET /credentials with includeData should retrieve cred and data
 
 const CREATE_CRED_PAYLOAD = {
 	name: randomName(),
