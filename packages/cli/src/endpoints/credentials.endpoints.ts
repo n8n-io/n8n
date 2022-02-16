@@ -209,7 +209,11 @@ export function credentialsEndpoints(this: N8nApp): void {
 			const encryptionKey = await UserSettings.getEncryptionKey();
 
 			if (!encryptionKey) {
-				throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
+				throw new ResponseHelper.ResponseError(
+					RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
+					undefined,
+					500,
+				);
 			}
 
 			const coreCredential = new Credentials(
@@ -305,7 +309,11 @@ export function credentialsEndpoints(this: N8nApp): void {
 			const encryptionKey = await UserSettings.getEncryptionKey();
 
 			if (!encryptionKey) {
-				throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
+				throw new ResponseHelper.ResponseError(
+					RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
+					undefined,
+					500,
+				);
 			}
 
 			const coreCredential = new Credentials(
@@ -360,6 +368,7 @@ export function credentialsEndpoints(this: N8nApp): void {
 				});
 			}
 
+			// TODO: Useless segment coming from master - Remove?
 			let encryptionKey;
 
 			if (req.query.includeData === 'true') {

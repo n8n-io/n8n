@@ -5,10 +5,11 @@ import { Db } from '../../src';
 import { Role } from '../../src/databases/entities/Role';
 import { randomName, randomString } from './shared/random';
 import * as utils from './shared/utils';
-import { getCredentialOwnerRole } from './shared/utils';
+import { getCredentialOwnerRole, getGlobalOwnerRole } from './shared/utils';
 
 let app: express.Application;
 let credentialOwnerRole: Role;
+let globalOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({
@@ -18,6 +19,7 @@ beforeAll(async () => {
 	});
 	await utils.initTestDb();
 	credentialOwnerRole = await getCredentialOwnerRole();
+	globalOwnerRole = await getGlobalOwnerRole();
 });
 
 beforeEach(async () => {
@@ -306,15 +308,171 @@ test('PATCH /credentials/:id should fail with missing encryption key', async () 
 	mock.mockRestore();
 });
 
-// GET /credentials/:id should retrieve all creds for owner + includeData
-// GET /credentials/:id should retrieve all creds owning member + includeData
-// GET /credentials/:id should return empty for non-owning member
-// GET /credentials/:id should fail with missing encryption key
+test('GET /credentials should retrieve all creds for owner', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
 
-// GET /credentials should retrieve cred for owner + includeData
-// GET /credentials should retrieve cred for member + includeData
-// GET /credentials should not return non-owned creds for member
-// GET /credentials should fail with missing encryption key
+	for (let i = 0; i < 3; i++) {
+		await utils.saveCredential(credentialPayload(), {
+			user: shell,
+			role: credentialOwnerRole,
+		});
+	}
+
+	const response = await authShellAgent.get('/credentials');
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(3);
+
+	for (const credential of response.body.data) {
+		const { name, type, nodesAccess, data: encryptedData } = credential;
+		expect(typeof name).toBe('string');
+		expect(typeof type).toBe('string');
+		expect(typeof nodesAccess[0].nodeType).toBe('string');
+		expect(encryptedData).toBeUndefined();
+	}
+});
+
+test('GET /credentials should retrieve owned creds for member', async () => {
+	const member = await utils.createUser();
+	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+
+	for (let i = 0; i < 3; i++) {
+		await utils.saveCredential(credentialPayload(), {
+			user: member,
+			role: credentialOwnerRole,
+		});
+	}
+
+	const response = await authMemberAgent.get('/credentials');
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(3);
+
+	for (const credential of response.body.data) {
+		const { name, type, nodesAccess, data: encryptedData } = credential;
+		expect(typeof name).toBe('string');
+		expect(typeof type).toBe('string');
+		expect(typeof nodesAccess[0].nodeType).toBe('string');
+		expect(encryptedData).toBeUndefined();
+	}
+});
+
+test('GET /credentials should not retrieve non-owned creds for member', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const member = await utils.createUser();
+	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+
+	for (let i = 0; i < 3; i++) {
+		await utils.saveCredential(credentialPayload(), {
+			user: shell,
+			role: credentialOwnerRole,
+		});
+	}
+
+	const response = await authMemberAgent.get('/credentials');
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(0); // shell's creds not returned
+});
+
+test('GET /credentials/:id should retrieve owned creds for owner', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: shell });
+
+	const savedCredential = await utils.saveCredential(credentialPayload(), {
+		user: shell,
+		role: credentialOwnerRole,
+	});
+
+	const firstResponse = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+	expect(firstResponse.statusCode).toBe(200);
+
+	expect(typeof firstResponse.body.data.name).toBe('string');
+	expect(typeof firstResponse.body.data.type).toBe('string');
+	expect(typeof firstResponse.body.data.nodesAccess[0].nodeType).toBe('string');
+	expect(firstResponse.body.data.data).toBeUndefined();
+
+	const secondResponse = await authOwnerAgent
+		.get(`/credentials/${savedCredential.id}`)
+		.query({ includeData: true });
+
+	expect(secondResponse.statusCode).toBe(200);
+
+	expect(typeof secondResponse.body.data.name).toBe('string');
+	expect(typeof secondResponse.body.data.type).toBe('string');
+	expect(typeof secondResponse.body.data.nodesAccess[0].nodeType).toBe('string');
+	expect(secondResponse.body.data.data).toBeDefined();
+});
+
+test('GET /credentials/:id should retrieve owned creds for owner', async () => {
+	const member = await utils.createUser();
+	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+
+	const savedCredential = await utils.saveCredential(credentialPayload(), {
+		user: member,
+		role: credentialOwnerRole,
+	});
+
+	const firstResponse = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
+
+	expect(firstResponse.statusCode).toBe(200);
+
+	expect(typeof firstResponse.body.data.name).toBe('string');
+	expect(typeof firstResponse.body.data.type).toBe('string');
+	expect(typeof firstResponse.body.data.nodesAccess[0].nodeType).toBe('string');
+	expect(firstResponse.body.data.data).toBeUndefined();
+
+	const secondResponse = await authMemberAgent
+		.get(`/credentials/${savedCredential.id}`)
+		.query({ includeData: true });
+
+	expect(secondResponse.statusCode).toBe(200);
+
+	expect(typeof secondResponse.body.data.name).toBe('string');
+	expect(typeof secondResponse.body.data.type).toBe('string');
+	expect(typeof secondResponse.body.data.nodesAccess[0].nodeType).toBe('string');
+	expect(secondResponse.body.data.data).toBeDefined();
+});
+
+test('GET /credentials/:id should not retrieve non-owned creds for member', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const member = await utils.createUser();
+	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+
+	const savedCredential = await utils.saveCredential(credentialPayload(), {
+		user: shell,
+		role: credentialOwnerRole,
+	});
+
+	const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data).toEqual({}); // shell's cred not returned
+});
+
+test('GET /credentials/:id should fail with missing encryption key', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+
+	const savedCredential = await utils.saveCredential(credentialPayload(), {
+		user: shell,
+		role: credentialOwnerRole,
+	});
+
+	const { UserSettings } = require('n8n-core');
+	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
+	mock.mockReturnValue(undefined);
+
+	const response = await authShellAgent
+		.get(`/credentials/${savedCredential.id}`)
+		.query({ includeData: true });
+
+	expect(response.statusCode).toBe(500);
+
+	mock.mockRestore();
+});
 
 const credentialPayload = () => ({
 	name: randomName(),
