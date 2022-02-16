@@ -23,30 +23,27 @@ export const spaceOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Returns a space',
+				description: 'Get a space',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Lists spaces the caller is a member of',
+				description: 'Get all spaces the caller is a member of',
 			},
 		],
 		default: 'get',
 	},
 ];
 
-export const  spaceFields: INodeProperties[] = [
+export const spaceFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 space:get                              */
+	/*                                 space:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name',
-		name: 'spaceName',
-		type: 'options',
+		displayName: 'Space ID',
+		name: 'spaceId',
+		type: 'string',
 		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getSpaces',
-		},
 		displayOptions: {
 			show: {
 				resource: [

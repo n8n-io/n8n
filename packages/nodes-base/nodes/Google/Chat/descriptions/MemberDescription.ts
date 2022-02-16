@@ -23,12 +23,12 @@ export const memberOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Returns a membership',
+				description: 'Get a membership',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Lists human memberships in a space',
+				description: 'Get all memberships in a space',
 			},
 		],
 		default: 'get',
@@ -38,11 +38,11 @@ export const memberOperations: INodeProperties[] = [
 
 export const memberFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 member:get                              */
+	/*                                 member:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Member Name',
-		name: 'memberName',
+		displayName: 'Member ID',
+		name: 'memberId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -63,8 +63,8 @@ export const memberFields: INodeProperties[] = [
 	/*                                 member:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name',
-		name: 'spaceName',
+		displayName: 'Space Name/ID',
+		name: 'spaceId',
 		type: 'options',
 		required: true,
 		typeOptions: {

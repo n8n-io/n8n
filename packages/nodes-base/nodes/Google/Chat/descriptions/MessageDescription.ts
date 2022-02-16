@@ -19,22 +19,22 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Creates a message',
+				description: 'Create a message',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Deletes a message',
+				description: 'Delete a message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Returns a message',
+				description: 'Get a message',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Updates a message',
+				description: 'Update a message',
 			},
 		],
 		default: 'create',
@@ -47,8 +47,8 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name',
-		name: 'spaceName',
+		displayName: 'Space Name/ID',
+		name: 'spaceId',
 		type: 'options',
 		required: true,
 		typeOptions: {
@@ -89,7 +89,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'messageUi',
 		type: 'collection',
 		required: true,
-		placeholder: 'Add Options',
+		placeholder: 'Add Message',
 		displayOptions: {
 			show: {
 				resource: [
@@ -103,15 +103,13 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: {'text': ''},
-		description: 'The message object',
+		default: {},
 		options: [
 			{
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
 				default: '',
-				description: 'The message text',
 			},
 			// {	// TODO: get cards from the UI (check the Slack node, specifically the blocks parameter under message: post)
 			// 	displayName: 'Cards',
@@ -222,13 +220,13 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Thread Key',
-				name: 'threadKey',
-				type: 'string',
-				default: '',
-				description: 'Thread identifier which groups messages into a single thread. Has no effect if thread field, corresponding to an existing thread, is set in message. Example: spaces/AAAAMpdlehY/threads/MZ8fXhZXGkk.',
-			},
+			// {
+			// 	displayName: 'Thread Key',
+			// 	name: 'threadKey',
+			// 	type: 'string',
+			// 	default: '',
+			// 	description: 'Thread identifier which groups messages into a single thread. Has no effect if thread field, corresponding to an existing thread, is set in message. Example: spaces/AAAAMpdlehY/threads/MZ8fXhZXGkk.',
+			// },
 			{
 				displayName: 'Request ID',
 				name: 'requestId',
@@ -240,11 +238,11 @@ export const messageFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 messages:delete                              */
+	/*                                 messages:delete                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Message Name',
-		name: 'messageName',
+		displayName: 'Message ID',
+		name: 'messageId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -258,15 +256,15 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Resource name of the message to be deleted, in the form "spaces/*/messages/*"',
+		description: 'Resource name of the message to be deleted, in the form "spaces//messages/"',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 message:get                              */
+	/*                                 message:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Message Name',
-		name: 'messageName',
+		displayName: 'Message ID',
+		name: 'messageId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -280,15 +278,15 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Resource name of the message to be deleted, in the form "spaces/*/messages/*"',
+		description: 'Resource name of the message to be retrieved, in the form "spaces//messages/"',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 message:update                              */
+	/*                                 message:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Message Name',
-		name: 'messageName',
+		displayName: 'Message ID',
+		name: 'messageId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -302,7 +300,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Resource name of the message to be retrieved, in the form "spaces/*/messages/*"',
+		description: 'Resource name of the message to be updated, in the form "spaces//messages/"',
 	},
 	{
 		displayName: 'JSON Parameters',

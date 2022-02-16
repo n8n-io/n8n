@@ -56,7 +56,6 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 			const { access_token } = await getAccessToken.call(this, credentials as ICredentialDataDecryptedObject);
 			options.headers!.Authorization = `Bearer ${access_token}`;
-
 			//@ts-ignore
 			responseData = await this.helpers.request(options);
 		}
@@ -64,6 +63,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
 		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
 	if(Object.keys(responseData as IDataObject).length !== 0) {
@@ -166,12 +166,15 @@ export function getPagingParameters(resource: string, operation = 'getAll') {
 				},
 			},
 			default: false,
-			description: 'If all results should be returned or only up to a given limit.',
+			description: 'If all results should be returned or only up to a given limit',
 		},
 		{
 			displayName: 'Limit',
 			name: 'limit',
 			type: 'number',
+			typeOptions: {
+				maxValue: 1000,
+			},
 			displayOptions: {
 				show: {
 					resource: [
@@ -186,7 +189,7 @@ export function getPagingParameters(resource: string, operation = 'getAll') {
 				},
 			},
 			default: 100,
-			description: 'The limit of records to return. The value is capped at 1000. Server may return fewer results than requested. If unspecified, server will default to 100.',
+			description: 'How many results to return',
 		},
 	];
 	return pagingParameters;
