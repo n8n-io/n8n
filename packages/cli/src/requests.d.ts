@@ -1,14 +1,16 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
-import { User } from './databases/entities/User';
-import { IExecutionDeleteFilter } from '.';
 import {
+	INodeCredentialTestRequest,
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
 	INode,
 	IWorkflowSettings,
-} from '../../workflow/dist/src';
+} from 'n8n-workflow';
+
+import { User } from './databases/entities/User';
+import type { IExecutionDeleteFilter } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthenticatedRequest<
@@ -74,6 +76,8 @@ export declare namespace CredentialRequest {
 	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
 
 	type NewName = WorkflowRequest.NewName;
+
+	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 }
 
 // ----------------------------------
