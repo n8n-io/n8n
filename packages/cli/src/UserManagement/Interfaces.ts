@@ -34,5 +34,4 @@ export interface N8nApp {
 	restEndpoint: string;
 	externalHooks: IExternalHooksClass;
 	defaultCredentialsName: string;
-	getCurrentDate(): Date;
 }

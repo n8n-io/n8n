@@ -11,13 +11,14 @@ import { LoggerProxy } from 'n8n-workflow';
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
-import { Db, IDatabaseCollections } from '../../../src';
+import { Db, ExternalHooks, IDatabaseCollections } from '../../../src';
 import { User } from '../../../src/databases/entities/User';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
+import { credentialsEndpoints } from '../../../src/endpoints/credentials.endpoints';
 import { getConnection } from 'typeorm';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { randomEmail, randomValidPassword, randomName } from './random';
@@ -43,13 +44,16 @@ export const initLogger = () => {
 export function initTestServer({
 	applyAuth,
 	namespaces,
+	externalHooks,
 }: {
 	applyAuth: boolean;
+	externalHooks?: true;
 	namespaces?: EndpointNamespace[];
 }) {
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
+		...(externalHooks ? { externalHooks: ExternalHooks() } : {}),
 	};
 
 	testServer.app.use(bodyParser.json());
@@ -69,6 +73,7 @@ export function initTestServer({
 			auth: authEndpoints,
 			owner: ownerEndpoints,
 			passwordReset: passwordResetEndpoints,
+			credentials: credentialsEndpoints,
 		};
 
 		for (const namespace of namespaces) {
@@ -178,7 +183,6 @@ export function getAllRoles() {
 	]);
 }
 
-
 // ----------------------------------
 //           request agent
 // ----------------------------------
@@ -186,10 +190,7 @@ export function getAllRoles() {
 /**
  * Create a request agent, optionally with an auth cookie.
  */
-export async function createAgent(
-	app: express.Application,
-	options?: { auth: true; user: User },
-) {
+export async function createAgent(app: express.Application, options?: { auth: true; user: User }) {
 	const agent = request.agent(app);
 	agent.use(prefix(REST_PATH_SEGMENT));
 

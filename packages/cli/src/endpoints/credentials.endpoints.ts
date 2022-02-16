@@ -88,13 +88,17 @@ export function credentialsEndpoints(this: N8nApp): void {
 
 			// Add the added date for node access permissions
 			for (const nodeAccess of newCredential.nodesAccess) {
-				nodeAccess.date = this.getCurrentDate();
+				nodeAccess.date = new Date();
 			}
 
 			const encryptionKey = await UserSettings.getEncryptionKey();
 
 			if (!encryptionKey) {
-				throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
+				throw new ResponseHelper.ResponseError(
+					RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
+					undefined,
+					500,
+				);
 			}
 
 			// Encrypt the data
@@ -196,7 +200,7 @@ export function credentialsEndpoints(this: N8nApp): void {
 			// Add the date for newly added node access permissions
 			for (const nodeAccess of updateData.nodesAccess) {
 				if (!nodeAccess.date) {
-					nodeAccess.date = this.getCurrentDate();
+					nodeAccess.date = new Date();
 				}
 			}
 
@@ -235,7 +239,7 @@ export function credentialsEndpoints(this: N8nApp): void {
 			const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
 
 			// Add special database related data
-			newCredentialData.updatedAt = this.getCurrentDate();
+			newCredentialData.updatedAt = new Date();
 
 			await this.externalHooks.run('credentials.update', [newCredentialData]);
 
