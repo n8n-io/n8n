@@ -178,6 +178,8 @@ export function credentialsEndpoints(this: N8nApp): void {
 			const updateData = new CredentialsEntity();
 			Object.assign(updateData, req.body);
 
+			await validateEntity(updateData);
+
 			const shared = await Db.collections.SharedCredentials!.findOne({
 				relations: ['credentials'],
 				where: whereClause({

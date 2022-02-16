@@ -6,12 +6,13 @@ import bodyParser = require('body-parser');
 import * as util from 'util';
 import { createTestAccount } from 'nodemailer';
 import { v4 as uuid } from 'uuid';
-import { LoggerProxy } from 'n8n-workflow';
+import { ICredentialDataDecryptedObject, ICredentialNodeAccess, LoggerProxy } from 'n8n-workflow';
+import { Credentials, UserSettings } from 'n8n-core';
 
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
-import { Db, ExternalHooks, IDatabaseCollections } from '../../../src';
+import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { User } from '../../../src/databases/entities/User';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
@@ -26,6 +27,9 @@ import type { EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types'
 import { Role } from '../../../src/databases/entities/Role';
 import { getLogger } from '../../../src/Logger';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
+import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
+
+export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
 // ----------------------------------
 //            test server
@@ -103,8 +107,26 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>) {
 /**
  * Save a credential to the DB, sharing it with a user.
  */
-export async function saveCredential(credData: object, { user, role }: { user: User; role: Role }) {
-	const savedCredential = (await Db.collections.Credentials!.save(credData)) as CredentialsEntity;
+export async function saveCredential(
+	credData: {
+		name: string;
+		type: string;
+		nodesAccess: ICredentialNodeAccess[];
+		data: ICredentialDataDecryptedObject;
+	},
+	{ user, role }: { user: User; role: Role },
+) {
+	const newCredential = new CredentialsEntity();
+
+	Object.assign(newCredential, credData);
+
+	const encryptedData = await encryptCredentialData(newCredential);
+
+	Object.assign(newCredential, encryptedData);
+
+	const savedCredential = await Db.collections.Credentials!.save(newCredential);
+
+	savedCredential.data = newCredential.data;
 
 	await Db.collections.SharedCredentials!.save({
 		user,
@@ -281,5 +303,25 @@ export async function getHasOwnerSetting() {
  */
 export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
 
-// TODO: Phase out
-export const isTestRun = process.argv[1].split('/').includes('jest');
+// ----------------------------------
+//            encryption
+// ----------------------------------
+
+async function encryptCredentialData(credential: CredentialsEntity) {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+
+	if (!encryptionKey) {
+		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
+	}
+
+	const coreCredential = new Credentials(
+		{ id: null, name: credential.name },
+		credential.type,
+		credential.nodesAccess,
+	);
+
+	// @ts-ignore
+	coreCredential.setData(credential.data, encryptionKey);
+
+	return coreCredential.getDataToSave() as ICredentialsDb;
+}
