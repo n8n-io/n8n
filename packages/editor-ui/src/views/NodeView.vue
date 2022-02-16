@@ -2,7 +2,7 @@
 	<div class="node-view-root">
 		<div
 			class="node-view-wrapper"
-			:class="{workflowClasses, 'demo-node-view-wrapper': isDemo}"
+			:class="{workflowClasses}"
 			@touchstart="mouseDown"
 			@touchend="mouseUp"
 			@touchmove="mouseMoveNodeWorkflow"
@@ -1010,6 +1010,9 @@ export default mixins(
 			setZoomLevel (zoomLevel: number) {
 				this.nodeViewScale = zoomLevel; // important for background
 				const element = this.instance.getContainer() as HTMLElement;
+				if (!element) {
+					return;
+				}
 
 				// https://docs.jsplumbtoolkit.com/community/current/articles/zooming.html
 				const prependProperties = ['webkit', 'moz', 'ms', 'o'];
@@ -2699,11 +2702,7 @@ export default mixins(
 					this.stopLoading();
 				}
 			},
-		},
-
-
-		async mounted () {
-			window.addEventListener('message', async (message) => {
+			async onPostMessageReceived(message: MessageEvent) {
 				try {
 					const json = JSON.parse(message.data);
 					if (json && json.command === 'openWorkflow') {
@@ -2722,7 +2721,11 @@ export default mixins(
 					}
 				} catch (e) {
 				}
-			});
+			},
+		},
+
+		async mounted () {
+			window.addEventListener('message', this.onPostMessageReceived);
 
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
 				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
@@ -2794,6 +2797,7 @@ export default mixins(
 		destroyed () {
 			this.resetWorkspace();
 			this.$store.commit('setStateDirty', false);
+			window.removeEventListener('message', this.onPostMessageReceived);
 		},
 	});
 </script>
@@ -2855,10 +2859,6 @@ export default mixins(
 	position: fixed;
 	width: 100%;
 	height: 100%;
-}
-
-.demo-node-view-wrapper {
-	pointer-events: none;
 }
 
 .node-view {
