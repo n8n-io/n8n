@@ -120,7 +120,7 @@ export function usersNamespace(this: N8nApp): void {
 							// TODO: Logger
 							resp.error = `Email could not be sent`;
 						}
-						return resp;
+						return { user: resp };
 					}),
 			);
 		}),
