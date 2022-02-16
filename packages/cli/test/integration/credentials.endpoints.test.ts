@@ -160,7 +160,7 @@ test('DELETE /credentials/:id should not delete non-owned cred for member', asyn
 	expect(shellCredential).toBeDefined(); // not deleted
 });
 
-test('DELETE /credentials/:id should fail if no cred found', async () => {
+test('DELETE /credentials/:id should fail if cred not found', async () => {
 	const shell = await Db.collections.User!.findOneOrFail();
 	const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
 
