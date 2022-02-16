@@ -123,7 +123,7 @@ test('POST /forgot-password should fail if user is not found', async () => {
 
 	const response = await authlessAgent.post('/forgot-password').send({ email: randomEmail() });
 
-	expect(response.statusCode).toBe(404);
+	expect(response.statusCode).toBe(200);
 });
 
 test('GET /resolve-password-token should succeed with valid inputs', async () => {
