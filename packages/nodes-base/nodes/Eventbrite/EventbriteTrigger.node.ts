@@ -90,7 +90,7 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsMethod: 'getOrganizations',
 				},
 				default: '',
-				description: '',
+				description: 'The Eventbrite Organization to work on.',
 			},
 			{
 				displayName: 'Event',
@@ -103,7 +103,7 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsMethod: 'getEvents',
 				},
 				default: '',
-				description: '',
+				description: 'Limit the triggers to this event.',
 			},
 			{
 				displayName: 'Actions',
@@ -173,7 +173,7 @@ export class EventbriteTrigger implements INodeType {
 				],
 				required: true,
 				default: [],
-				description: '',
+				description: 'One or more action to subscribe to.',
 			},
 			{
 				displayName: 'Resolve Data',
@@ -183,6 +183,7 @@ export class EventbriteTrigger implements INodeType {
 				description: 'By default does the webhook-data only contain the URL to receive the object data manually. If this option gets activated, it will resolve the data automatically.',
 			},
 		],
+		"subtitle": "Subscribe to get notifications of Eventbrite actions."
 	};
 
 	methods = {
