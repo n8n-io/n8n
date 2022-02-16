@@ -1,5 +1,5 @@
 <template>
-	<div id="app">
+	<div v-if="!loading" id="app">
 		<div id="header">
 			<router-view name="header"></router-view>
 		</div>
@@ -15,21 +15,48 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from './components/Telemetry.vue';
 
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+import { showMessage } from './components/mixins/showMessage';
+
+export default mixins(showMessage).extend({
 	name: 'App',
 	components: {
 		Modals,
 		Telemetry,
 	},
-	mounted() {
+	data() {
+		return {
+			loading: true,
+		};
+	},
+	methods: {
+		async initialize(): Promise<void> {
+			try {
+				await this.$store.dispatch('settings/getSettings');
+				this.loading = false;
+			} catch (e) {
+				this.$showToast({
+					title: this.$locale.baseText('settings.errors.connectionError.title'),
+					message: this.$locale.baseText('settings.errors.connectionError.message'),
+					type: 'error',
+					duration: 0,
+				});
+
+				throw e;
+			}
+		},
+	},
+	async mounted() {
+		await this.initialize();
+		this.$store.commit('ui/setCurrentPage', this.$route.name);
 		this.$telemetry.page('Editor', this.$route.name);
 	},
 	watch: {
 		'$route'(route) {
+			this.$store.commit('ui/setCurrentPage', this.$route.name);
 			this.$telemetry.page('Editor', route.name);
 		},
 	},

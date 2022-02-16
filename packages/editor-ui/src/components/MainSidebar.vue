@@ -30,7 +30,7 @@
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="template-new">
+					<n8n-menu-item v-if="isTemplatesEnabled" index="template-new">
 						<template slot="title">
 							<font-awesome-icon icon="shapes"/>&nbsp;
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
@@ -86,7 +86,7 @@
 					</n8n-menu-item>
 				</el-submenu>
 
-				<n8n-menu-item index="templates">
+				<n8n-menu-item v-if="isTemplatesEnabled" index="templates">
 					<font-awesome-icon icon="shapes"/>&nbsp;
 					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
 				</n8n-menu-item>
@@ -222,6 +222,9 @@ export default mixins(
 			...mapGetters('versions', [
 				'hasVersionUpdates',
 				'nextVersions',
+			]),
+			...mapGetters('settings', [
+				'isTemplatesEnabled',
 			]),
 			helpMenuItems (): object[] {
 				return [

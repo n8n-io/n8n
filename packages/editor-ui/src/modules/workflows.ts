@@ -39,12 +39,13 @@ const module: Module<IWorkflowsState, IRootState> = {
 				newName = newWorkflow.name;
 			}
 			catch (e) {
-			}			
+			}
 
 			return newName;
 		},
 		getWorkflowTemplate: async (context: ActionContext<IWorkflowsState, IRootState>, templateId: string): Promise<IWorkflowTemplate> => {
-			return await getWorkflowTemplate(templateId);
+			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+			return await getWorkflowTemplate(templateId, apiEndpoint);
 		},
 	},
 };

@@ -1,15 +1,17 @@
 <template>
 	<div>
 		<iframe
-			v-show="!loading"
+			v-show="showPreview"
 			:class="{
 				[$style.workflow]: !this.nodeViewDetailsOpened,
 				[$style.openNDV]: this.nodeViewDetailsOpened,
 			}"
 			ref="preview_iframe"
 			src="/workflows/demo"
+			@mouseenter="onMouseEnter"
+			@mouseleave="onMouseLeave"
 		></iframe>
-		<n8n-loading animated :loading="loading" :rows="1" variant="image" />
+		<n8n-loading animated :loading="!showPreview" :rows="1" variant="image" />
 	</div>
 </template>
 
@@ -20,7 +22,29 @@ import { showMessage } from '@/components/mixins/showMessage';
 export default mixins(showMessage).extend({
 	name: 'WorkflowPreview',
 	props: ['loading', 'workflow'],
+	data() {
+		return {
+			nodeViewDetailsOpened: false,
+			ready: false,
+			insideIframe: false,
+			scrollX: 0,
+			scrollY: 0,
+		};
+	},
+	computed: {
+		showPreview(): boolean {
+			return !this.loading && !!this.workflow && this.ready;
+		},
+	},
 	methods: {
+		onMouseEnter() {
+			this.insideIframe = true;
+			this.scrollX = window.scrollX;
+			this.scrollY = window.scrollY;
+		},
+		onMouseLeave() {
+			this.insideIframe = false;
+		},
 		loadWorkflow() {
 			try {
 				if (!this.workflow) {
@@ -52,7 +76,7 @@ export default mixins(showMessage).extend({
 			try {
 				const json = JSON.parse(data);
 				if (json.command === 'n8nReady') {
-					this.loadWorkflow();
+					this.ready = true;
 				} else if (json.command === 'openNDV') {
 					this.nodeViewDetailsOpened = true;
 				} else if (json.command === 'closeNDV') {
@@ -60,21 +84,29 @@ export default mixins(showMessage).extend({
 				} else if (json.command === 'error') {
 					this.$emit('close');
 				}
-			} catch (error) {
-				this.nodeViewDetailsOpened = false;
+			} catch (e) {
+			}
+		},
+		onDocumentScroll() {
+			if (this.insideIframe) {
+				window.scrollTo(this.scrollX, this.scrollY);
 			}
 		},
 	},
-	data() {
-		return {
-			nodeViewDetailsOpened: false,
-		};
+	watch: {
+		showPreview(show) {
+			if (show) {
+				this.loadWorkflow();
+			}
+		},
 	},
 	mounted() {
 		window.addEventListener('message', this.receiveMessage);
+		document.addEventListener('scroll', this.onDocumentScroll);
 	},
 	beforeDestroy() {
 		window.removeEventListener('message', this.receiveMessage);
+		window.removeEventListener('scroll', this.onDocumentScroll);
 	},
 });
 </script>
@@ -83,12 +115,16 @@ export default mixins(showMessage).extend({
 .workflow {
 	width: 100%;
 	height: 607px;
-	border: 0;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
 }
 
 .openNDV {
+	position: fixed;
+	top: 0;
+	left: 0;
+	height: 100%;
 	width: 100%;
-	height: 607px;
-	z-index: 2;
+	z-index: 9999999;
 }
 </style>

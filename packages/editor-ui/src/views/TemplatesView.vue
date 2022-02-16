@@ -65,7 +65,6 @@ import TemplateList from '@/components/TemplateList.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { abbreviateNumber } from '@/components/helpers';
 import mixins from 'vue-typed-mixins';
-import { IDataObject } from 'n8n-workflow';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplatesView',
@@ -83,6 +82,9 @@ export default mixins(genericHelpers).extend({
 		},
 		isMenuCollapsed(): boolean {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
+		},
+		isTemplatesEnabled(): boolean {
+			return this.$store.getters['settings/isTemplatesEnabled'];
 		},
 		templateSessionId(): number {
 			return this.$store.getters['templates/getTemplateSessionId'];
@@ -182,6 +184,10 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	async created() {
+		if (!this.isTemplatesEnabled) {
+			this.$router.replace({ name: 'NodeViewNew' });
+		}
+
 		this.scrollToTop();
 
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {

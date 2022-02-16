@@ -1,8 +1,7 @@
 import { IN8nCollectionResponse, IN8nTemplateResponse, IN8nSearchResponse } from '@/Interface';
 import { post } from './helpers';
-import { TEMPLATES_BASE_URL } from '@/constants';
 
-export async function getCollectionById(collectionId: string): Promise<IN8nCollectionResponse> {
+export async function getCollectionById(collectionId: string, apiEndpoint: string): Promise<IN8nCollectionResponse> {
 	const query = `query {
 		collection(id:"${collectionId}"){
 			id
@@ -54,10 +53,10 @@ export async function getCollectionById(collectionId: string): Promise<IN8nColle
 		}
 	}`;
 
-	return await post(TEMPLATES_BASE_URL, `/graphql`, { query });
+	return await post(apiEndpoint, `/graphql`, { query });
 }
 
-export async function getTemplateById(templateId: string): Promise<IN8nTemplateResponse> {
+export async function getTemplateById(templateId: string, apiEndpoint: string): Promise<IN8nTemplateResponse> {
 	const query = `query {
 		workflow(id:"${templateId}"){
 			id
@@ -76,6 +75,10 @@ export async function getTemplateById(templateId: string): Promise<IN8nTemplateR
 				icon
 				iconData
 				typeVersion: version
+				categories{
+					id
+					name
+				}
 			}
 			totalViews: views
 			categories{
@@ -89,7 +92,7 @@ export async function getTemplateById(templateId: string): Promise<IN8nTemplateR
 		}
 	}`;
 
-	return await post(TEMPLATES_BASE_URL, `/graphql`, { query });
+	return await post(apiEndpoint, `/graphql`, { query });
 }
 
 export async function getTemplates(
@@ -99,6 +102,7 @@ export async function getTemplates(
 	search: string,
 	allData = true,
 	searchQuery = false,
+	apiEndpoint: string,
 ): Promise<IN8nSearchResponse> {
 	const queryCategory = category && category.length ? `${ '[' + category + ']'}` : null;
 	const query = `query {
@@ -157,5 +161,5 @@ export async function getTemplates(
 			created_at
 		}
 	}`;
-	return await post(TEMPLATES_BASE_URL, `/graphql`, { query });
+	return await post(apiEndpoint, `/graphql`, { query });
 }

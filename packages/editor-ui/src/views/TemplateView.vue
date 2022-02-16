@@ -60,6 +60,9 @@ export default mixins(workflowHelpers).extend({
 		isMenuCollapsed() {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
+		isTemplatesEnabled(): boolean {
+			return this.$store.getters['settings/isTemplatesEnabled'];
+		},
 		template(): IN8nTemplate {
 			return this.$store.getters['templates/getTemplate'];
 		},
@@ -71,9 +74,6 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	methods: {
-		onHidePreview() {
-			this.showPreview = false;
-		},
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (page === 'WorkflowTemplate') {
 				this.$store.dispatch('templates/setTemplateSessionId', null);
@@ -92,6 +92,9 @@ export default mixins(workflowHelpers).extend({
 				this.$router.push({ name: page, params: { id } });
 			}
 		},
+		onHidePreview() {
+			this.showPreview = false;
+		},
 		scrollToTop() {
 			setTimeout(() => {
 				window.scrollTo({
@@ -102,6 +105,10 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	async mounted() {
+		if (!this.isTemplatesEnabled) {
+			this.$router.replace({ name: 'NodeViewNew' });
+		}
+
 		const templateId = this.$route.params.id;
 		const response = await this.$store.dispatch('templates/getTemplateById', templateId);
 		if (!response) {

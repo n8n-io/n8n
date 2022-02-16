@@ -60,6 +60,9 @@ export default mixins(workflowHelpers).extend({
 		collection(): IN8nCollection {
 			return this.$store.getters['templates/getCollection'];
 		},
+		isTemplatesEnabled(): boolean {
+			return this.$store.getters['settings/isTemplatesEnabled'];
+		},
 		isMenuCollapsed() {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
@@ -99,6 +102,10 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	async mounted() {
+		if (!this.isTemplatesEnabled) {
+			this.$router.replace({ name: 'NodeViewNew' });
+		}
+
 		const collectionId = this.$route.params.id;
 		const response = await this.$store.dispatch('templates/getCollectionById', collectionId);
 		if (!response) {
