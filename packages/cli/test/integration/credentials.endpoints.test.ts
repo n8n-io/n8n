@@ -125,7 +125,7 @@ test('DELETE /credentials/:id should delete cred for owner', async () => {
 	expect(deletedCredential).toBeUndefined(); // deleted
 });
 
-test('DELETE /credentials/:id should delete cred for owning member', async () => {
+test('DELETE /credentials/:id should delete owned cred for member', async () => {
 	const member = await utils.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 
@@ -142,7 +142,7 @@ test('DELETE /credentials/:id should delete cred for owning member', async () =>
 	expect(deletedCredential).toBeUndefined(); // deleted
 });
 
-test('DELETE /credentials/:id should fail for non-owning member', async () => {
+test('DELETE /credentials/:id should not delete non-owned cred for member', async () => {
 	const shell = await Db.collections.User!.findOneOrFail();
 
 	const member = await utils.createUser();
@@ -207,7 +207,7 @@ test('PATCH /credentials/:id should update cred for owner', async () => {
 	expect(sharedCredential.credentials.name).toBe(patchPayload.name);
 });
 
-test('PATCH /credentials/:id should update cred for owning member', async () => {
+test('PATCH /credentials/:id should update owned cred for member', async () => {
 	const member = await utils.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 
@@ -246,7 +246,7 @@ test('PATCH /credentials/:id should update cred for owning member', async () => 
 	expect(sharedCredential.credentials.name).toBe(patchPayload.name);
 });
 
-test('PATCH /credentials/:id should fail for non-owning member', async () => {
+test('PATCH /credentials/:id should not update non-owned cred for member', async () => {
 	const shell = await Db.collections.User!.findOneOrFail();
 	const member = await utils.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
@@ -404,7 +404,7 @@ test('GET /credentials/:id should retrieve owned creds for owner', async () => {
 	expect(secondResponse.body.data.data).toBeDefined();
 });
 
-test('GET /credentials/:id should retrieve owned creds for owner', async () => {
+test('GET /credentials/:id should retrieve owned creds for member', async () => {
 	const member = await utils.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 
