@@ -9,9 +9,9 @@ import config = require('../../../config');
 import { User } from '../../databases/entities/User';
 import { validateEntity } from '../../GenericHelpers';
 import { OwnerRequest } from '../../requests';
-import { issueJWT } from '../auth/jwt';
+import { issueCookie } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
-import { sanitizeUser } from '../UserManagementHelper';
+import { sanitizeUser, validatePassword } from '../UserManagementHelper';
 
 export function ownerNamespace(this: N8nApp): void {
 	/**
@@ -32,13 +32,7 @@ export function ownerNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
-			if (!password) {
-				throw new ResponseHelper.ResponseError(
-					'Password does not comply to security standards',
-					undefined,
-					400,
-				);
-			}
+			const validPassword = validatePassword(password);
 
 			if (!firstName || !lastName) {
 				throw new ResponseHelper.ResponseError(
@@ -59,7 +53,7 @@ export function ownerNamespace(this: N8nApp): void {
 				email,
 				firstName,
 				lastName,
-				password: hashSync(password, genSaltSync(10)),
+				password: hashSync(validPassword, genSaltSync(10)),
 				globalRole,
 				id: userId,
 			});
@@ -75,8 +69,7 @@ export function ownerNamespace(this: N8nApp): void {
 				{ value: JSON.stringify(true) },
 			);
 
-			const { token, expiresIn } = await issueJWT(owner);
-			res.cookie('n8n-auth', token, { maxAge: expiresIn, httpOnly: true });
+			await issueCookie(res, owner);
 
 			return sanitizeUser(owner);
 		}),

@@ -45,6 +45,8 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 
 	this.app.use((req: Request, res: Response, next: NextFunction) => {
 		if (
+			// skip authentication for preflight requests
+			req.method === 'OPTIONS' ||
 			req.url.includes('login') ||
 			req.url.includes('logout') ||
 			req.url === '/index.html' ||
@@ -52,8 +54,12 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			req.url.startsWith('/js/') ||
 			req.url.startsWith('/fonts/') ||
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
+			req.url === `/${restEndpoint}/user` ||
 			req.url.startsWith(`/${restEndpoint}/resolve-signup-token`) ||
-			req.url === `/${restEndpoint}/user`
+			(req.method === 'POST' && new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url)) ||
+			req.url.startsWith(`/${restEndpoint}/forgot-password`) ||
+			req.url.startsWith(`/${restEndpoint}/resolve-password-token`) ||
+			req.url.startsWith(`/${restEndpoint}/change-password`)
 		) {
 			return next();
 		}

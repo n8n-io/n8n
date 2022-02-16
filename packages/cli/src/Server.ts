@@ -318,6 +318,7 @@ class App {
 					config.get('userManagement.hasOwner') === true,
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
+			workflowTagsDisabled: config.get('workflowTagsDisabled'),
 			logLevel: config.get('logs.level'),
 		};
 	}
@@ -618,6 +619,7 @@ class App {
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				// Allow access also from frontend when developing
 				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
+				res.header('Access-Control-Allow-Credentials', 'true');
 				res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 				res.header(
 					'Access-Control-Allow-Headers',
@@ -706,7 +708,7 @@ class App {
 
 				const { tags: tagIds } = req.body;
 
-				if (tagIds?.length) {
+				if (tagIds?.length && !config.get('workflowTagsDisabled')) {
 					newWorkflow.tags = await Db.collections.Tag!.findByIds(tagIds, {
 						select: ['id', 'name'],
 					});
@@ -736,10 +738,10 @@ class App {
 				});
 
 				if (!savedWorkflow) {
-					throw new ResponseHelper.ResponseError('Failed to save workflow', undefined, 500);
+					throw new ResponseHelper.ResponseError('Failed to save workflow');
 				}
 
-				if (tagIds) {
+				if (tagIds && !config.get('workflowTagsDisabled')) {
 					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
 						requestOrder: tagIds,
 					});
@@ -815,15 +817,24 @@ class App {
 
 				const filter: Record<string, string> = req.query.filter ? JSON.parse(req.query.filter) : {};
 
+				const query: FindManyOptions<WorkflowEntity> = {
+					select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
+					relations: ['tags'],
+				};
+
+				if (config.get('workflowTagsDisabled')) {
+					delete query.relations;
+				}
+
 				if (req.user.globalRole.name === 'owner') {
-					workflows = await Db.collections.Workflow!.find({
-						select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
-						relations: ['tags'],
-						where: filter,
-					});
+					workflows = await Db.collections.Workflow!.find(
+						Object.assign(query, {
+							where: filter,
+						}),
+					);
 				} else {
 					const shared = await Db.collections.SharedWorkflow!.find({
-						relations: ['workflow', 'workflow.tags'],
+						relations: ['workflow'],
 						where: whereClause({
 							user: req.user,
 							entityType: 'workflow',
@@ -832,14 +843,14 @@ class App {
 
 					if (!shared.length) return [];
 
-					workflows = await Db.collections.Workflow!.find({
-						relations: ['tags'],
-						select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
-						where: {
-							id: In(shared.map(({ workflow }) => workflow.id)),
-							...filter,
-						},
-					});
+					workflows = await Db.collections.Workflow!.find(
+						Object.assign(query, {
+							where: {
+								id: In(shared.map(({ workflow }) => workflow.id)),
+								...filter,
+							},
+						}),
+					);
 				}
 
 				return workflows.map((workflow) => {
@@ -870,8 +881,14 @@ class App {
 			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 				const { id: workflowId } = req.params;
 
+				let relations = ['workflow', 'workflow.tags'];
+
+				if (config.get('workflowTagsDisabled')) {
+					relations = relations.filter((relation) => relation !== 'workflow.tags');
+				}
+
 				const shared = await Db.collections.SharedWorkflow!.findOne({
-					relations: ['workflow', 'workflow.tags'],
+					relations,
 					where: whereClause({
 						user: req.user,
 						entityType: 'workflow',
@@ -965,7 +982,7 @@ class App {
 
 				await Db.collections.Workflow!.update(workflowId, updateData);
 
-				if (tags) {
+				if (tags && !config.get('workflowTagsDisabled')) {
 					const tablePrefix = config.get('database.tablePrefix');
 					await TagHelpers.removeRelations(workflowId, tablePrefix);
 
@@ -974,11 +991,17 @@ class App {
 					}
 				}
 
+				const options: FindManyOptions<WorkflowEntity> = {
+					relations: ['tags'],
+				};
+
+				if (config.get('workflowTagsDisabled')) {
+					delete options.relations;
+				}
+
 				// We sadly get nothing back from "update". Neither if it updated a record
 				// nor the new value. So query now the hopefully updated entry.
-				const updatedWorkflow = await Db.collections.Workflow!.findOne(workflowId, {
-					relations: ['tags'],
-				});
+				const updatedWorkflow = await Db.collections.Workflow!.findOne(workflowId, options);
 
 				if (updatedWorkflow === undefined) {
 					throw new ResponseHelper.ResponseError(
@@ -1155,6 +1178,9 @@ class App {
 					req: express.Request,
 					res: express.Response,
 				): Promise<TagEntity[] | ITagWithCountDb[]> => {
+					if (config.get('workflowTagsDisabled')) {
+						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
+					}
 					if (req.query.withUsageCount === 'true') {
 						const tablePrefix = config.get('database.tablePrefix');
 						return TagHelpers.getTagsWithCountDb(tablePrefix);
@@ -1173,6 +1199,9 @@ class App {
 			`/${this.restEndpoint}/tags`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
+					if (config.get('workflowTagsDisabled')) {
+						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
+					}
 					const newTag = new TagEntity();
 					newTag.name = req.body.name.trim();
 
@@ -1195,6 +1224,10 @@ class App {
 			`/${this.restEndpoint}/tags/:id`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
+					if (config.get('workflowTagsDisabled')) {
+						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
+					}
+
 					const { name } = req.body;
 					const { id } = req.params;
 
@@ -1220,6 +1253,9 @@ class App {
 		this.app.delete(
 			`/${this.restEndpoint}/tags/:id`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
+				if (config.get('workflowTagsDisabled')) {
+					throw new ResponseHelper.ResponseError('Workflow tags are disabled');
+				}
 				if (
 					config.get('userManagement.hasOwner') === true &&
 					(req.user as User).globalRole.name !== 'owner'

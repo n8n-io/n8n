@@ -12,8 +12,9 @@ import { N8nApp } from '../Interfaces';
 import { validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
-import { issueJWT } from '../auth/jwt';
+import { issueCookie } from '../auth/jwt';
 import { getBaseUrl } from '../../GenericHelpers';
+import config = require('../../../config');
 
 export function passwordResetNamespace(this: N8nApp): void {
 	/**
@@ -22,6 +23,14 @@ export function passwordResetNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/forgot-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.Email) => {
+			if (config.get('userManagement.emails.mode') === '') {
+				throw new ResponseHelper.ResponseError(
+					'Email sending must be set up in order to request a password reset email',
+					undefined,
+					500,
+				);
+			}
+
 			const { email } = req.body;
 
 			if (!email) {
@@ -35,7 +44,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ email });
 
 			if (!user || !user.password) {
-				throw new ResponseHelper.ResponseError('', undefined, 404);
+				return;
 			}
 
 			user.resetPasswordToken = uuid();
@@ -93,15 +102,15 @@ export function passwordResetNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/change-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.NewPassword, res: express.Response) => {
-			const { token: resetPasswordToken, id, password } = req.body;
+			const { token: resetPasswordToken, userId, password } = req.body;
 
-			if (!resetPasswordToken || !id || !password) {
+			if (!resetPasswordToken || !userId || !password) {
 				throw new ResponseHelper.ResponseError('Parameter missing', undefined, 400);
 			}
 
 			const validPassword = validatePassword(password);
 
-			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
+			const user = await Db.collections.User!.findOne({ id: userId, resetPasswordToken });
 
 			if (!user || !user.resetPasswordTokenExpiration) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
@@ -113,14 +122,13 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			await Db.collections.User!.update(id, {
+			await Db.collections.User!.update(userId, {
 				password: hashSync(validPassword, genSaltSync(10)),
 				resetPasswordToken: null,
 				resetPasswordTokenExpiration: null,
 			});
 
-			const userData = await issueJWT(user);
-			res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+			await issueCookie(res, user);
 		}),
 	);
 }
