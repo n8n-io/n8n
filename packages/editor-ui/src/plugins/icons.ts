@@ -10,6 +10,7 @@ import {
 	faArrowRight,
 	faAt,
 	faBook,
+	faBoxOpen,
 	faBug,
 	faCalendar,
 	faCheck,
@@ -102,6 +103,7 @@ addIcon(faArrowLeft);
 addIcon(faArrowRight);
 addIcon(faAt);
 addIcon(faBook);
+addIcon(faBoxOpen);
 addIcon(faBug);
 addIcon(faCalendar);
 addIcon(faCheck);

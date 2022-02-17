@@ -61,14 +61,14 @@
 						</template>
 					</TemplateCard>
 				</div>
-				<div v-if="infinityScroll" v-infocus />
+				<div v-if="infinityScroll && searchFinished" v-infocus />
 				<div v-if="infinityScroll && shouldShowLoadingState && !searchFinished">
 					<TemplateCard v-for="n in 4" :key="'index-' + n" :loading="true" />
 				</div>
 			</div>
 			<div v-if="infinityScroll && !shouldShowLoadingState" :class="$style.text">
 				<n8n-text size="medium" color="text-base">
-					{{ $locale.baseText('templates.endResult') }}
+					<span v-html="$locale.baseText('templates.endResult')" />
 				</n8n-text>
 			</div>
 		</div>
@@ -157,7 +157,11 @@ export default mixins(genericHelpers).extend({
 			inserted: (el, binding, vnode) => {
 				const f = () => {
 					if (vnode.context) {
-						if (vnode.context.$props.infinityScroll && vnode.context.$route.name === 'TemplatesView') {
+						if (
+							vnode.context.$props.infinityScroll &&
+							vnode.context.$route.name === 'TemplatesView' &&
+							vnode.context.$data.searchFinished
+						) {
 							const rect = el.getBoundingClientRect();
 							if (el) {
 								const inView =
@@ -172,17 +176,15 @@ export default mixins(genericHelpers).extend({
 										vnode.context.$data.page = vnode.context.$data.page + 1;
 										vnode.context.$data.skip = 10 * vnode.context.$data.page;
 
+										vnode.context.$data.searchFinished = false;
+
 										vnode.context.$store.dispatch('templates/getSearchResults', {
 											search: vnode.context.$props.search,
 											category: vnode.context.$props.categories,
 											skip: vnode.context.$data.skip,
-										});
-
-										vnode.context.$data.searchFinished = false;
-
-										setTimeout(() => {
+										}).then(() => {
 											if (vnode.context) vnode.context.$data.searchFinished = true;
-										}, 1000);
+										});
 									}
 								}
 							}
@@ -214,16 +216,13 @@ export default mixins(genericHelpers).extend({
 	},
 	methods: {
 		filterCoreNodes(nodes: []) {
-			return nodes.filter((elem) => {
+			const result =  nodes.filter((elem) => {
 				const node = elem as INode;
-				if (node.categories) {
-					return node.categories.some((category: ITemplateCategories) => {
-						return category.name !== 'Core Nodes';
-					});
-				} else {
-					return node;
-				}
+				const found = node.categories.some((category: ITemplateCategories) => category.name === 'Core Nodes');
+				if (!found) return node;
+				else return;
 			});
+			return result.length > 0 ? result : nodes;
 		},
 	},
 });
