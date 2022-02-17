@@ -4,6 +4,7 @@
 import { genSaltSync, hashSync } from 'bcryptjs';
 import express = require('express');
 import validator from 'validator';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, ResponseHelper } from '../..';
 import { issueCookie } from '../auth/jwt';
@@ -32,10 +33,18 @@ export function meNamespace(this: N8nApp): void {
 		ResponseHelper.send(
 			async (req: MeRequest.Settings, res: express.Response): Promise<PublicUser> => {
 				if (!req.body.email) {
+					Logger.debug('Email not found in payload', {
+						userId: req.user.id,
+						payload: req.body,
+					});
 					throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 				}
 
 				if (!validator.isEmail(req.body.email)) {
+					Logger.debug('Invalid email in payload', {
+						userId: req.user.id,
+						invalidEmail: req.body.email,
+					});
 					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}
 
@@ -46,6 +55,8 @@ export function meNamespace(this: N8nApp): void {
 				await validateEntity(newUser);
 
 				const user = await Db.collections.User!.save(newUser);
+
+				Logger.info('User updated successfully', { userId: user.id });
 
 				await issueCookie(res, user);
 
@@ -80,6 +91,7 @@ export function meNamespace(this: N8nApp): void {
 			const { body: personalizationAnswers } = req;
 
 			if (!personalizationAnswers) {
+				Logger.debug('Empty survey in payload', { userId: req.user.id });
 				throw new ResponseHelper.ResponseError(
 					'Personalization answers are mandatory',
 					undefined,
@@ -91,6 +103,8 @@ export function meNamespace(this: N8nApp): void {
 				id: req.user.id,
 				personalizationAnswers,
 			});
+
+			Logger.info('User survey updated successfully', { userId: req.user.id });
 
 			return { success: true };
 		}),
