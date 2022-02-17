@@ -166,11 +166,13 @@ export default mixins(showMessage).extend({
 				}
 
 				if (invitedEmails.error) {
-					this.$showMessage({
-						type: 'error',
-						title: `User${invited.length > 1 ? 's' : ''} could not be invited`,
-						message: `Could not invite ${invitedEmails.error}`,
-					});
+					setTimeout(() => {
+						this.$showMessage({ // notifications stack on top of each other otherwise
+							type: 'error',
+							title: `User${invited.length > 1 ? 's' : ''} could not be invited`,
+							message: `Could not invite ${invitedEmails.error}`,
+						});
+					}, 0);
 				}
 
 				this.modalBus.$emit('close');
