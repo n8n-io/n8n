@@ -142,9 +142,6 @@ export default mixins(showMessage).extend({
 
 				const invited: Array<IInviteResponse> = await this.$store.dispatch('users/inviteUsers', emails);
 				const invitedEmails = invited.reduce((accu, {user, error}) => {
-					if (!user.email && !user.id) {
-						return accu;
-					}
 					if (error) {
 						accu.error = accu.error ? `${accu.error}, ${user.email}` : user.email;
 					}
