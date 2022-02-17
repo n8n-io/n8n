@@ -54,7 +54,7 @@ export const spaceFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: [],
+		default: '',
 		description: 'Resource name of the space, in the form "spaces/*"',
 	},
 

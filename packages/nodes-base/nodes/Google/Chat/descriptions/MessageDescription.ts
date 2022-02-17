@@ -338,15 +338,13 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: {'text': ''},
-		description: 'The message object',
+		default: {},
 		options: [
 			{
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
 				default: '',
-				description: 'The message text',
 			},
 			// {	// TODO: get cards from the UI (check the Slack node, specifically the blocks parameter under message: post)
 			// 	displayName: 'Cards',
