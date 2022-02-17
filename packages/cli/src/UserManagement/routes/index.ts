@@ -18,7 +18,7 @@ import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
 import { ownerNamespace } from './owner';
-import { User } from '../../databases/entities/User';
+import { isAuthenticatedRequest } from '../UserManagementHelper';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	this.app.use(cookieParser());
@@ -80,10 +80,10 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
-	this.app.use((req: Request, res: Response, next: NextFunction) => {
+	this.app.use((req: Request | AuthenticatedRequest, res: Response, next: NextFunction) => {
 		// req.user is empty for public routes, so just proceed
 		// owner can do anything, so proceed as well
-		if (req.user === undefined || (req.user && (req.user as User).globalRole.name === 'owner')) {
+		if (!req.user || (isAuthenticatedRequest(req) && req.user.globalRole.name === 'owner')) {
 			next();
 			return;
 		}
@@ -102,8 +102,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		) {
 			Logger.verbose('User attempted to access endpoint without authorization', {
 				endpoint: `${req.method} ${trimmedUrl}`,
-				// @ts-ignore
-				userId: req.user.id as string,
+				userId: isAuthenticatedRequest(req) ? req.user.id : 'unknown',
 			});
 			res.status(403).json({ status: 'error', message: 'Unauthorized' });
 			return;
