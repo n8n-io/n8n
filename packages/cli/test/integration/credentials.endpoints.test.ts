@@ -78,20 +78,20 @@ test('POST /credentials should fail with invalid inputs', async () => {
 	}
 });
 
-test.skip('POST /credentials should fail with missing encryption key', async () => {
-	const mock = jest
-		.spyOn(UserSettings, 'getEncryptionKey')
-		.mockImplementation(() => Promise.resolve(undefined));
+// test.skip('POST /credentials should fail with missing encryption key', async () => {
+// 	const mock = jest
+// 		.spyOn(UserSettings, 'getEncryptionKey')
+// 		.mockImplementation(() => Promise.resolve(undefined));
 
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+// 	const owner = await Db.collections.User!.findOneOrFail();
+// 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
+// 	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
 
-	expect(response.statusCode).toBe(500);
+// 	expect(response.statusCode).toBe(500);
 
-	mock.mockRestore();
-});
+// 	mock.mockRestore();
+// });
 
 test('POST /credentials should ignore ID in payload', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
@@ -324,20 +324,20 @@ test('PATCH /credentials/:id should fail if cred not found', async () => {
 	expect(response.statusCode).toBe(404);
 });
 
-test.skip('PATCH /credentials/:id should fail with missing encryption key', async () => {
-	const mock = jest
-		.spyOn(UserSettings, 'getEncryptionKey')
-		.mockImplementation(() => Promise.resolve(undefined));
+// test.skip('PATCH /credentials/:id should fail with missing encryption key', async () => {
+// 	const mock = jest
+// 		.spyOn(UserSettings, 'getEncryptionKey')
+// 		.mockImplementation(() => Promise.resolve(undefined));
 
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+// 	const owner = await Db.collections.User!.findOneOrFail();
+// 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
+// 	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
 
-	expect(response.statusCode).toBe(500);
+// 	expect(response.statusCode).toBe(500);
 
-	mock.mockRestore();
-});
+// 	mock.mockRestore();
+// });
 
 test('GET /credentials should retrieve all creds for owner', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
@@ -463,23 +463,23 @@ test('GET /credentials/:id should not retrieve non-owned cred for member', async
 	expect(response.body.data).toEqual({}); // shell's cred not returned
 });
 
-test.skip('GET /credentials/:id should fail with missing encryption key', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
-	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+// test.skip('GET /credentials/:id should fail with missing encryption key', async () => {
+// 	const owner = await Db.collections.User!.findOneOrFail();
+// 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+// 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
 
-	const mock = jest
-		.spyOn(UserSettings, 'getEncryptionKey')
-		.mockImplementation(() => Promise.resolve(undefined));
+// 	const mock = jest
+// 		.spyOn(UserSettings, 'getEncryptionKey')
+// 		.mockImplementation(() => Promise.resolve(undefined));
 
-	const response = await authOwnerAgent
-		.get(`/credentials/${savedCredential.id}`)
-		.query({ includeData: true });
+// 	const response = await authOwnerAgent
+// 		.get(`/credentials/${savedCredential.id}`)
+// 		.query({ includeData: true });
 
-	expect(response.statusCode).toBe(500);
+// 	expect(response.statusCode).toBe(500);
 
-	mock.mockRestore();
-});
+// 	mock.mockRestore();
+// });
 
 test('GET /credentials/:id should return empty if cred not found', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
