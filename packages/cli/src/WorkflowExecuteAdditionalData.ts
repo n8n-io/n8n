@@ -31,7 +31,6 @@ import {
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
 	LoggerProxy as Logger,
-	N8nUserData,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,

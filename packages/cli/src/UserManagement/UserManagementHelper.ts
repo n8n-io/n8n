@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
-import { N8nUserData, Workflow } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
 import { In, IsNull, Not } from 'typeorm';
 import { Db, ResponseHelper } from '..';
 import config = require('../../config');

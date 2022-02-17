@@ -34,7 +34,6 @@ import {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	LoggerProxy as Logger,
-	N8nUserData,
 	NodeHelpers,
 	Workflow,
 	WorkflowExecuteMode,
@@ -55,6 +54,7 @@ import {
 
 // eslint-disable-next-line import/no-cycle
 import * as ActiveExecutions from './ActiveExecutions';
+import { User } from './databases/entities/User';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
@@ -217,7 +217,7 @@ export async function executeWebhook(
 		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
 
-	let user: N8nUserData;
+	let user: User;
 	if (
 		(workflowData as WorkflowEntity).shared?.length &&
 		(workflowData as WorkflowEntity).shared[0].user

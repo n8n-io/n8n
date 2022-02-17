@@ -1428,16 +1428,3 @@ export interface ITelemetrySettings {
 	enabled: boolean;
 	config?: ITelemetryClientConfig;
 }
-
-export interface N8nUserData {
-	id: string;
-	email?: string;
-	firstName?: string;
-	lastName?: string;
-	globalRole: N8nRoleData;
-}
-
-export interface N8nRoleData {
-	name: string;
-	scope: string;
-}
