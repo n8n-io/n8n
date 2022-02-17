@@ -78,7 +78,7 @@ test('POST /credentials should fail with invalid inputs', async () => {
 	}
 });
 
-test('POST /credentials should fail with missing encryption key', async () => {
+test.skip('POST /credentials should fail with missing encryption key', async () => {
 	const mock = jest
 		.spyOn(UserSettings, 'getEncryptionKey')
 		.mockImplementation(() => Promise.resolve(undefined));
@@ -324,7 +324,7 @@ test('PATCH /credentials/:id should fail if cred not found', async () => {
 	expect(response.statusCode).toBe(404);
 });
 
-test('PATCH /credentials/:id should fail with missing encryption key', async () => {
+test.skip('PATCH /credentials/:id should fail with missing encryption key', async () => {
 	const mock = jest
 		.spyOn(UserSettings, 'getEncryptionKey')
 		.mockImplementation(() => Promise.resolve(undefined));
@@ -463,7 +463,7 @@ test('GET /credentials/:id should not retrieve non-owned cred for member', async
 	expect(response.body.data).toEqual({}); // shell's cred not returned
 });
 
-test('GET /credentials/:id should fail with missing encryption key', async () => {
+test.skip('GET /credentials/:id should fail with missing encryption key', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
