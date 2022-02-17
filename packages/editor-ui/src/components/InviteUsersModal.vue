@@ -29,7 +29,7 @@ import mixins from "vue-typed-mixins";
 import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
-import { IFormInputs, IUserResponse } from "@/Interface";
+import { IFormInputs, IInviteResponse, IUserResponse } from "@/Interface";
 import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from "@/constants";
 import { ROLE } from "@/modules/userHelpers";
 
@@ -140,19 +140,38 @@ export default mixins(showMessage).extend({
 					throw new Error('No users to invite');
 				}
 
-				const invited: Array<Partial<IUserResponse>> = await this.$store.dispatch('users/inviteUsers', emails);
-				const invitedEmails = invited.reduce((accu, user) => {
-					if (user.email) {
-						return accu ? `${accu}, ${user.email}` : user.email;
+				const invited: Array<IInviteResponse> = await this.$store.dispatch('users/inviteUsers', emails);
+				const invitedEmails = invited.reduce((accu, {user, error}) => {
+					if (!user.email && !user.id) {
+						return accu;
+					}
+					if (error) {
+						accu.error = accu.error ? `${accu.error}, ${user.email}` : user.email;
+					}
+					else {
+						accu.success = accu.success ? `${accu.success}, ${user.email}` : user.email;
 					}
 					return accu;
-				}, '');
-
-				this.$showMessage({
-					type: 'success',
-					title: `User${invited.length > 1 ? 's' : ''} invited successfully`,
-					message: `An invite email was sent to ${invitedEmails}`,
+				}, {
+					success: '',
+					error: '',
 				});
+
+				if (invitedEmails.success) {
+					this.$showMessage({
+						type: 'success',
+						title: `User${invited.length > 1 ? 's' : ''} invited successfully`,
+						message: `An invite email was sent to ${invitedEmails.success}`,
+					});
+				}
+
+				if (invitedEmails.error) {
+					this.$showMessage({
+						type: 'error',
+						title: `User${invited.length > 1 ? 's' : ''} could not be invited`,
+						message: `Could not invite ${invitedEmails.error}`,
+					});
+				}
 
 				this.modalBus.$emit('close');
 

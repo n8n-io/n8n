@@ -1,4 +1,4 @@
-import { IPersonalizationSurveyAnswers, IRestApiContext, IUserResponse } from '@/Interface';
+import { IInviteResponse, IPersonalizationSurveyAnswers, IRestApiContext, IUserResponse } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from './helpers';
 
@@ -59,7 +59,7 @@ export function getUsers(context: IRestApiContext): Promise<IUserResponse[]> {
 	return makeRestApiRequest(context, 'GET', '/users');
 }
 
-export function inviteUsers(context: IRestApiContext, params: Array<{email: string}>): Promise<Array<Partial<IUserResponse>>> {
+export function inviteUsers(context: IRestApiContext, params: Array<{email: string}>): Promise<Array<IInviteResponse>> {
 	return makeRestApiRequest(context, 'POST', '/users', params as unknown as IDataObject);
 }
 

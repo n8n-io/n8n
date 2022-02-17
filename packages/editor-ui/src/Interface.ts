@@ -795,6 +795,14 @@ export interface IUserResponse {
 	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
 }
 
+export interface IInviteResponse {
+	user: {
+		id: string;
+		email: string;
+	}
+	error?: string;
+};
+
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isCurrentUser: boolean;
