@@ -28,6 +28,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
 	await utils.truncate(['User', 'Credentials']);
+	jest.restoreAllMocks();
 });
 
 afterAll(() => {
@@ -78,20 +79,20 @@ test('POST /credentials should fail with invalid inputs', async () => {
 	}
 });
 
-// test.skip('POST /credentials should fail with missing encryption key', async () => {
-// 	const mock = jest
-// 		.spyOn(UserSettings, 'getEncryptionKey')
-// 		.mockImplementation(() => Promise.resolve(undefined));
+test('POST /credentials should fail with missing encryption key', async () => {
+	const mock = jest
+		.spyOn(UserSettings, 'getEncryptionKey')
+		.mockImplementation(() => Promise.resolve(undefined));
 
-// 	const owner = await Db.collections.User!.findOneOrFail();
-// 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+	const owner = await Db.collections.User!.findOneOrFail();
+	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-// 	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
+	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
 
-// 	expect(response.statusCode).toBe(500);
+	expect(response.statusCode).toBe(500);
 
-// 	mock.mockRestore();
-// });
+	// mock.mockRestore();
+});
 
 test('POST /credentials should ignore ID in payload', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
