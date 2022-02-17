@@ -646,6 +646,7 @@
       "dist/nodes/WooCommerce/WooCommerce.node.js",
       "dist/nodes/WooCommerce/WooCommerceTrigger.node.js",
       "dist/nodes/Wordpress/Wordpress.node.js",
+      "dist/nodes/Workable/Workable.node.js",
       "dist/nodes/Workable/WorkableTrigger.node.js",
       "dist/nodes/WorkflowTrigger/WorkflowTrigger.node.js",
       "dist/nodes/WriteBinaryFile/WriteBinaryFile.node.js",
