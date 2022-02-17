@@ -1,5 +1,4 @@
 import express = require('express');
-import { existsSync } from 'fs';
 import { getConnection } from 'typeorm';
 import { UserSettings } from 'n8n-core';
 
