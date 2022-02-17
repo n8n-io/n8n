@@ -277,7 +277,7 @@ test('PATCH /credentials/:id should update owned cred for member', async () => {
 		where: { credentials: credential },
 	});
 
-	expect(sharedCredential.credentials.name).toBe(patchPayload.name);
+	expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
 });
 
 test('PATCH /credentials/:id should not update non-owned cred for member', async () => {
