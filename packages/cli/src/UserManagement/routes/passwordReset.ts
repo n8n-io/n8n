@@ -7,6 +7,7 @@ import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 import { IsNull, Not } from 'typeorm';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
@@ -35,10 +36,12 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { email } = req.body;
 
 			if (!email) {
+				Logger.debug('Missing email in payload', { payload: req.body });
 				throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 			}
 
 			if (!validator.isEmail(email)) {
+				Logger.debug('Invalid email in payload', { invalidEmail: email });
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
@@ -46,6 +49,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ email, password: Not(IsNull()) });
 
 			if (!user) {
+				Logger.debug('User not found for email', { invalidEmail: email });
 				return;
 			}
 
@@ -79,14 +83,22 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { token: resetPasswordToken, userId: id } = req.query;
 
 			if (!resetPasswordToken || !id) {
+				Logger.debug('Missing password reset token or user ID in query string', {
+					queryString: req.query,
+				});
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
 			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
 
 			if (!user) {
+				Logger.debug('User not found for user ID and reset password token', {
+					queryString: req.query,
+				});
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
+
+			Logger.info('Password token resolved successfully', { userId: id });
 		}),
 	);
 
@@ -99,6 +111,9 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { token: resetPasswordToken, userId, password } = req.body;
 
 			if (!resetPasswordToken || !userId || !password) {
+				Logger.debug('User ID or password or reset password token missing from payload', {
+					payload: req.body,
+				});
 				throw new ResponseHelper.ResponseError('Parameter missing', undefined, 400);
 			}
 
@@ -107,6 +122,10 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.findOne({ id: userId, resetPasswordToken });
 
 			if (!user) {
+				Logger.debug('User not found for user ID and reset password token', {
+					userId: req.user.id,
+					queryString: req.query,
+				});
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
@@ -114,6 +133,8 @@ export function passwordResetNamespace(this: N8nApp): void {
 				password: hashSync(validPassword, genSaltSync(10)),
 				resetPasswordToken: null,
 			});
+
+			Logger.info('User password updated successfully', { userId });
 
 			await issueCookie(res, user);
 		}),
