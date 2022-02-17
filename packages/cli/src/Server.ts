@@ -165,6 +165,8 @@ import type {
 	WorkflowRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
+	AuthenticatedRequest,
+	TagsRequest,
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
@@ -1097,7 +1099,10 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/workflows/run`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<IExecutionPushResponse> => {
+				async (
+					req: WorkflowRequest.ManualRun,
+					res: express.Response,
+				): Promise<IExecutionPushResponse> => {
 					const { workflowData } = req.body;
 					const { runData } = req.body;
 					const { startNodes } = req.body;
@@ -1114,15 +1119,13 @@ class App {
 						startNodes.length === 0 ||
 						destinationNode === undefined
 					) {
-						const additionalData = await WorkflowExecuteAdditionalData.getBase(
-							(req.user as User).id,
-						);
+						const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 						const nodeTypes = NodeTypes();
 						const workflowInstance = new Workflow({
-							id: workflowData.id,
+							id: workflowData.id?.toString(),
 							name: workflowData.name,
-							nodes: workflowData.nodes,
-							connections: workflowData.connections,
+							nodes: workflowData.nodes!,
+							connections: workflowData.connections!,
 							active: false,
 							nodeTypes,
 							staticData: undefined,
@@ -1155,7 +1158,7 @@ class App {
 						sessionId,
 						startNodes,
 						workflowData,
-						userId: (req.user as User).id,
+						userId: req.user.id,
 					};
 					const workflowRunner = new WorkflowRunner();
 					const executionId = await workflowRunner.run(data);
@@ -1249,31 +1252,33 @@ class App {
 		// Deletes a tag
 		this.app.delete(
 			`/${this.restEndpoint}/tags/:id`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-				if (config.get('workflowTagsDisabled')) {
-					throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-				}
-				if (
-					config.get('userManagement.hasOwner') === true &&
-					(req.user as User).globalRole.name !== 'owner'
-				) {
-					throw new ResponseHelper.ResponseError(
-						'You are not allowed to perform this action',
-						403,
-						403,
-						'Only owners can remove tags',
-					);
-				}
-				const id = Number(req.params.id);
+			ResponseHelper.send(
+				async (req: TagsRequest.Delete, res: express.Response): Promise<boolean> => {
+					if (config.get('workflowTagsDisabled')) {
+						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
+					}
+					if (
+						config.get('userManagement.hasOwner') === true &&
+						req.user.globalRole.name !== 'owner'
+					) {
+						throw new ResponseHelper.ResponseError(
+							'You are not allowed to perform this action',
+							undefined,
+							403,
+							'Only owners can remove tags',
+						);
+					}
+					const id = Number(req.params.id);
 
-				await this.externalHooks.run('tag.beforeDelete', [id]);
+					await this.externalHooks.run('tag.beforeDelete', [id]);
 
-				await Db.collections.Tag!.delete({ id });
+					await Db.collections.Tag!.delete({ id });
 
-				await this.externalHooks.run('tag.afterDelete', [id]);
+					await this.externalHooks.run('tag.afterDelete', [id]);
 
-				return true;
-			}),
+					return true;
+				},
+			),
 		);
 
 		// Returns parameter values which normally get loaded from an external API or
@@ -1307,7 +1312,7 @@ class App {
 					);
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						(req.user as User).id,
+						req.user.id,
 						currentNodeParameters,
 					);
 
@@ -1663,7 +1668,10 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/credentials-test`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeCredentialTestResult> => {
+				async (
+					req: CredentialRequest.Test,
+					res: express.Response,
+				): Promise<INodeCredentialTestResult> => {
 					const incomingData = req.body as INodeCredentialTestRequest;
 
 					const encryptionKey = await UserSettings.getEncryptionKey();
@@ -1678,7 +1686,7 @@ class App {
 
 					const credentialType = incomingData.credentials.type;
 					return credentialsHelper.testCredentials(
-						req.user as User,
+						req.user,
 						credentialType,
 						incomingData.credentials,
 						incomingData.nodeToTestWith,
@@ -2623,7 +2631,7 @@ class App {
 					executionData: fullExecutionData.data,
 					retryOf: req.params.id,
 					workflowData: fullExecutionData.workflowData,
-					userId: (req.user as User).id,
+					userId: req.user.id,
 				};
 
 				const { lastNodeExecuted } = data.executionData!.resultData;

@@ -116,7 +116,7 @@ export class WaitingWebhooks {
 		try {
 			workflowOwner = await getWorkflowOwner(workflowData.id!.toString());
 		} catch (error) {
-			throw new ResponseHelper.ResponseError('Could not find workflow', 404, 404);
+			throw new ResponseHelper.ResponseError('Could not find workflow', undefined, 404);
 		}
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.id);

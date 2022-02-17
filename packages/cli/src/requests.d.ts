@@ -5,11 +5,13 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
 	INode,
+	INodeCredentialTestRequest,
+	IRunData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
 import { User } from './databases/entities/User';
-import { IExecutionDeleteFilter } from '.';
+import { IExecutionDeleteFilter, IWorkflowDb } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthenticatedRequest<
@@ -49,6 +51,17 @@ export declare namespace WorkflowRequest {
 	type GetAllActive = AuthenticatedRequest;
 
 	type GetAllActivationErrors = Get;
+
+	type ManualRun = AuthenticatedRequest<
+		{},
+		{},
+		{
+			workflowData: IWorkflowDb;
+			runData: IRunData;
+			startNodes?: string[];
+			destinationNode?: string;
+		}
+	>;
 }
 
 // ----------------------------------
@@ -75,6 +88,8 @@ export declare namespace CredentialRequest {
 	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
 
 	type NewName = WorkflowRequest.NewName;
+
+	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 }
 
 // ----------------------------------
@@ -223,3 +238,12 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 		credentials: string;
 	}
 >;
+
+
+// ----------------------------------
+//      /tags
+// ----------------------------------
+
+export declare namespace TagsRequest {
+	type Delete = AuthenticatedRequest<{ id: string }>;
+}

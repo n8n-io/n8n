@@ -7,6 +7,7 @@ import { PublicUser } from './Interfaces';
 import { Db, GenericHelpers, ResponseHelper } from '..';
 import config = require('../../config');
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
+import { Role } from '../databases/entities/Role';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
 	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
@@ -17,12 +18,25 @@ export async function getWorkflowOwner(workflowId: string | number): Promise<Use
 	return sharedWorkflow.user;
 }
 
-export async function getInstanceOwner(): Promise<User> {
-	const qb = Db.collections.User!.createQueryBuilder('u');
-	qb.innerJoin('u.globalRole', 'gr');
-	qb.andWhere('gr.name = :name and gr.scope = :scope', { name: 'owner', scope: 'global' });
+async function getInstanceOwnerRole(): Promise<Role> {
+	const ownerRole = await Db.collections.Role!.findOneOrFail({
+		where: {
+			name: 'owner',
+			scope: 'global',
+		},
+	});
+	return ownerRole;
+}
 
-	const owner = await qb.getOneOrFail();
+export async function getInstanceOwner(): Promise<User> {
+	const ownerRole = await getInstanceOwnerRole();
+
+	const owner = await Db.collections.User!.findOneOrFail({
+		relations: ['globalRole'],
+		where: {
+			globalRole: ownerRole,
+		},
+	});
 	return owner;
 }
 
@@ -92,30 +106,22 @@ export async function checkPermissionsForExecution(
 ): Promise<void> {
 	const credentialIds = new Set();
 	const nodeNames = Object.keys(workflow.nodes);
-	const pendingPromises = [] as Array<Promise<string | number | null>>;
 	nodeNames.forEach((nodeName) => {
 		const node = workflow.nodes[nodeName];
 		if (node.credentials) {
 			const credentialNames = Object.keys(node.credentials);
 			credentialNames.forEach((credentialName) => {
 				const credentialDetail = node.credentials![credentialName];
-				if (credentialDetail.id) {
-					credentialIds.add(credentialDetail.id.toString());
-				} else {
-					pendingPromises.push(getCredentialIdByName(credentialDetail.name));
+				if (!credentialDetail.id) {
+					throw new Error(
+						'Error initializing workflow: credential ID not present. Please open the workflow and save it to fix this error.',
+					);
 				}
+				credentialIds.add(credentialDetail.id.toString());
 			});
 		}
 	});
 
-	const fullfilledPromises = await Promise.all(pendingPromises);
-	fullfilledPromises.forEach((credentialId) => {
-		if (credentialId !== null) {
-			credentialIds.add(credentialId.toString());
-		} else {
-			throw new Error('One or more of the required credentials was not found in the database.');
-		}
-	});
 	// We converted all IDs to string so that the set cannot contain duplicates.
 
 	const ids = Array.from(credentialIds);
