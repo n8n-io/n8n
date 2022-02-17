@@ -143,31 +143,31 @@ export default mixins(showMessage).extend({
 				const invited: IInviteResponse[] = await this.$store.dispatch('users/inviteUsers', emails);
 				const invitedEmails = invited.reduce((accu, {user, error}) => {
 					if (error) {
-						accu.error = accu.error ? `${accu.error}, ${user.email}` : user.email;
+						accu.error.push(user.email);
 					}
 					else {
-						accu.success = accu.success ? `${accu.success}, ${user.email}` : user.email;
+						accu.success.push(user.email);
 					}
 					return accu;
 				}, {
-					success: '',
-					error: '',
+					success: [],
+					error: [],
 				});
 
-				if (invitedEmails.success) {
+				if (invitedEmails.success.length) {
 					this.$showMessage({
 						type: 'success',
-						title: `User${invited.length > 1 ? 's' : ''} invited successfully`,
-						message: `An invite email was sent to ${invitedEmails.success}`,
+						title: `User${invitedEmails.success.length > 1 ? 's' : ''} invited successfully`,
+						message: `An invite email was sent to ${invitedEmails.success.join(',')}`,
 					});
 				}
 
-				if (invitedEmails.error) {
+				if (invitedEmails.error.length) {
 					setTimeout(() => {
 						this.$showMessage({ // notifications stack on top of each other otherwise
 							type: 'error',
-							title: `User${invited.length > 1 ? 's' : ''} could not be invited`,
-							message: `Could not invite ${invitedEmails.error}`,
+							title: `User${invitedEmails.error.length > 1 ? 's' : ''} could not be invited`,
+							message: `Could not invite ${invitedEmails.error.join(',')}`,
 						});
 					}, 0);
 				}
