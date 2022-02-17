@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
+import { IsNull, Not } from 'typeorm';
 
 import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
@@ -41,7 +42,8 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
-			const user = await Db.collections.User!.findOne({ email });
+			// User should just be able to reset password if one is already present
+			const user = await Db.collections.User!.findOne({ email, password: Not(IsNull()) });
 
 			if (!user) {
 				return;
