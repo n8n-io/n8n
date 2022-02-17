@@ -21,6 +21,7 @@ describe('/owner endpoints', () => {
 			await utils.initTestDb();
 
 			globalOwnerRole = await getGlobalOwnerRole();
+			utils.initLogger();
 		});
 
 		beforeEach(async () => {

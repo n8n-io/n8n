@@ -26,6 +26,7 @@ beforeAll(async () => {
 		name: 'owner',
 		scope: 'global',
 	});
+	utils.initLogger();
 });
 
 beforeEach(async () => {

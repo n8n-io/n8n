@@ -25,6 +25,7 @@ describe('auth endpoints', () => {
 			await utils.truncate(['User']);
 
 			globalOwnerRole = await getGlobalOwnerRole();
+			utils.initLogger();
 		});
 
 		beforeEach(async () => {
