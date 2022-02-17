@@ -107,10 +107,26 @@ test('POST /credentials should ignore ID in payload', async () => {
 	expect(secondResponse.body.data.id).not.toBe(8);
 });
 
-test('DELETE /credentials/:id should delete cred for owner', async () => {
+test('DELETE /credentials/:id should delete owned cred for owner', async () => {
 	const shell = await Db.collections.User!.findOneOrFail();
 	const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
 	const savedCredential = await saveCredential(credentialPayload(), { user: shell });
+
+	const response = await authShellAgent.delete(`/credentials/${savedCredential.id}`);
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body).toEqual({ data: true });
+
+	const deletedCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
+
+	expect(deletedCredential).toBeUndefined(); // deleted
+});
+
+test('DELETE /credentials/:id should delete non-owned cred for owner', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+	const member = await utils.createUser();
+	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 
 	const response = await authShellAgent.delete(`/credentials/${savedCredential.id}`);
 
@@ -161,7 +177,7 @@ test('DELETE /credentials/:id should fail if cred not found', async () => {
 	expect(response.statusCode).toBe(404);
 });
 
-test('PATCH /credentials/:id should update cred for owner', async () => {
+test('PATCH /credentials/:id should update owned cred for owner', async () => {
 	const shell = await Db.collections.User!.findOneOrFail();
 	const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
 	const savedCredential = await saveCredential(credentialPayload(), { user: shell });
@@ -192,7 +208,42 @@ test('PATCH /credentials/:id should update cred for owner', async () => {
 		where: { credentials: credential },
 	});
 
-	expect(sharedCredential.credentials.name).toBe(patchPayload.name);
+	expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
+});
+
+test('PATCH /credentials/:id should update non-owned cred for owner', async () => {
+	const shell = await Db.collections.User!.findOneOrFail();
+	const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+	const member = await utils.createUser();
+	const savedCredential = await saveCredential(credentialPayload(), { user: member });
+	const patchPayload = credentialPayload();
+
+	const response = await authShellAgent
+		.patch(`/credentials/${savedCredential.id}`)
+		.send(patchPayload);
+
+	expect(response.statusCode).toBe(200);
+
+	const { id, name, type, nodesAccess, data: encryptedData } = response.body.data;
+
+	expect(name).toBe(patchPayload.name);
+	expect(type).toBe(patchPayload.type);
+	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(encryptedData).not.toBe(patchPayload.data);
+
+	const credential = await Db.collections.Credentials!.findOneOrFail(id);
+
+	expect(credential.name).toBe(patchPayload.name);
+	expect(credential.type).toBe(patchPayload.type);
+	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(credential.data).not.toBe(patchPayload.data);
+
+	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
+		relations: ['user', 'credentials'],
+		where: { credentials: credential },
+	});
+
+	expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
 });
 
 test('PATCH /credentials/:id should update owned cred for member', async () => {
