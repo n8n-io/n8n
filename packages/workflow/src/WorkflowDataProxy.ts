@@ -465,65 +465,66 @@ export class WorkflowDataProxy {
 			return executionData;
 		};
 
-		const getNodeInput = (runIndex?: number, inputConnectorIndex?: number, itemIndex?: number) => {
-			let executionData: INodeExecutionData[];
-			// const outputIndex = that.workflow.getNodeConnectionOutputIndex(
-			// 	that.activeNodeName,
-			// 	that.activeNodeName,
-			// 	'main',
-			// );
-			// const taskData = that.runExecutionData!.resultData.runData[that.activeNodeName];
-			// // eslint-disable-next-line no-console
-			// console.log(outputIndex, taskData);
+		// const getNodeInput = (runIndex?: number, inputConnectorIndex?: number, itemIndex?: number) => {
+		// 	// let executionData: INodeExecutionData[];
 
-			const parentNodes = that.workflow.getParentNodes(that.activeNodeName);
-			const nodeName = parentNodes[parentNodes.length - 1];
-			// eslint-disable-next-line no-console
-			console.log(`--------------------------------------------------------`);
-			// eslint-disable-next-line no-console
-			console.log(`${that.activeNodeName} ===>`, that.connectionInputData);
+		// 	const parentNodes = that.workflow.getParentNodes(that.activeNodeName);
+		// 	const conectedParentNodes = parentNodes.filter((nodeName) =>
+		// 		that.workflow.getChildNodes(nodeName, undefined, 0).includes(that.activeNodeName),
+		// 	);
 
-			if (nodeName === undefined) {
-				executionData = that.connectionInputData;
-			} else {
-				inputConnectorIndex = inputConnectorIndex || 0;
-				runIndex = runIndex === undefined ? -1 : runIndex;
-				executionData = that.getNodeExecutionData(nodeName, false, inputConnectorIndex, runIndex);
-			}
+		// 	// if (nodeName === undefined) {
+		// 	// 	executionData = that.connectionInputData;
+		// 	// } else {
+		// 	// 	inputConnectorIndex = inputConnectorIndex || 0;
+		// 	// 	runIndex = runIndex === undefined ? -1 : runIndex;
+		// 	// 	executionData = that.getNodeExecutionData(nodeName, false, inputConnectorIndex, runIndex);
+		// 	// }
 
-			return executionData;
-		};
+		// 	return conectedParentNodes;
+		// };
 
 		const base = {
 			//------------------------------------------------------------------------------------------------
-			$: (nodeName?: string) => {
+			$: (nodeName: string) => {
 				// $(nodeName).item() // Same as pairedItem()
 				// $(nodeName).item(itemIndex?, branchIndex?, runIndex?)
 				// $(nodeName).first(branchIndex?, runIndex?)
 				// $(nodeName).last(branchIndex?, runIndex?)
 				// $(nodeName).all(branchIndex?, runIndex?)
 
-				if (!nodeName) {
-					return that.connectionInputData;
-				}
 				return new Proxy(
 					{},
 					{
 						get(target, property, receiver) {
 							if (property === 'item') {
 								if (nodeName) {
-									return (branchIndex?: number, runIndex?: number, itemIndex?: number) =>
-										getNodeOutput(nodeName, branchIndex, runIndex, itemIndex);
+									return (itemIndex?: number, branchIndex?: number, runIndex?: number) => {
+										const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+										if (itemIndex && executionData[itemIndex]) {
+											return executionData[itemIndex];
+										}
+										return [];
+									};
 								}
 								return undefined;
 							}
 							if (property === 'first') {
-								return (branchIndex?: number, runIndex?: number) =>
-									getNodeOutput(nodeName, branchIndex, runIndex);
+								return (branchIndex?: number, runIndex?: number) => {
+									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									if (executionData[0]) return executionData[0];
+									return [];
+								};
 							}
 							if (property === 'last') {
-								return (branchIndex?: number, runIndex?: number) =>
-									getNodeOutput(nodeName, branchIndex, runIndex);
+								return (branchIndex?: number, runIndex?: number) => {
+									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									if (!executionData.length) return [];
+									if (executionData[executionData.length - 1]) {
+										return executionData[executionData.length - 1];
+									}
+									return [];
+								};
 							}
 							if (property === 'all') {
 								return (branchIndex?: number, runIndex?: number) =>
@@ -545,20 +546,45 @@ export class WorkflowDataProxy {
 				{
 					get(target, property, receiver) {
 						if (property === 'item') {
-							return (runIndex?: number, inputConnectorIndex?: number, itemIndex?: number) =>
-								getNodeInput(runIndex, inputConnectorIndex, itemIndex);
+							return (itemIndex?: number, runIndex?: number, inputConnectorIndex?: number) => {
+								// const result = getNodeInput(runIndex, inputConnectorIndex, itemIndex);
+								const result = that.connectionInputData;
+								if (itemIndex && that.runIndex === (runIndex || 0) && result[itemIndex]) {
+									return result[itemIndex];
+								}
+								return [];
+							};
 						}
 						if (property === 'first') {
-							return (runIndex?: number, inputConnectorIndex?: number) =>
-								getNodeInput(runIndex, inputConnectorIndex);
+							return (runIndex?: number, inputConnectorIndex?: number) => {
+								const result = that.connectionInputData;
+								if (that.runIndex === (runIndex || 0) && result[0]) {
+									return result[0];
+								}
+								return [];
+							};
 						}
 						if (property === 'last') {
-							return (runIndex?: number, inputConnectorIndex?: number) =>
-								getNodeInput(runIndex, inputConnectorIndex);
+							return (runIndex?: number, inputConnectorIndex?: number) => {
+								const result = that.connectionInputData;
+								if (
+									that.runIndex === (runIndex || 0) &&
+									result.length &&
+									result[result.length - 1]
+								) {
+									return result[result.length - 1];
+								}
+								return [];
+							};
 						}
 						if (property === 'all') {
-							return (runIndex?: number, inputConnectorIndex?: number) =>
-								getNodeInput(runIndex, inputConnectorIndex);
+							return (runIndex?: number, inputConnectorIndex?: number) => {
+								const result = that.connectionInputData;
+								if (that.runIndex === (runIndex || 0) && result.length) {
+									return result;
+								}
+								return [];
+							};
 						}
 						return Reflect.get(target, property, receiver);
 					},
@@ -618,6 +644,8 @@ export class WorkflowDataProxy {
 			$runIndex: this.runIndex,
 			$mode: this.mode,
 			$workflow: this.workflowGetter(),
+			$thisRunIndex: this.runIndex,
+			$thisItemIndex: this.itemIndex,
 			...that.additionalKeys,
 		};
 

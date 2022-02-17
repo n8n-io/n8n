@@ -176,20 +176,25 @@ export default mixins(
 				const autoComplete$ = `
 				{
 					item: (itemIndex?: number, branchIndex?: number, runIndex?: number) => {},\n
-					first: (branchIndex?: number, runIndex?: number): {} => {},\n
-					last: (branchIndex?: number, runIndex?: number): {} => {},\n
-					all: (branchIndex?: number, runIndex?: number): {} => {},\n
+					first: (branchIndex?: number, runIndex?: number) => {},\n
+					last: (branchIndex?: number, runIndex?: number) => {},\n
+					all: (branchIndex?: number, runIndex?: number) => {},\n
 				}
 				`;
 
 				const autoComplete$in = `
 				{
 					item: (itemIndex?: number, runIndex?: number, inputConnectorIndex?: number) => {},\n
-					first: (runIndex?: number, inputConnectorIndex?: number): {} => {},\n
-					last: (runIndex?: number, inputConnectorIndex?: number): {} => {},\n
-					all: (runIndex?: number, inputConnectorIndex?: number): {} => {},\n
+					first: (runIndex?: number, inputConnectorIndex?: number) => {},\n
+					last: (runIndex?: number, inputConnectorIndex?: number) => {},\n
+					all: (runIndex?: number, inputConnectorIndex?: number) => {},\n
 				}
 				`;
+
+				const workflowNodes = [];
+				for (const [nodeName, node] of Object.entries(workflow.nodes)) {
+					workflowNodes.push(`"${nodeName}"`);
+				}
 
 				const autoCompleteItems = [
 					`function $evaluateExpression(expression: string, itemIndex?: number): any {};`,
@@ -197,7 +202,7 @@ export default mixins(
 					`function getWorkflowStaticData(type: string): object {};`,
 					`function $item(itemIndex: number, runIndex?: number) {};`,
 					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number) {};`,
-					`function $(nodeName?: string): ${autoComplete$}`,
+					`function $(nodeName?: ${workflowNodes.join(' | ')}): ${autoComplete$}`,
 					`const $in = ${autoComplete$in}`,
 				];
 
