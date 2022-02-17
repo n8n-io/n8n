@@ -29,7 +29,7 @@ beforeEach(async () => {
 afterEach(async () => {
 	await utils.truncate(['User', 'Credentials']);
 	// jest.restoreAllMocks();
-	jest.resetAllMocks();
+	jest.clearAllMocks();
 });
 
 afterAll(() => {
