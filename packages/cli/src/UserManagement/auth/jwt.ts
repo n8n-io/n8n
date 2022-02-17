@@ -4,6 +4,7 @@
 import * as jwt from 'jsonwebtoken';
 import { Response } from 'express';
 import { createHash } from 'crypto';
+import { Db } from '../..';
 import { JwtToken, JwtPayload } from '../Interfaces';
 import { User } from '../../databases/entities/User';
 import config = require('../../../config');
@@ -32,6 +33,26 @@ export async function issueJWT(user: User): Promise<JwtToken> {
 		token: signedToken,
 		expiresIn,
 	};
+}
+
+export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
+	const user = await Db.collections.User!.findOne(jwtPayload.id, {
+		relations: ['globalRole'],
+	});
+
+	let passwordHash = null;
+	if (user?.password) {
+		passwordHash = createHash('sha256')
+			.update(user.password.slice(user.password.length / 2))
+			.digest('hex');
+	}
+
+	if (!user || jwtPayload.password !== passwordHash || user.email !== jwtPayload.email) {
+		// When owner hasn't been set up, the default user
+		// won't have email nor password (both equals null)
+		throw new Error('Invalid token content');
+	}
+	return user;
 }
 
 export async function issueCookie(res: Response, user: User): Promise<void> {

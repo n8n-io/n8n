@@ -7,8 +7,7 @@ import {
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getSettings } from '../api/settings-mock';
-import { getPromptsData, submitValueSurvey, submitContactInfo } from '../api/settings';
+import { getPromptsData, submitValueSurvey, submitContactInfo, getSettings } from '../api/settings';
 import Vue from 'vue';
 import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
@@ -53,7 +52,7 @@ const module: Module<ISettingsState, IRootState> = {
 			return state.settings.telemetry && state.settings.telemetry.enabled;
 		},
 		areTagsEnabled: (state) => {
-			return state.settings.tagsEnabled !== undefined ? state.settings.tagsEnabled : true;
+			return state.settings.workflowTagsDisabled !== undefined ? !state.settings.workflowTagsDisabled : true;
 		},
 	},
 	mutations: {

@@ -1,14 +1,15 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
-import { User } from './databases/entities/User';
-import { IExecutionDeleteFilter } from '.';
 import {
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
 	INode,
 	IWorkflowSettings,
-} from '../../workflow/dist/src';
+} from 'n8n-workflow';
+
+import { User } from './databases/entities/User';
+import { IExecutionDeleteFilter } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthenticatedRequest<
@@ -146,7 +147,7 @@ export declare namespace PasswordResetRequest {
 	export type NewPassword = AuthenticatedRequest<
 		{},
 		{},
-		Pick<PublicUser, 'password'> & { token?: string; id?: string }
+		Pick<PublicUser, 'password'> & { token?: string; userId?: string }
 	>;
 }
 
@@ -157,6 +158,13 @@ export declare namespace PasswordResetRequest {
 export declare namespace UserRequest {
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 
+	export type ResolveSignUp = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{ inviterId?: string; inviteeId?: string }
+	>;
+
 	export type SignUp = AuthenticatedRequest<
 		{ id: string },
 		{ inviterId?: string; inviteeId?: string }
@@ -165,6 +173,17 @@ export declare namespace UserRequest {
 	export type Delete = AuthenticatedRequest<{ id: string }, {}, {}, { transferId?: string }>;
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
+
+	export type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{
+			inviterId: string;
+			firstName: string;
+			lastName: string;
+			password: string;
+		}
+	>;
 }
 
 // ----------------------------------
