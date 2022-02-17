@@ -79,8 +79,9 @@ test('POST /credentials should fail with invalid inputs', async () => {
 });
 
 test('POST /credentials should fail with missing encryption key', async () => {
-	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockReturnValue(Promise.resolve(undefined));
+	const mock = jest
+		.spyOn(UserSettings, 'getEncryptionKey')
+		.mockImplementation(() => Promise.resolve(undefined));
 
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
@@ -324,8 +325,9 @@ test('PATCH /credentials/:id should fail if cred not found', async () => {
 });
 
 test('PATCH /credentials/:id should fail with missing encryption key', async () => {
-	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockReturnValue(Promise.resolve(undefined));
+	const mock = jest
+		.spyOn(UserSettings, 'getEncryptionKey')
+		.mockImplementation(() => Promise.resolve(undefined));
 
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
@@ -466,8 +468,9 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
 
-	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockReturnValue(Promise.resolve(undefined));
+	const mock = jest
+		.spyOn(UserSettings, 'getEncryptionKey')
+		.mockImplementation(() => Promise.resolve(undefined));
 
 	const response = await authOwnerAgent
 		.get(`/credentials/${savedCredential.id}`)
