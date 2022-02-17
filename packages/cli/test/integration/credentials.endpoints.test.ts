@@ -374,7 +374,7 @@ test('GET /credentials should not retrieve non-owned creds for member', async ()
 	expect(response.body.data.length).toBe(0); // shell's creds not returned
 });
 
-test('GET /credentials/:id should retrieve owned creds for owner', async () => {
+test('GET /credentials/:id should retrieve owned cred for owner', async () => {
 	const shell = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: shell });
 
@@ -404,7 +404,7 @@ test('GET /credentials/:id should retrieve owned creds for owner', async () => {
 	expect(secondResponse.body.data.data).toBeDefined();
 });
 
-test('GET /credentials/:id should retrieve owned creds for member', async () => {
+test('GET /credentials/:id should retrieve owned cred for member', async () => {
 	const member = await utils.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 
@@ -434,7 +434,7 @@ test('GET /credentials/:id should retrieve owned creds for member', async () => 
 	expect(secondResponse.body.data.data).toBeDefined();
 });
 
-test('GET /credentials/:id should not retrieve non-owned creds for member', async () => {
+test('GET /credentials/:id should not retrieve non-owned cred for member', async () => {
 	const shell = await Db.collections.User!.findOneOrFail();
 	const member = await utils.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
