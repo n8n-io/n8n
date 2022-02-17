@@ -80,6 +80,8 @@ export async function getEncryptionKey(): Promise<string | undefined> {
 
 	const userSettings = await getUserSettings();
 
+	console.log('userSettings at getEncryptionKey', userSettings);
+
 	if (userSettings === undefined) {
 		return undefined;
 	}
@@ -214,7 +216,9 @@ export async function getUserSettings(
 		return undefined;
 	}
 
+	console.log('settingsPath at getUserSettings', settingsPath);
 	const settingsFile = await fsReadFile(settingsPath, 'utf8');
+	console.log('settingsFile at getUserSettings', settingsFile);
 
 	try {
 		settingsCache = JSON.parse(settingsFile);
