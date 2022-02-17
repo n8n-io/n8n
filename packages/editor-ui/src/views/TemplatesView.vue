@@ -43,7 +43,7 @@
 						<TemplateList
 							:abbreviate-number="abbreviateNumber"
 							:categories="categories"
-							:infinity-scroll="true"
+							:infinite-scroll-enabled="true"
 							:loading="loading"
 							:navigate-to="navigateTo"
 							:search="search"

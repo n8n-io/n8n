@@ -61,12 +61,12 @@
 						</template>
 					</TemplateCard>
 				</div>
-				<div v-if="infinityScroll && searchFinished" v-infocus />
-				<div v-if="infinityScroll && shouldShowLoadingState && !searchFinished">
+				<div v-if="infiniteScrollEnabled && searchFinished" v-infocus />
+				<div v-if="infiniteScrollEnabled && shouldShowLoadingState && !searchFinished">
 					<TemplateCard v-for="n in 4" :key="'index-' + n" :loading="true" />
 				</div>
 			</div>
-			<div v-if="infinityScroll && !shouldShowLoadingState" :class="$style.text">
+			<div v-if="infiniteScrollEnabled && !shouldShowLoadingState" :class="$style.text">
 				<n8n-text size="medium" color="text-base">
 					<span v-html="$locale.baseText('templates.endResult')" />
 				</n8n-text>
@@ -110,7 +110,7 @@ export default mixins(genericHelpers).extend({
 		categories: {
 			type: Array,
 		},
-		infinityScroll: {
+		infiniteScrollEnabled: {
 			type: Boolean,
 			default: false,
 		},
@@ -158,8 +158,7 @@ export default mixins(genericHelpers).extend({
 				const f = () => {
 					if (vnode.context) {
 						if (
-							vnode.context.$props.infinityScroll &&
-							vnode.context.$route.name === 'TemplatesView' &&
+							vnode.context.$props.infiniteScrollEnabled &&
 							vnode.context.$data.searchFinished
 						) {
 							const rect = el.getBoundingClientRect();

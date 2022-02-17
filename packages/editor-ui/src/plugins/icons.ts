@@ -68,7 +68,6 @@ import {
 	faRedo,
 	faRss,
 	faSave,
-	faShapes,
 	faSearch,
 	faSearchMinus,
 	faSearchPlus,
@@ -164,7 +163,6 @@ addIcon(faSave);
 addIcon(faSearch);
 addIcon(faSearchMinus);
 addIcon(faSearchPlus);
-addIcon(faShapes);
 addIcon(faServer);
 addIcon(faSignInAlt);
 addIcon(faSlidersH);

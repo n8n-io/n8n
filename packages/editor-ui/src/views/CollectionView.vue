@@ -22,7 +22,7 @@
 					/>
 					<TemplateList
 						:abbreviate-number="abbreviateNumber"
-						:infinity-scroll="false"
+						:infinite-scroll-enabled="false"
 						:loading="loading"
 						:navigate-to="navigateTo"
 						:node-icon-size="18"

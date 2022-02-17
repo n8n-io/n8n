@@ -24,7 +24,7 @@
 			</div>
 			<div>
 				<div :class="$style.image">
-					<workflow-preview
+					<WorkflowPreview
 						v-if="showPreview"
 						:workflow="template.workflow"
 						@close="onHidePreview"
