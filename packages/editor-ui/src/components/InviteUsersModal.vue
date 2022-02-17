@@ -140,7 +140,7 @@ export default mixins(showMessage).extend({
 					throw new Error('No users to invite');
 				}
 
-				const invited: Array<IInviteResponse> = await this.$store.dispatch('users/inviteUsers', emails);
+				const invited: IInviteResponse[] = await this.$store.dispatch('users/inviteUsers', emails);
 				const invitedEmails = invited.reduce((accu, {user, error}) => {
 					if (error) {
 						accu.error = accu.error ? `${accu.error}, ${user.email}` : user.email;
