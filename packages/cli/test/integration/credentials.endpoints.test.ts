@@ -1,4 +1,5 @@
 import express = require('express');
+import { existsSync } from 'fs';
 import { getConnection } from 'typeorm';
 import { UserSettings } from 'n8n-core';
 
@@ -17,6 +18,8 @@ beforeAll(async () => {
 		externalHooks: true,
 	});
 	await utils.initTestDb();
+	utils.initConfigFile();
+
 	const credentialOwnerRole = await utils.getCredentialOwnerRole();
 	saveCredential = utils.affixRoleToSaveCredential(credentialOwnerRole);
 });

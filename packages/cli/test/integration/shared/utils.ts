@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+import { existsSync } from 'fs';
 import express = require('express');
 import * as superagent from 'superagent';
 import * as request from 'supertest';
@@ -91,10 +93,22 @@ export function initTestServer({
 /**
  * Initialize a silent logger for test runs.
  */
-export const initTestLogger = () => {
+export function initTestLogger() {
 	config.set('logs.output', 'file');
 	LoggerProxy.init(getLogger());
 };
+
+/**
+ * Initialize a config file if non-existent.
+ */
+export function initConfigFile() {
+	const settingsPath = UserSettings.getUserSettingsPath();
+
+	if (!existsSync(settingsPath)) {
+		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
+		UserSettings.writeUserSettings(userSettings, settingsPath);
+	}
+}
 
 // ----------------------------------
 //            test DB
