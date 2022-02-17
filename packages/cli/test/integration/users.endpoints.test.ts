@@ -7,8 +7,6 @@ import * as utils from './shared/utils';
 import { Db } from '../../src';
 import config = require('../../config');
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { getLogger } from '../../src/Logger';
-import { LoggerProxy } from 'n8n-workflow';
 import { Role } from '../../src/databases/entities/Role';
 import {
 	randomEmail,
@@ -43,8 +41,7 @@ beforeAll(async () => {
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
-	config.set('logs.output', 'file'); // declutter console output
-	utils.initLogger();
+	utils.initTestLogger();
 });
 
 beforeEach(async () => {

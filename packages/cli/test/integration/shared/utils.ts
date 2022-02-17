@@ -6,39 +6,34 @@ import bodyParser = require('body-parser');
 import * as util from 'util';
 import { createTestAccount } from 'nodemailer';
 import { v4 as uuid } from 'uuid';
-import { ICredentialDataDecryptedObject, ICredentialNodeAccess, LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import { Credentials, UserSettings } from 'n8n-core';
+import { getConnection } from 'typeorm';
 
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
-import { User } from '../../../src/databases/entities/User';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { credentialsEndpoints } from '../../../src/endpoints/credentials.endpoints';
-import { getConnection } from 'typeorm';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { randomEmail, randomValidPassword, randomName } from './random';
-import type { EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
-import { Role } from '../../../src/databases/entities/Role';
 import { getLogger } from '../../../src/Logger';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
+import type { Role } from '../../../src/databases/entities/Role';
+import type { User } from '../../../src/databases/entities/User';
+import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
 
 export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
 // ----------------------------------
 //            test server
 // ----------------------------------
-
-export const initLogger = () => {
-	config.set('logs.output', 'file'); // declutter console output during tests
-	LoggerProxy.init(getLogger());
-};
 
 /**
  * Initialize a test server to make requests to.
@@ -90,6 +85,18 @@ export function initTestServer({
 }
 
 // ----------------------------------
+//           test logger
+// ----------------------------------
+
+/**
+ * Initialize a silent logger for test runs.
+ */
+export const initTestLogger = () => {
+	config.set('logs.output', 'file');
+	LoggerProxy.init(getLogger());
+};
+
+// ----------------------------------
 //            test DB
 // ----------------------------------
 
@@ -104,21 +111,21 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>) {
 	await getConnection().query('PRAGMA foreign_keys=ON');
 }
 
+export function affixRoleToSaveCredential(role: Role) {
+	return (credentialPayload: CredentialPayload, { user }: { user: User }) =>
+		saveCredential(credentialPayload, { user, role });
+}
+
 /**
  * Save a credential to the DB, sharing it with a user.
  */
-export async function saveCredential(
-	credData: {
-		name: string;
-		type: string;
-		nodesAccess: ICredentialNodeAccess[];
-		data: ICredentialDataDecryptedObject;
-	},
+async function saveCredential(
+	credentialPayload: CredentialPayload,
 	{ user, role }: { user: User; role: Role },
 ) {
 	const newCredential = new CredentialsEntity();
 
-	Object.assign(newCredential, credData);
+	Object.assign(newCredential, credentialPayload);
 
 	const encryptedData = await encryptCredentialData(newCredential);
 
