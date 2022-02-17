@@ -41,6 +41,8 @@ test('POST /credentials should create cred', async () => {
 
 	const response = await authOwnerAgent.post('/credentials').send(payload);
 
+	console.log(response.body);
+
 	expect(response.statusCode).toBe(200);
 
 	const { id, name, type, nodesAccess, data: encryptedData } = response.body.data;
