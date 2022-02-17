@@ -1,12 +1,11 @@
 import express = require('express');
 import { getConnection } from 'typeorm';
+import { UserSettings } from 'n8n-core';
 
 import { Db } from '../../src';
 import { randomName, randomString } from './shared/random';
 import * as utils from './shared/utils';
 import type { SaveCredentialFunction } from './shared/types';
-
-const { UserSettings } = require('n8n-core');
 
 let app: express.Application;
 let saveCredential: SaveCredentialFunction;
@@ -78,7 +77,7 @@ test('POST /credentials should fail with invalid inputs', async () => {
 
 test('POST /credentials should fail with missing encryption key', async () => {
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockReturnValue(undefined);
+	mock.mockReturnValue(Promise.resolve(undefined));
 
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
@@ -323,7 +322,7 @@ test('PATCH /credentials/:id should fail if cred not found', async () => {
 
 test('PATCH /credentials/:id should fail with missing encryption key', async () => {
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockReturnValue(undefined);
+	mock.mockReturnValue(Promise.resolve(undefined));
 
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
@@ -465,7 +464,7 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
 
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-	mock.mockReturnValue(undefined);
+	mock.mockReturnValue(Promise.resolve(undefined));
 
 	const response = await authOwnerAgent
 		.get(`/credentials/${savedCredential.id}`)
