@@ -150,8 +150,8 @@ export default mixins(showMessage).extend({
 					}
 					return accu;
 				}, {
-					success: [],
-					error: [],
+					success: [] as string[],
+					error: [] as string[],
 				});
 
 				if (invitedEmails.success.length) {
