@@ -14,6 +14,7 @@ module.exports = {
 		"js",
 		"json"
 	],
+	restoreMocks: true,
 	globals: {
 		"ts-jest": {
 			isolatedModules: true
