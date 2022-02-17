@@ -7,6 +7,7 @@ import * as utils from './shared/utils';
 import type { SaveCredentialFunction } from './shared/types';
 
 import { UserSettings } from 'n8n-core';
+import { randomBytes } from 'crypto';
 
 let app: express.Application;
 let saveCredential: SaveCredentialFunction;
@@ -18,6 +19,11 @@ beforeAll(async () => {
 		externalHooks: true,
 	});
 	await utils.initTestDb();
+
+	const settingsPath = UserSettings.getUserSettingsPath();
+	const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
+	UserSettings.writeUserSettings(userSettings, settingsPath);
+
 	const credentialOwnerRole = await utils.getCredentialOwnerRole();
 	saveCredential = utils.affixRoleToSaveCredential(credentialOwnerRole);
 });
