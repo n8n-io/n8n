@@ -25,7 +25,6 @@ const module: Module<ITemplateState, IRootState> = {
 		collections: [],
 		templates: [],
 		template: {} as IN8nTemplate,
-		templateSessionId: null,
 		totalworkflow: null,
 	},
 	getters: {
@@ -43,9 +42,6 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		getTemplate(state: ITemplateState) {
 			return state.template;
-		},
-		getTemplateSessionId(state: ITemplateState) {
-			return state.templateSessionId;
 		},
 		getTotalWorkflows(state: ITemplateState) {
 			return state.totalworkflow;
@@ -66,9 +62,6 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		setTemplate(state: ITemplateState, template: IN8nTemplate) {
 			Vue.set(state, 'template', template);
-		},
-		setTemplateSessionId(state: ITemplateState, sessionId: number) {
-			state.templateSessionId = sessionId;
 		},
 		setTotalWorkflows(state: ITemplateState, totalworkflow: number) {
 			state.totalworkflow = totalworkflow;
@@ -130,9 +123,6 @@ const module: Module<ITemplateState, IRootState> = {
 			} catch(e) {
 				return null;
 			}
-		},
-		async setTemplateSessionId(context: ActionContext<ITemplateState, IRootState>, sessionId: number) {
-			context.commit('setTemplateSessionId', sessionId);
 		},
 	},
 };

@@ -89,9 +89,6 @@ export default mixins(genericHelpers).extend({
 		isTemplatesEnabled(): boolean {
 			return this.$store.getters['settings/isTemplatesEnabled'];
 		},
-		templateSessionId(): number {
-			return this.$store.getters['templates/getTemplateSessionId'];
-		},
 		totalWorkflows(): number {
 			return this.$store.getters['templates/getTotalWorkflows'];
 		},
@@ -131,15 +128,11 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 		async generateTemplateEvent(results: IN8nSearchData) {
-			if (!this.templateSessionId) {
-				await this.$store.dispatch('templates/setTemplateSessionId', new Date().valueOf());
-			}
-
 			return {
 				search_string: this.search,
 				results_count: results.workflows.length,
 				categories_applied: this.categories,
-				wf_template_repo_session_id: this.templateSessionId,
+				wf_template_repo_session_id: 0, // todo
 			};
 		},
 		navigateTo(id: string, page: string, e: PointerEvent) {
