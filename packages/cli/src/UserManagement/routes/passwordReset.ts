@@ -20,6 +20,8 @@ import config = require('../../../config');
 export function passwordResetNamespace(this: N8nApp): void {
 	/**
 	 * Send a password reset email.
+	 *
+	 * Authless endpoint.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/forgot-password`,
@@ -72,6 +74,8 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 	/**
 	 * Verify password reset token and user ID.
+	 *
+	 * Authless endpoint.
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/resolve-password-token`,
@@ -92,6 +96,8 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 	/**
 	 * Verify password reset token and user ID and update password.
+	 *
+	 * Authless endpoint.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/change-password`,
