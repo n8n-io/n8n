@@ -13,10 +13,11 @@ import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 
 export function authenticationMethods(this: N8nApp): void {
-	// ----------------------------------------
-	// login a user
-	// ----------------------------------------
-
+	/**
+	 * Log in a user.
+	 *
+	 * Authless endpoint.
+	 */
 	this.app.post(
 		`/${this.restEndpoint}/login`,
 		ResponseHelper.send(async (req: Request, res: Response): Promise<PublicUser> => {
@@ -56,7 +57,7 @@ export function authenticationMethods(this: N8nApp): void {
 	);
 
 	/**
-	 * Manually check the existing cookie.
+	 * Manually check the `n8n-auth` cookie.
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/login`,
@@ -107,6 +108,11 @@ export function authenticationMethods(this: N8nApp): void {
 		}),
 	);
 
+	/**
+	 * Log out a user.
+	 *
+	 * Authless endpoint.
+	 */
 	this.app.post(
 		`/${this.restEndpoint}/logout`,
 		ResponseHelper.send(async (req: Request, res: Response): Promise<IDataObject> => {
