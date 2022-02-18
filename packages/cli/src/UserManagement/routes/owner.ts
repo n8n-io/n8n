@@ -75,7 +75,7 @@ export function ownerNamespace(this: N8nApp): void {
 				{ value: JSON.stringify(true) },
 			);
 
-			Logger.info('Setting hasOwner updated successfully', { userId: req.user.id });
+			Logger.debug('Setting hasOwner updated successfully', { userId: req.user.id });
 
 			await issueCookie(res, owner);
 
