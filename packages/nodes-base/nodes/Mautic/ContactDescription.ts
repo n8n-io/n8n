@@ -36,6 +36,11 @@ export const contactOperations: INodeProperties[] = [
 				description: 'Get data of all contacts',
 			},
 			{
+				name: 'Send Email',
+				value: 'sendEmail',
+				description: 'Send email to contact',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
@@ -1129,6 +1134,11 @@ export const contactFields: INodeProperties[] = [
 					'contact',
 				],
 			},
+			hide: {
+				operation: [
+					'sendEmail',
+				],
+			},
 		},
 		placeholder: 'Add Option',
 		default: {},
@@ -1238,5 +1248,44 @@ export const contactFields: INodeProperties[] = [
 			},
 		],
 	},
-
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:sendEmail                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Campaign Email ID',
+		name: 'campaignEmailId',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'sendEmail',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getCampaignEmails',
+		},
+		default: '',
+	},
+	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'sendEmail',
+				],
+			},
+		},
+		default: '',
+	},
 ];

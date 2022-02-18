@@ -35,7 +35,7 @@ export const contactDncOperations: INodeProperties[] = [
 export const contactDncFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                               contactDnc:add                           */
+	/*                               contactDnc:add                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
@@ -84,10 +84,11 @@ export const contactDncFields: INodeProperties[] = [
 		default: 'email',
 	},
 	{
-		displayName: 'Reason To Do Not Contact',
-		name: 'reason',
-		type: 'options',
-		required: true,
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -100,36 +101,32 @@ export const contactDncFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Unsubscribed',
-				value: '1',
+				displayName: 'Reason To Do Not Contact',
+				name: 'reason',
+				type: 'options',
+				options: [
+					{
+						name: 'Unsubscribed',
+						value: '1',
+					},
+					{
+						name: 'Bounced',
+						value: '2',
+					},
+					{
+						name: 'Manual',
+						value: '3',
+					},
+				],
+				default: '3',
 			},
 			{
-				name: 'Bounced',
-				value: '2',
-			},
-			{
-				name: 'Manual',
-				value: '3',
+				displayName: 'Comments',
+				name: 'comments',
+				type: 'string',
+				default: '',
+				description: 'A text describing details of Do Not Contact entry',
 			},
 		],
-		default: '3',
-	},
-	{
-		displayName: 'Comments',
-		name: 'comments',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'contactDnc',
-				],
-				operation: [
-					'add',
-				],
-			},
-		},
-		default: 'Unsubscribed via API',
-		description: 'A text describing details of Do Not Contact entry',
 	},
 ];
