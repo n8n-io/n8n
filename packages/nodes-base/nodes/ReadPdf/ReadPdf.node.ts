@@ -60,11 +60,20 @@ export class ReadPdf implements INodeType {
 				}
 
 				const binaryData = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+				const jsonResult = await PdfData.extract(binaryData, {
+					password: credentials.password
+				});
 				returnData.push({
 					binary: item.binary,
-					json: await PdfData.extract(binaryData, {
-						password: credentials.password
-					}),
+					json: {
+						numpages : jsonResult.pages,
+  					version: '2.10.377',
+  					numrender: jsonResult.text.length,
+  					fingerprint: jsonResult.fingerprint,
+  					outline: jsonResult.outline,
+  					permissions: jsonResult.permissions,
+  					text: jsonResult.text.join('\n\n')
+					},
 				});
 
 			} catch (error) {
