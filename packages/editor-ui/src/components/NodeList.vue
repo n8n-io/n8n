@@ -18,6 +18,8 @@ import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { ITemplateCategories } from '@/Interface';
+import { TEMPLATES_NODES_FILTER } from '@/constants';
+
 
 interface INode {
 	displayName: string;
@@ -57,19 +59,26 @@ export default mixins(genericHelpers).extend({
 	},
 	computed: {
 		filteredCoreNodes() {
-			const result = this.nodes.filter((elem) => {
+			const notCoreNodes = this.nodes.filter((elem) => {
 				const node = elem as INode;
 				if (node.categories) {
 					const found = node.categories.some(
 						(category: ITemplateCategories) => category.name === 'Core Nodes',
 					);
-					if (!found) return node;
+					if (!found) return !TEMPLATES_NODES_FILTER.includes(node.name);
 					else return;
 				} else {
 					return;
 				}
 			});
-			return result.length > 0 ? result : this.nodes;
+
+			if (notCoreNodes.length) return notCoreNodes;
+			else {
+				return this.nodes.filter((elem) => {
+					const node = elem as INode;
+					return !TEMPLATES_NODES_FILTER.includes(node.name);
+				});
+			}
 		},
 	},
 	methods: {

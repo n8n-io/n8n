@@ -63,6 +63,7 @@ import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
 
 import { abbreviateNumber } from '@/components/helpers';
 import { ITemplateCategories } from '@/Interface';
+import { TEMPLATES_NODES_FILTER } from '@/constants';
 
 interface INode {
 	displayName: string;
@@ -108,19 +109,21 @@ export default Vue.extend({
 	methods: {
 		abbreviateNumber,
 		filterCoreNodes(nodes: []) {
-			const result = nodes.filter((elem) => {
+			const notCoreNodes = nodes.filter((elem) => {
 				const node = elem as INode;
 				if (node.categories) {
 					const found = node.categories.some(
 						(category: ITemplateCategories) => category.name === 'Core Nodes',
 					);
-					if (!found) return node;
+					if (!found) return !TEMPLATES_NODES_FILTER.includes(node.name);
 					else return;
 				} else {
 					return;
 				}
 			});
-			return result.length > 0 ? result : nodes;
+			return notCoreNodes.length > 0
+				? notCoreNodes
+				: nodes.filter((elem: INode) => !TEMPLATES_NODES_FILTER.includes(elem.name));
 		},
 		redirectToCategory(tag: ITag) {
 			this.$router.push(`/templates?categories=${tag.id}`);

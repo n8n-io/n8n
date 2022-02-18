@@ -200,7 +200,7 @@ export default mixins(workflowHelpers).extend({
 }
 
 .markdown {
-	width: 100%;
+	width: calc(100% - 180px);
 	padding-right: var(--spacing-2xl);
 }
 

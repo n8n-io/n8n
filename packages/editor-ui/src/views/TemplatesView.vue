@@ -11,9 +11,9 @@
 					<div :class="$style.button">
 						<n8n-button
 							size="small"
-							type="outline"
+							type="primary"
 							:label="$locale.baseText('templates.newButton')"
-							:transparentBackground="true"
+							:transparentBackground="false"
 							@click="openNewWorkflow"
 						/>
 					</div>

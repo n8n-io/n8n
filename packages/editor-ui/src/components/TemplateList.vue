@@ -51,11 +51,23 @@
 							</div>
 							<div :class="$style.nodes">
 								<div
-									v-for="(node, index) in filterCoreNodes(workflow.nodes)"
+									v-for="(node, index) in filterCoreNodes(workflow.nodes).slice(
+										0,
+										countNodesToBeSliced(filterCoreNodes(workflow.nodes)),
+									)"
 									:key="index"
 									:class="$style.icon"
 								>
 									<TemplateNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
+								</div>
+								<div
+									:class="$style.nodeButton"
+									v-if="filterCoreNodes(workflow.nodes).length > nodesToBeShown + 1"
+								>
+									+{{
+										filterCoreNodes(workflow.nodes).length -
+										countNodesToBeSliced(filterCoreNodes(workflow.nodes))
+									}}
 								</div>
 							</div>
 						</template>
@@ -84,6 +96,7 @@ import TemplateCard from '@/components/TemplateCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { ITemplateCategories } from '@/Interface';
+import { TEMPLATES_NODES_FILTER } from '@/constants';
 import mixins from 'vue-typed-mixins';
 
 interface INode {
@@ -157,10 +170,7 @@ export default mixins(genericHelpers).extend({
 			inserted: (el, binding, vnode) => {
 				const f = () => {
 					if (vnode.context) {
-						if (
-							vnode.context.$props.infiniteScrollEnabled &&
-							vnode.context.$data.searchFinished
-						) {
+						if (vnode.context.$props.infiniteScrollEnabled && vnode.context.$data.searchFinished) {
 							const rect = el.getBoundingClientRect();
 							if (el) {
 								const inView =
@@ -177,13 +187,15 @@ export default mixins(genericHelpers).extend({
 
 										vnode.context.$data.searchFinished = false;
 
-										vnode.context.$store.dispatch('templates/getSearchResults', {
-											search: vnode.context.$props.search,
-											category: vnode.context.$props.categories,
-											skip: vnode.context.$data.skip,
-										}).then(() => {
-											if (vnode.context) vnode.context.$data.searchFinished = true;
-										});
+										vnode.context.$store
+											.dispatch('templates/getSearchResults', {
+												search: vnode.context.$props.search,
+												category: vnode.context.$props.categories,
+												skip: vnode.context.$data.skip,
+											})
+											.then(() => {
+												if (vnode.context) vnode.context.$data.searchFinished = true;
+											});
 									}
 								}
 							}
@@ -208,20 +220,33 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
+			nodesToBeShown: 5,
 			page: 0,
 			searchFinished: true,
 			skip: 1,
 		};
 	},
 	methods: {
+		countNodesToBeSliced(nodes: []): number {
+			if (nodes.length > this.nodesToBeShown) {
+				return this.nodesToBeShown - 1;
+			} else {
+				return this.nodesToBeShown;
+			}
+		},
 		filterCoreNodes(nodes: []) {
-			const result =  nodes.filter((elem) => {
+			const notCoreNodes = nodes.filter((elem) => {
 				const node = elem as INode;
-				const found = node.categories.some((category: ITemplateCategories) => category.name === 'Core Nodes');
-				if (!found) return node;
+				const found = node.categories.some(
+					(category: ITemplateCategories) => category.name === 'Core Nodes',
+				);
+				if (!found) return !TEMPLATES_NODES_FILTER.includes(node.name);
 				else return;
 			});
-			return result.length > 0 ? result : nodes;
+
+			return notCoreNodes.length > 0
+				? notCoreNodes
+				: nodes.filter((elem: INode) => !TEMPLATES_NODES_FILTER.includes(elem.name));
 		},
 	},
 });
@@ -230,9 +255,6 @@ export default mixins(genericHelpers).extend({
 <style lang="scss" module>
 .header {
 	padding-bottom: var(--spacing-2xs);
-}
-
-.l {
 }
 
 .list {
@@ -286,6 +308,24 @@ export default mixins(genericHelpers).extend({
 	display: none;
 	position: relative;
 	z-index: 100;
+}
+
+.nodeButton {
+	width: 24px;
+	min-width: 24px;
+	height: 24px;
+	margin-left: var(--spacing-xs);
+	top: 0px;
+	position: relative;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background: var(--color-background-light);
+	border: $--version-card-border;
+	border-radius: var(--border-radius-base);
+	font-size: 10px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text-base);
 }
 
 .content {

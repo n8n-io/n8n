@@ -198,6 +198,8 @@ export default {
 		padding: var(--spacing-s);
 		color: #555555;
 		background-color: #f2f4f8;
+		text-overflow: ellipsis;
+    overflow: hidden;
 	}
 
 	.label {
