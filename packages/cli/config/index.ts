@@ -290,6 +290,20 @@ const config = convict({
 	},
 
 	queue: {
+		health: {
+			active: {
+				doc: 'If health checks should be enabled',
+				format: 'Boolean',
+				default: false,
+				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
+			},
+			port: {
+				doc: 'Port to serve health check on if activated',
+				format: Number,
+				default: 5678,
+				env: 'QUEUE_HEALTH_CHECK_PORT',
+			},
+		},
 		bull: {
 			prefix: {
 				doc: 'Prefix for all queue keys',
