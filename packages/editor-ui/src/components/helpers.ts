@@ -1,4 +1,4 @@
-import { ERROR_TRIGGER_NODE_TYPE, TEMPLATES_NODES_FILTER } from '@/constants';
+import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, TEMPLATES_NODES_FILTER } from '@/constants';
 import { INodeUi, ITemplateNode } from '@/Interface';
 import dateformat from 'dateformat';
 
@@ -48,7 +48,7 @@ export function getActivatableTriggerNodes(nodes: INodeUi[]) {
 export function filterTemplateNodes(nodes: ITemplateNode[]) {
 	const notCoreNodes = nodes.filter((node: ITemplateNode) => {
 		return !(node.categories || []).some(
-			(category) => category.name === 'Core Nodes',
+			(category) => category.name === CORE_NODES_CATEGORY,
 		);
 	});
 
