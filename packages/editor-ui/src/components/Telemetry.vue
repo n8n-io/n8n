@@ -12,11 +12,20 @@ export default Vue.extend({
 	computed: {
 		...mapGetters('settings', ['telemetry']),
 	},
-	watch: {
-		telemetry(opts) {
+	mounted() {
+		this.init();
+	},
+	methods: {
+		init() {
+			const opts = this.telemetry;
 			if (opts && opts.enabled) {
 				this.$telemetry.init(opts, this.$store.getters.instanceId, this.$store.getters['settings/logLevel']);
 			}
+		},
+	},
+	watch: {
+		telemetry() {
+			this.init();
 		},
 	},
 });
