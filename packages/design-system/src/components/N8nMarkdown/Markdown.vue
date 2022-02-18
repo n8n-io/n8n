@@ -199,7 +199,7 @@ export default {
 		color: #555555;
 		background-color: #f2f4f8;
 		text-overflow: ellipsis;
-    overflow: hidden;
+		overflow: hidden;
 	}
 
 	.label {
