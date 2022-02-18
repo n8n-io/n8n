@@ -291,6 +291,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.url = requestObject.url?.toString() as string;
 	}
 
+	if (requestObject.baseURL !== undefined) {
+		axiosConfig.baseURL = requestObject.baseURL?.toString() as string;
+	}
+
 	if (requestObject.method !== undefined) {
 		axiosConfig.method = requestObject.method as Method;
 	}
