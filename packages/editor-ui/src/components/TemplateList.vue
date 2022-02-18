@@ -92,24 +92,9 @@ import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
 import TemplateCard from '@/components/TemplateCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplateCategories } from '@/Interface';
-import { TEMPLATES_NODES_FILTER } from '@/constants';
+import { ITemplateNode } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-
-interface INode {
-	displayName: string;
-	defaults: {
-		color: string;
-	};
-	categories: ITemplateCategories[];
-	icon: string;
-	iconData?: {
-		fileBuffer?: string;
-		type?: string;
-	};
-	name: string;
-	typeVersion: number;
-}
+import { filterTemplateNodes } from './helpers';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
@@ -231,19 +216,8 @@ export default mixins(genericHelpers).extend({
 				return this.nodesToBeShown;
 			}
 		},
-		filterCoreNodes(nodes: []) {
-			const notCoreNodes = nodes.filter((elem) => {
-				const node = elem as INode;
-				const found = node.categories.some(
-					(category: ITemplateCategories) => category.name === 'Core Nodes',
-				);
-				if (!found) return !TEMPLATES_NODES_FILTER.includes(node.name);
-				else return;
-			});
-
-			return notCoreNodes.length > 0
-				? notCoreNodes
-				: nodes.filter((elem: INode) => !TEMPLATES_NODES_FILTER.includes(elem.name));
+		filterCoreNodes(nodes: ITemplateNode[]) {
+			return filterTemplateNodes(nodes);
 		},
 	},
 });

@@ -61,9 +61,8 @@ import Vue from 'vue';
 import TemplateBlock from '@/components/TemplateBlock.vue';
 import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
 
-import { abbreviateNumber } from '@/components/helpers';
-import { ITemplateCategories } from '@/Interface';
-import { TEMPLATES_NODES_FILTER } from '@/constants';
+import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
+import { ITemplateCategories, ITemplateNode } from '@/Interface';
 
 interface INode {
 	displayName: string;
@@ -108,22 +107,8 @@ export default Vue.extend({
 	},
 	methods: {
 		abbreviateNumber,
-		filterCoreNodes(nodes: []) {
-			const notCoreNodes = nodes.filter((elem) => {
-				const node = elem as INode;
-				if (node.categories) {
-					const found = node.categories.some(
-						(category: ITemplateCategories) => category.name === 'Core Nodes',
-					);
-					if (!found) return !TEMPLATES_NODES_FILTER.includes(node.name);
-					else return;
-				} else {
-					return;
-				}
-			});
-			return notCoreNodes.length > 0
-				? notCoreNodes
-				: nodes.filter((elem: INode) => !TEMPLATES_NODES_FILTER.includes(elem.name));
+		filterCoreNodes(nodes: ITemplateNode[]) {
+			return filterTemplateNodes(nodes);
 		},
 		redirectToCategory(tag: ITag) {
 			this.$router.push(`/templates?categories=${tag.id}`);
