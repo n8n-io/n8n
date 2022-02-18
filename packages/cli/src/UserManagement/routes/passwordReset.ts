@@ -7,6 +7,7 @@ import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 
+import { MoreThanOrEqual } from 'typeorm';
 import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
 import { validatePassword } from '../UserManagementHelper';
@@ -82,15 +83,16 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
-			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
-
-			if (!user || !user.resetPasswordTokenExpiration) {
-				throw new ResponseHelper.ResponseError('', undefined, 404);
-			}
-
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
-			if (currentTimestamp > user.resetPasswordTokenExpiration) {
+
+			const user = await Db.collections.User!.findOne({
+				id,
+				resetPasswordToken,
+				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+			});
+
+			if (!user) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 		}),
@@ -102,27 +104,28 @@ export function passwordResetNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/change-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.NewPassword, res: express.Response) => {
-			const { token: resetPasswordToken, userId, password } = req.body;
+			const { token: resetPasswordToken, userId: id, password } = req.body;
 
-			if (!resetPasswordToken || !userId || !password) {
+			if (!resetPasswordToken || !id || !password) {
 				throw new ResponseHelper.ResponseError('Parameter missing', undefined, 400);
 			}
 
 			const validPassword = validatePassword(password);
 
-			const user = await Db.collections.User!.findOne({ id: userId, resetPasswordToken });
-
-			if (!user || !user.resetPasswordTokenExpiration) {
-				throw new ResponseHelper.ResponseError('', undefined, 404);
-			}
-
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
-			if (currentTimestamp > user.resetPasswordTokenExpiration) {
+
+			const user = await Db.collections.User!.findOne({
+				id,
+				resetPasswordToken,
+				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+			});
+
+			if (!user) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			await Db.collections.User!.update(userId, {
+			await Db.collections.User!.update(id, {
 				password: hashSync(validPassword, genSaltSync(10)),
 				resetPasswordToken: null,
 				resetPasswordTokenExpiration: null,

@@ -11,11 +11,11 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 		await queryRunner.query(
 			'CREATE TABLE "' + tablePrefix + 'role" (' +
 				'"id" serial NOT NULL,' +
-				'PRIMARY KEY ("id"),' +
 				'"name" VARCHAR(32) NOT NULL,' +
-				'"scope" VARCHAR(250) NOT NULL,' +
+				'"scope" VARCHAR(255) NOT NULL,' +
 				'"createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,' +
 				'"updatedAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,' +
+				'CONSTRAINT "PK_' + tablePrefix + 'e853ce24e8200abe5721d2c6ac552b73" PRIMARY KEY ("id"),' +
 				'CONSTRAINT "UQ_' + tablePrefix + '5b49d0f504f7ef31045a1fb2eb8" UNIQUE ("scope", "name")' +
 			');'
 		);
@@ -23,18 +23,18 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 		await queryRunner.query(
 			'CREATE TABLE "' + tablePrefix + 'user" (' +
 				'"id" UUID NOT NULL DEFAULT gen_random_uuid(),' +
-				'"email" VARCHAR(254) NULL DEFAULT null,' +
-				'"firstName" VARCHAR(32) NULL DEFAULT null,' +
-				'"lastName" VARCHAR(32) NULL DEFAULT null,' +
-				'"password" VARCHAR(200) NULL DEFAULT null,' +
-				'"resetPasswordToken" VARCHAR(200) NULL DEFAULT null,' +
-				'"resetPasswordTokenExpiration" int NULL DEFAULT null,' +
-				'"personalizationAnswers" text NULL DEFAULT null,' +
+				'"email" VARCHAR(255),' +
+				'"firstName" VARCHAR(32),' +
+				'"lastName" VARCHAR(32),' +
+				'"password" VARCHAR(255),' +
+				'"resetPasswordToken" VARCHAR(255),' +
+				'"resetPasswordTokenExpiration" int,' +
+				'"personalizationAnswers" text,' +
 				'"createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,' +
 				'"updatedAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,' +
 				'"globalRoleId" int NOT NULL,' +
-				'CONSTRAINT "userId" PRIMARY KEY (id),' +
-				'CONSTRAINT "IDX_' + tablePrefix + 'e12875dfb3b1d92d7d7c5377e2" UNIQUE (email),' +
+				'CONSTRAINT "PK_' + tablePrefix + 'ea8f538c94b6e352418254ed6474a81f" PRIMARY KEY ("id"),' +
+				'CONSTRAINT "UQ_' + tablePrefix + 'e12875dfb3b1d92d7d7c5377e2" UNIQUE (email),' +
 				'CONSTRAINT "FK_' + tablePrefix + 'f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "role"(id)' +
 			');'
 		);
@@ -46,7 +46,7 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 				'"roleId" INT NOT NULL, ' +
 				'"userId" UUID NOT NULL, ' +
 				'"workflowId" INT NOT NULL, ' +
-				'CONSTRAINT "PK_userIdWorkflowId" PRIMARY KEY ("userId", "workflowId"), ' +
+				'CONSTRAINT "PK_' + tablePrefix + 'cc5d5a71c7b2591f5154ffb0c785e85e" PRIMARY KEY ("userId", "workflowId"), ' +
 				'CONSTRAINT "FK_' + tablePrefix + '3540da03964527aa24ae014b780" ' +
 					'FOREIGN KEY ("roleId") ' +
 					'REFERENCES "' + tablePrefix + 'role" ("id") ' +
@@ -64,6 +64,8 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 					'ON UPDATE NO ACTION);'
 		);
 
+		await queryRunner.query(`CREATE INDEX "IDX_${tablePrefix}65a0933c0f19d278881653bf81d35064" ON "shared_workflow" ("workflowId");`);
+
 		await queryRunner.query(
 			'CREATE TABLE "' + tablePrefix + 'shared_credentials" ( ' +
 			'"createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
@@ -71,7 +73,7 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 			'"roleId" INT NOT NULL, ' +
 			'"userId" UUID NOT NULL, ' +
 			'"credentialsId" INT NOT NULL, ' +
-			'CONSTRAINT "PK_userIdCredentialsId" PRIMARY KEY ("userId", "credentialsId"), ' +
+			'CONSTRAINT "PK_' + tablePrefix + '10dd1527ffb639609be7aadd98f628c6" PRIMARY KEY ("userId", "credentialsId"), ' +
 			'CONSTRAINT "FK_' + tablePrefix + 'c68e056637562000b68f480815a" ' +
 			  'FOREIGN KEY ("roleId") ' +
 			  'REFERENCES "' + tablePrefix + 'role" ("id") ' +
@@ -89,12 +91,15 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 			  'ON UPDATE NO ACTION);'
 		);
 
+		await queryRunner.query(`CREATE INDEX "IDX_${tablePrefix}829d16efa0e265cb076d50eca8d21733" ON "shared_credentials" ("credentialsId");`);
+
+
 		await queryRunner.query(
 			'CREATE TABLE "' + tablePrefix + 'settings" ( ' +
-				'"key" VARCHAR(250) NOT NULL, ' +
+				'"key" VARCHAR(255) NOT NULL, ' +
 				'"value" TEXT NOT NULL, ' +
 				'"loadOnStartup" boolean NOT NULL DEFAULT false, ' +
-				'CONSTRAINT "PK_key" PRIMARY KEY ("key"));'
+				'CONSTRAINT "PK_' + tablePrefix + 'dc0fe14e6d9943f268e7b119f69ab8bd" PRIMARY KEY ("key"));'
 		);
 
 		// Insert initial roles

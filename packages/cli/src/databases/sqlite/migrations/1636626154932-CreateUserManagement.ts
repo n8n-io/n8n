@@ -14,19 +14,26 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`CREATE TABLE "${tablePrefix}user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(254), "firstName" varchar(32), "lastName" varchar(32), "password" varchar, "resetPasswordToken" varchar, "resetPasswordTokenExpiration" integer DEFAULT NULL, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer NOT NULL, CONSTRAINT "FK_${tablePrefix}f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+			`CREATE TABLE "${tablePrefix}user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(255), "firstName" varchar(32), "lastName" varchar(32), "password" varchar, "resetPasswordToken" varchar, "resetPasswordTokenExpiration" integer DEFAULT NULL, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer NOT NULL, CONSTRAINT "FK_${tablePrefix}f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
 		);
 		await queryRunner.query(
-			`CREATE UNIQUE INDEX "IDX_${tablePrefix}e12875dfb3b1d92d7d7c5377e2" ON "${tablePrefix}user" ("email") `,
+			`CREATE UNIQUE INDEX "UQ_${tablePrefix}e12875dfb3b1d92d7d7c5377e2" ON "${tablePrefix}user" ("email") `,
 		);
 
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}shared_workflow" ("createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "roleId" integer NOT NULL, "userId" varchar NOT NULL, "workflowId" integer NOT NULL, CONSTRAINT "FK_${tablePrefix}3540da03964527aa24ae014b780" FOREIGN KEY ("roleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_${tablePrefix}82b2fd9ec4e3e24209af8160282" FOREIGN KEY ("userId") REFERENCES "${tablePrefix}user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_${tablePrefix}b83f8d2530884b66a9c848c8b88" FOREIGN KEY ("workflowId") REFERENCES "${tablePrefix}workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("userId", "workflowId"))`,
 		);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_${tablePrefix}65a0933c0f19d278881653bf81d35064" ON "${tablePrefix}shared_workflow" ("workflowId") `,
+		);
+
 
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}shared_credentials" ("createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "roleId" integer NOT NULL, "userId" varchar NOT NULL, "credentialsId" integer NOT NULL, CONSTRAINT "FK_${tablePrefix}c68e056637562000b68f480815a" FOREIGN KEY ("roleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_${tablePrefix}484f0327e778648dd04f1d70493" FOREIGN KEY ("userId") REFERENCES "${tablePrefix}user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_${tablePrefix}68661def1d4bcf2451ac8dbd949" FOREIGN KEY ("credentialsId") REFERENCES "${tablePrefix}credentials_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("userId", "credentialsId"))`,
+		);
 
+		await queryRunner.query(
+			`CREATE INDEX "IDX_${tablePrefix}829d16efa0e265cb076d50eca8d21733" ON "${tablePrefix}shared_credentials" ("credentialsId") `,
 		);
 
 		await queryRunner.query(
@@ -88,7 +95,6 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		const tablePrefix = config.get('database.tablePrefix');
 		await queryRunner.query(`DROP TABLE "${tablePrefix}shared_credentials"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}shared_workflow"`);
-		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}e12875dfb3b1d92d7d7c5377e2"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}user"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}role"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}settings"`);

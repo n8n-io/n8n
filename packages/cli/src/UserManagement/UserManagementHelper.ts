@@ -46,9 +46,9 @@ export function sanitizeUser(user: User): PublicUser {
 	const {
 		password,
 		resetPasswordToken,
+		resetPasswordTokenExpiration,
 		createdAt,
 		updatedAt,
-		resetPasswordTokenExpiration,
 		...sanitizedUser
 	} = user;
 	return sanitizedUser;

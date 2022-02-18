@@ -13,7 +13,7 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 			'CREATE TABLE `' + tablePrefix + 'role` ( ' +
 				'`id` int NOT NULL AUTO_INCREMENT, ' +
 				'`name` varchar(32) NOT NULL, ' +
-				'`scope` varchar(250) NOT NULL, ' +
+				'`scope` varchar(255) NOT NULL, ' +
 				'`createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
 				'`updatedAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
 				'PRIMARY KEY (`id`), ' +
@@ -23,20 +23,20 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 
 		await queryRunner.query(
 			'CREATE TABLE `' + tablePrefix + 'user` ( ' +
-				'`id` VARCHAR(100) NOT NULL, ' +
-				'`email` VARCHAR(254) NULL DEFAULT NULL, ' +
+				'`id` VARCHAR(36) NOT NULL, ' +
+				'`email` VARCHAR(255) NULL DEFAULT NULL, ' +
 				'`firstName` VARCHAR(32) NULL DEFAULT NULL, ' +
 				'`lastName` VARCHAR(32) NULL DEFAULT NULL, ' +
-				'`password` VARCHAR(200) NULL DEFAULT NULL, ' +
-				'`resetPasswordToken` VARCHAR(200) NULL DEFAULT NULL, ' +
+				'`password` VARCHAR(255) NULL DEFAULT NULL, ' +
+				'`resetPasswordToken` VARCHAR(255) NULL DEFAULT NULL, ' +
 				'`resetPasswordTokenExpiration` INT NULL DEFAULT NULL, ' +
-				'`personalizationAnswers` VARCHAR(200) NULL DEFAULT NULL, ' +
+				'`personalizationAnswers` TEXT NULL DEFAULT NULL, ' +
 				'`createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
 				'`updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
 				'`globalRoleId` INT NOT NULL, ' +
 				'PRIMARY KEY (`id`), ' +
-				'UNIQUE INDEX `IDX_e12875dfb3b1d92d7d7c5377e2` (`email` ASC) VISIBLE, ' +
-				'INDEX `FK_f0609be844f9200ff4365b1bb3d_idx` (`globalRoleId` ASC) VISIBLE, ' +
+				'UNIQUE INDEX `IDX_e12875dfb3b1d92d7d7c5377e2` (`email` ASC), ' +
+				'INDEX `FK_f0609be844f9200ff4365b1bb3d` (`globalRoleId` ASC), ' +
 				'CONSTRAINT `FK_f0609be844f9200ff4365b1bb3d` ' +
 					'FOREIGN KEY (`globalRoleId`) ' +
 					'REFERENCES `n8n`.`role` (`id`) ' +
@@ -49,11 +49,11 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 				'`createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
 				'`updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
 				'`roleId` INT NOT NULL, ' +
-				'`userId` VARCHAR(100) NOT NULL, ' +
+				'`userId` VARCHAR(36) NOT NULL, ' +
 				'`workflowId` INT NOT NULL, ' +
-				'INDEX `FK_3540da03964527aa24ae014b780_idx` (`roleId` ASC) VISIBLE, ' +
-				'INDEX `FK_82b2fd9ec4e3e24209af8160282_idx` (`userId` ASC) VISIBLE, ' +
-				'INDEX `FK_b83f8d2530884b66a9c848c8b88_idx` (`workflowId` ASC) VISIBLE, ' +
+				'INDEX `FK_3540da03964527aa24ae014b780x` (`roleId` ASC), ' +
+				'INDEX `FK_82b2fd9ec4e3e24209af8160282x` (`userId` ASC), ' +
+				'INDEX `FK_b83f8d2530884b66a9c848c8b88x` (`workflowId` ASC), ' +
 				'PRIMARY KEY (`userId`, `workflowId`), ' +
 				'CONSTRAINT `FK_3540da03964527aa24ae014b780` ' +
 					'FOREIGN KEY (`roleId`) ' +
@@ -77,10 +77,11 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 			'`createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
 			'`updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
 			'`roleId` INT NOT NULL, ' +
-			'`userId` VARCHAR(100) NOT NULL, ' +
+			'`userId` VARCHAR(36) NOT NULL, ' +
 			'`credentialsId` INT NOT NULL, ' +
-			'INDEX `FK_c68e056637562000b68f480815a_idx` (`roleId` ASC) VISIBLE, ' +
-			'INDEX `FK_484f0327e778648dd04f1d70493_idx` (`userId` ASC) VISIBLE, ' +
+			'INDEX `FK_c68e056637562000b68f480815a` (`roleId` ASC), ' +
+			'INDEX `FK_484f0327e778648dd04f1d70493` (`userId` ASC), ' +
+			'INDEX `FK_68661def1d4bcf2451ac8dbd949` (`credentialsId` ASC), ' +
 			'PRIMARY KEY (`userId`, `credentialsId`), ' +
 			'CONSTRAINT `FK_c68e056637562000b68f480815a` ' +
 			  'FOREIGN KEY (`roleId`) ' +
@@ -95,14 +96,14 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 			'CONSTRAINT `FK_68661def1d4bcf2451ac8dbd949` ' +
 			  'FOREIGN KEY (`credentialsId`) ' +
 			  'REFERENCES `' + tablePrefix + 'credentials_entity` (`id`) ' +
-			  'ON DELETE NO ACTION ' +
+			  'ON DELETE CASCADE ' +
 			  'ON UPDATE NO ACTION);'
 		);
 
 		await queryRunner.query(
 			'CREATE TABLE `' + tablePrefix + 'settings` ( ' +
-				'`key` VARCHAR(250) NOT NULL, ' +
-				'`value` TEXT(10000) NOT NULL, ' +
+				'`key` VARCHAR(255) NOT NULL, ' +
+				'`value` TEXT NOT NULL, ' +
 				'`loadOnStartup` TINYINT(1) NOT NULL DEFAULT 0, ' +
 				'PRIMARY KEY (`key`));'
 		);

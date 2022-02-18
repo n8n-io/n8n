@@ -309,8 +309,7 @@ class App {
 			instanceId: '',
 			telemetry: telemetrySettings,
 			personalizationSurveyEnabled:
-				(config.get('personalization.enabled') as boolean) &&
-				(config.get('diagnostics.enabled') as boolean),
+				config.get('personalization.enabled') && config.get('diagnostics.enabled'),
 			defaultLocale: config.get('defaultLocale'),
 			userManagement: {
 				enabled:
