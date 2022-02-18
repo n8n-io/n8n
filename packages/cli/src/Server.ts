@@ -2480,50 +2480,51 @@ class App {
 
 					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
-					const findOptions: FindManyOptions<ExecutionEntity> = {
-						select: [
-							'id',
-							'finished',
-							'mode',
-							'retryOf',
-							'retrySuccessId',
-							'waitTill',
-							'startedAt',
-							'stoppedAt',
-							'workflowData',
-						],
-						where: { workflowId: In(sharedWorkflowIds) },
-						order: { id: 'DESC' },
-						take: limit,
-					};
+					const resultsQuery = await Db.collections
+						.Execution!.createQueryBuilder('execution')
+						.select([
+							'execution.id',
+							'execution.finished',
+							'execution.mode',
+							'execution.retryOf',
+							'execution.retrySuccessId',
+							'execution.waitTill',
+							'execution.startedAt',
+							'execution.stoppedAt',
+							'execution.workflowData',
+						])
+						.where({ workflowId: In(sharedWorkflowIds) })
+						.orderBy('execution.id', 'DESC')
+						.take(limit);
 
-					Object.entries(filter).forEach(([key, value]) => {
-						let filterToAdd = {};
-
-						if (key === 'waitTill') {
-							filterToAdd = { waitTill: !IsNull() };
-						} else if (key === 'finished' && value === false) {
-							filterToAdd = { finished: false, waitTill: IsNull() };
+					Object.keys(filter).forEach((filterField) => {
+						if (filterField === 'waitTill') {
+							resultsQuery.andWhere(`execution.${filterField} is not null`);
+						} else if (filterField === 'finished' && filter[filterField] === false) {
+							resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {
+								[filterField]: filter[filterField],
+							});
+							resultsQuery.andWhere(`execution.waitTill is null`);
 						} else {
-							filterToAdd = { [key]: value };
+							resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {
+								[filterField]: filter[filterField],
+							});
 						}
-
-						Object.assign(findOptions.where, filterToAdd);
 					});
 
 					if (req.query.lastId) {
-						Object.assign(findOptions.where, { id: LessThan(req.query.lastId) });
+						resultsQuery.andWhere(`execution.id < :lastId`, { lastId: req.query.lastId });
 					}
 
 					if (req.query.firstId) {
-						Object.assign(findOptions.where, { id: MoreThan(req.query.firstId) });
+						resultsQuery.andWhere(`execution.id > :firstId`, { firstId: req.query.firstId });
 					}
 
 					if (executingWorkflowIds.length > 0) {
-						Object.assign(findOptions.where, { id: !In(executingWorkflowIds) });
+						resultsQuery.andWhere(`execution.id NOT IN (:...ids)`, { ids: executingWorkflowIds });
 					}
 
-					const executions = await Db.collections.Execution!.find(findOptions);
+					const executions = await resultsQuery.getMany();
 
 					const { count, estimated } = await getExecutionsCount(countFilter, req.user);
 
@@ -3311,11 +3312,7 @@ async function getExecutionsCount(
 
 	// For databases other than Postgres, do a regular count
 	// when filtering based on `workflowId` or `finished` fields.
-	if (
-		dbType !== 'postgresdb' ||
-		filteredFields.length > 0 ||
-		config.get('userManagement.hasOwner') === true
-	) {
+	if (dbType !== 'postgresdb' || filteredFields.length > 0 || user.globalRole.name !== 'owner') {
 		const sharedWorkflowIds = await getSharedWorkflowIds(user);
 
 		const count = await Db.collections.Execution!.count({
