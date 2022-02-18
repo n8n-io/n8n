@@ -62,6 +62,10 @@ export function authenticationMethods(this: N8nApp): void {
 
 			const cookieContents = req.cookies?.['n8n-auth'] as string | undefined;
 
+			if (!cookieContents) {
+				throw new ResponseHelper.ResponseError('Missing n8n-auth cookie', undefined, 401);
+			}
+
 			let user: User;
 			if (cookieContents) {
 				// If logged in, return user

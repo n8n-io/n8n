@@ -10,7 +10,7 @@ beforeAll(() => {
 	app = utils.initTestServer({ applyAuth: true });
 });
 
-['GET /me', 'PATCH /me', 'PATCH /me/password', 'POST /me/survey'].forEach((route) => {
+['GET /me', 'PATCH /me', 'PATCH /me/password', 'POST /me/survey', 'GET /login'].forEach((route) => {
 	const [method, endpoint] = route.split(' ').map((i) => i.toLowerCase());
 
 	test(`${route} should return 401 Unauthorized`, async () => {
