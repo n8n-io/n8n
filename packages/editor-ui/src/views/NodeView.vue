@@ -1320,8 +1320,15 @@ export default mixins(
 
 					if (nodeTypeData.credentials){
 						const authentication = nodeTypeData.credentials.find(type => type.name === defaultCredential.type);
-						if(authentication!.displayOptions) {
-							newNodeData.parameters.authentication = authentication!.displayOptions!.show!.authentication![0];
+						console.log(authentication);
+						if(
+							authentication &&
+							authentication.displayOptions &&
+							authentication.displayOptions.show &&
+							authentication.displayOptions.show.authentication &&
+							authentication.displayOptions.show.authentication[0]
+						) {
+							newNodeData.parameters.authentication = authentication.displayOptions.show.authentication[0];
 						}
 					}
 				}
