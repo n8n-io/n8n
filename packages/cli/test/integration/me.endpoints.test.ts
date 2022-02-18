@@ -103,6 +103,12 @@ describe('/me endpoints', () => {
 				expect(resetPasswordToken).toBeUndefined();
 				expect(globalRole.name).toBe('owner');
 				expect(globalRole.scope).toBe('global');
+
+				const storedOwner = await Db.collections.User!.findOneOrFail(id);
+
+				expect(storedOwner.email).toBe(validPayload.email);
+				expect(storedOwner.firstName).toBe(validPayload.firstName);
+				expect(storedOwner.lastName).toBe(validPayload.lastName);
 			}
 		});
 
@@ -128,6 +134,9 @@ describe('/me endpoints', () => {
 				const response = await authShellAgent.patch('/me/password').send(validPayload);
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+
+				const storedOwner = await Db.collections.User!.findOneOrFail();
+				expect(storedOwner.password).not.toBe(validPayload.password);
 			}
 		});
 
