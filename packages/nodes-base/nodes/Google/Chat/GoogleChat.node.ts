@@ -153,21 +153,24 @@ export class GoogleChat implements INodeType {
 
 				const now = moment().unix();
 
+				const email = (credential.data!.email as string).trim();
+				const privateKey = (credential.data!.privateKey as string).replace(/\\n/g, '\n').trim();
+
 				try {
 					const signature = jwt.sign(
 						{
-							'iss': credential.data!.email as string,
-							'sub': credential.data!.delegatedEmail || credential.data!.email as string,
+							'iss': email,
+							'sub': credential.data!.delegatedEmail || email,
 							'scope': scopes.join(' '),
 							'aud': `https://oauth2.googleapis.com/token`,
 							'iat': now,
 							'exp': now,
 						},
-						credential.data!.privateKey as string,
+						privateKey,
 						{
 							algorithm: 'RS256',
 							header: {
-								'kid': credential.data!.privateKey as string,
+								'kid': privateKey,
 								'typ': 'JWT',
 								'alg': 'RS256',
 							},
