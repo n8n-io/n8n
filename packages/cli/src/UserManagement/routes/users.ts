@@ -87,23 +87,23 @@ export function usersNamespace(this: N8nApp): void {
 				createUsers[user.email] = user.id;
 			});
 
-			const total = Object.keys(createUsers).length;
+			const usersToSetUp = Object.keys(createUsers).filter((email) => createUsers[email] === null);
+			const total = usersToSetUp.length;
+
 			Logger.debug(total > 1 ? `Creating ${total} user shells...` : `Creating 1 user shell...`);
 
 			try {
 				await getConnection().transaction(async (transactionManager) => {
 					return Promise.all(
-						Object.keys(createUsers)
-							.filter((email) => createUsers[email] === null)
-							.map(async (email) => {
-								const newUser = Object.assign(new User(), {
-									email,
-									globalRole: role,
-								});
-								const savedUser = await transactionManager.save<User>(newUser);
-								createUsers[savedUser.email] = savedUser.id;
-								return savedUser;
-							}),
+						usersToSetUp.map(async (email) => {
+							const newUser = Object.assign(new User(), {
+								email,
+								globalRole: role,
+							});
+							const savedUser = await transactionManager.save<User>(newUser);
+							createUsers[savedUser.email] = savedUser.id;
+							return savedUser;
+						}),
 					);
 				});
 			} catch (error) {
