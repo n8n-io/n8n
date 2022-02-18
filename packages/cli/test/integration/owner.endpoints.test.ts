@@ -64,6 +64,9 @@ describe('/owner endpoints', () => {
 
 			const storedOwner = await Db.collections.User!.findOneOrFail(id);
 			expect(storedOwner.password).not.toBe(TEST_USER.password);
+			expect(storedOwner.email).toBe(TEST_USER.email);
+			expect(storedOwner.firstName).toBe(TEST_USER.firstName);
+			expect(storedOwner.lastName).toBe(TEST_USER.lastName);
 
 			const hasOwnerConfig = config.get('userManagement.hasOwner');
 			expect(hasOwnerConfig).toBe(true);
