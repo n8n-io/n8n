@@ -1,16 +1,16 @@
 import express = require('express');
 import { getConnection } from 'typeorm';
 import validator from 'validator';
-import { v4 as uuid } from 'uuid';
 
 import * as utils from './shared/utils';
 import { Db } from '../../src';
 import config = require('../../config');
-import { Role } from '../../src/databases/entities/Role';
-import { randomEmail, randomName, randomValidPassword, randomInvalidPassword } from './shared/random';
-import { getGlobalOwnerRole } from './shared/utils';
-
-let globalOwnerRole: Role;
+import {
+	randomEmail,
+	randomName,
+	randomValidPassword,
+	randomInvalidPassword,
+} from './shared/random';
 
 describe('/owner endpoints', () => {
 	describe('Shell requests', () => {
@@ -19,8 +19,6 @@ describe('/owner endpoints', () => {
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['owner'], applyAuth: true });
 			await utils.initTestDb();
-
-			globalOwnerRole = await getGlobalOwnerRole();
 		});
 
 		beforeEach(async () => {
