@@ -22,7 +22,7 @@ import { getGlobalOwnerRole } from './shared/utils';
 let globalOwnerRole: Role;
 
 describe('/me endpoints', () => {
-	describe('Shell requests', () => {
+	describe('Owner shell requests', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
@@ -44,11 +44,11 @@ describe('/me endpoints', () => {
 			return getConnection().close();
 		});
 
-		test('GET /me should return sanitized shell', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+		test('GET /me should return sanitized owner shell', async () => {
+			const ownerShell = await Db.collections.User!.findOneOrFail();
+			const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
 
-			const response = await authShellAgent.get('/me');
+			const response = await authOwnerShellAgent.get('/me');
 
 			expect(response.statusCode).toBe(200);
 
@@ -75,11 +75,11 @@ describe('/me endpoints', () => {
 		});
 
 		test('PATCH /me should succeed with valid inputs', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+			const ownerShell = await Db.collections.User!.findOneOrFail();
+			const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
 
 			for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
-				const response = await authShellAgent.patch('/me').send(validPayload);
+				const response = await authOwnerShellAgent.patch('/me').send(validPayload);
 
 				expect(response.statusCode).toBe(200);
 
@@ -113,25 +113,25 @@ describe('/me endpoints', () => {
 		});
 
 		test('PATCH /me should fail with invalid inputs', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+			const ownerShell = await Db.collections.User!.findOneOrFail();
+			const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
 
 			for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
-				const response = await authShellAgent.patch('/me').send(invalidPayload);
+				const response = await authOwnerShellAgent.patch('/me').send(invalidPayload);
 				expect(response.statusCode).toBe(400);
 			}
 		});
 
 		test('PATCH /me/password should succeed with valid inputs', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+			const ownerShell = await Db.collections.User!.findOneOrFail();
+			const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
 
 			const validPayloads = Array.from({ length: 3 }, () => ({
 				password: randomValidPassword(),
 			}));
 
 			for (const validPayload of validPayloads) {
-				const response = await authShellAgent.patch('/me/password').send(validPayload);
+				const response = await authOwnerShellAgent.patch('/me/password').send(validPayload);
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
@@ -141,8 +141,8 @@ describe('/me endpoints', () => {
 		});
 
 		test('PATCH /me/password should fail with invalid inputs', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+			const ownerShell = await Db.collections.User!.findOneOrFail();
+			const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
 
 			const invalidPayloads = [
 				...Array.from({ length: 3 }, () => ({ password: randomInvalidPassword() })),
@@ -152,19 +152,19 @@ describe('/me endpoints', () => {
 			];
 
 			for (const invalidPayload of invalidPayloads) {
-				const response = await authShellAgent.patch('/me/password').send(invalidPayload);
+				const response = await authOwnerShellAgent.patch('/me/password').send(invalidPayload);
 				expect(response.statusCode).toBe(400);
 			}
 		});
 
 		test('POST /me/survey should succeed with valid inputs', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+			const ownerShell = await Db.collections.User!.findOneOrFail();
+			const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
 
 			const validPayloads = [SURVEY, {}];
 
 			for (const validPayload of validPayloads) {
-				const response = await authShellAgent.post('/me/survey').send(validPayload);
+				const response = await authOwnerShellAgent.post('/me/survey').send(validPayload);
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 			}
