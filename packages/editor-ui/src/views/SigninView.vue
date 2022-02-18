@@ -75,6 +75,7 @@ export default mixins(
 				}
 
 				this.$router.push({ name: 'NodeViewNew' });
+				this.clearAllStickyNotifications();
 			} catch (error) {
 				this.$showError(error, 'Problem logging in');
 				this.loading = false;

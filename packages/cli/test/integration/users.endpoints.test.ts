@@ -460,7 +460,8 @@ test('POST /users should email invites and create user shells', async () => {
 	expect(response.statusCode).toBe(200);
 
 	for (const {
-		user: { id, email: receivedEmail, error },
+		user: { id, email: receivedEmail },
+		error,
 	} of response.body.data) {
 		expect(validator.isUUID(id)).toBe(true);
 		expect(TEST_EMAILS_TO_CREATE_USER_SHELLS.some((e) => e === receivedEmail)).toBe(true);

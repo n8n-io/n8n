@@ -974,7 +974,7 @@ class App {
 					}
 				}
 
-				if (Object.keys(updateData).length > 1 || updateData.active === undefined) {
+				if (updateData.name) {
 					updateData.updatedAt = this.getCurrentDate(); // required due to atomic update
 					await validateEntity(updateData);
 				}

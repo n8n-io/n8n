@@ -52,6 +52,13 @@ const router = new Router({
 			redirect: '/workflow',
 		},
 		{
+			path: '/workflows/demo',
+			name: 'WorkflowDemo',
+			components: {
+				default: NodeView,
+			},
+		},
+		{
 			path: '/workflows/templates/:id',
 			name: 'WorkflowTemplate',
 			components: {
