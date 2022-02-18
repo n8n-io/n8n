@@ -34,10 +34,10 @@ describe('/owner endpoints', () => {
 		});
 
 		test('POST /owner should create owner and enable hasOwner setting', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+			const owner = await Db.collections.User!.findOneOrFail();
+			const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-			const response = await authShellAgent.post('/owner').send(TEST_USER);
+			const response = await authOwnerAgent.post('/owner').send(TEST_USER);
 
 			expect(response.statusCode).toBe(200);
 
@@ -62,8 +62,8 @@ describe('/owner endpoints', () => {
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
 
-			const owner = await Db.collections.User!.findOneOrFail(id);
-			expect(owner.password).not.toBe(TEST_USER.password);
+			const storedOwner = await Db.collections.User!.findOneOrFail(id);
+			expect(storedOwner.password).not.toBe(TEST_USER.password);
 
 			const hasOwnerConfig = config.get('userManagement.hasOwner');
 			expect(hasOwnerConfig).toBe(true);
@@ -73,11 +73,11 @@ describe('/owner endpoints', () => {
 		});
 
 		test('POST /owner should fail with invalid inputs', async () => {
-			const shell = await Db.collections.User!.findOneOrFail();
-			const authShellAgent = await utils.createAgent(app, { auth: true, user: shell });
+			const owner = await Db.collections.User!.findOneOrFail();
+			const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
 			for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
-				const response = await authShellAgent.post('/owner').send(invalidPayload);
+				const response = await authOwnerAgent.post('/owner').send(invalidPayload);
 				expect(response.statusCode).toBe(400);
 			}
 		});
