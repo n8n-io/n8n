@@ -76,6 +76,7 @@ export default mixins(genericHelpers).extend({
 				const width = list.clientWidth;
 				const collectionsWidth = collections.length * (this.carouselWidth + collections.length * 2);
 				this.scrollEnd = collectionsWidth < width;
+				list.addEventListener('scroll', this.handleCarouselScroll);
 			}
 		},
 	},
