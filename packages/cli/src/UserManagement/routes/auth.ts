@@ -55,11 +55,12 @@ export function authenticationMethods(this: N8nApp): void {
 		}),
 	);
 
+	/**
+	 * Manually check the existing cookie.
+	 */
 	this.app.get(
 		`/${this.restEndpoint}/login`,
 		ResponseHelper.send(async (req: Request, res: Response): Promise<PublicUser> => {
-			// Manually check the existing cookie.
-
 			const cookieContents = req.cookies?.['n8n-auth'] as string | undefined;
 
 			if (!cookieContents) {
