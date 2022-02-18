@@ -131,8 +131,8 @@ export default mixins(genericHelpers).extend({
 			return {
 				search_string: this.search,
 				results_count: results.workflows.length,
-				categories_applied: this.categories,
-				wf_template_repo_session_id: 0, // todo
+				categories_applied: this.categories, // todo get categories object
+				wf_template_repo_session_id: 0, // todo get session id as prop
 			};
 		},
 		navigateTo(id: string, page: string, e: PointerEvent) {
