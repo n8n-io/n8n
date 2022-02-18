@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<div :class="$style.header">
+		<div v-if="collections.length || loading" :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.collections') }}
 				<span v-if="!loading" v-text="`(${collections.length})`" />
@@ -40,10 +40,6 @@
 					<font-awesome-icon icon="chevron-right" />
 				</button>
 			</div>
-		</div>
-
-		<div v-else :class="$style.text">
-			<n8n-text color="text-base">{{ $locale.baseText('templates.collectionNotFound') }}</n8n-text>
 		</div>
 	</div>
 </template>

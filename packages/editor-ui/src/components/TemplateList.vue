@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.list">
-		<div :class="$style.header">
+		<div v-if="workflows.length || loading" :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.workflows') }}
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
@@ -83,9 +83,6 @@
 					<span v-html="$locale.baseText('templates.endResult')" />
 				</n8n-text>
 			</div>
-		</div>
-		<div v-else>
-			<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 		</div>
 	</div>
 </template>
