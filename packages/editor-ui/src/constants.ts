@@ -116,17 +116,49 @@ export const EXECUTIVE_WORK_AREA = 'executive';
 export const OTHER_WORK_AREA_OPTION = 'other';
 export const NOT_APPLICABLE_WORK_AREA = 'n/a';
 
+export const COMPANY_TYPE_KEY = 'companyType';
+export const SAAS_COMPANY_TYPE = 'saas';
+export const ECOMMERCE_COMPANY_TYPE = 'ecommerce';
+export const MSP_COMPANY_TYPE = 'msp';
+export const DIGITAL_AGENCY_COMPANY_TYPE = 'digital-agency';
+export const AUTOMATION_AGENCY_COMPANY_TYPE = 'automation-agency';
+export const SYSTEMS_INTEGRATOR_COMPANY_TYPE = 'systems-integrator';
+export const OTHER_COMPANY_TYPE = 'other';
+export const PERSONAL_COMPANY_TYPE = 'personal';
+
+export const CUSTOMER_TYPE_KEY = 'customerType';
+export const INDIVIDUAL_CUSTOMER_TYPE = 'individual';
+export const SMALL_CUSTOMER_TYPE = 'small';
+export const MEDIUM_CUSTOMER_TYPE = 'medium';
+export const LARGE_CUSTOMER_TYPE = 'large';
+
+export const MSP_FOCUS_KEY = 'mspFocus';
+export const CLOUD_INFRA_FOCUS = 'cloud-infra';
+export const IT_SUPPORT_FOCUS = 'it-support';
+export const NETWORKING_COMMUNICATION_FOCUS = 'networking-communication';
+export const SECURITY_FOCUS = 'security';
+export const OTHER_FOCUS = 'other';
+
+export const MSP_FOCUS_OTHER_KEY = 'mspFocusOther';
+
 export const COMPANY_INDUSTRY_KEY = 'companyIndustry';
-export const E_COMMERCE_INDUSTRY = 'e-commerce';
+export const EDUCATION_INDUSTRY = 'education';
 export const AUTOMATION_CONSULTING_INDUSTRY = 'automation-consulting';
+export const PHYSICAL_RETAIL_OR_SERVICES = 'physical-retail-or-services';
+export const REAL_ESTATE_OR_CONSTRUCTION = 'real-estate-or-construction';
 export const SYSTEM_INTEGRATION_INDUSTRY = 'systems-integration';
 export const GOVERNMENT_INDUSTRY = 'government';
 export const LEGAL_INDUSTRY = 'legal-industry';
+export const MARKETING_INDUSTRY = 'marketing-industry';
+export const MEDIA_INDUSTRY = 'media-industry';
+export const MANUFACTURING_INDUSTRY = 'manufacturing-industry';
 export const HEALTHCARE_INDUSTRY= 'healthcare';
-export const FINANCE_INDUSTRY = 'finance-industry';
+export const FINANCE_INSURANCE_INDUSTRY = 'finance-insurance-industry';
+export const IT_INDUSTRY = 'it-industry';
 export const SECURITY_INDUSTRY = 'security-industry';
 export const SAAS_INDUSTRY = 'saas';
-export const OTHER_INDUSTRY_OPTION= 'other';
+export const TELECOMS_INDUSTRY = 'telecoms';
+export const OTHER_INDUSTRY_OPTION = 'other';
 
 export const COMPANY_SIZE_KEY = 'companySize';
 export const COMPANY_SIZE_20_OR_LESS = '<20';
@@ -139,6 +171,19 @@ export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
 export const CODING_SKILL_KEY = 'codingSkill';
 export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
 export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
+
+export const AUTOMATION_GOAL_KEY = 'automationGoalKey';
+export const AUTOMATION_GOAL_OTHER_KEY = 'automationGoalOtherKey';
+export const CUSTOMER_INTEGRATIONS_GOAL = 'customer-integrations';
+export const CUSTOMER_SUPPORT_GOAL = 'customer-support';
+export const FINANCE_ACCOUNTING_GOAL = 'finance-accounting';
+export const HR_GOAL = 'hr';
+export const OPERATIONS_GOAL = 'operations';
+export const PRODUCT_GOAL = 'product';
+export const SALES_MARKETING_GOAL = 'sales-marketing';
+export const SECURITY_GOAL = 'security';
+export const OTHER_AUTOMATION_GOAL = 'other';
+export const NOT_SURE_YET_GOAL = 'not-sure-yet';
 
 export const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';

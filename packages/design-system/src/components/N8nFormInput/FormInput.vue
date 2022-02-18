@@ -3,8 +3,10 @@
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot"></slot>
 			<n8n-select
-				v-else-if="type === 'select'"
+				v-else-if="type === 'select' || type === 'multi-select'"
 				:value="value"
+				:placeholder="placeholder"
+				:multi="type === 'multi-select'"
 			>
 				<n8n-option
 					v-for="option in (options || [])"

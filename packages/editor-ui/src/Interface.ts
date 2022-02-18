@@ -818,8 +818,8 @@ export type IFormInput = {
 	name: string;
 	initialValue?: string | number | boolean | null;
 	properties: {
-		label: string;
-		type?: "text" | "email" | "password" | 'select';
+		label?: string;
+		type?: "text" | "email" | "password" | 'select' | 'multi-select';
 		maxlength?: number;
 		required?: boolean;
 		showRequiredAsterisk?: boolean;
