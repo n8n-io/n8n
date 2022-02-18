@@ -3,6 +3,7 @@ import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
 import {
+	IInviteResponse,
 	IPermissions,
 	IPersonalizationSurveyAnswers,
 	IRootState,
@@ -182,9 +183,9 @@ const module: Module<IUsersState, IRootState> = {
 			const users = await getUsers(context.rootGetters.getRestApiContext);
 			context.commit('addUsers', users);
 		},
-		async inviteUsers(context: ActionContext<IUsersState, IRootState>, params: Array<{email: string}>): Promise<Array<Partial<IUserResponse>>> {
+		async inviteUsers(context: ActionContext<IUsersState, IRootState>, params: Array<{email: string}>): Promise<IInviteResponse[]> {
 			const users = await inviteUsers(context.rootGetters.getRestApiContext, params);
-			context.commit('addUsers', users);
+			context.commit('addUsers', users.map(({user}) => user));
 			return users;
 		},
 		async reinviteUser(context: ActionContext<IUsersState, IRootState>, params: {id: string}) {
