@@ -104,7 +104,7 @@ const module: Module<ITemplateState, IRootState> = {
 				return;
 			}
 		},
-		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { numberOfResults = 10, search , category, skip = 0, fetchCategories = false }) {
+		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { numberOfResults = 10, search , category, skip = 0, fetchCategories = false }): Promise<IN8nSearchData | null> {
 			const searchQuery = search.length || category ? true : false;
 			const allData = fetchCategories ? fetchCategories : !searchQuery;
 			try {
@@ -128,7 +128,7 @@ const module: Module<ITemplateState, IRootState> = {
 				}
 				return results;
 			} catch(e) {
-				return;
+				return null;
 			}
 		},
 		async setTemplateSessionId(context: ActionContext<ITemplateState, IRootState>, sessionId: number) {

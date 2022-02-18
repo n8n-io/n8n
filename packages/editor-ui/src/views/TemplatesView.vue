@@ -65,6 +65,9 @@ import TemplateList from '@/components/TemplateList.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { abbreviateNumber } from '@/components/helpers';
 import mixins from 'vue-typed-mixins';
+import { IN8nSearchData } from '@/Interface';
+
+const TEMPLATES_PAGE_SIZE = 10;
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplatesView',
@@ -101,7 +104,6 @@ export default mixins(genericHelpers).extend({
 			categories: [] as number[],
 			loading: true,
 			loadingCategories: true,
-			numberOfResults: 10,
 			search: '',
 		};
 	},
@@ -114,13 +116,13 @@ export default mixins(genericHelpers).extend({
 
 			this.updateQueryParam(search, category.join(','));
 
-			const response = await this.$store.dispatch('templates/getSearchResults', {
+			const response: IN8nSearchData | null = await this.$store.dispatch('templates/getSearchResults', {
 				search,
 				category,
 			});
 
-			if (search) {
-				const templateEvent = await this.generateTemplateEvent();
+			if (response && search) {
+				const templateEvent = await this.generateTemplateEvent(response);
 				this.$telemetry.track('User searched workflow templates', templateEvent);
 			}
 
@@ -128,14 +130,14 @@ export default mixins(genericHelpers).extend({
 				this.loading = false;
 			}
 		},
-		async generateTemplateEvent() {
+		async generateTemplateEvent(results: IN8nSearchData) {
 			if (!this.templateSessionId) {
 				await this.$store.dispatch('templates/setTemplateSessionId', new Date().valueOf());
 			}
 
 			return {
 				search_string: this.search,
-				results_counts: this.numberOfResults,
+				results_count: results.workflows.length,
 				categories_applied: this.categories,
 				wf_template_repo_session_id: this.templateSessionId,
 			};
@@ -202,15 +204,15 @@ export default mixins(genericHelpers).extend({
 
 		const category = this.categories.length ? this.categories : null;
 
-		await this.$store.dispatch('templates/getSearchResults', {
-			numberOfResults: this.numberOfResults,
+		const results: IN8nSearchData | null = await this.$store.dispatch('templates/getSearchResults', {
+			numberOfResults: TEMPLATES_PAGE_SIZE,
 			search: this.search,
 			category,
 			fetchCategories: true,
 		});
 
-		if (this.search) {
-			const templateEvent = await this.generateTemplateEvent();
+		if (results && this.search) {
+			const templateEvent = await this.generateTemplateEvent(results);
 			this.$telemetry.track('User searched workflow templates', templateEvent);
 		}
 
