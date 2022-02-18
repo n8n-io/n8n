@@ -36,6 +36,15 @@
 			</span>
 			{{ $locale.baseText('executionDetails.workflow') }}
 		</span>
+		<span
+			class="retry-exec-button"
+			v-if="!executionFinished && !executionWaiting && !successfulRetry">
+			<n8n-button
+				:label="isRetrying ? 'Retrying' : 'Retry'"
+				:loading="isRetrying"
+				@click="retryExecution(executionId)"
+			/>
+		</span>
 		<ReadOnly class="read-only" />
 	</div>
 </template>
@@ -45,20 +54,36 @@ import mixins from "vue-typed-mixins";
 
 import { IExecutionResponse } from "../../../Interface";
 
+import { restApi } from '@/components/mixins/restApi';
+import { showMessage } from '@/components/mixins/showMessage';
+
 import { titleChange } from "@/components/mixins/titleChange";
 
 import WorkflowNameShort from "@/components/WorkflowNameShort.vue";
 import ReadOnly from "@/components/MainHeader/ExecutionDetails/ReadOnly.vue";
 
-export default mixins(titleChange).extend({
+export default mixins(
+	titleChange,
+	restApi,
+	showMessage,
+).extend({
 	name: "ExecutionDetails",
 	components: {
 		WorkflowNameShort,
 		ReadOnly,
 	},
+	data () {
+		return {
+			isRetrying: false,
+		};
+	},
 	computed: {
 		executionId(): string | undefined {
 			return this.$route.params.id;
+		},
+		successfulRetry(): boolean {
+			const fullExecution = this.$store.getters.getWorkflowExecution;
+			return !!fullExecution && !!fullExecution.retrySuccessId;
 		},
 		executionFinished(): boolean {
 			const fullExecution = this.$store.getters.getWorkflowExecution;
@@ -86,6 +111,29 @@ export default mixins(titleChange).extend({
 				params: { name: workflowId },
 			});
 		},
+		async retryExecution (executionId: string) {
+			this.isRetrying = true;
+			try {
+				const retrySuccessful = await this.restApi().retryExecution(executionId, true);
+				if (retrySuccessful === true) {
+					this.$showMessage({
+						title: 'Retry successful',
+						message: 'The retry was successful!',
+						type: 'success',
+					});
+				} else {
+					this.$showMessage({
+						title: 'Retry unsuccessful',
+						message: 'The retry was not successful!',
+						type: 'error',
+					});
+				}
+				this.isRetrying = false;
+			} catch (error) {
+				this.$showError(error, 'Problem with retry', 'There was a problem with the retry:');
+				this.isRetrying = false;
+			}
+		},
 	},
 });
 </script>
@@ -107,6 +155,10 @@ export default mixins(titleChange).extend({
 .container {
 	width: 100%;
 	display: flex;
+}
+
+.retry-exec-button {
+	margin-right: 30px;
 }
 
 .title {
