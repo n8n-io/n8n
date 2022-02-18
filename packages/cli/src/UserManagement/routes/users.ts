@@ -112,7 +112,9 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			Logger.info('Created user shells successfully', { userId: req.user.id });
-			Logger.verbose('User shells created', { userShells: createUsers });
+			Logger.verbose(total > 1 ? `${total} user shells created` : `1 user shell created`, {
+				userShells: createUsers,
+			});
 
 			const baseUrl = getInstanceBaseUrl();
 
