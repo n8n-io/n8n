@@ -318,7 +318,7 @@ export default mixins(genericHelpers).extend({
 	justify-content: center;
 	align-items: center;
 	background: var(--color-background-light);
-	border: $--version-card-border;
+	border: 1px var(--color-foreground-base) solid;
 	border-radius: var(--border-radius-base);
 	font-size: 10px;
 	font-weight: var(--font-weight-bold);
