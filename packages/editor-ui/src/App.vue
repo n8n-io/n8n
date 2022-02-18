@@ -27,6 +27,11 @@ export default mixins(showMessage).extend({
 		Modals,
 		Telemetry,
 	},
+	computed: {
+		isTemplatesEnabled() {
+			return this.$store.getters['settings/isTemplatesEnabled'];
+		},
+	},
 	data() {
 		return {
 			loading: true,
@@ -51,6 +56,13 @@ export default mixins(showMessage).extend({
 	},
 	async mounted() {
 		await this.initialize();
+
+		if (this.isTemplatesEnabled && this.$route.path === '/') {
+			this.$router.replace({ name: 'TemplatesView'});
+		} else if (this.$route.path === '/') {
+			this.$router.replace({ name: 'NodeViewNew'});
+		}
+
 		this.$store.commit('ui/setCurrentPage', this.$route.name);
 		this.$telemetry.page('Editor', this.$route.name);
 	},

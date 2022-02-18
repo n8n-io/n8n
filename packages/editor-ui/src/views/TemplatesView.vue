@@ -11,9 +11,9 @@
 					<div :class="$style.button">
 						<n8n-button
 							size="small"
-							type="outline"
+							type="primary"
 							:label="$locale.baseText('templates.newButton')"
-							:transparentBackground="true"
+							:transparentBackground="false"
 							@click="openNewWorkflow"
 						/>
 					</div>
@@ -43,13 +43,18 @@
 						<TemplateList
 							:abbreviate-number="abbreviateNumber"
 							:categories="categories"
-							:infinity-scroll="true"
+							:infinite-scroll-enabled="true"
 							:loading="loading"
 							:navigate-to="navigateTo"
 							:search="search"
 							:total-workflows="totalWorkflows"
 							:workflows="workflows"
 						/>
+						<div v-if="!workflows.length && !collections.length">
+							<n8n-text color="text-base">{{
+								$locale.baseText('templates.noSearchResults')
+							}}</n8n-text>
+						</div>
 					</div>
 				</div>
 			</div>

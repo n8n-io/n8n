@@ -10,6 +10,7 @@ import {
 	faArrowRight,
 	faAt,
 	faBook,
+	faBoxOpen,
 	faBug,
 	faCalendar,
 	faCheck,
@@ -67,7 +68,6 @@ import {
 	faRedo,
 	faRss,
 	faSave,
-	faShapes,
 	faSearch,
 	faSearchMinus,
 	faSearchPlus,
@@ -102,6 +102,7 @@ addIcon(faArrowLeft);
 addIcon(faArrowRight);
 addIcon(faAt);
 addIcon(faBook);
+addIcon(faBoxOpen);
 addIcon(faBug);
 addIcon(faCalendar);
 addIcon(faCheck);
@@ -162,7 +163,6 @@ addIcon(faSave);
 addIcon(faSearch);
 addIcon(faSearchMinus);
 addIcon(faSearchPlus);
-addIcon(faShapes);
 addIcon(faServer);
 addIcon(faSignInAlt);
 addIcon(faSlidersH);

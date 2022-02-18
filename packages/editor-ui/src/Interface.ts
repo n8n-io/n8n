@@ -651,6 +651,7 @@ export interface ITemplateNode {
 	};
 	name: string;
 	typeVersion: number;
+	categories: ITemplateCategories[];
 }
 
 export interface ITimeoutHMS {

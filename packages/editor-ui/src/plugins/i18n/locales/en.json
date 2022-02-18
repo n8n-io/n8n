@@ -847,6 +847,7 @@
 		},
 		"details": {
 			"appsInTheWorkflow": "Apps in this workflow",
+			"appsInTheCollection": "This collection features",
 			"by": "by",
 			"categories": "Categories",
 			"created": "Created",
@@ -859,12 +860,12 @@
 		"categoriesHeading": "Categories",
 		"collection": "Collection",
 		"collections": "Collections",
-		"collectionNotFound": "No collections found. Try adjusting your search to see more.",
-		"endResult": "End of results",
+		"endResult": "Share your own useful workflows <a href='https://n8n.io/dashboard' target='_blank'>here</a> through your n8n.io account",
 		"heading": "Workflow templates",
 		"newButton": "New blank workflow",
+		"noSearchResults": "Nothing found. Try adjusting your search to see more.",
 		"searchPlaceholder": "Search workflows",
-		"workflowsNotFound": "No workflows found. Try adjusting your search to see more.",
+		"workflow": "Workflow",
 		"workflows": "Workflows"
 	},
 	"textEdit": {

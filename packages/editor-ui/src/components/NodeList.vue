@@ -5,11 +5,7 @@
 			:class="$style.container"
 			:key="node.name"
 		>
-			<TemplateNodeIcon
-				:nodeType="node"
-				:size="nodeSize"
-				:title="node.name"
-			/>
+			<TemplateNodeIcon :nodeType="node" :size="nodeSize" :title="node.name" />
 		</div>
 		<div :class="$style.button" v-if="filteredCoreNodes.length > nodesToBeShown + 1">
 			+{{ filteredCoreNodes.length - countNodesToBeSliced(filteredCoreNodes) }}
@@ -21,24 +17,10 @@
 import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplateCategories } from '@/Interface';
-
-interface INode {
-	displayName: string;
-	defaults: {
-		color: string;
-	};
-	categories: ITemplateCategories[];
-	icon: string;
-	iconData?: {
-		fileBuffer?: string;
-		type?: string;
-	};
-	name: string;
-	typeVersion: number;
-}
+import { ITemplateNode } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
+import { filterTemplateNodes } from './helpers';
 
 export default mixins(genericHelpers).extend({
 	name: 'NodeList',
@@ -61,16 +43,7 @@ export default mixins(genericHelpers).extend({
 	},
 	computed: {
 		filteredCoreNodes() {
-			return this.nodes.filter((elem) => {
-				const node = elem as INode;
-				if (node.categories) {
-					return node.categories.some((category: ITemplateCategories) => {
-						return category.name !== 'Core Nodes';
-					});
-				} else {
-					return node;
-				}
-			});
+			return filterTemplateNodes(this.nodes as ITemplateNode[]);
 		},
 	},
 	methods: {
@@ -86,44 +59,44 @@ export default mixins(genericHelpers).extend({
 </script>
 
 <style lang="scss" module>
-  .list {
-  	max-width: 100px;
-  	height: 20px;
-  	display: flex;
-  	flex-direction: row;
-  	justify-content: flex-end;
-  	align-items: center;
+.list {
+	max-width: 100px;
+	height: 20px;
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-end;
+	align-items: center;
 
-  	.container {
-  		width: 18px;
-  		height: 18px;
-  		margin-left: var(--spacing-2xs);
-  		position: relative;
-  		display: block;
+	.container {
+		width: 18px;
+		height: 18px;
+		margin-left: var(--spacing-2xs);
+		position: relative;
+		display: block;
 
-  		.image {
-  			width: 18px;
-  			height: 18px;
-  			display: block;
-  		}
-  	}
+		.image {
+			width: 18px;
+			height: 18px;
+			display: block;
+		}
+	}
 
-  	.button {
-  		width: 20px;
-  		min-width: 20px;
-  		height: 20px;
-  		margin-left: var(--spacing-2xs);
-  		top: 0px;
-  		position: relative;
-  		display: flex;
-  		justify-content: center;
-  		align-items: center;
-  		background: var(--color-background-light);
-  		border: $--version-card-border;
-  		border-radius: var(--border-radius-base);
-  		font-size: 10px;
-  		font-weight: var(--font-weight-bold);
-  		color: var(--color-text-base);
-  	}
-  }
+	.button {
+		width: 20px;
+		min-width: 20px;
+		height: 20px;
+		margin-left: var(--spacing-2xs);
+		top: 0px;
+		position: relative;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		background: var(--color-background-light);
+		border: 1px var(--color-foreground-base) solid;
+		border-radius: var(--border-radius-base);
+		font-size: 10px;
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text-base);
+	}
+}
 </style>

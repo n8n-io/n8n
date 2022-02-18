@@ -32,7 +32,7 @@
 					</n8n-menu-item>
 					<n8n-menu-item v-if="isTemplatesEnabled" index="template-new">
 						<template slot="title">
-							<font-awesome-icon icon="shapes"/>&nbsp;
+							<font-awesome-icon icon="box-open"/>&nbsp;
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
 						</template>
 					</n8n-menu-item>
@@ -87,7 +87,7 @@
 				</el-submenu>
 
 				<n8n-menu-item v-if="isTemplatesEnabled" index="templates">
-					<font-awesome-icon icon="shapes"/>&nbsp;
+					<font-awesome-icon icon="box-open"/>&nbsp;
 					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
 				</n8n-menu-item>
 
@@ -560,6 +560,7 @@ export default mixins(
 <style lang="scss">
 .sidebar-popper{
 	.el-menu-item {
+		padding-left: 30px!important;
 		font-size: 0.9em;
 		height: 35px;
 		line-height: 35px;

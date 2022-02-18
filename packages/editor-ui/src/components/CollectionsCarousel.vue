@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<div :class="$style.header">
+		<div v-if="collections.length || loading" :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.collections') }}
 				<span v-if="!loading" v-text="`(${collections.length})`" />
@@ -41,10 +41,6 @@
 				</button>
 			</div>
 		</div>
-
-		<div v-else :class="$style.text">
-			<n8n-text color="text-base">{{ $locale.baseText('templates.collectionNotFound') }}</n8n-text>
-		</div>
 	</div>
 </template>
 
@@ -76,6 +72,7 @@ export default mixins(genericHelpers).extend({
 				const width = list.clientWidth;
 				const collectionsWidth = collections.length * (this.carouselWidth + collections.length * 2);
 				this.scrollEnd = collectionsWidth < width;
+				list.addEventListener('scroll', this.handleCarouselScroll);
 			}
 		},
 	},
@@ -101,7 +98,7 @@ export default mixins(genericHelpers).extend({
 				const scrollWidth = list.scrollWidth;
 				const scrollLeft = this.carouselScrollPosition;
 
-				if (scrollWidth - width <= scrollLeft + 10) {
+				if (scrollWidth - width <= scrollLeft + 7) {
 					this.scrollEnd = true;
 				} else {
 					this.scrollEnd = false;
@@ -166,17 +163,16 @@ export default mixins(genericHelpers).extend({
 	background-color: #fbfcfe;
 	opacity: 1;
 	cursor: pointer;
-	z-index: 2;
 
 	&:nth-child(1) {
-		left: var(--spacing-2xs);
+		left: -30px;
 
 		&:after {
 			content: '';
 			width: 40px;
 			height: 140px;
 			top: -54px;
-			left: -23px;
+			left: 27px;
 			position: absolute;
 			position: absolute;
 			background: linear-gradient(270deg, rgba(255, 255, 255, 0.25) 0%, rgba(248, 249, 251, 1) 86%);
@@ -185,15 +181,14 @@ export default mixins(genericHelpers).extend({
 	}
 
 	&:nth-child(2) {
-		right: var(--spacing-2xs);
+		right: -30px;
 
 		&:after {
 			content: '';
 			width: 40px;
 			height: 140px;
 			top: -54px;
-			right: -23px;
-			position: absolute;
+			right: 27px;
 			position: absolute;
 			background: linear-gradient(
 				270deg,

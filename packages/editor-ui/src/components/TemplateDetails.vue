@@ -4,7 +4,7 @@
 
 		<template-block
 			v-if="!loading && template.nodes.length > 0"
-			:title="$locale.baseText('template.details.appsInTheWorkflow')"
+			:title="blockTitle"
 		>
 			<template v-slot:content>
 				<div :class="$style.icons">
@@ -61,8 +61,8 @@ import Vue from 'vue';
 import TemplateBlock from '@/components/TemplateBlock.vue';
 import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
 
-import { abbreviateNumber } from '@/components/helpers';
-import { ITemplateCategories } from '@/Interface';
+import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
+import { ITemplateCategories, ITemplateNode } from '@/Interface';
 
 interface INode {
 	displayName: string;
@@ -91,6 +91,9 @@ interface INode {
 export default Vue.extend({
 	name: 'TemplateDetails',
 	props: {
+		blockTitle: {
+			type: String,
+		},
 		loading: {
 			type: Boolean,
 		},
@@ -104,17 +107,8 @@ export default Vue.extend({
 	},
 	methods: {
 		abbreviateNumber,
-		filterCoreNodes(nodes: []) {
-			return nodes.filter((elem) => {
-				const node = elem as INode;
-				if (node.categories) {
-					return node.categories.some((category: ITemplateCategories) => {
-						return category.name !== 'Core Nodes';
-					});
-				} else {
-					return node;
-				}
-			});
+		filterCoreNodes(nodes: ITemplateNode[]) {
+			return filterTemplateNodes(nodes);
 		},
 		redirectToCategory(tag: ITag) {
 			this.$router.push(`/templates?categories=${tag.id}`);

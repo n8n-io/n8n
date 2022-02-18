@@ -114,7 +114,7 @@ export default mixins(showMessage).extend({
 <style lang="scss" module>
 .workflow {
 	width: 100%;
-	height: 607px;
+	height: 500px;
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
 }

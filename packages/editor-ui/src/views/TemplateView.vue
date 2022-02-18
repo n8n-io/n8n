@@ -6,6 +6,9 @@
 				<div :class="$style.wrapper">
 					<div :class="$style.title">
 						<n8n-heading v-if="!loading" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
+						<n8n-text v-if="!loading" color="text-base" size="small">
+							{{ $locale.baseText('templates.workflow') }}
+						</n8n-text>
 						<n8n-loading :animated="true" :loading="loading" :rows="2" variant="h1" />
 					</div>
 					<div :class="$style.button">
@@ -21,7 +24,12 @@
 			</div>
 			<div>
 				<div :class="$style.image">
-					<workflow-preview v-if="showPreview" :workflow="template.workflow" @close="onHidePreview" :loading="loading"/>
+					<WorkflowPreview
+						v-if="showPreview"
+						:workflow="template.workflow"
+						@close="onHidePreview"
+						:loading="loading"
+					/>
 				</div>
 				<div :class="$style.content">
 					<div :class="$style.markdown">
@@ -32,7 +40,11 @@
 						/>
 					</div>
 					<div :class="$style.details">
-						<TemplateDetails :loading="loading" :template="template" />
+						<TemplateDetails
+							:block-title="$locale.baseText('template.details.appsInTheWorkflow')"
+							:loading="loading"
+							:template="template"
+						/>
 					</div>
 				</div>
 			</div>
@@ -96,15 +108,13 @@ export default mixins(workflowHelpers).extend({
 			this.showPreview = false;
 		},
 		scrollToTop() {
-			setTimeout(() => {
-				window.scrollTo({
-					top: 0,
-					behavior: 'smooth',
-				});
-			}, 50);
+			window.scrollTo({
+				top: 0,
+			});
 		},
 	},
 	async mounted() {
+		this.scrollToTop();
 		if (!this.isTemplatesEnabled) {
 			this.$router.replace({ name: 'NodeViewNew' });
 		}
@@ -119,7 +129,6 @@ export default mixins(workflowHelpers).extend({
 			});
 		}
 		this.loading = false;
-		this.scrollToTop();
 	},
 });
 </script>
@@ -191,7 +200,7 @@ export default mixins(workflowHelpers).extend({
 }
 
 .markdown {
-	width: 100%;
+	width: calc(100% - 180px);
 	padding-right: var(--spacing-2xl);
 }
 
