@@ -500,12 +500,12 @@ export const workflowHelpers = mixins(
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
-				} catch (e) {
+				} catch (error) {
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
-						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `"${e.message}"`,
+						message: error.message,
 						type: 'error',
 					});
 
