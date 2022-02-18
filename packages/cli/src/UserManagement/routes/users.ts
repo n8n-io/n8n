@@ -183,7 +183,7 @@ export function usersNamespace(this: N8nApp): void {
 			const inviter = users.find((user) => user.id === inviterId);
 
 			if (!inviter || !inviter.email || !inviter.firstName) {
-				Logger.error('Missing inviter or inviter email or inviter firstName', {
+				Logger.error("Inviter doesn't exist or is not set up", {
 					inviterId: inviter?.id,
 				});
 				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
