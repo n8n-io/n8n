@@ -119,8 +119,10 @@ export default mixins(genericHelpers).extend({
 				category,
 			});
 
-			const templateEvent = await this.generateTemplateEvent();
-			this.$telemetry.track('User searched workflow templates', templateEvent);
+			if (search) {
+				const templateEvent = await this.generateTemplateEvent();
+				this.$telemetry.track('User searched workflow templates', templateEvent);
+			}
 
 			if (response) {
 				this.loading = false;
@@ -207,8 +209,10 @@ export default mixins(genericHelpers).extend({
 			fetchCategories: true,
 		});
 
-		const templateEvent = await this.generateTemplateEvent();
-		this.$telemetry.track('User searched workflow templates', templateEvent);
+		if (this.search) {
+			const templateEvent = await this.generateTemplateEvent();
+			this.$telemetry.track('User searched workflow templates', templateEvent);
+		}
 
 		this.loadingCategories = false;
 		this.loading = false;

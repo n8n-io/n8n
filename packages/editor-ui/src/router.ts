@@ -22,6 +22,13 @@ export default new Router({
 				default: CollectionView,
 				sidebar: MainSidebar,
 			},
+			meta: {
+				telemetry: {
+					params: {
+						id: 'collection_id',
+					},
+				},
+			},
 		},
 		{
 			path: '/execution/:id',
@@ -38,6 +45,13 @@ export default new Router({
 			components: {
 				default: TemplateView,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				telemetry: {
+					params: {
+						id: 'template_id',
+					},
+				},
 			},
 		},
 		{

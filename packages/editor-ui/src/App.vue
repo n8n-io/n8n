@@ -52,12 +52,12 @@ export default mixins(showMessage).extend({
 	async mounted() {
 		await this.initialize();
 		this.$store.commit('ui/setCurrentPage', this.$route.name);
-		this.$telemetry.page('Editor', this.$route.name);
+		this.$telemetry.page('Editor', this.$route);
 	},
 	watch: {
 		'$route'(route) {
 			this.$store.commit('ui/setCurrentPage', this.$route.name);
-			this.$telemetry.page('Editor', route.name);
+			this.$telemetry.page('Editor', route);
 		},
 	},
 });
