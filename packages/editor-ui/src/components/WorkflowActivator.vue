@@ -125,9 +125,8 @@ export default mixins(
 						const newStateName = newActiveState === true ? 'activated' : 'deactivated';
 						this.$showError(
 							error,
-							this.$locale.baseText('workflowActivator.showError.title'),
 							this.$locale.baseText(
-								'workflowActivator.showError.message',
+								'workflowActivator.showError.title',
 								{ interpolate: { newStateName } },
 							) + ':',
 						);

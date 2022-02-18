@@ -205,7 +205,6 @@ export default mixins(
 						this.$showError(
 							error,
 							this.$locale.baseText('workflowOpen.showError.title'),
-							this.$locale.baseText('workflowOpen.showError.message') + ':',
 						);
 						this.isDataLoading = false;
 					},
