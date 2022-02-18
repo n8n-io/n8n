@@ -95,7 +95,8 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			if (!user) {
 				Logger.debug('User not found for user ID and reset password token', {
-					queryString: req.query,
+					userId: id,
+					resetPasswordToken,
 				});
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
@@ -125,8 +126,8 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			if (!user) {
 				Logger.debug('User not found for user ID and reset password token', {
-					userId: req.user.id,
-					queryString: req.query,
+					userId,
+					resetPasswordToken,
 				});
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
