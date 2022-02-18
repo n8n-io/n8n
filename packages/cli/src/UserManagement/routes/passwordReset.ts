@@ -64,13 +64,15 @@ export function passwordResetNamespace(this: N8nApp): void {
 			url.searchParams.append('userId', id);
 			url.searchParams.append('token', resetPasswordToken);
 
-			void UserManagementMailer.getInstance().passwordReset({
+			await UserManagementMailer.getInstance().passwordReset({
 				email,
 				firstName,
 				lastName,
 				passwordResetUrl: url.toString(),
 				domain: baseUrl,
 			});
+
+			Logger.info('Sent password reset email successfully', { userId: user.id, email });
 		}),
 	);
 
