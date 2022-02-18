@@ -413,6 +413,12 @@ describe('/me endpoints', () => {
 				expect(resetPasswordToken).toBeUndefined();
 				expect(globalRole.name).toBe('owner');
 				expect(globalRole.scope).toBe('global');
+
+				const storedOwner = await Db.collections.User!.findOneOrFail(id);
+
+				expect(storedOwner.email).toBe(validPayload.email);
+				expect(storedOwner.firstName).toBe(validPayload.firstName);
+				expect(storedOwner.lastName).toBe(validPayload.lastName);
 			}
 		});
 	});
