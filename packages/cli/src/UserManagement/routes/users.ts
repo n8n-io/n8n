@@ -208,7 +208,7 @@ export function usersNamespace(this: N8nApp): void {
 			const { inviterId, firstName, lastName, password } = req.body;
 
 			if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
-				Logger.debug('Missing property or properties in payload', { payload: req.body });
+				Logger.debug('Missing properties in payload', { payload: req.body });
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
