@@ -100,7 +100,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			Logger.info('Password token resolved successfully', { userId: id });
+			Logger.info('Reset-password token resolved successfully', { userId: id });
 		}),
 	);
 
