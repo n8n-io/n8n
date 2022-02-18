@@ -19,16 +19,25 @@ import {
 	eventDisplay,
 	eventNameField,
 } from './descriptions/OnfleetWebhookDescription';
-import { onfleetApiRequest } from './GenericFunctions';
-import { webhookMapping } from './WebhookMapping';
-import { OptionsWithUri } from 'request';
+
+import {
+	onfleetApiRequest,
+} from './GenericFunctions';
+
+import {
+	webhookMapping,
+} from './WebhookMapping';
+
+import {
+	OptionsWithUri,
+} from 'request';
 
 export class OnfleetTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Onfleet Trigger',
 		name: 'onfleetTrigger',
 		icon: 'file:Onfleet.svg',
-		group: [ 'trigger' ],
+		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["events"]}}',
 		description: 'Starts the workflow when Onfleet events occur',
@@ -38,23 +47,24 @@ export class OnfleetTrigger implements INodeType {
 			description: 'Handle Onfleet events via webhooks',
 		},
 		inputs: [],
-		outputs: [ 'main' ],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'onfleetApi',
 				required: true,
+				testedBy: 'onfeletApiTest',
 			},
 		],
 		webhooks: [
 			{
-				name: 'default',
-				httpMethod: 'POST',
+				name: 'setup',
+				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 			{
-				name: 'validate',
-				httpMethod: 'GET',
+				name: 'default',
+				httpMethod: 'POST',
 				responseMode: 'onReceived',
 				path: 'webhook',
 			},
@@ -69,15 +79,17 @@ export class OnfleetTrigger implements INodeType {
 		credentialTest: {
 			async onfeletApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
-				const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
 
 				const options: OptionsWithUri = {
 					headers: {
 						'Content-Type': 'application/json',
-						'Authorization': `Basic ${encodedApiKey}`,
 						'User-Agent': 'n8n-onfleet',
 					},
 					method: 'GET',
+					auth: {
+						user: credentials.apiKey as string,
+						pass: '',
+					},
 					uri: 'https://onfleet.com/api/v2/auth/test',
 					json: true,
 				};
@@ -102,110 +114,69 @@ export class OnfleetTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const { name = '' } = this.getNodeParameter('additionalFields', 0) as IDataObject;
-				const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
-				const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
-				const event = this.getNodeParameter('event', 0) as string;
+				const event = this.getNodeParameter('event') as string;
 				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-
-				if (!webhookData[event] || typeof webhookData[event] !== 'string') {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
 
 				// Webhook got created before so check if it still exists
 				const endpoint = '/webhooks';
 
-				try {
-					const webhooks = await onfleetApiRequest.call(this, 'GET', encodedApiKey, endpoint);
-					// tslint:disable-next-line: no-any
-					const exist = webhooks.some((webhook: any) => webhook.url === webhookUrl);
+				const webhooks = await onfleetApiRequest.call(this, 'GET', endpoint);
 
-					// Changing the name if it's different
-					// tslint:disable-next-line: no-any
-					const webhook = webhooks.find((webhook: any) => webhook.url === webhookUrl);
-
-					// Webhook name according to the field
-					let newWebhookName = `[N8N] ${webhookMapping[event].name}`;
-					if (name) {
-						newWebhookName = `[N8N] ${name}`;
+				for (const webhook of webhooks) {
+					if (webhook.url === webhookUrl && webhook.trigger === event) {
+						webhookData.webhookId = webhook.id;
+						return true;
 					}
-
-					// If webhook name is different so, it's updated
-					if (webhook && webhook.name !== newWebhookName) {
-						const path = `${endpoint}/${webhook.id}`;
-						await onfleetApiRequest.call(this, 'PUT', encodedApiKey, path, { name: newWebhookName });
-					}
-					return exist;
-				} catch (error) {
-					const { httpCode = '' } = error as { httpCode: string };
-					if (httpCode === '404') {
-						// Webhook does not exist
-						delete webhookData[event];
-						return false;
-					}
-
-					// Some error occurred
-					throw error;
 				}
-
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const { name = '' } = this.getNodeParameter('additionalFields', 0) as IDataObject;
-				const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
-				const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
-				const event = this.getNodeParameter('event', 0) as string;
+				const { name = '' } = this.getNodeParameter('additionalFields') as IDataObject;
+				const event = this.getNodeParameter('event') as string;
+				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('//localhost')) {
 					throw new NodeOperationError(this.getNode(), 'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
 				}
-
 				// Webhook name according to the field
-				let newWebhookName = `[N8N] ${webhookMapping[event].name}`;
+				let newWebhookName = `n8n-webhook:${webhookUrl}`;
+
 				if (name) {
-					newWebhookName = `[N8N] ${name}`;
+					newWebhookName = `n8n-webhook:${name}`;
 				}
 
 				const path = `/webhooks`;
 				const body = {
-					name		: newWebhookName,
-					url			: webhookUrl,
-					trigger	: webhookMapping[event].key,
+					name: newWebhookName,
+					url: webhookUrl,
+					trigger: webhookMapping[event].key,
 				};
 
 				try {
-					onfleetApiRequest.call(this, 'POST', encodedApiKey, path, body)
-						.then(responseData => {
-							if (responseData.id === undefined) {
-								// Required data is missing so was not successful
-								throw new NodeApiError(this.getNode(), responseData, { message: 'Onfleet webhook creation response did not contain the expected data' });
-							}
+					const webhook = await onfleetApiRequest.call(this, 'POST', path, body);
 
-							return Promise.resolve(true);
-						});
+					if (webhook.id === undefined) {
+						throw new NodeApiError(this.getNode(), webhook, { message: 'Onfleet webhook creation response did not contain the expected data' });
+					}
+
+					webhookData.id = webhook.id as string;
+
 				} catch (error) {
 					const { httpCode = '' } = error as { httpCode: string };
 					if (httpCode === '422') {
 						throw new NodeOperationError(this.getNode(), 'A webhook with the identical URL probably exists already. Please delete it manually in Onfleet!');
 					}
-
 					throw error;
 				}
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
-				const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
-				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-
+				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
 				// Get the data of the already registered webhook
-				const webhooks = await onfleetApiRequest.call(this, 'GET', encodedApiKey, 'webhooks');
-				const webhook = webhooks.find((webhook: IDataObject) => webhook.url === webhookUrl);
-				const endpoint = `/webhooks/${webhook.id}`;
-				await onfleetApiRequest.call(this, 'DELETE', encodedApiKey, endpoint);
-
+				const endpoint = `/webhooks/${webhookData.id}`;
+				await onfleetApiRequest.call(this, 'DELETE', endpoint);
 				return true;
 			},
 		},
@@ -217,7 +188,7 @@ export class OnfleetTrigger implements INodeType {
 	 */
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
-		if (req.method === 'GET') {
+		if (this.getWebhookName() === 'setup') {
 			/* -------------------------------------------------------------------------- */
 			/*                             Validation request                             */
 			/* -------------------------------------------------------------------------- */

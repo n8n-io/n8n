@@ -9,7 +9,7 @@ export const adminOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'admin' ],
+				resource: ['admin'],
 			},
 		},
 		options: [
@@ -77,7 +77,7 @@ export const adminFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'admin' ],
+				resource: ['admin'],
 			},
 			hide: {
 				operation: [
@@ -91,10 +91,51 @@ export const adminFields: INodeProperties[] = [
 		description: 'The ID of the admin object for lookup',
 	},
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [ 'admin' ],
-				operation: [ 'create' ],
+				resource: [
+					'admin',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'admin',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 64,
+		},
+		default: 64,
+		description: 'How many results to return',
+	},
+	{
+		displayOptions: {
+			show: {
+				resource: ['admin'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -103,8 +144,8 @@ export const adminFields: INodeProperties[] = [
 	{
 		displayOptions: {
 			show: {
-				resource: [ 'admin' ],
-				operation: [ 'create' ],
+				resource: ['admin'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -118,8 +159,8 @@ export const adminFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'admin' ],
-				operation: [ 'create' ],
+				resource: ['admin'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -135,8 +176,8 @@ export const adminFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'admin' ],
-				operation: [ 'update' ],
+				resource: ['admin'],
+				operation: ['update'],
 			},
 		},
 		options: [

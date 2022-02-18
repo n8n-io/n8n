@@ -11,7 +11,7 @@ export const taskOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'task' ],
+				resource: ['task'],
 			},
 		},
 		options: [
@@ -127,7 +127,7 @@ export const taskFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'task' ],
+				resource: ['task'],
 			},
 			hide: {
 				operation: [
@@ -141,29 +141,56 @@ export const taskFields: INodeProperties[] = [
 		description: 'The ID of the task object for lookup',
 	},
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 64,
+		},
+		default: 64,
+		description: 'How many results to return',
+	},
+	{
 		...destinationExternalField,
 		displayOptions: {
 			show: {
-				resource: [ 'task' ],
-				operation: [ 'create' ],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		default: {},
 		required: true,
-	},
-	{
-		displayName: 'From',
-		name: 'from',
-		type: 'dateTime',
-		displayOptions: {
-			show: {
-				resource: [ 'task' ],
-				operation: [ 'getAll' ],
-			},
-		},
-		description: 'The starting time of the range. Tasks created or completed at or after this time will be included.',
-		required: true,
-		default: '',
 	},
 	{
 		displayName: 'Success',
@@ -171,8 +198,8 @@ export const taskFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [ 'task' ],
-				operation: [ 'complete' ],
+				resource: ['task'],
+				operation: ['complete'],
 			},
 		},
 		description: 'Whether the task\'s completion was successful',
@@ -187,16 +214,23 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'task' ],
-				operation: [ 'getAll' ],
+				resource: ['task'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
+				displayName: 'From',
+				name: 'from',
+				type: 'dateTime',
+				default: '',
+				description: 'The starting time of the range. Tasks created or completed at or after this time will be included.',
+			},
+			{
 				displayName: 'To',
 				name: 'to',
 				type: 'dateTime',
-				default: null,
+				default: '',
 				description: 'The ending time of the range. Defaults to current time if not specified.',
 			},
 			{
@@ -224,13 +258,6 @@ export const taskFields: INodeProperties[] = [
 				default: [],
 				description: 'The state of the tasks',
 			},
-			{
-				displayName: 'Last ID',
-				name: 'lastId',
-				type: 'string',
-				default: '',
-				description: 'The last ID to walk the paginated response',
-			},
 		],
 	},
 	{
@@ -241,8 +268,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'task' ],
-				operation: [ 'clone' ],
+				resource: ['task'],
+				operation: ['clone'],
 			},
 		},
 		options: [
@@ -294,8 +321,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'task' ],
-				operation: [ 'update' ],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -317,8 +344,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'task' ],
-				operation: [ 'complete' ],
+				resource: ['task'],
+				operation: ['complete'],
 			},
 		},
 		options: [
@@ -339,8 +366,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'task' ],
-				operation: [ 'create' ],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		options: [

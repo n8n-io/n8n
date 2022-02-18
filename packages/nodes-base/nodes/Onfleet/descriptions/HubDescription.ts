@@ -1,7 +1,10 @@
 import {
 	INodeProperties
 } from 'n8n-workflow';
-import { destinationExternalField } from './DestinationDescription';
+
+import {
+	destinationExternalField,
+} from './DestinationDescription';
 
 export const hubOperations: INodeProperties[] = [
 	{
@@ -10,7 +13,7 @@ export const hubOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'hub' ],
+				resource: ['hub'],
 			},
 		},
 		options: [
@@ -60,8 +63,8 @@ export const hubFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'hub' ],
-				operation: [ 'update' ],
+				resource: ['hub'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -69,11 +72,52 @@ export const hubFields: INodeProperties[] = [
 		description: 'The ID of the hub object for lookup',
 	},
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'hub',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'hub',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 64,
+		},
+		default: 64,
+		description: 'How many results to return',
+	},
+	{
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [ 'hub' ],
-				operation: [ 'create' ],
+				resource: ['hub'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -82,8 +126,8 @@ export const hubFields: INodeProperties[] = [
 		...destinationExternalField,
 		displayOptions: {
 			show: {
-				resource: [ 'hub' ],
-				operation: [ 'create' ],
+				resource: ['hub'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -95,8 +139,8 @@ export const hubFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'hub' ],
-				operation: [ 'create' ],
+				resource: ['hub'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -114,8 +158,8 @@ export const hubFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'hub' ],
-				operation: [ 'update' ],
+				resource: ['hub'],
+				operation: ['update'],
 			},
 		},
 		options: [

@@ -112,6 +112,7 @@ export const recipientExternalField = {
 	displayName: 'Recipient',
 	name: 'recipient',
 	type: 'fixedCollection',
+	placeholder: 'Add Recipient',
 	default: {},
 	options: [
 		{

@@ -54,7 +54,7 @@ export interface OnfleetTaskUpdate {
 }
 
 export interface OnfleetListTaskFilters {
-	from: number;
+	from?: number;
 	to?: number;
 	lastId?: string;
 	state?: string;

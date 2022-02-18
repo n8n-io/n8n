@@ -21,16 +21,21 @@ import * as moment from 'moment-timezone';
 export async function onfleetApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
-	apikey: string,
 	resource: string,
 	body: any = {}, // tslint:disable-line:no-any
 	qs?: any, // tslint:disable-line:no-any
 	uri?: string): Promise<any> { // tslint:disable-line:no-any
+
+	const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
+
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			'Authorization': `Basic ${apikey}`,
 			'User-Agent': 'n8n-onfleet',
+		},
+		auth: {
+			user: credentials.apiKey as string,
+			pass: '',
 		},
 		method,
 		body,
@@ -42,17 +47,41 @@ export async function onfleetApiRequest(
 		//@ts-ignore
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		console.log(error.message);
+		//throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
+export async function onfleetApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	apiKey: string,
+	endpoint: string,
+	// tslint:disable-next-line: no-any
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	do {
+		responseData = await onfleetApiRequest.call(this, method, endpoint, body, query);
+		query.lastId = responseData['lastId'];
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (
+		responseData['lastId'] !== undefined
+	);
+
+	return returnData;
+}
 export const resourceLoaders = {
 	async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
-			const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
-			const teams = await onfleetApiRequest.call(this, 'GET', encodedApiKey, 'teams') as IDataObject[];
-			return teams.map(({name = '', id: value = ''}) => ( {name, value} )) as INodePropertyOptions[];
+			const teams = await onfleetApiRequest.call(this, 'GET', 'teams') as IDataObject[];
+			return teams.map(({ name = '', id: value = '' }) => ({ name, value })) as INodePropertyOptions[];
 		} catch (error) {
 			return [];
 		}
@@ -60,32 +89,26 @@ export const resourceLoaders = {
 
 	async getWorkers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
-			const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
-			const workers = await onfleetApiRequest.call(this, 'GET', encodedApiKey, 'workers') as IDataObject[];
-			return workers.map(({name = '', id: value = ''}) => ( {name, value} )) as INodePropertyOptions[];
+			const workers = await onfleetApiRequest.call(this, 'GET', 'workers') as IDataObject[];
+			return workers.map(({ name = '', id: value = '' }) => ({ name, value })) as INodePropertyOptions[];
 		} catch (error) {
 			return [];
 		}
 	},
 
-	async getAdmins (this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	async getAdmins(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
-			const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
-			const admins = await onfleetApiRequest.call(this, 'GET', encodedApiKey, 'admins') as IDataObject[];
-			return admins.map(({name = '', id: value = ''}) => ( {name, value} )) as INodePropertyOptions[];
+			const admins = await onfleetApiRequest.call(this, 'GET', 'admins') as IDataObject[];
+			return admins.map(({ name = '', id: value = '' }) => ({ name, value })) as INodePropertyOptions[];
 		} catch (error) {
 			return [];
 		}
 	},
 
-	async getHubs (this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	async getHubs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
-			const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
-			const hubs = await onfleetApiRequest.call(this, 'GET', encodedApiKey, 'hubs') as IDataObject[];
-			return hubs.map(({name = '', id: value = ''}) => ( {name, value} )) as INodePropertyOptions[];
+			const hubs = await onfleetApiRequest.call(this, 'GET', 'hubs') as IDataObject[];
+			return hubs.map(({ name = '', id: value = '' }) => ({ name, value })) as INodePropertyOptions[];
 		} catch (error) {
 			return [];
 		}

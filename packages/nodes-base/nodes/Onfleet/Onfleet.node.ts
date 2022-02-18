@@ -1,5 +1,4 @@
 import {
-	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -9,7 +8,6 @@ import {
 	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
-import * as moment from 'moment-timezone';
 
 import {
 	OnfleetAdmins,
@@ -25,7 +23,6 @@ import {
 	OnfleetTaskUpdate,
 	OnfleetTeamAutoDispatch,
 	OnfleetTeams,
-	OnfleetVehicle,
 	OnfleetWebhook,
 	OnfleetWorker,
 	OnfleetWorkerEstimates,
@@ -33,160 +30,184 @@ import {
 	OnfleetWorkerSchedule,
 	OnfleetWorkerScheduleEntry
 } from './interfaces';
-import { taskFields, taskOperations } from './descriptions/TaskDescription';
 
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	taskFields,
+	taskOperations,
+} from './descriptions/TaskDescription';
+
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	destinationFields,
 	destinationOperations,
 } from './descriptions/DestinationDescription';
+
 import {
 	onfleetApiRequest,
+	onfleetApiRequestAllItems,
 	resourceLoaders,
 } from './GenericFunctions';
+
 import {
 	recipientFields,
 	recipientOperations,
 } from './descriptions/RecipientDescription';
+
 import {
 	organizationFields,
 	organizationOperations,
 } from './descriptions/OrganizationDescription';
+
 import {
 	adminFields,
 	adminOperations,
 } from './descriptions/AdministratorDescription';
+
 import {
 	hubFields,
 	hubOperations,
 } from './descriptions/HubDescription';
+
 import {
 	workerFields,
 	workerOperations,
 } from './descriptions/WorkerDescription';
+
 import {
 	webhookFields,
 	webhookOperations,
 } from './descriptions/WebhookDescription';
+
 import {
 	containerFields,
 	containerOperations,
 } from './descriptions/ContainerDescription';
+
 import {
 	teamFields,
 	teamOperations,
 } from './descriptions/TeamDescription';
-import { OptionsWithUri } from 'request';
+
+import {
+	OptionsWithUri,
+} from 'request';
+
+import * as moment from 'moment-timezone';
 
 export class Onfleet implements INodeType {
 	description: INodeTypeDescription = {
-			displayName: 'Onfleet',
-			name: 'onfleet',
-			icon: 'file:Onfleet.svg',
-			group: [ 'input' ],
-			version: 1,
-			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-			description: 'Onfleet API',
-			defaults: {
-					color: '#AA81F3',
-					description: 'Use the Onfleet API',
-					name: 'Onfleet',
-					testedBy: 'onfeletApiTest',
+		displayName: 'Onfleet',
+		name: 'onfleet',
+		icon: 'file:Onfleet.svg',
+		group: ['input'],
+		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Onfleet API',
+		defaults: {
+			color: '#AA81F3',
+			description: 'Use the Onfleet API',
+			name: 'Onfleet',
+			testedBy: 'onfeletApiTest',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'onfleetApi',
+				required: true,
 			},
-			inputs: [ 'main' ],
-			outputs: [ 'main' ],
-			credentials: [
-				{
-					name: 'onfleetApi',
-					required: true,
-				},
-			],
-			properties: [
-				// List of option resources
-				{
-					displayName: 'Resource',
-					name: 'resource',
-					type: 'options',
-					options: [
-						{
-							name: 'Admin',
-							value: 'admin',
-						},
-						{
-							name: 'Container',
-							value: 'container',
-						},
-						{
-							name: 'Destination',
-							value: 'destination',
-						},
-						{
-							name: 'Hub',
-							value: 'hub',
-						},
-						{
-							name: 'Organization',
-							value: 'organization',
-						},
-						{
-							name: 'Recipient',
-							value: 'recipient',
-						},
-						{
-							name: 'Task',
-							value: 'task',
-						},
-						{
-							name: 'Team',
-							value: 'team',
-						},
-						{
-							name: 'Webhook',
-							value: 'webhook',
-						},
-						{
-							name: 'Worker',
-							value: 'worker',
-						},
-					],
-					default: 'task',
-					description: 'The resource to perform operations on',
-				},
-				// Operations & fields
-				...adminOperations,
-				...adminFields,
-				...containerOperations,
-				...containerFields,
-				...destinationOperations,
-				...destinationFields,
-				...hubOperations,
-				...hubFields,
-				...organizationOperations,
-				...organizationFields,
-				...recipientOperations,
-				...recipientFields,
-				...taskOperations,
-				...taskFields,
-				...teamOperations,
-				...teamFields,
-				...webhookOperations,
-				...webhookFields,
-				...workerOperations,
-				...workerFields,
-			],
+		],
+		properties: [
+			// List of option resources
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Admin',
+						value: 'admin',
+					},
+					{
+						name: 'Container',
+						value: 'container',
+					},
+					{
+						name: 'Destination',
+						value: 'destination',
+					},
+					{
+						name: 'Hub',
+						value: 'hub',
+					},
+					{
+						name: 'Organization',
+						value: 'organization',
+					},
+					{
+						name: 'Recipient',
+						value: 'recipient',
+					},
+					{
+						name: 'Task',
+						value: 'task',
+					},
+					{
+						name: 'Team',
+						value: 'team',
+					},
+					// {
+					// 	name: 'Webhook',
+					// 	value: 'webhook',
+					// },
+					{
+						name: 'Worker',
+						value: 'worker',
+					},
+				],
+				default: 'task',
+				description: 'The resource to perform operations on',
+			},
+			// Operations & fields
+			...adminOperations,
+			...adminFields,
+			...containerOperations,
+			...containerFields,
+			...destinationOperations,
+			...destinationFields,
+			...hubOperations,
+			...hubFields,
+			...organizationOperations,
+			...organizationFields,
+			...recipientOperations,
+			...recipientFields,
+			...taskOperations,
+			...taskFields,
+			...teamOperations,
+			...teamFields,
+			// ...webhookOperations,
+			// ...webhookFields,
+			...workerOperations,
+			...workerFields,
+		],
 	};
 
 	methods = {
 		credentialTest: {
 			async onfeletApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
-				const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
 
 				const options: OptionsWithUri = {
 					headers: {
 						'Content-Type': 'application/json',
-						'Authorization': `Basic ${encodedApiKey}`,
 						'User-Agent': 'n8n-onfleet',
+					},
+					auth: {
+						user: credentials.apiKey as string,
+						pass: '',
 					},
 					method: 'GET',
 					uri: 'https://onfleet.com/api/v2/auth/test',
@@ -221,7 +242,7 @@ export class Onfleet implements INodeType {
 	 * @param additionalFields Destination additional fields
 	 * @returns
 	 */
-	static formatAddress (
+	static formatAddress(
 		unparsed: boolean,
 		address: string | undefined,
 		addressNumber: string | undefined,
@@ -364,7 +385,7 @@ export class Onfleet implements INodeType {
 	 * @param operation Current hub operation
 	 * @returns {OnfleetHubs|null} Hub information
 	 */
-	 static getHubFields(this: IExecuteFunctions, item: number, operation: string): OnfleetHubs | null {
+	static getHubFields(this: IExecuteFunctions, item: number, operation: string): OnfleetHubs | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                          Get fields for create hub                         */
@@ -401,7 +422,7 @@ export class Onfleet implements INodeType {
 	 * @param operation Current worker operation
 	 * @returns {OnfleetWorker|OnfleetWorkerFilter|OnfleetWorkerSchedule|null} Worker information
 	 */
-	 static getWorkerFields(this: IExecuteFunctions, item: number, operation: string): OnfleetWorker | OnfleetWorkerFilter  | OnfleetWorkerSchedule | null {
+	static getWorkerFields(this: IExecuteFunctions, item: number, operation: string): OnfleetWorker | OnfleetWorkerFilter | OnfleetWorkerSchedule | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                        Get fields for create worker                        */
@@ -427,41 +448,50 @@ export class Onfleet implements INodeType {
 			/* -------------------------------------------------------------------------- */
 			/*                        Get fields for update worker                        */
 			/* -------------------------------------------------------------------------- */
-			const {vehicleProperties} = this.getNodeParameter('vehicle', item) as IDataObject;
-			const { additionalFields: vehicle = {} } = vehicleProperties as IDataObject;
-			const workerData: OnfleetWorker = { vehicle: (vehicle as OnfleetVehicle) };
+
+			const workerData: OnfleetWorker = {};
 
 			// Adding additional fields
 			const updateFields = this.getNodeParameter('updateFields', item) as IDataObject;
-			Object.assign(workerData, updateFields);
 
+			Object.assign(workerData, updateFields);
 			return workerData;
-		} else if (['getAll', 'get'].includes(operation)) {
+		} else if (operation === 'get') {
+			const options = this.getNodeParameter('options', item, {}) as IDataObject;
+			const workerFilter: OnfleetWorkerFilter = {};
+			if (options.filter) {
+				options.filter = (options.filter as string[]).join(',');
+			}
+			if (typeof options.analytics === 'boolean') {
+				options.analytics = options.analytics ? 'true' : 'false';
+			}
+			Object.assign(workerFilter, options);
+			return workerFilter;
+
+		} else if (operation === 'getAll') {
 			/* -------------------------------------------------------------------------- */
 			/*                    Get fields for get and getAll workers                   */
 			/* -------------------------------------------------------------------------- */
-			const {
-				filter, states, teams, phones, analytics, ...filterFields
-			} = this.getNodeParameter('filterFields', item) as IDataObject;
+
+			const options = this.getNodeParameter('options', item, {}) as IDataObject;
+			const filters = this.getNodeParameter('filters', item, {}) as IDataObject;
 			const workerFilter: OnfleetWorkerFilter = {};
 
-			if (states) {
-				filterFields.states = (states as number[]).join(',');
+			if (filters.states) {
+				filters.states = (filters.states as number[]).join(',');
 			}
-			if (filter) {
-				filterFields.filter = (filter as string[]).join(',');
+			if (filters.teams) {
+				filters.teams = (filters.teams as string[]).join(',');
 			}
-			if (teams) {
-				filterFields.teams = (teams as string[]).join(',');
+			if (filters.phones) {
+				filters.phones = (filters.phones as string[]).join(',');
 			}
-			if (phones) {
-				filterFields.phones = (phones as string[]).join(',');
-			}
-			if (typeof analytics === 'boolean') {
-				filterFields.analytics = analytics ? 'true' : 'false';
+			if (options.filter) {
+				options.filter = (options.filter as string[]).join(',');
 			}
 
-			Object.assign(workerFilter, filterFields);
+			Object.assign(workerFilter, options);
+			Object.assign(workerFilter, filters);
 			return workerFilter;
 		} else if (operation === 'setSchedule') {
 			/* -------------------------------------------------------------------------- */
@@ -474,7 +504,7 @@ export class Onfleet implements INodeType {
 				return {
 					timezone: timezone as string,
 					date: moment(new Date(date as Date)).format('YYYY-MM-DD'),
-					shifts: (shiftsProperties as IDataObject[]).map(({ start, end}) => [
+					shifts: (shiftsProperties as IDataObject[]).map(({ start, end }) => [
 						new Date(start as Date).getTime(),
 						new Date(end as Date).getTime(),
 					]),
@@ -491,7 +521,7 @@ export class Onfleet implements INodeType {
 	 * @param operation Current webhooks operation
 	 * @returns {OnfleetWebhook} Webhooks information
 	 */
-	 static getWebhookFields(this: IExecuteFunctions, item: number, operation: string): OnfleetWebhook | null {
+	static getWebhookFields(this: IExecuteFunctions, item: number, operation: string): OnfleetWebhook | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                        Get fields for create webhook                       */
@@ -598,7 +628,7 @@ export class Onfleet implements INodeType {
 	 * @returns {OnfleetListTaskFilters | OnfleetTask } Task information
 	 */
 	static getTaskFields(this: IExecuteFunctions, item: number, operation: string):
-		OnfleetListTaskFilters | OnfleetTask | OnfleetCloneTask | OnfleetTaskComplete | OnfleetTaskUpdate | null  {
+		OnfleetListTaskFilters | OnfleetTask | OnfleetCloneTask | OnfleetTaskComplete | OnfleetTaskUpdate | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                         Get fields to create a task                        */
@@ -609,7 +639,7 @@ export class Onfleet implements INodeType {
 			// Adding recipients information
 			const recipient = Onfleet.getRecipientFields.call(this, item, operation, true) as OnfleetRecipient;
 
-			const taskData: OnfleetTask = { destination, recipients: [ recipient ] };
+			const taskData: OnfleetTask = { destination, recipients: [recipient] };
 			const { completeAfter = null, completeBefore = null, ...extraFields } = additionalFields;
 			if (completeAfter) taskData.completeAfter = new Date(completeAfter as Date).getTime();
 			if (completeBefore) taskData.completeBefore = new Date(completeBefore as Date).getTime();
@@ -634,9 +664,9 @@ export class Onfleet implements INodeType {
 			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
 
 			const options: OnfleetCloneTaskOptions = {};
-			if (additionalFields.includeMetadata)  options.includeMetadata = additionalFields.includeMetadata as boolean;
-			if (additionalFields.includeBarcodes)  options.includeBarcodes = additionalFields.includeBarcodes as boolean;
-			if (additionalFields.includeDependencies)  options.includeDependencies = additionalFields.includeDependencies as boolean;
+			if (additionalFields.includeMetadata) options.includeMetadata = additionalFields.includeMetadata as boolean;
+			if (additionalFields.includeBarcodes) options.includeBarcodes = additionalFields.includeBarcodes as boolean;
+			if (additionalFields.includeDependencies) options.includeDependencies = additionalFields.includeDependencies as boolean;
 
 			// Adding overrides data
 			const {
@@ -644,11 +674,11 @@ export class Onfleet implements INodeType {
 			} = additionalFields as IDataObject;
 			const overridesData = {} as OnfleetCloneOverrideTaskOptions;
 
-			if (notes)  overridesData.notes = notes as string;
-			if (typeof pickupTask !== 'undefined')  overridesData.pickupTask = pickupTask as boolean;
-			if (serviceTime)  overridesData.serviceTime = serviceTime as number;
-			if (completeAfter)  overridesData.completeAfter = new Date(completeAfter as Date).getTime();
-			if (completeBefore)  overridesData.completeBefore = new Date(completeBefore as Date).getTime();
+			if (notes) overridesData.notes = notes as string;
+			if (typeof pickupTask !== 'undefined') overridesData.pickupTask = pickupTask as boolean;
+			if (serviceTime) overridesData.serviceTime = serviceTime as number;
+			if (completeAfter) overridesData.completeAfter = new Date(completeAfter as Date).getTime();
+			if (completeBefore) overridesData.completeBefore = new Date(completeBefore as Date).getTime();
 
 			if (overridesData && Object.keys(overridesData).length > 0) {
 				options.overrides = overridesData;
@@ -660,25 +690,25 @@ export class Onfleet implements INodeType {
 			/*                          Get fields to list tasks                          */
 			/* -------------------------------------------------------------------------- */
 			const filters = this.getNodeParameter('filters', item) as IDataObject;
-			const from = this.getNodeParameter('from', 0);
-			if (!from) {
-				throw new NodeOperationError(this.getNode(), 'From is required');
-			}
-			const listTaskData: OnfleetListTaskFilters = { from: new Date(from as Date).getTime() };
+			const listTaskData: OnfleetListTaskFilters = {};
+
+			const twoWeeksInMilisecods = () => (604800 * 1000);
 
 			// Adding extra fields to search tasks
+			if (filters.from) {
+				listTaskData.from = new Date(filters.from as Date).getTime();
+			} else {
+				listTaskData.from = new Date().getTime() - twoWeeksInMilisecods();
+			}
 			if (filters.to) {
 				listTaskData.to = new Date(filters.to as Date).getTime();
 			}
 			if (filters.state) {
 				listTaskData.state = (filters.state as number[]).join(',');
 			}
-			if (filters.lastId) {
-				listTaskData.lastId = filters.lastId as string;
-			}
 
 			return listTaskData;
-		} else if (operation === 'complete')  {
+		} else if (operation === 'complete') {
 			/* -------------------------------------------------------------------------- */
 			/*                        Get fields to complete a task                       */
 			/* -------------------------------------------------------------------------- */
@@ -697,7 +727,7 @@ export class Onfleet implements INodeType {
 	 * @param operation Current team operation
 	 * @returns {OnfleetTeams} Team information
 	 */
-	 static getTeamFields(this: IExecuteFunctions, item: number, operation: string): OnfleetTeams | OnfleetWorkerEstimates | OnfleetTeamAutoDispatch | null {
+	static getTeamFields(this: IExecuteFunctions, item: number, operation: string): OnfleetTeams | OnfleetWorkerEstimates | OnfleetTeamAutoDispatch | null {
 		if (operation === 'create') {
 			/* -------------------------------------------------------------------------- */
 			/*                         Get fields to create a team                        */
@@ -726,8 +756,8 @@ export class Onfleet implements INodeType {
 			/*      Get driver time estimates for tasks that haven't been created yet     */
 			/* -------------------------------------------------------------------------- */
 			const { dropOff = {}, pickUp = {}, ...additionalFields } = this.getNodeParameter('additionalFields', item) as IDataObject;
-			const { dropOffProperties = {} }= dropOff as IDataObject;
-			const { pickUpProperties = {} }= pickUp as IDataObject;
+			const { dropOffProperties = {} } = dropOff as IDataObject;
+			const { pickUpProperties = {} } = pickUp as IDataObject;
 			const hasPickUp = pickUp && Object.keys(pickUpProperties as IDataObject).length > 0;
 			const hasDropOff = dropOffProperties && Object.keys(dropOffProperties as IDataObject).length > 0;
 
@@ -747,8 +777,8 @@ export class Onfleet implements INodeType {
 					workerTimeEstimates.pickupTime = moment(new Date(pickupTime as Date)).local().unix();
 				}
 			}
-			if(hasDropOff) {
-				const { dropOffLongitude: longitude, dropOffLatitude: latitude} = dropOffProperties as IDataObject;
+			if (hasDropOff) {
+				const { dropOffLongitude: longitude, dropOffLatitude: latitude } = dropOffProperties as IDataObject;
 				workerTimeEstimates.dropoffLocation = `${longitude},${latitude}`;
 			}
 
@@ -801,7 +831,6 @@ export class Onfleet implements INodeType {
 	 * @param resource Resource to be executed (Task)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @param encodedApiKey API KEY for the current organization
 	 * @returns Task information
 	 */
 	static async executeTaskOperations(
@@ -809,15 +838,14 @@ export class Onfleet implements INodeType {
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
-		encodedApiKey: string,
-		): Promise<IDataObject | IDataObject[]> {
+	): Promise<IDataObject | IDataObject[]> {
 		if (operation === 'create' && Object.keys(items).length > 1) {
 			/* -------------------------------------------------------------------------- */
 			/*                       Create multiple tasks by batch                       */
 			/* -------------------------------------------------------------------------- */
 			const path = `${resource}/batch`;
 			const tasksData = { tasks: items.map((_item, index) => Onfleet.getTaskFields.call(this, index, operation)) };
-			const { tasks: tasksCreated } = await onfleetApiRequest.call(this, 'POST', encodedApiKey, path, tasksData);
+			const { tasks: tasksCreated } = await onfleetApiRequest.call(this, 'POST', path, tasksData);
 			return tasksCreated;
 		}
 
@@ -830,8 +858,8 @@ export class Onfleet implements INodeType {
 					/*                              Create a new task                             */
 					/* -------------------------------------------------------------------------- */
 					const taskData = Onfleet.getTaskFields.call(this, index, operation);
-					if (!taskData) { continue ;}
-					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, taskData));
+					if (!taskData) { continue; }
+					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, taskData));
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Get a single task                             */
@@ -839,23 +867,23 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const shortId = String(id).length <= 8;
 					const path = `${resource}${(shortId ? '/shortId' : '')}/${id}`;
-					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path));
+					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (operation === 'clone') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Clone a task                                */
 					/* -------------------------------------------------------------------------- */
-						const id = this.getNodeParameter('id', index) as string;
-						const taskData = Onfleet.getTaskFields.call(this, index, operation) as any;
-						if (!taskData)  { continue; }
-						const path = `${resource}/${id}/clone`;
-						responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, path, taskData));
+					const id = this.getNodeParameter('id', index) as string;
+					const taskData = Onfleet.getTaskFields.call(this, index, operation) as any;
+					if (!taskData) { continue; }
+					const path = `${resource}/${id}/clone`;
+					responseData.push(await onfleetApiRequest.call(this, 'POST', path, taskData));
 				} else if (operation === 'delete') {
 					/* -------------------------------------------------------------------------- */
 					/*                            Delete a single task                            */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
-					await onfleetApiRequest.call(this, 'DELETE', encodedApiKey, path);
+					await onfleetApiRequest.call(this, 'DELETE', path);
 					responseData.push({ success: true });
 				} else if (operation === 'getAll') {
 					/* -------------------------------------------------------------------------- */
@@ -863,9 +891,17 @@ export class Onfleet implements INodeType {
 					/* -------------------------------------------------------------------------- */
 					const taskData = Onfleet.getTaskFields.call(this, 0, operation) as IDataObject;
 					if (!taskData) return [];
-
+					const returnAll = this.getNodeParameter('returnAll', 0, false);
 					const path = `${resource}/all`;
-					const { tasks = [] } = await onfleetApiRequest.call(this, 'GET', encodedApiKey, path, {}, taskData);
+					let tasks;
+					if (returnAll === true) {
+						tasks = await onfleetApiRequestAllItems.call(this, 'tasks', 'GET', path, {}, taskData);
+					} else {
+						const limit = this.getNodeParameter('limit', 0);
+						tasks = await onfleetApiRequest.call(this, 'GET', path, {}, taskData);
+						tasks = tasks.tasks;
+						tasks = tasks.splice(0, limit);
+					}
 					responseData.push(...tasks);
 				} else if (operation === 'complete') {
 					/* -------------------------------------------------------------------------- */
@@ -875,7 +911,7 @@ export class Onfleet implements INodeType {
 					const taskData = Onfleet.getTaskFields.call(this, index, operation);
 					if (!taskData) { continue; }
 					const path = `${resource}/${id}/complete`;
-					await onfleetApiRequest.call(this, 'POST', encodedApiKey, path, taskData);
+					await onfleetApiRequest.call(this, 'POST', path, taskData);
 					responseData.push({ success: true });
 				} else if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
@@ -885,16 +921,15 @@ export class Onfleet implements INodeType {
 					const path = `${resource}/${id}`;
 					const taskData = Onfleet.getTaskFields.call(this, index, operation);
 					if (!taskData) { continue; }
-					responseData.push(await onfleetApiRequest.call(this, 'PUT', encodedApiKey, path, taskData));
+					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, taskData));
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					responseData.push({ error: (error as IDataObject).toString() });
+					continue;
 				}
+				throw error;
 			}
-		}
-		if (['delete', 'complete'].includes(operation)) {
-			return { success: true };
 		}
 		return responseData;
 	}
@@ -904,7 +939,6 @@ export class Onfleet implements INodeType {
 	 * @param resource Resource to be executed (Destination)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @param encodedApiKey API KEY for the current organization
 	 * @returns Destination information
 	 */
 	static async executeDestinationOperations(
@@ -912,8 +946,7 @@ export class Onfleet implements INodeType {
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
-		encodedApiKey: string,
-		): Promise<IDataObject | IDataObject[]> {
+	): Promise<IDataObject | IDataObject[]> {
 		const responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
@@ -924,19 +957,21 @@ export class Onfleet implements INodeType {
 					/* -------------------------------------------------------------------------- */
 					const destinationData = Onfleet.getDestinationFields.call(this, index, operation);
 					if (!destinationData) { continue; }
-					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, destinationData));
+					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, destinationData));
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                           Get single destination                           */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
-					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path));
+					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					responseData.push({ error: (error as IDataObject).toString() });
+					continue;
 				}
+				throw error;
 			}
 		}
 
@@ -948,16 +983,14 @@ export class Onfleet implements INodeType {
 	 * @param resource Resource to be executed (Organization)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @param encodedApiKey API KEY for the current organization
 	 * @returns Organization information
 	 */
-	 static async executeOrganizationOperations(
+	static async executeOrganizationOperations(
 		this: IExecuteFunctions,
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
-		encodedApiKey: string,
-		): Promise<IDataObject | IDataObject[]> {
+	): Promise<IDataObject | IDataObject[]> {
 		const responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
@@ -967,19 +1000,21 @@ export class Onfleet implements INodeType {
 					/*                          Get organization details                          */
 					/* -------------------------------------------------------------------------- */
 					const path = 'organization';
-					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path));
+					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (operation === 'getDelegatee') {
 					/* -------------------------------------------------------------------------- */
 					/*                         Get organization delegatee                         */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
-					responseData.push(await  onfleetApiRequest.call(this, 'GET', encodedApiKey, path));
+					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					responseData.push({ error: (error as IDataObject).toString() });
+					continue;
 				}
+				throw error;
 			}
 		}
 
@@ -991,15 +1026,13 @@ export class Onfleet implements INodeType {
 	 * @param resource Resource to be executed (Recipient)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @param encodedApiKey API KEY for the current organization
 	 * @returns Recipient information
 	 */
 	static async executeRecipientOperations(this: IExecuteFunctions,
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
-		encodedApiKey: string,
-		): Promise<IDataObject | IDataObject[]> {
+	): Promise<IDataObject | IDataObject[]> {
 		const responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
@@ -1010,7 +1043,7 @@ export class Onfleet implements INodeType {
 					/* -------------------------------------------------------------------------- */
 					const recipientData = Onfleet.getRecipientFields.call(this, index, operation);
 					if (!recipientData) { continue; }
-					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, recipientData));
+					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, recipientData));
 				} else if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
 					/*                             Update a recipient                             */
@@ -1019,7 +1052,7 @@ export class Onfleet implements INodeType {
 					if (!recipientData) { continue; }
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
-					responseData.push(await onfleetApiRequest.call(this, 'PUT', encodedApiKey, path, recipientData));
+					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, recipientData));
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                          Get recipient information                         */
@@ -1027,12 +1060,14 @@ export class Onfleet implements INodeType {
 					const lookupBy = this.getNodeParameter('getBy', index) as string;
 					const lookupByValue = this.getNodeParameter(lookupBy, index) as string;
 					const path = `${resource}${lookupBy === 'id' ? '' : ('/' + lookupBy)}/${lookupByValue}`;
-					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path));
+					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					responseData.push({ error: (error as IDataObject).toString() });
+					continue;
 				}
+				throw error;
 			}
 		}
 
@@ -1044,16 +1079,14 @@ export class Onfleet implements INodeType {
 	 * @param resource Resource to be executed (Administrator)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @param encodedApiKey API KEY for the current organization
 	 * @returns Administrator information
 	 */
-	 static async executeAdministratorOperations(
+	static async executeAdministratorOperations(
 		this: IExecuteFunctions,
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
-		encodedApiKey: string,
-		): Promise<IDataObject | IDataObject[]> {
+	): Promise<IDataObject | IDataObject[]> {
 		const responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
@@ -1062,13 +1095,20 @@ export class Onfleet implements INodeType {
 					/* -------------------------------------------------------------------------- */
 					/*                             Get administrators                             */
 					/* -------------------------------------------------------------------------- */
-					responseData.push(...await onfleetApiRequest.call(this, 'GET', encodedApiKey, resource));
+
+					const returnAll = this.getNodeParameter('returnAll', 0, false);
+					let adminUsers = await onfleetApiRequest.call(this, 'GET', resource);
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', 0);
+						adminUsers = adminUsers.slice(0, limit);
+					}
+					responseData.push(...adminUsers);
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                             Create a new admin                             */
 					/* -------------------------------------------------------------------------- */
 					const adminData = Onfleet.getAdminFields.call(this, index, operation);
-					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, adminData));
+					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, adminData));
 				} else if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Update admin                                */
@@ -1076,26 +1116,24 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const adminData = Onfleet.getAdminFields.call(this, index, operation);
 					const path = `${resource}/${id}`;
-					responseData.push(await onfleetApiRequest.call(this, 'PUT', encodedApiKey, path, adminData));
+					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, adminData));
 				} else if (operation === 'delete') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Delete admin                                */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
-					await onfleetApiRequest.call(this, 'DELETE', encodedApiKey, path);
+					await onfleetApiRequest.call(this, 'DELETE', path);
 					responseData.push({ success: true });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					responseData.push({ error: (error as IDataObject).toString() });
+					continue;
 				}
+				throw error;
 			}
 		}
-		if (operation === 'delete') {
-			return { success: true };
-		}
-
 		return responseData;
 	}
 
@@ -1104,16 +1142,14 @@ export class Onfleet implements INodeType {
 	 * @param resource Resource to be executed (Hub)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @param encodedApiKey API KEY for the current organization
 	 * @returns Hub information
 	 */
-	 static async executeHubOperations(
+	static async executeHubOperations(
 		this: IExecuteFunctions,
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
-		encodedApiKey: string,
-		): Promise<IDataObject | IDataObject[]> {
+	): Promise<IDataObject | IDataObject[]> {
 		const responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
@@ -1122,13 +1158,20 @@ export class Onfleet implements INodeType {
 					/* -------------------------------------------------------------------------- */
 					/*                                Get all hubs                                */
 					/* -------------------------------------------------------------------------- */
-					responseData.push(...await onfleetApiRequest.call(this, 'GET', encodedApiKey, resource));
+
+					const returnAll = this.getNodeParameter('returnAll', 0, false);
+					let hubs = await onfleetApiRequest.call(this, 'GET', resource);
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', 0);
+						hubs = hubs.slice(0, limit);
+					}
+					responseData.push(...hubs);
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Create a new hub                              */
 					/* -------------------------------------------------------------------------- */
 					const hubData = Onfleet.getHubFields.call(this, index, operation);
-					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, hubData));
+					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, hubData));
 				}
 				if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
@@ -1137,12 +1180,14 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const hubData = Onfleet.getHubFields.call(this, index, operation);
 					const path = `${resource}/${id}`;
-					responseData.push(await onfleetApiRequest.call(this, 'PUT', encodedApiKey, path, hubData));
+					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, hubData));
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					responseData.push({ error: (error as IDataObject).toString() });
+					continue;
 				}
+				throw error;
 			}
 		}
 
@@ -1154,16 +1199,14 @@ export class Onfleet implements INodeType {
 	 * @param resource Resource to be executed (Worker)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @param encodedApiKey API KEY for the current organization
 	 * @returns Workers information
 	 */
-	 static async executeWorkerOperations(
+	static async executeWorkerOperations(
 		this: IExecuteFunctions,
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
-		encodedApiKey: string,
-		): Promise<IDataObject | IDataObject[]> {
+	): Promise<IDataObject | IDataObject[]> {
 		const responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
@@ -1173,21 +1216,30 @@ export class Onfleet implements INodeType {
 					/*                               Get all workers                              */
 					/* -------------------------------------------------------------------------- */
 					const byLocation = this.getNodeParameter('byLocation', index) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', index, false) as boolean;
+					let workers;
 
 					if (byLocation) {
 						const longitude = this.getNodeParameter('longitude', index) as string;
 						const latitude = this.getNodeParameter('latitude', index) as number;
-						const filterFields = this.getNodeParameter('filterFields', index) as IDataObject;
+						const filters = this.getNodeParameter('filters', index) as IDataObject;
 						const path = `${resource}/location`;
-						const { workers } = await onfleetApiRequest.call(
-							this, 'GET', encodedApiKey, path, {}, { longitude, latitude, ...filterFields},
+						workers = await onfleetApiRequest.call(
+							this, 'GET', path, {}, { longitude, latitude, ...filters },
 						);
-						responseData.push(...workers);
+						workers = workers.workers;
 					} else {
 						const workerFilters = Onfleet.getWorkerFields.call(this, 0, operation) as OnfleetWorkerFilter;
-
-						responseData.push(... await onfleetApiRequest.call(this, 'GET', encodedApiKey, resource, {}, workerFilters));
+						workers = await onfleetApiRequest.call(this, 'GET', resource, {}, workerFilters);
 					}
+
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', index) as number;
+						workers = workers.slice(0, limit);
+					}
+
+					responseData.push(...workers);
+
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Get a worker                                */
@@ -1196,13 +1248,13 @@ export class Onfleet implements INodeType {
 					const workerFilters = Onfleet.getWorkerFields.call(this, index, operation) as OnfleetWorkerFilter;
 
 					const path = `${resource}/${id}`;
-					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path, {}, workerFilters));
+					responseData.push(await onfleetApiRequest.call(this, 'GET', path, {}, workerFilters));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                             Create a new worker                            */
 					/* -------------------------------------------------------------------------- */
 					const workerData = Onfleet.getWorkerFields.call(this, index, operation);
-					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, workerData));
+					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, workerData));
 				} else if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Update worker                               */
@@ -1210,14 +1262,14 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const workerData = Onfleet.getWorkerFields.call(this, index, operation);
 					const path = `${resource}/${id}`;
-					responseData.push(await onfleetApiRequest.call(this, 'PUT', encodedApiKey, path, workerData));
+					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, workerData));
 				} else if (operation === 'delete') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Delete worker                               */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
-					await onfleetApiRequest.call(this, 'DELETE', encodedApiKey, path);
+					await onfleetApiRequest.call(this, 'DELETE', path);
 					responseData.push({ success: true });
 				} else if (operation === 'getSchedule') {
 					/* -------------------------------------------------------------------------- */
@@ -1225,7 +1277,7 @@ export class Onfleet implements INodeType {
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}/schedule`;
-					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path));
+					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (operation === 'setSchedule') {
 					/* -------------------------------------------------------------------------- */
 					/*                            Set a worker schedule                           */
@@ -1233,18 +1285,16 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const workerSchedule = Onfleet.getWorkerFields.call(this, index, operation) as OnfleetWorkerSchedule;
 					const path = `${resource}/${id}/schedule`;
-					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, path, workerSchedule));
+					responseData.push(await onfleetApiRequest.call(this, 'POST', path, workerSchedule));
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					responseData.push({ error: (error as IDataObject).toString() });
+					continue;
 				}
+				throw error;
 			}
 		}
-		if (operation === 'delete') {
-			return { success: true };
-		}
-
 		return responseData;
 	}
 
@@ -1253,16 +1303,14 @@ export class Onfleet implements INodeType {
 	 * @param resource Resource to be executed (Webhook)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @param encodedApiKey API KEY for the current organization
 	 * @returns Webhook information
 	 */
-	 static async executeWebhookOperations(
+	static async executeWebhookOperations(
 		this: IExecuteFunctions,
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
-		encodedApiKey: string,
-		): Promise<IDataObject | IDataObject[]> {
+	): Promise<IDataObject | IDataObject[]> {
 		const responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
@@ -1271,30 +1319,29 @@ export class Onfleet implements INodeType {
 					/* -------------------------------------------------------------------------- */
 					/*                              Get all webhooks                              */
 					/* -------------------------------------------------------------------------- */
-					responseData.push(...await onfleetApiRequest.call(this, 'GET', encodedApiKey, resource));
+					responseData.push(...await onfleetApiRequest.call(this, 'GET', resource));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                            Create a new webhook                            */
 					/* -------------------------------------------------------------------------- */
 					const webhookData = Onfleet.getWebhookFields.call(this, index, operation);
-					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, webhookData));
+					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, webhookData));
 				} else if (operation === 'delete') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Delete a webhook                              */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
-					await onfleetApiRequest.call(this, 'DELETE', encodedApiKey, path)
+					await onfleetApiRequest.call(this, 'DELETE', path);
 					responseData.push({ success: true });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					responseData.push({ error: (error as IDataObject).toString() });
+					continue;
 				}
+				throw error;
 			}
-		}
-		if (operation === 'delete') {
-			return { success: true };
 		}
 
 		return responseData;
@@ -1305,16 +1352,14 @@ export class Onfleet implements INodeType {
 	 * @param resource Resource to be executed (Container)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @param encodedApiKey API KEY for the current organization
 	 * @returns Container information
 	 */
-	 static async executeContainerOperations(
+	static async executeContainerOperations(
 		this: IExecuteFunctions,
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
-		encodedApiKey: string,
-		): Promise<IDataObject | IDataObject[]> {
+	): Promise<IDataObject | IDataObject[]> {
 		const responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
@@ -1326,7 +1371,7 @@ export class Onfleet implements INodeType {
 					const containerId = this.getNodeParameter('containerId', index) as string;
 					const containerType = this.getNodeParameter('containerType', index) as string;
 					const path = `${resource}/${containerType}/${containerId}`;
-					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path));
+					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (['add', 'update'].includes(operation)) {
 					/* -------------------------------------------------------------------------- */
 					/*                      Add or update tasks to container                      */
@@ -1335,7 +1380,7 @@ export class Onfleet implements INodeType {
 					const containerType = this.getNodeParameter('containerType', index) as string;
 					const options = this.getNodeParameter('options', index) as IDataObject;
 
-					const tasks = this.getNodeParameter('tasks', index) as Array<string|number>;
+					const tasks = this.getNodeParameter('tasks', index) as Array<string | number>;
 					if (operation === 'add') {
 						const type = this.getNodeParameter('type', index) as number;
 						if (type === 1) {
@@ -1348,13 +1393,15 @@ export class Onfleet implements INodeType {
 
 					const path = `${resource}/${containerType}/${containerId}`;
 					responseData.push(
-						await onfleetApiRequest.call(this, 'PUT', encodedApiKey, path, { tasks, ...options }),
+						await onfleetApiRequest.call(this, 'PUT', path, { tasks, ...options }),
 					);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					responseData.push({ error: (error as IDataObject).toString() });
+					continue;
 				}
+				throw error;
 			}
 		}
 
@@ -1366,16 +1413,14 @@ export class Onfleet implements INodeType {
 	 * @param resource Resource to be executed (Team)
 	 * @param operation Operation to be executed
 	 * @param items Number of items to process by the node
-	 * @param encodedApiKey API KEY for the current organization
 	 * @returns Team information
 	 */
-	 static async executeTeamOperations(
+	static async executeTeamOperations(
 		this: IExecuteFunctions,
 		resource: string,
 		operation: string,
 		items: INodeExecutionData[],
-		encodedApiKey: string,
-		): Promise<IDataObject | IDataObject[]> {
+	): Promise<IDataObject | IDataObject[]> {
 		const responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
@@ -1384,20 +1429,20 @@ export class Onfleet implements INodeType {
 					/* -------------------------------------------------------------------------- */
 					/*                                Get all teams                               */
 					/* -------------------------------------------------------------------------- */
-					responseData.push(...await onfleetApiRequest.call(this, 'GET', encodedApiKey, resource));
+					responseData.push(...await onfleetApiRequest.call(this, 'GET', resource));
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Get a single team                             */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
-					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path));
+					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Create a new team                             */
 					/* -------------------------------------------------------------------------- */
 					const teamData = Onfleet.getTeamFields.call(this, index, operation);
-					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, resource, teamData));
+					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, teamData));
 				} else if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Update a team                               */
@@ -1405,14 +1450,14 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const teamData = Onfleet.getTeamFields.call(this, index, operation);
 					const path = `${resource}/${id}`;
-					responseData.push(await onfleetApiRequest.call(this, 'PUT', encodedApiKey, path, teamData));
+					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, teamData));
 				} else if (operation === 'delete') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Delete a team                               */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const path = `${resource}/${id}`;
-					await onfleetApiRequest.call(this, 'DELETE', encodedApiKey, path);
+					await onfleetApiRequest.call(this, 'DELETE', path);
 					responseData.push({ success: true });
 				} else if (operation === 'getTimeEstimates') {
 					/* -------------------------------------------------------------------------- */
@@ -1421,7 +1466,7 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const workerTimeEstimates = Onfleet.getTeamFields.call(this, index, operation) as OnfleetWorkerSchedule;
 					const path = `${resource}/${id}/estimate`;
-					responseData.push(await onfleetApiRequest.call(this, 'GET', encodedApiKey, path, {}, workerTimeEstimates));
+					responseData.push(await onfleetApiRequest.call(this, 'GET', path, {}, workerTimeEstimates));
 				} else if (operation === 'autoDispatch') {
 					/* -------------------------------------------------------------------------- */
 					/*                  Dynamically dispatching tasks on the fly                  */
@@ -1429,16 +1474,15 @@ export class Onfleet implements INodeType {
 					const id = this.getNodeParameter('id', index) as string;
 					const teamAutoDispatch = Onfleet.getTeamFields.call(this, index, operation) as OnfleetWorkerSchedule;
 					const path = `${resource}/${id}/dispatch`;
-					responseData.push(await onfleetApiRequest.call(this, 'POST', encodedApiKey, path, teamAutoDispatch));
+					responseData.push(await onfleetApiRequest.call(this, 'POST', path, teamAutoDispatch));
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					responseData.push({ error: (error as IDataObject).toString() });
+					continue;
 				}
+				throw error;
 			}
-		}
-		if (operation === 'delete') {
-			return { success: true };
 		}
 
 		return responseData;
@@ -1448,11 +1492,8 @@ export class Onfleet implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const items = this.getInputData();
-		//Get credentials the user provided for this node
-		const credentials = await this.getCredentials('onfleetApi') as ICredentialDataDecryptedObject;
-		const encodedApiKey = Buffer.from(`${credentials.apiKey}:`).toString('base64');
 
-		const operations: { [ key:string ]: Function} = {
+		const operations: { [key: string]: Function } = {
 			task: Onfleet.executeTaskOperations,
 			destination: Onfleet.executeDestinationOperations,
 			organization: Onfleet.executeOrganizationOperations,
@@ -1465,9 +1506,9 @@ export class Onfleet implements INodeType {
 			team: Onfleet.executeTeamOperations,
 		};
 
-		const responseData = await operations[resource].call(this, `${resource}s`, operation, items, encodedApiKey);
+		const responseData = await operations[resource].call(this, `${resource}s`, operation, items);
+
 		// Map data to n8n data
 		return [this.helpers.returnJsonArray(responseData)];
 	}
-
 }

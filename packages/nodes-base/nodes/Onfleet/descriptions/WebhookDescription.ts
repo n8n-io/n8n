@@ -1,7 +1,10 @@
 import {
 	INodeProperties
 } from 'n8n-workflow';
-import { webhookMapping } from '../WebhookMapping';
+
+import {
+	webhookMapping,
+} from '../WebhookMapping';
 
 export const webhookOperations: INodeProperties[] = [
 	{
@@ -10,7 +13,7 @@ export const webhookOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'webhook' ],
+				resource: ['webhook'],
 			},
 		},
 		options: [
@@ -35,7 +38,7 @@ export const webhookOperations: INodeProperties[] = [
 ];
 
 const urlField = {
-	displayName: 'Url',
+	displayName: 'URL',
 	name: 'url',
 	type: 'string',
 	default: '',
@@ -54,8 +57,11 @@ const triggerField = {
 	displayName: 'Trigger',
 	name: 'trigger',
 	type: 'options',
-	options: Object.keys(webhookMapping).map((name, value) => {
-		return { name, value };
+	options: Object.entries(webhookMapping).map(([key, value]) => {
+		return {
+			name: value.name,
+			value: value.key,
+		};
 	}),
 	default: '',
 	description: 'The number corresponding to the trigger condition on which the webhook should fire',
@@ -76,8 +82,8 @@ export const webhookFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'webhook' ],
-				operation: [ 'delete' ],
+				resource: ['webhook'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -88,8 +94,8 @@ export const webhookFields: INodeProperties[] = [
 		...urlField,
 		displayOptions: {
 			show: {
-				resource: [ 'webhook' ],
-				operation: [ 'create' ],
+				resource: ['webhook'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -98,8 +104,8 @@ export const webhookFields: INodeProperties[] = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [ 'webhook' ],
-				operation: [ 'create' ],
+				resource: ['webhook'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -108,8 +114,8 @@ export const webhookFields: INodeProperties[] = [
 		...triggerField,
 		displayOptions: {
 			show: {
-				resource: [ 'webhook' ],
-				operation: [ 'create' ],
+				resource: ['webhook'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -122,10 +128,10 @@ export const webhookFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'webhook' ],
-				operation: [ 'create' ],
+				resource: ['webhook'],
+				operation: ['create'],
 			},
 		},
-		options: [ thresholdField ],
+		options: [thresholdField],
 	},
 ];

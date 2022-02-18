@@ -9,7 +9,7 @@ export const workerOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
+				resource: ['worker'],
 			},
 		},
 		options: [
@@ -200,7 +200,7 @@ const phonesFilterField = {
 } as INodeProperties;
 
 const filterField = {
-	displayName: 'List Of Fields To Return',
+	displayName: 'Fields to Return',
 	name: 'filter',
 	type: 'multiOptions',
 	options: [
@@ -364,8 +364,8 @@ export const workerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'getAll' ],
+				resource: ['worker'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -375,7 +375,7 @@ export const workerFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
+				resource: ['worker'],
 				operation: [
 					'get',
 					'getSchedule',
@@ -393,8 +393,8 @@ export const workerFields: INodeProperties[] = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'create' ],
+				resource: ['worker'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -403,8 +403,8 @@ export const workerFields: INodeProperties[] = [
 		...phoneField,
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'create' ],
+				resource: ['worker'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -415,53 +415,8 @@ export const workerFields: INodeProperties[] = [
 		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'update' ],
-			},
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Vehicle Properties',
-				name: 'vehicleProperties',
-				values: [
-					{
-						displayName: 'Additional Fields',
-						name: 'additionalFields',
-						type: 'collection',
-						placeholder: 'Add Field',
-						default: {},
-						options: [
-							{
-								...vehicleTypeField,
-								required: true,
-							},
-							{
-								...vehicleDescriptionField,
-								required: false,
-							},
-							{
-								...vehicleLicensePlateField,
-								required: false,
-							},
-							{
-								...vehicleColorField,
-								required: false,
-							},
-						],
-					},
-				],
-			},
-		],
-	},
-	{
-		displayName: 'Vehicle',
-		name: 'vehicle',
-		type: 'fixedCollection',
-		displayOptions: {
-			show: {
-				resource: [ 'worker' ],
-				operation: [ 'create' ],
+				resource: ['worker'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -503,8 +458,8 @@ export const workerFields: INodeProperties[] = [
 		...teamsField,
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'create' ],
+				resource: ['worker'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -513,9 +468,9 @@ export const workerFields: INodeProperties[] = [
 		...longitudeFilterField,
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'getAll' ],
-				byLocation: [ true ],
+				resource: ['worker'],
+				operation: ['getAll'],
+				byLocation: [true],
 			},
 		},
 		required: true,
@@ -524,27 +479,53 @@ export const workerFields: INodeProperties[] = [
 		...latitudeFilterField,
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'getAll' ],
-				byLocation: [ true ],
+				resource: ['worker'],
+				operation: ['getAll'],
+				byLocation: [true],
 			},
 		},
 		required: true,
 	},
 	{
-		displayName: 'Filter Fields',
-		name: 'filterFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'getAll' ],
-				byLocation: [ true ],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'getAll',
+				],
 			},
 		},
-		options: [ radiusFilterField ],
+		default: false,
+		description: 'If all results should be returned or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'worker',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 64,
+		},
+		default: 64,
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -554,8 +535,8 @@ export const workerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'create' ],
+				resource: ['worker'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -571,8 +552,8 @@ export const workerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'update' ],
+				resource: ['worker'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -583,35 +564,68 @@ export const workerFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Filter Fields',
-		name: 'filterFields',
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'getAll' ],
-				byLocation: [ false ],
+				resource: ['worker'],
+				operation: ['getAll'],
+				byLocation: [true],
 			},
 		},
 		options: [
-			filterField,
+			radiusFilterField,
+		],
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['worker'],
+				operation: ['getAll'],
+				byLocation: [false],
+			},
+		},
+		options: [
 			teamsFilterField,
 			statesFilterField,
 			phonesFilterField,
 		],
 	},
 	{
-		displayName: 'Filter Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'get' ],
+				resource: ['worker'],
+				operation: ['getAll'],
+				byLocation: [false],
+			},
+		},
+		options: [
+			filterField,
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['worker'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -633,10 +647,11 @@ export const workerFields: INodeProperties[] = [
 		displayName: 'Schedule',
 		name: 'schedule',
 		type: 'fixedCollection',
+		placeholder: 'Add Schedule',
 		displayOptions: {
 			show: {
-				resource: [ 'worker' ],
-				operation: [ 'setSchedule' ],
+				resource: ['worker'],
+				operation: ['setSchedule'],
 			},
 		},
 		default: {},
@@ -663,9 +678,9 @@ export const workerFields: INodeProperties[] = [
 						name: 'shifts',
 						type: 'fixedCollection',
 						default: {},
+						placeholder: 'Add Shift',
 						typeOptions: {
 							multipleValues: true,
-							multipleValueButtonText: 'Add Shift',
 						},
 						options: [
 							{
