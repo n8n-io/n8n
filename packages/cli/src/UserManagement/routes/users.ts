@@ -151,8 +151,8 @@ export function usersNamespace(this: N8nApp): void {
 
 			Logger.debug(
 				usersPendingSetup.length > 1
-					? `Sent ${usersPendingSetup.length} emails successfully`
-					: `Sent 1 email successfully`,
+					? `Sent ${usersPendingSetup.length} invite emails successfully`
+					: `Sent 1 invite email successfully`,
 				{ userShells: createUsers },
 			);
 
