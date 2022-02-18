@@ -15,6 +15,7 @@
 
 <script lang="ts">
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import { DateTime } from "luxon";
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -121,6 +122,7 @@ export default mixins(
 				// As wordBasedSuggestions: false does not have any effect does it however seem
 				// to remove all all suggestions from the editor if I do this
 				monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+					target: monaco.languages.typescript.ScriptTarget.Latest,
 					allowNonTsExtensions: true,
 				});
 
@@ -182,7 +184,7 @@ export default mixins(
 				}
 				`;
 
-				const autoComplete$in = `
+				const autoComplete$input = `
 				{
 					item: (itemIndex?: number, runIndex?: number, inputConnectorIndex?: number) => {},\n
 					first: (runIndex?: number, inputConnectorIndex?: number) => {},\n
@@ -203,7 +205,7 @@ export default mixins(
 					`function $item(itemIndex: number, runIndex?: number) {};`,
 					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number) {};`,
 					`function $(nodeName?: ${workflowNodes.join(' | ')}): ${autoComplete$}`,
-					`const $in = ${autoComplete$in}`,
+					`const $input = ${autoComplete$input}`,
 				];
 
 				const baseKeys = ['$env', '$executionId', '$mode', '$parameter', '$position', '$resumeWebhookUrl', '$workflow'];
@@ -259,6 +261,19 @@ export default mixins(
 				this.monacoLibrary = monaco.languages.typescript.javascriptDefaults.addExtraLib(
 					autoCompleteItems.join('\n'),
 				);
+
+
+				// const libSource = [
+				// 	'declare class DateTime {',
+				// 	'    /**',
+				// 	'     * Returns luxon DateTime',
+				// 	'     */',
+				// 	'    static next():string',
+				// 	'}',
+				// ].join('\n');
+				// const libUri = 'file:///node_modules/@types/luxon/src/datetime.d.ts';
+
+				// monaco.languages.typescript.javascriptDefaults.addExtraLib(libSource, libUri);
 			}
 		},
 	},

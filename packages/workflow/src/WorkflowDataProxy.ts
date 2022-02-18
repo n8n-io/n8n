@@ -446,12 +446,7 @@ export class WorkflowDataProxy {
 	getDataProxy(): IWorkflowDataProxyData {
 		const that = this;
 
-		const getNodeOutput = (
-			nodeName?: string,
-			branchIndex?: number,
-			runIndex?: number,
-			itemIndex?: number,
-		) => {
+		const getNodeOutput = (nodeName?: string, branchIndex?: number, runIndex?: number) => {
 			let executionData: INodeExecutionData[];
 
 			if (nodeName === undefined) {
@@ -464,25 +459,6 @@ export class WorkflowDataProxy {
 
 			return executionData;
 		};
-
-		// const getNodeInput = (runIndex?: number, inputConnectorIndex?: number, itemIndex?: number) => {
-		// 	// let executionData: INodeExecutionData[];
-
-		// 	const parentNodes = that.workflow.getParentNodes(that.activeNodeName);
-		// 	const conectedParentNodes = parentNodes.filter((nodeName) =>
-		// 		that.workflow.getChildNodes(nodeName, undefined, 0).includes(that.activeNodeName),
-		// 	);
-
-		// 	// if (nodeName === undefined) {
-		// 	// 	executionData = that.connectionInputData;
-		// 	// } else {
-		// 	// 	inputConnectorIndex = inputConnectorIndex || 0;
-		// 	// 	runIndex = runIndex === undefined ? -1 : runIndex;
-		// 	// 	executionData = that.getNodeExecutionData(nodeName, false, inputConnectorIndex, runIndex);
-		// 	// }
-
-		// 	return conectedParentNodes;
-		// };
 
 		const base = {
 			//------------------------------------------------------------------------------------------------
@@ -536,51 +512,46 @@ export class WorkflowDataProxy {
 				);
 			},
 			//------------------------------------------------------------------------------------------------
-			$in: new Proxy(
-				// $in.thisItem
-				// $in.item(itemIndex?, runIndex?, inputConnectorIndex?)
-				// $in.first(runIndex?, inputConnectorIndex?)
-				// $in.last(runIndex?, inputConnectorIndex?)
-				// $in.all(runIndex?, inputConnectorIndex?)
+			$input: new Proxy(
+				// $input.thisItem
+				// $input.item(itemIndex?)
+				// $input.first()
+				// $input.last()
+				// $input.all()
 				{},
 				{
 					get(target, property, receiver) {
 						if (property === 'item') {
-							return (itemIndex?: number, runIndex?: number, inputConnectorIndex?: number) => {
-								// const result = getNodeInput(runIndex, inputConnectorIndex, itemIndex);
+							return (itemIndex?: number) => {
 								const result = that.connectionInputData;
-								if (itemIndex && that.runIndex === (runIndex || 0) && result[itemIndex]) {
+								if (itemIndex && result[itemIndex]) {
 									return result[itemIndex];
 								}
 								return [];
 							};
 						}
 						if (property === 'first') {
-							return (runIndex?: number, inputConnectorIndex?: number) => {
+							return () => {
 								const result = that.connectionInputData;
-								if (that.runIndex === (runIndex || 0) && result[0]) {
+								if (result[0]) {
 									return result[0];
 								}
 								return [];
 							};
 						}
 						if (property === 'last') {
-							return (runIndex?: number, inputConnectorIndex?: number) => {
+							return () => {
 								const result = that.connectionInputData;
-								if (
-									that.runIndex === (runIndex || 0) &&
-									result.length &&
-									result[result.length - 1]
-								) {
+								if (result.length && result[result.length - 1]) {
 									return result[result.length - 1];
 								}
 								return [];
 							};
 						}
 						if (property === 'all') {
-							return (runIndex?: number, inputConnectorIndex?: number) => {
+							return () => {
 								const result = that.connectionInputData;
-								if (that.runIndex === (runIndex || 0) && result.length) {
+								if (result.length) {
 									return result;
 								}
 								return [];

@@ -1,5 +1,7 @@
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
+import { DateTime } from 'luxon';
+
 // eslint-disable-next-line import/no-cycle
 import {
 	INode,
@@ -114,6 +116,9 @@ export class Expression {
 
 		// @ts-ignore
 		data.document = {};
+
+		// @ts-ignore
+		data.DateTime = DateTime;
 		// @ts-ignore
 		data.constructor = {};
 

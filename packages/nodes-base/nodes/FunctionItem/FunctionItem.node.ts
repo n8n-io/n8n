@@ -37,6 +37,7 @@ export class FunctionItem implements INodeType {
 				type: 'string',
 				default: `// Code here will run once per input item.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
+const { DateTime } = require("luxon");
 
 // Add a new field called 'myNewField' to the JSON of the item
 item.myNewField = 1;
@@ -114,7 +115,9 @@ return item;`,
 				}
 
 				if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-					options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
+					options.require.external = { modules: [...process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','), 'luxon'] };
+				} else {
+					options.require.external = { modules: ['luxon'] };
 				}
 
 				const vm = new NodeVM(options);
