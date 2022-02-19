@@ -127,7 +127,7 @@ export default mixins(genericHelpers).extend({
 			this.loadCollections();
 		},
 		trackSearch() {
-			if (!this.search || !this.categories.length) {
+			if (!this.search && !this.categories.length) {
 				return;
 			}
 			const templateEvent = {
