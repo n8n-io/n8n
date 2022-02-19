@@ -50,7 +50,7 @@
 							:total-workflows="totalWorkflows"
 							:workflows="workflows"
 						/>
-						<div v-if="!workflows.length && !loadingWorkflows">
+						<div v-if="nothingFound">
 							<n8n-text color="text-base">{{
 								$locale.baseText('templates.noSearchResults')
 							}}</n8n-text>
@@ -70,7 +70,7 @@ import TemplateList from '@/components/TemplateList.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { abbreviateNumber } from '@/components/helpers';
 import mixins from 'vue-typed-mixins';
-import { IN8nSearchData, ITemplatesQuery } from '@/Interface';
+import { IN8nCollection, IN8nSearchData, IN8nTemplate, ITemplatesQuery } from '@/Interface';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplatesView',
@@ -89,7 +89,7 @@ export default mixins(genericHelpers).extend({
 				search: this.search,
 			};
 		},
-		collections(): [] {
+		collections(): IN8nCollection[] {
 			return this.$store.getters['templates/getSearchedCollections'](this.query);
 		},
 		isMenuCollapsed(): boolean {
@@ -98,8 +98,11 @@ export default mixins(genericHelpers).extend({
 		totalWorkflows(): number {
 			return this.$store.getters['templates/getSearchedWorkflowsTotal'](this.query);
 		},
-		workflows(): [] {
+		workflows(): IN8nTemplate[] {
 			return this.$store.getters['templates/getSearchedWorkflows'](this.query);
+		},
+		nothingFound(): boolean {
+			return !this.loadingWorkflows && !this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0;
 		},
 	},
 	data() {
@@ -144,6 +147,7 @@ export default mixins(genericHelpers).extend({
 			this.$router.push({ name: 'NodeViewNew' });
 		},
 		async onSearchInput() {
+			this.loadingWorkflows = true;
 			this.callDebounced('updateSearch', 500, true);
 		},
 		async setCategories(selected: string[]) {
@@ -219,7 +223,7 @@ export default mixins(genericHelpers).extend({
 	},
 	watch: {
 		workflows(newWorkflows) {
-			if (newWorkflows.length === 0 && this.loadingWorkflows) {
+			if (newWorkflows.length === 0) {
 				this.scrollToTop();
 			}
 		},
