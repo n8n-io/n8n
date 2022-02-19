@@ -74,6 +74,10 @@ export default mixins(showMessage).extend({
 		'$route'(route) {
 			this.$store.commit('ui/setCurrentPage', this.$route.name);
 			this.$telemetry.page('Editor', route);
+
+			if (!(this.$route && this.$route.meta && this.$route.meta.templatesEnabled)) {
+				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
+			}
 		},
 	},
 });

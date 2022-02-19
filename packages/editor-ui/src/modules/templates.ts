@@ -26,7 +26,7 @@ const module: Module<ITemplateState, IRootState> = {
 		templates: {},
 		collectionSearches: {},
 		workflowSearches: {},
-		sessionId: '',
+		sessionId: `templates-${Date.now()}`,
 	},
 	getters: {
 		allCategories(state: ITemplateState) {
@@ -86,6 +86,9 @@ const module: Module<ITemplateState, IRootState> = {
 
 				return Boolean(search && !search.loadingMore && search.totalWorkflows === search.workflowIds.length);
 			};
+		},
+		sessionId(state: ITemplateState) {
+			return state.sessionId;
 		},
 	},
 	mutations: {
