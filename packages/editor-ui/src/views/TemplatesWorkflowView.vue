@@ -62,7 +62,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(workflowHelpers).extend({
-	name: 'TemplateView',
+	name: 'TemplatesWorkflowView',
 	components: {
 		GoBackButton,
 		TemplateDetails,

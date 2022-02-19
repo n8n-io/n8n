@@ -5,7 +5,7 @@ import CollectionView from '@/views/CollectionView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
-import TemplateView from '@/views/TemplateView.vue';
+import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 
 Vue.use(Router);
@@ -42,9 +42,9 @@ export default new Router({
 		},
 		{
 			path: '/templates/:id',
-			name: 'TemplateView',
+			name: 'TemplatesWorkflowView',
 			components: {
-				default: TemplateView,
+				default: TemplatesWorkflowView,
 				sidebar: MainSidebar,
 			},
 			meta: {
