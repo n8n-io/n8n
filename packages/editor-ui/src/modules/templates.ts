@@ -34,6 +34,9 @@ const module: Module<ITemplateState, IRootState> = {
 		getCollectionById(state: ITemplateState) {
 			return (id: string): null | ITemplateCollection => state.collections[id];
 		},
+		getCategoryById(state: ITemplateState) {
+			return (id: string): null | ITemplateCategory => state.categories[id];
+		},
 		// getSearchResults(state: ITemplateState) {
 		// 	return (query: {categories: number[], search: string}): IN8nSearchData | null => {
 		// 		const searchKey = JSON.stringify(query);
@@ -60,11 +63,11 @@ const module: Module<ITemplateState, IRootState> = {
 		// },
 	},
 	mutations: {
-		// addCategories(state: ITemplateState, categories: ITemplateCategory[]) {
-		// 	categories.forEach((category: ITemplateCategory) => {
-		// 		Vue.set(state.categories, category.id, category);
-		// 	});
-		// },
+		addCategories(state: ITemplateState, categories: ITemplateCategory[]) {
+			categories.forEach((category: ITemplateCategory) => {
+				Vue.set(state.categories, category.id, category);
+			});
+		},
 		addCollections(state: ITemplateState, collections: ITemplateCollection[]) {
 			collections.forEach((collection: ITemplateCollection) => {
 				const cachedCollection = state.collections[collection.id] || {};
@@ -124,11 +127,15 @@ const module: Module<ITemplateState, IRootState> = {
 			context.commit('addCollections', [collection]);
 			return collection;
 		},
-		// 	async getCategories(context: ActionContext<ITemplateState, IRootState>) {
-		// 		const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-		// 		const categories = await getCategories(apiEndpoint);
+		async getCategories(context: ActionContext<ITemplateState, IRootState>) {
+			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+			const response = await getCategories(apiEndpoint);
+			const categories = response.data.categories;
 
-		// 	},
+			context.commit('addCategories', categories);
+
+			return categories;
+		},
 		// 	async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { pageSize = 10, search = '', categories, skip = 0 }: {pageSize: number, search: string, categories: number[], skip: number}): Promise<IN8nSearchData | null> {
 		// 		const cachedResults: IN8nSearchData | null = context.getters.getSearchResults({categories, search});
 		// 		if (cachedResults && cachedResults.workflows.length < skip) {

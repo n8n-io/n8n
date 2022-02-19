@@ -86,7 +86,7 @@ export default mixins(genericHelpers).extend({
 			return this.$store.getters['templates/allCategories'];
 		},
 		collections(): [] {
-			return this.$store.getters['templates/getCollections'];
+			return this.$store.getters['templates/getCollections'] || [];
 		},
 		isMenuCollapsed(): boolean {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
@@ -98,7 +98,7 @@ export default mixins(genericHelpers).extend({
 			return this.$store.getters['templates/getTotalWorkflows'];
 		},
 		workflows(): [] {
-			return this.$store.getters['templates/getTemplates'];
+			return this.$store.getters['templates/getTemplates'] || [];
 		},
 	},
 	data() {
@@ -184,12 +184,24 @@ export default mixins(genericHelpers).extend({
 
 			this.$router.replace({ query });
 		},
+		async loadCategories() {
+			try {
+				await this.$store.dispatch('templates/getCategories');
+			} catch (e) {
+				this.$showMessage({
+					title: 'Error',
+					message: 'Could not load categories',
+					type: 'error',
+				});
+			} finally {
+				this.loadingCategories = false;
+			}
+		},
+	},
+	async mounted() {
+		this.loadCategories();
 	},
 	async created() {
-		if (!this.isTemplatesEnabled) {
-			this.$router.replace({ name: 'NodeViewNew' });
-		}
-
 		this.scrollToTop();
 
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
@@ -200,22 +212,22 @@ export default mixins(genericHelpers).extend({
 			this.categories = this.$route.query.categories.split(',').map((id) => Number(id));
 		}
 
-		const category = this.categories.length ? this.categories : null;
+		// const category = this.categories.length ? this.categories : null;
 
-		const results: IN8nSearchData | null = await this.$store.dispatch('templates/getSearchResults', {
-			numberOfResults: TEMPLATES_PAGE_SIZE,
-			search: this.search,
-			category,
-			fetchCategories: true,
-		});
+		// const results: IN8nSearchData | null = await this.$store.dispatch('templates/getSearchResults', {
+		// 	numberOfResults: TEMPLATES_PAGE_SIZE,
+		// 	search: this.search,
+		// 	category,
+		// 	fetchCategories: true,
+		// });
 
-		if (results && this.search) {
-			const templateEvent = await this.generateTemplateEvent(results);
-			this.$telemetry.track('User searched workflow templates', templateEvent);
-		}
+		// if (results && this.search) {
+		// 	const templateEvent = await this.generateTemplateEvent(results);
+		// 	this.$telemetry.track('User searched workflow templates', templateEvent);
+		// }
 
-		this.loadingCategories = false;
-		this.loading = false;
+		// this.loadingCategories = false;
+		// this.loading = false;
 	},
 });
 </script>
