@@ -15,7 +15,6 @@ import {
 } from '../Interface';
 
 import Vue from 'vue';
-import { query } from 'express';
 
 const module: Module<ITemplateState, IRootState> = {
 	namespaced: true,
