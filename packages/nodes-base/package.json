@@ -439,6 +439,7 @@
       "dist/nodes/Google/Books/GoogleBooks.node.js",
       "dist/nodes/Google/Calendar/GoogleCalendar.node.js",
       "dist/nodes/Google/Calendar/GoogleCalendarTrigger.node.js",
+      "dist/nodes/Google/Chat/GoogleChat.node.js",
       "dist/nodes/Google/CloudNaturalLanguage/GoogleCloudNaturalLanguage.node.js",
       "dist/nodes/Google/Contacts/GoogleContacts.node.js",
       "dist/nodes/Google/Docs/GoogleDocs.node.js",
