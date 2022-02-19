@@ -104,7 +104,7 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
-			categories: [] as number[],
+			categories: [] as string[],
 			loading: true,
 			loadingCategories: true,
 			loadingCollections: true,
@@ -230,7 +230,7 @@ export default mixins(genericHelpers).extend({
 		}
 
 		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories.split(',').map((id) => Number(id));
+			this.categories = this.$route.query.categories.split(',');
 		}
 	},
 });
