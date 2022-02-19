@@ -17,11 +17,10 @@
 			<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4">
 				<CollectionsCard
 					v-for="collection in collections"
-					:id="collection.id"
 					:key="collection.id"
 					:loading="loading"
-					:navigate-to="navigateTo"
 					:title="collection.name"
+					@click="navigateTo(collection.id, 'CollectionView', $event)"
 				>
 					<template v-slot:footer>
 						<n8n-text size="small" color="text-light">
@@ -60,9 +59,6 @@ export default mixins(genericHelpers).extend({
 		},
 		loading: {
 			type: Boolean,
-		},
-		navigateTo: {
-			type: Function,
 		},
 	},
 	watch: {
@@ -103,6 +99,24 @@ export default mixins(genericHelpers).extend({
 				} else {
 					this.scrollEnd = false;
 				}
+			}
+		},
+		navigateTo(id: string, page: string, e: PointerEvent) {
+			if (page === 'WorkflowTemplate') {
+				this.$store.dispatch('templates/setTemplateSessionId', null);
+				this.$telemetry.track('User inserted workflow template', {
+					template_id: id,
+					new_workflow_id: id,
+					source: 'collection',
+				});
+			}
+
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({ name: page, params: { id } });
+				window.open(route.href, '_blank');
+				return;
+			} else {
+				this.$router.push({ name: page, params: { id } });
 			}
 		},
 		scrollLeft() {

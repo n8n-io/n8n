@@ -50,7 +50,7 @@
 							:total-workflows="totalWorkflows"
 							:workflows="workflows"
 						/>
-						<div v-if="!workflows.length && !collections.length">
+						<div v-if="!workflows.length && !collections.length && !loading">
 							<n8n-text color="text-base">{{
 								$locale.baseText('templates.noSearchResults')
 							}}</n8n-text>

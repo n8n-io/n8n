@@ -1,7 +1,7 @@
 <template>
 	<div
 		:class="$style.card"
-		@click="navigateTo(id, 'CollectionView', $event)"
+		@click="(e) => $emit('click', e)"
 	>
 		<div :class="$style.container">
 			<span
@@ -24,14 +24,8 @@ import mixins from 'vue-typed-mixins';
 export default mixins(genericHelpers).extend({
 	name: 'CollectionsCard',
 	props: {
-		id: {
-			type: String,
-		},
 		loading: {
 			type: Boolean,
-		},
-		navigateTo: {
-			type: Function,
 		},
 		title: {
 			type: String,
@@ -61,7 +55,7 @@ export default mixins(genericHelpers).extend({
 }
 
 .title {
-	display: -webkit-box !important;
+	display: -webkit-box;
 	-webkit-line-clamp: 4;
 	-webkit-box-orient: vertical;
 	font-size: var(--font-size-s);

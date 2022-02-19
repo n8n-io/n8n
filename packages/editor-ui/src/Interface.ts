@@ -514,18 +514,14 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 export interface IN8nCollectionResponse {
-	data: IN8nCollectionData;
-}
-
-export interface IN8nCollectionData {
-	collection: IN8nCollection;
+	data: { collection: IN8nCollection };
 }
 
 export interface IN8nCollection {
 	id: string;
 	image: ITemplateImage[];
 	name: string;
-	nodes: ITemplateNode[];
+	nodes: IVersionNode[];
 	categories: ITemplateCategories[];
 	description: string;
 	workflows: IN8nTemplate[];
@@ -533,10 +529,7 @@ export interface IN8nCollection {
 }
 
 export interface IN8nTemplateResponse {
-	data: IN8nTemplateData;
-}
-export interface IN8nTemplateData {
-	workflow: IN8nTemplate;
+	data: { workflow: IN8nTemplate; };
 }
 export interface IN8nTemplate {
 	id: string;
@@ -544,9 +537,8 @@ export interface IN8nTemplate {
 	createdAt: string;
 	description: string;
 	image: ITemplateImage[];
-	mainImage: ITemplateMainImage[];
 	name: string;
-	nodes: ITemplateNode[];
+	nodes: IVersionNode[];
 	totalViews: number;
 	user: {
 		username: string;
@@ -574,7 +566,7 @@ export interface ITemplateCollection {
 	id: string;
 	name: string;
 	workflowsCount: number;
-	nodes: ITemplateNode[];
+	nodes: IVersionNode[];
 }
 
 export interface IN8nUISettings {
@@ -624,34 +616,6 @@ export interface ITemplateCategories {
 export interface ITemplateImage {
 	id: string;
 	url: string;
-}
-
-export interface ITemplateMainImage {
-	image: ITemplateMainImageItem[];
-	workflowHash: string;
-}
-
-export interface ITemplateMainImageItem {
-	url: string;
-	metadata: ITemplateMetadata;
-}
-
-export interface ITemplateMetadata {
-	width: string;
-}
-export interface ITemplateNode {
-	displayName: string;
-	defaults: {
-		color: string;
-	};
-	icon: string;
-	iconData?: {
-		fileBuffer?: string;
-		type?: string;
-	};
-	name: string;
-	typeVersion: number;
-	categories: ITemplateCategories[];
 }
 
 export interface ITimeoutHMS {
@@ -749,7 +713,10 @@ export interface IVersionNode {
 		icon?: string;
 		fileBuffer?: string;
 	};
+	typeVersion: number;
+	categories: ITemplateCategories[];
 }
+
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];

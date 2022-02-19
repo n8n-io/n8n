@@ -24,7 +24,6 @@
 						:abbreviate-number="abbreviateNumber"
 						:infinite-scroll-enabled="false"
 						:loading="loading"
-						:navigate-to="navigateTo"
 						:node-icon-size="18"
 						:use-workflow-button="true"
 						:workflows="collection.workflows"

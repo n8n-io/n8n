@@ -58,7 +58,7 @@
 									:key="index"
 									:class="$style.icon"
 								>
-									<TemplateNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
+									<HoverableNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
 								</div>
 								<div
 									:class="$style.nodeButton"
@@ -88,11 +88,11 @@
 </template>
 
 <script lang="ts">
-import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
+import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 import TemplateCard from '@/components/TemplateCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplateNode } from '@/Interface';
+import { IVersionNode } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes } from './helpers';
 
@@ -192,7 +192,7 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	components: {
-		TemplateNodeIcon,
+		HoverableNodeIcon,
 		TemplateCard,
 	},
 	computed: {
@@ -216,7 +216,7 @@ export default mixins(genericHelpers).extend({
 				return this.nodesToBeShown;
 			}
 		},
-		filterCoreNodes(nodes: ITemplateNode[]) {
+		filterCoreNodes(nodes: IVersionNode[]) {
 			return filterTemplateNodes(nodes);
 		},
 	},

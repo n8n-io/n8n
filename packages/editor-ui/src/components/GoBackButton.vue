@@ -18,18 +18,18 @@ export default Vue.extend({});
 
 	&:hover {
 		.icon, .text {
-			color: $--color-primary;
+			color: var(--color-primary);
 		}
 	}
 }
 
 .icon {
 	margin-right: var(--spacing-2xs);
-	color: #C6C8D0;
+	color: var(--color-foreground-dark);
 	font-size: var(--font-size-m);
 
 	&:hover {
-		color: $--color-primary;
+		color: var(--color-primary);
 	}
 }
 

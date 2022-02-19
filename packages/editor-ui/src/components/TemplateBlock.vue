@@ -29,7 +29,7 @@ export default Vue.extend({
 
 .header {
 	padding: 0 0 var(--spacing-4xs);
-	border-bottom: 1px solid $--node-creator-border-color;
+	border-bottom: var(--border-width-base) var(--color-foreground-base) var(--border-style-base);
 }
 
 .content {
