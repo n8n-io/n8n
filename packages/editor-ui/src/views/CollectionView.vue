@@ -27,6 +27,7 @@
 						:node-icon-size="18"
 						:use-workflow-button="true"
 						:workflows="collection && collection.workflows"
+						:navigateTo="navigateTo"
 					/>
 				</div>
 				<div :class="$style.details">
