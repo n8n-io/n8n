@@ -31,8 +31,8 @@ export class GristApi implements ICredentialType {
 				},
 				{
 					name: 'Self-hosted',
-					value: 'selfhosted',
-				},				
+					value: 'selfHosted',
+				},
 			],
 		},
 		{
@@ -55,12 +55,13 @@ export class GristApi implements ICredentialType {
 			name: 'selfHostedUrl',
 			type: 'string',
 			default: '',
+			placeholder: 'http://localhost:8484',
 			required: true,
-			description: 'URL of your Grist instance (include http/https without /api and no trailing slash)',
+			description: 'URL of your Grist instance. Include http/https without /api and no trailing slash.',
 			displayOptions: {
 				show: {
 					planType: [
-						'selfhosted',
+						'selfHosted',
 					],
 				},
 			},
