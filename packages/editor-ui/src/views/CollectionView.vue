@@ -60,8 +60,11 @@ export default mixins(workflowHelpers).extend({
 		TemplateList,
 	},
 	computed: {
+		collectionId(): string {
+			return this.$route.params.id;
+		},
 		collection(): IN8nCollection {
-			return this.$store.getters['templates/getCollection'];
+			return this.$store.getters['templates/getCollectionById'](this.collectionId);
 		},
 		isTemplatesEnabled(): boolean {
 			return this.$store.getters['settings/isTemplatesEnabled'];
@@ -108,8 +111,7 @@ export default mixins(workflowHelpers).extend({
 			this.$router.replace({ name: 'NodeViewNew' });
 		}
 
-		const collectionId = this.$route.params.id;
-		const response = await this.$store.dispatch('templates/getCollectionById', collectionId);
+		const response = await this.$store.dispatch('templates/getCollectionById', this.collectionId);
 		if (!response) {
 			this.$showMessage({
 				title: 'Error',

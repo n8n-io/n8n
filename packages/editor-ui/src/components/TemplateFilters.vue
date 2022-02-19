@@ -83,7 +83,7 @@ export default mixins(genericHelpers).extend({
 	},
 	computed: {
 		categories() {
-			const fetchedCategories = this.$store.getters['templates/getCategories'];
+			const fetchedCategories = this.$store.getters['templates/allCategories'];
 			const copiedCategories = JSON.parse(JSON.stringify(fetchedCategories));
 			if (this.selected.length) {
 				return copiedCategories.map((category: ITemplateCategory) => {

@@ -83,7 +83,7 @@ export default mixins(genericHelpers).extend({
 	},
 	computed: {
 		allCategories(): [] {
-			return this.$store.getters['templates/getCategories'];
+			return this.$store.getters['templates/allCategories'];
 		},
 		collections(): [] {
 			return this.$store.getters['templates/getCollections'];

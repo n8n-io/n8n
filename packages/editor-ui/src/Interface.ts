@@ -545,14 +545,19 @@ export interface IN8nTemplate {
 	};
 }
 
+export interface ITemplatesQuery {
+	categories: number[];
+	search: string;
+}
+
 export interface IN8nSearchResponse {
 	data: IN8nSearchData;
 }
 
 export interface IN8nSearchData {
-	categories: ITemplateCategory[];
+	categories?: ITemplateCategory[];
 	collections: ITemplateCollection[];
-	totalworkflow: number;
+	totalWorkflows: number;
 	workflows: IN8nTemplate[];
 }
 
@@ -800,12 +805,16 @@ export interface ISettingsState {
 }
 
 export interface ITemplateState {
-	categories: ITemplateCategory[];
-	collection: ITemplateCollection;
-	collections: ITemplateCollection[];
-	templates: IN8nTemplate[];
-	template: IN8nTemplate;
-	totalworkflow: number | null;
+	categories: {[id: string]: ITemplateCategory};
+	collections: {[id: string]: ITemplateCollection};
+	templates: {[id: string]: IN8nTemplate};
+	searchResults: {
+		[search: string]: {
+			workflowIds: string[];
+			collectionIds: string[];
+			totalWorkflows: number;
+		}
+	};
 }
 
 export interface IVersionsState {

@@ -11,61 +11,89 @@ import {
 	ITemplateCategory,
 	ITemplateCollection,
 	ITemplateState,
+	ITemplatesQuery,
 } from '../Interface';
 
 import Vue from 'vue';
+import { query } from 'express';
 
 const module: Module<ITemplateState, IRootState> = {
 	namespaced: true,
 	state: {
-		categories: [],
-		collection: {} as ITemplateCollection,
-		collections: [],
-		templates: [],
-		template: {} as IN8nTemplate,
-		totalworkflow: null,
+		categories: {},
+		collections: {},
+		templates: {},
+		searchResults: {},
 	},
 	getters: {
-		getCategories(state: ITemplateState) {
-			return state.categories;
+		allCategories(state: ITemplateState) {
+			return Object.values(state.categories);
 		},
-		getCollection(state: ITemplateState) {
-			return state.collection;
+		getTemplateById(state: ITemplateState) {
+			return (id: string): null | IN8nTemplate => state.templates[id];
 		},
-		getCollections(state: ITemplateState) {
-			return state.collections;
+		getCollectionById(state: ITemplateState) {
+			return (id: string): null | ITemplateCollection => state.collections[id];
 		},
-		getTemplates(state: ITemplateState) {
-			return state.templates;
-		},
-		getTemplate(state: ITemplateState) {
-			return state.template;
-		},
-		getTotalWorkflows(state: ITemplateState) {
-			return state.totalworkflow;
+		getSearchResults(state: ITemplateState) {
+			return (query: {categories: number[], search: string}): IN8nSearchData | null => {
+				const searchKey = JSON.stringify(query);
+				if (!state.searchResults[searchKey]) {
+					return null;
+				}
+
+				const results = state.searchResults[searchKey];
+
+				const collectionIds = results.collectionIds || [];
+				const collections = collectionIds.map((id) => state.collections[id]);
+
+				const templateIds = results.workflowIds || [];
+				const workflows = templateIds.map((id) => state.templates[id]);
+
+				const totalWorkflows = results.totalWorkflows;
+
+				return {
+					collections,
+					workflows,
+					totalWorkflows,
+				};
+			};
 		},
 	},
 	mutations: {
-		appendWorkflows(state: ITemplateState, templates: IN8nTemplate[]) {
-			Vue.set(state, 'templates', state.templates.concat(templates));
-		},
-		setCategories(state: ITemplateState, categories: ITemplateCategory[]) {
-			Vue.set(state, 'categories', categories);
+		appendSearchResults(state: ITemplateState, data: {query: ITemplatesQuery, results: IN8nSearchData}) {
+			const categories = data.results.categories || [];
+			categories.forEach((category: ITemplateCategory) => {
+				Vue.set(state.categories, category.id, category);
+			});
+
+			const collectionIds = data.results.collections.map((collection) => collection.id);
+			const workflowIds = data.results.workflows.map((workflow) => workflow.id);
+			const totalWorkflows = data.results.totalWorkflows;
+
+			const searchKey = JSON.stringify(query);
+			const cachedResults = state.searchResults[searchKey];
+			if (!cachedResults) {
+				state.searchResults[searchKey] = {
+					collectionIds,
+					workflowIds,
+					totalWorkflows,
+				};
+
+				return;
+			}
+
+			state.searchResults[searchKey] = {
+				collectionIds: [...cachedResults.collectionIds, ...collectionIds],
+				workflowIds: [...cachedResults.workflowIds, ...workflowIds],
+				totalWorkflows,
+			};
 		},
 		setCollection(state: ITemplateState, collection: IN8nCollection) {
-			Vue.set(state, 'collection', collection);
-		},
-		setCollections(state: ITemplateState, collections: ITemplateCollection[]) {
-			Vue.set(state, 'collections', collections);
+			Vue.set(state.collections, collection.id, collection);
 		},
 		setTemplate(state: ITemplateState, template: IN8nTemplate) {
-			Vue.set(state, 'template', template);
-		},
-		setTotalWorkflows(state: ITemplateState, totalworkflow: number) {
-			state.totalworkflow = totalworkflow;
-		},
-		setWorkflows(state: ITemplateState, templates: IN8nTemplate[]) {
-			Vue.set(state, 'templates', templates);
+			Vue.set(state.templates, template.id, template);
 		},
 	},
 	actions: {
@@ -85,29 +113,21 @@ const module: Module<ITemplateState, IRootState> = {
 			context.commit('setTemplate', template);
 			return template;
 		},
-		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { numberOfResults = 10, search , category, skip = 0, fetchCategories = false }): Promise<IN8nSearchData | null> {
-			const searchQuery = search.length || category ? true : false;
-			const allData = fetchCategories ? fetchCategories : !searchQuery;
+		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { pageSize = 10, search = '', categories, skip = 0 }: {pageSize: number, search: string, categories: number[], skip: number}): Promise<IN8nSearchData | null> {
+			const cachedResults: IN8nSearchData | null = context.getters.getSearchResults({categories, search});
+			if (cachedResults && cachedResults.workflows.length < skip) {
+				return cachedResults;
+			}
 
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const payload: IN8nSearchResponse = await getTemplates(numberOfResults, skip, category, search, allData, !allData, apiEndpoint);
-			const results : IN8nSearchData = payload.data;
-			if (allData) {
-				const categories = results.categories.map((category: ITemplateCategory) => {
-					category.selected = false;
-					return category;
-				});
-				context.commit('setCategories', categories);
-			}
 
-			if (skip) {
-				context.commit('appendWorkflows', results.workflows);
-			} else {
-				context.commit('setCollections', results.collections);
-				context.commit('setTotalWorkflows', results.totalworkflow);
-				context.commit('setWorkflows', results.workflows);
-			}
-			return results;
+			// todo search and alldata always true because new endpoints will behave like that
+			const payload: IN8nSearchResponse = await getTemplates(pageSize, skip, categories, search, true, false, apiEndpoint);
+			const results : IN8nSearchData = payload.data;
+
+			context.commit('setSearchResults', {query: {search, categories}, results});
+
+			return context.getters.getSearchResults({categories, search});
 		},
 	},
 };

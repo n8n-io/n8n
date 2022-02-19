@@ -133,7 +133,7 @@ export async function getTemplates(
 			}
 			totalViews: views
 		}
-		totalworkflow: getWorkflowCount(search: "${search}", category: ${queryCategory})
+		totalWorkflows: getWorkflowCount(search: "${search}", category: ${queryCategory})
 		workflows: searchWorkflows(rows: ${limit},
 			skip: ${skip},
 			# search parameter in string,default: null
