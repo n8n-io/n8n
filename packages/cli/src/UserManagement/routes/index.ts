@@ -18,6 +18,7 @@ import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
 import { ownerNamespace } from './owner';
+import { isPostUsersId } from '../UserManagementHelper';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	this.app.use(cookieParser());
@@ -56,7 +57,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
 			req.url === `/${restEndpoint}/user` ||
 			req.url.startsWith(`/${restEndpoint}/resolve-signup-token`) ||
-			(req.method === 'POST' && new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url)) ||
+			isPostUsersId(req, restEndpoint) ||
 			req.url.startsWith(`/${restEndpoint}/forgot-password`) ||
 			req.url.startsWith(`/${restEndpoint}/resolve-password-token`) ||
 			req.url.startsWith(`/${restEndpoint}/change-password`)
@@ -96,7 +97,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			(req.method === 'DELETE' &&
 				new RegExp(`/${restEndpoint}/users/[^/]+`, 'gm').test(trimmedUrl)) ||
 			(req.method === 'POST' &&
-				new RegExp(`/${restEndpoint}/users/[^/]/reinvite+`, 'gm').test(trimmedUrl))
+				new RegExp(`/${restEndpoint}/users/[^/]+/reinvite`, 'gm').test(trimmedUrl))
 		) {
 			res.status(403).json({ status: 'error', message: 'Unauthorized' });
 			return;

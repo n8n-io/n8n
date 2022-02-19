@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
+import express = require('express');
 import { IsNull, Not } from 'typeorm';
 import { Db, GenericHelpers, ResponseHelper } from '..';
 import config = require('../../config');
@@ -45,4 +46,15 @@ export function validatePassword(password?: string): string {
 export function sanitizeUser(user: User): PublicUser {
 	const { password, resetPasswordToken, createdAt, updatedAt, ...sanitizedUser } = user;
 	return sanitizedUser;
+}
+
+/**
+ * Check if the endpoint is `POST /users/:id`
+ */
+export function isPostUsersId(req: express.Request, restEndpoint: string): boolean {
+	return (
+		req.method === 'POST' &&
+		new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url) &&
+		!req.url.includes('reinvite')
+	);
 }

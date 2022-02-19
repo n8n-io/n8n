@@ -1,27 +1,49 @@
 import express = require('express');
 import * as request from 'supertest';
-import { REST_PATH_SEGMENT } from './shared/constants';
+import { getConnection } from 'typeorm';
+import {
+	REST_PATH_SEGMENT,
+	ROUTES_REQUIRING_AUTHORIZATION,
+	ROUTES_REQUIRING_AUTHENTICATION,
+} from './shared/constants';
 
 import * as utils from './shared/utils';
 
 let app: express.Application;
 
-beforeAll(() => {
-	app = utils.initTestServer({ applyAuth: true });
+beforeAll(async () => {
+	app = utils.initTestServer({ applyAuth: true, namespaces: ['me', 'auth', 'owner', 'users'] });
+	await utils.initTestDb();
 });
 
-['GET /me', 'PATCH /me', 'PATCH /me/password', 'POST /me/survey', 'GET /login'].forEach((route) => {
-	const [method, endpoint] = route.split(' ').map((i) => i.toLowerCase());
+afterAll(() => {
+	return getConnection().close();
+});
 
-	test(`${route} should return 401 Unauthorized`, async () => {
+ROUTES_REQUIRING_AUTHENTICATION.forEach((route) => {
+	const [method, endpoint] = getMethodAndEndpoint(route);
+
+	test(`${route} should return 401 Unauthorized if no cookie`, async () => {
 		const response = await request(app)[method](endpoint).use(utils.prefix(REST_PATH_SEGMENT));
 
 		expect(response.statusCode).toBe(401);
 	});
 });
 
-test(`POST /owner should return 401 Unauthorized`, async () => {
-	const response = await request(app).post('/owner').use(utils.prefix(REST_PATH_SEGMENT));
+ROUTES_REQUIRING_AUTHORIZATION.forEach(async (route) => {
+	const [method, endpoint] = getMethodAndEndpoint(route);
 
-	expect(response.statusCode).toBe(401);
+	test(`${route} should return 403 Forbidden for member`, async () => {
+		const member = await utils.createUser();
+		const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+		const response = await authMemberAgent[method](endpoint);
+
+		expect(response.statusCode).toBe(403);
+	});
 });
+
+function getMethodAndEndpoint(route: string) {
+	return route.split(' ').map((segment, index) => {
+		return index % 2 === 0 ? segment.toLowerCase() : segment;
+	});
+}

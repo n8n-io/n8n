@@ -128,6 +128,8 @@ export function usersNamespace(this: N8nApp): void {
 
 	/**
 	 * Validate invite token to enable invitee to set up their account.
+	 *
+	 * Authless endpoint.
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/resolve-signup-token`,
