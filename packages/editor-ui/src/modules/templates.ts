@@ -72,7 +72,11 @@ const module: Module<ITemplateState, IRootState> = {
 		// },
 		addWorkflows(state: ITemplateState, workflows: IN8nTemplate[]) {
 			workflows.forEach((workflow: IN8nTemplate) => {
-				Vue.set(state.templates, workflow.id, workflow);
+				const cachedWorkflow = state.templates[workflow.id] || {};
+				Vue.set(state.templates, workflow.id, {
+					...cachedWorkflow,
+					...workflow,
+				});
 			});
 		},
 		// appendSearchResults(state: ITemplateState, data: {query: ITemplatesQuery, results: IN8nSearchData}) {
