@@ -350,7 +350,6 @@ export function credentialsEndpoints(this: N8nApp): void {
 				});
 			} else {
 				const shared = await Db.collections.SharedCredentials!.find({
-					relations: ['credentials'],
 					where: whereClause({
 						user: req.user,
 						entityType: 'credentials',
@@ -362,7 +361,7 @@ export function credentialsEndpoints(this: N8nApp): void {
 				credentials = await Db.collections.Credentials!.find({
 					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
 					where: {
-						id: In(shared.map(({ credentials }) => credentials.id)),
+						id: In(shared.map(({ credentialId }) => credentialId)),
 						...filter,
 					},
 				});

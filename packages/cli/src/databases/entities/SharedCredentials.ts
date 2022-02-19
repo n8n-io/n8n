@@ -1,5 +1,12 @@
 /* eslint-disable import/no-cycle */
-import { BeforeUpdate, CreateDateColumn, Entity, ManyToOne, UpdateDateColumn } from 'typeorm';
+import {
+	BeforeUpdate,
+	CreateDateColumn,
+	Entity,
+	ManyToOne,
+	RelationId,
+	UpdateDateColumn,
+} from 'typeorm';
 import { IsDate, IsOptional } from 'class-validator';
 
 import config = require('../../../config');
@@ -35,6 +42,9 @@ export class SharedCredentials {
 		onDelete: 'CASCADE',
 	})
 	credentials: CredentialsEntity;
+
+	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.credentials)
+	credentialId: number;
 
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	@IsOptional() // ignored by validation because set at DB level
