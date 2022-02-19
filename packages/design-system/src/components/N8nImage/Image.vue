@@ -32,15 +32,15 @@ export default {
 			let srcset = '';
 			if (this.images as IImage[]) {
 				for (let i = 0; i < this.images.length; i++) {
-          if (!this.images[i].metadata) {
-            srcset += this.images[i].url;
-          } else {
+					if (!this.images[i].metadata) {
+						srcset += this.images[i].url;
+					} else {
 						srcset += this.images[i].url + ` ${this.images[i].metadata.width}w,`;
 					}
 				}
 			}
 			return srcset;
-		}
+		},
 	},
 	data() {
 		return {
@@ -52,9 +52,9 @@ export default {
 			let srcset = '';
 			if (images) {
 				for (let i = 0; i < images.length; i++) {
-          if (!images[i].metadata) {
-            srcset += images[i].url;
-          } else {
+					if (!images[i].metadata) {
+						srcset += images[i].url;
+					} else {
 						srcset += images[i].url + ` ${images[i].metadata.width}w,`;
 					}
 
@@ -64,14 +64,14 @@ export default {
 		},
 		onLoad() {
 			this.imageIsLoaded = true;
-		}
+		},
 	},
 };
 </script>
 
 <style lang="scss" module>
 .image {
-	border: var(--border-width-base) var(--color-foreground-base) var(--border-style-base);
+	border: var(--border-base);
 	border-radius: var(--border-radius-large);
 }
 </style>
