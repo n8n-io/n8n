@@ -23,6 +23,7 @@ export default new Router({
 				sidebar: MainSidebar,
 			},
 			meta: {
+				templatesEnabled: true,
 				telemetry: {
 					params: {
 						id: 'collection_id',
@@ -47,6 +48,7 @@ export default new Router({
 				sidebar: MainSidebar,
 			},
 			meta: {
+				templatesEnabled: true,
 				telemetry: {
 					params: {
 						id: 'template_id',
@@ -60,6 +62,9 @@ export default new Router({
 			components: {
 				default: TemplatesView,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				templatesEnabled: true,
 			},
 		},
 		{
@@ -87,6 +92,9 @@ export default new Router({
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				templatesEnabled: true,
 			},
 		},
 		{

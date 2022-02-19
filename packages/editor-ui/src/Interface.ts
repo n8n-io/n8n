@@ -550,12 +550,16 @@ export interface ITemplatesQuery {
 	search: string;
 }
 
+export interface ITemplatesSearchQuery extends ITemplatesQuery {
+	limit: number;
+	skip: number;
+}
+
 export interface IN8nSearchResponse {
 	data: IN8nSearchData;
 }
 
 export interface IN8nSearchData {
-	categories?: ITemplateCategory[];
 	collections: ITemplateCollection[];
 	totalWorkflows: number;
 	workflows: IN8nTemplate[];

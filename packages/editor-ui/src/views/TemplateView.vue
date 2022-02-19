@@ -26,7 +26,7 @@
 				<div :class="$style.image">
 					<WorkflowPreview
 						v-if="showPreview"
-						:workflow="template.workflow"
+						:workflow="template && template.workflow"
 						@close="onHidePreview"
 						:loading="loading"
 					/>
@@ -34,8 +34,8 @@
 				<div :class="$style.content">
 					<div :class="$style.markdown">
 						<n8n-markdown
-							:content="template.description"
-							:images="template.image"
+							:content="template && template.description"
+							:images="template && template.image"
 							:loading="loading"
 						/>
 					</div>
@@ -69,14 +69,14 @@ export default mixins(workflowHelpers).extend({
 		WorkflowPreview,
 	},
 	computed: {
+		templateId() {
+			return this.$route.params.id;
+		},
 		isMenuCollapsed() {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
-		isTemplatesEnabled(): boolean {
-			return this.$store.getters['settings/isTemplatesEnabled'];
-		},
 		template(): IN8nTemplate {
-			return this.$store.getters['templates/getTemplate'];
+			return this.$store.getters['templates/getTemplateById'](this.templateId);
 		},
 	},
 	data() {
@@ -114,19 +114,17 @@ export default mixins(workflowHelpers).extend({
 	},
 	async mounted() {
 		this.scrollToTop();
-		if (!this.isTemplatesEnabled) {
-			this.$router.replace({ name: 'NodeViewNew' });
-		}
 
-		const templateId = this.$route.params.id;
-		const response = await this.$store.dispatch('templates/getTemplateById', templateId);
-		if (!response) {
+		try {
+			await this.$store.dispatch('templates/getTemplateById', this.templateId);
+		} catch (e){
 			this.$showMessage({
 				title: 'Error',
 				message: 'Could not find workflow template',
 				type: 'error',
 			});
 		}
+
 		this.loading = false;
 	},
 });

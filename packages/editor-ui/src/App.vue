@@ -63,6 +63,10 @@ export default mixins(showMessage).extend({
 			this.$router.replace({ name: 'NodeViewNew'});
 		}
 
+		if (!this.isTemplatesEnabled && this.$route.meta && this.$route.meta.templatesEnabled) {
+			this.$router.replace({ name: 'NodeViewNew'});
+		}
+
 		this.$store.commit('ui/setCurrentPage', this.$route.name);
 		this.$telemetry.page('Editor', this.$route);
 	},
