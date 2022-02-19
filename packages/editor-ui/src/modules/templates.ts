@@ -70,7 +70,7 @@ const module: Module<ITemplateState, IRootState> = {
 			const workflowIds = data.results.workflows.map((workflow) => workflow.id);
 			const totalWorkflows = data.results.totalWorkflows;
 
-			const searchKey = JSON.stringify(query);
+			const searchKey = JSON.stringify(data.query);
 			const cachedResults = state.searchResults[searchKey];
 			if (!cachedResults) {
 				state.searchResults[searchKey] = {
