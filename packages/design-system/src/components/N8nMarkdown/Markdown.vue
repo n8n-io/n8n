@@ -94,45 +94,44 @@ export default {
 		htmlContent(): string {
 			if (!this.content) {
 			   return '';
-			} else {
-				const imageUrls: { [key: string]: string } = {};
-				if (this.images) {
-					// @ts-ignore
-					this.images.forEach((image: IImage) => {
-						if (!image) {
-							// Happens if an image got deleted but the workflow
-							// still has a reference to it
-							return;
-						}
-						imageUrls[image.id] = `${image.url}`;
-					});
-				}
-
-				// Replace the fileIds with the actual URLs
-				const imageRegexString = '][(]fileId:([0-9]+)[)]';
-				const imageMatches = this.content.match(new RegExp(imageRegexString, 'g')) || [];
-				let content = this.content;
-
-				for (const imageMatch of imageMatches) {
-					const matches = imageMatch.match(new RegExp(imageRegexString));
-					if (matches) {
-						const imageId = matches[1];
-						if (!imageUrls[imageId]) {
-							// Image is missing for some unknown reason
-							continue;
-						}
-						const imageUrl = imageUrls[imageId];
-						content = content.replace(
-							new RegExp('][(]fileId:' + imageId + '[)]'),
-							`](${imageUrl})`,
-						);
-					}
-				}
-
-				content = xss(content, this.options.xssOptions);
-
-				return this.md.render(content);
 			}
+			const imageUrls: { [key: string]: string } = {};
+			if (this.images) {
+				// @ts-ignore
+				this.images.forEach((image: IImage) => {
+					if (!image) {
+						// Happens if an image got deleted but the workflow
+						// still has a reference to it
+						return;
+					}
+					imageUrls[image.id] = `${image.url}`;
+				});
+			}
+
+			// Replace the fileIds with the actual URLs
+			const imageRegexString = '][(]fileId:([0-9]+)[)]';
+			const imageMatches = this.content.match(new RegExp(imageRegexString, 'g')) || [];
+			let content = this.content;
+
+			for (const imageMatch of imageMatches) {
+				const matches = imageMatch.match(new RegExp(imageRegexString));
+				if (matches) {
+					const imageId = matches[1];
+					if (!imageUrls[imageId]) {
+						// Image is missing for some unknown reason
+						continue;
+					}
+					const imageUrl = imageUrls[imageId];
+					content = content.replace(
+						new RegExp('][(]fileId:' + imageId + '[)]'),
+						`](${imageUrl})`,
+					);
+				}
+			}
+
+			content = xss(content, this.options.xssOptions);
+
+			return this.md.render(content);
 		},
 	},
 	data() {

@@ -8,7 +8,6 @@
 			:rows="props.rows"
 			:variant="props.variant"
 		/>
-		<div />
   </div>
 </template>
 
@@ -38,8 +37,8 @@ export default {
 		},
 		variant: {
 			type: String,
-			default: 'p'
-		}
+			default: 'p',
+		},
 	},
 };
 </script>
