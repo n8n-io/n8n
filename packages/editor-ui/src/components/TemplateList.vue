@@ -17,7 +17,7 @@
 					v-for="(workflow, index) in workflows"
 					:key="'workflow-' + index"
 					:class="[$style.card, useWorkflowButton ? $style.workflowButton : '']"
-					@click="navigateTo(workflow.id, 'TemplateView', $event)"
+					@click="navigateTo(workflow.id, 'TemplatesWorkflowView', $event)"
 				>
 					<LongCard
 						:class="index === workflows.length - 1 && !shouldShowLoadingState ? $style.last : ''"

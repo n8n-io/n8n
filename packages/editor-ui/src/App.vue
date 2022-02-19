@@ -58,7 +58,7 @@ export default mixins(showMessage).extend({
 		await this.initialize();
 
 		if (this.isTemplatesEnabled && this.$route.path === '/') {
-			this.$router.replace({ name: 'TemplatesView'});
+			this.$router.replace({ name: 'TemplatesSearchView'});
 		} else if (this.$route.path === '/') {
 			this.$router.replace({ name: 'NodeViewNew'});
 		}

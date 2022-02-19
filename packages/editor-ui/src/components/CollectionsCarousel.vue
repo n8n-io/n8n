@@ -20,7 +20,7 @@
 					:key="collection.id"
 					:loading="loading"
 					:title="collection.name"
-					@click="navigateTo(collection.id, 'CollectionView', $event)"
+					@click="navigateTo(collection.id, 'TemplatesCollectionView', $event)"
 				>
 					<template v-slot:footer>
 						<n8n-text size="small" color="text-light">

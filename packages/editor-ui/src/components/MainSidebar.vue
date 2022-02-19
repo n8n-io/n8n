@@ -526,8 +526,8 @@ export default mixins(
 					}
 					this.$titleReset();
 				} else if (key === 'templates' || key === 'template-new') {
-					if (this.$router.currentRoute.name !== 'TemplatesView') {
-						this.$router.push({ name: 'TemplatesView' });
+					if (this.$router.currentRoute.name !== 'TemplatesSearchView') {
+						this.$router.push({ name: 'TemplatesSearchView' });
 					}
 				} else if (key === 'credentials-open') {
 					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);

@@ -54,7 +54,7 @@ import { IN8nCollection } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(workflowHelpers).extend({
-	name: 'CollectionView',
+	name: 'TemplatesCollectionView',
 	components: {
 		GoBackButton,
 		TemplateDetails,
