@@ -136,7 +136,7 @@ export default mixins(genericHelpers).extend({
 			return {
 				search_string: this.search,
 				results_count: results.workflows.length,
-				categories_applied: this.categories, // todo get categories object
+				categories_applied: this.categories.map((categoryId) => this.$store.getters['templates/getCategoryById'](categoryId)),
 				wf_template_repo_session_id: 0, // todo get session id as prop
 			};
 		},
