@@ -25,12 +25,12 @@ import {
 } from 'request';
 
 import {
-	attachmentFields,
-	attachmentOperations,
-	incomingWebhookFields,
-	incomingWebhookOperations,
-	mediaFields,
-	mediaOperations,
+	// attachmentFields,
+	// attachmentOperations,
+	// incomingWebhookFields,
+	// incomingWebhookOperations,
+	// mediaFields,
+	// mediaOperations,
 	memberFields,
 	memberOperations,
 	messageFields,

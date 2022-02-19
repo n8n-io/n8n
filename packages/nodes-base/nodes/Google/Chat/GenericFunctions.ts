@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
+	// ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	INodeProperties,
