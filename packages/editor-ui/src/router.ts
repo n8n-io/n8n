@@ -1,7 +1,7 @@
 import Vue from 'vue';
 import Router from 'vue-router';
 
-import CollectionView from '@/views/CollectionView.vue';
+import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
@@ -17,9 +17,9 @@ export default new Router({
 	routes: [
 		{
 			path: '/collection/:id',
-			name: 'CollectionView',
+			name: 'TemplatesCollectionView',
 			components: {
-				default: CollectionView,
+				default: TemplatesCollectionView,
 				sidebar: MainSidebar,
 			},
 			meta: {
