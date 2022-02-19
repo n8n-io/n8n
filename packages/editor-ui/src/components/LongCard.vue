@@ -19,7 +19,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
-	name: 'TemplateCard',
+	name: 'LongCard',
 	props: {
 		loading: {
 			type: Boolean,
@@ -36,7 +36,7 @@ export default mixins(genericHelpers).extend({
 .loading {
 	width: 100%;
 	background-color: var(--color-background-xlight);
-	border-bottom: $--version-card-border;
+	border-bottom: var(--border-base);
 	margin-right: var(--spacing-2xs);
 	padding: 0 var(--spacing-s) var(--spacing-s);
 }

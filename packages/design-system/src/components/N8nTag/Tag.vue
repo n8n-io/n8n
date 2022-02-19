@@ -15,12 +15,12 @@ export default {
 
 <style lang="scss" module>
 .tag {
-	width: fit-content;
-  	margin: 0 var(--spacing-4xs) var(--spacing-4xs) 0;
+  width: fit-content;
+	margin: 0 var(--spacing-4xs) var(--spacing-4xs) 0;
 	padding: var(--spacing-4xs);
-	background-color: #dbdfe7;
+	background-color: var(--color-foreground-base);
 	border-radius: var(--border-radius-base);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	cursor: pointer;
 }
 </style>

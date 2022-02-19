@@ -1,9 +1,9 @@
 import { IN8nCollectionResponse, IN8nTemplateResponse, IN8nSearchResponse } from '@/Interface';
-import { post } from './helpers';
+import { post, graphql } from './helpers';
 
 export async function getCollectionById(collectionId: string, apiEndpoint: string): Promise<IN8nCollectionResponse> {
-	const query = `query {
-		collection(id:"${collectionId}"){
+	const query = `query getCollection($id: ID!){
+		collection(id:$id){
 			id
 			name
 			description
@@ -53,12 +53,12 @@ export async function getCollectionById(collectionId: string, apiEndpoint: strin
 		}
 	}`;
 
-	return await post(apiEndpoint, `/graphql`, { query });
+	return await graphql(apiEndpoint, query, {id: collectionId});
 }
 
 export async function getTemplateById(templateId: string, apiEndpoint: string): Promise<IN8nTemplateResponse> {
-	const query = `query {
-		workflow(id:"${templateId}"){
+	const query = `query getWorkflow($id: ID!) {
+		workflow(id: $id) {
 			id
 			name
 			description
@@ -92,7 +92,7 @@ export async function getTemplateById(templateId: string, apiEndpoint: string): 
 		}
 	}`;
 
-	return await post(apiEndpoint, `/graphql`, { query });
+	return await graphql(apiEndpoint, query, {id: templateId});
 }
 
 export async function getTemplates(

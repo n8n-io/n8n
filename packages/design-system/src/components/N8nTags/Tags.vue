@@ -1,6 +1,6 @@
 <template functional>
 	<div :class="$style.tags">
-		<n8n-tag v-for="(tag, key) in props.tags" :key="'tag-' + key" :tag="tag.name" @click="props.clickButton(tag)"/>
+		<n8n-tag v-for="(tag, key) in props.tags" :key="'tag-' + key" :tag="tag.name" @click="(e) => listeners.click && listeners.click(tag, e)"/>
 	</div>
 </template>
 
@@ -15,9 +15,6 @@ export default {
 	props: {
 		tags: {
 			type: Array,
-		},
-		clickButton: {
-			type: Function,
 		},
 	},
 };

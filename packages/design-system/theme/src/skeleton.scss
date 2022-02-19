@@ -6,7 +6,7 @@
   width: 100%;
   height: 16px;
   border-radius: var(--border-radius-large);
-  background: #f2f2f2;
+  background: var(--color-background-base);
   display: inline-block;
 }
 
@@ -48,14 +48,14 @@
 .el-skeleton__image svg {
   width: 22%;
   height: 22%;
-  fill: #dcdde0;
+  fill: var(--color-info-tint-1);
 }
 
 .el-skeleton__first-line,
 .el-skeleton__paragraph {
   height: 16px;
   margin-top: 16px;
-  background: #f2f2f2;
+  background: var(--color-background-base);
 }
 
 .el-skeleton__paragraph.last {

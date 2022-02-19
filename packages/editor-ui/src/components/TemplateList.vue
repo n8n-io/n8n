@@ -8,7 +8,7 @@
 		</div>
 		<div v-if="loading" :class="$style.container">
 			<div :class="$style.wrapper">
-				<TemplateCard v-for="n in 4" :key="'index-' + n" :loading="loading" />
+				<LongCard v-for="n in 4" :key="'index-' + n" :loading="loading" />
 			</div>
 		</div>
 		<div v-else-if="workflows.length" :class="$style.container">
@@ -19,7 +19,7 @@
 					:class="[$style.card, useWorkflowButton ? $style.workflowButton : '']"
 					@click="navigateTo(workflow.id, 'TemplateView', $event)"
 				>
-					<TemplateCard
+					<LongCard
 						:class="index === workflows.length - 1 && !shouldShowLoadingState ? $style.last : ''"
 						:loading="false"
 						:title="workflow.name"
@@ -58,7 +58,7 @@
 									:key="index"
 									:class="$style.icon"
 								>
-									<TemplateNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
+									<HoverableNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
 								</div>
 								<div
 									:class="$style.nodeButton"
@@ -71,11 +71,11 @@
 								</div>
 							</div>
 						</template>
-					</TemplateCard>
+					</LongCard>
 				</div>
 				<div v-if="infiniteScrollEnabled && searchFinished" v-infocus />
 				<div v-if="infiniteScrollEnabled && shouldShowLoadingState && !searchFinished">
-					<TemplateCard v-for="n in 4" :key="'index-' + n" :loading="true" />
+					<LongCard v-for="n in 4" :key="'index-' + n" :loading="true" />
 				</div>
 			</div>
 			<div v-if="infiniteScrollEnabled && !shouldShowLoadingState" :class="$style.text">
@@ -88,11 +88,11 @@
 </template>
 
 <script lang="ts">
-import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
-import TemplateCard from '@/components/TemplateCard.vue';
+import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
+import LongCard from '@/components/LongCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplateNode } from '@/Interface';
+import { IVersionNode } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes } from './helpers';
 
@@ -192,8 +192,8 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	components: {
-		TemplateNodeIcon,
-		TemplateCard,
+		HoverableNodeIcon,
+		LongCard,
 	},
 	computed: {
 		shouldShowLoadingState(): boolean | undefined {
@@ -216,7 +216,7 @@ export default mixins(genericHelpers).extend({
 				return this.nodesToBeShown;
 			}
 		},
-		filterCoreNodes(nodes: ITemplateNode[]) {
+		filterCoreNodes(nodes: IVersionNode[]) {
 			return filterTemplateNodes(nodes);
 		},
 	},

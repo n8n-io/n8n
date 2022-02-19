@@ -1,5 +1,5 @@
 import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, TEMPLATES_NODES_FILTER } from '@/constants';
-import { INodeUi, ITemplateNode } from '@/Interface';
+import { INodeUi, IVersionNode } from '@/Interface';
 import dateformat from 'dateformat';
 
 const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
@@ -45,8 +45,8 @@ export function getActivatableTriggerNodes(nodes: INodeUi[]) {
 	});
 }
 
-export function filterTemplateNodes(nodes: ITemplateNode[]) {
-	const notCoreNodes = nodes.filter((node: ITemplateNode) => {
+export function filterTemplateNodes(nodes: IVersionNode[]) {
+	const notCoreNodes = nodes.filter((node: IVersionNode) => {
 		return !(node.categories || []).some(
 			(category) => category.name === CORE_NODES_CATEGORY,
 		);
