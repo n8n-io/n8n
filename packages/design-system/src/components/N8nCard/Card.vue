@@ -33,7 +33,7 @@ export default {
 	margin-right: var(--spacing-2xs);
 	padding: var(--spacing-s);
 	background-color: var(--color-background-xlight);
-	border-bottom: 1px #dbdfe7 solid;
+	border-bottom: var(--border-width-base) var(--color-foreground-base) var(--border-style-base);
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
