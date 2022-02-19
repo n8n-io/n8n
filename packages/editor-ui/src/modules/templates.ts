@@ -2,12 +2,8 @@ import { getCategories, getCollectionById, getCollections, getTemplateById, getW
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
-	IN8nCollectionResponse,
 	IN8nCollection,
-	IN8nSearchResponse,
-	IN8nSearchData,
 	IN8nTemplate,
-	IN8nTemplateResponse,
 	ITemplateCategory,
 	ITemplateCollection,
 	ITemplateState,
@@ -17,6 +13,10 @@ import {
 import Vue from 'vue';
 
 const TEMPLATES_PAGE_SIZE = 10;
+
+function getSearchKey(query: ITemplatesQuery): string {
+	return JSON.stringify([query.search || '', [...query.categories].sort()]);
+}
 
 const module: Module<ITemplateState, IRootState> = {
 	namespaced: true,
@@ -42,7 +42,7 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		getSearchedCollections(state: ITemplateState) {
 			return (query: ITemplatesQuery) => {
-				const searchKey = JSON.stringify(query);
+				const searchKey = getSearchKey(query);
 				const search = state.collectionSearches[searchKey];
 				if (!search) {
 					return [];
@@ -52,12 +52,8 @@ const module: Module<ITemplateState, IRootState> = {
 			};
 		},
 		getSearchedWorkflows(state: ITemplateState) {
-			return (searchQuery: ITemplatesQuery) => {
-				const query: ITemplatesQuery = {
-					categories: searchQuery.categories,
-					search: searchQuery.search,
-				};
-				const searchKey = JSON.stringify(query);
+			return (query: ITemplatesQuery) => {
+				const searchKey = getSearchKey(query);
 				const search = state.workflowSearches[searchKey];
 				if (!search) {
 					return [];
@@ -67,15 +63,27 @@ const module: Module<ITemplateState, IRootState> = {
 			};
 		},
 		getSearchedWorkflowsTotal(state: ITemplateState) {
-			return (searchQuery: ITemplatesQuery) => {
-				const query: ITemplatesQuery = {
-					categories: searchQuery.categories,
-					search: searchQuery.search,
-				};
-				const searchKey = JSON.stringify(query);
+			return (query: ITemplatesQuery) => {
+				const searchKey = getSearchKey(query);
 				const search = state.workflowSearches[searchKey];
 
 				return search ? search.totalWorkflows : 0;
+			};
+		},
+		isSearchLoadingMore(state: ITemplateState) {
+			return (query: ITemplatesQuery) => {
+				const searchKey = getSearchKey(query);
+				const search = state.workflowSearches[searchKey];
+
+				return Boolean(search && search.loadingMore);
+			};
+		},
+		isSearchFinished(state: ITemplateState) {
+			return (query: ITemplatesQuery) => {
+				const searchKey = getSearchKey(query);
+				const search = state.workflowSearches[searchKey];
+
+				return Boolean(search && !search.loadingMore && search.totalWorkflows === search.workflowIds.length);
 			};
 		},
 	},
@@ -105,19 +113,14 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		addCollectionSearch(state: ITemplateState, data: {collections: ITemplateCollection[], query: ITemplatesQuery}) {
 			const collectionIds = data.collections.map((collection) => collection.id);
-			const searchKey = JSON.stringify(data.query);
+			const searchKey = getSearchKey(data.query);
 			Vue.set(state.collectionSearches, searchKey, {
 				collectionIds,
 			});
 		},
-		addWorkflowsSearch(state: ITemplateState, data: {totalWorkflows: number; workflows: IN8nTemplate[], searchQuery: ITemplatesQuery}) {
+		addWorkflowsSearch(state: ITemplateState, data: {totalWorkflows: number; workflows: IN8nTemplate[], query: ITemplatesQuery}) {
 			const workflowIds = data.workflows.map((workflow) => workflow.id);
-			const query: ITemplatesQuery = {
-				categories: data.searchQuery.categories,
-				search: data.searchQuery.search,
-			};
-
-			const searchKey = JSON.stringify(query);
+			const searchKey = getSearchKey(data.query);
 			const cachedResults = state.workflowSearches[searchKey];
 			if (!cachedResults) {
 				Vue.set(state.workflowSearches, searchKey, {
@@ -132,6 +135,24 @@ const module: Module<ITemplateState, IRootState> = {
 				workflowIds: [...cachedResults.workflowIds, ...workflowIds],
 				totalWorkflows: data.totalWorkflows,
 			});
+		},
+		setWorkflowSearchLoading(state: ITemplateState, query: ITemplatesQuery) {
+			const searchKey = getSearchKey(query);
+			const cachedResults = state.workflowSearches[searchKey];
+			if (!cachedResults) {
+				return;
+			}
+
+			Vue.set(state.workflowSearches[searchKey], 'loadingMore', true);
+		},
+		setWorkflowSearchLoaded(state: ITemplateState, query: ITemplatesQuery) {
+			const searchKey = getSearchKey(query);
+			const cachedResults = state.workflowSearches[searchKey];
+			if (!cachedResults) {
+				return;
+			}
+
+			Vue.set(state.workflowSearches[searchKey], 'loadingMore', false);
 		},
 	},
 	actions: {
@@ -186,20 +207,30 @@ const module: Module<ITemplateState, IRootState> = {
 			const payload = await getWorkflows(apiEndpoint, {...query, skip: 0, limit: TEMPLATES_PAGE_SIZE});
 
 			context.commit('addWorkflows', payload.data.workflows);
-			context.commit('addWorkflowsSearch', {...payload.data, searchQuery: query});
+			context.commit('addWorkflowsSearch', {...payload.data, query});
 
 			return context.getters.getSearchedWorkflows(query);
 		},
 		async getMoreWorkflows(context: ActionContext<ITemplateState, IRootState>, query: ITemplatesQuery): Promise<IN8nTemplate[]> {
+			if (context.getters.isSearchLoadingMore(query) && !context.getters.isSearchFinished(query)) {
+				return [];
+			}
 			const cachedResults: IN8nTemplate[] = context.getters.getSearchedWorkflows(query);
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 
-			const payload = await getWorkflows(apiEndpoint, {...query, skip: cachedResults.length, limit: TEMPLATES_PAGE_SIZE});
+			context.commit('setWorkflowSearchLoading', query);
+			try {
+				const payload = await getWorkflows(apiEndpoint, {...query, skip: cachedResults.length, limit: TEMPLATES_PAGE_SIZE});
 
-			context.commit('addWorkflows', payload.data.workflows);
-			context.commit('addWorkflowsSearch', {...payload.data, searchQuery: query});
+				context.commit('setWorkflowSearchLoaded', query);
+				context.commit('addWorkflows', payload.data.workflows);
+				context.commit('addWorkflowsSearch', {...payload.data, query});
 
-			return context.getters.getSearchedWorkflows(query);
+				return context.getters.getSearchedWorkflows(query);
+			} catch (e) {
+				context.commit('setWorkflowSearchLoaded', query);
+				throw e;
+			}
 		},
 	},
 };

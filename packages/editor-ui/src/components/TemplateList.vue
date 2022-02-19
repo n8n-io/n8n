@@ -170,10 +170,9 @@ export default mixins(genericHelpers).extend({
 										vnode.context.$data.searchFinished = false;
 
 										vnode.context.$store
-											.dispatch('templates/getSearchResults', {
+											.dispatch('templates/getMoreWorkflows', {
 												search: vnode.context.$props.search,
-												category: vnode.context.$props.categories,
-												skip: vnode.context.$data.skip,
+												categories: vnode.context.$props.categories,
 											})
 											.then(() => {
 												if (vnode.context) vnode.context.$data.searchFinished = true;

@@ -546,7 +546,7 @@ export interface IN8nTemplate {
 }
 
 export interface ITemplatesQuery {
-	categories: number[];
+	categories: string[];
 	search: string;
 }
 
@@ -811,6 +811,7 @@ export interface ITemplateState {
 		[search: string]: {
 			workflowIds: string[];
 			totalWorkflows: number;
+			loadingMore?: boolean;
 		}
 	};
 	collectionSearches: {
