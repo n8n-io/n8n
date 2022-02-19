@@ -117,10 +117,10 @@ export default mixins(genericHelpers).extend({
 	},
 	methods: {
 		abbreviateNumber,
-		async updateSearch() {
+		updateSearch() {
 			this.updateQueryParam(this.search, this.categories.join(','));
-			await this.loadWorkflows();
-			this.trackSearch();
+			this.loadWorkflows();
+			this.loadCollections();
 		},
 		trackSearch() {
 			if (!this.search || !this.categories.length) {
@@ -148,11 +148,12 @@ export default mixins(genericHelpers).extend({
 		},
 		async onSearchInput() {
 			this.loadingWorkflows = true;
+			this.loadingCollections = true;
 			this.callDebounced('updateSearch', 500, true);
 		},
 		async setCategories(selected: string[]) {
 			this.categories = selected;
-			await this.updateSearch();
+			this.updateSearch();
 		},
 		updateQueryParam(search: string, category: string) {
 			const query = Object.assign({}, this.$route.query);
@@ -186,6 +187,7 @@ export default mixins(genericHelpers).extend({
 		},
 		async loadCollections() {
 			try {
+				this.loadingCollections = true;
 				await this.$store.dispatch('templates/getCollections', {categories: this.categories, search: this.search});
 			} catch (e) {
 				this.$showMessage({
