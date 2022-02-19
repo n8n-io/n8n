@@ -171,7 +171,7 @@ export class WorkflowDataProxy {
 				} else {
 					if (!node.parameters.hasOwnProperty(name)) {
 						// Parameter does not exist on node
-						throw new Error(`Could not find parameter "${name}" on node "${nodeName}"`);
+						return undefined;
 					}
 
 					returnValue = node.parameters[name];
@@ -299,7 +299,7 @@ export class WorkflowDataProxy {
 		const node = this.workflow.nodes[nodeName];
 
 		if (!node) {
-			throw new Error(`The node "${nodeName}" does not exist!`);
+			return undefined;
 		}
 
 		return new Proxy(
