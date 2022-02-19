@@ -410,51 +410,6 @@ export const workerFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Vehicle',
-		name: 'vehicle',
-		type: 'fixedCollection',
-		displayOptions: {
-			show: {
-				resource: ['worker'],
-				operation: ['create'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Vehicle Properties',
-				name: 'vehicleProperties',
-				values: [
-					{
-						...vehicleTypeField,
-						required: true,
-					},
-					{
-						displayName: 'Additional Fields',
-						name: 'additionalFields',
-						type: 'collection',
-						placeholder: 'Add Field',
-						default: {},
-						options: [
-							{
-								...vehicleDescriptionField,
-								required: false,
-							},
-							{
-								...vehicleLicensePlateField,
-								required: false,
-							},
-							{
-								...vehicleColorField,
-								required: false,
-							},
-						],
-					},
-				],
-			},
-		],
-	},
-	{
 		...teamsField,
 		displayOptions: {
 			show: {
@@ -542,6 +497,37 @@ export const workerFields: INodeProperties[] = [
 		options: [
 			capacityField,
 			displayNameField,
+			{
+				displayName: 'Vehicle',
+				name: 'vehicle',
+				type: 'fixedCollection',
+				placeholder: 'Add Vehicle',
+				default: {},
+				options: [
+					{
+						displayName: 'Vehicle Properties',
+						name: 'vehicleProperties',
+						values: [
+							{
+								...vehicleTypeField,
+								required: true,
+							},
+							{
+								...vehicleDescriptionField,
+								required: false,
+							},
+							{
+								...vehicleLicensePlateField,
+								required: false,
+							},
+							{
+								...vehicleColorField,
+								required: false,
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 	{

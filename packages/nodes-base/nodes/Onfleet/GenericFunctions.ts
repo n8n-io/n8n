@@ -47,8 +47,7 @@ export async function onfleetApiRequest(
 		//@ts-ignore
 		return await this.helpers.request(options);
 	} catch (error) {
-		console.log(error.message);
-		//throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -56,7 +55,6 @@ export async function onfleetApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: string,
-	apiKey: string,
 	endpoint: string,
 	// tslint:disable-next-line: no-any
 	body: any = {},

@@ -118,6 +118,7 @@ export class Onfleet implements INodeType {
 			{
 				name: 'onfleetApi',
 				required: true,
+				testedBy: 'onfeletApiTest',
 			},
 		],
 		properties: [
@@ -430,20 +431,20 @@ export class Onfleet implements INodeType {
 			const name = this.getNodeParameter('name', item) as string;
 			const phone = this.getNodeParameter('phone', item) as string;
 			const teams = this.getNodeParameter('teams', item) as string[];
-			const { vehicleProperties: vehicle = {} } = this.getNodeParameter('vehicle', item) as IDataObject;
 			const workerData: OnfleetWorker = { name, phone, teams };
-
-			// Adding vehicle fields
-			if (Object.keys((vehicle as IDataObject)).length > 0) {
-				const { type, additionalFields: additionalVehicleFields = {} } = vehicle as IDataObject;
-				Object.assign(workerData, { vehicle: { type, ...(additionalVehicleFields as IDataObject) } });
-			}
 
 			// Adding additional fields
 			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
+		
+			if (additionalFields.vehicle) {
+				const { vehicleProperties } = additionalFields.vehicle as IDataObject;
+				Object.assign(workerData, { vehicle: vehicleProperties });
+				delete additionalFields.vehicle;
+			}
+		
 			Object.assign(workerData, additionalFields);
 
-			return workerData;
+				return workerData;
 		} else if (operation === 'update') {
 			/* -------------------------------------------------------------------------- */
 			/*                        Get fields for update worker                        */
@@ -873,6 +874,7 @@ export class Onfleet implements INodeType {
 					/*                                Clone a task                                */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
+					// tslint:disable-next-line: no-any
 					const taskData = Onfleet.getTaskFields.call(this, index, operation) as any;
 					if (!taskData) { continue; }
 					const path = `${resource}/${id}/clone`;
