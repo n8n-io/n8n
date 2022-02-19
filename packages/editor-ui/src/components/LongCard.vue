@@ -36,7 +36,7 @@ export default mixins(genericHelpers).extend({
 .loading {
 	width: 100%;
 	background-color: var(--color-background-xlight);
-	border-bottom: var(--border-width-base) var(--color-foreground-base) var(--border-style-base);
+	border-bottom: var(--border-base);
 	margin-right: var(--spacing-2xs);
 	padding: 0 var(--spacing-s) var(--spacing-s);
 }
