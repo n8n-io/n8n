@@ -21,7 +21,7 @@ import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/ro
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
-import { credentialsEndpoints } from '../../../src/endpoints/credentials.endpoints';
+import { credentialsEndpoints } from '../../../src/api/namespaces/credentials';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { randomEmail, randomValidPassword, randomName } from './random';
 import { getLogger } from '../../../src/Logger';

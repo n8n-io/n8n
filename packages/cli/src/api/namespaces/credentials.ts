@@ -15,13 +15,13 @@ import {
 	ICredentialsResponse,
 	ResponseHelper,
 	whereClause,
-} from '..';
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { validateEntity } from '../GenericHelpers';
-import type { CredentialRequest } from '../requests';
-import type { N8nApp } from '../UserManagement/Interfaces';
+} from '../..';
+import { RESPONSE_ERROR_MESSAGES } from '../../constants';
+import { CredentialsEntity } from '../../databases/entities/CredentialsEntity';
+import { SharedCredentials } from '../../databases/entities/SharedCredentials';
+import { validateEntity } from '../../GenericHelpers';
+import type { CredentialRequest } from '../../requests';
+import type { N8nApp } from '../../UserManagement/Interfaces';
 
 export function credentialsEndpoints(this: N8nApp): void {
 	/**
