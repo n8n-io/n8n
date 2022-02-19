@@ -65,11 +65,15 @@ const module: Module<ITemplateState, IRootState> = {
 		// 		Vue.set(state.categories, category.id, category);
 		// 	});
 		// },
-		// addCollections(state: ITemplateState, collections: ITemplateCollection[]) {
-		// 	collections.forEach((collection) => {
-		// 		Vue.set(state.collections, collection.id, collection);
-		// 	});
-		// },
+		addCollections(state: ITemplateState, collections: ITemplateCollection[]) {
+			collections.forEach((collection: ITemplateCollection) => {
+				const cachedCollection = state.collections[collection.id] || {};
+				Vue.set(state.collections, collection.id, {
+					...cachedCollection,
+					...collection,
+				});
+			});
+		},
 		addWorkflows(state: ITemplateState, workflows: IN8nTemplate[]) {
 			workflows.forEach((workflow: IN8nTemplate) => {
 				const cachedWorkflow = state.templates[workflow.id] || {};
@@ -112,14 +116,14 @@ const module: Module<ITemplateState, IRootState> = {
 			context.commit('addWorkflows', [template]);
 			return template;
 		},
-		// 	async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string) {
-		// 		const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-		// 		const response: IN8nCollectionResponse = await getCollectionById(collectionId, apiEndpoint);
-		// 		const collection: IN8nCollection = response.data.collection;
+		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string) {
+			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+			const response = await getCollectionById(apiEndpoint, collectionId);
+			const collection: IN8nCollection = response.data.collection;
 
-		// 		context.commit('setCollection', collection);
-		// 		return collection;
-		// 	},
+			context.commit('addCollections', [collection]);
+			return collection;
+		},
 		// 	async getCategories(context: ActionContext<ITemplateState, IRootState>) {
 		// 		const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 		// 		const categories = await getCategories(apiEndpoint);

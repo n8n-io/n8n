@@ -1,11 +1,11 @@
 <template>
-	<div ref="content" :class="$style.template">
+	<div :class="$style.template">
 		<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
 			<div :class="$style.header">
 				<go-back-button />
 				<div :class="$style.wrapper">
 					<div :class="$style.title">
-						<n8n-heading v-if="!loading" tag="h1" size="2xlarge">{{ collection.name }}</n8n-heading>
+						<n8n-heading v-if="!loading && collection" tag="h1" size="2xlarge">{{ collection.name }}</n8n-heading>
 						<n8n-text v-if="!loading" color="text-base" size="small">
 							{{ $locale.baseText('templates.collection') }}
 						</n8n-text>
@@ -16,8 +16,8 @@
 			<div :class="$style.content">
 				<div :class="$style.markdown">
 					<n8n-markdown
-						:content="collection.description"
-						:images="collection.image"
+						:content="collection && collection.description"
+						:images="collection && collection.image"
 						:loading="loading"
 					/>
 					<TemplateList
@@ -26,7 +26,7 @@
 						:loading="loading"
 						:node-icon-size="18"
 						:use-workflow-button="true"
-						:workflows="collection.workflows"
+						:workflows="collection && collection.workflows"
 					/>
 				</div>
 				<div :class="$style.details">
@@ -66,9 +66,6 @@ export default mixins(workflowHelpers).extend({
 		collection(): IN8nCollection {
 			return this.$store.getters['templates/getCollectionById'](this.collectionId);
 		},
-		isTemplatesEnabled(): boolean {
-			return this.$store.getters['settings/isTemplatesEnabled'];
-		},
 		isMenuCollapsed() {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
@@ -107,12 +104,9 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	async mounted() {
-		if (!this.isTemplatesEnabled) {
-			this.$router.replace({ name: 'NodeViewNew' });
-		}
-
-		const response = await this.$store.dispatch('templates/getCollectionById', this.collectionId);
-		if (!response) {
+		try {
+			await this.$store.dispatch('templates/getCollectionById', this.collectionId);
+		} catch (e) {
 			this.$showMessage({
 				title: 'Error',
 				message: 'Could not find collection',
