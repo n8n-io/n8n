@@ -19,7 +19,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
-	name: 'TemplateCard',
+	name: 'LongCard',
 	props: {
 		loading: {
 			type: Boolean,

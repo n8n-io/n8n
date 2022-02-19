@@ -8,7 +8,7 @@
 		</div>
 		<div v-if="loading" :class="$style.container">
 			<div :class="$style.wrapper">
-				<TemplateCard v-for="n in 4" :key="'index-' + n" :loading="loading" />
+				<LongCard v-for="n in 4" :key="'index-' + n" :loading="loading" />
 			</div>
 		</div>
 		<div v-else-if="workflows.length" :class="$style.container">
@@ -19,7 +19,7 @@
 					:class="[$style.card, useWorkflowButton ? $style.workflowButton : '']"
 					@click="navigateTo(workflow.id, 'TemplateView', $event)"
 				>
-					<TemplateCard
+					<LongCard
 						:class="index === workflows.length - 1 && !shouldShowLoadingState ? $style.last : ''"
 						:loading="false"
 						:title="workflow.name"
@@ -71,11 +71,11 @@
 								</div>
 							</div>
 						</template>
-					</TemplateCard>
+					</LongCard>
 				</div>
 				<div v-if="infiniteScrollEnabled && searchFinished" v-infocus />
 				<div v-if="infiniteScrollEnabled && shouldShowLoadingState && !searchFinished">
-					<TemplateCard v-for="n in 4" :key="'index-' + n" :loading="true" />
+					<LongCard v-for="n in 4" :key="'index-' + n" :loading="true" />
 				</div>
 			</div>
 			<div v-if="infiniteScrollEnabled && !shouldShowLoadingState" :class="$style.text">
@@ -89,7 +89,7 @@
 
 <script lang="ts">
 import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
-import TemplateCard from '@/components/TemplateCard.vue';
+import LongCard from '@/components/LongCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { IVersionNode } from '@/Interface';
@@ -193,7 +193,7 @@ export default mixins(genericHelpers).extend({
 	},
 	components: {
 		HoverableNodeIcon,
-		TemplateCard,
+		LongCard,
 	},
 	computed: {
 		shouldShowLoadingState(): boolean | undefined {
