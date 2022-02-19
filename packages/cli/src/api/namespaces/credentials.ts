@@ -253,7 +253,7 @@ export function credentialsEndpoints(this: N8nApp): void {
 			await Db.collections.Credentials!.update(credentialId, newCredentialData);
 
 			// We sadly get nothing back from "update". Neither if it updated a record
-			// nor the new value. So query now the hopefully updated entry.
+			// nor the new value. So query now the updated entry.
 			const responseData = await Db.collections.Credentials!.findOne(credentialId);
 
 			if (responseData === undefined) {
