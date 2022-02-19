@@ -161,7 +161,7 @@ export function credentialsEndpoints(this: N8nApp): void {
 
 			await this.externalHooks.run('credentials.delete', [credentialId]);
 
-			await Db.collections.Credentials!.delete(credentialId);
+			await Db.collections.Credentials!.remove(shared.credentials);
 
 			return true;
 		}),
