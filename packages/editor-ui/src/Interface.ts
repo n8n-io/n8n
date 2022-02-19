@@ -812,11 +812,15 @@ export interface ITemplateState {
 	categories: {[id: string]: ITemplateCategory};
 	collections: {[id: string]: ITemplateCollection};
 	templates: {[id: string]: IN8nTemplate};
-	searchResults: {
+	workflowSearches: {
 		[search: string]: {
 			workflowIds: string[];
-			collectionIds: string[];
 			totalWorkflows: number;
+		}
+	};
+	collectionSearches: {
+		[search: string]: {
+			collectionIds: string[];
 		}
 	};
 }

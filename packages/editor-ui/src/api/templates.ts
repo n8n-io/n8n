@@ -12,10 +12,14 @@ export async function getCategories(apiEndpoint: string): Promise<{data: {catego
 }
 
 export async function getCollections(apiEndpoint: string, query: ITemplatesQuery): Promise<{data: {collections: IN8nCollection[]}}> {
-	const gqlQuery = `query {
-		collections: searchCollections(
+	const gqlQuery = `query search($limit: Int,
+		$skip: Int,
+		$category: [Int],
+		$search: String){
+		collections: searchCollections(rows: $limit,
+			skip: $skip,
 			search: $search,
-			category: $category){
+			category: $category) {
 			id
 			name
 			nodes{
@@ -24,7 +28,7 @@ export async function getCollections(apiEndpoint: string, query: ITemplatesQuery
 				displayName
 				icon
 				iconData
-				typeVersion: version,
+				typeVersion: version
 				categories{
 					name
 				}
@@ -35,7 +39,7 @@ export async function getCollections(apiEndpoint: string, query: ITemplatesQuery
 			totalViews: views
 		}
 	}`;
-	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories});
+	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length ? query.categories : null});
 }
 
 export async function getWorkflows(

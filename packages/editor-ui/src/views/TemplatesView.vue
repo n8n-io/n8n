@@ -37,7 +37,7 @@
 					<div :class="$style.carousel">
 						<CollectionsCarousel
 							:collections="collections"
-							:loading="loading"
+							:loading="loadingCollections"
 							:navigate-to="navigateTo"
 						/>
 						<TemplateList
@@ -86,7 +86,7 @@ export default mixins(genericHelpers).extend({
 			return this.$store.getters['templates/allCategories'];
 		},
 		collections(): [] {
-			return this.$store.getters['templates/getCollections'] || [];
+			return this.$store.getters['templates/getSearchedCollections']({categories: this.categories, search: this.search});
 		},
 		isMenuCollapsed(): boolean {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
@@ -106,6 +106,7 @@ export default mixins(genericHelpers).extend({
 			categories: [] as number[],
 			loading: true,
 			loadingCategories: true,
+			loadingCollections: true,
 			search: '',
 		};
 	},
@@ -197,9 +198,23 @@ export default mixins(genericHelpers).extend({
 				this.loadingCategories = false;
 			}
 		},
+		async loadCollections() {
+			try {
+				await this.$store.dispatch('templates/getCollections', {categories: this.categories, search: this.search});
+			} catch (e) {
+				this.$showMessage({
+					title: 'Error',
+					message: 'Could not load collections',
+					type: 'error',
+				});
+			} finally {
+				this.loadingCollections = false;
+			}
+		},
 	},
 	async mounted() {
 		this.loadCategories();
+		this.loadCollections();
 	},
 	async created() {
 		this.scrollToTop();

@@ -1,4 +1,4 @@
-import { getCategories, getCollectionById, getTemplateById } from '@/api/templates';
+import { getCategories, getCollectionById, getCollections, getTemplateById } from '@/api/templates';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
@@ -22,7 +22,8 @@ const module: Module<ITemplateState, IRootState> = {
 		categories: {},
 		collections: {},
 		templates: {},
-		searchResults: {},
+		collectionSearches: {},
+		workflowSearches: {},
 	},
 	getters: {
 		allCategories(state: ITemplateState) {
@@ -36,6 +37,17 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		getCategoryById(state: ITemplateState) {
 			return (id: string): null | ITemplateCategory => state.categories[id];
+		},
+		getSearchedCollections(state: ITemplateState) {
+			return (query: ITemplatesQuery) => {
+				const searchKey = JSON.stringify(query);
+				const search = state.collectionSearches[searchKey];
+				if (!search) {
+					return [];
+				}
+
+				return search.collectionIds.map((collectionId: string) => state.collections[collectionId]);
+			};
 		},
 		// getSearchResults(state: ITemplateState) {
 		// 	return (query: {categories: number[], search: string}): IN8nSearchData | null => {
@@ -86,6 +98,13 @@ const module: Module<ITemplateState, IRootState> = {
 				});
 			});
 		},
+		addCollectionSearch(state: ITemplateState, data: {collections: ITemplateCollection[], query: ITemplatesQuery}) {
+			const collectionIds = data.collections.map((collection) => collection.id);
+			const searchKey = JSON.stringify(data.query);
+			Vue.set(state.collectionSearches, searchKey, {
+				collectionIds,
+			});
+		},
 		// appendSearchResults(state: ITemplateState, data: {query: ITemplatesQuery, results: IN8nSearchData}) {
 		// 	const collectionIds = data.results.collections.map((collection) => collection.id);
 		// 	const workflowIds = data.results.workflows.map((workflow) => workflow.id);
@@ -111,7 +130,7 @@ const module: Module<ITemplateState, IRootState> = {
 		// },
 	},
 	actions: {
-		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
+		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string): Promise<IN8nTemplate> {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getTemplateById(apiEndpoint, templateId);
 			const template: IN8nTemplate = response.data.workflow;
@@ -119,7 +138,7 @@ const module: Module<ITemplateState, IRootState> = {
 			context.commit('addWorkflows', [template]);
 			return template;
 		},
-		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string) {
+		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string): Promise<IN8nCollection> {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getCollectionById(apiEndpoint, collectionId);
 			const collection: IN8nCollection = response.data.collection;
@@ -127,7 +146,7 @@ const module: Module<ITemplateState, IRootState> = {
 			context.commit('addCollections', [collection]);
 			return collection;
 		},
-		async getCategories(context: ActionContext<ITemplateState, IRootState>) {
+		async getCategories(context: ActionContext<ITemplateState, IRootState>): Promise<ITemplateCategory[]> {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getCategories(apiEndpoint);
 			const categories = response.data.categories;
@@ -135,6 +154,22 @@ const module: Module<ITemplateState, IRootState> = {
 			context.commit('addCategories', categories);
 
 			return categories;
+		},
+		async getCollections(context: ActionContext<ITemplateState, IRootState>, query: ITemplatesQuery): Promise<IN8nCollection[]> {
+			const cachedResults: IN8nCollection[] | null = context.getters.getSearchedCollections(query);
+			console.log('search', query, cachedResults);
+			if (cachedResults && cachedResults.length) {
+				return cachedResults;
+			}
+
+			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+			const response = await getCollections(apiEndpoint, query);
+			const collections = response.data.collections;
+
+			context.commit('addCollections', collections);
+			context.commit('addCollectionSearch', {query, collections});
+
+			return collections;
 		},
 		// 	async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { pageSize = 10, search = '', categories, skip = 0 }: {pageSize: number, search: string, categories: number[], skip: number}): Promise<IN8nSearchData | null> {
 		// 		const cachedResults: IN8nSearchData | null = context.getters.getSearchResults({categories, search});
