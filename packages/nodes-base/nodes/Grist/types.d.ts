@@ -1,6 +1,6 @@
 export type GristCredentials = {
 	apiKey: string;
-	planType: 'free' | 'paid' | 'selfhosted';
+	planType: 'free' | 'paid' | 'selfHosted';
 	customSubdomain?: string;
 	selfHostedUrl?: string;
 }
