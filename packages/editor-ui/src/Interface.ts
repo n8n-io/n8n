@@ -819,6 +819,7 @@ export interface ITemplateState {
 			collectionIds: string[];
 		}
 	};
+	sessionId: string;
 }
 
 export interface IVersionsState {

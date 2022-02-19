@@ -1,71 +1,74 @@
 <template>
-	<div :class="$style.template">
-		<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
-			<div :class="$style.header">
-				<div :class="$style.wrapper">
-					<div :class="$style.title">
-						<n8n-heading tag="h1" size="2xlarge">
-							{{ $locale.baseText('templates.heading') }}
-						</n8n-heading>
-					</div>
-					<div :class="$style.button">
-						<n8n-button
-							size="small"
-							type="primary"
-							:label="$locale.baseText('templates.newButton')"
-							:transparentBackground="false"
-							@click="openNewWorkflow"
-						/>
+	<TemplatesView>
+		<div :class="$style.template">
+			<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
+				<div :class="$style.header">
+					<div :class="$style.wrapper">
+						<div :class="$style.title">
+							<n8n-heading tag="h1" size="2xlarge">
+								{{ $locale.baseText('templates.heading') }}
+							</n8n-heading>
+						</div>
+						<div :class="$style.button">
+							<n8n-button
+								size="small"
+								type="primary"
+								:label="$locale.baseText('templates.newButton')"
+								:transparentBackground="false"
+								@click="openNewWorkflow"
+							/>
+						</div>
 					</div>
 				</div>
-			</div>
-			<div :class="$style.content">
-				<div :class="$style.filters">
-					<TemplateFilters :setCategories="setCategories" :loading="loadingCategories" />
-				</div>
-				<div :class="$style.search">
-					<div :class="$style.input">
-						<n8n-input
-							v-model="search"
-							:placeholder="$locale.baseText('templates.searchPlaceholder')"
-							@input="onSearchInput"
-							clearable
-						>
-							<font-awesome-icon icon="search" slot="prefix" />
-						</n8n-input>
+				<div :class="$style.content">
+					<div :class="$style.filters">
+						<TemplateFilters :setCategories="setCategories" :loading="loadingCategories" />
 					</div>
-					<div :class="$style.carousel">
-						<CollectionsCarousel
-							:collections="collections"
-							:loading="loadingCollections"
-							:navigate-to="navigateTo"
-						/>
-						<TemplateList
-							:abbreviate-number="abbreviateNumber"
-							:categories="categories"
-							:infinite-scroll-enabled="true"
-							:loading="loadingWorkflows"
-							:navigate-to="navigateTo"
-							:search="search"
-							:total-workflows="totalWorkflows"
-							:workflows="workflows"
-						/>
-						<div v-if="nothingFound">
-							<n8n-text color="text-base">{{
-								$locale.baseText('templates.noSearchResults')
-							}}</n8n-text>
+					<div :class="$style.search">
+						<div :class="$style.input">
+							<n8n-input
+								v-model="search"
+								:placeholder="$locale.baseText('templates.searchPlaceholder')"
+								@input="onSearchInput"
+								clearable
+							>
+								<font-awesome-icon icon="search" slot="prefix" />
+							</n8n-input>
+						</div>
+						<div :class="$style.carousel">
+							<CollectionsCarousel
+								:collections="collections"
+								:loading="loadingCollections"
+								:navigate-to="navigateTo"
+							/>
+							<TemplateList
+								:abbreviate-number="abbreviateNumber"
+								:categories="categories"
+								:infinite-scroll-enabled="true"
+								:loading="loadingWorkflows"
+								:navigate-to="navigateTo"
+								:search="search"
+								:total-workflows="totalWorkflows"
+								:workflows="workflows"
+							/>
+							<div v-if="nothingFound">
+								<n8n-text color="text-base">{{
+									$locale.baseText('templates.noSearchResults')
+								}}</n8n-text>
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	</TemplatesView>
 </template>
 
 <script lang="ts">
 import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
+import TemplatesView from './TemplatesView.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { abbreviateNumber } from '@/components/helpers';
@@ -78,6 +81,7 @@ export default mixins(genericHelpers).extend({
 		CollectionsCarousel,
 		TemplateFilters,
 		TemplateList,
+		TemplatesView,
 	},
 	computed: {
 		allCategories(): [] {

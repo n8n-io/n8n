@@ -26,6 +26,7 @@ const module: Module<ITemplateState, IRootState> = {
 		templates: {},
 		collectionSearches: {},
 		workflowSearches: {},
+		sessionId: '',
 	},
 	getters: {
 		allCategories(state: ITemplateState) {
@@ -153,6 +154,9 @@ const module: Module<ITemplateState, IRootState> = {
 			}
 
 			Vue.set(state.workflowSearches[searchKey], 'loadingMore', false);
+		},
+		resetSessionId(state: ITemplateState) {
+			state.sessionId = `templates-${Date.now()}`;
 		},
 	},
 	actions: {

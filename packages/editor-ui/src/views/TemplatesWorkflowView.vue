@@ -1,61 +1,64 @@
 <template>
-	<div :class="$style.template">
-		<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
-			<div :class="$style.header">
-				<go-back-button />
-				<div :class="$style.wrapper">
-					<div :class="$style.title">
-						<n8n-heading v-if="!loading" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
-						<n8n-text v-if="!loading" color="text-base" size="small">
-							{{ $locale.baseText('templates.workflow') }}
-						</n8n-text>
-						<n8n-loading :animated="true" :loading="loading" :rows="2" variant="h1" />
-					</div>
-					<div :class="$style.button">
-						<n8n-button
-							v-if="!loading"
-							:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
-							size="large"
-							@click="navigateTo(template.id, 'WorkflowTemplate', $event)"
-						/>
-						<n8n-loading :animated="true" :loading="loading" :rows="1" variant="button" />
+	<TemplatesView>
+		<div :class="$style.template">
+			<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
+				<div :class="$style.header">
+					<go-back-button />
+					<div :class="$style.wrapper">
+						<div :class="$style.title">
+							<n8n-heading v-if="!loading" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
+							<n8n-text v-if="!loading" color="text-base" size="small">
+								{{ $locale.baseText('templates.workflow') }}
+							</n8n-text>
+							<n8n-loading :animated="true" :loading="loading" :rows="2" variant="h1" />
+						</div>
+						<div :class="$style.button">
+							<n8n-button
+								v-if="!loading"
+								:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
+								size="large"
+								@click="navigateTo(template.id, 'WorkflowTemplate', $event)"
+							/>
+							<n8n-loading :animated="true" :loading="loading" :rows="1" variant="button" />
+						</div>
 					</div>
 				</div>
-			</div>
-			<div>
-				<div :class="$style.image">
-					<WorkflowPreview
-						v-if="showPreview"
-						:workflow="template && template.workflow"
-						@close="onHidePreview"
-						:loading="loading"
-					/>
-				</div>
-				<div :class="$style.content">
-					<div :class="$style.markdown">
-						<n8n-markdown
-							:content="template && template.description"
-							:images="template && template.image"
+				<div>
+					<div :class="$style.image">
+						<WorkflowPreview
+							v-if="showPreview"
+							:workflow="template && template.workflow"
+							@close="onHidePreview"
 							:loading="loading"
 						/>
 					</div>
-					<div :class="$style.details">
-						<TemplateDetails
-							:block-title="$locale.baseText('template.details.appsInTheWorkflow')"
-							:loading="loading"
-							:template="template"
-						/>
+					<div :class="$style.content">
+						<div :class="$style.markdown">
+							<n8n-markdown
+								:content="template && template.description"
+								:images="template && template.image"
+								:loading="loading"
+							/>
+						</div>
+						<div :class="$style.details">
+							<TemplateDetails
+								:block-title="$locale.baseText('template.details.appsInTheWorkflow')"
+								:loading="loading"
+								:template="template"
+							/>
+						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	</TemplatesView>
 </template>
 
 <script lang="ts">
 import GoBackButton from '@/components/GoBackButton.vue';
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
+import TemplatesView from './TemplatesView.vue';
 
 import { IN8nTemplate } from '@/Interface';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -67,6 +70,7 @@ export default mixins(workflowHelpers).extend({
 		GoBackButton,
 		TemplateDetails,
 		WorkflowPreview,
+		TemplatesView,
 	},
 	computed: {
 		templateId() {

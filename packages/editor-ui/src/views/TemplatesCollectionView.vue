@@ -1,51 +1,54 @@
 <template>
-	<div :class="$style.template">
-		<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
-			<div :class="$style.header">
-				<go-back-button />
-				<div :class="$style.wrapper">
-					<div :class="$style.title">
-						<n8n-heading v-if="!loading && collection" tag="h1" size="2xlarge">{{ collection.name }}</n8n-heading>
-						<n8n-text v-if="!loading" color="text-base" size="small">
-							{{ $locale.baseText('templates.collection') }}
-						</n8n-text>
-						<n8n-loading :animated="true" :loading="loading" :rows="2" variant="h1" />
+	<TemplatesView>
+		<div :class="$style.template">
+			<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
+				<div :class="$style.header">
+					<go-back-button />
+					<div :class="$style.wrapper">
+						<div :class="$style.title">
+							<n8n-heading v-if="!loading && collection" tag="h1" size="2xlarge">{{ collection.name }}</n8n-heading>
+							<n8n-text v-if="!loading" color="text-base" size="small">
+								{{ $locale.baseText('templates.collection') }}
+							</n8n-text>
+							<n8n-loading :animated="true" :loading="loading" :rows="2" variant="h1" />
+						</div>
+					</div>
+				</div>
+				<div :class="$style.content">
+					<div :class="$style.markdown">
+						<n8n-markdown
+							:content="collection && collection.description"
+							:images="collection && collection.image"
+							:loading="loading"
+						/>
+						<TemplateList
+							:abbreviate-number="abbreviateNumber"
+							:infinite-scroll-enabled="false"
+							:loading="loading"
+							:node-icon-size="18"
+							:use-workflow-button="true"
+							:workflows="collection && collection.workflows"
+							:navigateTo="navigateTo"
+						/>
+					</div>
+					<div :class="$style.details">
+						<TemplateDetails
+							:block-title="$locale.baseText('template.details.appsInTheCollection')"
+							:loading="loading"
+							:template="collection"
+						/>
 					</div>
 				</div>
 			</div>
-			<div :class="$style.content">
-				<div :class="$style.markdown">
-					<n8n-markdown
-						:content="collection && collection.description"
-						:images="collection && collection.image"
-						:loading="loading"
-					/>
-					<TemplateList
-						:abbreviate-number="abbreviateNumber"
-						:infinite-scroll-enabled="false"
-						:loading="loading"
-						:node-icon-size="18"
-						:use-workflow-button="true"
-						:workflows="collection && collection.workflows"
-						:navigateTo="navigateTo"
-					/>
-				</div>
-				<div :class="$style.details">
-					<TemplateDetails
-					  :block-title="$locale.baseText('template.details.appsInTheCollection')"
-						:loading="loading"
-						:template="collection"
-					/>
-				</div>
-			</div>
 		</div>
-	</div>
+	</TemplatesView>
 </template>
 
 <script lang="ts">
 import GoBackButton from '@/components/GoBackButton.vue';
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
+import TemplatesView from './TemplatesView.vue';
 
 import { abbreviateNumber } from '@/components/helpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -59,6 +62,7 @@ export default mixins(workflowHelpers).extend({
 		GoBackButton,
 		TemplateDetails,
 		TemplateList,
+		TemplatesView,
 	},
 	computed: {
 		collectionId(): string {
