@@ -260,7 +260,7 @@ export function credentialsEndpoints(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError(
 					`Credential ID "${credentialId}" could not be found to be updated.`,
 					undefined,
-					400,
+					404,
 				);
 			}
 
