@@ -714,7 +714,7 @@ export interface IVersionNode {
 		fileBuffer?: string;
 	};
 	typeVersion: number;
-	categories: ITemplateCategories[];
+	categories?: ITemplateCategories[];
 }
 
 export interface IRootState {
