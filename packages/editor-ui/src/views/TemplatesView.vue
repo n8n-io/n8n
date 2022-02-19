@@ -44,13 +44,13 @@
 							:abbreviate-number="abbreviateNumber"
 							:categories="categories"
 							:infinite-scroll-enabled="true"
-							:loading="loading"
+							:loading="loadingWorkflows"
 							:navigate-to="navigateTo"
 							:search="search"
 							:total-workflows="totalWorkflows"
 							:workflows="workflows"
 						/>
-						<div v-if="!workflows.length && !collections.length && !loading">
+						<div v-if="!workflows.length && !loadingWorkflows">
 							<n8n-text color="text-base">{{
 								$locale.baseText('templates.noSearchResults')
 							}}</n8n-text>
@@ -70,9 +70,7 @@ import TemplateList from '@/components/TemplateList.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { abbreviateNumber } from '@/components/helpers';
 import mixins from 'vue-typed-mixins';
-import { IN8nSearchData } from '@/Interface';
-
-const TEMPLATES_PAGE_SIZE = 10;
+import { IN8nSearchData, ITemplatesQuery } from '@/Interface';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplatesView',
@@ -85,20 +83,23 @@ export default mixins(genericHelpers).extend({
 		allCategories(): [] {
 			return this.$store.getters['templates/allCategories'];
 		},
+		query(): ITemplatesQuery {
+			return {
+				categories: this.categories,
+				search: this.search,
+			};
+		},
 		collections(): [] {
-			return this.$store.getters['templates/getSearchedCollections']({categories: this.categories, search: this.search});
+			return this.$store.getters['templates/getSearchedCollections'](this.query);
 		},
 		isMenuCollapsed(): boolean {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
-		isTemplatesEnabled(): boolean {
-			return this.$store.getters['settings/isTemplatesEnabled'];
-		},
 		totalWorkflows(): number {
-			return this.$store.getters['templates/getTotalWorkflows'];
+			return this.$store.getters['templates/getSearchedWorkflowsTotal'](this.query);
 		},
 		workflows(): [] {
-			return this.$store.getters['templates/getTemplates'] || [];
+			return this.$store.getters['templates/getSearchedWorkflows'](this.query);
 		},
 	},
 	data() {
@@ -107,39 +108,28 @@ export default mixins(genericHelpers).extend({
 			loading: true,
 			loadingCategories: true,
 			loadingCollections: true,
+			loadingWorkflows: true,
 			search: '',
 		};
 	},
 	methods: {
 		abbreviateNumber,
-		async doSearch() {
-			this.loading = true;
-			const category = this.categories;
-			const search = this.search;
-
-			this.updateQueryParam(search, category.join(','));
-
-			const response: IN8nSearchData | null = await this.$store.dispatch('templates/getSearchResults', {
-				search,
-				category,
-			});
-
-			if (response && search) {
-				const templateEvent = await this.generateTemplateEvent(response);
-				this.$telemetry.track('User searched workflow templates', templateEvent);
-			}
-
-			if (response) {
-				this.loading = false;
-			}
+		async updateSearch() {
+			this.updateQueryParam(this.search, this.categories.join(','));
+			await this.loadWorkflows();
+			this.trackSearch();
 		},
-		async generateTemplateEvent(results: IN8nSearchData) {
-			return {
+		trackSearch() {
+			if (!this.search || !this.categories.length) {
+				return;
+			}
+			const templateEvent = {
 				search_string: this.search,
-				results_count: results.workflows.length,
+				results_count: this.workflows.length,
 				categories_applied: this.categories.map((categoryId) => this.$store.getters['templates/getCategoryById'](categoryId)),
 				wf_template_repo_session_id: 0, // todo get session id as prop
 			};
+			this.$telemetry.track('User searched workflow templates', templateEvent);
 		},
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (e.metaKey || e.ctrlKey) {
@@ -154,11 +144,11 @@ export default mixins(genericHelpers).extend({
 			this.$router.push({ name: 'NodeViewNew' });
 		},
 		async onSearchInput() {
-			this.callDebounced('doSearch', 500, true);
+			this.callDebounced('updateSearch', 500, true);
 		},
 		async setCategories(selected: number[]) {
 			this.categories = selected;
-			await this.doSearch();
+			await this.updateSearch();
 		},
 		scrollToTop() {
 			setTimeout(() => {
@@ -211,10 +201,26 @@ export default mixins(genericHelpers).extend({
 				this.loadingCollections = false;
 			}
 		},
+		async loadWorkflows() {
+			try {
+				this.loadingWorkflows = true;
+				await this.$store.dispatch('templates/getWorkflows', {categories: this.categories, search: this.search});
+				this.trackSearch();
+			} catch (e) {
+				this.$showMessage({
+					title: 'Error',
+					message: 'Could not load workflows',
+					type: 'error',
+				});
+			} finally {
+				this.loadingWorkflows = false;
+			}
+		},
 	},
 	async mounted() {
 		this.loadCategories();
 		this.loadCollections();
+		this.loadWorkflows();
 	},
 	async created() {
 		this.scrollToTop();
@@ -226,23 +232,6 @@ export default mixins(genericHelpers).extend({
 		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
 			this.categories = this.$route.query.categories.split(',').map((id) => Number(id));
 		}
-
-		// const category = this.categories.length ? this.categories : null;
-
-		// const results: IN8nSearchData | null = await this.$store.dispatch('templates/getSearchResults', {
-		// 	numberOfResults: TEMPLATES_PAGE_SIZE,
-		// 	search: this.search,
-		// 	category,
-		// 	fetchCategories: true,
-		// });
-
-		// if (results && this.search) {
-		// 	const templateEvent = await this.generateTemplateEvent(results);
-		// 	this.$telemetry.track('User searched workflow templates', templateEvent);
-		// }
-
-		// this.loadingCategories = false;
-		// this.loading = false;
 	},
 });
 </script>

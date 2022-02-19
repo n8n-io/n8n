@@ -46,7 +46,10 @@ export async function getWorkflows(
 	apiEndpoint: string,
 	query: ITemplatesSearchQuery,
 ): Promise<{data: {totalWorkflows: number, workflows: IN8nTemplate[]}}> {
-	const gqlQuery = `query {
+	const gqlQuery = `query search($limit: Int,
+		$skip: Int,
+		$category: [Int],
+		$search: String){
 		totalWorkflows: getWorkflowCount(search: $search, category: $category)
 		workflows: searchWorkflows(rows: $limit,
 			skip: $skip,
@@ -73,7 +76,7 @@ export async function getWorkflows(
 			created_at
 		}
 	}`;
-	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories, limit: query.limit, skip: query.skip});
+	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length? query.categories.map((id: string) => parseInt(id)) : null, limit: query.limit, skip: query.skip});
 }
 
 export async function getCollectionById(apiEndpoint: string, collectionId: string): Promise<{data: {collection: IN8nCollection}}> {
