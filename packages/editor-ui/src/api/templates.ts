@@ -39,7 +39,7 @@ export async function getCollections(apiEndpoint: string, query: ITemplatesQuery
 			totalViews: views
 		}
 	}`;
-	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length ? query.categories : null});
+	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length ? query.categories.map((id: string) => parseInt(id)) : null});
 }
 
 export async function getWorkflows(

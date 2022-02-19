@@ -146,17 +146,9 @@ export default mixins(genericHelpers).extend({
 		async onSearchInput() {
 			this.callDebounced('updateSearch', 500, true);
 		},
-		async setCategories(selected: number[]) {
+		async setCategories(selected: string[]) {
 			this.categories = selected;
 			await this.updateSearch();
-		},
-		scrollToTop() {
-			setTimeout(() => {
-				window.scrollTo({
-					top: 0,
-					behavior: 'smooth',
-				});
-			}, 100);
 		},
 		updateQueryParam(search: string, category: string) {
 			const query = Object.assign({}, this.$route.query);
@@ -223,8 +215,6 @@ export default mixins(genericHelpers).extend({
 		this.loadWorkflows();
 	},
 	async created() {
-		this.scrollToTop();
-
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
 			this.search = this.$route.query.search;
 		}
