@@ -208,6 +208,21 @@ export default mixins(genericHelpers).extend({
 				this.loadingWorkflows = false;
 			}
 		},
+		scrollToTop() {
+			setTimeout(() => {
+				window.scrollTo({
+					top: 0,
+					behavior: 'smooth',
+				});
+			}, 100);
+		},
+	},
+	watch: {
+		workflows(newWorkflows) {
+			if (newWorkflows.length === 0 && this.loadingWorkflows) {
+				this.scrollToTop();
+			}
+		},
 	},
 	async mounted() {
 		this.loadCategories();
