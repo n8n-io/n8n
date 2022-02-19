@@ -2,10 +2,7 @@
 	<div class="template-details">
 		<n8n-loading :animated="true" :loading="loading" :rows="5" variant="p" />
 
-		<template-block
-			v-if="!loading && template.nodes.length > 0"
-			:title="blockTitle"
-		>
+		<template-block v-if="!loading && template.nodes.length > 0" :title="blockTitle">
 			<template v-slot:content>
 				<div :class="$style.icons">
 					<div
@@ -13,11 +10,11 @@
 						:key="node.name"
 						:class="$style.icon"
 					>
-						<TemplateNodeIcon
+						<HoverableNodeIcon
 							:nodeType="node"
 							:title="node.name"
-							:clickButton="redirectToSearchPage"
 							:size="24"
+							@click="redirectToSearchPage"
 						/>
 					</div>
 				</div>
@@ -29,7 +26,7 @@
 			:title="$locale.baseText('template.details.categories')"
 		>
 			<template v-slot:content>
-				<n8n-tags :tags="template.categories" :clickButton="redirectToCategory" />
+				<n8n-tags :tags="template.categories" @click="redirectToCategory" />
 			</template>
 		</template-block>
 
@@ -59,10 +56,10 @@
 import Vue from 'vue';
 
 import TemplateBlock from '@/components/TemplateBlock.vue';
-import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
+import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 
-import { abbreviateNumber } from '@/components/helpers';
-import { ITemplateCategories } from '@/Interface';
+import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
+import { ITemplateCategories, IVersionNode } from '@/Interface';
 
 interface INode {
 	displayName: string;
@@ -102,25 +99,13 @@ export default Vue.extend({
 		},
 	},
 	components: {
+		HoverableNodeIcon,
 		TemplateBlock,
-		TemplateNodeIcon,
 	},
 	methods: {
 		abbreviateNumber,
-		filterCoreNodes(nodes: []) {
-			const result = nodes.filter((elem) => {
-				const node = elem as INode;
-				if (node.categories) {
-					const found = node.categories.some(
-						(category: ITemplateCategories) => category.name === 'Core Nodes',
-					);
-					if (!found) return node;
-					else return;
-				} else {
-					return;
-				}
-			});
-			return result.length > 0 ? result : nodes;
+		filterCoreNodes(nodes: IVersionNode[]) {
+			return filterTemplateNodes(nodes);
 		},
 		redirectToCategory(tag: ITag) {
 			this.$router.push(`/templates?categories=${tag.id}`);

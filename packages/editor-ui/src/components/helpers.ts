@@ -1,5 +1,5 @@
-import { ERROR_TRIGGER_NODE_TYPE } from '@/constants';
-import { INodeUi } from '@/Interface';
+import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, TEMPLATES_NODES_FILTER } from '@/constants';
+import { INodeUi, IVersionNode } from '@/Interface';
 import dateformat from 'dateformat';
 
 const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
@@ -43,4 +43,15 @@ export function getActivatableTriggerNodes(nodes: INodeUi[]) {
 		// Error Trigger does not behave like other triggers and workflows using it can not be activated
 		return !node.disabled && node.type !== ERROR_TRIGGER_NODE_TYPE;
 	});
+}
+
+export function filterTemplateNodes(nodes: IVersionNode[]) {
+	const notCoreNodes = nodes.filter((node: IVersionNode) => {
+		return !(node.categories || []).some(
+			(category) => category.name === CORE_NODES_CATEGORY,
+		);
+	});
+
+	const results = notCoreNodes.length > 0 ? notCoreNodes : nodes;
+	return results.filter((elem) => !TEMPLATES_NODES_FILTER.includes(elem.name));
 }

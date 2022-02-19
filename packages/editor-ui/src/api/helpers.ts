@@ -97,3 +97,7 @@ export async function get(baseURL: string, endpoint: string, params?: IDataObjec
 export async function post(baseURL: string, endpoint: string, params?: IDataObject, headers?: IDataObject) {
 	return await request({method: 'POST', baseURL, endpoint, headers, data: params});
 }
+
+export async function graphql(endpoint: string, query: string, variables: IDataObject) {
+	return await post(endpoint, `/graphql`, { query, variables });
+}

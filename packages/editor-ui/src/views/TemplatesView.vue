@@ -11,9 +11,9 @@
 					<div :class="$style.button">
 						<n8n-button
 							size="small"
-							type="outline"
+							type="primary"
 							:label="$locale.baseText('templates.newButton')"
-							:transparentBackground="true"
+							:transparentBackground="false"
 							@click="openNewWorkflow"
 						/>
 					</div>
@@ -50,6 +50,11 @@
 							:total-workflows="totalWorkflows"
 							:workflows="workflows"
 						/>
+						<div v-if="!workflows.length && !collections.length && !loading">
+							<n8n-text color="text-base">{{
+								$locale.baseText('templates.noSearchResults')
+							}}</n8n-text>
+						</div>
 					</div>
 				</div>
 			</div>

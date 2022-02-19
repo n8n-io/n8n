@@ -1,17 +1,14 @@
 <template functional>
-	<component :is="props.tag" :class="$style.card">
-		<slot>
-			<n8n-loading
-				v-for="(block, index) in props.blocks"
-				:key="'loading-block-' + index"
-				:animated="props.animated"
-				:loading="props.loading"
-				:rows="props.rows"
-				:variant="props.variant"
-			/>
-			<div :class="$style.spacer" />
-		</slot>
-	</component>
+	<div>
+		<n8n-loading
+			v-for="(block, index) in props.blocks"
+			:key="index"
+			:animated="props.animated"
+			:loading="props.loading"
+			:rows="props.rows"
+			:variant="props.variant"
+		/>
+  </div>
 </template>
 
 <script lang="ts">
@@ -38,18 +35,10 @@ export default {
 			type: Number,
 			default: 1,
 		},
-		tag: {
-			type: String,
-			default: 'div',
-		},
 		variant: {
 			type: String,
-			default: 'p'
-		}
+			default: 'p',
+		},
 	},
 };
 </script>
-
-<style lang="scss" module>
-.card {}
-</style>

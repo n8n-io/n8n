@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.list">
-		<div :class="$style.header">
+		<div v-if="(workflows && workflows.length) || loading" :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.workflows') }}
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
@@ -8,7 +8,7 @@
 		</div>
 		<div v-if="loading" :class="$style.container">
 			<div :class="$style.wrapper">
-				<TemplateCard v-for="n in 4" :key="'index-' + n" :loading="loading" />
+				<LongCard v-for="n in 4" :key="'index-' + n" :loading="loading" />
 			</div>
 		</div>
 		<div v-else-if="workflows.length" :class="$style.container">
@@ -19,7 +19,7 @@
 					:class="[$style.card, useWorkflowButton ? $style.workflowButton : '']"
 					@click="navigateTo(workflow.id, 'TemplateView', $event)"
 				>
-					<TemplateCard
+					<LongCard
 						:class="index === workflows.length - 1 && !shouldShowLoadingState ? $style.last : ''"
 						:loading="false"
 						:title="workflow.name"
@@ -51,19 +51,31 @@
 							</div>
 							<div :class="$style.nodes">
 								<div
-									v-for="(node, index) in filterCoreNodes(workflow.nodes)"
+									v-for="(node, index) in filterCoreNodes(workflow.nodes).slice(
+										0,
+										countNodesToBeSliced(filterCoreNodes(workflow.nodes)),
+									)"
 									:key="index"
 									:class="$style.icon"
 								>
-									<TemplateNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
+									<HoverableNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
+								</div>
+								<div
+									:class="$style.nodeButton"
+									v-if="filterCoreNodes(workflow.nodes).length > nodesToBeShown + 1"
+								>
+									+{{
+										filterCoreNodes(workflow.nodes).length -
+										countNodesToBeSliced(filterCoreNodes(workflow.nodes))
+									}}
 								</div>
 							</div>
 						</template>
-					</TemplateCard>
+					</LongCard>
 				</div>
 				<div v-if="infiniteScrollEnabled && searchFinished" v-infocus />
 				<div v-if="infiniteScrollEnabled && shouldShowLoadingState && !searchFinished">
-					<TemplateCard v-for="n in 4" :key="'index-' + n" :loading="true" />
+					<LongCard v-for="n in 4" :key="'index-' + n" :loading="true" />
 				</div>
 			</div>
 			<div v-if="infiniteScrollEnabled && !shouldShowLoadingState" :class="$style.text">
@@ -72,34 +84,17 @@
 				</n8n-text>
 			</div>
 		</div>
-		<div v-else>
-			<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
-		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import TemplateNodeIcon from '@/components/TemplateNodeIcon.vue';
-import TemplateCard from '@/components/TemplateCard.vue';
+import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
+import LongCard from '@/components/LongCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplateCategories } from '@/Interface';
+import { IVersionNode } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-
-interface INode {
-	displayName: string;
-	defaults: {
-		color: string;
-	};
-	categories: ITemplateCategories[];
-	icon: string;
-	iconData?: {
-		fileBuffer?: string;
-		type?: string;
-	};
-	name: string;
-	typeVersion: number;
-}
+import { filterTemplateNodes } from './helpers';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
@@ -157,10 +152,7 @@ export default mixins(genericHelpers).extend({
 			inserted: (el, binding, vnode) => {
 				const f = () => {
 					if (vnode.context) {
-						if (
-							vnode.context.$props.infiniteScrollEnabled &&
-							vnode.context.$data.searchFinished
-						) {
+						if (vnode.context.$props.infiniteScrollEnabled && vnode.context.$data.searchFinished) {
 							const rect = el.getBoundingClientRect();
 							if (el) {
 								const inView =
@@ -177,13 +169,15 @@ export default mixins(genericHelpers).extend({
 
 										vnode.context.$data.searchFinished = false;
 
-										vnode.context.$store.dispatch('templates/getSearchResults', {
-											search: vnode.context.$props.search,
-											category: vnode.context.$props.categories,
-											skip: vnode.context.$data.skip,
-										}).then(() => {
-											if (vnode.context) vnode.context.$data.searchFinished = true;
-										});
+										vnode.context.$store
+											.dispatch('templates/getSearchResults', {
+												search: vnode.context.$props.search,
+												category: vnode.context.$props.categories,
+												skip: vnode.context.$data.skip,
+											})
+											.then(() => {
+												if (vnode.context) vnode.context.$data.searchFinished = true;
+											});
 									}
 								}
 							}
@@ -198,8 +192,8 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	components: {
-		TemplateNodeIcon,
-		TemplateCard,
+		HoverableNodeIcon,
+		LongCard,
 	},
 	computed: {
 		shouldShowLoadingState(): boolean | undefined {
@@ -208,20 +202,22 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
+			nodesToBeShown: 5,
 			page: 0,
 			searchFinished: true,
 			skip: 1,
 		};
 	},
 	methods: {
-		filterCoreNodes(nodes: []) {
-			const result =  nodes.filter((elem) => {
-				const node = elem as INode;
-				const found = node.categories.some((category: ITemplateCategories) => category.name === 'Core Nodes');
-				if (!found) return node;
-				else return;
-			});
-			return result.length > 0 ? result : nodes;
+		countNodesToBeSliced(nodes: []): number {
+			if (nodes.length > this.nodesToBeShown) {
+				return this.nodesToBeShown - 1;
+			} else {
+				return this.nodesToBeShown;
+			}
+		},
+		filterCoreNodes(nodes: IVersionNode[]) {
+			return filterTemplateNodes(nodes);
 		},
 	},
 });
@@ -230,9 +226,6 @@ export default mixins(genericHelpers).extend({
 <style lang="scss" module>
 .header {
 	padding-bottom: var(--spacing-2xs);
-}
-
-.l {
 }
 
 .list {
@@ -286,6 +279,24 @@ export default mixins(genericHelpers).extend({
 	display: none;
 	position: relative;
 	z-index: 100;
+}
+
+.nodeButton {
+	width: 24px;
+	min-width: 24px;
+	height: 24px;
+	margin-left: var(--spacing-xs);
+	top: 0px;
+	position: relative;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background: var(--color-background-light);
+	border: 1px var(--color-foreground-base) solid;
+	border-radius: var(--border-radius-base);
+	font-size: 10px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text-base);
 }
 
 .content {

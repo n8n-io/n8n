@@ -81,10 +81,6 @@ export default new Router({
 			},
 		},
 		{
-			path: '/',
-			redirect: '/workflow',
-		},
-		{
 			path: '/workflows/templates/:id',
 			name: 'WorkflowTemplate',
 			components: {

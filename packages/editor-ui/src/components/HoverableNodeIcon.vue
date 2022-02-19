@@ -2,7 +2,7 @@
 	<div
 		:class="$style.wrapper"
 		:style="iconStyleData"
-		@click="clickButton(nodeType)"
+		@click="(e) => $emit('click', nodeType)"
 		@mouseover="showTooltip = true"
 		@mouseleave="showTooltip = false"
 	>
@@ -13,16 +13,7 @@
 			</n8n-tooltip>
 		</div>
 		<div v-if="nodeIconData !== null" :class="$style.icon" title="">
-			<img
-				v-if="nodeIconData.type === 'file'"
-				:src="nodeIconData.fileBuffer || nodeIconData.path"
-				:style="imageStyleData"
-			/>
-			<font-awesome-icon
-				v-else
-				:icon="nodeIconData.icon || nodeIconData.path"
-				:style="fontStyleData"
-			/>
+			<NodeIcon :nodeType="nodeType" />
 		</div>
 		<div v-else :class="$style.placeholder">
 			{{ nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
@@ -32,6 +23,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 import { IVersionNode } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
@@ -44,7 +36,7 @@ interface NodeIconData {
 }
 
 export default Vue.extend({
-	name: 'TemplateNodeIcon',
+	name: 'HoverableNodeIcon',
 	props: {
 		circle: {
 			type: Boolean,
@@ -63,6 +55,9 @@ export default Vue.extend({
 		size: {
 			type: Number,
 		},
+	},
+	components: {
+		NodeIcon,
 	},
 	computed: {
 		iconStyleData(): object {
@@ -85,28 +80,6 @@ export default Vue.extend({
 					filter: 'contrast(40%) brightness(1.5) grayscale(100%)',
 				}),
 			};
-		},
-		fontStyleData(): object {
-			return {
-				'max-width': this.size + 'px',
-			};
-		},
-		imageStyleData(): object {
-			return {
-				width: '100%',
-				'max-width': '100%',
-				'max-height': '100%',
-			};
-		},
-		isSvgIcon(): boolean {
-			if (
-				this.nodeIconData &&
-				this.nodeIconData.type === 'file' &&
-				this.nodeIconData.fileExtension === 'svg'
-			) {
-				return true;
-			}
-			return false;
 		},
 		nodeIconData(): null | NodeIconData {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;

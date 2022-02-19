@@ -189,7 +189,14 @@ export default mixins(genericHelpers).extend({
 
 <style lang="scss">
 .template-filters {
+	.el-checkbox {
+		display: flex;
+		white-space: unset;
+	}
+
 	.el-checkbox__label {
+		top: -3px;
+		position: relative;
 		font-size: var(--font-size-2xs);
 		color: var(--color-text-dark);
 		padding-left: var(--spacing-2xs);
