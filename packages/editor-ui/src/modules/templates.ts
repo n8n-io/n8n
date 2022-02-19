@@ -26,7 +26,8 @@ const module: Module<ITemplateState, IRootState> = {
 		templates: {},
 		collectionSearches: {},
 		workflowSearches: {},
-		sessionId: `templates-${Date.now()}`,
+		currentSessionId: '',
+		previousSessionId: '',
 	},
 	getters: {
 		allCategories(state: ITemplateState) {
@@ -87,8 +88,11 @@ const module: Module<ITemplateState, IRootState> = {
 				return Boolean(search && !search.loadingMore && search.totalWorkflows === search.workflowIds.length);
 			};
 		},
-		sessionId(state: ITemplateState) {
-			return state.sessionId;
+		currentSessionId(state: ITemplateState) {
+			return state.currentSessionId;
+		},
+		previousSessionId(state: ITemplateState) {
+			return state.previousSessionId;
 		},
 	},
 	mutations: {
@@ -159,7 +163,13 @@ const module: Module<ITemplateState, IRootState> = {
 			Vue.set(state.workflowSearches[searchKey], 'loadingMore', false);
 		},
 		resetSessionId(state: ITemplateState) {
-			state.sessionId = `templates-${Date.now()}`;
+			state.previousSessionId = state.currentSessionId;
+			state.currentSessionId = '';
+		},
+		setSessionId(state: ITemplateState) {
+			if (!state.currentSessionId) {
+				state.currentSessionId = `templates-${Date.now()}`;
+			}
 		},
 	},
 	actions: {

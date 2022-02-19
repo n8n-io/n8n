@@ -95,7 +95,7 @@ export default mixins(workflowHelpers).extend({
 				this.$store.dispatch('templates/setTemplateSessionId', null);
 				this.$telemetry.track('User inserted workflow template', {
 					template_id: id,
-					wf_template_repo_session_id: this.$store.getters['templates/sessionId'],
+					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
 					source: 'workflow',
 				});
 			}

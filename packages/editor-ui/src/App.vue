@@ -20,6 +20,7 @@ import Telemetry from './components/Telemetry.vue';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
+import { Route } from 'vue-router';
 
 export default mixins(showMessage).extend({
 	name: 'App',
@@ -53,6 +54,17 @@ export default mixins(showMessage).extend({
 				throw e;
 			}
 		},
+		trackPage() {
+			this.$store.commit('ui/setCurrentPage', this.$route.name);
+			this.$telemetry.page('Editor', this.$route);
+
+			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
+				this.$store.commit('templates/setSessionId');
+			}
+			else {
+				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
+			}
+		},
 	},
 	async mounted() {
 		await this.initialize();
@@ -67,17 +79,11 @@ export default mixins(showMessage).extend({
 			this.$router.replace({ name: 'NodeViewNew'});
 		}
 
-		this.$store.commit('ui/setCurrentPage', this.$route.name);
-		this.$telemetry.page('Editor', this.$route);
+		this.trackPage();
 	},
 	watch: {
-		'$route'(route) {
-			this.$store.commit('ui/setCurrentPage', this.$route.name);
-			this.$telemetry.page('Editor', route);
-
-			if (!(this.$route && this.$route.meta && this.$route.meta.templatesEnabled)) {
-				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
-			}
+		'$route'() {
+			this.trackPage();
 		},
 	},
 });

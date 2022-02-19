@@ -134,7 +134,7 @@ export default mixins(genericHelpers).extend({
 				search_string: this.search,
 				results_count: this.workflows.length,
 				categories_applied: this.categories.map((categoryId) => this.$store.getters['templates/getCategoryById'](categoryId)),
-				wf_template_repo_session_id: this.$store.getters['templates/sessionId'],
+				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
 			};
 			this.$telemetry.track('User searched workflow templates', templateEvent);
 		},
