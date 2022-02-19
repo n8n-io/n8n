@@ -73,7 +73,7 @@ import mixins from 'vue-typed-mixins';
 import { IN8nCollection, IN8nSearchData, IN8nTemplate, ITemplatesQuery } from '@/Interface';
 
 export default mixins(genericHelpers).extend({
-	name: 'TemplatesView',
+	name: 'TemplatesSearchView',
 	components: {
 		CollectionsCarousel,
 		TemplateFilters,

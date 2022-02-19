@@ -6,7 +6,7 @@ import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import TemplateView from '@/views/TemplateView.vue';
-import TemplatesView from '@/views/TemplatesView.vue';
+import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 
 Vue.use(Router);
 
@@ -58,9 +58,9 @@ export default new Router({
 		},
 		{
 			path: '/templates/',
-			name: 'TemplatesView',
+			name: 'TemplatesSearchView',
 			components: {
-				default: TemplatesView,
+				default: TemplatesSearchView,
 				sidebar: MainSidebar,
 			},
 			meta: {
