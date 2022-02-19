@@ -85,18 +85,21 @@ export class Grist implements INodeType {
 					apiKey,
 					planType,
 					customSubdomain,
+					selfHostedUrl,
 				} = credential.data as GristCredentials;
 
-				const subdomain = planType === 'free' ? 'docs' : customSubdomain;
-
 				const endpoint = '/orgs';
+
+				const gristapiurl = (planType === 'free') ? `https://docs.getgrist.com/api${endpoint}` :
+				(planType === 'paid') ? `https://${customSubdomain}.getgrist.com/api${endpoint}` :
+  				`${selfHostedUrl}/api${endpoint}`;
 
 				const options: OptionsWithUri = {
 					headers: {
 						Authorization: `Bearer ${apiKey}`,
 					},
 					method: 'GET',
-					uri: `https://${subdomain}.getgrist.com/api${endpoint}`,
+					uri: gristapiurl,
 					qs: { limit: 1 },
 					json: true,
 				};
