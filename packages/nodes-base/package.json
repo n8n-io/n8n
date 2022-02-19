@@ -99,6 +99,7 @@
       "dist/credentials/FreshdeskApi.credentials.js",
       "dist/credentials/FreshserviceApi.credentials.js",
       "dist/credentials/FreshworksCrmApi.credentials.js",
+      "dist/credentials/FriendGridApi.credentials.js",
       "dist/credentials/Ftp.credentials.js",
       "dist/credentials/GetResponseApi.credentials.js",
       "dist/credentials/GetResponseOAuth2Api.credentials.js",
