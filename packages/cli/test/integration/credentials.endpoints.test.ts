@@ -28,7 +28,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate(['User', 'Credentials']);
+	await utils.truncate(['User', 'Credentials', 'SharedCredentials']);
 });
 
 afterAll(() => {
@@ -121,6 +121,10 @@ test('DELETE /credentials/:id should delete owned cred for owner', async () => {
 	const deletedCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
 
 	expect(deletedCredential).toBeUndefined(); // deleted
+
+	const deletedSharedCredential = await Db.collections.SharedCredentials!.findOne();
+
+	expect(deletedSharedCredential).toBeUndefined(); // deleted
 });
 
 test('DELETE /credentials/:id should delete non-owned cred for owner', async () => {
@@ -137,6 +141,10 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 	const deletedCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
 
 	expect(deletedCredential).toBeUndefined(); // deleted
+
+	const deletedSharedCredential = await Db.collections.SharedCredentials!.findOne();
+
+	expect(deletedSharedCredential).toBeUndefined(); // deleted
 });
 
 test('DELETE /credentials/:id should delete owned cred for member', async () => {
@@ -152,6 +160,10 @@ test('DELETE /credentials/:id should delete owned cred for member', async () => 
 	const deletedCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
 
 	expect(deletedCredential).toBeUndefined(); // deleted
+
+	const deletedSharedCredential = await Db.collections.SharedCredentials!.findOne();
+
+	expect(deletedSharedCredential).toBeUndefined(); // deleted
 });
 
 test('DELETE /credentials/:id should not delete non-owned cred for member', async () => {
@@ -167,6 +179,10 @@ test('DELETE /credentials/:id should not delete non-owned cred for member', asyn
 	const shellCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
 
 	expect(shellCredential).toBeDefined(); // not deleted
+
+	const deletedSharedCredential = await Db.collections.SharedCredentials!.findOne();
+
+	expect(deletedSharedCredential).toBeDefined(); // not deleted
 });
 
 test('DELETE /credentials/:id should fail if cred not found', async () => {
@@ -205,7 +221,7 @@ test('PATCH /credentials/:id should update owned cred for owner', async () => {
 	expect(credential.data).not.toBe(patchPayload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
-		relations: ['user', 'credentials'],
+		relations: ['credentials'],
 		where: { credentials: credential },
 	});
 
@@ -240,7 +256,7 @@ test('PATCH /credentials/:id should update non-owned cred for owner', async () =
 	expect(credential.data).not.toBe(patchPayload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
-		relations: ['user', 'credentials'],
+		relations: ['credentials'],
 		where: { credentials: credential },
 	});
 
@@ -274,7 +290,7 @@ test('PATCH /credentials/:id should update owned cred for member', async () => {
 	expect(credential.data).not.toBe(patchPayload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials!.findOneOrFail({
-		relations: ['user', 'credentials'],
+		relations: ['credentials'],
 		where: { credentials: credential },
 	});
 
@@ -344,10 +360,14 @@ test('GET /credentials should retrieve all creds for owner', async () => {
 		await saveCredential(credentialPayload(), { user: owner });
 	}
 
+	const member = await utils.createUser();
+
+	await saveCredential(credentialPayload(), { user: member });
+
 	const response = await authOwnerAgent.get('/credentials');
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(3);
+	expect(response.body.data.length).toBe(4); // 3 owner + 1 member
 
 	for (const credential of response.body.data) {
 		const { name, type, nodesAccess, data: encryptedData } = credential;
@@ -394,7 +414,7 @@ test('GET /credentials should not retrieve non-owned creds for member', async ()
 	const response = await authMemberAgent.get('/credentials');
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(0); // shell's creds not returned
+	expect(response.body.data.length).toBe(0); // owner's creds not returned
 });
 
 test('GET /credentials/:id should retrieve owned cred for owner', async () => {
@@ -457,7 +477,7 @@ test('GET /credentials/:id should not retrieve non-owned cred for member', async
 	const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
 
 	expect(response.statusCode).toBe(200);
-	expect(response.body.data).toEqual({}); // shell's cred not returned
+	expect(response.body.data).toEqual({}); // owner's cred not returned
 });
 
 test('GET /credentials/:id should fail with missing encryption key', async () => {

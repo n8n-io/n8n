@@ -45,7 +45,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await utils.truncate(['User']);
+	await utils.truncate(['User', 'Workflow', 'Credentials', 'SharedCredentials', 'SharedWorkflow']);
 
 	jest.isolateModules(() => {
 		jest.mock('../../config');
@@ -62,10 +62,6 @@ beforeEach(async () => {
 
 	config.set('userManagement.hasOwner', true);
 	config.set('userManagement.emails.mode', '');
-});
-
-afterEach(async () => {
-	await utils.truncate(['User']);
 });
 
 afterAll(() => {
@@ -151,25 +147,25 @@ test('DELETE /users/:id should delete the user', async () => {
 	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
 	const user = await Db.collections.User!.findOne(userToDelete.id);
-	expect(user).toBeUndefined();
+	expect(user).toBeUndefined(); // deleted
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOne({
 		relations: ['user'],
 		where: { user: userToDelete },
 	});
-	expect(sharedWorkflow).toBeUndefined();
+	expect(sharedWorkflow).toBeUndefined(); // deleted
 
 	const sharedCredential = await Db.collections.SharedCredentials!.findOne({
 		relations: ['user'],
 		where: { user: userToDelete },
 	});
-	expect(sharedCredential).toBeUndefined();
+	expect(sharedCredential).toBeUndefined(); // deleted
 
 	const workflow = await Db.collections.Workflow!.findOne(savedWorkflow.id);
-	expect(workflow).toBeUndefined();
+	expect(workflow).toBeUndefined(); // deleted
 
 	const credential = await Db.collections.Credentials!.findOne(savedCredential.id);
-	expect(credential).toBeUndefined();
+	expect(credential).toBeUndefined(); // deleted
 });
 
 test('DELETE /users/:id should fail to delete self', async () => {
@@ -269,8 +265,6 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 	expect(sharedWorkflow.user.id).toBe(owner.id);
 	expect(sharedCredential.user.id).toBe(owner.id);
 	expect(deletedUser).toBeUndefined();
-
-	await utils.truncate(['Credentials', 'Workflow']);
 });
 
 test('GET /resolve-signup-token should validate invite token', async () => {
