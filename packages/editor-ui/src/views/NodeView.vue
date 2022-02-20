@@ -544,12 +544,6 @@ export default mixins(
 							),
 						);
 					}
-
-					data.workflow.nodes.forEach((node) => {
-						if (!this.$store.getters.nodeType(node.type, node.typeVersion)) {
-							throw new Error(`The ${this.$locale.shortNodeType(node.type)} node is not supported`);
-						}
-					});
 				} catch (error) {
 					this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
 					this.$router.replace({ name: 'NodeViewNew' });
