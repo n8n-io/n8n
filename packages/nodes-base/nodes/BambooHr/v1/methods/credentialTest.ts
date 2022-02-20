@@ -3,10 +3,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IHttpRequestOptions,
-	NodeCredentialTestResult,
+	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-export async function bambooHrApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+export async function bambooHrApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 	try {
 		await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 	} catch (error) {
@@ -19,7 +19,7 @@ export async function bambooHrApiCredentialTest(this: ICredentialTestFunctions, 
 	return {
 		status: 'OK',
 		message: 'Connection successful!',
-	} as NodeCredentialTestResult;
+	} as INodeCredentialTestResult;
 }
 
 async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any

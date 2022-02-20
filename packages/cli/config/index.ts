@@ -22,6 +22,26 @@ const config = convict({
 			default: '',
 			env: 'DB_TABLE_PREFIX',
 		},
+		logging: {
+			enabled: {
+				doc: 'Typeorm logging enabled flag.',
+				format: 'Boolean',
+				default: false,
+				env: 'DB_LOGGING_ENABLED',
+			},
+			options: {
+				doc: 'Logging level options, default is "error". Possible values: query,error,schema,warn,info,log. To enable all logging, specify "all"',
+				format: String,
+				default: 'error',
+				env: 'DB_LOGGING_OPTIONS',
+			},
+			maxQueryExecutionTime: {
+				doc: 'Maximum number of milliseconds query should be executed before logger logs a warning. Set 0 to disable long running query warning',
+				format: Number,
+				default: 1000,
+				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
+			},
+		},
 		postgresdb: {
 			database: {
 				doc: 'PostgresDB Database',
@@ -270,6 +290,20 @@ const config = convict({
 	},
 
 	queue: {
+		health: {
+			active: {
+				doc: 'If health checks should be enabled',
+				format: 'Boolean',
+				default: false,
+				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
+			},
+			port: {
+				doc: 'Port to serve health check on if activated',
+				format: Number,
+				default: 5678,
+				env: 'QUEUE_HEALTH_CHECK_PORT',
+			},
+		},
 		bull: {
 			prefix: {
 				doc: 'Prefix for all queue keys',
