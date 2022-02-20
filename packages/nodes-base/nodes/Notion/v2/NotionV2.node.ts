@@ -399,6 +399,7 @@ export class NotionV2 implements INodeType {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						if (matchType === 'anyFilter') {
 							Object.assign(body.filter, { or: conditions.map((data) => mapFilters([data], timezone)) });
+							console.log(JSON.stringify(body.filter));
 						} else if (matchType === 'allFilters') {
 							Object.assign(body.filter, { and: conditions.map((data) => mapFilters([data], timezone)) });
 						}

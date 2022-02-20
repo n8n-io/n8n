@@ -397,7 +397,7 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		} else if (key === 'phone_number') {
 			key = 'phone';
 		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
-			valuePropertyName = (valuePropertyName !== undefined && !Object.keys(valuePropertyName).length) ? {} : moment.tz(value.date, timezone).utc().format();
+			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();		
 		} else if (key === 'boolean') {
 			key = 'checkbox';
 		}
