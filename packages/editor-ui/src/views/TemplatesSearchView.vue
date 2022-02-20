@@ -57,6 +57,7 @@
 								:search="search"
 								:total-workflows="totalWorkflows"
 								:workflows="workflows"
+								@loadMore="onLoadMore"
 							/>
 							<div v-if="nothingFound">
 								<n8n-text color="text-base">{{
@@ -197,6 +198,23 @@ export default mixins(genericHelpers).extend({
 			}
 
 			this.$router.replace({ query });
+		},
+		async onLoadMore() {
+			try {
+				this.loadingWorkflows = true;
+				await this.$store.dispatch('templates/getMoreWorkflows', {
+					categories: this.categories,
+					search: this.search,
+				});
+			} catch (e) {
+				this.$showMessage({
+					title: 'Error',
+					message: 'Could not load more workflows',
+					type: 'error',
+				});
+			} finally {
+				this.loadingWorkflows = false;
+			}
 		},
 		async loadCategories() {
 			try {

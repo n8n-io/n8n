@@ -6,12 +6,7 @@
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
 			</n8n-heading>
 		</div>
-		<div v-if="loading" :class="$style.container">
-			<div :class="$style.wrapper">
-				<LongCard v-for="n in 4" :key="'index-' + n" :loading="loading" />
-			</div>
-		</div>
-		<div v-else-if="workflows.length" :class="$style.container">
+		<div :class="$style.container">
 			<div :class="$style.wrapper">
 				<div
 					v-for="(workflow, index) in workflows"
@@ -20,7 +15,7 @@
 					@click="navigateTo(workflow.id, 'TemplatesWorkflowView', $event)"
 				>
 					<LongCard
-						:class="index === workflows.length - 1 && !shouldShowLoadingState ? $style.last : ''"
+						:class="index === workflows.length - 1 && !loading ? $style.last : ''"
 						:loading="false"
 						:title="workflow.name"
 					>
@@ -58,7 +53,7 @@
 									:key="index"
 									:class="$style.icon"
 								>
-									<HoverableNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
+									<HoverableNodeIcon :nodeType="node" :title="node.name" :size="useWorkflowButton ? 18: 24" />
 								</div>
 								<div
 									:class="$style.nodeButton"
@@ -73,15 +68,10 @@
 						</template>
 					</LongCard>
 				</div>
-				<div v-if="infiniteScrollEnabled && searchFinished" v-infocus />
-				<div v-if="infiniteScrollEnabled && shouldShowLoadingState && !searchFinished">
+				<div v-if="infiniteScrollEnabled" ref="loader" />
+				<div v-if="loading">
 					<LongCard v-for="n in 4" :key="'index-' + n" :loading="true" />
 				</div>
-			</div>
-			<div v-if="infiniteScrollEnabled && !shouldShowLoadingState" :class="$style.text">
-				<n8n-text size="medium" color="text-base">
-					<span v-html="$locale.baseText('templates.endResult')" />
-				</n8n-text>
 			</div>
 		</div>
 	</div>
@@ -94,14 +84,11 @@ import LongCard from '@/components/LongCard.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { IVersionNode } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { filterTemplateNodes } from './helpers';
+import { filterTemplateNodes, abbreviateNumber } from './helpers';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
 	props: {
-		abbreviateNumber: {
-			type: Function,
-		},
 		categories: {
 			type: Array,
 		},
@@ -112,19 +99,6 @@ export default mixins(genericHelpers).extend({
 		loading: {
 			type: Boolean,
 		},
-		navigateTo: {
-			type: Function,
-		},
-		nodeIconSize: {
-			type: Number,
-			default: 24,
-		},
-		search: {
-			type: String,
-		},
-		totalWorkflows: {
-			type: Number,
-		},
 		useWorkflowButton: {
 			type: Boolean,
 			default: false,
@@ -132,82 +106,47 @@ export default mixins(genericHelpers).extend({
 		workflows: {
 			type: Array,
 		},
-	},
-	watch: {
-		categories(categoriesAreChanged) {
-			if (categoriesAreChanged) {
-				this.page = 0;
-				this.skip = 1;
-			}
-		},
-		search(search) {
-			if (search) {
-				this.page = 0;
-				this.skip = 1;
-			}
+		totalWorkflows: {
+			type: Number,
 		},
 	},
-	directives: {
-		infocus: {
-			inserted: (el, binding, vnode) => {
-				const f = () => {
-					if (vnode.context) {
-						if (vnode.context.$props.infiniteScrollEnabled && vnode.context.$data.searchFinished) {
-							const rect = el.getBoundingClientRect();
-							if (el) {
-								const inView =
-									rect.top >= 0 &&
-									rect.left >= 0 &&
-									rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-									rect.right <= (window.innerWidth || document.documentElement.clientWidth);
-
-								if (inView && vnode.context.$data.searchFinished) {
-									// @ts-ignore
-									if (vnode.context.shouldShowLoadingState) {
-										vnode.context.$data.page = vnode.context.$data.page + 1;
-										vnode.context.$data.skip = 10 * vnode.context.$data.page;
-
-										vnode.context.$data.searchFinished = false;
-
-										vnode.context.$store
-											.dispatch('templates/getMoreWorkflows', {
-												search: vnode.context.$props.search,
-												categories: vnode.context.$props.categories,
-											})
-											.then(() => {
-												if (vnode.context) vnode.context.$data.searchFinished = true;
-											});
-									}
-								}
-							}
-						} else {
-							window.removeEventListener('scroll', f);
-						}
-					}
-				};
-				window.addEventListener('scroll', f);
-				f();
-			},
-		},
+	mounted() {
+		if (this.infiniteScrollEnabled) {
+			window.addEventListener('scroll', this.onScroll);
+		}
+	},
+	destroyed() {
+		window.removeEventListener('scroll', this.onScroll);
 	},
 	components: {
 		HoverableNodeIcon,
 		LongCard,
 	},
-	computed: {
-		shouldShowLoadingState(): boolean | undefined {
-			return this.totalWorkflows > this.workflows.length;
-		},
-	},
 	data() {
 		return {
 			nodesToBeShown: 5,
-			page: 0,
-			searchFinished: true,
-			skip: 1,
 		};
 	},
 	methods: {
+		abbreviateNumber,
+		onScroll() {
+			const el = this.$refs.loader;
+			if (!el || this.loading) {
+				return;
+			}
+
+			const rect = (el as Element).getBoundingClientRect();
+			const inView =
+				rect.top >= 0 &&
+				rect.left >= 0 &&
+				rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+				rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+
+			console.log('scroll', inView);
+			if (inView) {
+				this.$emit('loadMore');
+			}
+		},
 		countNodesToBeSliced(nodes: []): number {
 			if (nodes.length > this.nodesToBeShown) {
 				return this.nodesToBeShown - 1;
@@ -309,7 +248,4 @@ export default mixins(genericHelpers).extend({
 	font-size: var(--font-size-2xs);
 }
 
-.text {
-	margin-top: var(--spacing-xl);
-}
 </style>
