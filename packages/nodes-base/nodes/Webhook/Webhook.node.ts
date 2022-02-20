@@ -121,6 +121,10 @@ export class Webhook implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'DELETE',
+						value: 'DELETE',
+					},
+					{
 						name: 'GET',
 						value: 'GET',
 					},
@@ -129,8 +133,16 @@ export class Webhook implements INodeType {
 						value: 'HEAD',
 					},
 					{
+						name: 'PATCH',
+						value: 'PATCH',
+					},
+					{
 						name: 'POST',
 						value: 'POST',
+					},
+					{
+						name: 'PUT',
+						value: 'PUT',
 					},
 				],
 				default: 'GET',
@@ -265,6 +277,8 @@ export class Webhook implements INodeType {
 						displayOptions: {
 							show: {
 								'/httpMethod': [
+									'PATCH',
+									'PUT',
 									'POST',
 								],
 							},
