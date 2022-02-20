@@ -18,6 +18,7 @@
 						:class="index === workflows.length - 1 && !loading ? $style.last : ''"
 						:loading="false"
 						:title="workflow.name"
+						v-if="workflow.name"
 					>
 						<template v-slot:content>
 							<div :class="$style.content">
@@ -31,8 +32,8 @@
 								<n8n-text size="small" color="text-light">
 									<TimeAgo :date="workflow.created_at" />
 								</n8n-text>
-								<div :class="$style.line" v-text="'|'" />
-								<n8n-text size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
+								<div v-if="workflow.user" :class="$style.line" v-text="'|'" />
+								<n8n-text v-if="workflow.user" size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
 							</div>
 						</template>
 						<template v-slot:button>
