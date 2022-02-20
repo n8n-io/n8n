@@ -1,4 +1,4 @@
-import { ITemplateCategory, IN8nCollection, ITemplatesQuery, IN8nTemplate } from '@/Interface';
+import { ITemplateCategory, IN8nCollection, ITemplatesQuery, IN8nTemplate, IN8nCollectionResponse, IN8nTemplateFull, IN8nTemplateResponse } from '@/Interface';
 import { post, graphql } from './helpers';
 
 export async function getCategories(apiEndpoint: string): Promise<{data: {categories: ITemplateCategory[]}}> {
@@ -57,7 +57,6 @@ export async function getWorkflows(
 			category: $category){
 			id
 			name
-			description
 			nodes{
 				defaults
 				name
@@ -79,7 +78,7 @@ export async function getWorkflows(
 	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length? query.categories.map((id: string) => parseInt(id, 10)) : null, limit: query.limit, skip: query.skip});
 }
 
-export async function getCollectionById(apiEndpoint: string, collectionId: string): Promise<{data: {collection: IN8nCollection}}> {
+export async function getCollectionById(apiEndpoint: string, collectionId: string): Promise<{data: {collection: IN8nCollectionResponse}}> {
 	const query = `query getCollection($id: ID!){
 		collection(id:$id){
 			id
@@ -134,7 +133,7 @@ export async function getCollectionById(apiEndpoint: string, collectionId: strin
 	return await graphql(apiEndpoint, query, {id: collectionId});
 }
 
-export async function getTemplateById(apiEndpoint: string, templateId: string): Promise<{data: {workflow: IN8nTemplate}}> {
+export async function getTemplateById(apiEndpoint: string, templateId: string): Promise<{data: {workflow: IN8nTemplateResponse}}> {
 	const query = `query getWorkflow($id: ID!) {
 		workflow(id: $id) {
 			id
@@ -145,7 +144,6 @@ export async function getTemplateById(apiEndpoint: string, templateId: string): 
 				url
 			}
 			workflow
-			workflowInfo
 			nodes{
 				defaults
 				name

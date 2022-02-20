@@ -7,6 +7,8 @@ import {
 	ITemplateCategory,
 	ITemplateState,
 	ITemplatesQuery,
+	IN8nTemplateFull,
+	IN8nCollectionFull,
 } from '../Interface';
 
 import Vue from 'vue';
@@ -46,7 +48,7 @@ const module: Module<ITemplateState, IRootState> = {
 				const searchKey = getSearchKey(query);
 				const search = state.collectionSearches[searchKey];
 				if (!search) {
-					return [];
+					return null;
 				}
 
 				return search.collectionIds.map((collectionId: string) => state.collections[collectionId]);
@@ -57,7 +59,7 @@ const module: Module<ITemplateState, IRootState> = {
 				const searchKey = getSearchKey(query);
 				const search = state.workflowSearches[searchKey];
 				if (!search) {
-					return [];
+					return null;
 				}
 
 				return search.workflowIds.map((workflowId: string) => state.templates[workflowId]);
@@ -100,16 +102,18 @@ const module: Module<ITemplateState, IRootState> = {
 				Vue.set(state.categories, category.id, category);
 			});
 		},
-		addCollections(state: ITemplateState, collections: IN8nCollection[]) {
-			collections.forEach((collection: IN8nCollection) => {
+		addCollections(state: ITemplateState, collections: Array<IN8nCollection | IN8nCollectionFull>) {
+			collections.forEach((collection) => {
+				const workflows = (collection.workflows || []).map((workflow) => ({id: workflow.id}));
 				const cachedCollection = state.collections[collection.id] || {};
 				Vue.set(state.collections, collection.id, {
 					...cachedCollection,
 					...collection,
+					workflows,
 				});
 			});
 		},
-		addWorkflows(state: ITemplateState, workflows: IN8nTemplate[]) {
+		addWorkflows(state: ITemplateState, workflows: Array<IN8nTemplate | IN8nTemplateFull>) {
 			workflows.forEach((workflow: IN8nTemplate) => {
 				const cachedWorkflow = state.templates[workflow.id] || {};
 				Vue.set(state.templates, workflow.id, {
@@ -172,10 +176,13 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 	},
 	actions: {
-		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string): Promise<IN8nTemplate> {
+		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string): Promise<IN8nTemplateFull> {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getTemplateById(apiEndpoint, templateId);
-			const template: IN8nTemplate = response.data.workflow;
+			const template: IN8nTemplateFull = {
+				...response.data.workflow,
+				full: true,
+			};
 
 			context.commit('addWorkflows', [template]);
 			return template;
@@ -183,10 +190,15 @@ const module: Module<ITemplateState, IRootState> = {
 		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string): Promise<IN8nCollection> {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getCollectionById(apiEndpoint, collectionId);
-			const collection: IN8nCollection = response.data.collection;
+			const collection: IN8nCollectionFull = {
+				...response.data.collection,
+				full: true,
+			};
 
 			context.commit('addCollections', [collection]);
-			return collection;
+			context.commit('addWorkflows', response.data.collection.workflows);
+
+			return context.getters.getCollectionById(collectionId);
 		},
 		async getCategories(context: ActionContext<ITemplateState, IRootState>): Promise<ITemplateCategory[]> {
 			const cachedCategories: ITemplateCategory[] = context.getters.allCategories;
@@ -203,7 +215,7 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		async getCollections(context: ActionContext<ITemplateState, IRootState>, query: ITemplatesQuery): Promise<IN8nCollection[]> {
 			const cachedResults: IN8nCollection[] | null = context.getters.getSearchedCollections(query);
-			if (cachedResults && cachedResults.length) {
+			if (cachedResults) {
 				return cachedResults;
 			}
 
@@ -213,12 +225,13 @@ const module: Module<ITemplateState, IRootState> = {
 
 			context.commit('addCollections', collections);
 			context.commit('addCollectionSearch', {query, collections});
+			collections.forEach((collection: IN8nCollection) => context.commit('addWorkflows', collection.workflows));
 
 			return collections;
 		},
 		async getWorkflows(context: ActionContext<ITemplateState, IRootState>, query: ITemplatesQuery): Promise<IN8nTemplate[]> {
 			const cachedResults: IN8nTemplate[] = context.getters.getSearchedWorkflows(query);
-			if (cachedResults && cachedResults.length) {
+			if (cachedResults) {
 				return cachedResults;
 			}
 
@@ -235,7 +248,7 @@ const module: Module<ITemplateState, IRootState> = {
 			if (context.getters.isSearchLoadingMore(query) && !context.getters.isSearchFinished(query)) {
 				return [];
 			}
-			const cachedResults: IN8nTemplate[] = context.getters.getSearchedWorkflows(query);
+			const cachedResults: IN8nTemplate[] = context.getters.getSearchedWorkflows(query) || [];
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 
 			context.commit('setWorkflowSearchLoading', query);

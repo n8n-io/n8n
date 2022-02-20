@@ -27,7 +27,7 @@
 							:loading="loading"
 							:node-icon-size="18"
 							:use-workflow-button="true"
-							:workflows="collection && collection.workflows"
+							:workflows="collectionWorkflows"
 							:navigateTo="navigateTo"
 						/>
 					</div>
@@ -52,7 +52,7 @@ import TemplatesView from './TemplatesView.vue';
 
 import { abbreviateNumber } from '@/components/helpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { IN8nCollection } from '@/Interface';
+import { IN8nCollection, IN8nCollectionFull, IN8nTemplate, IN8nTemplateFull } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 
@@ -68,11 +68,19 @@ export default mixins(workflowHelpers).extend({
 		collectionId(): string {
 			return this.$route.params.id;
 		},
-		collection(): IN8nCollection {
+		collection(): null | IN8nCollection | IN8nCollectionFull {
 			return this.$store.getters['templates/getCollectionById'](this.collectionId);
 		},
-		isMenuCollapsed() {
+		isMenuCollapsed(): boolean {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
+		},
+		collectionWorkflows(): Array<IN8nTemplate | IN8nTemplateFull> | null {
+			if (!this.collection) {
+				return null;
+			}
+			return this.collection.workflows.map(({id}) => {
+				return this.$store.getters['templates/getTemplateById'](id) as IN8nTemplate;
+			});
 		},
 	},
 	data() {
@@ -110,6 +118,11 @@ export default mixins(workflowHelpers).extend({
 	},
 	async mounted() {
 		this.scrollToTop();
+
+		if (this.collection && (this.collection as IN8nCollectionFull).full) {
+			this.loading = false;
+			return;
+		}
 
 		try {
 			await this.$store.dispatch('templates/getCollectionById', this.collectionId);

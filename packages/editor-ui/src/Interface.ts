@@ -516,28 +516,47 @@ export interface IN8nPromptResponse {
 
 export interface IN8nCollection {
 	id: string;
-	image: ITemplateImage[];
 	name: string;
 	nodes: IVersionNode[];
+	workflows: Array<{id: string}>;
+}
+
+interface IN8nCollectionExtended extends IN8nCollection {
+	description: string | null;
+	image: ITemplateImage[];
 	categories: ITemplateCategories[];
-	description: string;
-	workflows: IN8nTemplate[];
 	created_at: string;
+}
+
+export interface IN8nCollectionFull extends IN8nCollectionExtended {
+	full: true;
+}
+
+export interface IN8nCollectionResponse extends IN8nCollectionExtended {
+	workflows: IN8nTemplate[];
 }
 
 export interface IN8nTemplate {
 	id: string;
-	categories: ITemplateCategories[];
 	createdAt: string;
-	description: string;
-	image: ITemplateImage[];
 	name: string;
 	nodes: IVersionNode[];
 	totalViews: number;
 	user: {
 		username: string;
 	};
-	workflow?: object;
+	created_at: string;
+}
+
+export interface IN8nTemplateResponse extends IN8nTemplate {
+	description: string | null;
+	image: ITemplateImage[];
+	workflow: object;
+	categories: ITemplateCategories[];
+}
+
+export interface IN8nTemplateFull extends IN8nTemplateResponse {
+	full: true;
 }
 
 export interface ITemplatesQuery {

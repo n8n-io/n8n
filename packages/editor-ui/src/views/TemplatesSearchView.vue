@@ -107,7 +107,7 @@ export default mixins(genericHelpers).extend({
 			};
 		},
 		collections(): IN8nCollection[] {
-			return this.$store.getters['templates/getSearchedCollections'](this.query);
+			return this.$store.getters['templates/getSearchedCollections'](this.query) || [];
 		},
 		isMenuCollapsed(): boolean {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
@@ -116,7 +116,7 @@ export default mixins(genericHelpers).extend({
 			return this.$store.getters['templates/getSearchedWorkflowsTotal'](this.query);
 		},
 		workflows(): IN8nTemplate[] {
-			return this.$store.getters['templates/getSearchedWorkflows'](this.query);
+			return this.$store.getters['templates/getSearchedWorkflows'](this.query) || [];
 		},
 		nothingFound(): boolean {
 			return (
