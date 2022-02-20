@@ -92,7 +92,6 @@ export default mixins(workflowHelpers).extend({
 	methods: {
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (page === 'WorkflowTemplate') {
-				this.$store.dispatch('templates/setTemplateSessionId', null);
 				this.$telemetry.track('User inserted workflow template', {
 					template_id: id,
 					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
