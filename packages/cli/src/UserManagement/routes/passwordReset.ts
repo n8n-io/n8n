@@ -6,9 +6,8 @@ import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
-import { IsNull, Not } from 'typeorm';
+import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 
-import { MoreThanOrEqual } from 'typeorm';
 import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
 import { validatePassword } from '../UserManagementHelper';
