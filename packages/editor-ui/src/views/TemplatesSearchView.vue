@@ -59,7 +59,12 @@
 								:workflows="workflows"
 								@loadMore="onLoadMore"
 							/>
-							<div v-if="nothingFound">
+							<div v-if="endOfSearch" :class="$style.endText">
+								<n8n-text size="medium" color="text-base">
+									<span v-html="$locale.baseText('templates.endResult')" />
+								</n8n-text>
+							</div>
+							<div v-else-if="nothingFound" :class="$style.endText">
 								<n8n-text color="text-base">{{
 									$locale.baseText('templates.noSearchResults')
 								}}</n8n-text>
@@ -120,6 +125,9 @@ export default mixins(genericHelpers).extend({
 				this.workflows.length === 0 &&
 				this.collections.length === 0
 			);
+		},
+		endOfSearch(): boolean {
+			return !this.loadingWorkflows && !!this.workflows.length && this.workflows.length >= this.totalWorkflows;
 		},
 	},
 	data() {
@@ -402,5 +410,9 @@ export default mixins(genericHelpers).extend({
 .carousel {
 	width: 100%;
 	padding-top: var(--spacing-s);
+}
+
+.endText {
+	margin-top: var(--spacing-l);
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
-	<div :class="$style.list">
-		<div v-if="(workflows && workflows.length) || loading" :class="$style.header">
+	<div :class="$style.list" v-if="loading || workflows.length">
+		<div :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.workflows') }}
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
@@ -142,7 +142,6 @@ export default mixins(genericHelpers).extend({
 				rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
 				rect.right <= (window.innerWidth || document.documentElement.clientWidth);
 
-			console.log('scroll', inView);
 			if (inView) {
 				this.$emit('loadMore');
 			}
