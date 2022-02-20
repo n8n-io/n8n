@@ -17,7 +17,7 @@ export class Datagma implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Datagma',
 		name: 'datagma',
-		icon: 'file:datagma.svg',
+		icon: 'file:datagma.png',
 		group: ['transform'],
 		version: 1,
 		description: 'Consume Datagma API',
