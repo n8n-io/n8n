@@ -145,6 +145,7 @@ import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
+import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -239,8 +240,6 @@ class App {
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
-
-		this.webhookMethods = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
@@ -2737,7 +2736,7 @@ class App {
 					return;
 				}
 
-				if (!this.webhookMethods.includes(method)) {
+				if (!WEBHOOK_METHODS.includes(method)) {
 					ResponseHelper.sendErrorResponse(
 						res,
 						new Error(`The method ${method} is not supported.`),
