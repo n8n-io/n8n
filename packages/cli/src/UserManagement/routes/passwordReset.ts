@@ -6,7 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
-import { IsNull, Not } from 'typeorm';
+import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 
 import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
@@ -45,7 +45,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// User should just be able to reset password if one is already present
 			const user = await Db.collections.User!.findOne({ email, password: Not(IsNull()) });
 
-			if (!user) {
+			if (!user || !user.password) {
 				return;
 			}
 
@@ -53,7 +53,9 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const { id, firstName, lastName, resetPasswordToken } = user;
 
-			await Db.collections.User!.update(id, { resetPasswordToken });
+			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
+
+			await Db.collections.User!.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
 
 			const baseUrl = getBaseUrl();
 			const url = new URL('/change-password', baseUrl);
@@ -82,7 +84,14 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
-			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
+			// Timestamp is saved in seconds
+			const currentTimestamp = Math.floor(Date.now() / 1000);
+
+			const user = await Db.collections.User!.findOne({
+				id,
+				resetPasswordToken,
+				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+			});
 
 			if (!user) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
@@ -96,23 +105,31 @@ export function passwordResetNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/change-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.NewPassword, res: express.Response) => {
-			const { token: resetPasswordToken, userId, password } = req.body;
+			const { token: resetPasswordToken, userId: id, password } = req.body;
 
-			if (!resetPasswordToken || !userId || !password) {
+			if (!resetPasswordToken || !id || !password) {
 				throw new ResponseHelper.ResponseError('Parameter missing', undefined, 400);
 			}
 
 			const validPassword = validatePassword(password);
 
-			const user = await Db.collections.User!.findOne({ id: userId, resetPasswordToken });
+			// Timestamp is saved in seconds
+			const currentTimestamp = Math.floor(Date.now() / 1000);
+
+			const user = await Db.collections.User!.findOne({
+				id,
+				resetPasswordToken,
+				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+			});
 
 			if (!user) {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			await Db.collections.User!.update(userId, {
+			await Db.collections.User!.update(id, {
 				password: hashSync(validPassword, genSaltSync(10)),
 				resetPasswordToken: null,
+				resetPasswordTokenExpiration: null,
 			});
 
 			await issueCookie(res, user);

@@ -30,7 +30,15 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: UserRequest.Invite) => {
-			if (config.get('userManagement.emails.mode') === '') {
+			if (!config.get('userManagement.hasOwner')) {
+				throw new ResponseHelper.ResponseError(
+					'You must set up your own account before inviting others',
+					undefined,
+					400,
+				);
+			}
+
+			if (!isEmailSetUp) {
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
 					undefined,

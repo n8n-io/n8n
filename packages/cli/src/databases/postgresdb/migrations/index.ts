@@ -7,6 +7,7 @@ import { CreateTagEntity1617270242566 } from './1617270242566-CreateTagEntity';
 import { UniqueWorkflowNames1620824779533 } from './1620824779533-UniqueWorkflowNames';
 import { AddwaitTill1626176912946 } from './1626176912946-AddwaitTill';
 import { UpdateWorkflowCredentials1630419189837 } from './1630419189837-UpdateWorkflowCredentials';
+import { CreateUserManagement1636626154934 } from './1636626154934-CreateUserManagement';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -18,4 +19,5 @@ export const postgresMigrations = [
 	UniqueWorkflowNames1620824779533,
 	AddwaitTill1626176912946,
 	UpdateWorkflowCredentials1630419189837,
+	CreateUserManagement1636626154934,
 ];
