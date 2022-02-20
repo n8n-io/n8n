@@ -32,6 +32,7 @@ import {
 } from '.';
 
 import * as config from '../config';
+// eslint-disable-next-line import/no-cycle
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
