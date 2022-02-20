@@ -110,6 +110,9 @@ export default mixins(genericHelpers).extend({
 		totalWorkflows: {
 			type: Number,
 		},
+		navigateTo: {
+			type: Function,
+		},
 	},
 	mounted() {
 		if (this.infiniteScrollEnabled) {
