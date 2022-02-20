@@ -5,7 +5,6 @@ import {
 	IN8nCollection,
 	IN8nTemplate,
 	ITemplateCategory,
-	ITemplateCollection,
 	ITemplateState,
 	ITemplatesQuery,
 } from '../Interface';
@@ -37,7 +36,7 @@ const module: Module<ITemplateState, IRootState> = {
 			return (id: string): null | IN8nTemplate => state.templates[id];
 		},
 		getCollectionById(state: ITemplateState) {
-			return (id: string): null | ITemplateCollection => state.collections[id];
+			return (id: string): null | IN8nCollection => state.collections[id];
 		},
 		getCategoryById(state: ITemplateState) {
 			return (id: string): null | ITemplateCategory => state.categories[id];
@@ -101,8 +100,8 @@ const module: Module<ITemplateState, IRootState> = {
 				Vue.set(state.categories, category.id, category);
 			});
 		},
-		addCollections(state: ITemplateState, collections: ITemplateCollection[]) {
-			collections.forEach((collection: ITemplateCollection) => {
+		addCollections(state: ITemplateState, collections: IN8nCollection[]) {
+			collections.forEach((collection: IN8nCollection) => {
 				const cachedCollection = state.collections[collection.id] || {};
 				Vue.set(state.collections, collection.id, {
 					...cachedCollection,
@@ -119,7 +118,7 @@ const module: Module<ITemplateState, IRootState> = {
 				});
 			});
 		},
-		addCollectionSearch(state: ITemplateState, data: {collections: ITemplateCollection[], query: ITemplatesQuery}) {
+		addCollectionSearch(state: ITemplateState, data: {collections: IN8nCollection[], query: ITemplatesQuery}) {
 			const collectionIds = data.collections.map((collection) => collection.id);
 			const searchKey = getSearchKey(data.query);
 			Vue.set(state.collectionSearches, searchKey, {

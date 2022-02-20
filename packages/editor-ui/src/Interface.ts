@@ -513,9 +513,6 @@ export interface IN8nValueSurveyData {
 export interface IN8nPromptResponse {
 	updated: boolean;
 }
-export interface IN8nCollectionResponse {
-	data: { collection: IN8nCollection };
-}
 
 export interface IN8nCollection {
 	id: string;
@@ -525,12 +522,9 @@ export interface IN8nCollection {
 	categories: ITemplateCategories[];
 	description: string;
 	workflows: IN8nTemplate[];
-	totalworkflow: number;
+	created_at: string;
 }
 
-export interface IN8nTemplateResponse {
-	data: { workflow: IN8nTemplate; };
-}
 export interface IN8nTemplate {
 	id: string;
 	categories: ITemplateCategories[];
@@ -551,26 +545,9 @@ export interface ITemplatesQuery {
 	search: string;
 }
 
-export interface IN8nSearchResponse {
-	data: IN8nSearchData;
-}
-
-export interface IN8nSearchData {
-	collections: ITemplateCollection[];
-	totalWorkflows: number;
-	workflows: IN8nTemplate[];
-}
-
 export interface ITemplateCategory {
 	id: string;
 	name: string;
-}
-
-export interface ITemplateCollection {
-	id: string;
-	name: string;
-	workflowsCount: number;
-	nodes: IVersionNode[];
 }
 
 export interface IN8nUISettings {
@@ -805,7 +782,7 @@ export interface ISettingsState {
 
 export interface ITemplateState {
 	categories: {[id: string]: ITemplateCategory};
-	collections: {[id: string]: ITemplateCollection};
+	collections: {[id: string]: IN8nCollection};
 	templates: {[id: string]: IN8nTemplate};
 	workflowSearches: {
 		[search: string]: {

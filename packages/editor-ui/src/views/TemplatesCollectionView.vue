@@ -6,11 +6,11 @@
 					<go-back-button />
 					<div :class="$style.wrapper">
 						<div :class="$style.title">
-							<n8n-heading v-if="!loading && collection" tag="h1" size="2xlarge">{{ collection.name }}</n8n-heading>
-							<n8n-text v-if="!loading" color="text-base" size="small">
+							<n8n-heading v-if="collection && collection.name" tag="h1" size="2xlarge">{{ collection.name }}</n8n-heading>
+							<n8n-text v-if="collection && collection.name" color="text-base" size="small">
 								{{ $locale.baseText('templates.collection') }}
 							</n8n-text>
-							<n8n-loading :animated="true" :loading="loading" :rows="2" variant="h1" />
+							<n8n-loading :animated="true" :loading="!collection || !collection.name" :rows="2" variant="h1" />
 						</div>
 					</div>
 				</div>
@@ -109,6 +109,8 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	async mounted() {
+		this.scrollToTop();
+
 		try {
 			await this.$store.dispatch('templates/getCollectionById', this.collectionId);
 		} catch (e) {
@@ -119,7 +121,6 @@ export default mixins(workflowHelpers).extend({
 			});
 		}
 		this.loading = false;
-		this.scrollToTop();
 	},
 });
 </script>

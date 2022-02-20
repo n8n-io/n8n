@@ -1,4 +1,4 @@
-import { IN8nCollectionResponse, IN8nTemplateResponse, ITemplateCategory, IN8nCollection, ITemplatesQuery, IN8nTemplate } from '@/Interface';
+import { ITemplateCategory, IN8nCollection, ITemplatesQuery, IN8nTemplate } from '@/Interface';
 import { post, graphql } from './helpers';
 
 export async function getCategories(apiEndpoint: string): Promise<{data: {categories: ITemplateCategory[]}}> {

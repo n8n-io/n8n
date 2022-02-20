@@ -80,7 +80,7 @@ import TemplatesView from './TemplatesView.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { abbreviateNumber } from '@/components/helpers';
 import mixins from 'vue-typed-mixins';
-import { IN8nCollection, IN8nSearchData, IN8nTemplate, ITemplatesQuery } from '@/Interface';
+import { IN8nCollection, IN8nTemplate, ITemplatesQuery } from '@/Interface';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplatesSearchView',
