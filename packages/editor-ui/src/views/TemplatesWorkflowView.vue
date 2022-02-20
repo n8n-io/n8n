@@ -6,20 +6,20 @@
 					<go-back-button />
 					<div :class="$style.wrapper">
 						<div :class="$style.title">
-							<n8n-heading v-if="!loading" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
-							<n8n-text v-if="!loading" color="text-base" size="small">
+							<n8n-heading v-if="template && template.name" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
+							<n8n-text v-if="template && template.name" color="text-base" size="small">
 								{{ $locale.baseText('templates.workflow') }}
 							</n8n-text>
-							<n8n-loading :animated="true" :loading="loading" :rows="2" variant="h1" />
+							<n8n-loading :animated="true" :loading="!template || !template.name" :rows="2" variant="h1" />
 						</div>
 						<div :class="$style.button">
 							<n8n-button
-								v-if="!loading"
+								v-if="template"
 								:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
 								size="large"
 								@click="navigateTo(template.id, 'WorkflowTemplate', $event)"
 							/>
-							<n8n-loading :animated="true" :loading="loading" :rows="1" variant="button" />
+							<n8n-loading :animated="true" :loading="!template" :rows="1" variant="button" />
 						</div>
 					</div>
 				</div>
@@ -28,8 +28,8 @@
 						<WorkflowPreview
 							v-if="showPreview"
 							:workflow="template && template.workflow"
-							@close="onHidePreview"
 							:loading="loading"
+							@close="onHidePreview"
 						/>
 					</div>
 					<div :class="$style.content">
@@ -118,6 +118,11 @@ export default mixins(workflowHelpers).extend({
 	},
 	async mounted() {
 		this.scrollToTop();
+
+		if (this.template && this.template.workflow && this.template.description) {
+			this.loading = false;
+			return;
+		}
 
 		try {
 			await this.$store.dispatch('templates/getTemplateById', this.templateId);

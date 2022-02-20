@@ -543,6 +543,7 @@ export interface IN8nTemplate {
 	user: {
 		username: string;
 	};
+	workflow?: object;
 }
 
 export interface ITemplatesQuery {
