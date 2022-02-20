@@ -1178,7 +1178,7 @@ export interface IWorkflowMetadata {
 	active: boolean;
 }
 
-export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS';
+export type WebhookHttpMethod = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT' | 'OPTIONS';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
