@@ -28,18 +28,17 @@ import {
 	mkdir as fsMkdir,
 	readdir as fsReaddir,
 	readFile as fsReadFile,
-	rename as fsRename,
-	rm as fsRm,
 	stat as fsStat,
-	writeFile as fsWriteFile,
 } from 'fs/promises';
 import glob from 'fast-glob';
 import path from 'path';
-import requestPromise from 'request-promise-native';
-import { extract } from 'tar';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
 import config from '../config';
+
+const execAsync = promisify(exec);
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -95,24 +94,21 @@ class LoadNodesAndCredentialsClass {
 		this.includeNodes = config.getEnv('nodes.include');
 
 		// Get all the installed packages which contain n8n nodes
-		const packages = await this.getN8nNodePackages();
+		let nodePackages = await this.getN8nNodePackages(this.nodeModulesPath);
 
-		for (const packageName of packages) {
-			await this.loadDataFromPackage(path.join(this.nodeModulesPath, packageName));
-		}
+		try {
+			// Read downloaded nodes and credentials
+			const downloadedNodesFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+			const downloadedNodesFolderModules = path.join(downloadedNodesFolder, 'node_modules');
+			await fsAccess(downloadedNodesFolderModules);
+			nodePackages = [
+				...nodePackages,
+				...(await this.getN8nNodePackages(downloadedNodesFolderModules)),
+			];
+			// eslint-disable-next-line no-empty
+		} catch (error) {}
 
-		// Read downloaded nodes and credentials
-		const downloadedNodesFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
-		for (const folderContent of await fsReaddir(downloadedNodesFolder)) {
-			if (!(await fsStat(path.join(downloadedNodesFolder, folderContent))).isDirectory()) {
-				continue;
-			}
-
-			const packagePath = path.join(downloadedNodesFolder, folderContent, 'package');
-			if (!(await fsStat(packagePath)).isDirectory()) {
-				continue;
-			}
-
+		for (const packagePath of nodePackages) {
 			await this.loadDataFromPackage(packagePath);
 		}
 
@@ -142,10 +138,10 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<string[]>}
 	 * @memberof LoadNodesAndCredentialsClass
 	 */
-	async getN8nNodePackages(): Promise<string[]> {
+	async getN8nNodePackages(baseModulesPath: string): Promise<string[]> {
 		const getN8nNodePackagesRecursive = async (relativePath: string): Promise<string[]> => {
 			const results: string[] = [];
-			const nodeModulesPath = `${this.nodeModulesPath}/${relativePath}`;
+			const nodeModulesPath = `${baseModulesPath}/${relativePath}`;
 			for (const file of await fsReaddir(nodeModulesPath)) {
 				const isN8nNodesPackage = file.indexOf('n8n-nodes-') === 0;
 				const isNpmScopedPackage = file.indexOf('@') === 0;
@@ -156,7 +152,7 @@ class LoadNodesAndCredentialsClass {
 					continue;
 				}
 				if (isN8nNodesPackage) {
-					results.push(`${relativePath}${file}`);
+					results.push(`${baseModulesPath}/${relativePath}${file}`);
 				}
 				if (isNpmScopedPackage) {
 					results.push(...(await getN8nNodePackagesRecursive(`${relativePath}${file}/`)));
@@ -205,45 +201,38 @@ class LoadNodesAndCredentialsClass {
 		};
 	}
 
-	async loadNpmModuleFromUrl(url: string): Promise<INodeTypeNameVersion[]> {
-		let data: Uint8Array;
+	async loadNpmModule(packageName: string): Promise<INodeTypeNameVersion[]> {
+		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+
+		// Make sure the node-download folder exists
 		try {
-			data = await requestPromise.get(url, { encoding: null });
+			await fsAccess(downloadFolder);
+			// eslint-disable-next-line no-empty
 		} catch (error) {
-			throw new Error('Could not download node package.');
+			await fsMkdir(downloadFolder);
 		}
 
-		const urlParts = path.parse(url);
+		const command = `npm install ${packageName}`;
+		const execOptions = {
+			cwd: downloadFolder,
+			env: {
+				NODE_PATH: process.env.NODE_PATH,
+				PATH: process.env.PATH,
+			},
+		};
 
-		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
-		const tempNodeUnpackedPath = path.join(downloadFolder, urlParts.name);
-		const nodeTarFilePath = tempNodeUnpackedPath + urlParts.ext;
+		try {
+			await execAsync(command, execOptions);
+		} catch (error) {
+			if (error.message.includes('404 Not Found')) {
+				throw new Error(`The npm package "${packageName}" could not be found.`);
+			}
+			throw error;
+		}
 
-		await fsMkdir(tempNodeUnpackedPath);
-		await fsWriteFile(nodeTarFilePath, data, 'binary');
-		await extract({
-			file: nodeTarFilePath,
-			cwd: tempNodeUnpackedPath,
-		});
+		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 
-		// Delete the node tar file
-		await fsRm(nodeTarFilePath);
-
-		const packagePath = path.join(tempNodeUnpackedPath, 'package');
-
-		// Get the information from the package.json file
-		const packageFile = await this.readPackageJson(packagePath);
-
-		// Fix package path
-		const finalNodeUnpackedPath = path.join(
-			downloadFolder,
-			// Replace slash for packages that have namespace
-			packageFile.name.replace(new RegExp('/'), '_'),
-		);
-		await fsRename(tempNodeUnpackedPath, finalNodeUnpackedPath);
-
-		// Load credentials and nodes
-		return this.loadDataFromPackage(path.join(finalNodeUnpackedPath, 'package'));
+		return this.loadDataFromPackage(finalNodeUnpackedPath);
 	}
 
 	/**
