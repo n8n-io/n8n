@@ -274,7 +274,6 @@ export function getUserN8nFolderCustomExtensionPath(): string {
  * @returns {string}
  */
 export function getUserN8nFolderDowloadedNodesPath(): string {
-	// TODO: Replace "nodes" with constant
 	return path.join(getUserN8nFolderPath(), DOWNLOADED_NODES_SUBDIRECTORY);
 }
 
