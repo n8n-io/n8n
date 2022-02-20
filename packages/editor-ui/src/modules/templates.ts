@@ -31,7 +31,7 @@ const module: Module<ITemplateState, IRootState> = {
 	},
 	getters: {
 		allCategories(state: ITemplateState) {
-			return Object.values(state.categories);
+			return Object.values(state.categories).sort((a: ITemplateCategory, b: ITemplateCategory) => a.name > b.name ? 1: -1);
 		},
 		getTemplateById(state: ITemplateState) {
 			return (id: string): null | IN8nTemplate => state.templates[id];
@@ -190,6 +190,10 @@ const module: Module<ITemplateState, IRootState> = {
 			return collection;
 		},
 		async getCategories(context: ActionContext<ITemplateState, IRootState>): Promise<ITemplateCategory[]> {
+			const cachedCategories: ITemplateCategory[] = context.getters.allCategories;
+			if (cachedCategories.length) {
+				return cachedCategories;
+			}
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getCategories(apiEndpoint);
 			const categories = response.data.categories;

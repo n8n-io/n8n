@@ -563,7 +563,6 @@ export interface IN8nSearchData {
 export interface ITemplateCategory {
 	id: string;
 	name: string;
-	selected?: boolean;
 }
 
 export interface ITemplateCollection {

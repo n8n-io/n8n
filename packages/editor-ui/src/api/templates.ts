@@ -1,4 +1,4 @@
-import { IN8nCollectionResponse, IN8nTemplateResponse, ITemplateCategory, IN8nCollection, ITemplatesQuery, ITemplatesSearchQuery, IN8nTemplate } from '@/Interface';
+import { IN8nCollectionResponse, IN8nTemplateResponse, ITemplateCategory, IN8nCollection, ITemplatesQuery, IN8nTemplate } from '@/Interface';
 import { post, graphql } from './helpers';
 
 export async function getCategories(apiEndpoint: string): Promise<{data: {categories: ITemplateCategory[]}}> {
@@ -39,12 +39,12 @@ export async function getCollections(apiEndpoint: string, query: ITemplatesQuery
 			totalViews: views
 		}
 	}`;
-	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length ? query.categories.map((id: string) => parseInt(id)) : null});
+	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length ? query.categories.map((id: string) => parseInt(id, 10)) : null});
 }
 
 export async function getWorkflows(
 	apiEndpoint: string,
-	query: ITemplatesSearchQuery,
+	query: {skip: number, limit: number, categories: string[], search: string},
 ): Promise<{data: {totalWorkflows: number, workflows: IN8nTemplate[]}}> {
 	const gqlQuery = `query search($limit: Int,
 		$skip: Int,
@@ -76,7 +76,7 @@ export async function getWorkflows(
 			created_at
 		}
 	}`;
-	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length? query.categories.map((id: string) => parseInt(id)) : null, limit: query.limit, skip: query.skip});
+	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length? query.categories.map((id: string) => parseInt(id, 10)) : null, limit: query.limit, skip: query.skip});
 }
 
 export async function getCollectionById(apiEndpoint: string, collectionId: string): Promise<{data: {collection: IN8nCollection}}> {

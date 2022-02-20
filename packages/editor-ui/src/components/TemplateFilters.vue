@@ -2,15 +2,13 @@
 	<div :class="$style.filters" class="template-filters">
 		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
 		<div v-if="loading" :class="$style.list">
-			<div v-for="(block, index) in loadingBlocks" :key="'block-' + index">
-				<n8n-loading
-					:animated="loadingAnimated"
-					:loading="loading"
-					:rows="loadingRows"
-					variant="p"
-				/>
-				<div :class="$style.spacer" />
-			</div>
+			<n8n-loading
+				:animated="true"
+				:loading="loading"
+				:rows="6"
+				variant="p"
+			/>
+			<div :class="$style.spacer" />
 		</div>
 		<ul v-if="!loading" :class="$style.categories">
 			<li :class="$style.item">
@@ -27,7 +25,7 @@
 			>
 				<el-checkbox
 					:label="category.name"
-					:value="category.selected"
+					:value="isSelected(category.id)"
 					@change="(value) => handleCheckboxChanged(value, category)"
 				/>
 			</li>
@@ -52,102 +50,46 @@ import mixins from 'vue-typed-mixins';
 export default mixins(genericHelpers).extend({
 	name: 'TemplateFilters',
 	props: {
+		categories: {
+			type: Array,
+		},
 		loading: {
 			type: Boolean,
 		},
-		loadingAnimated: {
-			type: Boolean,
-			default: true,
-		},
-		loadingBlocks: {
-			type: Number,
-			default: 1,
-		},
-		loadingRows: {
-			type: Number,
-			default: () => {
-				return 6;
-			},
-		},
-		setCategories: { type: Function },
-	},
-	watch: {
-		categories(newCategories) {
-			this.sortedCategories = newCategories;
-		},
-		collapsed() {
-			if (!this.collapsed) {
-				this.sortedCategories = this.sortCategories(this.categories);
-			}
-		},
-	},
-	computed: {
-		categories() {
-			const fetchedCategories = this.$store.getters['templates/allCategories'];
-			const copiedCategories = JSON.parse(JSON.stringify(fetchedCategories));
-			if (this.selected.length) {
-				return copiedCategories.map((category: ITemplateCategory) => {
-					if (this.selected.includes(category.id)) {
-						category.selected = true;
-					}
-					return category;
-				});
-			}
-			return copiedCategories;
+		selected: {
+			type: Array,
 		},
 	},
 	data() {
 		return {
-			allSelected: true,
 			collapsed: true,
-			sortedCategories: [] as ITemplateCategory[],
-			selected: [] as string[],
 		};
 	},
-	methods: {
-		sortCategories(categories: ITemplateCategory[]) {
-			const selectedCategories = this.categories.filter(({ selected }: ITemplateCategory) => {
-				return selected;
-			});
-			const notSelectedCategories = this.categories.filter(({ selected }: ITemplateCategory) => {
-				return !selected;
-			});
+	computed: {
+		allSelected(): boolean {
+			return this.selected.length === 0;
+		},
+		sortedCategories(): ITemplateCategory[] {
+			const categories = this.categories as ITemplateCategory[];
+			const selected = this.selected || [];
+			const selectedCategories = categories.filter(({ id }) => selected.includes(id));
+			const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
 			return selectedCategories.concat(notSelectedCategories);
 		},
-		resetCategories(value: boolean) {
-			if (value) {
-				this.categories.forEach((category: ITemplateCategory) => {
-					category.selected = false;
-					return category;
-				});
-				this.sortedCategories = this.categories;
-			}
-			this.allSelected = true;
-			this.setCategories([]);
+	},
+	methods: {
+		isSelected(categoryId: string) {
+			return this.selected.includes(categoryId);
+		},
+		resetCategories() {
+			this.$emit('clearAll');
 		},
 		handleCheckboxChanged(value: boolean, selectedCategory: ITemplateCategory) {
-			if (value) {
-				this.allSelected = false;
-			}
-			selectedCategory.selected = value;
-			this.sortedCategories = this.sortCategories(this.categories);
-			const strippedCategories = this.sortedCategories
-				.filter(({ selected }) => selected)
-				.map(({ id }) => id);
-			if (strippedCategories.length === 0) {
-				this.allSelected = true;
-			}
-			this.setCategories(strippedCategories);
+			this.$emit(value ? 'select': 'clear', selectedCategory.id);
 		},
 		collapseAction() {
 			this.collapsed = false;
 		},
-	},
-	created() {
-		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.selected = this.$route.query.categories.split(',');
-			this.allSelected = this.selected.length === 0;
-		}
 	},
 });
 </script>

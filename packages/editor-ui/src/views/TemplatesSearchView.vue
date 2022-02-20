@@ -22,7 +22,14 @@
 				</div>
 				<div :class="$style.content">
 					<div :class="$style.filters">
-						<TemplateFilters :setCategories="setCategories" :loading="loadingCategories" />
+						<TemplateFilters
+							:categories="allCategories"
+							:selected="categories"
+							:loading="loadingCategories"
+							@select="onCategorySelected"
+							@clear="onCategoryUnselected"
+							@clearAll="onCategoriesCleared"
+						/>
 					</div>
 					<div :class="$style.search">
 						<div :class="$style.input">
@@ -106,7 +113,12 @@ export default mixins(genericHelpers).extend({
 			return this.$store.getters['templates/getSearchedWorkflows'](this.query);
 		},
 		nothingFound(): boolean {
-			return !this.loadingWorkflows && !this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0;
+			return (
+				!this.loadingWorkflows &&
+				!this.loadingCollections &&
+				this.workflows.length === 0 &&
+				this.collections.length === 0
+			);
 		},
 	},
 	data() {
@@ -133,7 +145,9 @@ export default mixins(genericHelpers).extend({
 			const templateEvent = {
 				search_string: this.search,
 				results_count: this.workflows.length,
-				categories_applied: this.categories.map((categoryId) => this.$store.getters['templates/getCategoryById'](categoryId)),
+				categories_applied: this.categories.map((categoryId) =>
+					this.$store.getters['templates/getCategoryById'](categoryId),
+				),
 				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
 			};
 			this.$telemetry.track('User searched workflow templates', templateEvent);
@@ -150,13 +164,21 @@ export default mixins(genericHelpers).extend({
 		openNewWorkflow() {
 			this.$router.push({ name: 'NodeViewNew' });
 		},
-		async onSearchInput() {
+		onSearchInput() {
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.callDebounced('updateSearch', 500, true);
 		},
-		async setCategories(selected: string[]) {
-			this.categories = selected;
+		onCategorySelected(selected: string) {
+			this.categories = this.categories.concat(selected);
+			this.updateSearch();
+		},
+		onCategoryUnselected(selected: string) {
+			this.categories = this.categories.filter((id) => id !== selected);
+			this.updateSearch();
+		},
+		onCategoriesCleared() {
+			this.categories = [];
 			this.updateSearch();
 		},
 		updateQueryParam(search: string, category: string) {
@@ -192,7 +214,10 @@ export default mixins(genericHelpers).extend({
 		async loadCollections() {
 			try {
 				this.loadingCollections = true;
-				await this.$store.dispatch('templates/getCollections', {categories: this.categories, search: this.search});
+				await this.$store.dispatch('templates/getCollections', {
+					categories: this.categories,
+					search: this.search,
+				});
 			} catch (e) {
 				this.$showMessage({
 					title: 'Error',
@@ -206,7 +231,10 @@ export default mixins(genericHelpers).extend({
 		async loadWorkflows() {
 			try {
 				this.loadingWorkflows = true;
-				await this.$store.dispatch('templates/getWorkflows', {categories: this.categories, search: this.search});
+				await this.$store.dispatch('templates/getWorkflows', {
+					categories: this.categories,
+					search: this.search,
+				});
 				this.trackSearch();
 			} catch (e) {
 				this.$showMessage({
