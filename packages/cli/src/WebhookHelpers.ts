@@ -56,6 +56,8 @@ import * as ActiveExecutions from './ActiveExecutions';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
+export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
+
 /**
  * Returns all the webhooks which should be created for the give workflow
  *

@@ -32,6 +32,7 @@ import {
 } from '.';
 
 import * as config from '../config';
+import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
 require('body-parser-xml')(bodyParser);
@@ -70,7 +71,7 @@ export function registerProductionWebhooks() {
 				return;
 			}
 
-			if (!this.webhookMethods.includes(method)) {
+			if (!WEBHOOK_METHODS.includes(method)) {
 				ResponseHelper.sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
 				return;
 			}
@@ -120,7 +121,7 @@ export function registerProductionWebhooks() {
 			// if (method === 'OPTIONS') {
 			// }
 
-			if (!this.webhookMethods.includes(method)) {
+			if (!WEBHOOK_METHODS.includes(method)) {
 				ResponseHelper.sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
 				return;
 			}
