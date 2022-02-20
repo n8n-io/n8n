@@ -266,7 +266,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			result = {
 				// tslint:disable-next-line: no-any
 				type: 'relation', relation: (value.relationValue).reduce((acc: [], cur: any) => {
-					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation })));
+					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
 				}, []),
 			};
 			break;
