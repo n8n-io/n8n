@@ -200,6 +200,9 @@ export default mixins(genericHelpers).extend({
 			this.$router.replace({ query });
 		},
 		async onLoadMore() {
+			if (this.workflows.length >= this.totalWorkflows) {
+				return;
+			}
 			try {
 				this.loadingWorkflows = true;
 				await this.$store.dispatch('templates/getMoreWorkflows', {
