@@ -142,7 +142,6 @@
     "request-promise-native": "^1.0.7",
     "sqlite3": "^5.0.2",
     "sse-channel": "^3.1.1",
-    "tar": "~6.1.11",
     "tslib": "1.14.1",
     "typeorm": "0.2.30",
     "uuid": "^8.3.0",

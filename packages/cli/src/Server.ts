@@ -688,13 +688,17 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/node`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response) => {
-				const url = req.body.url as string;
-				if (url === undefined) {
-					throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, undefined, 400);
+				const name = req.body.name as string;
+				if (name === undefined) {
+					throw new ResponseHelper.ResponseError(
+						`The parameter "name" is missing!`,
+						undefined,
+						400,
+					);
 				}
 
 				try {
-					const nodes = await LoadNodesAndCredentials().loadNpmModuleFromUrl(url);
+					const nodes = await LoadNodesAndCredentials().loadNpmModule(name);
 
 					// Inform the connected frontends that new nodes are available
 					nodes.forEach((nodeData) => {
@@ -707,7 +711,7 @@ class App {
 					};
 				} catch (error) {
 					throw new ResponseHelper.ResponseError(
-						`Error loading nodes from "${url}": ${error.message}`,
+						`Error loading package "${name}": ${error.message}`,
 						undefined,
 						500,
 					);
