@@ -530,7 +530,7 @@ interface ITemplatesCollectionExtended extends ITemplatesCollection {
 	description: string | null;
 	image: ITemplatesImage[];
 	categories: ITemplatesCategory[];
-	created_at: string;
+	createdAt: string;
 }
 
 export interface ITemplatesCollectionFull extends ITemplatesCollectionExtended {
@@ -550,7 +550,7 @@ export interface ITemplatesWorkflow {
 	user: {
 		username: string;
 	};
-	created_at: string;
+	createdAt: string;
 }
 
 export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow {
