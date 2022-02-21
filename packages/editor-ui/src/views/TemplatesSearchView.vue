@@ -295,6 +295,7 @@ export default mixins(genericHelpers).extend({
 
 .filters {
 	width: 200px;
+	margin-bottom: var(--spacing-xl);
 }
 
 .search {
