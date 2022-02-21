@@ -15,7 +15,7 @@
 		<template v-slot:content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
-					<div :class="$style.markdown">
+					<div :class="$style.markdown" v-if="loading || (collection && collection.description)">
 						<n8n-markdown
 							:content="collection && collection.description"
 							:images="collection && collection.image"

@@ -332,14 +332,6 @@ export default mixins(genericHelpers).extend({
 
 .filters {
 	width: 200px;
-
-	// @media (max-width: $--breakpoint-xs) {
-	// 	width: 15%;
-	// }
-
-	// @media (max-width: $--breakpoint-2xs) {
-	// 	width: 100%;
-	// }
 }
 
 .search {
