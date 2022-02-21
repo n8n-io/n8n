@@ -800,7 +800,7 @@ export interface ISettingsState {
 export interface ITemplateState {
 	categories: {[id: string]: ITemplatesCategory};
 	collections: {[id: string]: ITemplatesCollection};
-	templates: {[id: string]: ITemplatesWorkflow};
+	workflows: {[id: string]: ITemplatesWorkflow};
 	workflowSearches: {
 		[search: string]: {
 			workflowIds: string[];

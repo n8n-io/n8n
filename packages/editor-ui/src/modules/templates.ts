@@ -24,7 +24,7 @@ const module: Module<ITemplateState, IRootState> = {
 	state: {
 		categories: {},
 		collections: {},
-		templates: {},
+		workflows: {},
 		collectionSearches: {},
 		workflowSearches: {},
 		currentSessionId: '',
@@ -35,7 +35,7 @@ const module: Module<ITemplateState, IRootState> = {
 			return Object.values(state.categories).sort((a: ITemplatesCategory, b: ITemplatesCategory) => a.name > b.name ? 1: -1);
 		},
 		getTemplateById(state: ITemplateState) {
-			return (id: string): null | ITemplatesWorkflow => state.templates[id];
+			return (id: string): null | ITemplatesWorkflow => state.workflows[id];
 		},
 		getCollectionById(state: ITemplateState) {
 			return (id: string): null | ITemplatesCollection => state.collections[id];
@@ -62,7 +62,7 @@ const module: Module<ITemplateState, IRootState> = {
 					return null;
 				}
 
-				return search.workflowIds.map((workflowId: string) => state.templates[workflowId]);
+				return search.workflowIds.map((workflowId: string) => state.workflows[workflowId]);
 			};
 		},
 		getSearchedWorkflowsTotal(state: ITemplateState) {
@@ -115,8 +115,8 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		addWorkflows(state: ITemplateState, workflows: Array<ITemplatesWorkflow | ITemplatesWorkflowFull>) {
 			workflows.forEach((workflow: ITemplatesWorkflow) => {
-				const cachedWorkflow = state.templates[workflow.id] || {};
-				Vue.set(state.templates, workflow.id, {
+				const cachedWorkflow = state.workflows[workflow.id] || {};
+				Vue.set(state.workflows, workflow.id, {
 					...cachedWorkflow,
 					...workflow,
 				});
