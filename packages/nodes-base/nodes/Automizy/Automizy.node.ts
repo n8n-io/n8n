@@ -37,7 +37,6 @@ export class Automizy implements INodeType {
 		description: 'Consume Automizy API',
 		defaults: {
 			name: 'Automizy',
-			color: '#e5863b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

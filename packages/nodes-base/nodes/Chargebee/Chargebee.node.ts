@@ -35,7 +35,6 @@ export class Chargebee implements INodeType {
 		description: 'Retrieve data from Chargebee API',
 		defaults: {
 			name: 'Chargebee',
-			color: '#22BB11',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -488,7 +487,7 @@ export class Chargebee implements INodeType {
 		const returnData: IDataObject[] = [];
 		let item: INodeExecutionData;
 
-		const credentials = this.getCredentials('chargebeeApi');
+		const credentials = await this.getCredentials('chargebeeApi');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

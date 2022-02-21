@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<el-menu-item
+		<n8n-menu-item
 			v-for="item in items"
 			:key="item.id"
 			:index="item.id"
@@ -8,7 +8,7 @@
 		>
 			<font-awesome-icon :icon="item.properties.icon" />
 			<span slot="title" :class="{'item-title-root': root, 'item-title': !root}">{{ item.properties.title }}</span>
-		</el-menu-item>
+		</n8n-menu-item>
 	</div>
 </template>
 
@@ -22,6 +22,7 @@ export default Vue.extend({
 	props: [
 		'items',
 		'root',
+		'afterItemClick',
 	],
 	methods: {
 		onClick(item: IMenuItem) {
@@ -36,6 +37,10 @@ export default Vue.extend({
 				}
 				else {
 					window.location.assign(item.properties.href);
+				}
+
+				if(this.afterItemClick) {
+					this.afterItemClick(item.id);
 				}
 			}
 		},

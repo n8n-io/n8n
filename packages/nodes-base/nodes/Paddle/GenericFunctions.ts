@@ -15,7 +15,7 @@ import {
 } from 'n8n-workflow';
 
 export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('paddleApi');
+	const credentials = await this.getCredentials('paddleApi');
 	const productionUrl = 'https://vendors.paddle.com/api';
 	const sandboxUrl = 'https://sandbox-vendors.paddle.com/api';
 

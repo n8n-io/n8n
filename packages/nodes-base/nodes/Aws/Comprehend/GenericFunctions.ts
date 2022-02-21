@@ -3,6 +3,7 @@ import {
 } from 'url';
 
 import {
+	Request,
 	sign,
 } from 'aws4';
 
@@ -38,7 +39,7 @@ function getEndpointForService(service: string, credentials: ICredentialDataDecr
 }
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('aws');
+	const credentials = await this.getCredentials('aws');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
@@ -47,7 +48,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body };
+	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
 
 

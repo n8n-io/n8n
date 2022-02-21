@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -42,7 +41,6 @@ export class CiscoWebex implements INodeType {
 		description: 'Consume the Cisco Webex API',
 		defaults: {
 			name: 'Webex',
-			color: '#29b6f6',
 		},
 		credentials: [
 			{
@@ -174,10 +172,11 @@ export class CiscoWebex implements INodeType {
 								const binaryPropertyName = file.binaryPropertyName as string;
 
 								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
 									files: {
-										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										value: binaryDataBuffer,
 										options: {
 											filename: binaryData.fileName,
 											contentType: binaryData.mimeType,

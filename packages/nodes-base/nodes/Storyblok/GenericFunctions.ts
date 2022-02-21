@@ -34,13 +34,13 @@ export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctio
 	}
 
 	if (authenticationMethod === 'contentApi') {
-		const credentials = this.getCredentials('storyblokContentApi') as IDataObject;
+		const credentials = await this.getCredentials('storyblokContentApi') as IDataObject;
 
 		options.uri = `https://api.storyblok.com${resource}`;
 
 		Object.assign(options.qs, { token: credentials.apiKey });
 	} else {
-		const credentials = this.getCredentials('storyblokManagementApi') as IDataObject;
+		const credentials = await this.getCredentials('storyblokManagementApi') as IDataObject;
 
 		options.uri = `https://mapi.storyblok.com${resource}`;
 

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const documentOperations = [
+export const documentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const documentOperations = [
 		default: 'upload',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const documentFields = [
+export const documentFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                document:upload                             */
@@ -66,7 +66,7 @@ export const documentFields = [
 			},
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+		description: 'Name of the binary property which contains the data for the file to be uploaded.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -86,6 +86,14 @@ export const documentFields = [
 		},
 		options: [
 			{
+				displayName: 'File Extension',
+				name: 'fileExtension',
+				type: 'string',
+				default: '',
+				placeholder: 'pdf',
+				description: 'File extension to use. If none is set, the value from the binary data will be used.',
+			},
+			{
 				displayName: 'Link To Object ID',
 				name: 'linkToObjectId',
 				type: 'string',
@@ -104,4 +112,4 @@ export const documentFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

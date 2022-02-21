@@ -7,7 +7,7 @@ import {
 const amqplib = require('amqplib');
 
 export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('rabbitmq') as IDataObject;
+	const credentials = await this.getCredentials('rabbitmq') as IDataObject;
 
 	const credentialKeys = [
 		'hostname',

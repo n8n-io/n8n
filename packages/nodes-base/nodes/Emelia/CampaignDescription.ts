@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const campaignOperations = [
+export const campaignOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const campaignOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const campaignFields = [
+export const campaignFields: INodeProperties[] = [
 	// ----------------------------------
 	//       campaign: addContact
 	// ----------------------------------
@@ -288,7 +288,7 @@ export const campaignFields = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the campaign to pause.<br>The campaign must be in RUNNING mode.',
+		description: 'The ID of the campaign to pause. The campaign must be in RUNNING mode.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -310,7 +310,7 @@ export const campaignFields = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the campaign to start.<br>Email provider and contacts must be set.',
+		description: 'The ID of the campaign to start. Email provider and contacts must be set.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -323,4 +323,4 @@ export const campaignFields = [
 		},
 	},
 
-] as INodeProperties[];
+];

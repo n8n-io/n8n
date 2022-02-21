@@ -29,7 +29,6 @@ export class WooCommerceTrigger implements INodeType {
 		description: 'Handle WooCommerce events via webhooks',
 		defaults: {
 			name: 'WooCommerce Trigger',
-			color: '#96588a',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -132,7 +131,7 @@ export class WooCommerceTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = this.getCredentials('wooCommerceApi');
+				const credentials = await this.getCredentials('wooCommerceApi');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;

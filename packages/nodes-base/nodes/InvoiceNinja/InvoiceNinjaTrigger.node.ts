@@ -23,7 +23,6 @@ export class InvoiceNinjaTrigger implements INodeType {
 		description: 'Starts the workflow when Invoice Ninja events occur',
 		defaults: {
 			name: 'Invoice Ninja Trigger',
-			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],

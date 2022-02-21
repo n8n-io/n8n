@@ -24,7 +24,6 @@ export class Peekalink implements INodeType {
 		description: 'Consume the Peekalink API',
 		defaults: {
 			name: 'Peekalink',
-			color: '#00ade8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

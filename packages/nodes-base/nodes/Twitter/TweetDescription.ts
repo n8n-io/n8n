@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const tweetOperations = [
+export const tweetOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const tweetOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const tweetFields = [
+export const tweetFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                tweet:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -93,7 +93,7 @@ export const tweetFields = [
 				name: 'attachments',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary properties which contain<br />data which should be added to tweet as attachment.<br />Multiple ones can be comma separated.',
+				description: 'Name of the binary properties which contain data which should be added to tweet as attachment. Multiple ones can be comma separated.',
 			},
 			{
 				displayName: 'Display Coordinates',
@@ -195,9 +195,7 @@ export const tweetFields = [
 				],
 			},
 		},
-		description: `A UTF-8, URL-encoded search query of 500 characters maximum,</br>
-		including operators. Queries may additionally be limited by complexity.</br>
-		Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.`,
+		description: `A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.`,
 	},
 	{
 		displayName: 'Return All',
@@ -358,6 +356,23 @@ export const tweetFields = [
 				description: 'Specifies what type of search results you would prefer to receive',
 			},
 			{
+				displayName: 'Tweet Mode',
+				name: 'tweetMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Compatibility',
+						value: 'compat',
+					},
+					{
+						name: 'Extended',
+						value: 'extended',
+					},
+				],
+				default: 'compat',
+				description: 'When the extended mode is selected, the response contains the entire untruncated text of the Tweet',
+			},
+			{
 				displayName: 'Until',
 				name: 'until',
 				type: 'dateTime',
@@ -462,4 +477,4 @@ export const tweetFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

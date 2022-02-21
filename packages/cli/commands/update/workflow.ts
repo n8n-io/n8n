@@ -1,26 +1,15 @@
-import {
-	Command, flags,
-} from '@oclif/command';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable no-console */
+import { Command, flags } from '@oclif/command';
 
-import {
-	IDataObject
-} from 'n8n-workflow';
+import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
-import {
-	Db,
-	GenericHelpers,
-} from '../../src';
+import { Db } from '../../src';
 
-import { 
-	getLogger,
-} from '../../src/Logger';
-
-import {
-	LoggerProxy,
-} from 'n8n-workflow';
+import { getLogger } from '../../src/Logger';
 
 export class UpdateWorkflowCommand extends Command {
-	static description = '\Update workflows';
+	static description = 'Update workflows';
 
 	static examples = [
 		`$ n8n update:workflow --all --active=false`,
@@ -40,10 +29,12 @@ export class UpdateWorkflowCommand extends Command {
 		}),
 	};
 
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(UpdateWorkflowCommand);
 
 		if (!flags.all && !flags.id) {
@@ -52,7 +43,9 @@ export class UpdateWorkflowCommand extends Command {
 		}
 
 		if (flags.all && flags.id) {
-			console.info(`Either something else on top should be "--all" or "--id" can be set never both!`);
+			console.info(
+				`Either something else on top should be "--all" or "--id" can be set never both!`,
+			);
 			return;
 		}
 
@@ -60,13 +53,12 @@ export class UpdateWorkflowCommand extends Command {
 		if (flags.active === undefined) {
 			console.info(`No update flag like "--active=true" has been set!`);
 			return;
-		} else {
-			if (!['false', 'true'].includes(flags.active)) {
-				console.info(`Valid values for flag "--active" are only "false" or "true"!`);
-				return;
-			}
-			updateQuery.active = flags.active === 'true';
 		}
+		if (!['false', 'true'].includes(flags.active)) {
+			console.info(`Valid values for flag "--active" are only "false" or "true"!`);
+			return;
+		}
+		updateQuery.active = flags.active === 'true';
 
 		try {
 			await Db.init();
@@ -80,6 +72,7 @@ export class UpdateWorkflowCommand extends Command {
 				findQuery.active = true;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			await Db.collections.Workflow!.update(findQuery, updateQuery);
 			console.info('Done');
 		} catch (e) {

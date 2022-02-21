@@ -8,20 +8,12 @@ export interface RundeckCredentials {
 }
 
 export class RundeckApi {
-	private credentials: RundeckCredentials;
+	private credentials?: RundeckCredentials;
 	private executeFunctions: IExecuteFunctions;
 
 
 	constructor(executeFunctions: IExecuteFunctions) {
-		const credentials = executeFunctions.getCredentials('rundeckApi');
-
 		this.executeFunctions = executeFunctions;
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.executeFunctions.getNode(), 'No credentials got returned!');
-		}
-
-		this.credentials = credentials as unknown as RundeckCredentials;
 	}
 
 
@@ -30,12 +22,12 @@ export class RundeckApi {
 		const options: OptionsWithUri = {
 			headers: {
 				'user-agent': 'n8n',
-				'X-Rundeck-Auth-Token': this.credentials.token,
+				'X-Rundeck-Auth-Token': this.credentials?.token,
 			},
 			rejectUnauthorized: false,
 			method,
 			qs: query,
-			uri: this.credentials.url + endpoint,
+			uri: this.credentials?.url + endpoint,
 			body,
 			json: true,
 		};
@@ -47,6 +39,15 @@ export class RundeckApi {
 		}
 	}
 
+	async init() {
+		const credentials = await this.executeFunctions.getCredentials('rundeckApi');
+
+		if (credentials === undefined) {
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'No credentials got returned!');
+		}
+
+		this.credentials = credentials as unknown as RundeckCredentials;
+	}
 
 	executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
 

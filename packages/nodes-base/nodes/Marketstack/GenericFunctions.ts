@@ -19,7 +19,7 @@ export async function marketstackApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = this.getCredentials('marketstackApi') as IDataObject;
+	const credentials = await this.getCredentials('marketstackApi') as IDataObject;
 	const protocol = credentials.useHttps ? 'https' : 'http'; // Free API does not support HTTPS
 
 	const options: OptionsWithUri = {

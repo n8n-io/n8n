@@ -1,10 +1,11 @@
 <template>
 	<Modal
-		title="Manage tags"
-		:name="modalName"
+		:title="$locale.baseText('tagsManager.manageTags')"
+		:name="TAGS_MANAGER_MODAL_KEY"
 		:eventBus="modalBus"
 		@enter="onEnter"
-		size="md"
+		minWidth="620px"
+		minHeight="420px"
 	>
 		<template v-slot:content>
 			<el-row>
@@ -18,13 +19,13 @@
 					@delete="onDelete"
 					@disableCreate="onDisableCreate"
 				/>
-				<NoTagsView 
+				<NoTagsView
 					@enableCreate="onEnableCreate"
 					v-else />
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-				<el-button size="small" @click="close">Done</el-button>
+			<n8n-button :label="$locale.baseText('tagsManager.done')" @click="close" float="right" />
 		</template>
 	</Modal>
 </template>
@@ -40,13 +41,13 @@ import { showMessage } from "@/components/mixins/showMessage";
 import TagsView from "@/components/TagsManager/TagsView/TagsView.vue";
 import NoTagsView from "@/components/TagsManager/NoTagsView.vue";
 import Modal from "@/components/Modal.vue";
+import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
 
 export default mixins(showMessage).extend({
 	name: "TagsManager",
 	created() {
 		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
 	},
-	props: ['modalName'],
 	data() {
 		const tagIds = (this.$store.getters['tags/allTags'] as ITag[])
 			.map((tag) => tag.id);
@@ -55,6 +56,7 @@ export default mixins(showMessage).extend({
 			tagIds,
 			isCreating: false,
 			modalBus: new Vue(),
+			TAGS_MANAGER_MODAL_KEY,
 		};
 	},
 	components: {
@@ -84,7 +86,9 @@ export default mixins(showMessage).extend({
 		async onCreate(name: string, cb: (tag: ITag | null, error?: Error) => void) {
 			try {
 				if (!name) {
-					throw new Error("Tag name cannot be empty");
+					throw new Error(
+						this.$locale.baseText('tagsManager.tagNameCannotBeEmpty'),
+					);
 				}
 
 				const newTag = await this.$store.dispatch("tags/create", name);
@@ -94,8 +98,11 @@ export default mixins(showMessage).extend({
 				const escapedName = escape(name);
 				this.$showError(
 					error,
-					"New tag was not created",
-					`A problem occurred when trying to create the "${escapedName}" tag`,
+					this.$locale.baseText('tagsManager.showError.onCreate.title'),
+					this.$locale.baseText(
+						'tagsManager.showError.onCreate.message',
+						{ interpolate: { escapedName } },
+					) + ':',
 				);
 				cb(null, error);
 			}
@@ -107,31 +114,32 @@ export default mixins(showMessage).extend({
 
 			try {
 				if (!name) {
-					throw new Error("Tag name cannot be empty");
+					throw new Error(
+						this.$locale.baseText('tagsManager.tagNameCannotBeEmpty'),
+					);
 				}
 
 				if (name === oldName) {
 					cb(true);
 					return;
 				}
-				
+
 				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
 				cb(!!updatedTag);
-			
-				const escapedName = escape(name);
-				const escapedOldName = escape(oldName);
 
 				this.$showMessage({
-					title: "Tag was updated",
-					message: `The "${escapedOldName}" tag was successfully updated to "${escapedName}"`,
+					title: this.$locale.baseText('tagsManager.showMessage.onUpdate.title'),
 					type: "success",
 				});
 			} catch (error) {
 				const escapedName = escape(oldName);
 				this.$showError(
 					error,
-					"Tag was not updated",
-					`A problem occurred when trying to update the "${escapedName}" tag`,
+					this.$locale.baseText('tagsManager.showError.onUpdate.title'),
+					this.$locale.baseText(
+						'tagsManager.showError.onUpdate.message',
+						{ interpolate: { escapedName } },
+					) + ':',
 				);
 				cb(false, error);
 			}
@@ -144,25 +152,28 @@ export default mixins(showMessage).extend({
 			try {
 				const deleted = await this.$store.dispatch("tags/delete", id);
 				if (!deleted) {
-					throw new Error('Could not delete tag');
+					throw new Error(
+						this.$locale.baseText('tagsManager.couldNotDeleteTag'),
+					);
 				}
 
 				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);
 
 				cb(deleted);
 
-				const escapedName = escape(name);
 				this.$showMessage({
-					title: "Tag was deleted",
-					message: `The "${escapedName}" tag was successfully deleted from your tag collection`,
+					title: this.$locale.baseText('tagsManager.showMessage.onDelete.title'),
 					type: "success",
 				});
 			} catch (error) {
 				const escapedName = escape(name);
 				this.$showError(
 					error,
-					"Tag was not deleted",
-					`A problem occurred when trying to delete the "${escapedName}" tag`,
+					this.$locale.baseText('tagsManager.showError.onDelete.title'),
+					this.$locale.baseText(
+						'tagsManager.showError.onDelete.message',
+						{ interpolate: { escapedName } },
+					) + ':',
 				);
 				cb(false, error);
 			}
@@ -183,8 +194,3 @@ export default mixins(showMessage).extend({
 });
 </script>
 
-<style lang="scss" scoped>	
-.el-row {
-	min-height: $--tags-manager-min-height;
-}
-</style>

@@ -24,7 +24,6 @@ export class Amqp implements INodeType {
 		description: 'Sends a raw-message via AMQP 1.0, executed once per item',
 		defaults: {
 			name: 'AMQP Sender',
-			color: '#00FF00',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -98,7 +97,7 @@ export class Amqp implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		try {
-			const credentials = this.getCredentials('amqp');
+			const credentials = await this.getCredentials('amqp');
 			if (!credentials) {
 				throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
 			}

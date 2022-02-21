@@ -34,7 +34,7 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 
 		if (authenticationMethod === 'accessToken') {
 
-			const credentials = this.getCredentials('clickUpApi');
+			const credentials = await this.getCredentials('clickUpApi');
 
 			options.headers!['Authorization'] = credentials?.accessToken;
 			return await this.helpers.request!(options);

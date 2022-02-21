@@ -19,7 +19,6 @@ export class Rundeck implements INodeType {
 		description: 'Manage Rundeck API',
 		defaults: {
 			name: 'Rundeck',
-			color: '#F73F39',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -163,9 +162,11 @@ export class Rundeck implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
+		const rundeckApi = new RundeckApi(this);
+		await rundeckApi.init();
+
 
 		for (let i = 0; i < length; i++) {
-			const rundeckApi = new RundeckApi(this);
 
 			if (resource === 'job') {
 				if (operation === 'execute') {

@@ -33,13 +33,12 @@ export class ZendeskTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zendesk Trigger',
 		name: 'zendeskTrigger',
-		icon: 'file:zendesk.png',
+		icon: 'file:zendesk.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Zendesk events via webhooks',
 		defaults: {
 			name: 'Zendesk Trigger',
-			color: '#13353c',
 		},
 		inputs: [],
 		outputs: ['main'],

@@ -46,7 +46,6 @@ export class PipedriveTrigger implements INodeType {
 		description: 'Starts the workflow when Pipedrive events occur',
 		defaults: {
 			name: 'Pipedrive Trigger',
-			color: '#559922',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -268,7 +267,7 @@ export class PipedriveTrigger implements INodeType {
 				};
 
 				if (incomingAuthentication === 'basicAuth') {
-					const httpBasicAuth = this.getCredentials('httpBasicAuth');
+					const httpBasicAuth = await this.getCredentials('httpBasicAuth');
 
 					if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 						// Data is not defined on node so can not authenticate
@@ -324,7 +323,7 @@ export class PipedriveTrigger implements INodeType {
 
 		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = this.getCredentials('httpBasicAuth');
+			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate

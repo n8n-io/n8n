@@ -29,7 +29,6 @@ export class ShopifyTrigger implements INodeType {
 		description: 'Handle Shopify events via webhooks',
 		defaults: {
 			name: 'Shopify Trigger',
-			color: '#559922',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -358,7 +357,7 @@ export class ShopifyTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
-		const credentials = this.getCredentials('shopifyApi') as IDataObject;
+		const credentials = await this.getCredentials('shopifyApi') as IDataObject;
 		const topic = this.getNodeParameter('topic') as string;
 		if (headerData['x-shopify-topic'] !== undefined
 			&& headerData['x-shopify-hmac-sha256'] !== undefined

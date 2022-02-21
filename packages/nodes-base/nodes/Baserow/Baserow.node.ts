@@ -42,7 +42,6 @@ export class Baserow implements INodeType {
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
 			name: 'Baserow',
-			color: '#00a2ce',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -114,7 +113,7 @@ export class Baserow implements INodeType {
 	methods = {
 		loadOptions: {
 			async getDatabaseIds(this: ILoadOptionsFunctions) {
-				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const endpoint = '/api/applications/';
 				const databases = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
@@ -122,7 +121,7 @@ export class Baserow implements INodeType {
 			},
 
 			async getTableIds(this: ILoadOptionsFunctions) {
-				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const databaseId = this.getNodeParameter('databaseId', 0) as string;
 				const endpoint = `/api/database/tables/database/${databaseId}`;
@@ -131,7 +130,7 @@ export class Baserow implements INodeType {
 			},
 
 			async getTableFields(this: ILoadOptionsFunctions) {
-				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const endpoint = `/api/database/fields/table/${tableId}/`;
@@ -148,7 +147,7 @@ export class Baserow implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
 		const tableId = this.getNodeParameter('tableId', 0) as string;
-		const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+		const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 		const jwtToken = await getJwtToken.call(this, credentials);
 		const fields = await mapper.getTableFields.call(this, tableId, jwtToken);
 		mapper.createMappings(fields);

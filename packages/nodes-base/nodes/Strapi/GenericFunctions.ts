@@ -15,7 +15,7 @@ import {
 
 export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('strapiApi') as IDataObject;
+	const credentials = await this.getCredentials('strapiApi') as IDataObject;
 
 	try {
 		const options: OptionsWithUri = {
@@ -25,6 +25,9 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 			qs,
 			uri: uri || `${credentials.url}${resource}`,
 			json: true,
+			qsStringifyOptions: {
+				arrayFormat: 'indice',
+			},
 		};
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
@@ -41,7 +44,7 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 }
 
 export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('strapiApi') as IDataObject;
+	const credentials = await this.getCredentials('strapiApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {

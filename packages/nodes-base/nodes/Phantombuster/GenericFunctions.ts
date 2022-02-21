@@ -14,7 +14,7 @@ import {
 
 export async function phantombusterApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('phantombusterApi') as IDataObject;
+	const credentials = await this.getCredentials('phantombusterApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {

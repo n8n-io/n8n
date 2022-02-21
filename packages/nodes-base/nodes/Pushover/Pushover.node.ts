@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -30,7 +29,6 @@ export class Pushover implements INodeType {
 		description: 'Consume Pushover API',
 		defaults: {
 			name: 'Pushover',
-			color: '#4b9cea',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -90,8 +88,7 @@ export class Pushover implements INodeType {
 					},
 				},
 				default: '',
-				description: `The user/group key (not e-mail address) of your user (or you),<br>
-				viewable when logged into our <a href="https://pushover.net/" target="_blank">dashboard</a> (often referred to as USER_KEY in our <a href="https://support.pushover.net/i44-example-code-and-pushover-libraries" target="_blank"></a> and code examples)`,
+				description: `The user/group key (not e-mail address) of your user (or you), viewable when logged into the <a href="https://pushover.net/">dashboard</a> (often referred to as <code>USER_KEY</code> in the <a href="https://support.pushover.net/i44-example-code-and-pushover-libraries">libraries</a> and code examples)`,
 			},
 			{
 				displayName: 'Message',
@@ -148,10 +145,7 @@ export class Pushover implements INodeType {
 					},
 				],
 				default: -2,
-				description: `send as -2 to generate no notification/alert,<br>
-				-1 to always send as a quiet notification,<br>
-				1 to display as high-priority and bypass the user's quiet hours, or<br>
-				2 to also require confirmation from the user`,
+				description: `Send as -2 to generate no notification/alert, -1 to always send as a quiet notification, 1 to display as high-priority and bypass the user's quiet hours, or 2 to also require confirmation from the user`,
 			},
 			{
 				displayName: 'Retry (seconds)',
@@ -175,8 +169,7 @@ export class Pushover implements INodeType {
 					},
 				},
 				default: 30,
-				description: `Specifies how often (in seconds) the Pushover servers will send the same notification to the user.<br>
-				This parameter must have a value of at least 30 seconds between retries.`,
+				description: `Specifies how often (in seconds) the Pushover servers will send the same notification to the user. This parameter must have a value of at least 30 seconds between retries.`,
 			},
 			{
 				displayName: 'Expire (seconds)',
@@ -251,8 +244,7 @@ export class Pushover implements INodeType {
 						name: 'device',
 						type: 'string',
 						default: '',
-						description: `Your user's device name to send the message directly to that device,<br>
-						rather than all of the user's devices (multiple devices may be separated by a comma)`,
+						description: `Your user's device name to send the message directly to that device, rather than all of the user's devices (multiple devices may be separated by a comma)`,
 					},
 					{
 						displayName: 'Sound',
@@ -366,8 +358,10 @@ export class Pushover implements INodeType {
 									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 								}
 
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+
 								body.attachment = {
-									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									value: dataBuffer,
 									options: {
 										filename: binaryData.fileName,
 									},

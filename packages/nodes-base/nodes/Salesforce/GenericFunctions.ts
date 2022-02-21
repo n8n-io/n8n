@@ -28,7 +28,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 		if (authenticationMethod === 'jwt') {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_jwt_flow.htm&type=5
 			const credentialsType = 'salesforceJwtApi';
-			const credentials = this.getCredentials(credentialsType);
+			const credentials = await this.getCredentials(credentialsType);
 			const response = await getAccessToken.call(this, credentials as IDataObject);
 			const { instance_url, access_token } = response;
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, instance_url as string);
@@ -40,7 +40,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
 			const credentialsType = 'salesforceOAuth2Api';
-			const credentials = this.getCredentials(credentialsType) as { oauthTokenData: { instance_url: string } };
+			const credentials = await this.getCredentials(credentialsType) as { oauthTokenData: { instance_url: string } };
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, credentials.oauthTokenData.instance_url);
 			Logger.debug(`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`);
 			Object.assign(options, option);
@@ -146,7 +146,7 @@ export function getConditions(options: IDataObject) {
 	const conditions = (options.conditionsUi as IDataObject || {}).conditionValues as IDataObject[];
 	let data = undefined;
 	if (Array.isArray(conditions) && conditions.length !== 0) {
-		data = conditions.map((condition: IDataObject) => `${condition.field}${(condition.operation) === 'equal' ? '=' : condition.operation}${getValue(condition.value)}`);
+		data = conditions.map((condition: IDataObject) => `${condition.field} ${(condition.operation) === 'equal' ? '=' : condition.operation} ${getValue(condition.value)}`);
 		data = `WHERE ${data.join(' AND ')}`;
 	}
 	return data;
@@ -191,7 +191,9 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 }
 
 export function getValue(value: any) { // tslint:disable-line:no-any
-	if (typeof value === 'string') {
+	if (moment(value).isValid()) {
+		return value;
+	} else if (typeof value === 'string') {
 		return `'${value}'`;
 	} else {
 		return value;

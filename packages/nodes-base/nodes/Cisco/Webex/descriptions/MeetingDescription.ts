@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const meetingOperations = [
+export const meetingOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const meetingOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const meetingFields = [
+export const meetingFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             meeting: create
 	// ----------------------------------------
@@ -79,7 +79,7 @@ export const meetingFields = [
 				],
 			},
 		},
-		description: 'Date and time for the start of meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445" target="_blank"> format</a>',
+		description: 'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
 	},
 	{
 		displayName: 'End',
@@ -97,7 +97,7 @@ export const meetingFields = [
 				],
 			},
 		},
-		description: 'Date and time for the end of meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445" target="_blank"> format</a>',
+		description: 'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -270,7 +270,7 @@ export const meetingFields = [
 				name: 'recurrence',
 				type: 'string',
 				default: '',
-				description: `Rule for how the meeting should recur. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445" target="_blank"> format</a>`,
+				description: `Rule for how the meeting should recur. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>`,
 			},
 			{
 				displayName: 'Required Registration Info',
@@ -542,7 +542,7 @@ export const meetingFields = [
 				name: 'from',
 				type: 'dateTime',
 				default: '',
-				description: 'Start date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445" target="_blank"> format</a>',
+				description: 'Start date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
 			},
 			{
 				displayName: 'Host Email',
@@ -658,7 +658,7 @@ export const meetingFields = [
 				name: 'to',
 				type: 'dateTime',
 				default: '',
-				description: 'End date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445" target="_blank"> format</a>',
+				description: 'End date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
 			},
 			{
 				displayName: 'Weblink',
@@ -762,7 +762,7 @@ export const meetingFields = [
 				name: 'end',
 				type: 'dateTime',
 				default: '',
-				description: 'Date and time for the end of meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445" target="_blank"> format</a>',
+				description: 'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
 			},
 			{
 				displayName: 'Exclude Password',
@@ -848,8 +848,7 @@ export const meetingFields = [
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: `Meeting password. Must conform to the site's password complexity settings.</br>
-				If not specified, a random password conforming to the site's password rules will be generated automatically`,
+				description: `Meeting password. Must conform to the site's password complexity settings. If not specified, a random password conforming to the site's password rules will be generated automatically`,
 			},
 			{
 				displayName: 'Public Meeting',
@@ -955,7 +954,7 @@ export const meetingFields = [
 				name: 'start',
 				type: 'dateTime',
 				default: '',
-				description: 'Date and time for the start of meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445" target="_blank"> format</a>',
+				description: 'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
 			},
 			{
 				displayName: 'Title',
@@ -966,4 +965,4 @@ export const meetingFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

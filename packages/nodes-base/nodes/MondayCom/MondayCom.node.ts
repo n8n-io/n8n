@@ -57,7 +57,6 @@ export class MondayCom implements INodeType {
 		description: 'Consume Monday.com API',
 		defaults: {
 			name: 'Monday.com',
-			color: '#4353ff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

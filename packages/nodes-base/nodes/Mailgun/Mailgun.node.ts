@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -22,7 +19,6 @@ export class Mailgun implements INodeType {
 		description: 'Sends an email via Mailgun',
 		defaults: {
 			name: 'Mailgun',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -101,7 +97,7 @@ export class Mailgun implements INodeType {
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties which contain<br />data which should be added to email as attachment.<br />Multiple ones can be comma separated.',
+				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma separated.',
 			},
 		],
 	};
@@ -127,7 +123,7 @@ export class Mailgun implements INodeType {
 				const html = this.getNodeParameter('html', itemIndex) as string;
 				const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
 
-				const credentials = this.getCredentials('mailgunApi');
+				const credentials = await this.getCredentials('mailgunApi');
 
 				if (credentials === undefined) {
 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -159,8 +155,9 @@ export class Mailgun implements INodeType {
 						if (!item.binary.hasOwnProperty(propertyName)) {
 							continue;
 						}
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, propertyName);
 						attachments.push({
-							value: Buffer.from(item.binary[propertyName].data, BINARY_ENCODING),
+							value: binaryDataBuffer,
 							options: {
 								filename: item.binary[propertyName].fileName || 'unknown',
 

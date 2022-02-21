@@ -108,7 +108,6 @@ export class Mandrill implements INodeType {
 		description: 'Consume Mandrill API',
 		defaults: {
 			name: 'Mandrill',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -247,21 +246,21 @@ export class Mandrill implements INodeType {
 						name: 'async',
 						type: 'boolean',
 						default: false,
-						description: `Enable a background sending mode that is optimized for bulk sending.<br />In async mode, messages/send will immediately return a status of "queued"<br />for every recipient. To handle rejections when sending in async mode, set up<br />a webhook for the 'reject' event. Defaults to false for messages with<br />no more than 10 recipients; messages with more than 10 recipients are always sent<br />asynchronously, regardless of the value of async.`,
+						description: `Enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the 'reject' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.`,
 					},
 					{
 						displayName: 'Auto Text',
 						name: 'autoText',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically generate a text<br />part for messages that are not given text.',
+						description: 'Whether or not to automatically generate a text part for messages that are not given text.',
 					},
 					{
 						displayName: 'Auto HTML',
 						name: 'autoHtml',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically generate an HTML<br />part for messages that are not given HTML.',
+						description: 'Whether or not to automatically generate an HTML part for messages that are not given HTML.',
 					},
 					{
 						displayName: 'BCC Address',
@@ -293,7 +292,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `An array of strings separated by , indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically.`,
+						description: `An array of strings separated by a comma (,) indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically.`,
 					},
 					{
 						displayName: 'HTML',
@@ -311,14 +310,14 @@ export class Mandrill implements INodeType {
 						name: 'important',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not this message is important, and should be<br />delivered ahead of non-important messages.',
+						description: 'Whether or not this message is important, and should be delivered ahead of non-important messages.',
 					},
 					{
 						displayName: 'Inline CSS',
 						name: 'inlineCss',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically inline all CSS styles provided in<br />the message HTML - only for HTML documents less than 256KB in size.',
+						description: 'Whether or not to automatically inline all CSS styles provided in the message HTML - only for HTML documents less than 256KB in size.',
 					},
 					{
 						displayName: 'Ip Pool',
@@ -349,7 +348,7 @@ export class Mandrill implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: `When this message should be sent as a UTC timestamp in<br />YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message<br />will be sent immediately. An additional fee applies for scheduled email,<br />and this feature is only available to accounts with a positive balance.`,
+						description: `When this message should be sent as a UTC timestamp in YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message will be sent immediately. An additional fee applies for scheduled email, and this feature is only available to accounts with a positive balance.`,
 					},
 					{
 						displayName: 'Signing Domain',
@@ -357,7 +356,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `A custom domain to use for SPF/DKIM signing instead of<br />mandrill(for "via" or "on behalf of" in email clients).`,
+						description: `A custom domain to use for SPF/DKIM signing instead of mandrill(for "via" or "on behalf of" in email clients).`,
 					},
 					{
 						displayName: 'Subaccount',
@@ -381,7 +380,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `An array of string separated by , to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors.`,
+						description: `An array of string separated by a comma (,) to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors.`,
 					},
 					{
 						displayName: 'Text',
@@ -421,7 +420,7 @@ export class Mandrill implements INodeType {
 						name: 'urlStripQs',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to strip the query string from<br />URLs when aggregating tracked URL data.',
+						description: 'Whether or not to strip the query string from URLs when aggregating tracked URL data.',
 					},
 					{
 						displayName: 'View Content Link',
@@ -508,7 +507,7 @@ export class Mandrill implements INodeType {
 						],
 					},
 				},
-				description: 'Metadata an associative array of user metadata. Mandrill will store<br />this metadata and make it available for retrieval. In addition, you can select<br />up to 10 metadata fields to index and make searchable using the Mandrill search api.',
+				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.',
 				options: [
 					{
 						name: 'metadataValues',
@@ -549,7 +548,7 @@ export class Mandrill implements INodeType {
 				placeholder: `{
 	"website": "www.example.com"
 }`,
-				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata<br />and make it available for retrieval. In addition, you can select up to<br />10 metadata fields to index and make searchable using the Mandrill search api.',
+				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.',
 			},
 			{
 				displayName: 'Attachments',

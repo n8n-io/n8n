@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -32,7 +31,6 @@ export class Pushbullet implements INodeType {
 		description: 'Consume Pushbullet API',
 		defaults: {
 			name: 'Pushbullet',
-			color: '#457854',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -209,7 +207,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be created.',
+				description: 'Name of the binary property which contains the data for the file to be created.',
 			},
 			{
 				displayName: 'Target',
@@ -273,9 +271,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `The value to be set depending on the target selected.<br>
-				For example, if the target selected is email then this field would take the email address<br>
-				of the person you are trying to send the push to.`,
+				description: `The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.`,
 			},
 			{
 				displayName: 'Value',
@@ -495,6 +491,7 @@ export class Pushbullet implements INodeType {
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							//create upload url
 							const {
@@ -523,7 +520,7 @@ export class Pushbullet implements INodeType {
 								{
 									formData: {
 										file: {
-											value: Buffer.from(binaryData.data, BINARY_ENCODING),
+											value: dataBuffer,
 											options: {
 												filename: binaryData.fileName,
 											},

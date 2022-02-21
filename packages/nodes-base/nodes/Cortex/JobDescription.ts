@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const jobOperations = [
+export const jobOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -30,7 +30,7 @@ export const jobOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
 export const jobFields: INodeProperties[] = [
 	{
