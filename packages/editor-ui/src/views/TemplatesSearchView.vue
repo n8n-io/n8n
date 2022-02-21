@@ -137,7 +137,8 @@ export default mixins(genericHelpers).extend({
 			}
 			const templateEvent = {
 				search_string: this.search,
-				results_count: this.workflows.length,
+				workflow_results_count: this.totalWorkflows,
+				collection_results_count: this.collections.length,
 				categories_applied: this.categories.map((categoryId) =>
 					this.$store.getters['templates/getCategoryById'](categoryId),
 				),
