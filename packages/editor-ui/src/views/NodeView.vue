@@ -2829,6 +2829,7 @@ export default mixins(
 }
 
 .node-view-root {
+	background-color: var(--color-canvas-background);
 	position: absolute;
 	width: 100%;
 	height: 100%;

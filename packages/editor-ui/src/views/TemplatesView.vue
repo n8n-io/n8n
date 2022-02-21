@@ -26,10 +26,6 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-body {
-	background-color: var(--color-background-light);
-}
-
 .mockMenu {
 	height: 100%;
 	min-height: 100vh;

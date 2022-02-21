@@ -89,6 +89,9 @@ export default mixins(showMessage).extend({
 </script>
 
 <style lang="scss">
+body {
+	background-color: var(--color-background-light);
+}
 
 #app {
 	padding: 0;
