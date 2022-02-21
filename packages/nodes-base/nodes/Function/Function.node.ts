@@ -36,7 +36,7 @@ export class Function implements INodeType {
 				type: 'string',
 				default: `// Code here will run only once, no matter how many input items there are.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function
-const { DateTime } = require("luxon");
+const { DateTime, Duration, Interval } = require("luxon");
 
 // Loop over inputs and add a new field called 'myNewField' to the JSON of each one
 for (item of items) {

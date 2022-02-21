@@ -208,7 +208,7 @@ export default mixins(
 					`const $input = ${autoComplete$input}`,
 				];
 
-				const baseKeys = ['$env', '$executionId', '$mode', '$parameter', '$position', '$resumeWebhookUrl', '$workflow'];
+				const baseKeys = ['$env', '$executionId', '$mode', '$parameter', '$position', '$resumeWebhookUrl', '$workflow', '$now', '$today'];
 				const additionalKeys = ['$json', '$binary'];
 				if (executedWorkflow && connectionInputData && connectionInputData.length) {
 					baseKeys.push(...additionalKeys);
@@ -251,6 +251,7 @@ export default mixins(
 						autoCompleteItems.push(`const items: {json: {[key: string]: any}}[] = []`);
 					}
 				} else if (this.codeAutocomplete === 'functionItem') {
+					autoCompleteItems.push(`const $thisItem = {};`);
 					if (connectionInputData) {
 						autoCompleteItems.push(`const item = $json`);
 					} else {
@@ -261,19 +262,6 @@ export default mixins(
 				this.monacoLibrary = monaco.languages.typescript.javascriptDefaults.addExtraLib(
 					autoCompleteItems.join('\n'),
 				);
-
-
-				// const libSource = [
-				// 	'declare class DateTime {',
-				// 	'    /**',
-				// 	'     * Returns luxon DateTime',
-				// 	'     */',
-				// 	'    static next():string',
-				// 	'}',
-				// ].join('\n');
-				// const libUri = 'file:///node_modules/@types/luxon/src/datetime.d.ts';
-
-				// monaco.languages.typescript.javascriptDefaults.addExtraLib(libSource, libUri);
 			}
 		},
 	},

@@ -37,7 +37,7 @@ export class FunctionItem implements INodeType {
 				type: 'string',
 				default: `// Code here will run once per input item.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
-const { DateTime } = require("luxon");
+const { DateTime, Duration, Interval } = require("luxon");
 
 // Add a new field called 'myNewField' to the JSON of the item
 item.myNewField = 1;

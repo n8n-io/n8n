@@ -6,6 +6,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+
+import { DateTime } from 'luxon';
+
 // eslint-disable-next-line import/no-cycle
 import {
 	IDataObject,
@@ -469,27 +472,29 @@ export class WorkflowDataProxy {
 				// $(nodeName).last(branchIndex?, runIndex?)
 				// $(nodeName).all(branchIndex?, runIndex?)
 
+				if (!nodeName) {
+					return undefined;
+				}
+
 				return new Proxy(
 					{},
 					{
 						get(target, property, receiver) {
 							if (property === 'item') {
-								if (nodeName) {
-									return (itemIndex?: number, branchIndex?: number, runIndex?: number) => {
-										const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
-										if (itemIndex && executionData[itemIndex]) {
-											return executionData[itemIndex];
-										}
-										return [];
-									};
-								}
-								return undefined;
+								return (itemIndex?: number, branchIndex?: number, runIndex?: number) => {
+									if (itemIndex === undefined) itemIndex = that.itemIndex;
+									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									if (executionData[itemIndex]) {
+										return executionData[itemIndex];
+									}
+									return undefined;
+								};
 							}
 							if (property === 'first') {
 								return (branchIndex?: number, runIndex?: number) => {
 									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
 									if (executionData[0]) return executionData[0];
-									return [];
+									return undefined;
 								};
 							}
 							if (property === 'last') {
@@ -499,7 +504,7 @@ export class WorkflowDataProxy {
 									if (executionData[executionData.length - 1]) {
 										return executionData[executionData.length - 1];
 									}
-									return [];
+									return undefined;
 								};
 							}
 							if (property === 'all') {
@@ -521,13 +526,17 @@ export class WorkflowDataProxy {
 				{},
 				{
 					get(target, property, receiver) {
+						if (property === 'thisItem') {
+							return that.connectionInputData[that.itemIndex];
+						}
 						if (property === 'item') {
 							return (itemIndex?: number) => {
+								if (itemIndex === undefined) itemIndex = that.itemIndex;
 								const result = that.connectionInputData;
-								if (itemIndex && result[itemIndex]) {
+								if (result[itemIndex]) {
 									return result[itemIndex];
 								}
-								return [];
+								return undefined;
 							};
 						}
 						if (property === 'first') {
@@ -536,7 +545,7 @@ export class WorkflowDataProxy {
 								if (result[0]) {
 									return result[0];
 								}
-								return [];
+								return undefined;
 							};
 						}
 						if (property === 'last') {
@@ -545,7 +554,7 @@ export class WorkflowDataProxy {
 								if (result.length && result[result.length - 1]) {
 									return result[result.length - 1];
 								}
-								return [];
+								return undefined;
 							};
 						}
 						if (property === 'all') {
@@ -561,6 +570,8 @@ export class WorkflowDataProxy {
 					},
 				},
 			),
+
+			$thisItem: that.connectionInputData[that.itemIndex],
 			//------------------------------------------------------------------------------------------------
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
@@ -617,6 +628,8 @@ export class WorkflowDataProxy {
 			$workflow: this.workflowGetter(),
 			$thisRunIndex: this.runIndex,
 			$thisItemIndex: this.itemIndex,
+			$now: DateTime.now().toJSDate(),
+			$today: DateTime.now().toJSDate().toISOString().split('T')[0],
 			...that.additionalKeys,
 		};
 
