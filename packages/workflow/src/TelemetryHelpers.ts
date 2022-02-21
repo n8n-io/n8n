@@ -8,7 +8,6 @@ import {
 	INodesGraphResult,
 	IWorkflowBase,
 	INodeTypes,
-	INodeType,
 } from '.';
 
 import { getInstance as getLoggerInstance } from './LoggerProxy';

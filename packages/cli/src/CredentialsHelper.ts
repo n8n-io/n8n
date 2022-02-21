@@ -524,7 +524,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			nodeType = credentialTestFunction.nodeType;
 		} else {
 			const nodeTypes = NodeTypes();
-			nodeType = nodeTypes.getByName('n8n-nodes-base.noOp') as INodeType;
+			nodeType = nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
 		}
 
 		const node: INode = {
