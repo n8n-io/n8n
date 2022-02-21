@@ -59,5 +59,8 @@
 				"url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/"
 			}
 		]
-	}
+	},
+	"alias": [
+		"SMS"
+	]
 }
