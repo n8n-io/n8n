@@ -1,6 +1,6 @@
 <template>
-	<div :class="$style.container">
-		<div v-if="collections.length || loading" :class="$style.header">
+	<div :class="$style.container" v-if="collections.length || loading">
+		<div :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.collections') }}
 				<span v-if="!loading" v-text="`(${collections.length})`" />
