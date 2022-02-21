@@ -7,7 +7,7 @@
 					<n8n-text v-if="template && template.name" color="text-base" size="small">
 						{{ $locale.baseText('templates.workflow') }}
 					</n8n-text>
-					<n8n-loading :animated="true" :loading="!template || !template.name" :rows="2" variant="h1" />
+					<n8n-loading :loading="!template || !template.name" :rows="2" variant="h1" />
 				</div>
 				<div :class="$style.button">
 					<n8n-button
@@ -16,7 +16,7 @@
 						size="large"
 						@click="navigateTo(template.id, 'WorkflowTemplate', $event)"
 					/>
-					<n8n-loading :animated="true" :loading="!template" :rows="1" variant="button" />
+					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
 			</div>
 		</template>
@@ -24,8 +24,8 @@
 			<div :class="$style.image">
 				<WorkflowPreview
 					v-if="showPreview"
-					:workflow="template && template.workflow"
 					:loading="loading"
+					:workflow="template && template.workflow"
 					@close="onHidePreview"
 				/>
 			</div>
@@ -51,8 +51,8 @@
 
 <script lang="ts">
 import TemplateDetails from '@/components/TemplateDetails.vue';
-import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import TemplatesView from './TemplatesView.vue';
+import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -62,15 +62,15 @@ export default mixins(workflowHelpers).extend({
 	name: 'TemplatesWorkflowView',
 	components: {
 		TemplateDetails,
-		WorkflowPreview,
 		TemplatesView,
+		WorkflowPreview,
 	},
 	computed: {
-		templateId() {
-			return this.$route.params.id;
-		},
 		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
 			return this.$store.getters['templates/getTemplateById'](this.templateId);
+		},
+		templateId() {
+			return this.$route.params.id;
 		},
 	},
 	data() {
@@ -83,9 +83,9 @@ export default mixins(workflowHelpers).extend({
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (page === 'WorkflowTemplate') {
 				this.$telemetry.track('User inserted workflow template', {
+					source: 'workflow',
 					template_id: id,
 					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
-					source: 'workflow',
 				});
 			}
 
