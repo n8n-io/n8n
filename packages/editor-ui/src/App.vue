@@ -33,7 +33,7 @@ export default mixins(showMessage).extend({
 		Telemetry,
 	},
 	computed: {
-		isTemplatesEnabled() {
+		isTemplatesEnabled(): boolean {
 			return this.$store.getters['settings/isTemplatesEnabled'];
 		},
 	},

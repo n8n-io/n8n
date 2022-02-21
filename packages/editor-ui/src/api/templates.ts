@@ -1,5 +1,9 @@
 import { ITemplatesCategory, ITemplatesCollection, ITemplatesQuery, ITemplatesWorkflow, ITemplatesCollectionResponse, ITemplatesWorkflowResponse } from '@/Interface';
-import { graphql, get } from './helpers';
+import { get } from './helpers';
+
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 export function testHealthEndpoint(apiEndpoint: string) {
 	return get(apiEndpoint, '/health');
@@ -10,7 +14,7 @@ export function getCategories(apiEndpoint: string): Promise<{categories: ITempla
 }
 
 export async function getCollections(apiEndpoint: string, query: ITemplatesQuery): Promise<{collections: ITemplatesCollection[]}> {
-	return await get(apiEndpoint, '/templates/collections', query);
+	return await get(apiEndpoint, '/templates/collections', query as unknown as IDataObject);
 }
 
 export async function getWorkflows(

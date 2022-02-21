@@ -272,7 +272,7 @@ export default mixins(genericHelpers).extend({
 		}
 
 		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories.split(',').map((categoryId) => parseInt(categoryId));
+			this.categories = this.$route.query.categories.split(',').map((categoryId) => parseInt(categoryId, 10));
 		}
 	},
 });
