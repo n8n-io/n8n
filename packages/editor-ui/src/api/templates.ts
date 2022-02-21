@@ -1,81 +1,24 @@
 import { ITemplatesCategory, ITemplatesCollection, ITemplatesQuery, ITemplatesWorkflow, ITemplatesCollectionResponse, ITemplatesWorkflowResponse } from '@/Interface';
-import { post, graphql } from './helpers';
+import { graphql, get } from './helpers';
 
-export async function getCategories(apiEndpoint: string): Promise<{data: {categories: ITemplatesCategory[]}}> {
-	const query = `query {
-		categories: getTemplateCategories {
-			id
-			name
-		}
-	}`;
-	return await post(apiEndpoint, `/graphql`, { query });
+export function testHealthEndpoint(apiEndpoint: string) {
+	console.log('sup', apiEndpoint);
+	return get(apiEndpoint, '/health');
 }
 
-export async function getCollections(apiEndpoint: string, query: ITemplatesQuery): Promise<{data: {collections: ITemplatesCollection[]}}> {
-	const gqlQuery = `query search($limit: Int,
-		$skip: Int,
-		$category: [Int],
-		$search: String){
-		collections: searchCollections(rows: $limit,
-			skip: $skip,
-			search: $search,
-			category: $category) {
-			id
-			name
-			nodes{
-				defaults
-				name
-				displayName
-				icon
-				iconData
-				typeVersion: version
-				categories{
-					name
-				}
-			}
-			workflows{
-				id
-			}
-			totalViews: views
-		}
-	}`;
-	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length ? query.categories.map((id: string) => parseInt(id, 10)) : null});
+export function getCategories(apiEndpoint: string): Promise<{categories: ITemplatesCategory[]}> {
+	return get(apiEndpoint, '/templates/categories');
+}
+
+export async function getCollections(apiEndpoint: string, query: ITemplatesQuery): Promise<{collections: ITemplatesCollection[]}> {
+	return await get(apiEndpoint, '/templates/collections', query);
 }
 
 export async function getWorkflows(
 	apiEndpoint: string,
-	query: {skip: number, limit: number, categories: string[], search: string},
-): Promise<{data: {totalWorkflows: number, workflows: ITemplatesWorkflow[]}}> {
-	const gqlQuery = `query search($limit: Int,
-		$skip: Int,
-		$category: [Int],
-		$search: String){
-		totalWorkflows: getWorkflowCount(search: $search, category: $category)
-		workflows: searchWorkflows(rows: $limit,
-			skip: $skip,
-			search: $search,
-			category: $category){
-			id
-			name
-			nodes{
-				defaults
-				name
-				displayName
-				icon
-				iconData
-				typeVersion: version,
-				categories{
-					name
-				}
-			}
-			totalViews: views
-			user{
-				username
-			}
-			created_at
-		}
-	}`;
-	return await graphql(apiEndpoint, gqlQuery, {search: query.search, category: query.categories && query.categories.length? query.categories.map((id: string) => parseInt(id, 10)) : null, limit: query.limit, skip: query.skip});
+	query: {skip: number, limit: number, categories: number[], search: string},
+): Promise<{totalWorkflows: number, workflows: ITemplatesWorkflow[]}> {
+	return get(apiEndpoint, '/templates/workflows', {skip: query.skip, rows: query.limit, category: query.categories, search: query.search});
 }
 
 export async function getCollectionById(apiEndpoint: string, collectionId: string): Promise<{data: {collection: ITemplatesCollectionResponse}}> {

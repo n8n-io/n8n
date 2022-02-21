@@ -515,7 +515,7 @@ export interface IN8nPromptResponse {
 }
 
 export interface ITemplatesCollection {
-	id: string;
+	id: number;
 	name: string;
 	nodes: ITemplatesNode[];
 	workflows: Array<{id: string}>;
@@ -565,12 +565,12 @@ export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
 }
 
 export interface ITemplatesQuery {
-	categories: string[];
+	categories: number[];
 	search: string;
 }
 
 export interface ITemplatesCategory {
-	id: string;
+	id: number;
 	name: string;
 }
 
@@ -795,6 +795,7 @@ export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
+	templatesEndpointHealthy: boolean,
 }
 
 export interface ITemplateState {
