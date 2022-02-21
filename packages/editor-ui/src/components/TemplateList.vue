@@ -169,10 +169,6 @@ export default mixins(genericHelpers).extend({
 	padding-bottom: var(--spacing-2xs);
 }
 
-.list {
-	padding-top: var(--spacing-l);
-}
-
 .wrapper {
 	height: auto;
 	background-color: var(--color-white);

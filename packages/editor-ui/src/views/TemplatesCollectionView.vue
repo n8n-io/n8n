@@ -14,12 +14,14 @@
 		</template>
 		<template v-slot:content>
 			<div :class="$style.wrapper">
-				<div :class="$style.markdown">
-					<n8n-markdown
-						:content="collection && collection.description"
-						:images="collection && collection.image"
-						:loading="loading"
-					/>
+				<div :class="$style.mainContent">
+					<div :class="$style.markdown">
+						<n8n-markdown
+							:content="collection && collection.description"
+							:images="collection && collection.image"
+							:loading="loading"
+						/>
+					</div>
 					<TemplateList
 						:infinite-scroll-enabled="false"
 						:loading="loading"
@@ -134,9 +136,12 @@ export default mixins(workflowHelpers).extend({
 
 <style lang="scss" module>
 .wrapper {
-	padding: var(--spacing-s) 0 0;
 	display: flex;
 	justify-content: space-between;
+
+	@media (max-width: $--breakpoint-xs) {
+		display: block;
+	}
 }
 
 .title {
@@ -147,9 +152,18 @@ export default mixins(workflowHelpers).extend({
 	display: block;
 }
 
-.markdown {
-	width: 100%;
+.mainContent {
 	padding-right: var(--spacing-2xl);
+	margin-bottom: var(--spacing-l);
+	width: 100%;
+
+	@media (max-width: $--breakpoint-xs) {
+		padding-right: 0;
+	}
+}
+
+.markdown {
+	margin-bottom: var(--spacing-l);
 }
 
 .spacer {
@@ -157,10 +171,6 @@ export default mixins(workflowHelpers).extend({
 }
 
 .details {
-	width: 180px;
-
-	@media (max-width: $--breakpoint-xs) {
-		width: auto;
-	}
+	min-width: 180px;
 }
 </style>
