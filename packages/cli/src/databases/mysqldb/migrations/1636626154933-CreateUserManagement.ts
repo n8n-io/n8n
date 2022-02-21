@@ -164,6 +164,14 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
+			'ALTER TABLE `' +
+				tablePrefix +
+				'workflow_entity` DROP INDEX `IDX_' +
+				tablePrefix +
+				'943d8f922be094eb507cb9a7f9`',
+		);
+
+		await queryRunner.query(
 			'CREATE INDEX `IDX_' +
 				tablePrefix +
 				'xeendlvptc5jy4hbol17b5xery` ON `' +
@@ -244,12 +252,20 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 		const tablePrefix = config.get('database.tablePrefix');
 
 		await queryRunner.query(
+			'ALTER TABLE `' +
+				tablePrefix +
+				'workflow_entity` ADD UNIQUE INDEX `IDX_' +
+				tablePrefix +
+				'943d8f922be094eb507cb9a7f9` (`name`)',
+		);
+		await queryRunner.query(
 			'DROP INDEX `IDX_' +
 				tablePrefix +
 				'xeendlvptc5jy4hbol17b5xery` ON `' +
 				tablePrefix +
 				'execution_entity`',
 		);
+
 		await queryRunner.query(`DROP TABLE "${tablePrefix}shared_credentials"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}shared_workflow"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}user"`);

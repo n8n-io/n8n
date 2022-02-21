@@ -16,7 +16,7 @@ import {
 	randomName,
 	randomInvalidPassword,
 } from './shared/random';
-import { createUser } from './shared/utils';
+import { createMemberShell, createUser } from './shared/utils';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import * as UMHelper from '../../src/UserManagement/UserManagementHelper';
@@ -174,6 +174,8 @@ test('DELETE /users/:id should delete the user', async () => {
 	const workflow = await Db.collections.Workflow!.findOne(savedWorkflow.id);
 	expect(workflow).toBeUndefined();
 
+	// TODO: also include active workflow and check whether webhook has been removed
+
 	const credential = await Db.collections.Credentials!.findOne(savedCredential.id);
 	expect(credential).toBeUndefined();
 });
@@ -283,7 +285,7 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	const { id: inviteeId } = await createUser();
+	const { id: inviteeId } = await createMemberShell();
 
 	const response = await authOwnerAgent
 		.get('/resolve-signup-token')
@@ -317,14 +319,20 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 		.get('/resolve-signup-token')
 		.query({ inviterId: '123', inviteeId: '456' });
 
-	await Db.collections.User!.update(owner.id, { email: '' }); // cause inconsistent DB state
-
+	// user is already setup, thus call should error
 	const fourth = await authOwnerAgent
 		.get('/resolve-signup-token')
 		.query({ inviterId: INITIAL_TEST_USER.id })
 		.query({ inviteeId });
 
-	for (const response of [first, second, third, fourth]) {
+	// cause inconsistent DB state
+	await Db.collections.User!.update(owner.id, { email: '' });
+	const fifth = await authOwnerAgent
+		.get('/resolve-signup-token')
+		.query({ inviterId: INITIAL_TEST_USER.id })
+		.query({ inviteeId });
+
+	for (const response of [first, second, third, fourth, fifth]) {
 		expect(response.statusCode).toBe(400);
 	}
 });
@@ -364,7 +372,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 	expect(personalizationAnswers).toBeNull();
 	expect(password).toBeUndefined();
 	expect(resetPasswordToken).toBeUndefined();
-	expect(globalRole).toBeUndefined();
+	expect(globalRole).toBeDefined();
 
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();

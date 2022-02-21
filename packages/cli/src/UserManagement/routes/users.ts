@@ -114,7 +114,7 @@ export function usersNamespace(this: N8nApp): void {
 					.filter(([email, id]) => id && email)
 					.map(async ([email, id]) => {
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-						const inviteAcceptUrl = `${baseUrl}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
+						const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${id}`;
 						const result = await mailer.invite({
 							email,
 							inviteAcceptUrl,
@@ -159,6 +159,16 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
 			}
 
+			const invitee = users.find((user) => user.id === inviteeId);
+
+			if (!invitee || invitee.password) {
+				LoggerProxy.error('Invalid invite URL - invitee already setup', {
+					inviterId,
+					inviteeId,
+				});
+				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+			}
+
 			const inviter = users.find((user) => user.id === inviterId);
 
 			if (!inviter || !inviter.email || !inviter.firstName) {
@@ -195,6 +205,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const users = await Db.collections.User!.find({
 				where: { id: In([inviterId, inviteeId]) },
+				relations: ['globalRole'],
 			});
 
 			if (users.length !== 2) {
@@ -283,7 +294,7 @@ export function usersNamespace(this: N8nApp): void {
 				return { success: true };
 			}
 
-			const [ownedWorkflows, ownedCredentials] = await Promise.all([
+			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 				Db.collections.SharedWorkflow!.find({
 					relations: ['workflow'],
 					where: { user: userToDelete },
@@ -295,8 +306,19 @@ export function usersNamespace(this: N8nApp): void {
 			]);
 
 			await getConnection().transaction(async (transactionManager) => {
-				await transactionManager.remove(ownedWorkflows.map(({ workflow }) => workflow));
-				await transactionManager.remove(ownedCredentials.map(({ credentials }) => credentials));
+				const ownedWorkflows = await Promise.all(
+					ownedSharedWorkflows.map(async ({ workflow }) => {
+						if (workflow.active) {
+							// deactivate before deleting
+							await this.activeWorkflowRunner.remove(workflow.id.toString());
+						}
+						return workflow;
+					}),
+				);
+				await transactionManager.remove(ownedWorkflows);
+				await transactionManager.remove(
+					ownedSharedCredentials.map(({ credentials }) => credentials),
+				);
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
 
@@ -338,7 +360,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const result = await getInstance().invite({
 				email: reinvitee.email,
-				inviteAcceptUrl: `${baseUrl}/signup/inviterId=${req.user.id}&inviteeId=${reinvitee.id}`,
+				inviteAcceptUrl: `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${reinvitee.id}`,
 				domain: baseUrl,
 			});
 

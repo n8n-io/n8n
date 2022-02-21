@@ -945,9 +945,7 @@ class App {
 
 				await this.externalHooks.run('workflow.update', [updateData]);
 
-				const isActive = await this.activeWorkflowRunner.isActive(workflowId);
-
-				if (isActive) {
+				if (shared.workflow.active) {
 					// When workflow gets saved always remove it as the triggers could have been
 					// changed and so the changes would not take effect
 					await this.activeWorkflowRunner.remove(workflowId);
@@ -1028,7 +1026,10 @@ class App {
 					// When the workflow is supposed to be active add it again
 					try {
 						await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
-						await this.activeWorkflowRunner.add(workflowId, isActive ? 'update' : 'activate');
+						await this.activeWorkflowRunner.add(
+							workflowId,
+							shared.workflow.active ? 'update' : 'activate',
+						);
 					} catch (error) {
 						// If workflow could not be activated set it again to inactive
 						updateData.active = false;
@@ -1077,9 +1078,7 @@ class App {
 					);
 				}
 
-				const isActive = await this.activeWorkflowRunner.isActive(workflowId);
-
-				if (isActive) {
+				if (shared.workflow.active) {
 					// deactivate before deleting
 					await this.activeWorkflowRunner.remove(workflowId);
 				}
