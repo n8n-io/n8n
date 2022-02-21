@@ -99,14 +99,14 @@ checked out and set up:
 	git clone https://github.com/<your_github_username>/n8n.git
 	```
 
-1. Add the original n8n repository as `upstream` to your forked repository
-    ```
-	git remote add upstream https://github.com/n8n-io/n8n.git
-	```
-
 1. Go into repository folder
 	```
 	cd n8n
+	```
+
+1. Add the original n8n repository as `upstream` to your forked repository
+    ```
+	git remote add upstream https://github.com/n8n-io/n8n.git
 	```
 
 1. Install all dependencies of all modules and link them together:
