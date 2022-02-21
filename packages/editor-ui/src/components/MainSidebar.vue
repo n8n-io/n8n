@@ -548,7 +548,6 @@ export default mixins(
 <style lang="scss">
 .sidebar-popper{
 	.el-menu-item {
-		padding-left: 30px!important;
 		font-size: 0.9em;
 		height: 35px;
 		line-height: 35px;
