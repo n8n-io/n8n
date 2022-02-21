@@ -20,7 +20,6 @@ import Telemetry from './components/Telemetry.vue';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
-import { Route } from 'vue-router';
 
 export default mixins(showMessage).extend({
 	name: 'App',
