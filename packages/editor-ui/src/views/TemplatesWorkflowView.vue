@@ -1,56 +1,52 @@
 <template>
 	<TemplatesView>
-		<div :class="$style.template">
-			<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
-				<div :class="$style.header">
-					<go-back-button />
-					<div :class="$style.wrapper">
-						<div :class="$style.title">
-							<n8n-heading v-if="template && template.name" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
-							<n8n-text v-if="template && template.name" color="text-base" size="small">
-								{{ $locale.baseText('templates.workflow') }}
-							</n8n-text>
-							<n8n-loading :animated="true" :loading="!template || !template.name" :rows="2" variant="h1" />
-						</div>
-						<div :class="$style.button">
-							<n8n-button
-								v-if="template"
-								:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
-								size="large"
-								@click="navigateTo(template.id, 'WorkflowTemplate', $event)"
-							/>
-							<n8n-loading :animated="true" :loading="!template" :rows="1" variant="button" />
-						</div>
-					</div>
+		<template v-slot:header>
+			<go-back-button />
+			<div :class="$style.wrapper">
+				<div :class="$style.title">
+					<n8n-heading v-if="template && template.name" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
+					<n8n-text v-if="template && template.name" color="text-base" size="small">
+						{{ $locale.baseText('templates.workflow') }}
+					</n8n-text>
+					<n8n-loading :animated="true" :loading="!template || !template.name" :rows="2" variant="h1" />
 				</div>
-				<div>
-					<div :class="$style.image">
-						<WorkflowPreview
-							v-if="showPreview"
-							:workflow="template && template.workflow"
-							:loading="loading"
-							@close="onHidePreview"
-						/>
-					</div>
-					<div :class="$style.content">
-						<div :class="$style.markdown">
-							<n8n-markdown
-								:content="template && template.description"
-								:images="template && template.image"
-								:loading="loading"
-							/>
-						</div>
-						<div :class="$style.details">
-							<TemplateDetails
-								:block-title="$locale.baseText('template.details.appsInTheWorkflow')"
-								:loading="loading"
-								:template="template"
-							/>
-						</div>
-					</div>
+				<div :class="$style.button">
+					<n8n-button
+						v-if="template"
+						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
+						size="large"
+						@click="navigateTo(template.id, 'WorkflowTemplate', $event)"
+					/>
+					<n8n-loading :animated="true" :loading="!template" :rows="1" variant="button" />
 				</div>
 			</div>
-		</div>
+		</template>
+		<template v-slot:content>
+			<div :class="$style.image">
+				<WorkflowPreview
+					v-if="showPreview"
+					:workflow="template && template.workflow"
+					:loading="loading"
+					@close="onHidePreview"
+				/>
+			</div>
+			<div :class="$style.content">
+				<div :class="$style.markdown">
+					<n8n-markdown
+						:content="template && template.description"
+						:images="template && template.image"
+						:loading="loading"
+					/>
+				</div>
+				<div :class="$style.details">
+					<TemplateDetails
+						:block-title="$locale.baseText('template.details.appsInTheWorkflow')"
+						:loading="loading"
+						:template="template"
+					/>
+				</div>
+			</div>
+		</template>
 	</TemplatesView>
 </template>
 
@@ -75,9 +71,6 @@ export default mixins(workflowHelpers).extend({
 	computed: {
 		templateId() {
 			return this.$route.params.id;
-		},
-		isMenuCollapsed() {
-			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
 		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
 			return this.$store.getters['templates/getTemplateById'](this.templateId);
@@ -140,43 +133,6 @@ export default mixins(workflowHelpers).extend({
 </script>
 
 <style lang="scss" module>
-.template {
-	width: calc(100vw - 20px);
-	height: 100%;
-	min-height: 100vh;
-	position: relative;
-	display: flex;
-	justify-content: center;
-	background-color: var(--color-background-light);
-}
-
-.container {
-	width: 100%;
-	max-width: 1024px;
-	margin: 0 var(--spacing-3xl) 0 129px;
-	padding: var(--spacing-3xl) 0 var(--spacing-3xl);
-
-	@media (max-width: $--breakpoint-md) {
-		width: 900px;
-		margin: 0 var(--spacing-2xl) 0 113px;
-		padding: var(--spacing-2xl) 0 var(--spacing-2xl);
-	}
-}
-
-.expanded {
-	margin-left: 248px;
-
-	@media (max-width: $--breakpoint-2xs) {
-		margin-left: 113px;
-	}
-}
-
-.header {
-	padding: 0px 0px var(--spacing-2xl);
-	display: flex;
-	flex-direction: column;
-}
-
 .wrapper {
 	padding: var(--spacing-s) 0 0;
 	display: flex;

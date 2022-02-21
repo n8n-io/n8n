@@ -1,79 +1,77 @@
 <template>
 	<TemplatesView>
-		<div :class="$style.template">
-			<div :class="[$style.container, !isMenuCollapsed ? $style.expanded : '']">
-				<div :class="$style.header">
-					<div :class="$style.wrapper">
-						<div :class="$style.title">
-							<n8n-heading tag="h1" size="2xlarge">
-								{{ $locale.baseText('templates.heading') }}
-							</n8n-heading>
-						</div>
-						<div :class="$style.button">
-							<n8n-button
-								size="small"
-								type="primary"
-								:label="$locale.baseText('templates.newButton')"
-								:transparentBackground="false"
-								@click="openNewWorkflow"
-							/>
-						</div>
-					</div>
+		<template v-slot:header>
+			<div :class="$style.wrapper">
+				<div :class="$style.title">
+					<n8n-heading tag="h1" size="2xlarge">
+						{{ $locale.baseText('templates.heading') }}
+					</n8n-heading>
 				</div>
-				<div :class="$style.content">
-					<div :class="$style.filters">
-						<TemplateFilters
-							:categories="allCategories"
-							:selected="categories"
-							:loading="loadingCategories"
-							@select="onCategorySelected"
-							@clear="onCategoryUnselected"
-							@clearAll="onCategoriesCleared"
-						/>
+				<div :class="$style.button">
+					<n8n-button
+						size="small"
+						type="primary"
+						:label="$locale.baseText('templates.newButton')"
+						:transparentBackground="false"
+						@click="openNewWorkflow"
+					/>
+				</div>
+			</div>
+		</template>
+		<template v-slot:content>
+			<div :class="$style.contentWrapper">
+				<div :class="$style.filters">
+					<TemplateFilters
+						:categories="allCategories"
+						:selected="categories"
+						:loading="loadingCategories"
+						@select="onCategorySelected"
+						@clear="onCategoryUnselected"
+						@clearAll="onCategoriesCleared"
+					/>
+				</div>
+				<div :class="$style.search">
+					<div :class="$style.input">
+						<n8n-input
+							v-model="search"
+							:placeholder="$locale.baseText('templates.searchPlaceholder')"
+							@input="onSearchInput"
+							clearable
+						>
+							<font-awesome-icon icon="search" slot="prefix" />
+						</n8n-input>
 					</div>
-					<div :class="$style.search">
-						<div :class="$style.input">
-							<n8n-input
-								v-model="search"
-								:placeholder="$locale.baseText('templates.searchPlaceholder')"
-								@input="onSearchInput"
-								clearable
-							>
-								<font-awesome-icon icon="search" slot="prefix" />
-							</n8n-input>
+					<div :class="$style.carousel">
+						<CollectionsCarousel
+							:collections="collections"
+							:loading="loadingCollections"
+							:navigate-to="navigateTo"
+						/>
+						<TemplateList
+							:abbreviate-number="abbreviateNumber"
+							:categories="categories"
+							:infinite-scroll-enabled="true"
+							:loading="loadingWorkflows"
+							:navigate-to="navigateTo"
+							:search="search"
+							:total-workflows="totalWorkflows"
+							:workflows="workflows"
+							@loadMore="onLoadMore"
+						/>
+						<div v-if="endOfSearch" :class="$style.endText">
+							<n8n-text size="medium" color="text-base">
+								<span v-html="$locale.baseText('templates.endResult')" />
+							</n8n-text>
 						</div>
-						<div :class="$style.carousel">
-							<CollectionsCarousel
-								:collections="collections"
-								:loading="loadingCollections"
-								:navigate-to="navigateTo"
-							/>
-							<TemplateList
-								:abbreviate-number="abbreviateNumber"
-								:categories="categories"
-								:infinite-scroll-enabled="true"
-								:loading="loadingWorkflows"
-								:navigate-to="navigateTo"
-								:search="search"
-								:total-workflows="totalWorkflows"
-								:workflows="workflows"
-								@loadMore="onLoadMore"
-							/>
-							<div v-if="endOfSearch" :class="$style.endText">
-								<n8n-text size="medium" color="text-base">
-									<span v-html="$locale.baseText('templates.endResult')" />
-								</n8n-text>
-							</div>
-							<div v-else-if="nothingFound" :class="$style.endText">
-								<n8n-text color="text-base">{{
-									$locale.baseText('templates.noSearchResults')
-								}}</n8n-text>
-							</div>
+						<div v-else-if="nothingFound" :class="$style.endText">
+							<n8n-text color="text-base">{{
+								$locale.baseText('templates.noSearchResults')
+							}}</n8n-text>
 						</div>
 					</div>
 				</div>
 			</div>
-		</div>
+		</template>
 	</TemplatesView>
 </template>
 
@@ -108,9 +106,6 @@ export default mixins(genericHelpers).extend({
 		},
 		collections(): ITemplatesCollection[] {
 			return this.$store.getters['templates/getSearchedCollections'](this.query) || [];
-		},
-		isMenuCollapsed(): boolean {
-			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
 		totalWorkflows(): number {
 			return this.$store.getters['templates/getSearchedWorkflowsTotal'](this.query);
@@ -309,46 +304,18 @@ export default mixins(genericHelpers).extend({
 </script>
 
 <style lang="scss" module>
-.template {
-	width: calc(100vw - 20px);
-	height: 100%;
-	min-height: 100vh;
-	position: relative;
-	display: flex;
-	justify-content: center;
-	background-color: var(--color-background-light);
-}
-
-.container {
-	width: 100%;
-	max-width: 1024px;
-	margin: 0 var(--spacing-3xl) 0 129px;
-	padding: var(--spacing-3xl) 0 var(--spacing-3xl);
-
-	@media (max-width: $--breakpoint-md) {
-		width: 900px;
-		margin: 0 var(--spacing-2xl) 0 113px;
-		padding: var(--spacing-2xl) 0 var(--spacing-2xl);
-	}
-}
-
-.expanded {
-	margin-left: 248px;
-
-	@media (max-width: $--breakpoint-2xs) {
-		margin-left: 113px;
-	}
-}
-
-.header {
-	padding: 0px 0px var(--spacing-2xl);
-	display: flex;
-	flex-direction: column;
-}
-
 .wrapper {
 	display: flex;
 	justify-content: space-between;
+}
+
+.contentWrapper {
+	display: flex;
+	justify-content: space-between;
+
+	@media (max-width: $--breakpoint-2xs) {
+		flex-direction: column;
+	}
 }
 
 .title {
@@ -364,16 +331,6 @@ export default mixins(genericHelpers).extend({
 
 	@media (max-width: $--breakpoint-xs) {
 		width: 55%;
-	}
-}
-
-.content {
-	padding-bottom: var(--spacing-3xl);
-	display: flex;
-	justify-content: space-between;
-
-	@media (max-width: $--breakpoint-2xs) {
-		flex-direction: column;
 	}
 }
 

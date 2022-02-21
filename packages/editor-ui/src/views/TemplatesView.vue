@@ -1,9 +1,12 @@
 <template>
-	<div :class="$style.container">
-		<div :class="$style.contentContainer">
-			<div :class="$style.content">
-				<slot>
-				</slot>
+	<div :class="$style.template">
+		<div :class="isMenuCollapsed ? $style.menu : $style.expandedMenu"></div>
+		<div :class="$style.container">
+			<div :class="$style.header">
+				<slot name="header"></slot>
+			</div>
+			<div>
+				<slot name="content"></slot>
 			</div>
 		</div>
 	</div>
@@ -14,32 +17,48 @@ import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'TemplatesView',
-	mounted() {
+	computed: {
+		isMenuCollapsed(): boolean {
+			return this.$store.getters['ui/sidebarMenuCollapsed'];
+		},
 	},
 });
 </script>
 
 <style lang="scss" module>
-// .container {
-// 	height: 100%;
-// 	width: 100%;
-// 	display: flex;
-// 	overflow: hidden;
-// }
+.mockMenu {
+	height: 100%;
+	min-height: 100vh;
+}
 
-// .contentContainer {
-// 	composes: container;
-// 	justify-content: center;
-// 	padding-top: 70.5px;
-// 	height: 100%;
-// 	overflow: auto;
-// 	background-color: var(--color-background-light);
-// }
+.menu {
+	composes: mockMenu;
+	min-width: $--sidebar-width;
+}
 
-// .content {
-// 	height: 100%;
-// 	width: 100%;
-// 	max-width: 800px;
-// 	padding: 0 var(--spacing-2xl);
-// }
+.expandedMenu {
+	composes: mockMenu;
+	min-width: $--sidebar-expanded-width;
+}
+
+.template {
+	display: flex;
+}
+
+.container {
+	width: 100%;
+	max-width: 1024px;
+	padding: var(--spacing-3xl) var(--spacing-3xl) var(--spacing-4xl) var(--spacing-3xl);
+	margin: auto;
+
+	@media (max-width: $--breakpoint-md) {
+		width: 900px;
+	}
+}
+
+.header {
+	display: flex;
+	flex-direction: column;
+	margin-bottom: var(--spacing-2xl);
+}
 </style>
