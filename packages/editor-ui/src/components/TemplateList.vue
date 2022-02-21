@@ -90,9 +90,6 @@ import { filterTemplateNodes, abbreviateNumber } from './helpers';
 export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
 	props: {
-		categories: {
-			type: Array,
-		},
 		infiniteScrollEnabled: {
 			type: Boolean,
 			default: false,

@@ -25,7 +25,6 @@
 					<TemplateList
 						:infinite-scroll-enabled="false"
 						:loading="loading"
-						:node-icon-size="18"
 						:use-workflow-button="true"
 						:workflows="loading ? []: collectionWorkflows"
 						:navigateTo="navigateTo"

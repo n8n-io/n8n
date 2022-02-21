@@ -45,12 +45,9 @@
 						:navigate-to="navigateTo"
 					/>
 					<TemplateList
-						:abbreviate-number="abbreviateNumber"
-						:categories="categories"
 						:infinite-scroll-enabled="true"
 						:loading="loadingWorkflows"
 						:navigate-to="navigateTo"
-						:search="search"
 						:total-workflows="totalWorkflows"
 						:workflows="workflows"
 						@loadMore="onLoadMore"
