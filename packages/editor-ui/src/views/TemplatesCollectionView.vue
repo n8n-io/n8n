@@ -1,7 +1,6 @@
 <template>
-	<TemplatesView>
+	<TemplatesView :goBackEnabled="true">
 		<template v-slot:header>
-			<go-back-button />
 			<div :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading v-if="collection && collection.name" tag="h1" size="2xlarge">{{ collection.name }}</n8n-heading>
@@ -43,7 +42,6 @@
 </template>
 
 <script lang="ts">
-import GoBackButton from '@/components/GoBackButton.vue';
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
@@ -56,7 +54,6 @@ import mixins from 'vue-typed-mixins';
 export default mixins(workflowHelpers).extend({
 	name: 'TemplatesCollectionView',
 	components: {
-		GoBackButton,
 		TemplateDetails,
 		TemplateList,
 		TemplatesView,
@@ -161,10 +158,6 @@ export default mixins(workflowHelpers).extend({
 
 .markdown {
 	margin-bottom: var(--spacing-l);
-}
-
-.spacer {
-	margin: 56px;
 }
 
 .details {

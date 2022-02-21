@@ -3,6 +3,9 @@
 		<div :class="isMenuCollapsed ? $style.menu : $style.expandedMenu"></div>
 		<div :class="$style.container">
 			<div :class="$style.header">
+				<div v-if="goBackEnabled">
+					<GoBackButton />
+				</div>
 				<slot name="header"></slot>
 			</div>
 			<div>
@@ -14,9 +17,19 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import GoBackButton from '@/components/GoBackButton.vue';
 
 export default Vue.extend({
 	name: 'TemplatesView',
+	components: {
+		GoBackButton,
+	},
+	props: {
+		goBackEnabled: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	computed: {
 		isMenuCollapsed(): boolean {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];

@@ -10,9 +10,7 @@
 				<div :class="$style.button">
 					<n8n-button
 						size="small"
-						type="primary"
 						:label="$locale.baseText('templates.newButton')"
-						:transparentBackground="false"
 						@click="openNewWorkflow"
 					/>
 				</div>
@@ -306,22 +304,6 @@ export default mixins(genericHelpers).extend({
 
 	@media (max-width: $--breakpoint-2xs) {
 		flex-direction: column;
-	}
-}
-
-.title {
-	width: 75%;
-
-	@media (max-width: $--breakpoint-2xs) {
-		width: 45%;
-	}
-}
-
-.button {
-	display: block;
-
-	@media (max-width: $--breakpoint-xs) {
-		width: 55%;
 	}
 }
 
