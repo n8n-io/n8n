@@ -2,18 +2,12 @@
 	<div :class="$style.filters" class="template-filters">
 		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
 		<div v-if="loading" :class="$style.list">
-			<n8n-loading
-				:animated="true"
-				:loading="loading"
-				:rows="6"
-				variant="p"
-			/>
-			<div :class="$style.spacer" />
+			<n8n-loading-blocks :blocks="1" :loading="loading" :rows="6" />
 		</div>
 		<ul v-if="!loading" :class="$style.categories">
 			<li :class="$style.item">
 				<el-checkbox
-					label="All Categories"
+					:label="$locale.baseText('templates.allCategories')"
 					:value="allSelected"
 					@change="(value) => resetCategories(value)"
 				/>
