@@ -171,6 +171,6 @@ export default mixins(workflowHelpers).extend({
 }
 
 .details {
-	min-width: 180px;
+	width: 180px;
 }
 </style>

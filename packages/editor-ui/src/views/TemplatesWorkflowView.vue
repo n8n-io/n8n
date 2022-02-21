@@ -159,11 +159,16 @@ export default mixins(workflowHelpers).extend({
 	padding: var(--spacing-2xl) 0;
 	display: flex;
 	justify-content: space-between;
+
+	@media (max-width: $--breakpoint-xs) {
+		display: block;
+	}
 }
 
 .markdown {
-	width: calc(100% - 180px);
+	width: 100%;
 	padding-right: var(--spacing-2xl);
+	margin-bottom: var(--spacing-l);
 }
 
 .spacer {
@@ -172,9 +177,5 @@ export default mixins(workflowHelpers).extend({
 
 .details {
 	width: 180px;
-
-	@media (max-width: $--breakpoint-xs) {
-		width: auto;
-	}
 }
 </style>
