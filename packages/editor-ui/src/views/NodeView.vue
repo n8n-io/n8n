@@ -2829,7 +2829,6 @@ export default mixins(
 }
 
 .node-view-root {
-	background-color: var(--color-canvas-background);
 	position: absolute;
 	width: 100%;
 	height: 100%;
@@ -2852,6 +2851,7 @@ export default mixins(
 }
 
 .node-view-background {
+	background-color: var(--color-canvas-background);
 	position: absolute;
 	width: 10000px;
 	height: 10000px;
