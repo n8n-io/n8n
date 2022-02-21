@@ -13,7 +13,7 @@
 				/>
 			</li>
 			<li
-				v-for="category in collapsed ? sortedCategories.slice(0, 6) : sortedCategories"
+				v-for="category in collapsed ? sortedCategories.slice(0, categoriesToBeSliced) : sortedCategories"
 				:key="category.id"
 				:class="$style.item"
 			>
@@ -26,11 +26,11 @@
 		</ul>
 		<div
 			:class="$style.button"
-			v-if="sortedCategories.length > 6 && collapsed && !loading"
+			v-if="sortedCategories.length > categoriesToBeSliced && collapsed && !loading"
 			@click="collapseAction"
 		>
 			<n8n-text size="small" color="primary">
-				+ {{ `${sortedCategories.length - 6} more` }}
+				+ {{ `${sortedCategories.length - categoriesToBeSliced} more` }}
 			</n8n-text>
 		</div>
 	</div>
@@ -46,6 +46,10 @@ export default mixins(genericHelpers).extend({
 	props: {
 		categories: {
 			type: Array,
+		},
+		categoriesToBeSliced: {
+			type: Number,
+			default: 6,
 		},
 		loading: {
 			type: Boolean,
@@ -72,17 +76,17 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	methods: {
+		collapseAction() {
+			this.collapsed = false;
+		},
+		handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
+			this.$emit(value ? 'select' : 'clear', selectedCategory.id);
+		},
 		isSelected(categoryId: string) {
 			return this.selected.includes(categoryId);
 		},
 		resetCategories() {
 			this.$emit('clearAll');
-		},
-		handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
-			this.$emit(value ? 'select': 'clear', selectedCategory.id);
-		},
-		collapseAction() {
-			this.collapsed = false;
 		},
 	},
 });
