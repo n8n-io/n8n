@@ -2,7 +2,6 @@ import { ITemplatesCategory, ITemplatesCollection, ITemplatesQuery, ITemplatesWo
 import { graphql, get } from './helpers';
 
 export function testHealthEndpoint(apiEndpoint: string) {
-	console.log('sup', apiEndpoint);
 	return get(apiEndpoint, '/health');
 }
 
