@@ -31,43 +31,39 @@
 					/>
 				</div>
 				<div :class="$style.search">
-					<div :class="$style.input">
-						<n8n-input
-							v-model="search"
-							:placeholder="$locale.baseText('templates.searchPlaceholder')"
-							@input="onSearchInput"
-							clearable
-						>
-							<font-awesome-icon icon="search" slot="prefix" />
-						</n8n-input>
+					<n8n-input
+						v-model="search"
+						:placeholder="$locale.baseText('templates.searchPlaceholder')"
+						@input="onSearchInput"
+						clearable
+					>
+						<font-awesome-icon icon="search" slot="prefix" />
+					</n8n-input>
+					<CollectionsCarousel
+						:collections="collections"
+						:loading="loadingCollections"
+						:navigate-to="navigateTo"
+					/>
+					<TemplateList
+						:abbreviate-number="abbreviateNumber"
+						:categories="categories"
+						:infinite-scroll-enabled="true"
+						:loading="loadingWorkflows"
+						:navigate-to="navigateTo"
+						:search="search"
+						:total-workflows="totalWorkflows"
+						:workflows="workflows"
+						@loadMore="onLoadMore"
+					/>
+					<div v-if="endOfSearch" :class="$style.endText">
+						<n8n-text size="medium" color="text-base">
+							<span v-html="$locale.baseText('templates.endResult')" />
+						</n8n-text>
 					</div>
-					<div :class="$style.carousel">
-						<CollectionsCarousel
-							:collections="collections"
-							:loading="loadingCollections"
-							:navigate-to="navigateTo"
-						/>
-						<TemplateList
-							:abbreviate-number="abbreviateNumber"
-							:categories="categories"
-							:infinite-scroll-enabled="true"
-							:loading="loadingWorkflows"
-							:navigate-to="navigateTo"
-							:search="search"
-							:total-workflows="totalWorkflows"
-							:workflows="workflows"
-							@loadMore="onLoadMore"
-						/>
-						<div v-if="endOfSearch" :class="$style.endText">
-							<n8n-text size="medium" color="text-base">
-								<span v-html="$locale.baseText('templates.endResult')" />
-							</n8n-text>
-						</div>
-						<div v-else-if="nothingFound" :class="$style.endText">
-							<n8n-text color="text-base">{{
-								$locale.baseText('templates.noSearchResults')
-							}}</n8n-text>
-						</div>
+					<div v-else-if="nothingFound" :class="$style.endText">
+						<n8n-text color="text-base">{{
+							$locale.baseText('templates.noSearchResults')
+						}}</n8n-text>
 					</div>
 				</div>
 			</div>
@@ -335,41 +331,28 @@ export default mixins(genericHelpers).extend({
 }
 
 .filters {
-	width: 188px;
+	width: 200px;
 
-	@media (max-width: $--breakpoint-xs) {
-		width: 15%;
-	}
+	// @media (max-width: $--breakpoint-xs) {
+	// 	width: 15%;
+	// }
 
-	@media (max-width: $--breakpoint-2xs) {
-		width: 100%;
-	}
+	// @media (max-width: $--breakpoint-2xs) {
+	// 	width: 100%;
+	// }
 }
 
 .search {
 	width: 100%;
 	padding-left: var(--spacing-2xl);
 
-	@media (max-width: $--breakpoint-xs) {
-		width: 75%;
+	> * {
+		margin-bottom: var(--spacing-l);
 	}
 
 	@media (max-width: $--breakpoint-2xs) {
-		width: 100%;
 		padding-left: 0;
 	}
 }
 
-.input {
-	width: 100%;
-}
-
-.carousel {
-	width: 100%;
-	padding-top: var(--spacing-s);
-}
-
-.endText {
-	margin-top: var(--spacing-l);
-}
 </style>
