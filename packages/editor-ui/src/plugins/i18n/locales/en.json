@@ -445,7 +445,7 @@
 	},
 	"nodeSettings": {
 		"alwaysOutputData": {
-      "description": "If active, will output a single, empty item when the output would have been empty. Be careful setting this on 'if' nodes, as it could cause an infinite loop.",
+      "description": "If active, will output a single, empty item when the output would have been empty. Use to prevent the workflow finishing on this node.",
 			"displayName": "Always Output Data"
 		},
 		"clickOnTheQuestionMarkIcon": "Click the '?' icon to open this node on n8n.io",
