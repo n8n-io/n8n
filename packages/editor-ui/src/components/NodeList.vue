@@ -1,9 +1,9 @@
 <template>
 	<div :class="$style.list">
-		<div v-for="node in slicedNodes" :class="$style.container" :key="node.name">
-			<HoverableNodeIcon :nodeType="node" :size="nodeSize" :title="node.name" />
+		<div v-for="node in slicedNodes" :class="[$style.container, $style[size]]" :key="node.name">
+			<HoverableNodeIcon :nodeType="node" :size="size === 'md'? 24: 18" :title="node.name" />
 		</div>
-		<div :class="$style.button" v-if="filteredCoreNodes.length > nodesToBeShown + 1">
+		<div :class="$style.button" v-if="filteredCoreNodes.length > limit + 1">
 			+{{ hiddenNodes }}
 		</div>
 	</div>
@@ -24,13 +24,13 @@ export default mixins(genericHelpers).extend({
 		nodes: {
 			type: Array,
 		},
-		nodesToBeShown: {
+		limit: {
 			type: Number,
 			default: 4,
 		},
-		nodeSize: {
-			type: Number,
-			default: 18,
+		size: {
+			type: String,
+			default: 'sm',
 		},
 	},
 	components: {
@@ -49,10 +49,10 @@ export default mixins(genericHelpers).extend({
 	},
 	methods: {
 		countNodesToBeSliced(nodes: ITemplatesNode[]): number {
-			if (nodes.length > this.nodesToBeShown) {
-				return this.nodesToBeShown - 1;
+			if (nodes.length > this.limit) {
+				return this.limit - 1;
 			} else {
-				return this.nodesToBeShown;
+				return this.limit;
 			}
 		},
 	},
@@ -72,9 +72,16 @@ export default mixins(genericHelpers).extend({
 .container {
 	width: 18px;
 	height: 18px;
-	margin-left: var(--spacing-2xs);
 	position: relative;
 	display: block;
+}
+
+.sm {
+	margin-left: var(--spacing-2xs);
+}
+
+.md {
+	margin-left: var(--spacing-xs);
 }
 
 .image {

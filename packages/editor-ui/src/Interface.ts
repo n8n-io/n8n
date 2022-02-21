@@ -550,7 +550,6 @@ export interface ITemplatesWorkflow {
 	user: {
 		username: string;
 	};
-	createdAt: string;
 }
 
 export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow {

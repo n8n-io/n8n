@@ -1,5 +1,4 @@
 import N8nButton from './N8nButton';
-import N8nCard from './N8nCard';
 import N8nIcon from './N8nIcon';
 import N8nIconButton from './N8nIconButton';
 import N8nImage from './N8nImage';
@@ -24,7 +23,6 @@ import N8nOption from './N8nOption';
 
 export {
 	N8nButton,
-	N8nCard,
 	N8nIcon,
 	N8nIconButton,
 	N8nImage,
