@@ -31,11 +31,24 @@ export function usersNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: UserRequest.Invite) => {
 			if (config.get('userManagement.emails.mode') === '') {
-				Logger.debug('Request to send email invite(s) to user(s) failed emailing was not set up');
+				Logger.debug(
+					'Request to send email invite(s) to user(s) failed because emailing was not set up',
+				);
 				throw new ResponseHelper.ResponseError(
-					'Email sending must be set up in order to invite other users',
+					'Email sending must be set up in order to request a password reset email',
 					undefined,
 					500,
+				);
+			}
+
+			if (!config.get('userManagement.hasOwner')) {
+				Logger.debug(
+					'Request to send email invite(s) to user(s) failed because emailing was not set up',
+				);
+				throw new ResponseHelper.ResponseError(
+					'You must set up your own account before inviting others',
+					undefined,
+					400,
 				);
 			}
 

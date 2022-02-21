@@ -85,6 +85,7 @@ import {
 	IWorkflowBase,
 	LoggerProxy,
 	NodeHelpers,
+	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -148,13 +149,13 @@ import {
 import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
-import * as PersonalizationSurvey from './PersonalizationSurvey';
 
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
+import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 import { userManagementRouter } from './UserManagement';
 import { User } from './databases/entities/User';
@@ -230,6 +231,8 @@ class App {
 	presetCredentialsLoaded: boolean;
 
 	isUserManagementEnabled: boolean;
+
+	webhookMethods: WebhookHttpMethod[];
 
 	constructor() {
 		this.app = express();
@@ -309,9 +312,8 @@ class App {
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
-			personalizationSurvey: {
-				shouldShow: false,
-			},
+			personalizationSurveyEnabled:
+				config.get('personalization.enabled') && config.get('diagnostics.enabled'),
 			defaultLocale: config.get('defaultLocale'),
 			userManagement: {
 				enabled:
@@ -349,9 +351,6 @@ class App {
 		this.frontendSettings.versionCli = this.versions.cli;
 
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
-
-		this.frontendSettings.personalizationSurvey =
-			await PersonalizationSurvey.preparePersonalizationSurvey();
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -2520,7 +2519,7 @@ class App {
 					}
 
 					if (executingWorkflowIds.length > 0) {
-						Object.assign(findOptions.where, { id: !In(executingWorkflowIds) });
+						Object.assign(findOptions.where, { id: Not(In(executingWorkflowIds)) });
 					}
 
 					const executions = await Db.collections.Execution!.find(findOptions);
@@ -3023,107 +3022,45 @@ class App {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
 
-		// HEAD webhook requests (test for UI)
-		this.app.head(
+		// Register all webhook requests (test for UI)
+		this.app.all(
 			`/${this.endpointWebhookTest}/*`,
 			async (req: express.Request, res: express.Response) => {
 				// Cut away the "/webhook-test/" to get the registred part of the url
 				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 					this.endpointWebhookTest.length + 2,
 				);
+
+				const method = req.method.toUpperCase() as WebhookHttpMethod;
+
+				if (method === 'OPTIONS') {
+					let allowedMethods: string[];
+					try {
+						allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
+						allowedMethods.push('OPTIONS');
+
+						// Add custom "Allow" header to satisfy OPTIONS response.
+						res.append('Allow', allowedMethods);
+					} catch (error) {
+						ResponseHelper.sendErrorResponse(res, error);
+						return;
+					}
+
+					ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+					return;
+				}
+
+				if (!WEBHOOK_METHODS.includes(method)) {
+					ResponseHelper.sendErrorResponse(
+						res,
+						new Error(`The method ${method} is not supported.`),
+					);
+					return;
+				}
 
 				let response;
 				try {
-					response = await this.testWebhooks.callTestWebhook('HEAD', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
-			},
-		);
-
-		// HEAD webhook requests (test for UI)
-		this.app.options(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let allowedMethods: string[];
-				try {
-					allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
-					allowedMethods.push('OPTIONS');
-
-					// Add custom "Allow" header to satisfy OPTIONS response.
-					res.append('Allow', allowedMethods);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-			},
-		);
-
-		// GET webhook requests (test for UI)
-		this.app.get(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let response;
-				try {
-					response = await this.testWebhooks.callTestWebhook('GET', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
-			},
-		);
-
-		// POST webhook requests (test for UI)
-		this.app.post(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let response;
-				try {
-					response = await this.testWebhooks.callTestWebhook('POST', requestUrl, req, res);
+					response = await this.testWebhooks.callTestWebhook(method, requestUrl, req, res);
 				} catch (error) {
 					ResponseHelper.sendErrorResponse(res, error);
 					return;

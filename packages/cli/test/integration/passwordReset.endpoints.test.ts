@@ -80,6 +80,7 @@ test('POST /forgot-password should send password reset email', async () => {
 
 	const owner = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
 	expect(owner.resetPasswordToken).toBeDefined();
+	expect(owner.resetPasswordTokenExpiration).toBeGreaterThan(Math.ceil(Date.now() / 1000));
 });
 
 test('POST /forgot-password should fail if emailing is not set up', async () => {
@@ -132,8 +133,12 @@ test('GET /resolve-password-token should succeed with valid inputs', async () =>
 	const authlessAgent = await utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
+	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
 
-	await Db.collections.User!.update(INITIAL_TEST_USER.id, { resetPasswordToken });
+	await Db.collections.User!.update(INITIAL_TEST_USER.id, {
+		resetPasswordToken,
+		resetPasswordTokenExpiration,
+	});
 
 	const response = await authlessAgent
 		.get('/resolve-password-token')
@@ -170,11 +175,36 @@ test('GET /resolve-password-token should fail if user is not found', async () =>
 	expect(response.statusCode).toBe(404);
 });
 
+test('GET /resolve-password-token should fail if token is expired', async () => {
+	const authlessAgent = await utils.createAgent(app);
+
+	const resetPasswordToken = uuid();
+	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) - 1;
+
+	await Db.collections.User!.update(INITIAL_TEST_USER.id, {
+		resetPasswordToken,
+		resetPasswordTokenExpiration,
+	});
+
+	config.set('userManagement.emails.mode', 'smtp');
+
+	const response = await authlessAgent
+		.get('/resolve-password-token')
+		.query({ userId: INITIAL_TEST_USER.id, token: resetPasswordToken });
+
+	expect(response.statusCode).toBe(404);
+});
+
 test('POST /change-password should succeed with valid inputs', async () => {
 	const authlessAgent = await utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
-	await Db.collections.User!.update(INITIAL_TEST_USER.id, { resetPasswordToken });
+	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
+
+	await Db.collections.User!.update(INITIAL_TEST_USER.id, {
+		resetPasswordToken,
+		resetPasswordTokenExpiration,
+	});
 
 	const passwordToStore = randomValidPassword();
 
@@ -202,7 +232,12 @@ test('POST /change-password should fail with invalid inputs', async () => {
 	const authlessAgent = await utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
-	await Db.collections.User!.update(INITIAL_TEST_USER.id, { resetPasswordToken });
+	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
+
+	await Db.collections.User!.update(INITIAL_TEST_USER.id, {
+		resetPasswordToken,
+		resetPasswordTokenExpiration,
+	});
 
 	const invalidPayloads = [
 		{ token: uuid() },
@@ -232,6 +267,28 @@ test('POST /change-password should fail with invalid inputs', async () => {
 		const { password: fetchedHashedPassword } = await Db.collections.User!.findOneOrFail();
 		expect(originalHashedPassword).toBe(fetchedHashedPassword);
 	}
+});
+
+test('POST /change-password should fail when token has expired', async () => {
+	const authlessAgent = await utils.createAgent(app);
+
+	const resetPasswordToken = uuid();
+	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) - 1;
+
+	await Db.collections.User!.update(INITIAL_TEST_USER.id, {
+		resetPasswordToken,
+		resetPasswordTokenExpiration,
+	});
+
+	const passwordToStore = randomValidPassword();
+
+	const response = await authlessAgent.post('/change-password').send({
+		token: resetPasswordToken,
+		userId: INITIAL_TEST_USER.id,
+		password: passwordToStore,
+	});
+
+	expect(response.statusCode).toBe(404);
 });
 
 const INITIAL_TEST_USER = {

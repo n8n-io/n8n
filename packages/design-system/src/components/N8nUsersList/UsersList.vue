@@ -5,7 +5,7 @@
 			:key="user.id"
 			:class="$style.itemContainer"
 		>
-			<n8n-user-info v-bind="user" />
+			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 			<div :class="$style.badgeContainer">
 				<n8n-badge v-if="user.isOwner" theme="secondary">Owner</n8n-badge>
 				<n8n-action-toggle
@@ -43,6 +43,9 @@ export default Vue.extend({
 			default() {
 				return [];
 			},
+		},
+		currentUserId: {
+			type: String,
 		},
 	},
 	computed: {

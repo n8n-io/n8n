@@ -83,6 +83,10 @@ export class User {
 	@Column({ type: String, nullable: true })
 	resetPasswordToken?: string | null;
 
+	// Expiration timestamp saved in seconds
+	@Column({ type: Number, nullable: true })
+	resetPasswordTokenExpiration?: number | null;
+
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,

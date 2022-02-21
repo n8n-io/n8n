@@ -45,7 +45,14 @@ export function validatePassword(password?: string): string {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User): PublicUser {
-	const { password, resetPasswordToken, createdAt, updatedAt, ...sanitizedUser } = user;
+	const {
+		password,
+		resetPasswordToken,
+		resetPasswordTokenExpiration,
+		createdAt,
+		updatedAt,
+		...sanitizedUser
+	} = user;
 	return sanitizedUser;
 }
 

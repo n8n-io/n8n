@@ -6,7 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
-import { IsNull, Not } from 'typeorm';
+import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, ResponseHelper } from '../..';
@@ -26,7 +26,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/forgot-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.Email) => {
 			if (config.get('userManagement.emails.mode') === '') {
-				Logger.debug('Request to send password reset email failed emailing was not set up');
+				Logger.debug('Request to send password reset email failed because emailing was not set up');
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to request a password reset email',
 					undefined,
@@ -55,7 +55,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// User should just be able to reset password if one is already present
 			const user = await Db.collections.User!.findOne({ email, password: Not(IsNull()) });
 
-			if (!user) {
+			if (!user || !user.password) {
 				Logger.debug(
 					'Request to send password reset email failed because no user was found for the provided email',
 					{ invalidEmail: email },
@@ -67,7 +67,9 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const { id, firstName, lastName, resetPasswordToken } = user;
 
-			await Db.collections.User!.update(id, { resetPasswordToken });
+			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
+
+			await Db.collections.User!.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
 
 			const baseUrl = getBaseUrl();
 			const url = new URL('/change-password', baseUrl);
@@ -104,7 +106,14 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
-			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
+			// Timestamp is saved in seconds
+			const currentTimestamp = Math.floor(Date.now() / 1000);
+
+			const user = await Db.collections.User!.findOne({
+				id,
+				resetPasswordToken,
+				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+			});
 
 			if (!user) {
 				Logger.debug(
@@ -136,12 +145,23 @@ export function passwordResetNamespace(this: N8nApp): void {
 						payload: req.body,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Parameter missing', undefined, 400);
+				throw new ResponseHelper.ResponseError(
+					'Missing user ID or password or reset password token',
+					undefined,
+					400,
+				);
 			}
 
 			const validPassword = validatePassword(password);
 
-			const user = await Db.collections.User!.findOne({ id: userId, resetPasswordToken });
+			// Timestamp is saved in seconds
+			const currentTimestamp = Math.floor(Date.now() / 1000);
+
+			const user = await Db.collections.User!.findOne({
+				id: userId,
+				resetPasswordToken,
+				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+			});
 
 			if (!user) {
 				Logger.debug(
@@ -157,6 +177,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			await Db.collections.User!.update(userId, {
 				password: hashSync(validPassword, genSaltSync(10)),
 				resetPasswordToken: null,
+				resetPasswordTokenExpiration: null,
 			});
 
 			Logger.info('User password updated successfully', { userId });

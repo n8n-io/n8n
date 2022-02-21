@@ -23,6 +23,7 @@
 								:users="allUsers"
 								:value="transferId"
 								:ignoreIds="ignoreIds"
+								:currentUserId="currentUserId"
 								@input="setTransferId"
 							/>
 						</n8n-input-label>
