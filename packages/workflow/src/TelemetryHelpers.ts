@@ -43,19 +43,17 @@ export function generateNodesGraph(
 					nodeItem.domain = node.parameters.url as string;
 				}
 			} else {
-				const nodeType = nodeTypes.getByName(node.type) as INodeType;
+				const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
-				if (nodeType.description?.properties) {
-					nodeType.description.properties.forEach((property) => {
-						if (
-							property.name === 'operation' ||
-							property.name === 'resource' ||
-							property.name === 'mode'
-						) {
-							nodeItem[property.name] = property.default ? property.default.toString() : undefined;
-						}
-					});
-				}
+				nodeType?.description.properties.forEach((property) => {
+					if (
+						property.name === 'operation' ||
+						property.name === 'resource' ||
+						property.name === 'mode'
+					) {
+						nodeItem[property.name] = property.default ? property.default.toString() : undefined;
+					}
+				});
 
 				nodeItem.operation = node.parameters.operation?.toString() ?? nodeItem.operation;
 				nodeItem.resource = node.parameters.resource?.toString() ?? nodeItem.resource;
@@ -80,8 +78,8 @@ export function generateNodesGraph(
 	} catch (e) {
 		const logger = getLoggerInstance();
 		logger.warn(`Failed to generate nodes graph for workflowId: ${workflow.id as string | number}`);
-		logger.debug((e as Error).message);
-		logger.debug((e as Error).stack ?? '');
+		logger.warn((e as Error).message);
+		logger.warn((e as Error).stack ?? '');
 	}
 
 	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex };
