@@ -15,10 +15,10 @@
 					@click="navigateTo(workflow.id, 'TemplatesWorkflowView', $event)"
 				>
 					<LongCard
+						v-if="workflow.name"
 						:class="index === workflows.length - 1 && !loading ? $style.last : ''"
 						:loading="false"
 						:title="workflow.name"
-						v-if="workflow.name"
 					>
 						<template v-slot:content>
 							<div :class="$style.content">
@@ -63,8 +63,8 @@
 									/>
 								</div>
 								<div
-									:class="$style.nodeButton"
 									v-if="filterCoreNodes(workflow.nodes).length > nodesToBeShown + 1"
+									:class="$style.nodeButton"
 								>
 									+{{
 										filterCoreNodes(workflow.nodes).length -
