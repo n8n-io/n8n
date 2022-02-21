@@ -18,6 +18,7 @@ import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
 import { ownerNamespace } from './owner';
+import { isAuthExcluded } from '../UserManagementHelper';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	this.app.use(cookieParser());
@@ -59,22 +60,12 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			(req.method === 'POST' && new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url)) ||
 			req.url.startsWith(`/${restEndpoint}/forgot-password`) ||
 			req.url.startsWith(`/${restEndpoint}/resolve-password-token`) ||
-			req.url.startsWith(`/${restEndpoint}/change-password`)
+			req.url.startsWith(`/${restEndpoint}/change-password`) ||
+			isAuthExcluded(req.url, ignoredEndpoints)
 		) {
 			return next();
 		}
 
-		for (let i = 0; i < ignoredEndpoints.length; i++) {
-			const path = ignoredEndpoints[i];
-			if (!path) {
-				// Skip empty paths (they might exist)
-				// eslint-disable-next-line no-continue
-				continue;
-			}
-			if (req.url.includes(path)) {
-				return next();
-			}
-		}
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 

@@ -53,3 +53,12 @@ export function sanitizeUser(user: User): PublicUser {
 	} = user;
 	return sanitizedUser;
 }
+
+/**
+ * Check if a URL contains an auth-excluded endpoint.
+ */
+export function isAuthExcluded(url: string, ignoredEndpoints: string[]): boolean {
+	return !!ignoredEndpoints
+		.filter(Boolean) // skip empty paths
+		.find((ignoredEndpoint) => url.includes(ignoredEndpoint));
+}
