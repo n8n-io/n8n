@@ -136,7 +136,7 @@ const module: Module<ISettingsState, IRootState> = {
 			}
 		},
 		async testTemplatesEndpoint(context: ActionContext<ISettingsState, IRootState>) {
-			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 5000));
+			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
 			await Promise.race([testHealthEndpoint(context.getters.templatesHost), timeout]);
 			context.commit('setTemplatesEndpointHealthy', true);
 		},
