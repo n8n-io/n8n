@@ -457,11 +457,10 @@ export const dealFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDealPipelines',
 				},
-				default: [],
+				default: '',
 				description: `Used to choose specific pipeline for which you want to get data.<br/>
 				By default, the results will include Deals from all pipelines.<br/>
-				Including this parameter will only include Deals from the specified pipeline.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				Including this parameter will only include Deals from the specified pipeline.<br/>`,
 			},
 			{
 				displayName: 'Properties',
