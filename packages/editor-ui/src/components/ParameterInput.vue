@@ -143,11 +143,12 @@
 			:value="displayValue"
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
+			:placeholder="$locale.baseText('parameterInput.select')"
+			:title="displayTitle"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
 			@blur="onBlur"
-			:title="displayTitle"
 		>
 			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="getOptionsOptionDisplayName(option)">
 				<div class="list-option">
