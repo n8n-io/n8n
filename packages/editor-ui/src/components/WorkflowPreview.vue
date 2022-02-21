@@ -106,7 +106,7 @@ export default mixins(showMessage).extend({
 	},
 	beforeDestroy() {
 		window.removeEventListener('message', this.receiveMessage);
-		window.removeEventListener('scroll', this.onDocumentScroll);
+		document.removeEventListener('scroll', this.onDocumentScroll);
 	},
 });
 </script>
