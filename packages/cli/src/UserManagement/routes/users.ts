@@ -31,7 +31,7 @@ export function usersNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: UserRequest.Invite) => {
 			if (config.get('userManagement.emails.mode') === '') {
-				Logger.debug('Attempted to send invite email without emailing being set up');
+				Logger.debug('Request to send email invite(s) to user(s) failed emailing was not set up');
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
 					undefined,
@@ -40,7 +40,12 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			if (!Array.isArray(req.body)) {
-				Logger.debug('Invalid payload', { payload: req.body });
+				Logger.debug(
+					'Request to send email invite(s) to user(s) failed because the payload is not an array',
+					{
+						payload: req.body,
+					},
+				);
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
@@ -50,13 +55,17 @@ export function usersNamespace(this: N8nApp): void {
 			// Validate payload
 			req.body.forEach((invite) => {
 				if (typeof invite !== 'object' || !invite.email) {
-					throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
+					throw new ResponseHelper.ResponseError(
+						'Request to send email invite(s) to user(s) failed because the payload is not an array shaped Array<{ email: string }>',
+						undefined,
+						400,
+					);
 				}
 
 				if (!validator.isEmail(invite.email)) {
 					Logger.debug('Invalid email in payload', { invalidEmail: invite.email });
 					throw new ResponseHelper.ResponseError(
-						`Invalid email address ${invite.email}`,
+						`Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
 						undefined,
 						400,
 					);
@@ -67,7 +76,9 @@ export function usersNamespace(this: N8nApp): void {
 			const role = await Db.collections.Role!.findOne({ scope: 'global', name: 'member' });
 
 			if (!role) {
-				Logger.error('Failed to find global member role in DB');
+				Logger.error(
+					'Request to send email invite(s) to user(s) failed because no global member role was found in database',
+				);
 				throw new ResponseHelper.ResponseError(
 					'Members role not found in database - inconsistent state',
 					undefined,
@@ -169,23 +180,32 @@ export function usersNamespace(this: N8nApp): void {
 			const { inviterId, inviteeId } = req.query;
 
 			if (!inviterId || !inviteeId) {
-				Logger.debug('Missing user IDs in query string', { inviterId, inviteeId });
+				Logger.debug(
+					'Request to resolve signup token failed because of missing user IDs in query string',
+					{ inviterId, inviteeId },
+				);
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
 			const users = await Db.collections.User!.find({ where: { id: In([inviterId, inviteeId]) } });
 
 			if (users.length !== 2) {
-				Logger.debug('User ID(s) not found in DB', { inviterId, inviteeId });
+				Logger.debug(
+					'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
+					{ inviterId, inviteeId },
+				);
 				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
 			}
 
 			const inviter = users.find((user) => user.id === inviterId);
 
 			if (!inviter || !inviter.email || !inviter.firstName) {
-				Logger.error("Inviter doesn't exist or is not set up", {
-					inviterId: inviter?.id,
-				});
+				Logger.error(
+					'Request to resolve signup token failed because inviter does not exist or is not set up',
+					{
+						inviterId: inviter?.id,
+					},
+				);
 				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 			}
 
@@ -208,7 +228,10 @@ export function usersNamespace(this: N8nApp): void {
 			const { inviterId, firstName, lastName, password } = req.body;
 
 			if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
-				Logger.debug('Missing properties in payload', { payload: req.body });
+				Logger.debug(
+					'Request to fill out a user shell failed because of missing properties in payload',
+					{ payload: req.body },
+				);
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
 			}
 
@@ -219,14 +242,23 @@ export function usersNamespace(this: N8nApp): void {
 			});
 
 			if (users.length !== 2) {
-				Logger.debug('User ID(s) not found in DB', { inviterId, inviteeId });
+				Logger.debug(
+					'Request to fill out a user shell failed because the inviter ID and/or invitee ID were not found in database',
+					{
+						inviterId,
+						inviteeId,
+					},
+				);
 				throw new ResponseHelper.ResponseError('Invalid payload or URL', undefined, 400);
 			}
 
 			const invitee = users.find((user) => user.id === inviteeId) as User;
 
 			if (invitee.password) {
-				Logger.debug('Attempted to accept already accepted invite', { inviteeId });
+				Logger.debug(
+					'Request to fill out a user shell failed because the invite had already been accepted',
+					{ inviteeId },
+				);
 				throw new ResponseHelper.ResponseError(
 					'This invite has been accepted already',
 					undefined,
@@ -264,7 +296,10 @@ export function usersNamespace(this: N8nApp): void {
 			const { id: idToDelete } = req.params;
 
 			if (req.user.id === idToDelete) {
-				Logger.debug('Attempted to delete self', { userId: req.user.id });
+				Logger.debug(
+					'Request to delete a user failed because it attempted to delete the requesting user',
+					{ userId: req.user.id },
+				);
 				throw new ResponseHelper.ResponseError('Cannot delete your own user', undefined, 400);
 			}
 
@@ -272,7 +307,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (transferId === idToDelete) {
 				throw new ResponseHelper.ResponseError(
-					'User to delete and transferee cannot be the same',
+					'Request to delete a user failed because the user to delete and the transferee are the same user',
 					undefined,
 					400,
 				);
@@ -283,7 +318,11 @@ export function usersNamespace(this: N8nApp): void {
 			});
 
 			if (!users.length || (transferId && users.length !== 2)) {
-				throw new ResponseHelper.ResponseError('Could not find user', undefined, 404);
+				throw new ResponseHelper.ResponseError(
+					'Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB',
+					undefined,
+					404,
+				);
 			}
 
 			const userToDelete = users.find((user) => user.id === req.params.id) as User;
@@ -337,7 +376,7 @@ export function usersNamespace(this: N8nApp): void {
 			const { id: idToReinvite } = req.params;
 
 			if (!isEmailSetUp) {
-				Logger.error('Attempted to send reinvite user without email sending being set up');
+				Logger.error('Request to reinvite a user failed because email sending was not set up');
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
 					undefined,
@@ -348,12 +387,17 @@ export function usersNamespace(this: N8nApp): void {
 			const reinvitee = await Db.collections.User!.findOne({ id: idToReinvite });
 
 			if (!reinvitee) {
-				Logger.debug('Attempted to send reinvite user without email sending being set up');
+				Logger.debug(
+					'Request to reinvite a user failed because the ID of the reinvitee was not found in database',
+				);
 				throw new ResponseHelper.ResponseError('Could not find user', undefined, 404);
 			}
 
 			if (reinvitee.password) {
-				Logger.debug('Attempted to accept already accepted invite', { userId: reinvitee.id });
+				Logger.debug(
+					'Request to reinvite a user failed because the invite had already been accepted',
+					{ userId: reinvitee.id },
+				);
 				throw new ResponseHelper.ResponseError(
 					'User has already accepted the invite',
 					undefined,

@@ -33,7 +33,7 @@ export function meNamespace(this: N8nApp): void {
 		ResponseHelper.send(
 			async (req: MeRequest.Settings, res: express.Response): Promise<PublicUser> => {
 				if (!req.body.email) {
-					Logger.debug('Email not found in payload', {
+					Logger.debug('Request to update user email failed because of missing email in payload', {
 						userId: req.user.id,
 						payload: req.body,
 					});
@@ -41,7 +41,7 @@ export function meNamespace(this: N8nApp): void {
 				}
 
 				if (!validator.isEmail(req.body.email)) {
-					Logger.debug('Invalid email in payload', {
+					Logger.debug('Request to update user email failed because of invalid email in payload', {
 						userId: req.user.id,
 						invalidEmail: req.body.email,
 					});
@@ -91,7 +91,12 @@ export function meNamespace(this: N8nApp): void {
 			const { body: personalizationAnswers } = req;
 
 			if (!personalizationAnswers) {
-				Logger.debug('Empty survey in payload', { userId: req.user.id });
+				Logger.debug(
+					'Request to store user personalization survey failed because of empty payload',
+					{
+						userId: req.user.id,
+					},
+				);
 				throw new ResponseHelper.ResponseError(
 					'Personalization answers are mandatory',
 					undefined,

@@ -26,19 +26,30 @@ export function ownerNamespace(this: N8nApp): void {
 			const { id: userId } = req.user;
 
 			if (config.get('userManagement.hasOwner')) {
-				Logger.debug('Attempted to create owner when owner already exists', { userId });
+				Logger.debug(
+					'Request to claim instance ownership failed because instance owner already exists',
+					{
+						userId,
+					},
+				);
 				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 			}
 
 			if (!email || !validator.isEmail(email)) {
-				Logger.debug('Invalid email in payload', { userId, invalidEmail: email });
+				Logger.debug('Request to claim instance ownership failed due to invalid email', {
+					userId,
+					invalidEmail: email,
+				});
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
 			const validPassword = validatePassword(password);
 
 			if (!firstName || !lastName) {
-				Logger.debug('Missing firstName or lastName in payload', { userId, payload: req.body });
+				Logger.debug(
+					'Request to claim instance ownership failed because of missing first name or last name in payload',
+					{ userId, payload: req.body },
+				);
 				throw new ResponseHelper.ResponseError(
 					'First and last names are mandatory',
 					undefined,

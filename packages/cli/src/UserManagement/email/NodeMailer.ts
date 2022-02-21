@@ -28,7 +28,9 @@ export class NodeMailer implements UserManagementMailerImplementation {
 				text: mailData.textOnly,
 				html: mailData.body,
 			});
-			Logger.verbose('Email sent successfully to', { recipients: mailData.emailRecipients });
+			Logger.verbose(
+				`Email sent successfully to the following recipients: ${mailData.emailRecipients.toString()}`,
+			);
 		} catch (error) {
 			Logger.error('Failed to send email', { recipients: mailData.emailRecipients, error });
 			return {
