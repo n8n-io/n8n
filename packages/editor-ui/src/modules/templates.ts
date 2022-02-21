@@ -1,4 +1,4 @@
-import { getCategories, getCollectionById, getCollections, getTemplateById, getWorkflows } from '@/api/templates';
+import { getCategories, getCollectionById, getCollections, getTemplateById, getWorkflows, testHealthEndpoint } from '@/api/templates';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
@@ -180,7 +180,7 @@ const module: Module<ITemplateState, IRootState> = {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getTemplateById(apiEndpoint, templateId);
 			const template: ITemplatesWorkflowFull = {
-				...response.data.workflow,
+				...response.workflow,
 				full: true,
 			};
 
@@ -191,12 +191,12 @@ const module: Module<ITemplateState, IRootState> = {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getCollectionById(apiEndpoint, collectionId);
 			const collection: ITemplatesCollectionFull = {
-				...response.data.collection,
+				...response.collection,
 				full: true,
 			};
 
 			context.commit('addCollections', [collection]);
-			context.commit('addWorkflows', response.data.collection.workflows);
+			context.commit('addWorkflows', response.collection.workflows);
 
 			return context.getters.getCollectionById(collectionId);
 		},
@@ -207,7 +207,7 @@ const module: Module<ITemplateState, IRootState> = {
 			}
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getCategories(apiEndpoint);
-			const categories = response.data.categories;
+			const categories = response.categories;
 
 			context.commit('addCategories', categories);
 
@@ -221,7 +221,7 @@ const module: Module<ITemplateState, IRootState> = {
 
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getCollections(apiEndpoint, query);
-			const collections = response.data.collections;
+			const collections = response.collections;
 
 			context.commit('addCollections', collections);
 			context.commit('addCollectionSearch', {query, collections});
@@ -239,8 +239,8 @@ const module: Module<ITemplateState, IRootState> = {
 
 			const payload = await getWorkflows(apiEndpoint, {...query, skip: 0, limit: TEMPLATES_PAGE_SIZE});
 
-			context.commit('addWorkflows', payload.data.workflows);
-			context.commit('addWorkflowsSearch', {...payload.data, query});
+			context.commit('addWorkflows', payload.workflows);
+			context.commit('addWorkflowsSearch', {...payload, query});
 
 			return context.getters.getSearchedWorkflows(query);
 		},
@@ -256,8 +256,8 @@ const module: Module<ITemplateState, IRootState> = {
 				const payload = await getWorkflows(apiEndpoint, {...query, skip: cachedResults.length, limit: TEMPLATES_PAGE_SIZE});
 
 				context.commit('setWorkflowSearchLoaded', query);
-				context.commit('addWorkflows', payload.data.workflows);
-				context.commit('addWorkflowsSearch', {...payload.data, query});
+				context.commit('addWorkflows', payload.workflows);
+				context.commit('addWorkflowsSearch', {...payload, query});
 
 				return context.getters.getSearchedWorkflows(query);
 			} catch (e) {

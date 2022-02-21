@@ -1,22 +1,26 @@
 <template>
-	<div v-if="!loading" id="app">
-		<div id="header">
-			<router-view name="header"></router-view>
+	<div>
+		<LoadingView v-if="loading" />
+		<div v-else id="app">
+			<div id="header">
+				<router-view name="header"></router-view>
+			</div>
+			<div id="sidebar">
+				<router-view name="sidebar"></router-view>
+			</div>
+			<div id="content">
+				<router-view />
+			</div>
+			<Modals />
+			<Telemetry />
 		</div>
-		<div id="sidebar">
-			<router-view name="sidebar"></router-view>
-		</div>
-		<div id="content">
-			<router-view />
-		</div>
-		<Modals />
-		<Telemetry />
 	</div>
 </template>
 
 <script lang="ts">
 import Modals from '@/components/Modals.vue';
 import Telemetry from './components/Telemetry.vue';
+import LoadingView from './views/LoadingView.vue';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
@@ -24,11 +28,12 @@ import { showMessage } from './components/mixins/showMessage';
 export default mixins(showMessage).extend({
 	name: 'App',
 	components: {
+		LoadingView,
 		Modals,
 		Telemetry,
 	},
 	computed: {
-		isTemplatesEnabled() {
+		isTemplatesEnabled(): boolean {
 			return this.$store.getters['settings/isTemplatesEnabled'];
 		},
 	},
@@ -38,10 +43,9 @@ export default mixins(showMessage).extend({
 		};
 	},
 	methods: {
-		async initialize(): Promise<void> {
+		async initSettings(): Promise<void> {
 			try {
 				await this.$store.dispatch('settings/getSettings');
-				this.loading = false;
 			} catch (e) {
 				this.$showToast({
 					title: this.$locale.baseText('settings.errors.connectionError.title'),
@@ -52,6 +56,17 @@ export default mixins(showMessage).extend({
 
 				throw e;
 			}
+		},
+		async initTemplates(): Promise<void> {
+			try {
+				await this.$store.dispatch('settings/testTemplatesEndpoint');
+			} catch (e) {
+			}
+		},
+		async initialize(): Promise<void> {
+			await this.initSettings();
+			await this.initTemplates();
+			this.loading = false;
 		},
 		trackPage() {
 			this.$store.commit('ui/setCurrentPage', this.$route.name);
