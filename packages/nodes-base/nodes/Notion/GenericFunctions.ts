@@ -426,11 +426,11 @@ function simplifyProperty(property: any) {
 	let result: any;
 	const type = (property as IDataObject).type as string;
 	if (['text'].includes(property.type)) {
-		result = property.plain_text
+		result = property.plain_text;
 	} else if (['rich_text', 'title'].includes(property.type)) {
 		if (Array.isArray(property[type]) && property[type].length !== 0) {
 				// tslint:disable-next-line: no-any
-			result = property[type].map((text: any) => simplifyProperty(text) as string).join("");
+			result = property[type].map((text: any) => simplifyProperty(text) as string).join('');
 		} else {
 			result = '';
 		}
@@ -463,12 +463,15 @@ function simplifyProperty(property: any) {
 
 	} else if (['rollup'].includes(property.type)) {
 		const rollupFunction = property[type].function as string;
-		if (rollupFunction.startsWith("show") && property[type].type === "array") {
-			let elements = property[type].array.map(simplifyProperty).flat()
-			result = rollupFunction === "show_unique" ? [...new Set(elements)] : elements;
+		if (rollupFunction.startsWith('count') || rollupFunction.includes('empty')) {
+			result = property[type].number;
+			if (rollupFunction.includes('percent')) {
+				result = result * 100;
+			}
+		} else if (rollupFunction.startsWith('show') && property[type].type === 'array') {
+			const elements = property[type].array.map(simplifyProperty).flat();
+			result = rollupFunction === 'show_unique' ? [...new Set(elements)] : elements;
 		}
-		//TODO figure how to resolve rollup field type
-		// result = property[type][property[type].type];
 	} else if (['files'].includes(property.type)) {
 		// tslint:disable-next-line: no-any
 		result = property[type].map((file: { type: string, [key: string]: any }) => (file[file.type].url));
@@ -481,7 +484,7 @@ export function simplifyProperties(properties: any) {
 	// tslint:disable-next-line: no-any
 	const results: any = {};
 	for (const key of Object.keys(properties)) {
-		results[`${key}`] = simplifyProperty(properties[key])
+		results[`${key}`] = simplifyProperty(properties[key]);
 	}
 	return results;
 }
