@@ -538,6 +538,7 @@ export interface IN8nUISettings {
 	telemetry: ITelemetrySettings;
 	defaultLocale: string;
 	logLevel: ILogLevel;
+	deploymentType: string;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
