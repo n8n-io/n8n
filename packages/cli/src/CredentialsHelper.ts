@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -218,40 +219,40 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance
 	 *
-	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
-	 * @param {string} type Type of the credentials to return instance of
+	 * @param {INodeCredentialsDetails} nodeCredential id and name to return instance of
+	 * @param {string} type Type of the credential to return instance of
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
 	 */
 	async getCredentials(
-		nodeCredentials: INodeCredentialsDetails,
+		nodeCredential: INodeCredentialsDetails,
 		type: string,
 		userId?: string,
 	): Promise<Credentials> {
-		if (!nodeCredentials.id) {
-			throw new Error(`Credentials "${nodeCredentials.name}" for type "${type}" don't have an ID.`);
+		if (!nodeCredential.id) {
+			throw new Error(`Credential "${nodeCredential.name}" of type "${type}" has no ID.`);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const qb = Db.collections.Credentials!.createQueryBuilder('c');
-		qb.where('c.id = :id and c.type = :type', { id: nodeCredentials.id, type });
-		if (userId) {
-			// TODO UM: implement this.
-			// qb.
-		}
-		const credentials = await qb.getOne();
+		const credential = userId
+			? await Db.collections
+					.SharedCredentials!.findOneOrFail({
+						relations: ['credentials', 'user'],
+						where: { id: nodeCredential.id, type, user: { id: userId } },
+					})
+					.then((shared) => shared.credentials)
+			: await Db.collections.Credentials!.findOneOrFail({ id: nodeCredential.id, type });
 
-		if (!credentials) {
+		if (!credential) {
 			throw new Error(
-				`Credentials with ID "${nodeCredentials.id}" don't exist for type "${type}".`,
+				`Credential with ID "${nodeCredential.id}" does not exist for type "${type}".`,
 			);
 		}
 
 		return new Credentials(
-			{ id: credentials.id.toString(), name: credentials.name },
-			credentials.type,
-			credentials.nodesAccess,
-			credentials.data,
+			{ id: credential.id.toString(), name: credential.name },
+			credential.type,
+			credential.nodesAccess,
+			credential.data,
 		);
 	}
 
