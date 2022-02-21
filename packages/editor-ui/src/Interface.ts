@@ -514,33 +514,38 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
-export interface IN8nCollection {
+export interface ITemplatesCollection {
 	id: string;
 	name: string;
-	nodes: IVersionNode[];
+	nodes: ITemplatesNode[];
 	workflows: Array<{id: string}>;
 }
 
-interface IN8nCollectionExtended extends IN8nCollection {
+interface ITemplatesImage {
+	id: string;
+	url: string;
+}
+
+interface ITemplatesCollectionExtended extends ITemplatesCollection {
 	description: string | null;
-	image: ITemplateImage[];
-	categories: ITemplateCategories[];
+	image: ITemplatesImage[];
+	categories: ITemplatesCategory[];
 	created_at: string;
 }
 
-export interface IN8nCollectionFull extends IN8nCollectionExtended {
+export interface ITemplatesCollectionFull extends ITemplatesCollectionExtended {
 	full: true;
 }
 
-export interface IN8nCollectionResponse extends IN8nCollectionExtended {
-	workflows: IN8nTemplate[];
+export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtended {
+	workflows: ITemplatesWorkflow[];
 }
 
-export interface IN8nTemplate {
+export interface ITemplatesWorkflow {
 	id: string;
 	createdAt: string;
 	name: string;
-	nodes: IVersionNode[];
+	nodes: ITemplatesNode[];
 	totalViews: number;
 	user: {
 		username: string;
@@ -548,14 +553,14 @@ export interface IN8nTemplate {
 	created_at: string;
 }
 
-export interface IN8nTemplateResponse extends IN8nTemplate {
+export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow {
 	description: string | null;
-	image: ITemplateImage[];
+	image: ITemplatesImage[];
 	workflow: object;
-	categories: ITemplateCategories[];
+	categories: ITemplatesCategory[];
 }
 
-export interface IN8nTemplateFull extends IN8nTemplateResponse {
+export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
 	full: true;
 }
 
@@ -564,7 +569,7 @@ export interface ITemplatesQuery {
 	search: string;
 }
 
-export interface ITemplateCategory {
+export interface ITemplatesCategory {
 	id: string;
 	name: string;
 }
@@ -606,16 +611,6 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
-}
-
-export interface ITemplateCategories {
-	id: string;
-	name: string;
-}
-
-export interface ITemplateImage {
-	id: string;
-	url: string;
 }
 
 export interface ITimeoutHMS {
@@ -714,7 +709,10 @@ export interface IVersionNode {
 		fileBuffer?: string;
 	};
 	typeVersion: number;
-	categories?: ITemplateCategories[];
+}
+
+export interface ITemplatesNode extends IVersionNode {
+	categories?: ITemplatesCategory[];
 }
 
 export interface IRootState {
@@ -800,9 +798,9 @@ export interface ISettingsState {
 }
 
 export interface ITemplateState {
-	categories: {[id: string]: ITemplateCategory};
-	collections: {[id: string]: IN8nCollection};
-	templates: {[id: string]: IN8nTemplate};
+	categories: {[id: string]: ITemplatesCategory};
+	collections: {[id: string]: ITemplatesCollection};
+	templates: {[id: string]: ITemplatesWorkflow};
 	workflowSearches: {
 		[search: string]: {
 			workflowIds: string[];

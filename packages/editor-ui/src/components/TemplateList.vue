@@ -83,7 +83,7 @@ import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 import LongCard from '@/components/LongCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { IVersionNode } from '@/Interface';
+import { ITemplatesNode } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes, abbreviateNumber } from './helpers';
 
@@ -157,7 +157,7 @@ export default mixins(genericHelpers).extend({
 				return this.nodesToBeShown;
 			}
 		},
-		filterCoreNodes(nodes: IVersionNode[]) {
+		filterCoreNodes(nodes: ITemplatesNode[]) {
 			return filterTemplateNodes(nodes);
 		},
 	},

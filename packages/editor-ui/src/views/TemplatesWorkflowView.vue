@@ -60,7 +60,7 @@ import TemplateDetails from '@/components/TemplateDetails.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import TemplatesView from './TemplatesView.vue';
 
-import { IN8nTemplate, IN8nTemplateFull } from '@/Interface';
+import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 
@@ -79,7 +79,7 @@ export default mixins(workflowHelpers).extend({
 		isMenuCollapsed() {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
-		template(): IN8nTemplate | IN8nTemplateFull {
+		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
 			return this.$store.getters['templates/getTemplateById'](this.templateId);
 		},
 	},
@@ -119,7 +119,7 @@ export default mixins(workflowHelpers).extend({
 	async mounted() {
 		this.scrollToTop();
 
-		if (this.template && (this.template as IN8nTemplateFull).full) {
+		if (this.template && (this.template as ITemplatesWorkflowFull).full) {
 			this.loading = false;
 			return;
 		}

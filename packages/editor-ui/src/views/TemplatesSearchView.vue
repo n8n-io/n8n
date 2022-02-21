@@ -86,7 +86,7 @@ import TemplatesView from './TemplatesView.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { abbreviateNumber } from '@/components/helpers';
 import mixins from 'vue-typed-mixins';
-import { IN8nCollection, IN8nTemplate, ITemplatesQuery } from '@/Interface';
+import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery } from '@/Interface';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplatesSearchView',
@@ -106,7 +106,7 @@ export default mixins(genericHelpers).extend({
 				search: this.search,
 			};
 		},
-		collections(): IN8nCollection[] {
+		collections(): ITemplatesCollection[] {
 			return this.$store.getters['templates/getSearchedCollections'](this.query) || [];
 		},
 		isMenuCollapsed(): boolean {
@@ -115,7 +115,7 @@ export default mixins(genericHelpers).extend({
 		totalWorkflows(): number {
 			return this.$store.getters['templates/getSearchedWorkflowsTotal'](this.query);
 		},
-		workflows(): IN8nTemplate[] {
+		workflows(): ITemplatesWorkflow[] {
 			return this.$store.getters['templates/getSearchedWorkflows'](this.query) || [];
 		},
 		nothingFound(): boolean {

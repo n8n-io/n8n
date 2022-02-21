@@ -44,7 +44,7 @@
 
 <script lang="ts">
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplateCategory } from '@/Interface';
+import { ITemplatesCategory } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
@@ -69,8 +69,8 @@ export default mixins(genericHelpers).extend({
 		allSelected(): boolean {
 			return this.selected.length === 0;
 		},
-		sortedCategories(): ITemplateCategory[] {
-			const categories = this.categories as ITemplateCategory[];
+		sortedCategories(): ITemplatesCategory[] {
+			const categories = this.categories as ITemplatesCategory[];
 			const selected = this.selected || [];
 			const selectedCategories = categories.filter(({ id }) => selected.includes(id));
 			const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
@@ -84,7 +84,7 @@ export default mixins(genericHelpers).extend({
 		resetCategories() {
 			this.$emit('clearAll');
 		},
-		handleCheckboxChanged(value: boolean, selectedCategory: ITemplateCategory) {
+		handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
 			this.$emit(value ? 'select': 'clear', selectedCategory.id);
 		},
 		collapseAction() {

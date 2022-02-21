@@ -59,14 +59,14 @@ import TemplateBlock from '@/components/TemplateBlock.vue';
 import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 
 import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
-import { ITemplateCategories, IVersionNode } from '@/Interface';
+import { ITemplatesCategory, ITemplatesNode } from '@/Interface';
 
 interface INode {
 	displayName: string;
 	defaults: {
 		color: string;
 	};
-	categories: ITemplateCategories[];
+	categories: ITemplatesCategory[];
 	icon: string;
 	iconData?: {
 		fileBuffer?: string;
@@ -104,7 +104,7 @@ export default Vue.extend({
 	},
 	methods: {
 		abbreviateNumber,
-		filterCoreNodes(nodes: IVersionNode[]) {
+		filterCoreNodes(nodes: ITemplatesNode[]) {
 			return filterTemplateNodes(nodes);
 		},
 		redirectToCategory(tag: ITag) {

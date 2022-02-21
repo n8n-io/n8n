@@ -25,7 +25,7 @@
 import Vue from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 
-import { IVersionNode } from '@/Interface';
+import { ITemplatesNode } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 interface NodeIconData {
@@ -61,7 +61,7 @@ export default Vue.extend({
 	},
 	computed: {
 		iconStyleData(): object {
-			const nodeType = this.nodeType as IVersionNode | null;
+			const nodeType = this.nodeType as ITemplatesNode | null;
 			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
 			if (!this.size) {
 				return { color };
@@ -82,13 +82,13 @@ export default Vue.extend({
 			};
 		},
 		nodeIconData(): null | NodeIconData {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			const nodeType = this.nodeType as INodeTypeDescription | ITemplatesNode | null;
 			if (nodeType === null) {
 				return null;
 			}
 
-			if ((nodeType as IVersionNode).iconData) {
-				return (nodeType as IVersionNode).iconData;
+			if ((nodeType as ITemplatesNode).iconData) {
+				return (nodeType as ITemplatesNode).iconData;
 			}
 
 			const restUrl = this.$store.getters.getRestUrl;
