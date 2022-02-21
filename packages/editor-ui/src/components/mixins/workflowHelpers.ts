@@ -566,7 +566,7 @@ export const workflowHelpers = mixins(
 
 					const templateId = this.$route.query.templateId;
 					if (templateId) {
-						this.$telemetry.track('User created new workflow from template', {
+						this.$telemetry.track('User saved new workflow from template', {
 							template_id: templateId,
 							workflow_id: workflowData.id,
 							wf_template_repo_session_id: this.$store.getters['templates/previousSessionId'],
