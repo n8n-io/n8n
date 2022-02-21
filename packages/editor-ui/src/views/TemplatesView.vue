@@ -53,7 +53,7 @@ body {
 	width: 100%;
 	max-width: 1024px;
 	padding: var(--spacing-3xl) var(--spacing-3xl) var(--spacing-4xl) var(--spacing-3xl);
-	margin: auto;
+	margin: 0 auto;
 
 	@media (max-width: $--breakpoint-md) {
 		width: 900px;
