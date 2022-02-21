@@ -166,11 +166,11 @@ export class I18nClass {
 			 * - For a `collection` or `fixedCollection` parameter, the placeholder is the button text.
 			 */
 			placeholder(
-				{ name: parameterName, displayName }: { name: string; displayName: string; },
+				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
-					fallback: displayName,
+					fallback: placeholder,
 				});
 			},
 		};
