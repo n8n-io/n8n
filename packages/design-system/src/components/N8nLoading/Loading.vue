@@ -47,6 +47,7 @@ export default {
 	props: {
 		animated: {
 			type: Boolean,
+			default: true,
 		},
 		loading: {
 			type: Boolean,
