@@ -180,7 +180,7 @@ const module: Module<ITemplateState, IRootState> = {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getTemplateById(apiEndpoint, templateId);
 			const template: ITemplatesWorkflowFull = {
-				...response.data.workflow,
+				...response.workflow,
 				full: true,
 			};
 
@@ -191,12 +191,12 @@ const module: Module<ITemplateState, IRootState> = {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
 			const response = await getCollectionById(apiEndpoint, collectionId);
 			const collection: ITemplatesCollectionFull = {
-				...response.data.collection,
+				...response.collection,
 				full: true,
 			};
 
 			context.commit('addCollections', [collection]);
-			context.commit('addWorkflows', response.data.collection.workflows);
+			context.commit('addWorkflows', response.collection.workflows);
 
 			return context.getters.getCollectionById(collectionId);
 		},
