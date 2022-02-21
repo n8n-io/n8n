@@ -2761,7 +2761,7 @@ export default mixins(
 				this.stopLoading();
 
 				if (this.$store.getters['settings/deploymentType'] !== 'n8n-internal') {
-					console.log(HIRING_BANNER);
+					console.log(HIRING_BANNER); // eslint-disable-line no-console
 				}
 
 				setTimeout(() => {
