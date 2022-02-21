@@ -1,12 +1,12 @@
 import Vue from 'vue';
 import Router from 'vue-router';
 
-import CollectionView from '@/views/CollectionView.vue';
+import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
-import TemplateView from '@/views/TemplateView.vue';
-import TemplatesView from '@/views/TemplatesView.vue';
+import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
+import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 
 Vue.use(Router);
 
@@ -17,10 +17,18 @@ export default new Router({
 	routes: [
 		{
 			path: '/collection/:id',
-			name: 'CollectionView',
+			name: 'TemplatesCollectionView',
 			components: {
-				default: CollectionView,
+				default: TemplatesCollectionView,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				templatesEnabled: true,
+				telemetry: {
+					params: {
+						id: 'collection_id',
+					},
+				},
 			},
 		},
 		{
@@ -34,18 +42,29 @@ export default new Router({
 		},
 		{
 			path: '/templates/:id',
-			name: 'TemplateView',
+			name: 'TemplatesWorkflowView',
 			components: {
-				default: TemplateView,
+				default: TemplatesWorkflowView,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				templatesEnabled: true,
+				telemetry: {
+					params: {
+						id: 'template_id',
+					},
+				},
 			},
 		},
 		{
 			path: '/templates/',
-			name: 'TemplatesView',
+			name: 'TemplatesSearchView',
 			components: {
-				default: TemplatesView,
+				default: TemplatesSearchView,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				templatesEnabled: true,
 			},
 		},
 		{
@@ -73,6 +92,9 @@ export default new Router({
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				templatesEnabled: true,
 			},
 		},
 		{

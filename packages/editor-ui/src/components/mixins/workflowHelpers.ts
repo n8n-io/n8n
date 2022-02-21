@@ -564,6 +564,15 @@ export const workflowHelpers = mixins(
 					const tagIds = createdTags.map((tag: ITag): string => tag.id);
 					this.$store.commit('setWorkflowTagIds', tagIds);
 
+					const templateId = this.$route.query.templateId;
+					if (templateId) {
+						this.$telemetry.track('User saved new workflow from template', {
+							template_id: templateId,
+							workflow_id: workflowData.id,
+							wf_template_repo_session_id: this.$store.getters['templates/previousSessionId'],
+						});
+					}
+
 					this.$router.push({
 						name: 'NodeViewExisting',
 						params: { name: workflowData.id as string, action: 'workflowSave' },

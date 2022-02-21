@@ -1,6 +1,6 @@
 <template>
-	<div :class="$style.container">
-		<div v-if="collections.length || loading" :class="$style.header">
+	<div :class="$style.container" v-if="collections.length || loading">
+		<div :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.collections') }}
 				<span v-if="!loading" v-text="`(${collections.length})`" />
@@ -20,7 +20,7 @@
 					:key="collection.id"
 					:loading="loading"
 					:title="collection.name"
-					@click="navigateTo(collection.id, 'CollectionView', $event)"
+					@click="navigateTo(collection.id, 'TemplatesCollectionView', $event)"
 				>
 					<template v-slot:footer>
 						<n8n-text size="small" color="text-light">
@@ -103,10 +103,9 @@ export default mixins(genericHelpers).extend({
 		},
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (page === 'WorkflowTemplate') {
-				this.$store.dispatch('templates/setTemplateSessionId', null);
 				this.$telemetry.track('User inserted workflow template', {
 					template_id: id,
-					new_workflow_id: id,
+					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
 					source: 'collection',
 				});
 			}

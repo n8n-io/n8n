@@ -1,123 +1,269 @@
-import { getCollectionById, getTemplateById, getTemplates } from '@/api/templates';
+import { getCategories, getCollectionById, getCollections, getTemplateById, getWorkflows } from '@/api/templates';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
-	IN8nCollectionResponse,
-	IN8nCollection,
-	IN8nSearchResponse,
-	IN8nSearchData,
-	IN8nTemplate,
-	IN8nTemplateResponse,
-	ITemplateCategory,
-	ITemplateCollection,
+	ITemplatesCollection,
+	ITemplatesWorkflow,
+	ITemplatesCategory,
 	ITemplateState,
+	ITemplatesQuery,
+	ITemplatesWorkflowFull,
+	ITemplatesCollectionFull,
 } from '../Interface';
 
 import Vue from 'vue';
 
+const TEMPLATES_PAGE_SIZE = 10;
+
+function getSearchKey(query: ITemplatesQuery): string {
+	return JSON.stringify([query.search || '', [...query.categories].sort()]);
+}
+
 const module: Module<ITemplateState, IRootState> = {
 	namespaced: true,
 	state: {
-		categories: [],
-		collection: {} as ITemplateCollection,
-		collections: [],
-		templates: [],
-		template: {} as IN8nTemplate,
-		templateSessionId: null,
-		totalworkflow: null,
+		categories: {},
+		collections: {},
+		workflows: {},
+		collectionSearches: {},
+		workflowSearches: {},
+		currentSessionId: '',
+		previousSessionId: '',
 	},
 	getters: {
-		getCategories(state: ITemplateState) {
-			return state.categories;
+		allCategories(state: ITemplateState) {
+			return Object.values(state.categories).sort((a: ITemplatesCategory, b: ITemplatesCategory) => a.name > b.name ? 1: -1);
 		},
-		getCollection(state: ITemplateState) {
-			return state.collection;
+		getTemplateById(state: ITemplateState) {
+			return (id: string): null | ITemplatesWorkflow => state.workflows[id];
 		},
-		getCollections(state: ITemplateState) {
-			return state.collections;
+		getCollectionById(state: ITemplateState) {
+			return (id: string): null | ITemplatesCollection => state.collections[id];
 		},
-		getTemplates(state: ITemplateState) {
-			return state.templates;
+		getCategoryById(state: ITemplateState) {
+			return (id: string): null | ITemplatesCategory => state.categories[id];
 		},
-		getTemplate(state: ITemplateState) {
-			return state.template;
+		getSearchedCollections(state: ITemplateState) {
+			return (query: ITemplatesQuery) => {
+				const searchKey = getSearchKey(query);
+				const search = state.collectionSearches[searchKey];
+				if (!search) {
+					return null;
+				}
+
+				return search.collectionIds.map((collectionId: string) => state.collections[collectionId]);
+			};
 		},
-		getTemplateSessionId(state: ITemplateState) {
-			return state.templateSessionId;
+		getSearchedWorkflows(state: ITemplateState) {
+			return (query: ITemplatesQuery) => {
+				const searchKey = getSearchKey(query);
+				const search = state.workflowSearches[searchKey];
+				if (!search) {
+					return null;
+				}
+
+				return search.workflowIds.map((workflowId: string) => state.workflows[workflowId]);
+			};
 		},
-		getTotalWorkflows(state: ITemplateState) {
-			return state.totalworkflow;
+		getSearchedWorkflowsTotal(state: ITemplateState) {
+			return (query: ITemplatesQuery) => {
+				const searchKey = getSearchKey(query);
+				const search = state.workflowSearches[searchKey];
+
+				return search ? search.totalWorkflows : 0;
+			};
+		},
+		isSearchLoadingMore(state: ITemplateState) {
+			return (query: ITemplatesQuery) => {
+				const searchKey = getSearchKey(query);
+				const search = state.workflowSearches[searchKey];
+
+				return Boolean(search && search.loadingMore);
+			};
+		},
+		isSearchFinished(state: ITemplateState) {
+			return (query: ITemplatesQuery) => {
+				const searchKey = getSearchKey(query);
+				const search = state.workflowSearches[searchKey];
+
+				return Boolean(search && !search.loadingMore && search.totalWorkflows === search.workflowIds.length);
+			};
+		},
+		currentSessionId(state: ITemplateState) {
+			return state.currentSessionId;
+		},
+		previousSessionId(state: ITemplateState) {
+			return state.previousSessionId;
 		},
 	},
 	mutations: {
-		appendWorkflows(state: ITemplateState, templates: IN8nTemplate[]) {
-			Vue.set(state, 'templates', state.templates.concat(templates));
+		addCategories(state: ITemplateState, categories: ITemplatesCategory[]) {
+			categories.forEach((category: ITemplatesCategory) => {
+				Vue.set(state.categories, category.id, category);
+			});
 		},
-		setCategories(state: ITemplateState, categories: ITemplateCategory[]) {
-			Vue.set(state, 'categories', categories);
+		addCollections(state: ITemplateState, collections: Array<ITemplatesCollection | ITemplatesCollectionFull>) {
+			collections.forEach((collection) => {
+				const workflows = (collection.workflows || []).map((workflow) => ({id: workflow.id}));
+				const cachedCollection = state.collections[collection.id] || {};
+				Vue.set(state.collections, collection.id, {
+					...cachedCollection,
+					...collection,
+					workflows,
+				});
+			});
 		},
-		setCollection(state: ITemplateState, collection: IN8nCollection) {
-			Vue.set(state, 'collection', collection);
+		addWorkflows(state: ITemplateState, workflows: Array<ITemplatesWorkflow | ITemplatesWorkflowFull>) {
+			workflows.forEach((workflow: ITemplatesWorkflow) => {
+				const cachedWorkflow = state.workflows[workflow.id] || {};
+				Vue.set(state.workflows, workflow.id, {
+					...cachedWorkflow,
+					...workflow,
+				});
+			});
 		},
-		setCollections(state: ITemplateState, collections: ITemplateCollection[]) {
-			Vue.set(state, 'collections', collections);
+		addCollectionSearch(state: ITemplateState, data: {collections: ITemplatesCollection[], query: ITemplatesQuery}) {
+			const collectionIds = data.collections.map((collection) => collection.id);
+			const searchKey = getSearchKey(data.query);
+			Vue.set(state.collectionSearches, searchKey, {
+				collectionIds,
+			});
 		},
-		setTemplate(state: ITemplateState, template: IN8nTemplate) {
-			Vue.set(state, 'template', template);
+		addWorkflowsSearch(state: ITemplateState, data: {totalWorkflows: number; workflows: ITemplatesWorkflow[], query: ITemplatesQuery}) {
+			const workflowIds = data.workflows.map((workflow) => workflow.id);
+			const searchKey = getSearchKey(data.query);
+			const cachedResults = state.workflowSearches[searchKey];
+			if (!cachedResults) {
+				Vue.set(state.workflowSearches, searchKey, {
+					workflowIds,
+					totalWorkflows: data.totalWorkflows,
+				});
+
+				return;
+			}
+
+			Vue.set(state.workflowSearches, searchKey, {
+				workflowIds: [...cachedResults.workflowIds, ...workflowIds],
+				totalWorkflows: data.totalWorkflows,
+			});
 		},
-		setTemplateSessionId(state: ITemplateState, sessionId: number) {
-			state.templateSessionId = sessionId;
+		setWorkflowSearchLoading(state: ITemplateState, query: ITemplatesQuery) {
+			const searchKey = getSearchKey(query);
+			const cachedResults = state.workflowSearches[searchKey];
+			if (!cachedResults) {
+				return;
+			}
+
+			Vue.set(state.workflowSearches[searchKey], 'loadingMore', true);
 		},
-		setTotalWorkflows(state: ITemplateState, totalworkflow: number) {
-			state.totalworkflow = totalworkflow;
+		setWorkflowSearchLoaded(state: ITemplateState, query: ITemplatesQuery) {
+			const searchKey = getSearchKey(query);
+			const cachedResults = state.workflowSearches[searchKey];
+			if (!cachedResults) {
+				return;
+			}
+
+			Vue.set(state.workflowSearches[searchKey], 'loadingMore', false);
 		},
-		setWorkflows(state: ITemplateState, templates: IN8nTemplate[]) {
-			Vue.set(state, 'templates', templates);
+		resetSessionId(state: ITemplateState) {
+			state.previousSessionId = state.currentSessionId;
+			state.currentSessionId = '';
+		},
+		setSessionId(state: ITemplateState) {
+			if (!state.currentSessionId) {
+				state.currentSessionId = `templates-${Date.now()}`;
+			}
 		},
 	},
 	actions: {
-		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string) {
+		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string): Promise<ITemplatesWorkflowFull> {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const response: IN8nCollectionResponse = await getCollectionById(collectionId, apiEndpoint);
-			const collection: IN8nCollection = response.data.collection;
+			const response = await getTemplateById(apiEndpoint, templateId);
+			const template: ITemplatesWorkflowFull = {
+				...response.data.workflow,
+				full: true,
+			};
 
-			context.commit('setCollection', collection);
-			return collection;
-		},
-		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string) {
-			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const response: IN8nTemplateResponse = await getTemplateById(templateId, apiEndpoint);
-			const template: IN8nTemplate = response.data.workflow;
-
-			context.commit('setTemplate', template);
+			context.commit('addWorkflows', [template]);
 			return template;
 		},
-		async getSearchResults(context: ActionContext<ITemplateState, IRootState>, { numberOfResults = 10, search , category, skip = 0, fetchCategories = false }) {
-			const searchQuery = search.length || category ? true : false;
-			const allData = fetchCategories ? fetchCategories : !searchQuery;
+		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string): Promise<ITemplatesCollection> {
+			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+			const response = await getCollectionById(apiEndpoint, collectionId);
+			const collection: ITemplatesCollectionFull = {
+				...response.data.collection,
+				full: true,
+			};
+
+			context.commit('addCollections', [collection]);
+			context.commit('addWorkflows', response.data.collection.workflows);
+
+			return context.getters.getCollectionById(collectionId);
+		},
+		async getCategories(context: ActionContext<ITemplateState, IRootState>): Promise<ITemplatesCategory[]> {
+			const cachedCategories: ITemplatesCategory[] = context.getters.allCategories;
+			if (cachedCategories.length) {
+				return cachedCategories;
+			}
+			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+			const response = await getCategories(apiEndpoint);
+			const categories = response.data.categories;
+
+			context.commit('addCategories', categories);
+
+			return categories;
+		},
+		async getCollections(context: ActionContext<ITemplateState, IRootState>, query: ITemplatesQuery): Promise<ITemplatesCollection[]> {
+			const cachedResults: ITemplatesCollection[] | null = context.getters.getSearchedCollections(query);
+			if (cachedResults) {
+				return cachedResults;
+			}
 
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const payload: IN8nSearchResponse = await getTemplates(numberOfResults, skip, category, search, allData, !allData, apiEndpoint);
-			const results : IN8nSearchData = payload.data;
-			if (allData) {
-				const categories = results.categories.map((category: ITemplateCategory) => {
-					category.selected = false;
-					return category;
-				});
-				context.commit('setCategories', categories);
+			const response = await getCollections(apiEndpoint, query);
+			const collections = response.data.collections;
+
+			context.commit('addCollections', collections);
+			context.commit('addCollectionSearch', {query, collections});
+			collections.forEach((collection: ITemplatesCollection) => context.commit('addWorkflows', collection.workflows));
+
+			return collections;
+		},
+		async getWorkflows(context: ActionContext<ITemplateState, IRootState>, query: ITemplatesQuery): Promise<ITemplatesWorkflow[]> {
+			const cachedResults: ITemplatesWorkflow[] = context.getters.getSearchedWorkflows(query);
+			if (cachedResults) {
+				return cachedResults;
 			}
 
-			if (skip) {
-				context.commit('appendWorkflows', results.workflows);
-			} else {
-				context.commit('setCollections', results.collections);
-				context.commit('setTotalWorkflows', results.totalworkflow);
-				context.commit('setWorkflows', results.workflows);
-			}
-			return results;
+			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+
+			const payload = await getWorkflows(apiEndpoint, {...query, skip: 0, limit: TEMPLATES_PAGE_SIZE});
+
+			context.commit('addWorkflows', payload.data.workflows);
+			context.commit('addWorkflowsSearch', {...payload.data, query});
+
+			return context.getters.getSearchedWorkflows(query);
 		},
-		async setTemplateSessionId(context: ActionContext<ITemplateState, IRootState>, sessionId: number) {
-			context.commit('setTemplateSessionId', sessionId);
+		async getMoreWorkflows(context: ActionContext<ITemplateState, IRootState>, query: ITemplatesQuery): Promise<ITemplatesWorkflow[]> {
+			if (context.getters.isSearchLoadingMore(query) && !context.getters.isSearchFinished(query)) {
+				return [];
+			}
+			const cachedResults: ITemplatesWorkflow[] = context.getters.getSearchedWorkflows(query) || [];
+			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+
+			context.commit('setWorkflowSearchLoading', query);
+			try {
+				const payload = await getWorkflows(apiEndpoint, {...query, skip: cachedResults.length, limit: TEMPLATES_PAGE_SIZE});
+
+				context.commit('setWorkflowSearchLoaded', query);
+				context.commit('addWorkflows', payload.data.workflows);
+				context.commit('addWorkflowsSearch', {...payload.data, query});
+
+				return context.getters.getSearchedWorkflows(query);
+			} catch (e) {
+				context.commit('setWorkflowSearchLoaded', query);
+				throw e;
+			}
 		},
 	},
 };

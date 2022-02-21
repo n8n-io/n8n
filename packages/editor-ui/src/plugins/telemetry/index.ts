@@ -4,6 +4,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 import { ILogLevel, INodeCreateElement } from "@/Interface";
+import { Route } from "vue-router";
 
 declare module 'vue/types/vue' {
 	interface Vue {
@@ -35,7 +36,8 @@ interface IUserNodesPanelSession {
 
 class Telemetry {
 
-	private pageEventQueue: Array<{category?: string, name?: string | null}>;
+	private pageEventQueue: Array<{category?: string, route: Route}>;
+	private previousPath: string;
 
 	private get telemetry() {
 		// @ts-ignore
@@ -53,6 +55,7 @@ class Telemetry {
 
 	constructor() {
 		this.pageEventQueue = [];
+		this.previousPath = '';
 	}
 
 	init(options: ITelemetrySettings, instanceId: string, logLevel?: ILogLevel) {
@@ -74,14 +77,28 @@ class Telemetry {
 		}
 	}
 
-	page(category?: string, name?: string | null) {
+	page(category: string, route: Route) {
 		if (this.telemetry)	{
-			this.telemetry.page(category, name);
+			if (route.path === this.previousPath) { // avoid duplicate requests query is changed for example on search page
+				return;
+			}
+			this.previousPath = route.path;
+
+			const pageName = route.name;
+			const properties: {[key: string]: string} = {};
+			if (route.meta && route.meta.telemetry && route.meta.telemetry.params) {
+				const params = route.meta.telemetry.params;
+				Object.keys(params).forEach((key) => {
+					const propertyKey = params[key];
+					properties[propertyKey] = route.params[key];
+				});
+			}
+			this.telemetry.page(category, pageName, properties);
 		}
 		else {
 			this.pageEventQueue.push({
 				category,
-				name,
+				route,
 			});
 		}
 	}
@@ -89,9 +106,9 @@ class Telemetry {
 	flushPageEvents() {
 		const queue = this.pageEventQueue;
 		this.pageEventQueue = [];
-		queue.forEach(({category, name}) => {
+		queue.forEach(({category, route}) => {
 			if (this.telemetry) {
-				this.telemetry.page(category, name);
+				this.telemetry.page(category, route);
 			}
 		});
 	}

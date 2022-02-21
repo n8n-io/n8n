@@ -13,7 +13,7 @@
 import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { IVersionNode } from '@/Interface';
+import { ITemplatesNode } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes } from './helpers';
@@ -38,17 +38,17 @@ export default mixins(genericHelpers).extend({
 	},
 	computed: {
 		filteredCoreNodes() {
-			return filterTemplateNodes(this.nodes as IVersionNode[]);
+			return filterTemplateNodes(this.nodes as ITemplatesNode[]);
 		},
 		hiddenNodes(): number {
 			return this.filteredCoreNodes.length - this.countNodesToBeSliced(this.filteredCoreNodes);
 		},
-		slicedNodes(): IVersionNode[] {
+		slicedNodes(): ITemplatesNode[] {
 			return this.filteredCoreNodes.slice(0, this.countNodesToBeSliced(this.filteredCoreNodes));
 		},
 	},
 	methods: {
-		countNodesToBeSliced(nodes: IVersionNode[]): number {
+		countNodesToBeSliced(nodes: ITemplatesNode[]): number {
 			if (nodes.length > this.nodesToBeShown) {
 				return this.nodesToBeShown - 1;
 			} else {

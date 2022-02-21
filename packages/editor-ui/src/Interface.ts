@@ -513,60 +513,65 @@ export interface IN8nValueSurveyData {
 export interface IN8nPromptResponse {
 	updated: boolean;
 }
-export interface IN8nCollectionResponse {
-	data: { collection: IN8nCollection };
-}
 
-export interface IN8nCollection {
+export interface ITemplatesCollection {
 	id: string;
-	image: ITemplateImage[];
 	name: string;
-	nodes: IVersionNode[];
-	categories: ITemplateCategories[];
-	description: string;
-	workflows: IN8nTemplate[];
-	totalworkflow: number;
+	nodes: ITemplatesNode[];
+	workflows: Array<{id: string}>;
 }
 
-export interface IN8nTemplateResponse {
-	data: { workflow: IN8nTemplate; };
-}
-export interface IN8nTemplate {
+interface ITemplatesImage {
 	id: string;
-	categories: ITemplateCategories[];
+	url: string;
+}
+
+interface ITemplatesCollectionExtended extends ITemplatesCollection {
+	description: string | null;
+	image: ITemplatesImage[];
+	categories: ITemplatesCategory[];
+	created_at: string;
+}
+
+export interface ITemplatesCollectionFull extends ITemplatesCollectionExtended {
+	full: true;
+}
+
+export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtended {
+	workflows: ITemplatesWorkflow[];
+}
+
+export interface ITemplatesWorkflow {
+	id: string;
 	createdAt: string;
-	description: string;
-	image: ITemplateImage[];
 	name: string;
-	nodes: IVersionNode[];
+	nodes: ITemplatesNode[];
 	totalViews: number;
 	user: {
 		username: string;
 	};
+	created_at: string;
 }
 
-export interface IN8nSearchResponse {
-	data: IN8nSearchData;
+export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow {
+	description: string | null;
+	image: ITemplatesImage[];
+	workflow: object;
+	categories: ITemplatesCategory[];
 }
 
-export interface IN8nSearchData {
-	categories: ITemplateCategory[];
-	collections: ITemplateCollection[];
-	totalworkflow: number;
-	workflows: IN8nTemplate[];
+export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
+	full: true;
 }
 
-export interface ITemplateCategory {
+export interface ITemplatesQuery {
+	categories: string[];
+	search: string;
+}
+
+export interface ITemplatesCategory {
 	id: string;
 	name: string;
-	selected?: boolean;
-}
-
-export interface ITemplateCollection {
-	id: string;
-	name: string;
-	workflowsCount: number;
-	nodes: IVersionNode[];
 }
 
 export interface IN8nUISettings {
@@ -606,16 +611,6 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
-}
-
-export interface ITemplateCategories {
-	id: string;
-	name: string;
-}
-
-export interface ITemplateImage {
-	id: string;
-	url: string;
 }
 
 export interface ITimeoutHMS {
@@ -714,7 +709,10 @@ export interface IVersionNode {
 		fileBuffer?: string;
 	};
 	typeVersion: number;
-	categories?: ITemplateCategories[];
+}
+
+export interface ITemplatesNode extends IVersionNode {
+	categories?: ITemplatesCategory[];
 }
 
 export interface IRootState {
@@ -800,13 +798,23 @@ export interface ISettingsState {
 }
 
 export interface ITemplateState {
-	categories: ITemplateCategory[];
-	collection: ITemplateCollection;
-	collections: ITemplateCollection[];
-	templates: IN8nTemplate[];
-	template: IN8nTemplate;
-	templateSessionId: number | null;
-	totalworkflow: number | null;
+	categories: {[id: string]: ITemplatesCategory};
+	collections: {[id: string]: ITemplatesCollection};
+	workflows: {[id: string]: ITemplatesWorkflow};
+	workflowSearches: {
+		[search: string]: {
+			workflowIds: string[];
+			totalWorkflows: number;
+			loadingMore?: boolean;
+		}
+	};
+	collectionSearches: {
+		[search: string]: {
+			collectionIds: string[];
+		}
+	};
+	currentSessionId: string;
+	previousSessionId: string;
 }
 
 export interface IVersionsState {

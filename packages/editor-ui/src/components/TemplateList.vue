@@ -1,28 +1,24 @@
 <template>
-	<div :class="$style.list">
-		<div v-if="(workflows && workflows.length) || loading" :class="$style.header">
+	<div :class="$style.list" v-if="loading || workflows.length">
+		<div :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.workflows') }}
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
 			</n8n-heading>
 		</div>
-		<div v-if="loading" :class="$style.container">
-			<div :class="$style.wrapper">
-				<LongCard v-for="n in 4" :key="'index-' + n" :loading="loading" />
-			</div>
-		</div>
-		<div v-else-if="workflows.length" :class="$style.container">
+		<div :class="$style.container">
 			<div :class="$style.wrapper">
 				<div
 					v-for="(workflow, index) in workflows"
 					:key="'workflow-' + index"
 					:class="[$style.card, useWorkflowButton ? $style.workflowButton : '']"
-					@click="navigateTo(workflow.id, 'TemplateView', $event)"
+					@click="navigateTo(workflow.id, 'TemplatesWorkflowView', $event)"
 				>
 					<LongCard
-						:class="index === workflows.length - 1 && !shouldShowLoadingState ? $style.last : ''"
+						:class="index === workflows.length - 1 && !loading ? $style.last : ''"
 						:loading="false"
 						:title="workflow.name"
+						v-if="workflow.name"
 					>
 						<template v-slot:content>
 							<div :class="$style.content">
@@ -36,8 +32,8 @@
 								<n8n-text size="small" color="text-light">
 									<TimeAgo :date="workflow.created_at" />
 								</n8n-text>
-								<div :class="$style.line" v-text="'|'" />
-								<n8n-text size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
+								<div v-if="workflow.user" :class="$style.line" v-text="'|'" />
+								<n8n-text v-if="workflow.user" size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
 							</div>
 						</template>
 						<template v-slot:button>
@@ -58,7 +54,7 @@
 									:key="index"
 									:class="$style.icon"
 								>
-									<HoverableNodeIcon :nodeType="node" :title="node.name" :size="nodeIconSize" />
+									<HoverableNodeIcon :nodeType="node" :title="node.name" :size="useWorkflowButton ? 18: 24" />
 								</div>
 								<div
 									:class="$style.nodeButton"
@@ -73,15 +69,10 @@
 						</template>
 					</LongCard>
 				</div>
-				<div v-if="infiniteScrollEnabled && searchFinished" v-infocus />
-				<div v-if="infiniteScrollEnabled && shouldShowLoadingState && !searchFinished">
+				<div v-if="infiniteScrollEnabled" ref="loader" />
+				<div v-if="loading">
 					<LongCard v-for="n in 4" :key="'index-' + n" :loading="true" />
 				</div>
-			</div>
-			<div v-if="infiniteScrollEnabled && !shouldShowLoadingState" :class="$style.text">
-				<n8n-text size="medium" color="text-base">
-					<span v-html="$locale.baseText('templates.endResult')" />
-				</n8n-text>
 			</div>
 		</div>
 	</div>
@@ -92,38 +83,19 @@ import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 import LongCard from '@/components/LongCard.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { IVersionNode } from '@/Interface';
+import { ITemplatesNode } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { filterTemplateNodes } from './helpers';
+import { filterTemplateNodes, abbreviateNumber } from './helpers';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplateList',
 	props: {
-		abbreviateNumber: {
-			type: Function,
-		},
-		categories: {
-			type: Array,
-		},
 		infiniteScrollEnabled: {
 			type: Boolean,
 			default: false,
 		},
 		loading: {
 			type: Boolean,
-		},
-		navigateTo: {
-			type: Function,
-		},
-		nodeIconSize: {
-			type: Number,
-			default: 24,
-		},
-		search: {
-			type: String,
-		},
-		totalWorkflows: {
-			type: Number,
 		},
 		useWorkflowButton: {
 			type: Boolean,
@@ -132,83 +104,49 @@ export default mixins(genericHelpers).extend({
 		workflows: {
 			type: Array,
 		},
-	},
-	watch: {
-		categories(categoriesAreChanged) {
-			if (categoriesAreChanged) {
-				this.page = 0;
-				this.skip = 1;
-			}
+		totalWorkflows: {
+			type: Number,
 		},
-		search(search) {
-			if (search) {
-				this.page = 0;
-				this.skip = 1;
-			}
+		navigateTo: {
+			type: Function,
 		},
 	},
-	directives: {
-		infocus: {
-			inserted: (el, binding, vnode) => {
-				const f = () => {
-					if (vnode.context) {
-						if (vnode.context.$props.infiniteScrollEnabled && vnode.context.$data.searchFinished) {
-							const rect = el.getBoundingClientRect();
-							if (el) {
-								const inView =
-									rect.top >= 0 &&
-									rect.left >= 0 &&
-									rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-									rect.right <= (window.innerWidth || document.documentElement.clientWidth);
-
-								if (inView && vnode.context.$data.searchFinished) {
-									// @ts-ignore
-									if (vnode.context.shouldShowLoadingState) {
-										vnode.context.$data.page = vnode.context.$data.page + 1;
-										vnode.context.$data.skip = 10 * vnode.context.$data.page;
-
-										vnode.context.$data.searchFinished = false;
-
-										vnode.context.$store
-											.dispatch('templates/getSearchResults', {
-												search: vnode.context.$props.search,
-												category: vnode.context.$props.categories,
-												skip: vnode.context.$data.skip,
-											})
-											.then(() => {
-												if (vnode.context) vnode.context.$data.searchFinished = true;
-											});
-									}
-								}
-							}
-						} else {
-							window.removeEventListener('scroll', f);
-						}
-					}
-				};
-				window.addEventListener('scroll', f);
-				f();
-			},
-		},
+	mounted() {
+		if (this.infiniteScrollEnabled) {
+			window.addEventListener('scroll', this.onScroll);
+		}
+	},
+	destroyed() {
+		window.removeEventListener('scroll', this.onScroll);
 	},
 	components: {
 		HoverableNodeIcon,
 		LongCard,
 	},
-	computed: {
-		shouldShowLoadingState(): boolean | undefined {
-			return this.totalWorkflows > this.workflows.length;
-		},
-	},
 	data() {
 		return {
 			nodesToBeShown: 5,
-			page: 0,
-			searchFinished: true,
-			skip: 1,
 		};
 	},
 	methods: {
+		abbreviateNumber,
+		onScroll() {
+			const el = this.$refs.loader;
+			if (!el || this.loading) {
+				return;
+			}
+
+			const rect = (el as Element).getBoundingClientRect();
+			const inView =
+				rect.top >= 0 &&
+				rect.left >= 0 &&
+				rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+				rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+
+			if (inView) {
+				this.$emit('loadMore');
+			}
+		},
 		countNodesToBeSliced(nodes: []): number {
 			if (nodes.length > this.nodesToBeShown) {
 				return this.nodesToBeShown - 1;
@@ -216,7 +154,7 @@ export default mixins(genericHelpers).extend({
 				return this.nodesToBeShown;
 			}
 		},
-		filterCoreNodes(nodes: IVersionNode[]) {
+		filterCoreNodes(nodes: ITemplatesNode[]) {
 			return filterTemplateNodes(nodes);
 		},
 	},
@@ -226,10 +164,6 @@ export default mixins(genericHelpers).extend({
 <style lang="scss" module>
 .header {
 	padding-bottom: var(--spacing-2xs);
-}
-
-.list {
-	padding-top: var(--spacing-l);
 }
 
 .wrapper {
@@ -310,7 +244,4 @@ export default mixins(genericHelpers).extend({
 	font-size: var(--font-size-2xs);
 }
 
-.text {
-	margin-top: var(--spacing-xl);
-}
 </style>

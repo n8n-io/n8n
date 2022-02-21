@@ -53,42 +53,54 @@ export default mixins(showMessage).extend({
 				throw e;
 			}
 		},
+		trackPage() {
+			this.$store.commit('ui/setCurrentPage', this.$route.name);
+			this.$telemetry.page('Editor', this.$route);
+
+			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
+				this.$store.commit('templates/setSessionId');
+			}
+			else {
+				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
+			}
+		},
 	},
 	async mounted() {
 		await this.initialize();
 
 		if (this.isTemplatesEnabled && this.$route.path === '/') {
-			this.$router.replace({ name: 'TemplatesView'});
+			this.$router.replace({ name: 'TemplatesSearchView'});
 		} else if (this.$route.path === '/') {
 			this.$router.replace({ name: 'NodeViewNew'});
 		}
 
-		this.$store.commit('ui/setCurrentPage', this.$route.name);
-		this.$telemetry.page('Editor', this.$route.name);
+		if (!this.isTemplatesEnabled && this.$route.meta && this.$route.meta.templatesEnabled) {
+			this.$router.replace({ name: 'NodeViewNew'});
+		}
+
+		this.trackPage();
 	},
 	watch: {
-		'$route'(route) {
-			this.$store.commit('ui/setCurrentPage', this.$route.name);
-			this.$telemetry.page('Editor', route.name);
+		'$route'() {
+			this.trackPage();
 		},
 	},
 });
 </script>
 
 <style lang="scss">
-
 #app {
 	padding: 0;
 	margin: 0 auto;
 }
 
 #content {
+	background-color: var(--color-background-light);
 	position: relative;
 	top: 0;
 	left: 0;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-background-light);
 }
 
 #header {
