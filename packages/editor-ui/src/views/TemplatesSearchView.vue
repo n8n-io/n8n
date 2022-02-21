@@ -75,7 +75,6 @@ import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { abbreviateNumber } from '@/components/helpers';
 import mixins from 'vue-typed-mixins';
 import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery } from '@/Interface';
 
@@ -129,7 +128,6 @@ export default mixins(genericHelpers).extend({
 		};
 	},
 	methods: {
-		abbreviateNumber,
 		updateSearch() {
 			this.updateQueryParam(this.search, this.categories.join(','));
 			this.loadWorkflows();

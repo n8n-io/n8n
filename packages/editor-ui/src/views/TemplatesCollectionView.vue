@@ -48,7 +48,6 @@ import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
-import { abbreviateNumber } from '@/components/helpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { ITemplatesCollection, ITemplatesCollectionFull, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 
@@ -84,7 +83,6 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	methods: {
-		abbreviateNumber,
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (page === 'WorkflowTemplate') {
 				this.$telemetry.track('User inserted workflow template', {
