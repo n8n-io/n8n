@@ -4,7 +4,7 @@
 			<img :class="$style.image" :srcset="srcset" @load="imageIsLoaded = true"/>
 		</div>
 		<div>
-			<n8n-loading :animated="true" :loading="!imageIsLoaded" :rows="1" variant="image" />
+			<n8n-loading :loading="!imageIsLoaded" :rows="1" variant="image" />
 		</div>
 	</div>
 </template>

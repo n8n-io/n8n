@@ -9,7 +9,7 @@
 				v-text="title"
 				:class="$style.title"
 			/>
-			<n8n-loading :animated="true" :loading="loading" :rows="3" variant="p" />
+			<n8n-loading :loading="loading" :rows="3" variant="p" />
 			<div :class="$style.footer">
 				<slot name="footer"></slot>
 			</div>
