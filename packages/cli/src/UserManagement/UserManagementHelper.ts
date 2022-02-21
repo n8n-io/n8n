@@ -49,7 +49,7 @@ export function sanitizeUser(user: User): PublicUser {
 }
 
 /**
- * Check if the endpoint is `POST /users/:id`
+ * Check if the endpoint is `POST /users/:id`.
  */
 export function isPostUsersId(req: express.Request, restEndpoint: string): boolean {
 	return (

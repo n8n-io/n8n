@@ -50,7 +50,7 @@ export const ROUTES_REQUIRING_AUTHENTICATION: Readonly<string[]> = [
 ];
 
 /**
- * Routes requiring a valid `n8n-auth` cookie for owner.
+ * Routes requiring a valid `n8n-auth` cookie for an owner.
  */
 export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'POST /users',
