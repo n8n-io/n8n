@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -191,7 +190,7 @@ export class Ssh implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+				description: 'Name of the binary property which contains the data for the file to be uploaded.',
 			},
 			{
 				displayName: 'Target Directory',
@@ -210,9 +209,7 @@ export class Ssh implements INodeType {
 				default: '',
 				required: true,
 				placeholder: '/home/user',
-				description: `The directory to upload the file to. The name of the file does not need to be specified,</br>
-				it's taken from the binary data file name. To override this behavior, set the parameter</br>
-				"File Name" under options.`,
+				description: `The directory to upload the file to. The name of the file does not need to be specified, it's taken from the binary data file name. To override this behavior, set the parameter "File Name" under options.`,
 			},
 			{
 				displayName: 'Path',
@@ -296,7 +293,7 @@ export class Ssh implements INodeType {
 		try {
 			if (authentication === 'password') {
 
-				const credentials = this.getCredentials('sshPassword') as IDataObject;
+				const credentials = await this.getCredentials('sshPassword') as IDataObject;
 
 				await ssh.connect({
 					host: credentials.host as string,
@@ -307,7 +304,7 @@ export class Ssh implements INodeType {
 
 			} else if (authentication === 'privateKey') {
 
-				const credentials = this.getCredentials('sshPrivateKey') as IDataObject;
+				const credentials = await this.getCredentials('sshPrivateKey') as IDataObject;
 
 				const { path, } = await file({ prefix: 'n8n-ssh-' });
 				temporaryFiles.push(path);
@@ -389,9 +386,11 @@ export class Ssh implements INodeType {
 								throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
 							}
 
+							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+
 							const { path } = await file({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
-							await writeFile(path, Buffer.from(binaryData.data, BINARY_ENCODING));
+							await writeFile(path, dataBuffer);
 
 							await ssh.putFile(path, `${parameterPath}${(parameterPath.charAt(parameterPath.length - 1) === '/') ? '' : '/'}${fileName || binaryData.fileName}`);
 

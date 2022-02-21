@@ -15,7 +15,7 @@ import {
 
 export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('serviceNowOAuth2Api');
+	const credentials = await this.getCredentials('serviceNowOAuth2Api');
 
 	const options: OptionsWithUri = {
 		headers: {},

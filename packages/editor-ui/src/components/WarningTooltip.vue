@@ -1,8 +1,8 @@
 <template functional>
-	<el-tooltip effect="light" content=" " placement="top" >
+	<n8n-tooltip  content=" " placement="top" >
 		<div slot="content"><slot /></div>
 		<font-awesome-icon :class="$style['icon']" icon="exclamation-triangle"></font-awesome-icon>
-	</el-tooltip>
+	</n8n-tooltip>
 </template>
 
 

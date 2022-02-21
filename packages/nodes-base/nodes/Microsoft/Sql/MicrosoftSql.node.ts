@@ -42,7 +42,6 @@ export class MicrosoftSql implements INodeType {
 		description: 'Get, add and update data in Microsoft SQL',
 		defaults: {
 			name: 'Microsoft SQL',
-			color: '#bcbcbd',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -91,7 +90,7 @@ export class MicrosoftSql implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -214,7 +213,7 @@ export class MicrosoftSql implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('microsoftSql');
+		const credentials = await this.getCredentials('microsoftSql');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

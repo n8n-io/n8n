@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const groupOperations = [
+export const groupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const groupOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const groupFields = [
+export const groupFields: INodeProperties[] = [
 	// ----------------------------------
 	//       group: shared
 	// ----------------------------------
@@ -144,7 +144,7 @@ export const groupFields = [
 		name: 'accessAll',
 		type: 'boolean',
 		default: false,
-		description: 'Allow this group to access all collections within the organization, instead of only its associated collections.<br>If set to true, this option overrides any collection assignments.',
+		description: 'Allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -208,7 +208,7 @@ export const groupFields = [
 				name: 'accessAll',
 				type: 'boolean',
 				default: false,
-				description: 'Allow this group to access all collections within the organization, instead of only its associated collections.<br>If set to true, this option overrides any collection assignments.',
+				description: 'Allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 			},
 			{
 				displayName: 'Collections',
@@ -267,7 +267,7 @@ export const groupFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
 type GroupSchema = {
 	name: string;

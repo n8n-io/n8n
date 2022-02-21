@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -33,7 +34,6 @@ export class CiscoWebexTrigger implements INodeType {
 		description: 'Starts the workflow when Cisco Webex events occur.',
 		defaults: {
 			name: 'Webex Trigger',
-			color: '#29b6f6',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -106,7 +106,7 @@ export class CiscoWebexTrigger implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default the response only contain a reference to the data the user inputed<br />If this option gets activated it will resolve the data automatically.',
+				description: 'By default the response only contain a reference to the data the user inputed. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Filters',
@@ -600,7 +600,11 @@ export class CiscoWebexTrigger implements INodeType {
 				const event = this.getNodeParameter('event') as string;
 				const resource = this.getNodeParameter('resource') as string;
 				const filters = this.getNodeParameter('filters', {}) as IDataObject;
-				const secret = getAutomaticSecret(this.getCredentials('ciscoWebexOAuth2Api')!);
+				const credentials = await this.getCredentials('ciscoWebexOAuth2Api');
+				if (credentials === undefined) {
+					throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
+				}
+				const secret = getAutomaticSecret(credentials);
 				const filter = [];
 				for (const key of Object.keys(filters)) {
 					if (key !== 'ownedBy') {

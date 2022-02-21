@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const chargeOperations = [
+export const chargeOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const chargeOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const chargeFields = [
+export const chargeFields: INodeProperties[] = [
 	// ----------------------------------
 	//       charge: create
 	// ----------------------------------
@@ -94,7 +94,7 @@ export const chargeFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a target="_blank" href="https://stripe.com/docs/currencies">Stripe-supported currency</a>',
+		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -250,7 +250,7 @@ export const chargeFields = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -388,6 +388,7 @@ export const chargeFields = [
 				displayName: 'Metadata',
 				name: 'metadata',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Metadata Item',
 				description: 'Set of key-value pairs to attach to the charge to update',
 				typeOptions: {
@@ -425,6 +426,7 @@ export const chargeFields = [
 				displayName: 'Shipping',
 				name: 'shipping',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Shipping information for the charge',
 				placeholder: 'Add Field',
 				typeOptions: {
@@ -484,7 +486,7 @@ export const chargeFields = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -506,4 +508,4 @@ export const chargeFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

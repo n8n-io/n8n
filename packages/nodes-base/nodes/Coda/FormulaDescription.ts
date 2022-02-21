@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const formulaOperations = [
+export const formulaOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const formulaOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const formulaFields = [
+export const formulaFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                   formula:get                              */
@@ -138,4 +138,4 @@ export const formulaFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

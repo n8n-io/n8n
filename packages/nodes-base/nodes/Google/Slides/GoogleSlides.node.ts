@@ -26,7 +26,6 @@ export class GoogleSlides implements INodeType {
 		description: 'Consume the Google Slides API',
 		defaults: {
 			name: 'Google Slides',
-			color: '#edba25',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -171,7 +170,7 @@ export class GoogleSlides implements INodeType {
 			{
 				displayName: 'Presentation ID',
 				name: 'presentationId',
-				description: 'ID of the presentation to retrieve. Found in the presentation URL:<br><code>https://docs.google.com/presentation/d/PRESENTATION_ID/edit</code>',
+				description: 'ID of the presentation to retrieve. Found in the presentation URL: <code>https://docs.google.com/presentation/d/PRESENTATION_ID/edit</code>',
 				placeholder: '1wZtNFZ8MO-WKrxhYrOLMvyiqSgFwdSz5vn8_l_7eNqw',
 				type: 'string',
 				default: '',
@@ -335,9 +334,7 @@ export class GoogleSlides implements INodeType {
 						name: 'revisionId',
 						type: 'string',
 						default: '',
-						description: `The revision ID of the presentation required for the write request.</br>
-						If specified and the requiredRevisionId doesn't exactly match the presentation's</br>
-						current revisionId, the request will not be processed and will return a 400 bad request error.`,
+						description: `The revision ID of the presentation required for the write request. If specified and the requiredRevisionId doesn't exactly match the presentation's current revisionId, the request will not be processed and will return a 400 bad request error.`,
 					},
 				],
 			},
@@ -357,7 +354,7 @@ export class GoogleSlides implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to<br />write the data of the read page.',
+				description: 'Name of the binary property to which to write the data of the read page.',
 			},
 			{
 				displayName: 'Binary Property',

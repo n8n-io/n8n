@@ -1,8 +1,6 @@
-import { 
-	ILogger, 
-	LogTypes,
-} from './Interfaces';
-
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+// eslint-disable-next-line import/no-cycle
+import { ILogger, LogTypes } from './Interfaces';
 
 let logger: ILogger | undefined;
 

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const messageOperations = [
+export const messageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const messageOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const messageFields = [
+export const messageFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                              message:create                                */
@@ -145,6 +145,7 @@ export const messageFields = [
 	{
 		displayName: 'Fallback Text',
 		name: 'fallbackText',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -255,11 +256,11 @@ export const messageFields = [
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description: 'A JSON RoomEventFilter to filter returned events with. More information can be found on this <a href="https://matrix.org/docs/spec/client_server/r0.6.0" target="_blank">page</a>.',
+				description: 'A JSON RoomEventFilter to filter returned events with. More information can be found on this <a href="https://matrix.org/docs/spec/client_server/r0.6.0">page</a>.',
 				placeholder: '{"contains_url":true,"types":["m.room.message", "m.sticker"]}',
 			},
 		],
 	},
 
 
-] as INodeProperties[];
+];

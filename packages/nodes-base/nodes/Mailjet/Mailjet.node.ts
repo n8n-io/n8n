@@ -37,7 +37,6 @@ export class Mailjet implements INodeType {
 		description: 'Consume Mailjet API',
 		defaults: {
 			name: 'Mailjet',
-			color: '#ff9f48',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

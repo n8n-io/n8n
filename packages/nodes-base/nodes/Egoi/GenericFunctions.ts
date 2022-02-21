@@ -35,7 +35,7 @@ export async function getFields(this: IExecuteFunctions, listId: string) {
 
 export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('egoiApi') as IDataObject;
+	const credentials = await this.getCredentials('egoiApi') as IDataObject;
 
 	const options: OptionsWithUrl = {
 		headers: {

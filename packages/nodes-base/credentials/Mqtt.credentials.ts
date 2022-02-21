@@ -1,5 +1,6 @@
 import {
 	ICredentialType,
+	IDisplayOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -68,6 +69,100 @@ export class Mqtt implements ICredentialType {
 			type: 'string',
 			default: '',
 			description: 'Client ID. If left empty, one is autogenrated for you',
+		},
+		{
+			displayName: 'SSL',
+			name: 'ssl',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'Passwordless',
+			name: 'passwordless',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+				},
+			},
+			default: true,
+			description: 'Passwordless connection with certificates (SASL mechanism EXTERNAL)',
+		},
+		{
+			displayName: 'CA Certificates',
+			name: 'ca',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+				},
+			},
+			default: '',
+			description: 'SSL CA Certificates to use.',
+		},
+		{
+			displayName: 'Reject Unauthorized Certificate',
+			name: 'rejectUnauthorized',
+			type: 'boolean',			
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					passwordless: [
+						true,
+					],
+				},
+			} as IDisplayOptions,
+			default: '',
+			description: 'Validate Certificate.',
+		},
+		{
+			displayName: 'Client Certificate',
+			name: 'cert',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					passwordless: [
+						true,
+					],
+				},
+			} as IDisplayOptions,
+			default: '',
+			description: 'SSL Client Certificate to use.',
+		},
+		{
+			displayName: 'Client Key',
+			name: 'key',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					passwordless: [
+						true,
+					],
+				},
+			},
+			default: '',
+			description: 'SSL Client Key to use.',
 		},
 	];
 }

@@ -21,7 +21,7 @@ import {
  * @returns {Promise<any>}
  */
 export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('twilioApi') as {
+	const credentials = await this.getCredentials('twilioApi') as {
 		accountSid: string;
 		authType: 'authToken' | 'apiKey';
 		authToken: string;

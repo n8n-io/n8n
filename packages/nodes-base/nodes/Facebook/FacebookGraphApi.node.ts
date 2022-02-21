@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IBinaryData,
 	IDataObject,
@@ -26,7 +23,6 @@ export class FacebookGraphApi implements INodeType {
 		description: 'Interacts with Facebook using the Graph API',
 		defaults: {
 			name: 'Facebook Graph API',
-			color: '#3B5998',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -85,6 +81,14 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v12.0',
+						value: 'v12.0',
+					},
+					{
+						name: 'v11.0',
+						value: 'v11.0',
 					},
 					{
 						name: 'v10.0',
@@ -196,9 +200,7 @@ export class FacebookGraphApi implements INodeType {
 						],
 					},
 				},
-				description: `Name of the binary property which contains the data for the file to be uploaded.<br />
-							For Form-Data Multipart, multiple can be provided in the format:<br />
-							"sendKey1:binaryProperty1,sendKey2:binaryProperty2`,
+				description: `Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>`,
 			},
 			{
 				displayName: 'Options',
@@ -295,7 +297,7 @@ export class FacebookGraphApi implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const graphApiCredentials = this.getCredentials('facebookGraphApi');
+			const graphApiCredentials = await this.getCredentials('facebookGraphApi');
 
 			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
 			const httpRequestMethod = this.getNodeParameter('httpRequestMethod', itemIndex) as string;
@@ -386,9 +388,10 @@ export class FacebookGraphApi implements INodeType {
 
 				const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
 
+				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 				requestOptions.formData = {
 					[propertyName]: {
-						value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+						value: binaryDataBuffer,
 						options: {
 							filename: binaryProperty.fileName,
 							contentType: binaryProperty.mimeType,

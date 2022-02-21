@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const eventOperations = [
+export const eventOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const eventOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const eventFields = [
+export const eventFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                   event:getAll                             */
@@ -279,7 +279,7 @@ export const eventFields = [
 								name: 'fieldId',
 								type: 'string',
 								default: '',
-								description: 'Each custom field\'s unique identifier<br /> can be found within the Event\'s Registration block in the Customize tab.',
+								description: 'Each custom field\'s unique identifier can be found within the Event\'s Registration block in the Customize tab.',
 							},
 							{
 								displayName: 'Value',
@@ -297,7 +297,7 @@ export const eventFields = [
 				name: 'ref_url',
 				type: 'string',
 				default: '',
-				description: 'Event Registration page URL. It can be useful when you<br /> do not know Event ID, but have Event link.',
+				description: 'Event Registration page URL. It can be useful when you do not know Event ID, but have Event link.',
 			},
 			{
 				displayName: 'GDPR',
@@ -342,4 +342,4 @@ export const eventFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

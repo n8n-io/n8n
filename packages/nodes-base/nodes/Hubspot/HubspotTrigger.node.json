@@ -18,6 +18,11 @@
 		],
 		"generic": [
 			{
+				"label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+				"icon": "👥",
+				"url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+			},
+			{
 				"label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin",
 				"icon": "🎖",
 				"url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/"

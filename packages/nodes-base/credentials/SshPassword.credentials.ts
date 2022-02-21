@@ -5,7 +5,7 @@ import {
 
 export class SshPassword implements ICredentialType {
 	name = 'sshPassword';
-	displayName = 'SSH';
+	displayName = 'SSH Password';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

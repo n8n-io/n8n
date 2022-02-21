@@ -36,7 +36,7 @@ function getEndpointForService(service: string, credentials: ICredentialDataDecr
 }
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: object | IRequestBody, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('aws');
+	const credentials = await this.getCredentials('aws');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
@@ -45,9 +45,10 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
 	const options = sign({
+		// @ts-ignore
 		uri: endpoint,
 		service,
-		region: credentials.region,
+		region: credentials.region as string,
 		method,
 		path: '/',
 		headers: { ...headers },

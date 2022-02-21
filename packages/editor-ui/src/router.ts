@@ -21,12 +21,6 @@ export default new Router({
 			},
 		},
 		{
-			path: '/oauth2/callback',
-			name: 'oAuth2Callback',
-			components: {
-			},
-		},
-		{
 			path: '/workflow',
 			name: 'NodeViewNew',
 			components: {
@@ -55,6 +49,13 @@ export default new Router({
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
+			},
+		},
+		{
+			path: '/workflows/demo',
+			name: 'WorkflowDemo',
+			components: {
+				default: NodeView,
 			},
 		},
 	],

@@ -58,9 +58,3 @@ export default Vue.extend({
 	},
 });
 </script>
-
-<style lang="scss" scoped>
-.el-input input.el-input__inner {
-	border: 1px solid $--color-primary !important;
-}
-</style>

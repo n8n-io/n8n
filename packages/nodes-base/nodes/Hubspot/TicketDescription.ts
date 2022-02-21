@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const ticketOperations = [
+export const ticketOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const ticketOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const ticketFields = [
+export const ticketFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                ticket:create                               */
@@ -223,8 +223,7 @@ export const ticketFields = [
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: `The user from your team that the ticket is assigned to.</br>
-				You can assign additional users to a ticket record by creating a custom HubSpot user property`,
+				description: `The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property`,
 			},
 		],
 	},
@@ -375,8 +374,7 @@ export const ticketFields = [
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: `The user from your team that the ticket is assigned to.</br>
-				You can assign additional users to a ticket record by creating a custom HubSpot user property`,
+				description: `The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property`,
 			},
 		],
 	},
@@ -433,18 +431,14 @@ export const ticketFields = [
 					loadOptionsMethod: 'getTicketProperties',
 				},
 				default: [],
-				description: `Used to include specific ticket properties in the results.<br/>
-			By default, the results will only include ticket ID and will not include the values for any properties for your tickets.<br/>
-			Including this parameter will include the data for the specified property in the results.<br/>
-			You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your tickets.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Properties With History',
 				name: 'propertiesWithHistory',
 				type: 'string',
 				default: '',
-				description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
-			instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
+				description: `Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
 			},
 		],
 	},
@@ -518,18 +512,14 @@ export const ticketFields = [
 					loadOptionsMethod: 'getTicketProperties',
 				},
 				default: [],
-				description: `Used to include specific ticket properties in the results.<br/>
-			By default, the results will only include ticket ID and will not include the values for any properties for your tickets.<br/>
-			Including this parameter will include the data for the specified property in the results.<br/>
-			You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Properties With History',
 				name: 'propertiesWithHistory',
 				type: 'string',
 				default: '',
-				description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
-			instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
+				description: `Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
 			},
 		],
 	},
@@ -555,4 +545,4 @@ export const ticketFields = [
 		default: '',
 		description: 'Unique identifier for a particular ticket',
 	},
-] as INodeProperties[];
+];

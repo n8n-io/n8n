@@ -28,7 +28,6 @@ export class GithubTrigger implements INodeType {
 		description: 'Starts the workflow when Github events occur',
 		defaults: {
 			name: 'Github Trigger',
-			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -173,7 +172,7 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'installation',
 						value: 'installation',
-						description: 'Triggered when someone installs (created) , uninstalls (deleted), or accepts new permissions (new_permissions_accepted) for a GitHub App. When a GitHub App owner requests new permissions, the person who installed the GitHub App must accept the new permissions request.',
+						description: 'Triggered when someone installs (created), uninstalls (deleted), or accepts new permissions (new_permissions_accepted) for a GitHub App. When a GitHub App owner requests new permissions, the person who installed the GitHub App must accept the new permissions request.',
 					},
 					{
 						name: 'installation_repositories',
@@ -314,7 +313,7 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'team',
 						value: 'team',
-						description: 'Triggered when an organization\'s team is created,<br/>deleted, edited, added_to_repository, or removed_from_repository. Organization hooks only',
+						description: 'Triggered when an organization\'s team is created, deleted, edited, added_to_repository, or removed_from_repository. Organization hooks only',
 					},
 					{
 						name: 'team_add',

@@ -56,7 +56,6 @@ export class GoToWebinar implements INodeType {
 		description: 'Consume the GoToWebinar API',
 		defaults: {
 			name: 'GoToWebinar',
-			color: '#0097e1',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -158,7 +157,7 @@ export class GoToWebinar implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+		const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
 			oauthTokenData: { account_key: string, organizer_key: string }
 		};
 

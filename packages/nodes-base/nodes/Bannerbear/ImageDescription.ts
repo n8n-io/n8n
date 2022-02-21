@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const imageOperations = [
+export const imageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const imageOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const imageFields = [
+export const imageFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                image:create                                */
@@ -86,9 +86,7 @@ export const imageFields = [
 				name: 'waitForImage',
 				type: 'boolean',
 				default: false,
-				description: `Wait for the image to be proccesed before returning.<br />
-				If after three tries the images is not ready, an error will be thrown.<br />
-				Number of tries can be increased by setting "Wait Max Tries".`,
+				description: `Wait for the image to be proccesed before returning. If after three tries the images is not ready, an error will be thrown. Number of tries can be increased by setting "Wait Max Tries".`,
 			},
 			{
 				displayName: 'Wait Max Tries',
@@ -207,4 +205,4 @@ export const imageFields = [
 		},
 		description: 'Unique identifier for the image.',
 	},
-] as INodeProperties[];
+];

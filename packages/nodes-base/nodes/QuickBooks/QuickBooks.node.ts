@@ -72,7 +72,6 @@ export class QuickBooks implements INodeType {
 		description: 'Consume the QuickBooks Online API',
 		defaults: {
 			name: 'QuickBooks Online',
-			color: '#2CA01C',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -200,8 +199,7 @@ export class QuickBooks implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const { oauthTokenData } = this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
-
+		const { oauthTokenData } = await this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
 		const companyId = oauthTokenData.callbackQueryString.realmId;
 
 		for (let i = 0; i < items.length; i++) {

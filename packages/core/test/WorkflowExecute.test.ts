@@ -1,5 +1,5 @@
-
 import {
+	createDeferredPromise,
 	IConnections,
 	ILogger,
 	INode,
@@ -8,32 +8,26 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import {
-	createDeferredPromise,
-	WorkflowExecute,
-} from '../src';
+import { WorkflowExecute } from '../src';
 
 import * as Helpers from './Helpers';
 
-
 describe('WorkflowExecute', () => {
-
 	describe('run', () => {
-
 		const tests: Array<{
 			description: string;
 			input: {
 				workflowData: {
-					nodes: INode[],
-					connections: IConnections,
-				}
-			},
+					nodes: INode[];
+					connections: IConnections;
+				};
+			};
 			output: {
 				nodeExecutionOrder: string[];
 				nodeData: {
-					[key: string]: any[][]; // tslint:disable-line:no-any
+					[key: string]: any[][];
 				};
-			},
+			};
 		}> = [
 			{
 				description: 'should run basic two node workflow',
@@ -41,45 +35,39 @@ describe('WorkflowExecute', () => {
 					// Leave the workflowData in regular JSON to be able to easily
 					// copy it from/in the UI
 					workflowData: {
-						"nodes": [
+						nodes: [
 							{
-								"parameters": {},
-								"name": "Start",
-								"type": "n8n-nodes-base.start",
-								"typeVersion": 1,
-								"position": [
-									100,
-									300,
-								],
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [100, 300],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "value1",
-												"value": 1,
+												name: 'value1',
+												value: 1,
 											},
 										],
 									},
 								},
-								"name": "Set",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									280,
-									300,
-								],
+								name: 'Set',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [280, 300],
 							},
 						],
-						"connections": {
-							"Start": {
-								"main": [
+						connections: {
+							Start: {
+								main: [
 									[
 										{
-											"node": "Set",
-											"type": "main",
-											"index": 0,
+											node: 'Set',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
@@ -88,10 +76,7 @@ describe('WorkflowExecute', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: [
-						'Start',
-						'Set',
-					],
+					nodeExecutionOrder: ['Start', 'Set'],
 					nodeData: {
 						Set: [
 							[
@@ -109,80 +94,71 @@ describe('WorkflowExecute', () => {
 					// Leave the workflowData in regular JSON to be able to easily
 					// copy it from/in the UI
 					workflowData: {
-						"nodes": [
+						nodes: [
 							{
-								"parameters": {},
-								"name": "Start",
-								"type": "n8n-nodes-base.start",
-								"typeVersion": 1,
-								"position": [
-									100,
-									300,
-								],
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [100, 300],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "value1",
-												"value": 1,
+												name: 'value1',
+												value: 1,
 											},
 										],
 									},
 								},
-								"name": "Set1",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									300,
-									250,
-								],
+								name: 'Set1',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [300, 250],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "value2",
-												"value": 2,
+												name: 'value2',
+												value: 2,
 											},
 										],
 									},
 								},
-								"name": "Set2",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									500,
-									400,
-								],
+								name: 'Set2',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [500, 400],
 							},
 						],
-						"connections": {
-							"Start": {
-								"main": [
+						connections: {
+							Start: {
+								main: [
 									[
 										{
-											"node": "Set1",
-											"type": "main",
-											"index": 0,
+											node: 'Set1',
+											type: 'main',
+											index: 0,
 										},
 										{
-											"node": "Set2",
-											"type": "main",
-											"index": 0,
+											node: 'Set2',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Set1": {
-								"main": [
+							Set1: {
+								main: [
 									[
 										{
-											"node": "Set2",
-											"type": "main",
-											"index": 0,
+											node: 'Set2',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
@@ -191,12 +167,7 @@ describe('WorkflowExecute', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: [
-						'Start',
-						'Set1',
-						'Set2',
-						'Set2',
-					],
+					nodeExecutionOrder: ['Start', 'Set1', 'Set2', 'Set2'],
 					nodeData: {
 						Set1: [
 							[
@@ -227,256 +198,226 @@ describe('WorkflowExecute', () => {
 					// Leave the workflowData in regular JSON to be able to easily
 					// copy it from/in the UI
 					workflowData: {
-						"nodes": [
+						nodes: [
 							{
-								"parameters": {
-									"mode": "passThrough",
+								parameters: {
+									mode: 'passThrough',
 								},
-								"name": "Merge4",
-								"type": "n8n-nodes-base.merge",
-								"typeVersion": 1,
-								"position": [
-									1150,
-									500,
-								],
+								name: 'Merge4',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [1150, 500],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "value2",
-												"value": 2,
+												name: 'value2',
+												value: 2,
 											},
 										],
 									},
 								},
-								"name": "Set2",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									290,
-									400,
-								],
+								name: 'Set2',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [290, 400],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "value4",
-												"value": 4,
+												name: 'value4',
+												value: 4,
 											},
 										],
 									},
 								},
-								"name": "Set4",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									850,
-									200,
-								],
+								name: 'Set4',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [850, 200],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "value3",
-												"value": 3,
+												name: 'value3',
+												value: 3,
 											},
 										],
 									},
 								},
-								"name": "Set3",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									650,
-									200,
-								],
+								name: 'Set3',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [650, 200],
 							},
 							{
-								"parameters": {
-									"mode": "passThrough",
+								parameters: {
+									mode: 'passThrough',
 								},
-								"name": "Merge4",
-								"type": "n8n-nodes-base.merge",
-								"typeVersion": 1,
-								"position": [
-									1150,
-									500,
-								],
+								name: 'Merge4',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [1150, 500],
 							},
 							{
-								"parameters": {},
-								"name": "Merge3",
-								"type": "n8n-nodes-base.merge",
-								"typeVersion": 1,
-								"position": [
-									1000,
-									400,
-								],
+								parameters: {},
+								name: 'Merge3',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [1000, 400],
 							},
 							{
-								"parameters": {
-									"mode": "passThrough",
-									"output": "input2",
+								parameters: {
+									mode: 'passThrough',
+									output: 'input2',
 								},
-								"name": "Merge2",
-								"type": "n8n-nodes-base.merge",
-								"typeVersion": 1,
-								"position": [
-									700,
-									400,
-								],
+								name: 'Merge2',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [700, 400],
 							},
 							{
-								"parameters": {},
-								"name": "Merge1",
-								"type": "n8n-nodes-base.merge",
-								"typeVersion": 1,
-								"position": [
-									500,
-									300,
-								],
+								parameters: {},
+								name: 'Merge1',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [500, 300],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "value1",
-												"value": 1,
+												name: 'value1',
+												value: 1,
 											},
 										],
 									},
 								},
-								"name": "Set1",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									300,
-									200,
-								],
+								name: 'Set1',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [300, 200],
 							},
 							{
-								"parameters": {},
-								"name": "Start",
-								"type": "n8n-nodes-base.start",
-								"typeVersion": 1,
-								"position": [
-									100,
-									300,
-								],
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [100, 300],
 							},
 						],
-						"connections": {
-							"Set2": {
-								"main": [
+						connections: {
+							Set2: {
+								main: [
 									[
 										{
-											"node": "Merge1",
-											"type": "main",
-											"index": 1,
+											node: 'Merge1',
+											type: 'main',
+											index: 1,
 										},
 										{
-											"node": "Merge2",
-											"type": "main",
-											"index": 1,
+											node: 'Merge2',
+											type: 'main',
+											index: 1,
 										},
 									],
 								],
 							},
-							"Set4": {
-								"main": [
+							Set4: {
+								main: [
 									[
 										{
-											"node": "Merge3",
-											"type": "main",
-											"index": 0,
+											node: 'Merge3',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Set3": {
-								"main": [
+							Set3: {
+								main: [
 									[
 										{
-											"node": "Set4",
-											"type": "main",
-											"index": 0,
+											node: 'Set4',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Merge3": {
-								"main": [
+							Merge3: {
+								main: [
 									[
 										{
-											"node": "Merge4",
-											"type": "main",
-											"index": 0,
+											node: 'Merge4',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Merge2": {
-								"main": [
+							Merge2: {
+								main: [
 									[
 										{
-											"node": "Merge3",
-											"type": "main",
-											"index": 1,
+											node: 'Merge3',
+											type: 'main',
+											index: 1,
 										},
 									],
 								],
 							},
-							"Merge1": {
-								"main": [
+							Merge1: {
+								main: [
 									[
 										{
-											"node": "Merge2",
-											"type": "main",
-											"index": 0,
+											node: 'Merge2',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Set1": {
-								"main": [
+							Set1: {
+								main: [
 									[
 										{
-											"node": "Merge1",
-											"type": "main",
-											"index": 0,
+											node: 'Merge1',
+											type: 'main',
+											index: 0,
 										},
 										{
-											"node": "Set3",
-											"type": "main",
-											"index": 0,
+											node: 'Set3',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Start": {
-								"main": [
+							Start: {
+								main: [
 									[
 										{
-											"node": "Set1",
-											"type": "main",
-											"index": 0,
+											node: 'Set1',
+											type: 'main',
+											index: 0,
 										},
 										{
-											"node": "Set2",
-											"type": "main",
-											"index": 0,
+											node: 'Set2',
+											type: 'main',
+											index: 0,
 										},
 										{
-											"node": "Merge4",
-											"type": "main",
-											"index": 1,
+											node: 'Merge4',
+											type: 'main',
+											index: 1,
 										},
 									],
 								],
@@ -573,146 +514,132 @@ describe('WorkflowExecute', () => {
 				},
 			},
 			{
-				description: 'should run workflow also if node has multiple input connections and one is empty',
+				description:
+					'should run workflow also if node has multiple input connections and one is empty',
 				input: {
 					// Leave the workflowData in regular JSON to be able to easily
 					// copy it from/in the UI
 					workflowData: {
-						"nodes": [
+						nodes: [
 							{
-								"parameters": {},
-								"name": "Start",
-								"type": "n8n-nodes-base.start",
-								"typeVersion": 1,
-								"position": [
-									250,
-									450,
-								],
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [250, 450],
 							},
 							{
-								"parameters": {
-									"conditions": {
-										"boolean": [],
-										"number": [
+								parameters: {
+									conditions: {
+										boolean: [],
+										number: [
 											{
-												"value1": "={{Object.keys($json).length}}",
-												"operation": "notEqual",
+												value1: '={{Object.keys($json).length}}',
+												operation: 'notEqual',
 											},
 										],
 									},
 								},
-								"name": "IF",
-								"type": "n8n-nodes-base.if",
-								"typeVersion": 1,
-								"position": [
-									650,
-									350,
-								],
+								name: 'IF',
+								type: 'n8n-nodes-base.if',
+								typeVersion: 1,
+								position: [650, 350],
 							},
 							{
-								"parameters": {},
-								"name": "Merge1",
-								"type": "n8n-nodes-base.merge",
-								"typeVersion": 1,
-								"position": [
-									1150,
-									450,
-								],
+								parameters: {},
+								name: 'Merge1',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [1150, 450],
 							},
 							{
-								"parameters": {
-									"values": {
-										"string": [
+								parameters: {
+									values: {
+										string: [
 											{
-												"name": "test1",
-												"value": "a",
+												name: 'test1',
+												value: 'a',
 											},
 										],
 									},
-									"options": {},
+									options: {},
 								},
-								"name": "Set1",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									450,
-									450,
-								],
+								name: 'Set1',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [450, 450],
 							},
 							{
-								"parameters": {
-									"values": {
-										"string": [
+								parameters: {
+									values: {
+										string: [
 											{
-												"name": "test2",
-												"value": "b",
+												name: 'test2',
+												value: 'b',
 											},
 										],
 									},
-									"options": {},
+									options: {},
 								},
-								"name": "Set2",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									800,
-									250,
-								],
+								name: 'Set2',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [800, 250],
 							},
 						],
-						"connections": {
-							"Start": {
-								"main": [
+						connections: {
+							Start: {
+								main: [
 									[
 										{
-											"node": "Set1",
-											"type": "main",
-											"index": 0,
+											node: 'Set1',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"IF": {
-								"main": [
+							IF: {
+								main: [
 									[
 										{
-											"node": "Set2",
-											"type": "main",
-											"index": 0,
+											node: 'Set2',
+											type: 'main',
+											index: 0,
 										},
 									],
 									[
 										{
-											"node": "Merge1",
-											"type": "main",
-											"index": 0,
-										},
-									],
-								],
-							},
-							"Set1": {
-								"main": [
-									[
-										{
-											"node": "IF",
-											"type": "main",
-											"index": 0,
-										},
-										{
-											"node": "Merge1",
-											"type": "main",
-											"index": 1,
+											node: 'Merge1',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Set2": {
-								"main": [
+							Set1: {
+								main: [
 									[
 										{
-											"node": "Merge1",
-											"type": "main",
-											"index": 0,
+											node: 'IF',
+											type: 'main',
+											index: 0,
+										},
+										{
+											node: 'Merge1',
+											type: 'main',
+											index: 1,
+										},
+									],
+								],
+							},
+							Set2: {
+								main: [
+									[
+										{
+											node: 'Merge1',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
@@ -721,13 +648,7 @@ describe('WorkflowExecute', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: [
-						'Start',
-						'Set1',
-						'IF',
-						'Set2',
-						'Merge1',
-					],
+					nodeExecutionOrder: ['Start', 'Set1', 'IF', 'Set2', 'Merge1'],
 					nodeData: {
 						Merge1: [
 							[
@@ -749,204 +670,183 @@ describe('WorkflowExecute', () => {
 					// Leave the workflowData in regular JSON to be able to easily
 					// copy it from/in the UI
 					workflowData: {
-						"nodes": [
+						nodes: [
 							{
-								"parameters": {},
-								"name": "Start",
-								"type": "n8n-nodes-base.start",
-								"typeVersion": 1,
-								"position": [
-									250,
-									300,
-								],
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [250, 300],
 							},
 							{
-								"parameters": {},
-								"name": "Merge",
-								"type": "n8n-nodes-base.merge",
-								"typeVersion": 1,
-								"position": [
-									800,
-									450,
-								],
+								parameters: {},
+								name: 'Merge',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [800, 450],
 							},
 							{
-								"parameters": {},
-								"name": "Merge1",
-								"type": "n8n-nodes-base.merge",
-								"typeVersion": 1,
-								"position": [
-									1000,
-									300,
-								],
+								parameters: {},
+								name: 'Merge1',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [1000, 300],
 							},
 							{
-								"parameters": {
-									"conditions": {
-										"boolean": [
+								parameters: {
+									conditions: {
+										boolean: [
 											{
-												"value2": true,
+												value2: true,
 											},
 										],
-										"string": [
+										string: [
 											{
-												"value1": "={{$json[\"key\"]}}",
-												"value2": "a",
+												value1: '={{$json["key"]}}',
+												value2: 'a',
 											},
 										],
 									},
-									"combineOperation": "any",
+									combineOperation: 'any',
 								},
-								"name": "IF",
-								"type": "n8n-nodes-base.if",
-								"typeVersion": 1,
-								"position": [
-									600,
-									600,
-								],
-								"alwaysOutputData": false,
+								name: 'IF',
+								type: 'n8n-nodes-base.if',
+								typeVersion: 1,
+								position: [600, 600],
+								alwaysOutputData: false,
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "number0",
+												name: 'number0',
 											},
 										],
-										"string": [
+										string: [
 											{
-												"name": "key",
-												"value": "a",
+												name: 'key',
+												value: 'a',
 											},
 										],
 									},
-									"options": {},
+									options: {},
 								},
-								"name": "Set0",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									450,
-									300,
-								],
+								name: 'Set0',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [450, 300],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "number1",
-												"value": 1,
+												name: 'number1',
+												value: 1,
 											},
 										],
-										"string": [
+										string: [
 											{
-												"name": "key",
-												"value": "b",
+												name: 'key',
+												value: 'b',
 											},
 										],
 									},
-									"options": {},
+									options: {},
 								},
-								"name": "Set1",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									450,
-									450,
-								],
+								name: 'Set1',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [450, 450],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "number2",
-												"value": 2,
+												name: 'number2',
+												value: 2,
 											},
 										],
-										"string": [
+										string: [
 											{
-												"name": "key",
-												"value": "c",
+												name: 'key',
+												value: 'c',
 											},
 										],
 									},
-									"options": {},
+									options: {},
 								},
-								"name": "Set2",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									450,
-									600,
-								],
+								name: 'Set2',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [450, 600],
 							},
 						],
-						"connections": {
-							"Start": {
-								"main": [
+						connections: {
+							Start: {
+								main: [
 									[
 										{
-											"node": "Set0",
-											"type": "main",
-											"index": 0,
+											node: 'Set0',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Merge": {
-								"main": [
+							Merge: {
+								main: [
 									[
 										{
-											"node": "Merge1",
-											"type": "main",
-											"index": 1,
+											node: 'Merge1',
+											type: 'main',
+											index: 1,
 										},
 									],
 								],
 							},
-							"IF": {
-								"main": [
+							IF: {
+								main: [
 									[
 										{
-											"node": "Merge",
-											"type": "main",
-											"index": 1,
+											node: 'Merge',
+											type: 'main',
+											index: 1,
 										},
 									],
 								],
 							},
-							"Set0": {
-								"main": [
+							Set0: {
+								main: [
 									[
 										{
-											"node": "Merge1",
-											"type": "main",
-											"index": 0,
+											node: 'Merge1',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Set1": {
-								"main": [
+							Set1: {
+								main: [
 									[
 										{
-											"node": "Merge",
-											"type": "main",
-											"index": 0,
+											node: 'Merge',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Set2": {
-								"main": [
+							Set2: {
+								main: [
 									[
 										{
-											"node": "IF",
-											"type": "main",
-											"index": 0,
+											node: 'IF',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
@@ -955,21 +855,13 @@ describe('WorkflowExecute', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: [
-						'Start',
-						'Set0',
-						'Set2',
-						'IF',
-						'Set1',
-						'Merge',
-						'Merge1',
-					],
+					nodeExecutionOrder: ['Start', 'Set0', 'Set2', 'IF', 'Set1', 'Merge', 'Merge1'],
 					nodeData: {
 						Merge: [
 							[
 								{
 									number1: 1,
-									key: "b",
+									key: 'b',
 								},
 							],
 						],
@@ -977,11 +869,11 @@ describe('WorkflowExecute', () => {
 							[
 								{
 									number0: 0,
-									key: "a",
+									key: 'a',
 								},
 								{
 									number1: 1,
-									key: "b",
+									key: 'b',
 								},
 							],
 						],
@@ -989,142 +881,128 @@ describe('WorkflowExecute', () => {
 				},
 			},
 			{
-				description: 'should use empty data if input of sibling does not receive any data from parent',
+				description:
+					'should use empty data if input of sibling does not receive any data from parent',
 				input: {
 					// Leave the workflowData in regular JSON to be able to easily
 					// copy it from/in the UI
 					workflowData: {
-						"nodes": [
+						nodes: [
 							{
-								"parameters": {},
-								"name": "Start",
-								"type": "n8n-nodes-base.start",
-								"typeVersion": 1,
-								"position": [
-									250,
-									300,
-								],
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [250, 300],
 							},
 							{
-								"parameters": {
-									"conditions": {
-										"number": [
+								parameters: {
+									conditions: {
+										number: [
 											{
-												"value1": "={{$json[\"value1\"]}}",
-												"operation": "equal",
-												"value2": 1,
+												value1: '={{$json["value1"]}}',
+												operation: 'equal',
+												value2: 1,
 											},
 										],
 									},
 								},
-								"name": "IF",
-								"type": "n8n-nodes-base.if",
-								"typeVersion": 1,
-								"position": [
-									650,
-									300,
-								],
+								name: 'IF',
+								type: 'n8n-nodes-base.if',
+								typeVersion: 1,
+								position: [650, 300],
 							},
 							{
-								"parameters": {
-									"values": {
-										"string": [],
-										"number": [
+								parameters: {
+									values: {
+										string: [],
+										number: [
 											{
-												"name": "value2",
-												"value": 2,
+												name: 'value2',
+												value: 2,
 											},
 										],
 									},
-									"options": {},
+									options: {},
 								},
-								"name": "Set2",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									850,
-									450,
-								],
+								name: 'Set2',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [850, 450],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "value1",
-												"value": 1,
+												name: 'value1',
+												value: 1,
 											},
 										],
 									},
-									"options": {},
+									options: {},
 								},
-								"name": "Set1",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									450,
-									300,
-								],
+								name: 'Set1',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [450, 300],
 							},
 							{
-								"parameters": {},
-								"name": "Merge",
-								"type": "n8n-nodes-base.merge",
-								"typeVersion": 1,
-								"position": [
-									1050,
-									300,
-								],
+								parameters: {},
+								name: 'Merge',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [1050, 300],
 							},
 						],
-						"connections": {
-							"Start": {
-								"main": [
+						connections: {
+							Start: {
+								main: [
 									[
 										{
-											"node": "Set1",
-											"type": "main",
-											"index": 0,
+											node: 'Set1',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"IF": {
-								"main": [
+							IF: {
+								main: [
 									[
 										{
-											"node": "Merge",
-											"type": "main",
-											"index": 0,
+											node: 'Merge',
+											type: 'main',
+											index: 0,
 										},
 									],
 									[
 										{
-											"node": "Set2",
-											"type": "main",
-											"index": 0,
-										},
-									],
-								],
-							},
-							"Set2": {
-								"main": [
-									[
-										{
-											"node": "Merge",
-											"type": "main",
-											"index": 1,
+											node: 'Set2',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Set1": {
-								"main": [
+							Set2: {
+								main: [
 									[
 										{
-											"node": "IF",
-											"type": "main",
-											"index": 0,
+											node: 'Merge',
+											type: 'main',
+											index: 1,
+										},
+									],
+								],
+							},
+							Set1: {
+								main: [
+									[
+										{
+											node: 'IF',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
@@ -1133,13 +1011,7 @@ describe('WorkflowExecute', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: [
-						'Start',
-						'Set1',
-						'IF',
-						'Set2',
-						'Merge',
-					],
+					nodeExecutionOrder: ['Start', 'Set1', 'IF', 'Set2', 'Merge'],
 					nodeData: {
 						Merge: [
 							[
@@ -1160,140 +1032,122 @@ describe('WorkflowExecute', () => {
 					// Leave the workflowData in regular JSON to be able to easily
 					// copy it from/in the UI
 					workflowData: {
-						"nodes": [
+						nodes: [
 							{
-								"parameters": {},
-								"name": "Start",
-								"type": "n8n-nodes-base.start",
-								"typeVersion": 1,
-								"position": [
-									250,
-									300,
-								],
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [250, 300],
 							},
 							{
-								"parameters": {
-									"values": {
-										"number": [
+								parameters: {
+									values: {
+										number: [
 											{
-												"name": "value1",
+												name: 'value1',
 											},
 										],
 									},
-									"options": {},
+									options: {},
 								},
-								"name": "Set",
-								"type": "n8n-nodes-base.set",
-								"typeVersion": 1,
-								"position": [
-									450,
-									300,
-								],
+								name: 'Set',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [450, 300],
 							},
 							{
-								"parameters": {},
-								"name": "Merge",
-								"type": "n8n-nodes-base.merge",
-								"typeVersion": 1,
-								"position": [
-									1050,
-									250,
-								],
+								parameters: {},
+								name: 'Merge',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 1,
+								position: [1050, 250],
 							},
 							{
-								"parameters": {
-									"conditions": {
-										"number": [
+								parameters: {
+									conditions: {
+										number: [
 											{
-												"value1": "={{$json[\"value1\"]}}",
-												"operation": "equal",
-												"value2": 1,
+												value1: '={{$json["value1"]}}',
+												operation: 'equal',
+												value2: 1,
 											},
 										],
 									},
 								},
-								"name": "IF",
-								"type": "n8n-nodes-base.if",
-								"typeVersion": 1,
-								"position": [
-									650,
-									300,
-								],
+								name: 'IF',
+								type: 'n8n-nodes-base.if',
+								typeVersion: 1,
+								position: [650, 300],
 							},
 							{
-								"parameters": {},
-								"name": "NoOpTrue",
-								"type": "n8n-nodes-base.noOp",
-								"typeVersion": 1,
-								"position": [
-									850,
-									150,
-								],
+								parameters: {},
+								name: 'NoOpTrue',
+								type: 'n8n-nodes-base.noOp',
+								typeVersion: 1,
+								position: [850, 150],
 							},
 							{
-								"parameters": {},
-								"name": "NoOpFalse",
-								"type": "n8n-nodes-base.noOp",
-								"typeVersion": 1,
-								"position": [
-									850,
-									400,
-								],
+								parameters: {},
+								name: 'NoOpFalse',
+								type: 'n8n-nodes-base.noOp',
+								typeVersion: 1,
+								position: [850, 400],
 							},
 						],
-						"connections": {
-							"Start": {
-								"main": [
+						connections: {
+							Start: {
+								main: [
 									[
 										{
-											"node": "Set",
-											"type": "main",
-											"index": 0,
+											node: 'Set',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"Set": {
-								"main": [
+							Set: {
+								main: [
 									[
 										{
-											"node": "IF",
-											"type": "main",
-											"index": 0,
+											node: 'IF',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"IF": {
-								"main": [
+							IF: {
+								main: [
 									[
 										{
-											"node": "NoOpTrue",
-											"type": "main",
-											"index": 0,
+											node: 'NoOpTrue',
+											type: 'main',
+											index: 0,
 										},
 										{
-											"node": "Merge",
-											"type": "main",
-											"index": 1,
+											node: 'Merge',
+											type: 'main',
+											index: 1,
 										},
 									],
 									[
 										{
-											"node": "NoOpFalse",
-											"type": "main",
-											"index": 0,
+											node: 'NoOpFalse',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
 							},
-							"NoOpTrue": {
-								"main": [
+							NoOpTrue: {
+								main: [
 									[
 										{
-											"node": "Merge",
-											"type": "main",
-											"index": 0,
+											node: 'Merge',
+											type: 'main',
+											index: 0,
 										},
 									],
 								],
@@ -1302,16 +1156,9 @@ describe('WorkflowExecute', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: [
-						'Start',
-						'Set',
-						'IF',
-						'NoOpFalse',
-					],
+					nodeExecutionOrder: ['Start', 'Set', 'IF', 'NoOpFalse'],
 					nodeData: {
-						IF: [
-							[],
-						],
+						IF: [[]],
 						NoOpFalse: [
 							[
 								{
@@ -1326,11 +1173,11 @@ describe('WorkflowExecute', () => {
 
 		const fakeLogger = {
 			log: () => {},
-			debug:  () => {},
-			verbose:  () => {},
-			info:  () => {},
-			warn:  () => {},
-			error:  () => {},
+			debug: () => {},
+			verbose: () => {},
+			info: () => {},
+			warn: () => {},
+			error: () => {},
 		} as ILogger;
 
 		const executionMode = 'manual';
@@ -1339,16 +1186,24 @@ describe('WorkflowExecute', () => {
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
-
-				const workflowInstance = new Workflow({ id: 'test', nodes: testData.input.workflowData.nodes, connections: testData.input.workflowData.connections, active: false, nodeTypes });
+				const workflowInstance = new Workflow({
+					id: 'test',
+					nodes: testData.input.workflowData.nodes,
+					connections: testData.input.workflowData.connections,
+					active: false,
+					nodeTypes,
+				});
 
 				const waitPromise = await createDeferredPromise<IRun>();
 				const nodeExecutionOrder: string[] = [];
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(
+					waitPromise,
+					nodeExecutionOrder,
+				);
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
-				const executionData = await workflowExecute.run(workflowInstance, undefined);
+				const executionData = await workflowExecute.run(workflowInstance);
 
 				const result = await waitPromise.promise();
 
@@ -1366,7 +1221,7 @@ describe('WorkflowExecute', () => {
 						if (nodeData.data === undefined) {
 							return null;
 						}
-						return nodeData.data.main[0]!.map((entry) => entry.json );
+						return nodeData.data.main[0]!.map((entry) => entry.json);
 					});
 
 					// expect(resultData).toEqual(testData.output.nodeData[nodeName]);
@@ -1382,7 +1237,5 @@ describe('WorkflowExecute', () => {
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
 			});
 		}
-
 	});
-
 });

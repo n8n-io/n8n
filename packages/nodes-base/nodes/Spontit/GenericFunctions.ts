@@ -15,7 +15,7 @@ import {
 
 export async function spontitApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('spontitApi') as IDataObject;
+	const credentials = await this.getCredentials('spontitApi') as IDataObject;
 
 	try {
 		const options: OptionsWithUri = {

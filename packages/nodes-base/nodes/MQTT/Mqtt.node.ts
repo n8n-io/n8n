@@ -25,7 +25,6 @@ export class Mqtt implements INodeType {
 		description: 'Push messages to MQTT',
 		defaults: {
 			name: 'MQTT',
-			color: '#9b27af',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -99,9 +98,7 @@ export class Mqtt implements INodeType {
 						name: 'retain',
 						type: 'boolean',
 						default: false,
-						description: `Normally if a publisher publishes a message to a topic, and no one is subscribed to<br>
-						that topic the message is simply discarded by the broker. However the publisher can tell the broker<br>
-						to keep the last message on that topic by setting the retain flag to true.`,
+						description: `Normally if a publisher publishes a message to a topic, and no one is subscribed to that topic the message is simply discarded by the broker. However the publisher can tell the broker to keep the last message on that topic by setting the retain flag to true.`,
 					},
 				],
 			},
@@ -111,7 +108,7 @@ export class Mqtt implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = (items.length as unknown) as number;
-		const credentials = this.getCredentials('mqtt') as IDataObject;
+		const credentials = await this.getCredentials('mqtt') as IDataObject;
 
 		const protocol = credentials.protocol as string || 'mqtt';
 		const host = credentials.host as string;
@@ -119,19 +116,46 @@ export class Mqtt implements INodeType {
 		const port = credentials.port as number || 1883;
 		const clientId = credentials.clientId as string || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
 		const clean = credentials.clean as boolean;
+		const ssl = credentials.ssl as boolean;
+		const ca = credentials.ca as string;
+		const cert = credentials.cert as string;
+		const key = credentials.key as string;
+		const rejectUnauthorized = credentials.rejectUnauthorized as boolean;
 
-		const clientOptions: IClientOptions = {
-			port,
-			clean,
-			clientId,
-		};
+		let client: mqtt.MqttClient;
 
-		if (credentials.username && credentials.password) {
-			clientOptions.username = credentials.username as string;
-			clientOptions.password = credentials.password as string;
+		if (ssl === false) {
+			const clientOptions: IClientOptions = {
+				port,
+				clean,
+				clientId,
+			};
+
+			if (credentials.username && credentials.password) {
+					clientOptions.username = credentials.username as string;
+					clientOptions.password = credentials.password as string;
+			}
+
+			 client = mqtt.connect(brokerUrl, clientOptions);
+		}
+		else {
+			const clientOptions: IClientOptions = {
+				port,
+				clean,
+				clientId,
+				ca,
+				cert,
+				key,
+				rejectUnauthorized,
+			};
+			if (credentials.username && credentials.password) {
+				clientOptions.username = credentials.username as string;
+				clientOptions.password = credentials.password as string;
+			}
+
+			 client = mqtt.connect(brokerUrl, clientOptions);
 		}
 
-		const client = mqtt.connect(brokerUrl, clientOptions);
 		const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 		// tslint:disable-next-line: no-any

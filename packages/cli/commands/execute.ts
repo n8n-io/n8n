@@ -1,11 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable no-console */
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
 import {
+	BinaryDataManager,
+	IBinaryDataConfig,
 	UserSettings,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from 'n8n-core';
-import {
-	INode,
-} from 'n8n-workflow';
+import { INode, LoggerProxy } from 'n8n-workflow';
 
 import {
 	ActiveExecutions,
@@ -13,30 +16,23 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
+	InternalHooksManager,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	WorkflowCredentials,
 	WorkflowHelpers,
 	WorkflowRunner,
 } from '../src';
 
-import {
-	getLogger,
-} from '../src/Logger';
-
-import {
-	LoggerProxy,
-} from 'n8n-workflow';
+import { getLogger } from '../src/Logger';
+import config = require('../config');
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
 
-	static examples = [
-		`$ n8n execute --id=5`,
-		`$ n8n execute --file=workflow.json`,
-	];
+	static examples = [`$ n8n execute --id=5`, `$ n8n execute --file=workflow.json`];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -51,11 +47,14 @@ export class Execute extends Command {
 		}),
 	};
 
-
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
+		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		await BinaryDataManager.init(binaryDataConfig, true);
 
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Execute);
 
 		// Start directly with the init of the database to improve startup time
@@ -76,12 +75,14 @@ export class Execute extends Command {
 		}
 
 		let workflowId: string | undefined;
-		let workflowData: IWorkflowBase | undefined = undefined;
+		let workflowData: IWorkflowBase | undefined;
 		if (flags.file) {
 			// Path to workflow is given
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				workflowData = JSON.parse(await fs.readFile(flags.file, 'utf8'));
 			} catch (error) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if (error.code === 'ENOENT') {
 					console.info(`The file "${flags.file}" could not be found.`);
 					return;
@@ -92,11 +93,17 @@ export class Execute extends Command {
 
 			// Do a basic check if the data in the file looks right
 			// TODO: Later check with the help of TypeScript data if it is valid or not
-			if (workflowData === undefined || workflowData.nodes === undefined || workflowData.connections === undefined) {
+			if (
+				workflowData === undefined ||
+				workflowData.nodes === undefined ||
+				workflowData.connections === undefined
+			) {
 				console.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}
-			workflowId = workflowData.id!.toString();
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			workflowId = workflowData.id ? workflowData.id.toString() : PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		}
 
 		// Wait till the database is ready
@@ -105,7 +112,8 @@ export class Execute extends Command {
 		if (flags.id) {
 			// Id of workflow is given
 			workflowId = flags.id;
-			workflowData = await Db.collections!.Workflow!.findOne(workflowId);
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			workflowData = await Db.collections.Workflow!.findOne(workflowId);
 			if (workflowData === undefined) {
 				console.info(`The workflow with the id "${workflowId}" does not exist.`);
 				process.exit(1);
@@ -132,6 +140,10 @@ export class Execute extends Command {
 		const credentialTypes = CredentialTypes();
 		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
+		const instanceId = await UserSettings.getInstanceId();
+		const { cli } = await GenericHelpers.getVersions();
+		InternalHooksManager.init(instanceId, cli, nodeTypes);
+
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;
 		}
@@ -139,7 +151,8 @@ export class Execute extends Command {
 		// Check if the workflow contains the required "Start" node
 		// "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
 		const requiredNodeTypes = ['n8n-nodes-base.start'];
-		let startNode: INode | undefined = undefined;
+		let startNode: INode | undefined;
+		// eslint-disable-next-line no-restricted-syntax, @typescript-eslint/no-non-null-assertion
 		for (const node of workflowData!.nodes) {
 			if (requiredNodeTypes.includes(node.type)) {
 				startNode = node;
@@ -151,16 +164,15 @@ export class Execute extends Command {
 			// If the workflow does not contain a start-node we can not know what
 			// should be executed and with which data to start.
 			console.info(`The workflow does not contain a "Start" node. So it can not be executed.`);
+			// eslint-disable-next-line consistent-return
 			return Promise.resolve();
 		}
 
 		try {
-			const credentials = await WorkflowCredentials(workflowData!.nodes);
-
 			const runData: IWorkflowExecutionDataProcess = {
-				credentials,
 				executionMode: 'cli',
 				startNodes: [startNode.name],
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				workflowData: workflowData!,
 			};
 
@@ -181,6 +193,7 @@ export class Execute extends Command {
 				logger.info(JSON.stringify(data, null, 2));
 
 				const { error } = data.data.resultData;
+				// eslint-disable-next-line @typescript-eslint/no-throw-literal
 				throw {
 					...error,
 					stack: error.stack,

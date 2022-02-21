@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const postOperations = [
+export const postOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const postOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const postFields = [
+export const postFields: INodeProperties[] = [
 	// ----------------------------------
 	//         post: create
 	// ----------------------------------
@@ -165,7 +165,7 @@ export const postFields = [
 		name: 'resubmit',
 		type: 'boolean',
 		default: false,
-		description: 'If toggled on, the URL will be posted even if<br>it was already posted to the subreddit before.<br>Otherwise, the re-posting will trigger an error.',
+		description: 'If toggled on, the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -191,7 +191,7 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the post to delete. Found in the post URL:<br><code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		description: 'ID of the post to delete. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
 		placeholder: 'gla7fmt',
 		displayOptions: {
 			show: {
@@ -232,7 +232,7 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the post to retrieve. Found in the post URL:<br><code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		description: 'ID of the post to retrieve. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
 		placeholder: 'l0me7x',
 		displayOptions: {
 			show: {
@@ -515,4 +515,4 @@ export const postFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

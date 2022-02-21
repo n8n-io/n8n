@@ -43,7 +43,7 @@ export async function zohoApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 ) {
-	const { oauthTokenData } = this.getCredentials('zohoOAuth2Api') as ZohoOAuth2ApiCredentials;
+	const { oauthTokenData } = await this.getCredentials('zohoOAuth2Api') as ZohoOAuth2ApiCredentials;
 
 	const options: OptionsWithUri = {
 		body: {

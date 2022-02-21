@@ -36,7 +36,6 @@ export class Beeminder implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Beeminder',
-			color: '#FFCB06',
 		},
 		icon: 'file:beeminder.png',
 		inputs: ['main'],
@@ -306,7 +305,7 @@ export class Beeminder implements INodeType {
 			// select them easily
 			async getGoals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 
-				const credentials = this.getCredentials('beeminderApi');
+				const credentials = await this.getCredentials('beeminderApi');
 
 				if (credentials === undefined) {
 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
