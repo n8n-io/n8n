@@ -24,6 +24,7 @@ import LoadingView from './views/LoadingView.vue';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
+import { mapGetters } from 'vuex';
 
 export default mixins(showMessage).extend({
 	name: 'App',
@@ -33,9 +34,7 @@ export default mixins(showMessage).extend({
 		Telemetry,
 	},
 	computed: {
-		isTemplatesEnabled(): boolean {
-			return this.$store.getters['settings/isTemplatesEnabled'];
-		},
+		...mapGetters('settings', ['isTemplatesEnabled', 'isTemplatesEndpointReachable']),
 	},
 	data() {
 		return {
@@ -83,7 +82,7 @@ export default mixins(showMessage).extend({
 	async mounted() {
 		await this.initialize();
 
-		if (this.isTemplatesEnabled && this.$route.path === '/') {
+		if (this.isTemplatesEnabled && this.isTemplatesEndpointReachable && this.$route.path === '/') {
 			this.$router.replace({ name: 'TemplatesSearchView'});
 		} else if (this.$route.path === '/') {
 			this.$router.replace({ name: 'NodeViewNew'});
