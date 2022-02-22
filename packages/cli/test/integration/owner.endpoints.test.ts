@@ -19,6 +19,8 @@ describe('/owner endpoints', () => {
 		beforeAll(async () => {
 			app = utils.initTestServer({ namespaces: ['owner'], applyAuth: true });
 			await utils.initTestDb();
+
+			utils.initLogger();
 		});
 
 		beforeEach(async () => {

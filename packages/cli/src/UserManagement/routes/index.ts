@@ -7,17 +7,18 @@ import * as passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { JwtPayload, N8nApp } from '../Interfaces';
 import { authenticationMethods } from './auth';
 import config = require('../../../config');
-import { User } from '../../databases/entities/User';
 import { issueCookie, resolveJwtContent } from '../auth/jwt';
 import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
 import { ownerNamespace } from './owner';
+import { isAuthenticatedRequest } from '../UserManagementHelper';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	this.app.use(cookieParser());
@@ -36,6 +37,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 				const user = await resolveJwtContent(jwtPayload);
 				return done(null, user);
 			} catch (error) {
+				Logger.debug('Failed to extract user from JWT payload', { jwtPayload });
 				return done(null, false, { message: 'User not found' });
 			}
 		}),
@@ -81,10 +83,10 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
-	this.app.use((req: Request, res: Response, next: NextFunction) => {
+	this.app.use((req: Request | AuthenticatedRequest, res: Response, next: NextFunction) => {
 		// req.user is empty for public routes, so just proceed
 		// owner can do anything, so proceed as well
-		if (req.user === undefined || (req.user && (req.user as User).globalRole.name === 'owner')) {
+		if (!req.user || (isAuthenticatedRequest(req) && req.user.globalRole.name === 'owner')) {
 			next();
 			return;
 		}
@@ -101,6 +103,10 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			(req.method === 'POST' &&
 				new RegExp(`/${restEndpoint}/users/[^/]/reinvite+`, 'gm').test(trimmedUrl))
 		) {
+			Logger.verbose('User attempted to access endpoint without authorization', {
+				endpoint: `${req.method} ${trimmedUrl}`,
+				userId: isAuthenticatedRequest(req) ? req.user.id : 'unknown',
+			});
 			res.status(403).json({ status: 'error', message: 'Unauthorized' });
 			return;
 		}
