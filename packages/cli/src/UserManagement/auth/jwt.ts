@@ -55,6 +55,11 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 	return user;
 }
 
+export async function resolveJwt(token: string): Promise<User> {
+	const jwtPayload = jwt.verify(token, config.get('userManagement.jwtSecret')) as JwtPayload;
+	return resolveJwtContent(jwtPayload);
+}
+
 export async function issueCookie(res: Response, user: User): Promise<void> {
 	const userData = await issueJWT(user);
 	res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });

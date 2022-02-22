@@ -3,12 +3,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Request, Response } from 'express';
 import { compare } from 'bcryptjs';
-import * as jwt from 'jsonwebtoken';
 import { IDataObject } from 'n8n-workflow';
 import { Db, ResponseHelper } from '../..';
-import { issueCookie, resolveJwtContent } from '../auth/jwt';
-import { JwtPayload, N8nApp, PublicUser } from '../Interfaces';
-import config = require('../../../config');
+import { issueCookie, resolveJwt } from '../auth/jwt';
+import { N8nApp, PublicUser } from '../Interfaces';
 import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 
@@ -66,11 +64,7 @@ export function authenticationMethods(this: N8nApp): void {
 			if (cookieContents) {
 				// If logged in, return user
 				try {
-					const jwtPayload = jwt.verify(
-						cookieContents,
-						config.get('userManagement.jwtSecret'),
-					) as JwtPayload;
-					user = await resolveJwtContent(jwtPayload);
+					user = await resolveJwt(cookieContents);
 					return sanitizeUser(user);
 				} catch (error) {
 					throw new Error('Invalid login information');
