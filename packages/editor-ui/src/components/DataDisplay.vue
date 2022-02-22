@@ -85,7 +85,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters.nodeType(this.node.type);
+				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
@@ -95,6 +95,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			if(node && !oldNode) {
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
 				this.$telemetry.track('User opened node modal', { node_type: this.nodeType ? this.nodeType.name : '', workflow_id: this.$store.getters.workflowId });
+			}
+			if (window.top) {
+				window.top.postMessage(JSON.stringify({command: (node? 'openNDV': 'closeNDV')}), '*');
 			}
 		},
 	},

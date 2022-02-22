@@ -108,10 +108,10 @@ import {
 	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
+	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -198,8 +198,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		if (this.credentialType) {
 			for (const property of this.credentialType.properties) {
 				if (!this.credentialData.hasOwnProperty(property.name)) {
-					this.credentialData[property.name] =
-						property.default as CredentialInformation;
+					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
 				}
 			}
 		}
@@ -280,7 +279,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return false;
 			});
 
-			return !!nodesThatCanTest.length;
+			return !!nodesThatCanTest.length || (!!this.credentialType && !!this.credentialType.test);
 		},
 		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {
@@ -345,7 +344,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 	},
 	methods: {
-		async beforeClose(done: () => void) {
+		async beforeClose() {
 			let keepEditing = false;
 
 			if (this.hasUnsavedChanges) {
@@ -369,8 +368,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 
 			if (!keepEditing) {
-				done();
-				return;
+				return true;
 			}
 			else if (!this.requiredPropertiesFilled) {
 				this.showValidationWarning = true;
@@ -379,6 +377,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			else if (this.isOAuthType) {
 				this.scrollToBottom();
 			}
+
+			return false;
 		},
 
 		displayCredentialParameter(parameter: INodeProperties): boolean {
@@ -456,7 +456,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.loadCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.loadCredential.message'),
 				);
 				this.closeDialog();
 
@@ -552,19 +551,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 				(access) => !!access,
 			) as ICredentialNodeAccess[];
 
-			// Save only the none default data
-			const data = NodeHelpers.getNodeParameters(
-				this.credentialType!.properties,
-				this.credentialData as INodeParameters,
-				false,
-				false,
-			);
-
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
-				data: data as unknown as ICredentialDataDecryptedObject,
+				data: this.credentialData,
 				nodesAccess,
 			};
 
@@ -574,7 +565,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 
 		async testCredential(credentialDetails: ICredentialsDecrypted) {
-			const result: NodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
+			const result: INodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
 			if (result.status === 'Error') {
 				this.authError = result.message;
 				this.testedSuccessfully = false;
@@ -635,6 +626,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				if (this.isCredentialTestable) {
 					this.isTesting = true;
+
+					// Add the full data including defaults for testing
+					credentialDetails.data = this.credentialData;
+
 					await this.testCredential(credentialDetails);
 					this.isTesting = false;
 				}
@@ -662,7 +657,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.createCredential.message'),
 				);
 
 				return null;
@@ -691,7 +685,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.updateCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.updateCredential.message'),
 				);
 
 				return null;
@@ -732,7 +725,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.deleteCredential.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.deleteCredential.message'),
 				);
 				this.isDeleting = false;
 
@@ -745,10 +737,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			this.$showMessage({
 				title: this.$locale.baseText('credentialEdit.credentialEdit.showMessage.title'),
-				message: this.$locale.baseText(
-					'credentialEdit.credentialEdit.showMessage.message',
-					{ interpolate: { savedCredentialName } },
-				),
 				type: 'success',
 			});
 			this.closeDialog();
