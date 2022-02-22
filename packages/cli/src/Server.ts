@@ -3264,11 +3264,7 @@ async function getExecutionsCount(
 
 	// For databases other than Postgres, do a regular count
 	// when filtering based on `workflowId` or `finished` fields.
-	if (
-		dbType !== 'postgresdb' ||
-		filteredFields.length > 0 ||
-		config.get('userManagement.hasOwner') === true
-	) {
+	if (dbType !== 'postgresdb' || filteredFields.length > 0 || user.globalRole.name !== 'owner') {
 		const sharedWorkflowIds = await getSharedWorkflowIds(user);
 
 		const count = await Db.collections.Execution!.count({
