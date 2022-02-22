@@ -333,6 +333,16 @@ export interface IDiagnosticInfo {
 	};
 	deploymentType: string;
 	binaryDataMode: string;
+	n8n_multi_user_allowed: boolean;
+	smtp_set_up: boolean;
+}
+
+export interface ITelemetryUserDeletionData {
+	user_id: string;
+	target_user_old_status: 'active' | 'invited';
+	migration_strategy?: 'transfer_data' | 'delete_data';
+	target_user_id?: string;
+	migration_user_id?: string;
 }
 
 export interface IInternalHooksClass {

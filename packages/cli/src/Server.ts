@@ -3233,6 +3233,10 @@ export async function start(): Promise<void> {
 			},
 			deploymentType: config.get('deployment.type'),
 			binaryDataMode: binarDataConfig.mode,
+			n8n_multi_user_allowed:
+				config.get('userManagement.disabled') === false ||
+				config.get('userManagement.hasOwner') === true,
+			smtp_set_up: config.get('userManagement.emails.mode') === 'smtp',
 		};
 
 		void Db.collections

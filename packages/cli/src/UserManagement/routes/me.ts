@@ -6,7 +6,7 @@ import express = require('express');
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { Db, ResponseHelper } from '../..';
+import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { validatePassword, sanitizeUser } from '../UserManagementHelper';
@@ -60,6 +60,12 @@ export function meNamespace(this: N8nApp): void {
 
 				await issueCookie(res, user);
 
+				const updatedkeys = Object.keys(req.body);
+				void InternalHooksManager.getInstance().onUserUpdate({
+					user_id: req.user.id,
+					fields_changed: updatedkeys,
+				});
+
 				return sanitizeUser(user);
 			},
 		),
@@ -77,6 +83,11 @@ export function meNamespace(this: N8nApp): void {
 			const user = await Db.collections.User!.save(req.user);
 
 			await issueCookie(res, user);
+
+			void InternalHooksManager.getInstance().onUserUpdate({
+				user_id: req.user.id,
+				fields_changed: ['password'],
+			});
 
 			return { success: true };
 		}),

@@ -5,6 +5,7 @@ import {
 	IDiagnosticInfo,
 	IInternalHooksClass,
 	IPersonalizationSurveyAnswers,
+	ITelemetryUserDeletionData,
 	IWorkflowBase,
 	IWorkflowDb,
 } from '.';
@@ -34,6 +35,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 			execution_variables: diagnosticInfo.executionVariables,
 			n8n_deployment_type: diagnosticInfo.deploymentType,
 			n8n_binary_data_mode: diagnosticInfo.binaryDataMode,
+			n8n_multi_user_allowed: diagnosticInfo.n8n_multi_user_allowed,
+			smtp_set_up: diagnosticInfo.smtp_set_up,
 		};
 
 		return Promise.all([
@@ -187,5 +190,60 @@ export class InternalHooksClass implements IInternalHooksClass {
 		});
 
 		return Promise.race([timeoutPromise, this.telemetry.trackN8nStop()]);
+	}
+
+	async onUserDeletion(userDeletionData: ITelemetryUserDeletionData): Promise<void> {
+		return this.telemetry.track('User deleted user', userDeletionData);
+	}
+
+	async onUserInvite(userInviteData: { user_id: string; target_user_id: string[] }): Promise<void> {
+		return this.telemetry.track('User invited new user', userInviteData);
+	}
+
+	async onUserReinvite(userReinviteData: {
+		user_id: string;
+		target_user_id: string;
+	}): Promise<void> {
+		return this.telemetry.track('User resent new user invite email', userReinviteData);
+	}
+
+	async onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void> {
+		return this.telemetry.track('User changed personal settings', userUpdateData);
+	}
+
+	async onUserInviteEmailClick(userInviteClickData: { user_id: string }): Promise<void> {
+		return this.telemetry.track('User clicked invite link from email', userInviteClickData);
+	}
+
+	async onUserPasswordResetEmailClick(userPasswordResetData: { user_id: string }): Promise<void> {
+		return this.telemetry.track(
+			'User clicked password reset link from email',
+			userPasswordResetData,
+		);
+	}
+
+	async onUserTransactionalEmail(userTransactionalEmailData: {
+		user_id: string;
+		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+	}): Promise<void> {
+		return this.telemetry.track(
+			'Instance sent transactional email to user',
+			userTransactionalEmailData,
+		);
+	}
+
+	async onUserPasswordResetRequestClick(userPasswordResetData: { user_id: string }): Promise<void> {
+		return this.telemetry.track(
+			'User requested password reset while logged out',
+			userPasswordResetData,
+		);
+	}
+
+	async onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }): Promise<void> {
+		return this.telemetry.track('Owner finished instance setup', instanceOwnerSetupData);
+	}
+
+	async onUserSignup(userSignupData: { user_id: string }): Promise<void> {
+		return this.telemetry.track('User signed up', userSignupData);
 	}
 }

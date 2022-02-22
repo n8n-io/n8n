@@ -1,8 +1,10 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import TelemetryClient = require('@rudderstack/rudder-sdk-node');
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import config = require('../../config');
+import { ITelemetryUserDeletionData } from '../Interfaces';
 import { getLogger } from '../Logger';
 
 type CountBufferItemKey =
@@ -183,7 +185,10 @@ export class Telemetry {
 		});
 	}
 
-	async track(eventName: string, properties?: IDataObject): Promise<void> {
+	async track(
+		eventName: string,
+		properties?: IDataObject | ITelemetryUserDeletionData,
+	): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.client) {
 				this.client.track(

@@ -5,7 +5,7 @@ import * as express from 'express';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { Db, ResponseHelper } from '../..';
+import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import config = require('../../../config');
 import { User } from '../../databases/entities/User';
 import { validateEntity } from '../../GenericHelpers';
@@ -89,6 +89,10 @@ export function ownerNamespace(this: N8nApp): void {
 			Logger.debug('Setting hasOwner updated successfully', { userId: req.user.id });
 
 			await issueCookie(res, owner);
+
+			void InternalHooksManager.getInstance().onInstanceOwnerSetup({
+				user_id: userId,
+			});
 
 			return sanitizeUser(owner);
 		}),

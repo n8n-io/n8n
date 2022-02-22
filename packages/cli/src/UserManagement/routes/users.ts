@@ -6,7 +6,7 @@ import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { Db, ResponseHelper } from '../..';
+import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
 import { UserRequest } from '../../requests';
 import {
@@ -130,6 +130,11 @@ export function usersNamespace(this: N8nApp): void {
 						}),
 					);
 				});
+
+				void InternalHooksManager.getInstance().onUserInvite({
+					user_id: req.user.id,
+					target_user_id: Object.values(createUsers) as string[],
+				});
 			} catch (error) {
 				Logger.error('Failed to create user shells', { userShells: createUsers });
 				throw new ResponseHelper.ResponseError('An error occurred during user creation');
@@ -168,6 +173,11 @@ export function usersNamespace(this: N8nApp): void {
 							email,
 						});
 						resp.error = `Email could not be sent`;
+					} else {
+						void InternalHooksManager.getInstance().onUserTransactionalEmail({
+							user_id: id!,
+							message_type: 'New user invite',
+						});
 					}
 					return { user: resp };
 				}),
@@ -231,6 +241,10 @@ export function usersNamespace(this: N8nApp): void {
 				);
 				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 			}
+
+			void InternalHooksManager.getInstance().onUserInviteEmailClick({
+				user_id: inviteeId,
+			});
 
 			const { firstName, lastName } = inviter;
 
@@ -297,6 +311,10 @@ export function usersNamespace(this: N8nApp): void {
 			const updatedUser = await Db.collections.User!.save(invitee);
 
 			await issueCookie(res, updatedUser);
+
+			void InternalHooksManager.getInstance().onUserSignup({
+				user_id: invitee.id,
+			});
 
 			return sanitizeUser(updatedUser);
 		}),
@@ -398,6 +416,19 @@ export function usersNamespace(this: N8nApp): void {
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
 
+			const telemetryData = {
+				user_id: req.user.id,
+				target_user_old_status: userToDelete.password ? 'active' : 'invited',
+				target_user_id: idToDelete,
+			} as ITelemetryUserDeletionData;
+
+			if (transferId) {
+				telemetryData.migration_user_id = transferId;
+				telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
+			}
+
+			void InternalHooksManager.getInstance().onUserDeletion(telemetryData);
+
 			return { success: true };
 		}),
 	);
@@ -461,6 +492,16 @@ export function usersNamespace(this: N8nApp): void {
 					500,
 				);
 			}
+
+			void InternalHooksManager.getInstance().onUserReinvite({
+				user_id: req.user.id,
+				target_user_id: reinvitee.id,
+			});
+
+			void InternalHooksManager.getInstance().onUserTransactionalEmail({
+				user_id: reinvitee.id,
+				message_type: 'Resend invite',
+			});
 
 			return { success: true };
 		}),
