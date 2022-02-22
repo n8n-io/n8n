@@ -66,6 +66,8 @@ export default Vue.extend({
 
 	@media (max-width: $--breakpoint-md) {
 		width: 900px;
+		margin: 0 var(--spacing-2xl);
+		padding: var(--spacing-2xl) 0;
 	}
 }
 
