@@ -1076,7 +1076,7 @@ export class WorkflowExecute {
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {
-			Logger.verbose(`Workflow execution finished with error`, {
+			Logger.verbose('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
 			});
@@ -1087,12 +1087,12 @@ export class WorkflowExecute {
 			} as ExecutionError;
 		} else if (this.runExecutionData.waitTill!) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
+			Logger.verbose('Workflow execution will wait until ${this.runExecutionData.waitTill}', {
 				workflowId: workflow.id,
 			});
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 		} else {
-			Logger.verbose(`Workflow execution finished successfully`, { workflowId: workflow.id });
+			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
 		}
 
