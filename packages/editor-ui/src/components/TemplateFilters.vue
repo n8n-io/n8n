@@ -93,12 +93,6 @@ export default mixins(genericHelpers).extend({
 </script>
 
 <style lang="scss" module>
-.filters {
-	@media (max-width: $--breakpoint-2xs) {
-		padding-bottom: var(--spacing-2xl);
-	}
-}
-
 .title {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-base);

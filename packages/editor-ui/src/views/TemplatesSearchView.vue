@@ -288,17 +288,14 @@ export default mixins(genericHelpers).extend({
 	display: flex;
 	justify-content: space-between;
 
-	@media (max-width: $--breakpoint-2xs) {
+	@media (max-width: $--breakpoint-xs) {
 		flex-direction: column;
 	}
 }
 
 .filters {
 	width: 200px;
-
-	@media (max-width: $--breakpoint-md) {
-		width: auto;
-	}
+	margin-bottom: var(--spacing-xl);
 }
 
 .search {
@@ -309,7 +306,7 @@ export default mixins(genericHelpers).extend({
 		margin-bottom: var(--spacing-l);
 	}
 
-	@media (max-width: $--breakpoint-2xs) {
+	@media (max-width: $--breakpoint-xs) {
 		padding-left: 0;
 	}
 }

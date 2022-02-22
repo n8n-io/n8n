@@ -44,7 +44,10 @@ const module: Module<ISettingsState, IRootState> = {
 			return state.settings.telemetry && state.settings.telemetry.enabled;
 		},
 		isTemplatesEnabled: (state): boolean => {
-			return Boolean(state.settings.templates && state.settings.templates.enabled && state.templatesEndpointHealthy);
+			return Boolean(state.settings.templates && state.settings.templates.enabled);
+		},
+		isTemplatesEndpointReachable: (state): boolean => {
+			return state.templatesEndpointHealthy;
 		},
 		templatesHost: (state): string  => {
 			return state.settings.templates.host;
@@ -136,7 +139,8 @@ const module: Module<ISettingsState, IRootState> = {
 			}
 		},
 		async testTemplatesEndpoint(context: ActionContext<ISettingsState, IRootState>) {
-			await testHealthEndpoint(context.getters.templatesHost);
+			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
+			await Promise.race([testHealthEndpoint(context.getters.templatesHost), timeout]);
 			context.commit('setTemplatesEndpointHealthy', true);
 		},
 	},

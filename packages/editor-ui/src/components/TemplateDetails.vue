@@ -35,7 +35,7 @@
 				<div :class="$style.text">
 					<n8n-text size="small" color="text-base">
 						{{ $locale.baseText('template.details.created') }}
-						<TimeAgo :date="template.created_at" />
+						<TimeAgo :date="template.createdAt" />
 						<span>{{ $locale.baseText('template.details.by') }}</span>
 						<span v-if="template.user"> {{ template.user.username }}</span>
 						<span v-else> n8n team</span>
