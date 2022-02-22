@@ -84,7 +84,6 @@ export default mixins(
 
 				this.$showMessage({
 					title: this.$locale.baseText('nodeWebhooks.showMessage.title'),
-					message: this.$locale.baseText('nodeWebhooks.showMessage.message'),
 					type: 'success',
 				});
 			},
