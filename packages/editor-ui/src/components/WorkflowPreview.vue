@@ -11,7 +11,7 @@
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
 		></iframe>
-		<n8n-loading animated :loading="!showPreview" :rows="1" variant="image" />
+		<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
 	</div>
 </template>
 

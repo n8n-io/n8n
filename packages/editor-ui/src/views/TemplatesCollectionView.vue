@@ -3,11 +3,13 @@
 		<template v-slot:header>
 			<div :class="$style.wrapper">
 				<div :class="$style.title">
-					<n8n-heading v-if="collection && collection.name" tag="h1" size="2xlarge">{{ collection.name }}</n8n-heading>
+					<n8n-heading v-if="collection && collection.name" tag="h1" size="2xlarge">
+						{{ collection.name }}
+					</n8n-heading>
 					<n8n-text v-if="collection && collection.name" color="text-base" size="small">
 						{{ $locale.baseText('templates.collection') }}
 					</n8n-text>
-					<n8n-loading :animated="true" :loading="!collection || !collection.name" :rows="2" variant="h1" />
+					<n8n-loading :loading="!collection || !collection.name" :rows="2" variant="h1" />
 				</div>
 			</div>
 		</template>
@@ -24,9 +26,9 @@
 					<TemplateList
 						:infinite-scroll-enabled="false"
 						:loading="loading"
-						:use-workflow-button="true"
-						:workflows="loading ? []: collectionWorkflows"
 						:navigateTo="navigateTo"
+						:use-workflow-button="true"
+						:workflows="loading ? [] : collectionWorkflows"
 					/>
 				</div>
 				<div :class="$style.details">
@@ -47,7 +49,12 @@ import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { ITemplatesCollection, ITemplatesCollectionFull, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
+import {
+	ITemplatesCollection,
+	ITemplatesCollectionFull,
+	ITemplatesWorkflow,
+	ITemplatesWorkflowFull,
+} from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 
@@ -59,17 +66,17 @@ export default mixins(workflowHelpers).extend({
 		TemplatesView,
 	},
 	computed: {
-		collectionId(): string {
-			return this.$route.params.id;
-		},
 		collection(): null | ITemplatesCollection | ITemplatesCollectionFull {
 			return this.$store.getters['templates/getCollectionById'](this.collectionId);
+		},
+		collectionId(): string {
+			return this.$route.params.id;
 		},
 		collectionWorkflows(): Array<ITemplatesWorkflow | ITemplatesWorkflowFull> | null {
 			if (!this.collection) {
 				return null;
 			}
-			return this.collection.workflows.map(({id}) => {
+			return this.collection.workflows.map(({ id }) => {
 				return this.$store.getters['templates/getTemplateById'](id) as ITemplatesWorkflow;
 			});
 		},
