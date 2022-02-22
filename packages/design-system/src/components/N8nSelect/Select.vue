@@ -6,6 +6,7 @@
 		:size="$options.methods.getSize(props.size)"
 		:class="$style[$options.methods.getClass(props)]"
 		:popper-class="$options.methods.getPopperClass(props, $style)"
+		:no-match-text="props.noMatchText"
 		v-on="listeners"
 		:ref="data.ref"
 	>
@@ -58,6 +59,9 @@ export default {
 		},
 		multiple: {
 			type: Boolean,
+		},
+		noMatchText: {
+			type: String,
 		},
 		filterMethod: {
 			type: Function,
