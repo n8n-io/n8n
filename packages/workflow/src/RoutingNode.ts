@@ -140,16 +140,30 @@ export class RoutingNode {
 					for (const key of Object.keys(nodeType.description.requestDefaults)) {
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
-						// If the value is an expression resolve it
-						value = this.getParameterValue(
-							value,
-							i,
-							runIndex,
-							{ $credentials: credentials },
-							true,
-						) as string;
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						(requestData.options as Record<string, any>)[key] = value;
+						// Parse the headers value as expression so that we can use complex values
+						if (key === 'headers') {
+							for (const headerName of Object.keys(value)) {
+								console.log(value);
+								value[headerName] = this.getParameterValue(
+									value[headerName],
+									i,
+									runIndex,
+									{ $credentials: credentials },
+									true,
+								) as string;
+								console.log(value);
+							}
+						} else {
+							value = this.getParameterValue(
+								value,
+								i,
+								runIndex,
+								{ $credentials: credentials },
+								true,
+							) as string;
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(requestData.options as Record<string, any>)[key] = value;
+						}
 					}
 				}
 
