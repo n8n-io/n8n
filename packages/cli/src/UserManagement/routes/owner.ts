@@ -36,7 +36,7 @@ export function ownerNamespace(this: N8nApp): void {
 			}
 
 			if (!email || !validator.isEmail(email)) {
-				Logger.debug('Request to claim instance ownership failed due to invalid email', {
+				Logger.debug('Request to claim instance ownership failed because of invalid email', {
 					userId,
 					invalidEmail: email,
 				});
