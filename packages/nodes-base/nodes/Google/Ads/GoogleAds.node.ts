@@ -33,13 +33,20 @@ export class GoogleAds implements INodeType {
 			{
 				name: 'googleAdsOAuth2Api',
 				required: true,
+				testedBy: {
+					request: {
+						method: 'GET',
+						url: '/v9/customers:listAccessibleCustomers',
+					},
+				},
 			},
 		],
 		requestDefaults: {
-			baseURL: 'https://googleads.googleapis.com',
-			//baseURL: 'https://newone.free.beeceptor.com',
+			//baseURL: 'https://googleads.googleapis.com',
+			baseURL: 'https://agobrech.free.beeceptor.com',
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded',
+				'developer-token': '={{$credentials.developerToken}}',
 			},
 		},
 		properties: [
