@@ -13,21 +13,21 @@
 				@click="navigateTo(workflow.id, 'TemplatesWorkflowView', $event)"
 			>
 				<TemplateCard
-					:workflow="workflow"
 					:firstItem="index === 0"
 					:lastItem="index === workflows.length - 1 && !loading"
-					:useWorkflowButton="useWorkflowButton"
 					:navigateTo="navigateTo"
+					:useWorkflowButton="useWorkflowButton"
+					:workflow="workflow"
 				/>
 			</div>
 			<div v-if="infiniteScrollEnabled" ref="loader" />
 			<div v-if="loading">
 				<TemplateCard
 					v-for="n in 4"
-					:key="'index-' + n"
-					:loading="true"
 					:firstItem="workflows.length === 0 && n === 1"
+					:key="'index-' + n"
 					:lastItem="n === 4"
+					:loading="true"
 				/>
 			</div>
 		</div>
@@ -37,6 +37,7 @@
 <script lang="ts">
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
+
 import TemplateCard from './TemplateCard.vue';
 
 export default mixins(genericHelpers).extend({
@@ -49,18 +50,18 @@ export default mixins(genericHelpers).extend({
 		loading: {
 			type: Boolean,
 		},
+		navigateTo: {
+			type: Function,
+		},
+		totalWorkflows: {
+			type: Number,
+		},
 		useWorkflowButton: {
 			type: Boolean,
 			default: false,
 		},
 		workflows: {
 			type: Array,
-		},
-		totalWorkflows: {
-			type: Number,
-		},
-		navigateTo: {
-			type: Function,
 		},
 	},
 	mounted() {

@@ -1,11 +1,9 @@
 <template>
 	<div :class="$style.list">
 		<div v-for="node in slicedNodes" :class="[$style.container, $style[size]]" :key="node.name">
-			<HoverableNodeIcon :nodeType="node" :size="size === 'md'? 24: 18" :title="node.name" />
+			<HoverableNodeIcon :nodeType="node" :size="size === 'md' ? 24 : 18" :title="node.name" />
 		</div>
-		<div :class="$style.button" v-if="filteredCoreNodes.length > limit + 1">
-			+{{ hiddenNodes }}
-		</div>
+		<div :class="$style.button" v-if="filteredCoreNodes.length > limit + 1">+{{ hiddenNodes }}</div>
 	</div>
 </template>
 

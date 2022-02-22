@@ -1,6 +1,11 @@
 <template>
 	<div
-		:class="[$style.card, lastItem && $style.last, firstItem && $style.first, !loading && $style.loaded]"
+		:class="[
+			$style.card,
+			lastItem && $style.last,
+			firstItem && $style.first,
+			!loading && $style.loaded,
+		]"
 	>
 		<div :class="$style.loading" v-if="loading">
 			<n8n-loading-blocks :blocks="2" :loading="loading" />
@@ -19,7 +24,9 @@
 					<TimeAgo :date="workflow.createdAt" />
 				</n8n-text>
 				<div v-if="workflow.user" :class="$style.line" v-text="'|'" />
-				<n8n-text v-if="workflow.user" size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
+				<n8n-text v-if="workflow.user" size="small" color="text-light"
+					>By {{ workflow.user.username }}</n8n-text
+				>
 			</div>
 		</div>
 		<div :class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]" v-if="!loading">
@@ -28,8 +35,8 @@
 		<div :class="$style.buttonContainer" v-if="useWorkflowButton">
 			<n8n-button
 				v-if="useWorkflowButton"
-				type="outline"
 				label="Use workflow"
+				type="outline"
 				@click.stop="navigateTo(workflow.id, 'WorkflowTemplate', $event)"
 			/>
 		</div>
@@ -38,33 +45,34 @@
 
 <script lang="ts">
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes, abbreviateNumber } from './helpers';
+import mixins from 'vue-typed-mixins';
+
 import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 import NodeList from './NodeList.vue';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplateCard',
 	props: {
-		lastItem: {
-			type: Boolean,
-			default: false,
-		},
 		firstItem: {
 			type: Boolean,
 			default: false,
 		},
-		workflow: {
-			type: Object,
-		},
-		useWorkflowButton: {
+		lastItem: {
 			type: Boolean,
+			default: false,
 		},
 		loading: {
 			type: Boolean,
 		},
 		navigateTo: {
 			type: Function,
+		},
+		useWorkflowButton: {
+			type: Boolean,
+		},
+		workflow: {
+			type: Object,
 		},
 	},
 	components: {
@@ -77,7 +85,6 @@ export default mixins(genericHelpers).extend({
 		};
 	},
 	methods: {
-		filterTemplateNodes,
 		abbreviateNumber,
 		countNodesToBeSliced(nodes: []): number {
 			if (nodes.length > this.nodesToBeShown) {
@@ -86,6 +93,7 @@ export default mixins(genericHelpers).extend({
 				return this.nodesToBeShown;
 			}
 		},
+		filterTemplateNodes,
 	},
 });
 </script>
@@ -170,5 +178,4 @@ export default mixins(genericHelpers).extend({
 	align-items: center;
 	flex-grow: 1;
 }
-
 </style>
