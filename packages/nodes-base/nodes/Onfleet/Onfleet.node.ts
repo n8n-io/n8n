@@ -2,10 +2,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -76,10 +76,10 @@ import {
 	workerOperations,
 } from './descriptions/WorkerDescription';
 
-import {
-	webhookFields,
-	webhookOperations,
-} from './descriptions/WebhookDescription';
+// import {
+// 	webhookFields,
+// 	webhookOperations,
+// } from './descriptions/WebhookDescription';
 
 import {
 	containerFields,
@@ -198,7 +198,7 @@ export class Onfleet implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async onfeletApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async onfeletApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
 
 				const options: OptionsWithUri = {

@@ -1,13 +1,9 @@
 import {
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 	NodeApiError,
-	NodeCredentialTestResult,
 	NodeOperationError
 } from 'n8n-workflow';
 import {
@@ -73,41 +69,6 @@ export class OnfleetTrigger implements INodeType {
 			eventDisplay,
 			eventNameField,
 		],
-	};
-
-	methods = {
-		credentialTest: {
-			async onfeletApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
-				const credentials = credential.data as IDataObject;
-
-				const options: OptionsWithUri = {
-					headers: {
-						'Content-Type': 'application/json',
-						'User-Agent': 'n8n-onfleet',
-					},
-					method: 'GET',
-					auth: {
-						user: credentials.apiKey as string,
-						pass: '',
-					},
-					uri: 'https://onfleet.com/api/v2/auth/test',
-					json: true,
-				};
-
-				try {
-					await this.helpers.request(options);
-					return {
-						status: 'OK',
-						message: 'Authentication successful',
-					};
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: `Settings are not valid: ${error}`,
-					};
-				}
-			},
-		},
 	};
 
 	// @ts-ignore (because of request)
