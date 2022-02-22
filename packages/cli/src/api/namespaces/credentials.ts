@@ -367,17 +367,6 @@ export function credentialsEndpoints(this: N8nApp): void {
 				});
 			}
 
-			// TODO: Useless segment coming from master - Remove?
-			let encryptionKey;
-
-			if (req.query.includeData === 'true') {
-				encryptionKey = await UserSettings.getEncryptionKey();
-
-				if (!encryptionKey) {
-					throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
-				}
-			}
-
 			return credentials.map(({ id, ...rest }) => ({ id: id.toString(), ...rest }));
 		}),
 	);
