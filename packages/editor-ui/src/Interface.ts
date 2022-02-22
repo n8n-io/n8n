@@ -793,6 +793,7 @@ export interface IUserResponse {
 		id: string;
 	};
 	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
+	isSetUp: boolean;
 }
 
 export interface IInviteResponse {
