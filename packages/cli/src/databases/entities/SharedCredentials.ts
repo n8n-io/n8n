@@ -37,6 +37,9 @@ export class SharedCredentials {
 	@ManyToOne(() => User, (user) => user.sharedCredentials, { primary: true })
 	user: User;
 
+	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.user)
+	userId: string;
+
 	@ManyToOne(() => CredentialsEntity, (credentials) => credentials.shared, {
 		primary: true,
 		onDelete: 'CASCADE',
