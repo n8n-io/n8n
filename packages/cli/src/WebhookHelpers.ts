@@ -56,6 +56,8 @@ import * as ActiveExecutions from './ActiveExecutions';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
+export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
+
 /**
  * Returns all the webhooks which should be created for the give workflow
  *
@@ -204,6 +206,14 @@ export async function executeWebhook(
 		200,
 	) as number;
 
+	const responseData = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseData,
+		executionMode,
+		additionalKeys,
+		'firstEntryJson',
+	);
+
 	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
@@ -331,7 +341,12 @@ export async function executeWebhook(
 		// directly if responseMode it set to "onReceived" and a respone should be sent
 		if (responseMode === 'onReceived' && !didSendResponse) {
 			// Return response directly and do not wait for the workflow to finish
-			if (webhookResultData.webhookResponse !== undefined) {
+			if (responseData === 'noData') {
+				// Return without data
+				responseCallback(null, {
+					responseCode,
+				});
+			} else if (webhookResultData.webhookResponse !== undefined) {
 				// Data to respond with is given
 				responseCallback(null, {
 					data: webhookResultData.webhookResponse,
@@ -508,16 +523,8 @@ export async function executeWebhook(
 					$executionId: executionId,
 				};
 
-				const responseData = workflow.expression.getSimpleParameterValue(
-					workflowStartNode,
-					webhookData.webhookDescription.responseData,
-					executionMode,
-					additionalKeys,
-					'firstEntryJson',
-				);
-
 				if (!didSendResponse) {
-					let data: IDataObject | IDataObject[];
+					let data: IDataObject | IDataObject[] | undefined;
 
 					if (responseData === 'firstEntryJson') {
 						// Return the JSON data of the first entry
@@ -621,6 +628,9 @@ export async function executeWebhook(
 								noWebhookResponse: true,
 							});
 						}
+					} else if (responseData === 'noData') {
+						// Return without data
+						data = undefined;
 					} else {
 						// Return the JSON data of all the entries
 						data = [];
