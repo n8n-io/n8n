@@ -8,7 +8,6 @@ import config = require('../../config');
 import * as utils from './shared/utils';
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
-import { User } from '../../src/databases/entities/User';
 import { Role } from '../../src/databases/entities/Role';
 import { randomEmail, randomValidPassword, randomName } from './shared/random';
 import { getGlobalOwnerRole } from './shared/utils';

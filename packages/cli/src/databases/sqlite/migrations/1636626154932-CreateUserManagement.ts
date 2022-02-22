@@ -39,6 +39,8 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 			`CREATE TABLE "${tablePrefix}settings" ("key"	TEXT NOT NULL,"value"	TEXT NOT NULL DEFAULT \'\',"loadOnStartup"	boolean NOT NULL default false,PRIMARY KEY("key"))`,
 		);
 
+		await queryRunner.query(`DROP INDEX IF EXISTS "IDX_${tablePrefix}943d8f922be094eb507cb9a7f9"`);
+
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}xeendlvptc5jy4hbol17b5xery" ON "${tablePrefix}execution_entity" ("workflowId")`,
 		);
@@ -99,7 +101,11 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.get('database.tablePrefix');
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "IDX_${tablePrefix}943d8f922be094eb507cb9a7f9" ON "${tablePrefix}workflow_entity" ("name") `,
+		);
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}xeendlvptc5jy4hbol17b5xery"`);
+
 		await queryRunner.query(`DROP TABLE "${tablePrefix}shared_credentials"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}shared_workflow"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}user"`);

@@ -120,25 +120,24 @@ export async function createUser(
 		lastName: randomName(),
 	},
 ) {
-	return await Db.collections.User!.save({
+	const globalRole = role ?? (await getGlobalMemberRole());
+	return Db.collections.User!.save({
 		id,
 		email,
 		password,
 		firstName,
 		lastName,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: role ?? (await getGlobalMemberRole()),
+		globalRole,
 	});
 }
 
 export async function createOwnerShell() {
-	await Db.collections.User!.save({
-		id: uuid(),
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: await getGlobalOwnerRole(),
-	});
+	const globalRole = await getGlobalOwnerRole();
+	return Db.collections.User!.save({ globalRole });
+}
+export async function createMemberShell() {
+	const globalRole = await getGlobalMemberRole();
+	return Db.collections.User!.save({ globalRole });
 }
 
 export async function getGlobalOwnerRole() {
@@ -177,7 +176,6 @@ export function getAllRoles() {
 		getCredentialOwnerRole(),
 	]);
 }
-
 
 // ----------------------------------
 //           request agent
