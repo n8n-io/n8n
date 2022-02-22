@@ -48,7 +48,6 @@ import {
 	N8nIconButton,
 	N8nButton,
 	N8nCard,
-	N8nImage,
 	N8nInfoTip,
 	N8nInput,
 	N8nInputLabel,
@@ -76,7 +75,6 @@ Vue.use(Fragment.Plugin);
 Vue.use(N8nButton);
 Vue.use(N8nCard);
 Vue.use(N8nIconButton);
-Vue.use(N8nImage);
 Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
