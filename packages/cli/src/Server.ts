@@ -44,6 +44,7 @@ import {
 	LessThanOrEqual,
 	MoreThan,
 	Not,
+	Raw,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
@@ -945,9 +946,7 @@ class App {
 
 				await this.externalHooks.run('workflow.update', [updateData]);
 
-				const isActive = await this.activeWorkflowRunner.isActive(workflowId);
-
-				if (isActive) {
+				if (shared.workflow.active) {
 					// When workflow gets saved always remove it as the triggers could have been
 					// changed and so the changes would not take effect
 					await this.activeWorkflowRunner.remove(workflowId);
@@ -1028,7 +1027,10 @@ class App {
 					// When the workflow is supposed to be active add it again
 					try {
 						await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
-						await this.activeWorkflowRunner.add(workflowId, isActive ? 'update' : 'activate');
+						await this.activeWorkflowRunner.add(
+							workflowId,
+							shared.workflow.active ? 'update' : 'activate',
+						);
 					} catch (error) {
 						// If workflow could not be activated set it again to inactive
 						updateData.active = false;
@@ -1077,9 +1079,7 @@ class App {
 					);
 				}
 
-				const isActive = await this.activeWorkflowRunner.isActive(workflowId);
-
-				if (isActive) {
+				if (shared.workflow.active) {
 					// deactivate before deleting
 					await this.activeWorkflowRunner.remove(workflowId);
 				}
@@ -2510,16 +2510,32 @@ class App {
 						Object.assign(findOptions.where, filterToAdd);
 					});
 
+					const rangeQuery: string[] = [];
+					const rangeQueryParams: {
+						lastId?: string;
+						firstId?: string;
+						executingWorkflowIds?: string[];
+					} = {};
+
 					if (req.query.lastId) {
-						Object.assign(findOptions.where, { id: LessThan(req.query.lastId) });
+						rangeQuery.push('id < :lastId');
+						rangeQueryParams.lastId = req.query.lastId;
 					}
 
 					if (req.query.firstId) {
-						Object.assign(findOptions.where, { id: MoreThan(req.query.firstId) });
+						rangeQuery.push('id > :firstId');
+						rangeQueryParams.firstId = req.query.firstId;
 					}
 
 					if (executingWorkflowIds.length > 0) {
-						Object.assign(findOptions.where, { id: Not(In(executingWorkflowIds)) });
+						rangeQuery.push(`id NOT IN (:...executingWorkflowIds)`);
+						rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
+					}
+
+					if (rangeQuery.length) {
+						Object.assign(findOptions.where, {
+							id: Raw(() => rangeQuery.join(' and '), rangeQueryParams),
+						});
 					}
 
 					const executions = await Db.collections.Execution!.find(findOptions);
@@ -3248,11 +3264,7 @@ async function getExecutionsCount(
 
 	// For databases other than Postgres, do a regular count
 	// when filtering based on `workflowId` or `finished` fields.
-	if (
-		dbType !== 'postgresdb' ||
-		filteredFields.length > 0 ||
-		config.get('userManagement.hasOwner') === true
-	) {
+	if (dbType !== 'postgresdb' || filteredFields.length > 0 || user.globalRole.name !== 'owner') {
 		const sharedWorkflowIds = await getSharedWorkflowIds(user);
 
 		const count = await Db.collections.Execution!.count({
