@@ -15,7 +15,7 @@
 					:label="getPlaceholderText"
 				/>
 				<div v-else class="add-option">
-					<n8n-select v-model="selectedOption" :placeholder="getPlaceholderText" size="small"  @change="optionSelected" filterable>
+					<n8n-select v-model="selectedOption" :placeholder="getPlaceholderText" :noMatchText="$locale.baseText('parameterInput.noMatchingData')" size="small"  @change="optionSelected" filterable>
 						<n8n-option
 							v-for="item in parameterOptions"
 							:key="item.name"

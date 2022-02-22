@@ -114,6 +114,7 @@
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
 			:popper-append-to-body="true"
+			:noMatchText="$locale.baseText('parameterInput.noMatchingData')"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
@@ -144,7 +145,8 @@
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
-			:placeholder="$locale.baseText('parameterInput.select')"
+			:placeholder="placeholder ? placeholder : $locale.baseText('parameterInput.select')"
+			:noMatchText="$locale.baseText('parameterInput.noMatchingData')"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"

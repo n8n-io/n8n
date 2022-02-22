@@ -90,6 +90,7 @@
 				<n8n-select
 					v-model="selectedOption"
 					:placeholder="getPlaceholderText"
+					:noMatchText="$locale.baseText('parameterInput.noMatchingData')"
 					size="small"
 					@change="optionSelected"
 					filterable

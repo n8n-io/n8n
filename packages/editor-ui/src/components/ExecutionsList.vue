@@ -13,7 +13,7 @@
 						{{ $locale.baseText('executionsList.filters') }}:
 					</el-col>
 					<el-col :span="7">
-						<n8n-select v-model="filter.workflowId" :placeholder="$locale.baseText('executionsList.selectWorkflow')" size="medium" filterable @change="handleFilterChanged">
+						<n8n-select v-model="filter.workflowId" :placeholder="$locale.baseText('executionsList.selectWorkflow')" size="medium" filterable :noMatchText="$locale.baseText('parameterInput.noMatchingData')" @change="handleFilterChanged">
 							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
@@ -23,7 +23,7 @@
 						</n8n-select>
 					</el-col>
 					<el-col :span="5" :offset="1">
-						<n8n-select v-model="filter.status" :placeholder="$locale.baseText('executionsList.selectStatus')" size="medium" filterable @change="handleFilterChanged">
+						<n8n-select v-model="filter.status" :placeholder="$locale.baseText('executionsList.selectStatus')" size="medium" filterable :noMatchText="$locale.baseText('parameterInput.noMatchingData')" @change="handleFilterChanged">
 							<n8n-option
 								v-for="item in statuses"
 								:key="item.id"

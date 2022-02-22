@@ -6,6 +6,7 @@
 			:loading="isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
+			:noMatchText="$locale.baseText('parameterInput.noMatchingData')"
 			@change="onTagsUpdated"
 			@visible-change="onVisibleChange"
 			@remove-tag="onRemoveTag"

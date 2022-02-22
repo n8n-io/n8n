@@ -613,6 +613,7 @@
 		"error": "ERROR",
 		"issues": "Issues",
 		"loadingOptions": "Loading options...",
+		"noMatchingData": "No matching data",
 		"openEditWindow": "Open Edit Window",
 		"parameter": "Parameter: \"{shortPath}\"",
 		"parameterHasExpression": "Parameter: \"{shortPath}\" has an expression",

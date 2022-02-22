@@ -19,6 +19,7 @@
 					size="xlarge"
 					ref="select"
 					:value="selected"
+					:noMatchText="$locale.baseText('parameterInput.noMatchingData')"
 					@change="onSelect"
 				>
 					<font-awesome-icon icon="search" slot="prefix" />
