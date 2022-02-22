@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
+import express = require('express');
 import { IsNull, Not } from 'typeorm';
 import { Db, GenericHelpers, ResponseHelper } from '..';
 import config = require('../../config');
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
+import { AuthenticatedRequest } from '../requests';
 import { PublicUser } from './Interfaces';
 
 export const isEmailSetUp = Boolean(config.get('userManagement.emails.mode'));
@@ -43,6 +45,17 @@ export function validatePassword(password?: string): string {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User): PublicUser {
-	const { password, resetPasswordToken, createdAt, updatedAt, ...sanitizedUser } = user;
+	const {
+		password,
+		resetPasswordToken,
+		resetPasswordTokenExpiration,
+		createdAt,
+		updatedAt,
+		...sanitizedUser
+	} = user;
 	return sanitizedUser;
+}
+
+export function isAuthenticatedRequest(request: express.Request): request is AuthenticatedRequest {
+	return request.user !== undefined;
 }

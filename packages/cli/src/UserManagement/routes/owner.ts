@@ -3,6 +3,7 @@
 import { hashSync, genSaltSync } from 'bcryptjs';
 import * as express from 'express';
 import validator from 'validator';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, ResponseHelper } from '../..';
 import config = require('../../../config');
@@ -25,16 +26,30 @@ export function ownerNamespace(this: N8nApp): void {
 			const { id: userId } = req.user;
 
 			if (config.get('userManagement.hasOwner')) {
+				Logger.debug(
+					'Request to claim instance ownership failed because instance owner already exists',
+					{
+						userId,
+					},
+				);
 				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 			}
 
 			if (!email || !validator.isEmail(email)) {
+				Logger.debug('Request to claim instance ownership failed because of invalid email', {
+					userId,
+					invalidEmail: email,
+				});
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
 			const validPassword = validatePassword(password);
 
 			if (!firstName || !lastName) {
+				Logger.debug(
+					'Request to claim instance ownership failed because of missing first name or last name in payload',
+					{ userId, payload: req.body },
+				);
 				throw new ResponseHelper.ResponseError(
 					'First and last names are mandatory',
 					undefined,
@@ -62,12 +77,16 @@ export function ownerNamespace(this: N8nApp): void {
 
 			const owner = await Db.collections.User!.save(newUser);
 
+			Logger.info('Owner updated successfully', { userId: req.user.id });
+
 			config.set('userManagement.hasOwner', true);
 
 			await Db.collections.Settings!.update(
 				{ key: 'userManagement.hasOwner' },
 				{ value: JSON.stringify(true) },
 			);
+
+			Logger.debug('Setting hasOwner updated successfully', { userId: req.user.id });
 
 			await issueCookie(res, owner);
 

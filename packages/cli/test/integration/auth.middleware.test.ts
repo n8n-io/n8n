@@ -9,6 +9,7 @@ describe('/me endpoints', () => {
 
 	beforeAll(async () => {
 		app = utils.initTestServer({ applyAuth: true });
+		utils.initLogger();
 	});
 
 	describe('Unauthorized requests', () => {

@@ -2,6 +2,7 @@
 import { Application } from 'express';
 import { JwtFromRequestFunction } from 'passport-jwt';
 import type { IExternalHooksClass, IPersonalizationSurveyAnswers } from '../Interfaces';
+import { ActiveWorkflowRunner } from '..';
 
 export interface JwtToken {
 	token: string;
@@ -34,4 +35,5 @@ export interface N8nApp {
 	restEndpoint: string;
 	externalHooks: IExternalHooksClass;
 	defaultCredentialsName: string;
+	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 }

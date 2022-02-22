@@ -79,7 +79,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
 			version_cli: this.versionCli,
-			num_tags: workflow.tags.length,
+			num_tags: workflow.tags?.length ?? 0,
 		});
 	}
 

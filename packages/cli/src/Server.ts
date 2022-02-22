@@ -44,6 +44,7 @@ import {
 	LessThanOrEqual,
 	MoreThan,
 	Not,
+	Raw,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
@@ -83,6 +84,7 @@ import {
 	IWorkflowBase,
 	LoggerProxy,
 	NodeHelpers,
+	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -142,13 +144,13 @@ import {
 import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
-import * as PersonalizationSurvey from './PersonalizationSurvey';
 
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
+import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 import { userManagementRouter } from './UserManagement';
 import { User } from './databases/entities/User';
@@ -224,6 +226,8 @@ class App {
 	presetCredentialsLoaded: boolean;
 
 	isUserManagementEnabled: boolean;
+
+	webhookMethods: WebhookHttpMethod[];
 
 	constructor() {
 		this.app = express();
@@ -303,9 +307,8 @@ class App {
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
-			personalizationSurvey: {
-				shouldShow: false,
-			},
+			personalizationSurveyEnabled:
+				config.get('personalization.enabled') && config.get('diagnostics.enabled'),
 			defaultLocale: config.get('defaultLocale'),
 			userManagement: {
 				enabled:
@@ -343,9 +346,6 @@ class App {
 		this.frontendSettings.versionCli = this.versions.cli;
 
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
-
-		this.frontendSettings.personalizationSurvey =
-			await PersonalizationSurvey.preparePersonalizationSurvey();
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -940,9 +940,7 @@ class App {
 
 				await this.externalHooks.run('workflow.update', [updateData]);
 
-				const isActive = await this.activeWorkflowRunner.isActive(workflowId);
-
-				if (isActive) {
+				if (shared.workflow.active) {
 					// When workflow gets saved always remove it as the triggers could have been
 					// changed and so the changes would not take effect
 					await this.activeWorkflowRunner.remove(workflowId);
@@ -973,7 +971,7 @@ class App {
 					}
 				}
 
-				if (Object.keys(updateData).length > 1 || updateData.active === undefined) {
+				if (updateData.name) {
 					updateData.updatedAt = this.getCurrentDate(); // required due to atomic update
 					await validateEntity(updateData);
 				}
@@ -1023,7 +1021,10 @@ class App {
 					// When the workflow is supposed to be active add it again
 					try {
 						await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
-						await this.activeWorkflowRunner.add(workflowId, isActive ? 'update' : 'activate');
+						await this.activeWorkflowRunner.add(
+							workflowId,
+							shared.workflow.active ? 'update' : 'activate',
+						);
 					} catch (error) {
 						// If workflow could not be activated set it again to inactive
 						updateData.active = false;
@@ -1072,9 +1073,7 @@ class App {
 					);
 				}
 
-				const isActive = await this.activeWorkflowRunner.isActive(workflowId);
-
-				if (isActive) {
+				if (shared.workflow.active) {
 					// deactivate before deleting
 					await this.activeWorkflowRunner.remove(workflowId);
 				}
@@ -2170,16 +2169,32 @@ class App {
 						Object.assign(findOptions.where, filterToAdd);
 					});
 
+					const rangeQuery: string[] = [];
+					const rangeQueryParams: {
+						lastId?: string;
+						firstId?: string;
+						executingWorkflowIds?: string[];
+					} = {};
+
 					if (req.query.lastId) {
-						Object.assign(findOptions.where, { id: LessThan(req.query.lastId) });
+						rangeQuery.push('id < :lastId');
+						rangeQueryParams.lastId = req.query.lastId;
 					}
 
 					if (req.query.firstId) {
-						Object.assign(findOptions.where, { id: MoreThan(req.query.firstId) });
+						rangeQuery.push('id > :firstId');
+						rangeQueryParams.firstId = req.query.firstId;
 					}
 
 					if (executingWorkflowIds.length > 0) {
-						Object.assign(findOptions.where, { id: !In(executingWorkflowIds) });
+						rangeQuery.push(`id NOT IN (:...executingWorkflowIds)`);
+						rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
+					}
+
+					if (rangeQuery.length) {
+						Object.assign(findOptions.where, {
+							id: Raw(() => rangeQuery.join(' and '), rangeQueryParams),
+						});
 					}
 
 					const executions = await Db.collections.Execution!.find(findOptions);
@@ -2682,107 +2697,45 @@ class App {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
 
-		// HEAD webhook requests (test for UI)
-		this.app.head(
+		// Register all webhook requests (test for UI)
+		this.app.all(
 			`/${this.endpointWebhookTest}/*`,
 			async (req: express.Request, res: express.Response) => {
 				// Cut away the "/webhook-test/" to get the registred part of the url
 				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 					this.endpointWebhookTest.length + 2,
 				);
+
+				const method = req.method.toUpperCase() as WebhookHttpMethod;
+
+				if (method === 'OPTIONS') {
+					let allowedMethods: string[];
+					try {
+						allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
+						allowedMethods.push('OPTIONS');
+
+						// Add custom "Allow" header to satisfy OPTIONS response.
+						res.append('Allow', allowedMethods);
+					} catch (error) {
+						ResponseHelper.sendErrorResponse(res, error);
+						return;
+					}
+
+					ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+					return;
+				}
+
+				if (!WEBHOOK_METHODS.includes(method)) {
+					ResponseHelper.sendErrorResponse(
+						res,
+						new Error(`The method ${method} is not supported.`),
+					);
+					return;
+				}
 
 				let response;
 				try {
-					response = await this.testWebhooks.callTestWebhook('HEAD', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
-			},
-		);
-
-		// HEAD webhook requests (test for UI)
-		this.app.options(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let allowedMethods: string[];
-				try {
-					allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
-					allowedMethods.push('OPTIONS');
-
-					// Add custom "Allow" header to satisfy OPTIONS response.
-					res.append('Allow', allowedMethods);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-			},
-		);
-
-		// GET webhook requests (test for UI)
-		this.app.get(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let response;
-				try {
-					response = await this.testWebhooks.callTestWebhook('GET', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
-			},
-		);
-
-		// POST webhook requests (test for UI)
-		this.app.post(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let response;
-				try {
-					response = await this.testWebhooks.callTestWebhook('POST', requestUrl, req, res);
+					response = await this.testWebhooks.callTestWebhook(method, requestUrl, req, res);
 				} catch (error) {
 					ResponseHelper.sendErrorResponse(res, error);
 					return;
@@ -2970,11 +2923,7 @@ async function getExecutionsCount(
 
 	// For databases other than Postgres, do a regular count
 	// when filtering based on `workflowId` or `finished` fields.
-	if (
-		dbType !== 'postgresdb' ||
-		filteredFields.length > 0 ||
-		config.get('userManagement.hasOwner') === true
-	) {
+	if (dbType !== 'postgresdb' || filteredFields.length > 0 || user.globalRole.name !== 'owner') {
 		const sharedWorkflowIds = await getSharedWorkflowIds(user);
 
 		const count = await Db.collections.Execution!.count({
