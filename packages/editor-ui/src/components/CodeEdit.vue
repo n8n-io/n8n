@@ -15,7 +15,6 @@
 
 <script lang="ts">
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import { DateTime } from "luxon";
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -122,7 +121,6 @@ export default mixins(
 				// As wordBasedSuggestions: false does not have any effect does it however seem
 				// to remove all all suggestions from the editor if I do this
 				monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-					target: monaco.languages.typescript.ScriptTarget.Latest,
 					allowNonTsExtensions: true,
 				});
 
