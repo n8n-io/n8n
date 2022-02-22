@@ -12,13 +12,16 @@ let stickyNotificationQueue: ElNotificationComponent[] = [];
 
 export const showMessage = mixins(externalHooks).extend({
 	methods: {
-		$showMessage(messageData: ElNotificationOptions, track = true) {
+		$showMessage(
+			messageData: Omit<ElNotificationOptions, 'message'> & { message?: string },
+			track = true,
+		) {
 			messageData.dangerouslyUseHTMLString = true;
 			if (messageData.position === undefined) {
 				messageData.position = 'bottom-right';
 			}
 
-			const notification = this.$notify(messageData);
+			const notification = this.$notify(messageData as ElNotificationOptions);
 
 			if (messageData.duration === 0) {
 				stickyNotificationQueue.push(notification);
