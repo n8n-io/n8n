@@ -4,7 +4,7 @@ import {
 	ITemplatesCollectionResponse,
 	ITemplatesQuery,
 	ITemplatesWorkflow,
-	ITemplatesWorkflowResponse
+	ITemplatesWorkflowResponse,
 } from '@/Interface';
 import { get } from './helpers';
 
