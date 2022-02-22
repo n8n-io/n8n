@@ -14,6 +14,7 @@ let app: express.Application;
 beforeAll(async () => {
 	app = utils.initTestServer({ applyAuth: true, namespaces: ['me', 'auth', 'owner', 'users'] });
 	await utils.initTestDb();
+	utils.initLogger();
 });
 
 afterAll(() => {
@@ -37,6 +38,9 @@ ROUTES_REQUIRING_AUTHORIZATION.forEach(async (route) => {
 		const member = await utils.createUser();
 		const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 		const response = await authMemberAgent[method](endpoint);
+		if (response.statusCode === 500) {
+			console.log(response);
+		}
 
 		expect(response.statusCode).toBe(403);
 	});

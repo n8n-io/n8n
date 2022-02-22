@@ -14,9 +14,10 @@ import {
 	randomName,
 	randomInvalidPassword,
 } from './shared/random';
-import { createUser } from './shared/utils';
+import { createMemberShell, createUser } from './shared/utils';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
+import * as UMHelper from '../../src/UserManagement/UserManagementHelper';
 import { compare } from 'bcryptjs';
 
 let app: express.Application;
@@ -63,6 +64,8 @@ beforeEach(async () => {
 
 	config.set('userManagement.hasOwner', true);
 	config.set('userManagement.emails.mode', '');
+	// @ts-ignore hack because config doesn't change for helper
+	UMHelper.isEmailSetUp = false;
 });
 
 afterEach(async () => {
@@ -168,6 +171,8 @@ test('DELETE /users/:id should delete the user', async () => {
 
 	const workflow = await Db.collections.Workflow!.findOne(savedWorkflow.id);
 	expect(workflow).toBeUndefined();
+
+	// TODO: also include active workflow and check whether webhook has been removed
 
 	const credential = await Db.collections.Credentials!.findOne(savedCredential.id);
 	expect(credential).toBeUndefined();
@@ -278,7 +283,7 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	const { id: inviteeId } = await createUser();
+	const { id: inviteeId } = await createMemberShell();
 
 	const response = await authOwnerAgent
 		.get('/resolve-signup-token')
@@ -312,14 +317,20 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 		.get('/resolve-signup-token')
 		.query({ inviterId: '123', inviteeId: '456' });
 
-	await Db.collections.User!.update(owner.id, { email: '' }); // cause inconsistent DB state
-
+	// user is already setup, thus call should error
 	const fourth = await authOwnerAgent
 		.get('/resolve-signup-token')
 		.query({ inviterId: INITIAL_TEST_USER.id })
 		.query({ inviteeId });
 
-	for (const response of [first, second, third, fourth]) {
+	// cause inconsistent DB state
+	await Db.collections.User!.update(owner.id, { email: '' });
+	const fifth = await authOwnerAgent
+		.get('/resolve-signup-token')
+		.query({ inviterId: INITIAL_TEST_USER.id })
+		.query({ inviteeId });
+
+	for (const response of [first, second, third, fourth, fifth]) {
 		expect(response.statusCode).toBe(400);
 	}
 });
@@ -359,7 +370,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 	expect(personalizationAnswers).toBeNull();
 	expect(password).toBeUndefined();
 	expect(resetPasswordToken).toBeUndefined();
-	expect(globalRole).toBeUndefined();
+	expect(globalRole).toBeDefined();
 
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();
@@ -444,6 +455,8 @@ test('POST /users should email invites and create user shells', async () => {
 		smtp: { host, port, secure },
 	} = await utils.getSmtpTestAccount();
 
+	// @ts-ignore hack because config doesn't change for helper
+	UMHelper.isEmailSetUp = true;
 	config.set('userManagement.emails.mode', 'smtp');
 	config.set('userManagement.emails.smtp.host', host);
 	config.set('userManagement.emails.smtp.port', port);
@@ -458,7 +471,8 @@ test('POST /users should email invites and create user shells', async () => {
 	expect(response.statusCode).toBe(200);
 
 	for (const {
-		user: { id, email: receivedEmail, error },
+		user: { id, email: receivedEmail },
+		error,
 	} of response.body.data) {
 		expect(validator.isUUID(id)).toBe(true);
 		expect(TEST_EMAILS_TO_CREATE_USER_SHELLS.some((e) => e === receivedEmail)).toBe(true);
@@ -479,6 +493,8 @@ test('POST /users should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
+	// @ts-ignore hack because config doesn't change for helper
+	UMHelper.isEmailSetUp = true;
 	config.set('userManagement.emails.mode', 'smtp');
 
 	const invalidPayloads = [
@@ -502,6 +518,8 @@ test('POST /users should ignore an empty payload', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
+	// @ts-ignore hack because config doesn't change for helper
+	UMHelper.isEmailSetUp = true;
 	config.set('userManagement.emails.mode', 'smtp');
 
 	const response = await authOwnerAgent.post('/users').send([]);
@@ -515,6 +533,8 @@ test('POST /users should ignore an empty payload', async () => {
 	const users = await Db.collections.User!.find();
 	expect(users.length).toBe(1);
 });
+
+// TODO: /users/:id/reinvite route tests missing
 
 // TODO: UserManagementMailer is a singleton - cannot reinstantiate with wrong creds
 // test('POST /users should error for wrong SMTP config', async () => {
