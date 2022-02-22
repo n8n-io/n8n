@@ -117,7 +117,7 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
-			categories: [] as string[],
+			categories: [] as number[],
 			loading: true,
 			loadingCategories: true,
 			loadingCollections: true,
@@ -163,11 +163,11 @@ export default mixins(genericHelpers).extend({
 			this.loadingCollections = true;
 			this.callDebounced('updateSearch', 500, true);
 		},
-		onCategorySelected(selected: string) {
+		onCategorySelected(selected: number) {
 			this.categories = this.categories.concat(selected);
 			this.updateSearch();
 		},
-		onCategoryUnselected(selected: string) {
+		onCategoryUnselected(selected: number) {
 			this.categories = this.categories.filter((id) => id !== selected);
 			this.updateSearch();
 		},
@@ -216,14 +216,9 @@ export default mixins(genericHelpers).extend({
 			try {
 				await this.$store.dispatch('templates/getCategories');
 			} catch (e) {
-				this.$showMessage({
-					title: 'Error',
-					message: 'Could not load categories',
-					type: 'error',
-				});
-			} finally {
-				this.loadingCategories = false;
 			}
+
+			this.loadingCategories = false;
 		},
 		async loadCollections() {
 			try {
@@ -233,14 +228,9 @@ export default mixins(genericHelpers).extend({
 					search: this.search,
 				});
 			} catch (e) {
-				this.$showMessage({
-					title: 'Error',
-					message: 'Could not load collections',
-					type: 'error',
-				});
-			} finally {
-				this.loadingCollections = false;
 			}
+
+			this.loadingCollections = false;
 		},
 		async loadWorkflows() {
 			try {
@@ -251,14 +241,9 @@ export default mixins(genericHelpers).extend({
 				});
 				this.trackSearch();
 			} catch (e) {
-				this.$showMessage({
-					title: 'Error',
-					message: 'Could not load workflows',
-					type: 'error',
-				});
-			} finally {
-				this.loadingWorkflows = false;
 			}
+
+			this.loadingWorkflows = false;
 		},
 		scrollToTop() {
 			setTimeout(() => {
@@ -287,7 +272,7 @@ export default mixins(genericHelpers).extend({
 		}
 
 		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories.split(',');
+			this.categories = this.$route.query.categories.split(',').map((categoryId) => parseInt(categoryId, 10));
 		}
 	},
 });
