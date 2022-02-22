@@ -3,7 +3,7 @@
 		<div :class="isMenuCollapsed ? $style.menu : $style.expandedMenu"></div>
 		<div :class="$style.container">
 			<div :class="$style.header">
-				<div v-if="goBackEnabled">
+				<div :class="$style.goBack" v-if="goBackEnabled">
 					<GoBackButton />
 				</div>
 				<slot name="header"></slot>
@@ -73,5 +73,9 @@ export default Vue.extend({
 	display: flex;
 	flex-direction: column;
 	margin-bottom: var(--spacing-2xl);
+}
+
+.goBack {
+	margin-bottom: var(--spacing-2xs);
 }
 </style>
