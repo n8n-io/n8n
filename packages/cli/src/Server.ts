@@ -44,6 +44,7 @@ import {
 	LessThanOrEqual,
 	MoreThan,
 	Not,
+	Raw,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
@@ -2509,16 +2510,32 @@ class App {
 						Object.assign(findOptions.where, filterToAdd);
 					});
 
+					const rangeQuery: string[] = [];
+					const rangeQueryParams: {
+						lastId?: string;
+						firstId?: string;
+						executingWorkflowIds?: string[];
+					} = {};
+
 					if (req.query.lastId) {
-						Object.assign(findOptions.where, { id: LessThan(req.query.lastId) });
+						rangeQuery.push('id < :lastId');
+						rangeQueryParams.lastId = req.query.lastId;
 					}
 
 					if (req.query.firstId) {
-						Object.assign(findOptions.where, { id: MoreThan(req.query.firstId) });
+						rangeQuery.push('id > :firstId');
+						rangeQueryParams.firstId = req.query.firstId;
 					}
 
 					if (executingWorkflowIds.length > 0) {
-						Object.assign(findOptions.where, { id: Not(In(executingWorkflowIds)) });
+						rangeQuery.push(`id NOT IN (:...executingWorkflowIds)`);
+						rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
+					}
+
+					if (rangeQuery.length) {
+						Object.assign(findOptions.where, {
+							id: Raw(() => rangeQuery.join(' and '), rangeQueryParams),
+						});
 					}
 
 					const executions = await Db.collections.Execution!.find(findOptions);
