@@ -622,7 +622,8 @@
 		"refreshList": "Refresh List",
 		"removeExpression": "Remove Expression",
 		"resetValue": "Reset Value",
-		"selectDateAndTime": "Select date and time"
+		"selectDateAndTime": "Select date and time",
+		"select": "Select"
 	},
 	"parameterInputExpanded": {
 		"openDocs": "Open docs",
