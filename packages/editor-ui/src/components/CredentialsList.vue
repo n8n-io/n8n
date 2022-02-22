@@ -124,7 +124,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('credentialsList.showError.deleteCredential.title'),
-					this.$locale.baseText('credentialsList.showError.deleteCredential.message'),
 				);
 
 				return;
@@ -135,10 +134,6 @@ export default mixins(
 
 			this.$showMessage({
 				title: this.$locale.baseText('credentialsList.showMessage.title'),
-				message: this.$locale.baseText(
-					'credentialsList.showMessage.message',
-					{ interpolate: { credentialName: credential.name }},
-				),
 				type: 'success',
 			});
 		},
