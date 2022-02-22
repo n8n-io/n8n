@@ -56,7 +56,7 @@ export function initTestServer({
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
 
 	config.set('userManagement.jwtSecret', 'My JWT secret');
-	config.set('userManagement.hasOwner', false);
+	config.set('userManagement.isInstanceOwnerSetUp', false);
 
 	if (applyAuth) {
 		authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
@@ -246,9 +246,9 @@ export function getAuthToken(response: request.Response, authCookieName = 'n8n-a
 //            settings
 // ----------------------------------
 
-export async function getHasOwnerSetting() {
+export async function getisInstanceOwnerSetUpSetting() {
 	const { value } = await Db.collections.Settings!.findOneOrFail({
-		key: 'userManagement.hasOwner',
+		key: 'userManagement.isInstanceOwnerSetUp',
 	});
 
 	return Boolean(value);

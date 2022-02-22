@@ -319,7 +319,7 @@ class App {
 			userManagement: {
 				enabled:
 					config.get('userManagement.disabled') === false ||
-					config.get('userManagement.hasOwner') === true,
+					config.get('userManagement.isInstanceOwnerSetUp') === true,
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
@@ -1260,7 +1260,7 @@ class App {
 					throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 				}
 				if (
-					config.get('userManagement.hasOwner') === true &&
+					config.get('userManagement.isInstanceOwnerSetUp') === true &&
 					(req.user as User).globalRole.name !== 'owner'
 				) {
 					throw new ResponseHelper.ResponseError(

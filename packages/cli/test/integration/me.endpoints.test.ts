@@ -214,10 +214,10 @@ describe('/me endpoints', () => {
 
 			await Db.collections.User!.save(newMember);
 
-			config.set('userManagement.hasOwner', true);
+			config.set('userManagement.isInstanceOwnerSetUp', true);
 
 			await Db.collections.Settings!.update(
-				{ key: 'userManagement.hasOwner' },
+				{ key: 'userManagement.isInstanceOwnerSetUp' },
 				{ value: JSON.stringify(true) },
 			);
 		});
@@ -390,7 +390,7 @@ describe('/me endpoints', () => {
 				globalRole: globalOwnerRole,
 			});
 
-			config.set('userManagement.hasOwner', true);
+			config.set('userManagement.isInstanceOwnerSetUp', true);
 		});
 
 		afterEach(async () => {

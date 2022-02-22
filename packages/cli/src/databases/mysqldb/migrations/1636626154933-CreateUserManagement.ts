@@ -244,7 +244,7 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 			'INSERT INTO `' +
 				tablePrefix +
 				'settings` (`key`, value, loadOnStartup) values  ' +
-				'("userManagement.hasOwner", "false", 1)',
+				'("userManagement.isInstanceOwnerSetUp", "false", 1)',
 		);
 	}
 

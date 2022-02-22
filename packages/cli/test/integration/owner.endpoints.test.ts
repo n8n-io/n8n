@@ -35,7 +35,7 @@ describe('/owner endpoints', () => {
 			return getConnection().close();
 		});
 
-		test('POST /owner should create owner and enable hasOwner setting', async () => {
+		test('POST /owner should create owner and enable isInstanceOwnerSetUp', async () => {
 			const owner = await Db.collections.User!.findOneOrFail();
 			const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
@@ -70,11 +70,11 @@ describe('/owner endpoints', () => {
 			expect(storedOwner.firstName).toBe(TEST_USER.firstName);
 			expect(storedOwner.lastName).toBe(TEST_USER.lastName);
 
-			const hasOwnerConfig = config.get('userManagement.hasOwner');
-			expect(hasOwnerConfig).toBe(true);
+			const isInstanceOwnerSetUpConfig = config.get('userManagement.isInstanceOwnerSetUp');
+			expect(isInstanceOwnerSetUpConfig).toBe(true);
 
-			const hasOwnerSetting = await utils.getHasOwnerSetting();
-			expect(hasOwnerSetting).toBe(true);
+			const isInstanceOwnerSetUpSetting = await utils.getisInstanceOwnerSetUpSetting();
+			expect(isInstanceOwnerSetUpSetting).toBe(true);
 		});
 
 		test('POST /owner should fail with invalid inputs', async () => {
