@@ -15,10 +15,10 @@
 					@click="navigateTo(workflow.id, 'TemplatesWorkflowView', $event)"
 				>
 					<LongCard
+						v-if="workflow.name"
 						:class="index === workflows.length - 1 && !loading ? $style.last : ''"
 						:loading="false"
 						:title="workflow.name"
-						v-if="workflow.name"
 					>
 						<template v-slot:content>
 							<div :class="$style.content">
@@ -33,7 +33,9 @@
 									<TimeAgo :date="workflow.created_at" />
 								</n8n-text>
 								<div v-if="workflow.user" :class="$style.line" v-text="'|'" />
-								<n8n-text v-if="workflow.user" size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
+								<n8n-text v-if="workflow.user" size="small" color="text-light">
+									By {{ workflow.user.username }}
+								</n8n-text>
 							</div>
 						</template>
 						<template v-slot:button>
@@ -54,11 +56,15 @@
 									:key="index"
 									:class="$style.icon"
 								>
-									<HoverableNodeIcon :nodeType="node" :title="node.name" :size="useWorkflowButton ? 18: 24" />
+									<HoverableNodeIcon
+										:nodeType="node"
+										:size="useWorkflowButton ? 18 : 24"
+										:title="node.name"
+									/>
 								</div>
 								<div
-									:class="$style.nodeButton"
 									v-if="filterCoreNodes(workflow.nodes).length > nodesToBeShown + 1"
+									:class="$style.nodeButton"
 								>
 									+{{
 										filterCoreNodes(workflow.nodes).length -
@@ -243,5 +249,4 @@ export default mixins(genericHelpers).extend({
 	color: var(--color-foreground-base);
 	font-size: var(--font-size-2xs);
 }
-
 </style>

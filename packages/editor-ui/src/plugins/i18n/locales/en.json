@@ -822,6 +822,7 @@
 		}
 	},
 	"templates": {
+		"allCategories": "All Categories",
 		"categoriesHeading": "Categories",
 		"collection": "Collection",
 		"collections": "Collections",

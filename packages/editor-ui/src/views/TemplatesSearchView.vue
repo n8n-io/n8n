@@ -21,11 +21,11 @@
 				<div :class="$style.filters">
 					<TemplateFilters
 						:categories="allCategories"
-						:selected="categories"
 						:loading="loadingCategories"
-						@select="onCategorySelected"
+						:selected="categories"
 						@clear="onCategoryUnselected"
 						@clearAll="onCategoriesCleared"
+						@select="onCategorySelected"
 					/>
 				</div>
 				<div :class="$style.search">
@@ -73,8 +73,8 @@ import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
 import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery } from '@/Interface';
+import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplatesSearchView',
@@ -88,20 +88,17 @@ export default mixins(genericHelpers).extend({
 		allCategories(): [] {
 			return this.$store.getters['templates/allCategories'];
 		},
+		collections(): ITemplatesCollection[] {
+			return this.$store.getters['templates/getSearchedCollections'](this.query) || [];
+		},
+		endOfSearch(): boolean {
+			return !this.loadingWorkflows && !!this.workflows.length && this.workflows.length >= this.totalWorkflows;
+		},
 		query(): ITemplatesQuery {
 			return {
 				categories: this.categories,
 				search: this.search,
 			};
-		},
-		collections(): ITemplatesCollection[] {
-			return this.$store.getters['templates/getSearchedCollections'](this.query) || [];
-		},
-		totalWorkflows(): number {
-			return this.$store.getters['templates/getSearchedWorkflowsTotal'](this.query);
-		},
-		workflows(): ITemplatesWorkflow[] {
-			return this.$store.getters['templates/getSearchedWorkflows'](this.query) || [];
 		},
 		nothingFound(): boolean {
 			return (
@@ -111,8 +108,11 @@ export default mixins(genericHelpers).extend({
 				this.collections.length === 0
 			);
 		},
-		endOfSearch(): boolean {
-			return !this.loadingWorkflows && !!this.workflows.length && this.workflows.length >= this.totalWorkflows;
+		totalWorkflows(): number {
+			return this.$store.getters['templates/getSearchedWorkflowsTotal'](this.query);
+		},
+		workflows(): ITemplatesWorkflow[] {
+			return this.$store.getters['templates/getSearchedWorkflows'](this.query) || [];
 		},
 	},
 	data() {
@@ -295,6 +295,10 @@ export default mixins(genericHelpers).extend({
 
 .filters {
 	width: 200px;
+
+	@media (max-width: $--breakpoint-md) {
+		width: auto;
+	}
 }
 
 .search {
