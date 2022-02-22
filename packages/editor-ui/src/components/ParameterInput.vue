@@ -144,6 +144,7 @@
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
+			:placeholder="$locale.baseText('parameterInput.select')"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"

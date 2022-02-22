@@ -16,7 +16,7 @@ export default new Router({
 	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
 	routes: [
 		{
-			path: '/collection/:id',
+			path: '/collections/:id',
 			name: 'TemplatesCollectionView',
 			components: {
 				default: TemplatesCollectionView,

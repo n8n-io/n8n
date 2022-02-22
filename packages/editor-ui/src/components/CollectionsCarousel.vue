@@ -140,6 +140,10 @@ export default mixins(genericHelpers).extend({
 		});
 	},
 	beforeDestroy() {
+		if (this.$refs.slider) {
+			// @ts-ignore
+			this.$refs.slider.destroy();
+		}
 		window.removeEventListener('scroll', this.handleCarouselScroll);
 	},
 });
