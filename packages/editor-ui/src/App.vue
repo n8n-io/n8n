@@ -16,6 +16,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Telemetry from './components/Telemetry.vue';
+import { HIRING_BANNER } from './constants';
 
 export default Vue.extend({
 	name: 'App',
@@ -24,6 +25,10 @@ export default Vue.extend({
 	},
 	mounted() {
 		this.$telemetry.page('Editor', this.$route.name);
+
+		if (this.$store.getters['settings/deploymentType'] !== 'n8n-internal') {
+			console.log(HIRING_BANNER); // eslint-disable-line no-console
+		}
 	},
 	watch: {
 		'$route'(route) {
