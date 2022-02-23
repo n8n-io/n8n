@@ -25,9 +25,7 @@ export default Vue.extend({
 		Telemetry,
 	},
 	computed: {
-		...mapGetters({
-			isInternalUser: 'settings/isInternalUser',
-		}),
+		...mapGetters('settings', ['isInternalUser']),
 	},
 	mounted() {
 		this.$telemetry.page('Editor', this.$route.name);
