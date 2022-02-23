@@ -45,42 +45,6 @@ export const contactOperations: INodeProperties[] = [
 
 const contactFields: INodeProperties[] = [
 	{
-		displayName: 'Address Street',
-		name: 'street',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Address Street 2',
-		name: 'street2',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Address City',
-		name: 'city',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Country',
-		name: 'country_id',
-		type: 'options',
-		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getCountries',
-		},
-	},
-	{
-		displayName: 'State',
-		name: 'state_id',
-		type: 'options',
-		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getStates',
-		},
-	},
-	{
 		displayName: 'Tax ID',
 		name: 'vat',
 		type: 'string',
@@ -122,12 +86,6 @@ const contactFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 	},
-	{
-		displayName: 'Zip Code',
-		name: 'zip',
-		type: 'string',
-		default: '',
-	},
 ];
 
 export const contactDescription: INodeProperties[] = [
@@ -161,7 +119,73 @@ export const contactDescription: INodeProperties[] = [
 				resource: ['contact'],
 			},
 		},
-		options: [...contactFields],
+		options: [
+			{
+				displayName: 'Address',
+				name: 'address',
+				type: 'collection',
+				default: {},
+				description: 'Contact Address',
+				placeholder: 'Add Address Fields',
+				typeOptions: {
+					multipleValues: false,
+				},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'collection',
+						default: {},
+						placeholder: 'Add Field',
+						options: [
+							{
+								displayName: 'Street',
+								name: 'street',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Street 2',
+								name: 'street2',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'City',
+								name: 'city',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Country',
+								name: 'country_id',
+								type: 'options',
+								default: '',
+								typeOptions: {
+									loadOptionsMethod: 'getCountries',
+								},
+							},
+							{
+								displayName: 'State',
+								name: 'state_id',
+								type: 'options',
+								default: '',
+								typeOptions: {
+									loadOptionsMethod: 'getStates',
+								},
+							},
+							{
+								displayName: 'Zip Code',
+								name: 'zip',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			...contactFields,
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -271,6 +295,70 @@ export const contactDescription: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Address',
+				name: 'address',
+				type: 'collection',
+				default: {},
+				description: 'Contact Address',
+				placeholder: 'Add Address Fields',
+				typeOptions: {
+					multipleValues: false,
+				},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'collection',
+						default: {},
+						placeholder: 'Add Field',
+						options: [
+							{
+								displayName: 'Street',
+								name: 'street',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Street 2',
+								name: 'street2',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'City',
+								name: 'city',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Country',
+								name: 'country_id',
+								type: 'options',
+								default: '',
+								typeOptions: {
+									loadOptionsMethod: 'getCountries',
+								},
+							},
+							{
+								displayName: 'State',
+								name: 'state_id',
+								type: 'options',
+								default: '',
+								typeOptions: {
+									loadOptionsMethod: 'getStates',
+								},
+							},
+							{
+								displayName: 'Zip Code',
+								name: 'zip',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
 			{
 				displayName: 'Name',
 				name: 'name',

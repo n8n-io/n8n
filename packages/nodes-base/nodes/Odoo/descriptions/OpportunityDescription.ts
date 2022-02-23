@@ -154,21 +154,6 @@ export const opportunityDescription: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Fields To Include',
-		name: 'fieldsList',
-		type: 'multiOptions',
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getModelFields',
-		},
-		displayOptions: {
-			show: {
-				resource: ['opportunity'],
-				operation: ['get', 'getAll'],
-			},
-		},
-	},
 	/* -------------------------------------------------------------------------- */
 	/*                                opportunity:getAll                          */
 	/* -------------------------------------------------------------------------- */
@@ -205,7 +190,30 @@ export const opportunityDescription: INodeProperties[] = [
 		},
 		description: 'Max number of results to return',
 	},
-
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: ['getAll', 'get'],
+				resource: ['opportunity'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Fields To Include',
+				name: 'fieldsList',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getModelFields',
+				},
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                opportunity:update                          */
 	/* -------------------------------------------------------------------------- */

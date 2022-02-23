@@ -77,6 +77,24 @@ export const customResourceDescription: INodeProperties[] = [
 	/*                                custom:create                              */
 	/* -------------------------------------------------------------------------- */
 
+	// {
+	// 	displayName: 'Additional Fields',
+	// 	name: 'additionalFields',
+	// 	type: 'collection',
+	// 	default: {},
+	// 	placeholder: 'Add Field',
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: ['create'],
+	// 			resource: ['custom'],
+	// 		},
+	// 	},
+	// 	typeOptions: {
+	// 		loadOptionsDependsOn: ['/customResource'],
+	// 		loadOptionsMethod: 'getModelFields',
+	// 	},
+	// },
+
 	{
 		displayName: 'Additional Fields',
 		name: 'fieldsToCreateOrUpdate',
@@ -135,26 +153,66 @@ export const customResourceDescription: INodeProperties[] = [
 			},
 		},
 	},
-
-	{
-		displayName: 'Fields To Include',
-		name: 'fieldsList',
-		type: 'multiOptions',
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getModelFields',
-			loadOptionsDependsOn: ['customResource'],
-		},
-		displayOptions: {
-			show: {
-				resource: ['custom'],
-				operation: ['get', 'getAll'],
-			},
-		},
-	},
 	/* -------------------------------------------------------------------------- */
 	/*                                custom:getAll                              */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['custom'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		displayOptions: {
+			show: {
+				resource: ['custom'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: ['getAll', 'get'],
+				resource: ['custom'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Fields To Include',
+				name: 'fieldsList',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getModelFields',
+					loadOptionsDependsOn: ['customResource'],
+				},
+			},
+		],
+	},
 	{
 		displayName: 'Filter Results',
 		name: 'filterRequest',
@@ -248,39 +306,6 @@ export const customResourceDescription: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['custom'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 50,
-		displayOptions: {
-			show: {
-				resource: ['custom'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 1000,
-		},
-		description: 'Max number of results to return',
-	},
-
 	/* -------------------------------------------------------------------------- */
 	/*                                custom:update                              */
 	/* -------------------------------------------------------------------------- */

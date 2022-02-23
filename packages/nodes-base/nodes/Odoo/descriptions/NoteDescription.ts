@@ -42,25 +42,24 @@ export const noteOperations: INodeProperties[] = [
 	},
 ];
 
-const noteFields: INodeProperties[] = [
-	{
-		displayName: 'Name',
-		name: 'name',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Text',
-		name: 'memo',
-		type: 'string',
-		default: '',
-	},
-];
-
 export const noteDescription: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                note:create                              */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Memo',
+		name: 'memo',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['note'],
+			},
+		},
+		description: 'Enter note text',
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -73,7 +72,14 @@ export const noteDescription: INodeProperties[] = [
 				resource: ['note'],
 			},
 		},
-		options: [...noteFields],
+		options: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -89,21 +95,6 @@ export const noteDescription: INodeProperties[] = [
 			show: {
 				operation: ['get', 'delete'],
 				resource: ['note'],
-			},
-		},
-	},
-	{
-		displayName: 'Fields To Include',
-		name: 'fieldsList',
-		type: 'multiOptions',
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getModelFields',
-		},
-		displayOptions: {
-			show: {
-				resource: ['note'],
-				operation: ['get', 'getAll'],
 			},
 		},
 	},
@@ -143,7 +134,30 @@ export const noteDescription: INodeProperties[] = [
 		},
 		description: 'Max number of results to return',
 	},
-
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: ['getAll', 'get'],
+				resource: ['note'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Fields To Include',
+				name: 'fieldsList',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getModelFields',
+				},
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                note:update                              */
 	/* -------------------------------------------------------------------------- */
@@ -172,6 +186,19 @@ export const noteDescription: INodeProperties[] = [
 				resource: ['note'],
 			},
 		},
-		options: [...noteFields],
+		options: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Memo',
+				name: 'memo',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 ];
