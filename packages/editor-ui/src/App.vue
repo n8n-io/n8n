@@ -18,7 +18,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import Telemetry from './components/Telemetry.vue';
 import { HIRING_BANNER } from './constants';
@@ -36,6 +35,9 @@ export default mixins(showMessage).extend({
 	},
 	computed: {
 		...mapGetters('settings', ['isInternalUser', 'isTemplatesEnabled', 'isTemplatesEndpointReachable']),
+		isRootPath(): boolean {
+			return this.$route.path === '/';
+		},
 	},
 	data() {
 		return {
@@ -59,7 +61,10 @@ export default mixins(showMessage).extend({
 		},
 		async initTemplates(): Promise<void> {
 			try {
-				await this.$store.dispatch('settings/testTemplatesEndpoint');
+				const templatesPromise = this.$store.dispatch('settings/testTemplatesEndpoint');
+				if (this.isRootPath) { // only delay loading to determine redirect
+					await templatesPromise;
+				}
 			} catch (e) {
 			}
 		},
@@ -68,7 +73,7 @@ export default mixins(showMessage).extend({
 			await this.initTemplates();
 			this.loading = false;
 
-			if (!this.isInternalUser) {
+			if (!this.isInternalUser && this.$route.name !== 'WorkflowDemo') {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
@@ -87,9 +92,9 @@ export default mixins(showMessage).extend({
 	async mounted() {
 		await this.initialize();
 
-		if (this.isTemplatesEnabled && this.isTemplatesEndpointReachable && this.$route.path === '/') {
+		if (this.isTemplatesEnabled && this.isTemplatesEndpointReachable && this.isRootPath) {
 			this.$router.replace({ name: 'TemplatesSearchView'});
-		} else if (this.$route.path === '/') {
+		} else if (this.isRootPath) {
 			this.$router.replace({ name: 'NodeViewNew'});
 		}
 
@@ -98,6 +103,7 @@ export default mixins(showMessage).extend({
 		}
 
 		this.trackPage();
+		this.$externalHooks().run('app.mount');
 	},
 	watch: {
 		'$route'() {

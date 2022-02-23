@@ -953,8 +953,11 @@ export default mixins(
 			},
 
 			cutSelectedNodes () {
-				this.copySelectedNodes(true);
-				this.deleteSelectedNodes();
+				const deleteCopiedNodes = !this.isReadOnly;
+				this.copySelectedNodes(deleteCopiedNodes);
+				if (deleteCopiedNodes) {
+					this.deleteSelectedNodes();
+				}
 			},
 
 			copySelectedNodes (isCut: boolean) {

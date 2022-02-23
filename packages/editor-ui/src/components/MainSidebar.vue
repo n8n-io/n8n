@@ -496,7 +496,6 @@ export default mixins(
 
 							this.$showMessage({
 								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
-								message: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.message'),
 								type: 'success',
 							});
 						} else if (confirmModal === MODAL_CANCEL) {

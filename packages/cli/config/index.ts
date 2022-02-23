@@ -698,7 +698,7 @@ const config = convict({
 			env: 'N8N_TEMPLATES_ENABLED',
 		},
 		host: {
-			doc: 'Endpoint host to retrieve workflow templates from graphql endpoint.',
+			doc: 'Endpoint host to retrieve workflow templates from endpoints.',
 			format: String,
 			default: 'https://api.n8n.io/',
 			env: 'N8N_TEMPLATES_HOST',

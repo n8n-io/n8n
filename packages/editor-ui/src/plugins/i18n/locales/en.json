@@ -131,7 +131,8 @@
 		},
 		"type": "Type",
 		"updated": "Updated",
-		"yourSavedCredentials": "Your saved credentials"
+		"yourSavedCredentials": "Your saved credentials",
+		"errorLoadingCredentials": "Error loading credentials"
 	},
 	"dataDisplay": {
 		"needHelp": "Need help?",
@@ -827,13 +828,14 @@
 		"categoriesHeading": "Categories",
 		"collection": "Collection",
 		"collections": "Collections",
-		"endResult": "Share your own useful workflows <a href='https://n8n.io/dashboard' target='_blank'>here</a> through your n8n.io account",
+		"endResult": "Share your own useful workflows through your <a href='https://n8n.io/dashboard' target='_blank'>n8n.io account</a>",
 		"heading": "Workflow templates",
 		"newButton": "New blank workflow",
 		"noSearchResults": "Nothing found. Try adjusting your search to see more.",
 		"searchPlaceholder": "Search workflows",
 		"workflow": "Workflow",
-		"workflows": "Workflows"
+		"workflows": "Workflows",
+		"connectionWarning": "⚠️ There was a problem fetching workflow templates. Check your internet connection."
 	},
 	"textEdit": {
 		"edit": "Edit"
