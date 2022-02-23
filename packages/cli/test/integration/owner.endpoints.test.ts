@@ -73,7 +73,7 @@ describe('/owner endpoints', () => {
 			const isInstanceOwnerSetUpConfig = config.get('userManagement.isInstanceOwnerSetUp');
 			expect(isInstanceOwnerSetUpConfig).toBe(true);
 
-			const isInstanceOwnerSetUpSetting = await utils.getisInstanceOwnerSetUpSetting();
+			const isInstanceOwnerSetUpSetting = await utils.isInstanceOwnerSetUp();
 			expect(isInstanceOwnerSetUpSetting).toBe(true);
 		});
 

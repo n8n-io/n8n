@@ -311,7 +311,7 @@ export function getAuthToken(response: request.Response, authCookieName = 'n8n-a
 //            settings
 // ----------------------------------
 
-export async function getisInstanceOwnerSetUpSetting() {
+export async function isInstanceOwnerSetUp() {
 	const { value } = await Db.collections.Settings!.findOneOrFail({
 		key: 'userManagement.isInstanceOwnerSetUp',
 	});
