@@ -159,6 +159,7 @@ import { getCredentialTranslationPath, getNodeTranslationPath } from './Translat
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 import { userManagementRouter } from './UserManagement';
+import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 import type {
@@ -320,6 +321,7 @@ class App {
 				enabled:
 					config.get('userManagement.disabled') === false ||
 					config.get('userManagement.isInstanceOwnerSetUp') === true,
+				showSetupOnFirstLoad: !config.get('userManagement.hasOwner'),
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
@@ -531,19 +533,28 @@ class App {
 		}
 
 		// Get push connections
-		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			if (req.url.indexOf(`/${this.restEndpoint}/push`) === 0) {
-				// TODO UM: Later also has to add some kind of authentication token
-				if (req.query.sessionId === undefined) {
-					next(new Error('The query parameter "sessionId" is missing!'));
+		this.app.use(
+			async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+				if (req.url.indexOf(`/${this.restEndpoint}/push`) === 0) {
+					if (req.query.sessionId === undefined) {
+						next(new Error('The query parameter "sessionId" is missing!'));
+						return;
+					}
+
+					try {
+						const authCookie = req.headers.cookie?.replace('n8n-auth=', '') ?? '';
+						await resolveJwt(authCookie);
+					} catch (error) {
+						res.status(401).send('Unauthorized');
+						return;
+					}
+
+					this.push.add(req.query.sessionId as string, req, res);
 					return;
 				}
-
-				this.push.add(req.query.sessionId as string, req, res);
-				return;
-			}
-			next();
-		});
+				next();
+			},
+		);
 
 		// Compress the response data
 		this.app.use(compression());
