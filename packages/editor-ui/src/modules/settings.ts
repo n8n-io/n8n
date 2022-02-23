@@ -41,8 +41,8 @@ const module: Module<ISettingsState, IRootState> = {
 		isTelemetryEnabled: (state) => {
 			return state.settings.telemetry && state.settings.telemetry.enabled;
 		},
-		deploymentType: (state): string => {
-			return state.settings.deploymentType;
+		isInternalUser: (state): boolean => {
+			return state.settings.deploymentType === 'n8n-internal';
 		},
 	},
 	mutations: {

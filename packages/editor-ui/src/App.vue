@@ -15,6 +15,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { mapGetters } from 'vuex';
 import Telemetry from './components/Telemetry.vue';
 import { HIRING_BANNER } from './constants';
 
@@ -23,10 +24,15 @@ export default Vue.extend({
 	components: {
 		Telemetry,
 	},
+	computed: {
+		...mapGetters({
+			isInternalUser: 'settings/isInternalUser',
+		}),
+	},
 	mounted() {
 		this.$telemetry.page('Editor', this.$route.name);
 
-		if (this.$store.getters['settings/deploymentType'] !== 'n8n-internal') {
+		if (!this.isInternalUser) {
 			console.log(HIRING_BANNER); // eslint-disable-line no-console
 		}
 	},
