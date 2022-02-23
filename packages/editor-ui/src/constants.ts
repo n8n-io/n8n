@@ -158,5 +158,5 @@ export const HIRING_BANNER = `
                                                         ///////////
                                                           //////
 
-Love n8n? Help us build the future of automation! https://apply.workable.com/n8n/
+Love n8n? Help us build the future of automation! https://n8n.io/careers
 `;
