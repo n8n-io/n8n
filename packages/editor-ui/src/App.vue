@@ -18,7 +18,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import Telemetry from './components/Telemetry.vue';
 import { HIRING_BANNER } from './constants';
