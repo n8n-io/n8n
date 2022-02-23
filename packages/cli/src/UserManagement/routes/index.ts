@@ -55,6 +55,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			req.url.startsWith('/css/') ||
 			req.url.startsWith('/js/') ||
 			req.url.startsWith('/fonts/') ||
+			req.url.includes('.svg') ||
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
 			req.url.includes('login') ||
 			req.url.includes('logout') ||
