@@ -500,7 +500,7 @@ export class WorkflowDataProxy {
 							if (property === 'last') {
 								return (branchIndex?: number, runIndex?: number) => {
 									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
-									if (!executionData.length) return [];
+									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
 										return executionData[executionData.length - 1];
 									}
