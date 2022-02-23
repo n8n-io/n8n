@@ -74,7 +74,7 @@ export default mixins(showMessage).extend({
 			await this.initTemplates();
 			this.loading = false;
 
-			if (!this.isInternalUser) {
+			if (!this.isInternalUser && this.$route.name !== 'WorkflowDemo') {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
