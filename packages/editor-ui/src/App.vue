@@ -104,6 +104,7 @@ export default mixins(showMessage).extend({
 		}
 
 		this.trackPage();
+		this.$externalHooks().run('app.mount');
 	},
 	watch: {
 		'$route'() {
