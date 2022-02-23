@@ -251,6 +251,10 @@ export class Wait implements INodeType {
 				},
 				options: [
 					{
+						name: 'DELETE',
+						value: 'DELETE',
+					},
+					{
 						name: 'GET',
 						value: 'GET',
 					},
@@ -259,8 +263,16 @@ export class Wait implements INodeType {
 						value: 'HEAD',
 					},
 					{
+						name: 'PATCH',
+						value: 'PATCH',
+					},
+					{
 						name: 'POST',
 						value: 'POST',
+					},
+					{
+						name: 'PUT',
+						value: 'PUT',
 					},
 				],
 				default: 'GET',
@@ -514,6 +526,8 @@ export class Wait implements INodeType {
 						displayOptions: {
 							show: {
 								'/httpMethod': [
+									'PATCH',
+									'PUT',
 									'POST',
 								],
 							},

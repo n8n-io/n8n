@@ -446,7 +446,6 @@ export default mixins(
 					this.$showError(
 						error,
 						this.$locale.baseText('nodeView.showError.openExecution.title'),
-						this.$locale.baseText('nodeView.showError.openExecution.message') + ':',
 					);
 					return;
 				}
@@ -577,7 +576,6 @@ export default mixins(
 					this.$showError(
 						error,
 						this.$locale.baseText('nodeView.showError.openWorkflow.title'),
-						this.$locale.baseText('nodeView.showError.openWorkflow.message') + ':',
 					);
 					return;
 				}
@@ -747,7 +745,6 @@ export default mixins(
 
 					this.$showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.keyDown.title'),
-						message: this.$locale.baseText('nodeView.showMessage.keyDown.message'),
 						type: 'success',
 					});
 				} else if ((e.key === 's') && (this.isCtrlKeyPressed(e) === true)) {
@@ -1045,10 +1042,6 @@ export default mixins(
 					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
-						message: this.$locale.baseText(
-							'nodeView.showMessage.stopExecutionTry.message',
-							{ interpolate: { executionId } },
-						),
 						type: 'success',
 					});
 				} catch (error) {
@@ -1081,7 +1074,6 @@ export default mixins(
 						this.$showError(
 							error,
 							this.$locale.baseText('nodeView.showError.stopExecution.title'),
-							this.$locale.baseText('nodeView.showError.stopExecution.message') + ':',
 						);
 					}
 				}
@@ -1095,14 +1087,12 @@ export default mixins(
 					this.$showError(
 						error,
 						this.$locale.baseText('nodeView.showError.stopWaitingForWebhook.title'),
-						this.$locale.baseText('nodeView.showError.stopWaitingForWebhook.message') + ':',
 					);
 					return;
 				}
 
 				this.$showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.stopWaitingForWebhook.title'),
-					message: this.$locale.baseText('nodeView.showMessage.stopWaitingForWebhook.message'),
 					type: 'success',
 				});
 			},
@@ -1175,7 +1165,6 @@ export default mixins(
 					this.$showError(
 						error,
 						this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
-						this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.message') + ':',
 					);
 					return;
 				}
@@ -1217,7 +1206,6 @@ export default mixins(
 					this.$showError(
 						error,
 						this.$locale.baseText('nodeView.showError.importWorkflowData.title'),
-						this.$locale.baseText('nodeView.showError.importWorkflowData.message') + ':',
 					);
 				}
 			},
