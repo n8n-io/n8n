@@ -18,13 +18,14 @@
 </template>
 
 <script lang="ts">
-import Modals from '@/components/Modals.vue';
+import Vue from 'vue';
+import { mapGetters } from 'vuex';
 import Telemetry from './components/Telemetry.vue';
+import { HIRING_BANNER } from './constants';
+import Modals from '@/components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
-
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
-import { mapGetters } from 'vuex';
 
 export default mixins(showMessage).extend({
 	name: 'App',
@@ -34,7 +35,7 @@ export default mixins(showMessage).extend({
 		Telemetry,
 	},
 	computed: {
-		...mapGetters('settings', ['isTemplatesEnabled', 'isTemplatesEndpointReachable']),
+		...mapGetters('settings', ['isInternalUser', 'isTemplatesEnabled', 'isTemplatesEndpointReachable']),
 	},
 	data() {
 		return {
@@ -66,6 +67,10 @@ export default mixins(showMessage).extend({
 			await this.initSettings();
 			await this.initTemplates();
 			this.loading = false;
+
+			if (!this.isInternalUser) {
+				console.log(HIRING_BANNER); // eslint-disable-line no-console
+			}
 		},
 		trackPage() {
 			this.$store.commit('ui/setCurrentPage', this.$route.name);
