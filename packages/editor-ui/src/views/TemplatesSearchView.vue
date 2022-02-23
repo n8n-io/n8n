@@ -9,7 +9,7 @@
 				</div>
 				<div :class="$style.button">
 					<n8n-button
-						size="small"
+						size="medium"
 						:label="$locale.baseText('templates.newButton')"
 						@click="openNewWorkflow"
 					/>
