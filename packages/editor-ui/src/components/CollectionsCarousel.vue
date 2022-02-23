@@ -70,6 +70,13 @@ export default mixins(genericHelpers).extend({
 				this.scrollEnd = collectionsWidth < width;
 				list.addEventListener('scroll', this.handleCarouselScroll);
 			}
+
+			if (!collections.length) {
+				if (this.$refs.slider) {
+					// @ts-ignore
+					this.$refs.slider.destroy();
+				}
+			}
 		},
 	},
 	components: {
