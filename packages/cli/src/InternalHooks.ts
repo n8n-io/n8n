@@ -41,15 +41,18 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 		return Promise.all([
 			this.telemetry.identify(info),
-			this.telemetry.track('Instance started', {
+			this.telemetry.track('Instance started', undefined, {
 				...info,
 				earliest_workflow_created: earliestWorkflowCreatedAt,
 			}),
 		]);
 	}
 
-	async onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void> {
-		return this.telemetry.track('User responded to personalization questions', {
+	async onPersonalizationSurveySubmitted(
+		userId: string,
+		answers: IPersonalizationSurveyAnswers,
+	): Promise<void> {
+		return this.telemetry.track('User responded to personalization questions', userId, {
 			company_size: answers.companySize,
 			coding_skill: answers.codingSkill,
 			work_area: answers.workArea,
@@ -59,25 +62,25 @@ export class InternalHooksClass implements IInternalHooksClass {
 		});
 	}
 
-	async onWorkflowCreated(workflow: IWorkflowBase): Promise<void> {
+	async onWorkflowCreated(userId: string, workflow: IWorkflowBase): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-		return this.telemetry.track('User created workflow', {
+		return this.telemetry.track('User created workflow', userId, {
 			workflow_id: workflow.id,
 			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
 		});
 	}
 
-	async onWorkflowDeleted(workflowId: string): Promise<void> {
-		return this.telemetry.track('User deleted workflow', {
+	async onWorkflowDeleted(userId: string, workflowId: string): Promise<void> {
+		return this.telemetry.track('User deleted workflow', userId, {
 			workflow_id: workflowId,
 		});
 	}
 
-	async onWorkflowSaved(workflow: IWorkflowDb): Promise<void> {
+	async onWorkflowSaved(userId: string, workflow: IWorkflowDb): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
-		return this.telemetry.track('User saved workflow', {
+		return this.telemetry.track('User saved workflow', userId, {
 			workflow_id: workflow.id,
 			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
@@ -158,7 +161,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 				if (runData.data.startData?.destinationNode) {
 					promises.push(
-						this.telemetry.track('Manual node exec finished', {
+						this.telemetry.track('Manual node exec finished', undefined, {
 							...manualExecEventProperties,
 							node_type: TelemetryHelpers.getNodeTypeForName(
 								workflow,
@@ -169,7 +172,11 @@ export class InternalHooksClass implements IInternalHooksClass {
 					);
 				} else {
 					promises.push(
-						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
+						this.telemetry.track(
+							'Manual workflow exec finished',
+							undefined,
+							manualExecEventProperties,
+						),
 					);
 				}
 			}
@@ -192,32 +199,48 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return Promise.race([timeoutPromise, this.telemetry.trackN8nStop()]);
 	}
 
-	async onUserDeletion(userDeletionData: ITelemetryUserDeletionData): Promise<void> {
-		return this.telemetry.track('User deleted user', userDeletionData);
+	async onUserDeletion(
+		userId: string,
+		userDeletionData: ITelemetryUserDeletionData,
+	): Promise<void> {
+		return this.telemetry.track('User deleted user', userId, userDeletionData);
 	}
 
 	async onUserInvite(userInviteData: { user_id: string; target_user_id: string[] }): Promise<void> {
-		return this.telemetry.track('User invited new user', userInviteData);
+		return this.telemetry.track('User invited new user', userInviteData.user_id, userInviteData);
 	}
 
 	async onUserReinvite(userReinviteData: {
 		user_id: string;
 		target_user_id: string;
 	}): Promise<void> {
-		return this.telemetry.track('User resent new user invite email', userReinviteData);
+		return this.telemetry.track(
+			'User resent new user invite email',
+			userReinviteData.user_id,
+			userReinviteData,
+		);
 	}
 
 	async onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void> {
-		return this.telemetry.track('User changed personal settings', userUpdateData);
+		return this.telemetry.track(
+			'User changed personal settings',
+			userUpdateData.user_id,
+			userUpdateData,
+		);
 	}
 
 	async onUserInviteEmailClick(userInviteClickData: { user_id: string }): Promise<void> {
-		return this.telemetry.track('User clicked invite link from email', userInviteClickData);
+		return this.telemetry.track(
+			'User clicked invite link from email',
+			userInviteClickData.user_id,
+			userInviteClickData,
+		);
 	}
 
 	async onUserPasswordResetEmailClick(userPasswordResetData: { user_id: string }): Promise<void> {
 		return this.telemetry.track(
 			'User clicked password reset link from email',
+			userPasswordResetData.user_id,
 			userPasswordResetData,
 		);
 	}
@@ -228,6 +251,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}): Promise<void> {
 		return this.telemetry.track(
 			'Instance sent transactional email to user',
+			userTransactionalEmailData.user_id,
 			userTransactionalEmailData,
 		);
 	}
@@ -235,15 +259,20 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user_id: string }): Promise<void> {
 		return this.telemetry.track(
 			'User requested password reset while logged out',
+			userPasswordResetData.user_id,
 			userPasswordResetData,
 		);
 	}
 
 	async onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }): Promise<void> {
-		return this.telemetry.track('Owner finished instance setup', instanceOwnerSetupData);
+		return this.telemetry.track(
+			'Owner finished instance setup',
+			instanceOwnerSetupData.user_id,
+			instanceOwnerSetupData,
+		);
 	}
 
 	async onUserSignup(userSignupData: { user_id: string }): Promise<void> {
-		return this.telemetry.track('User signed up', userSignupData);
+		return this.telemetry.track('User signed up', userSignupData.user_id, userSignupData);
 	}
 }

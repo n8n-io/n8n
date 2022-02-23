@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { User } from './databases/entities/User';
-import { IExecutionDeleteFilter } from '.';
+import { IExecutionDeleteFilter, IPersonalizationSurveyAnswers } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthenticatedRequest<
@@ -114,7 +114,7 @@ export declare namespace MeRequest {
 		Pick<PublicUser, 'email' | 'firstName' | 'lastName'>
 	>;
 	export type Password = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'password'>>;
-	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswers>;
 }
 
 // ----------------------------------

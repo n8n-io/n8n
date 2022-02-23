@@ -427,7 +427,7 @@ export function usersNamespace(this: N8nApp): void {
 				telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
 			}
 
-			void InternalHooksManager.getInstance().onUserDeletion(telemetryData);
+			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData);
 
 			return { success: true };
 		}),

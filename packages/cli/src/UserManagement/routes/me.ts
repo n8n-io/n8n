@@ -122,6 +122,11 @@ export function meNamespace(this: N8nApp): void {
 
 			Logger.info('User survey updated successfully', { userId: req.user.id });
 
+			void InternalHooksManager.getInstance().onPersonalizationSurveySubmitted(
+				req.user.id,
+				personalizationAnswers,
+			);
+
 			return { success: true };
 		}),
 	);
