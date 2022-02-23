@@ -413,6 +413,10 @@ export interface IN8nUISettings {
 	defaultLocale: string;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 	deploymentType: string;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {

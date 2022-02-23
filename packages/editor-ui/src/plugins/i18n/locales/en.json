@@ -289,10 +289,10 @@
 				"message": "Are you sure that you want to delete '{workflowName}'?"
 			},
 			"workflowNew": {
-				"cancelButtonText": "",
-				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Switch workflows without saving?",
-				"message": "When you switch workflows without saving, your current changes will be lost."
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
 			}
 		},
 		"credentials": "Credentials",
@@ -309,6 +309,7 @@
 		"importFromFile": "Import from File",
 		"importFromUrl": "Import from URL",
 		"new": "New",
+		"newTemplate": "New from template",
 		"open": "Open",
 		"prompt": {
 			"cancel": "@:reusableBaseText.cancel",
@@ -342,6 +343,7 @@
 				"title": "Execution stopped"
 			}
 		},
+		"templates": "Templates",
 		"workflows": "Workflows"
 	},
 	"multipleParameter": {
@@ -488,16 +490,16 @@
 		"addNode": "Add node",
 		"confirmMessage": {
 			"beforeRouteLeave": {
-				"cancelButtonText": "",
-				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Switch workflows without saving?",
-				"message": "When you switch workflows without saving, your current changes will be lost."
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
 			},
 			"initView": {
-				"cancelButtonText": "",
-				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Switch workflows without saving?",
-				"message": "When you switch workflows without saving, your current changes will be lost."
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
 			},
 			"receivedCopyPasteData": {
 				"cancelButtonText": "",
@@ -620,7 +622,8 @@
 		"refreshList": "Refresh List",
 		"removeExpression": "Remove Expression",
 		"resetValue": "Reset Value",
-		"selectDateAndTime": "Select date and time"
+		"selectDateAndTime": "Select date and time",
+		"select": "Select"
 	},
 	"parameterInputExpanded": {
 		"openDocs": "Open docs",
@@ -729,6 +732,14 @@
 		"saved": "Saved",
 		"saving": "Saving"
 	},
+	"settings": {
+		"errors": {
+			"connectionError": {
+				"title": "Error connecting to n8n",
+				"message": "Could not connect to server. <a onclick='window.location.reload(false);'>Refresh</a> to try again"
+			}
+		}
+	},
 	"showMessage": {
 		"cancel": "@:reusableBaseText.cancel",
 		"ok": "OK",
@@ -794,6 +805,35 @@
 			"singular": "{count} workflow"
 		},
 		"notBeingUsed": "Not being used"
+	},
+	"template": {
+		"buttons": {
+			"goBackButton": "Go back",
+			"useThisWorkflowButton": "Use this workflow"
+		},
+		"details": {
+			"appsInTheWorkflow": "Apps in this workflow",
+			"appsInTheCollection": "This collection features",
+			"by": "by",
+			"categories": "Categories",
+			"created": "Created",
+			"details": "Details",
+			"times": "times",
+			"viewed": "Viewed"
+		}
+	},
+	"templates": {
+		"allCategories": "All Categories",
+		"categoriesHeading": "Categories",
+		"collection": "Collection",
+		"collections": "Collections",
+		"endResult": "Share your own useful workflows <a href='https://n8n.io/dashboard' target='_blank'>here</a> through your n8n.io account",
+		"heading": "Workflow templates",
+		"newButton": "New blank workflow",
+		"noSearchResults": "Nothing found. Try adjusting your search to see more.",
+		"searchPlaceholder": "Search workflows",
+		"workflow": "Workflow",
+		"workflows": "Workflows"
 	},
 	"textEdit": {
 		"edit": "Edit"
@@ -898,10 +938,10 @@
 	"workflowOpen": {
 		"active": "Active",
 		"confirmMessage": {
-			"cancelButtonText": "",
-			"confirmButtonText": "Yes, switch workflows and forget changes",
-			"headline": "Switch workflows without saving?",
-			"message": "If you do this, your current changes will be lost."
+			"cancelButtonText": "Leave without saving",
+			"confirmButtonText": "Save",
+			"headline": "Save changes before leaving?",
+			"message": "If you don't save, you will lose your changes."
 		},
 		"created": "Created",
 		"name": "@:reusableBaseText.name",
@@ -1009,5 +1049,15 @@
 		"yourWorkflowWillNowRegularlyCheck": "Your workflow will now regularly check {serviceName} for events and trigger executions for them.",
 		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
 		"gotIt": "Got it"
+	},
+	"workflowPreview": {
+		"showError": {
+			"previewError": {
+				"message": "Unable to preview workflow",
+				"title": "Preview error"
+			},
+			"missingWorkflow": "Missing workflow",
+			"arrayEmpty": "Must have an array of nodes"
+		}
 	}
 }

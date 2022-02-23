@@ -514,6 +514,65 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
+export interface ITemplatesCollection {
+	id: number;
+	name: string;
+	nodes: ITemplatesNode[];
+	workflows: Array<{id: string}>;
+}
+
+interface ITemplatesImage {
+	id: string;
+	url: string;
+}
+
+interface ITemplatesCollectionExtended extends ITemplatesCollection {
+	description: string | null;
+	image: ITemplatesImage[];
+	categories: ITemplatesCategory[];
+	createdAt: string;
+}
+
+export interface ITemplatesCollectionFull extends ITemplatesCollectionExtended {
+	full: true;
+}
+
+export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtended {
+	workflows: ITemplatesWorkflow[];
+}
+
+export interface ITemplatesWorkflow {
+	id: string;
+	createdAt: string;
+	name: string;
+	nodes: ITemplatesNode[];
+	totalViews: number;
+	user: {
+		username: string;
+	};
+}
+
+export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow {
+	description: string | null;
+	image: ITemplatesImage[];
+	workflow: object;
+	categories: ITemplatesCategory[];
+}
+
+export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
+	full: true;
+}
+
+export interface ITemplatesQuery {
+	categories: number[];
+	search: string;
+}
+
+export interface ITemplatesCategory {
+	id: number;
+	name: string;
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -539,6 +598,10 @@ export interface IN8nUISettings {
 	defaultLocale: string;
 	logLevel: ILogLevel;
 	deploymentType: string;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -645,7 +708,13 @@ export interface IVersionNode {
 		icon?: string;
 		fileBuffer?: string;
 	};
+	typeVersion: number;
 }
+
+export interface ITemplatesNode extends IVersionNode {
+	categories?: ITemplatesCategory[];
+}
+
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
@@ -718,6 +787,7 @@ export interface IUiState {
 		[key: string]: IModalState;
 	};
 	isPageLoading: boolean;
+	currentView: string;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -725,6 +795,27 @@ export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
+	templatesEndpointHealthy: boolean;
+}
+
+export interface ITemplateState {
+	categories: {[id: string]: ITemplatesCategory};
+	collections: {[id: string]: ITemplatesCollection};
+	workflows: {[id: string]: ITemplatesWorkflow};
+	workflowSearches: {
+		[search: string]: {
+			workflowIds: string[];
+			totalWorkflows: number;
+			loadingMore?: boolean;
+		}
+	};
+	collectionSearches: {
+		[search: string]: {
+			collectionIds: string[];
+		}
+	};
+	currentSessionId: string;
+	previousSessionId: string;
 }
 
 export interface IVersionsState {
