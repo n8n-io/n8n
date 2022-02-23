@@ -63,19 +63,20 @@ export default mixins(genericHelpers).extend({
 	},
 	watch: {
 		collections(collections) {
-			const list = document.querySelector('.agile__list');
-			if (list) {
-				const width = list.clientWidth;
-				const collectionsWidth = collections.length * (this.carouselWidth + collections.length * 2);
-				this.scrollEnd = collectionsWidth < width;
-				list.addEventListener('scroll', this.handleCarouselScroll);
-			}
-
 			if (!collections.length) {
 				if (this.$refs.slider) {
 					// @ts-ignore
 					this.$refs.slider.destroy();
 				}
+			}
+		},
+		loading() {
+			const list = document.querySelector('.agile__list');
+			if (list) {
+				const width = list.clientWidth;
+				const collectionsWidth = this.collections.length * (this.carouselWidth + this.collections.length * 2);
+				this.scrollEnd = collectionsWidth < width;
+				list.addEventListener('scroll', this.handleCarouselScroll);
 			}
 		},
 	},
