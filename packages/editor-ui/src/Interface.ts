@@ -597,6 +597,7 @@ export interface IN8nUISettings {
 	telemetry: ITelemetrySettings;
 	defaultLocale: string;
 	logLevel: ILogLevel;
+	deploymentType: string;
 	templates: {
 		enabled: boolean;
 		host: string;

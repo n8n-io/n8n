@@ -43,6 +43,9 @@ const module: Module<ISettingsState, IRootState> = {
 		isTelemetryEnabled: (state) => {
 			return state.settings.telemetry && state.settings.telemetry.enabled;
 		},
+		isInternalUser: (state): boolean => {
+			return state.settings.deploymentType === 'n8n-internal';
+		},
 		isTemplatesEnabled: (state): boolean => {
 			return Boolean(state.settings.templates && state.settings.templates.enabled);
 		},
