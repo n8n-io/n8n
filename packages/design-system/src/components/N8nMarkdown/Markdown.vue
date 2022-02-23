@@ -178,6 +178,10 @@ export default {
 		}
 	}
 
+	pre {
+		margin-bottom: var(--spacing-s);
+	}
+
 	li > code,
 	p > code,
 	pre > code {
@@ -185,8 +189,7 @@ export default {
 		padding: var(--spacing-s);
 		color: var(--color-text-dark);
 		background-color: var(--color-background-base);
-		text-overflow: ellipsis;
-		overflow: hidden;
+		overflow-x: scroll;
 	}
 
   .label {
