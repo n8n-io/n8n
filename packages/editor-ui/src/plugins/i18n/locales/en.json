@@ -131,7 +131,8 @@
 		},
 		"type": "Type",
 		"updated": "Updated",
-		"yourSavedCredentials": "Your saved credentials"
+		"yourSavedCredentials": "Your saved credentials",
+		"errorLoadingCredentials": "Error loading credentials"
 	},
 	"dataDisplay": {
 		"needHelp": "Need help?",
