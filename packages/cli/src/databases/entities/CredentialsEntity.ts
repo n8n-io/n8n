@@ -13,7 +13,7 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 
-import { Length } from 'class-validator';
+import { IsArray, IsObject, IsString, Length } from 'class-validator';
 import config = require('../../../config');
 import { DatabaseType, ICredentialsDb } from '../..';
 import { SharedCredentials } from './SharedCredentials';
@@ -55,15 +55,18 @@ export class CredentialsEntity implements ICredentialsDb {
 	id: number;
 
 	@Column({ length: 128 })
+	@IsString({ message: 'Credential `name` must be of type string.' })
 	@Length(3, 128, {
 		message: 'Credential name must be $constraint1 to $constraint2 characters long.',
 	})
 	name: string;
 
 	@Column('text')
+	@IsObject()
 	data: string;
 
 	@Index()
+	@IsString({ message: 'Credential `type` must be of type string.' })
 	@Column({ length: 32 })
 	type: string;
 
@@ -71,6 +74,7 @@ export class CredentialsEntity implements ICredentialsDb {
 	shared: SharedCredentials[];
 
 	@Column(resolveDataType('json'))
+	@IsArray()
 	nodesAccess: ICredentialNodeAccess[];
 
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
