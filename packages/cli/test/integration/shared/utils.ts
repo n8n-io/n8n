@@ -37,6 +37,11 @@ export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: P
 //            test server
 // ----------------------------------
 
+export const initLogger = () => {
+	config.set('logs.output', 'file'); // declutter console output during tests
+	LoggerProxy.init(getLogger());
+};
+
 /**
  * Initialize a test server to make requests to.
  *
