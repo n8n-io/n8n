@@ -108,7 +108,7 @@ export default mixins(genericHelpers).extend({
 }
 
 .item {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing-xs);
 
 	&:nth-child(1) {
 		margin-top: 0;
@@ -129,9 +129,10 @@ export default mixins(genericHelpers).extend({
 	}
 
 	.el-checkbox__label {
-		top: -3px;
+		top: -2px;
 		position: relative;
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size-xs);
+		line-height: var(--font-line-height-loose);
 		color: var(--color-text-dark);
 		padding-left: var(--spacing-2xs);
 	}

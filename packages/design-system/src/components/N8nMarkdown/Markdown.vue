@@ -178,15 +178,23 @@ export default {
 		}
 	}
 
-	li > code,
-	p > code,
+	pre {
+		margin-bottom: var(--spacing-s);
+	}
+
 	pre > code {
 		display: block;
 		padding: var(--spacing-s);
 		color: var(--color-text-dark);
 		background-color: var(--color-background-base);
-		text-overflow: ellipsis;
-		overflow: hidden;
+		overflow-x: auto;
+	}
+
+	li > code,
+	p > code {
+		padding: 0 var(--spacing-4xs);
+		color: var(--color-text-dark);
+		background-color: var(--color-background-base);
 	}
 
   .label {

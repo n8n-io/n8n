@@ -15,7 +15,7 @@ export default {
 
 <style lang="scss" module>
 .tag {
-  width: fit-content;
+  min-width: max-content;
 	margin: 0 var(--spacing-4xs) var(--spacing-4xs) 0;
 	padding: var(--spacing-4xs);
 	background-color: var(--color-foreground-base);
