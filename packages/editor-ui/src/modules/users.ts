@@ -15,7 +15,7 @@ import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from './use
 
 const isDefaultUser = (user: IUserResponse | null) => Boolean(user && !user.isSetUp && user.globalRole && user.globalRole.name === ROLE.Owner);
 
-const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isSetUp && !user.firstName && !user.lastName);
+const isPendingUser = (user: IUserResponse | null) => Boolean(user && !user.isSetUp && user.globalRole && user.globalRole.name === ROLE.Member);
 
 
 const module: Module<IUsersState, IRootState> = {
