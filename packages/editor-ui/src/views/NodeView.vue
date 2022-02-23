@@ -137,6 +137,7 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
+import get from 'lodash.get';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -1308,15 +1309,17 @@ export default mixins(
 
 					if (nodeTypeData.credentials){
 						const authentication = nodeTypeData.credentials.find(type => type.name === defaultCredential.type);
-						console.log(authentication);
+						const authDisplayOptions = get(authentication, `displayOptions.show`);
+
 						if(
-							authentication &&
-							authentication.displayOptions &&
-							authentication.displayOptions.show &&
-							authentication.displayOptions.show.authentication &&
-							authentication.displayOptions.show.authentication[0]
+							authentication && authDisplayOptions
 						) {
-							newNodeData.parameters.authentication = authentication.displayOptions.show.authentication[0];
+							for (const displayOption of Object.keys(authDisplayOptions)) {
+								const optionValue = get(authentication, `displayOptions.show[${displayOption}][0]`);
+								if (optionValue) {
+									newNodeData.parameters[displayOption] = optionValue;
+								}
+							}
 						}
 					}
 				}
