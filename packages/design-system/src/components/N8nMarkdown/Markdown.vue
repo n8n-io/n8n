@@ -182,14 +182,19 @@ export default {
 		margin-bottom: var(--spacing-s);
 	}
 
-	li > code,
-	p > code,
 	pre > code {
 		display: block;
 		padding: var(--spacing-s);
 		color: var(--color-text-dark);
 		background-color: var(--color-background-base);
-		overflow-x: scroll;
+		overflow-x: auto;
+	}
+
+	li > code,
+	p > code {
+		padding: 0 var(--spacing-4xs);
+		color: var(--color-text-dark);
+		background-color: var(--color-background-base);
 	}
 
   .label {
