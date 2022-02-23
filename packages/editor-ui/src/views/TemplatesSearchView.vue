@@ -50,15 +50,10 @@
 						:workflows="workflows"
 						@loadMore="onLoadMore"
 					/>
-					<div v-if="endOfSearch" :class="$style.endText">
+					<div v-if="endOfSearchMessage" :class="$style.endText">
 						<n8n-text size="medium" color="text-base">
-							<span v-html="$locale.baseText('templates.endResult')" />
+							<span v-html="endOfSearchMessage" />
 						</n8n-text>
-					</div>
-					<div v-else-if="nothingFound" :class="$style.endText">
-						<n8n-text color="text-base">{{
-							$locale.baseText('templates.noSearchResults')
-						}}</n8n-text>
 					</div>
 				</div>
 			</div>
@@ -75,6 +70,7 @@ import TemplatesView from './TemplatesView.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery } from '@/Interface';
 import mixins from 'vue-typed-mixins';
+import { mapGetters } from 'vuex';
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplatesSearchView',
@@ -85,14 +81,26 @@ export default mixins(genericHelpers).extend({
 		TemplatesView,
 	},
 	computed: {
-		allCategories(): [] {
-			return this.$store.getters['templates/allCategories'];
-		},
+		...mapGetters('templates', ['allCategories', 'getSearchedWorkflowsTotal', 'getSearchedWorkflows', 'getSearchedCollections']),
+		...mapGetters('settings', ['isTemplatesEndpointReachable']),
 		collections(): ITemplatesCollection[] {
-			return this.$store.getters['templates/getSearchedCollections'](this.query) || [];
+			return this.getSearchedCollections(this.query) || [];
 		},
-		endOfSearch(): boolean {
-			return !this.loadingWorkflows && !!this.workflows.length && this.workflows.length >= this.totalWorkflows;
+		endOfSearchMessage(): string | null {
+			if (this.loadingWorkflows) {
+				return null;
+			}
+			if (this.workflows.length && this.workflows.length >= this.totalWorkflows) {
+				return this.$locale.baseText('templates.endResult');
+			}
+			if (!this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0) {
+				if (!this.isTemplatesEndpointReachable) {
+					return this.$locale.baseText('templates.connectionWarning');
+				}
+				return this.$locale.baseText('templates.noSearchResults');
+			}
+
+			return null;
 		},
 		query(): ITemplatesQuery {
 			return {
@@ -109,10 +117,10 @@ export default mixins(genericHelpers).extend({
 			);
 		},
 		totalWorkflows(): number {
-			return this.$store.getters['templates/getSearchedWorkflowsTotal'](this.query);
+			return this.getSearchedWorkflowsTotal(this.query);
 		},
 		workflows(): ITemplatesWorkflow[] {
-			return this.$store.getters['templates/getSearchedWorkflows'](this.query) || [];
+			return this.getSearchedWorkflows(this.query) || [];
 		},
 	},
 	data() {

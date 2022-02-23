@@ -833,7 +833,8 @@
 		"noSearchResults": "Nothing found. Try adjusting your search to see more.",
 		"searchPlaceholder": "Search workflows",
 		"workflow": "Workflow",
-		"workflows": "Workflows"
+		"workflows": "Workflows",
+		"connectionWarning": "⚠️ There was a problem fetching workflow templates. Check your internet connection."
 	},
 	"textEdit": {
 		"edit": "Edit"
