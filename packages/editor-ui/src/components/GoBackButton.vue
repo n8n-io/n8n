@@ -1,13 +1,31 @@
 <template>
-	<div :class="$style.wrapper" @click="$router.go(-1)">
+	<div :class="$style.wrapper" @click="navigateTo">
 		<font-awesome-icon :class="$style.icon" icon="arrow-left" />
 		<div :class="$style.text" v-text="$locale.baseText('template.buttons.goBackButton')" />
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-export default Vue.extend({});
+import { genericHelpers } from '@/components/mixins/genericHelpers';
+import mixins from 'vue-typed-mixins';
+
+export default mixins(genericHelpers).extend({
+	name: 'TemplateList',
+	data() {
+		return {
+			routeHasHistory: false,
+		};
+	},
+	methods: {
+		navigateTo() {
+			if (this.routeHasHistory) this.$router.go(-1);
+			else this.$router.push({ name: 'TemplatesSearchView' });
+		},
+	},
+	mounted() {
+		window.history.state ? this.routeHasHistory = true : this.routeHasHistory = false;
+	},
+});
 </script>
 
 <style lang="scss" module>
@@ -17,7 +35,8 @@ export default Vue.extend({});
 	cursor: pointer;
 
 	&:hover {
-		.icon, .text {
+		.icon,
+		.text {
 			color: var(--color-primary);
 		}
 	}
