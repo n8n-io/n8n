@@ -79,7 +79,7 @@ export class NotionV2 implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
-					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files', 'rollup'].includes(properties[key].type)) {
+					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'rollup'].includes(properties[key].type)) {
 						returnData.push({
 							name: `${key}`,
 							value: `${key}|${properties[key].type}`,
@@ -134,10 +134,12 @@ export class NotionV2 implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const users = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
 				for (const user of users) {
-					returnData.push({
-						name: user.name,
-						value: user.id,
-					});
+					if (user.type === 'person') {
+						returnData.push({
+							name: user.name,
+							value: user.id,
+						});
+					}
 				}
 				return returnData;
 			},
@@ -148,7 +150,7 @@ export class NotionV2 implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
-					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files', 'rollup'].includes(properties[key].type)) {
+					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'rollup'].includes(properties[key].type)) {
 						returnData.push({
 							name: `${key}`,
 							value: `${key}|${properties[key].type}`,
@@ -285,7 +287,6 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequest.call(this, 'POST', `/search`, body);
 						responseData = responseData.results;
 					}
-
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, download);
 					}

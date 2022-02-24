@@ -266,7 +266,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			result = {
 				// tslint:disable-next-line: no-any
 				type: 'relation', relation: (value.relationValue).reduce((acc: [], cur: any) => {
-					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation })));
+					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
 				}, []),
 			};
 			break;
@@ -397,9 +397,7 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		} else if (key === 'phone_number') {
 			key = 'phone';
 		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
-			valuePropertyName = (valuePropertyName !== undefined && !Object.keys(valuePropertyName).length) ? {} : moment.tz(value.date, timezone).utc().format();
-		} else if (key === 'number') {
-			key = 'text';
+			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();		
 		} else if (key === 'boolean') {
 			key = 'checkbox';
 		}
@@ -495,7 +493,7 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 		objects = [objects];
 	}
 	const results: IDataObject[] = [];
-	for (const { object, id, properties, parent, title, json, binary, url, created_time, last_edited_time } of objects) {
+	for (const { object, id, properties, parent, title, json, binary, url } of objects) {
 		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
 			results.push({
 				id,
@@ -512,9 +510,9 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
 			results.push({
 				json: {
-					id,
+					id: json.id,
 					...(version === 2) ? { name: getPropertyTitle(json.properties) } : {},
-					...(version === 2) ? { url } : {},
+					...(version === 2) ? { url: json.url } : {},
 					...(version === 2) ? { ...prepend('property', simplifyProperties(json.properties)) } : { ...simplifyProperties(json.properties) },
 				},
 				binary,
