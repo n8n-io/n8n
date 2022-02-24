@@ -104,7 +104,7 @@ export default mixins(genericHelpers).extend({
 				return this.$locale.baseText('templates.endResult');
 			}
 			if (!this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0) {
-				if (!this.isTemplatesEndpointReachable) {
+				if (!this.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
 					return this.$locale.baseText('templates.connectionWarning');
 				}
 				return this.$locale.baseText('templates.noSearchResults');
@@ -142,6 +142,7 @@ export default mixins(genericHelpers).extend({
 			loadingWorkflows: true,
 			search: '',
 			searchEventToTrack: null as null | ISearchEvent,
+			errorLoadingWorkflows: false,
 		};
 	},
 	methods: {
@@ -284,7 +285,9 @@ export default mixins(genericHelpers).extend({
 					search: this.search,
 					categories: this.categories,
 				});
+				this.errorLoadingWorkflows = false;
 			} catch (e) {
+				this.errorLoadingWorkflows = true;
 			}
 
 			this.loadingWorkflows = false;
