@@ -55,20 +55,20 @@ export const initLogger = () => {
  * Initialize a test server to make requests to.
  *
  * @param applyAuth Whether to apply auth middleware to the test server.
- * @param namespaces Groups of endpoints to apply to the test server.
+ * @param endpointGroups Groups of endpoints to apply to the test server.
  */
 export function initTestServer({
 	applyAuth,
-	namespaces,
+	endpointGroups,
 }: {
 	applyAuth: boolean;
 	externalHooks?: true;
-	namespaces?: EndpointGroup[];
+	endpointGroups?: EndpointGroup[];
 }) {
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
-		...(namespaces?.includes('credentials') ? { externalHooks: ExternalHooks() } : {}),
+		...(endpointGroups?.includes('credentials') ? { externalHooks: ExternalHooks() } : {}),
 	};
 
 	testServer.app.use(bodyParser.json());
@@ -81,9 +81,9 @@ export function initTestServer({
 		authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
 	}
 
-	if (!namespaces) return testServer.app;
+	if (!endpointGroups) return testServer.app;
 
-	const [routerEndpoints, functionEndpoints] = classifyEndpoints(namespaces);
+	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
 	if (routerEndpoints.length) {
 		const map: Record<RouterEndpointGroup, express.Router> = {
@@ -112,15 +112,15 @@ export function initTestServer({
 	return testServer.app;
 }
 
-const classifyEndpoints = (endpoints: string[]) => {
+const classifyEndpointGroups = (endpoints: string[]) => {
 	const routerEndpoints: string[] = [];
-	const userManagementEndpoints: string[] = [];
+	const functionEndpoints: string[] = [];
 
 	endpoints.forEach((e) =>
-		(ROUTER_ENDPOINT_GROUP.includes(e) ? routerEndpoints : userManagementEndpoints).push(e),
+		(ROUTER_ENDPOINT_GROUP.includes(e) ? routerEndpoints : functionEndpoints).push(e),
 	);
 
-	return [routerEndpoints, userManagementEndpoints];
+	return [routerEndpoints, functionEndpoints];
 };
 
 // ----------------------------------

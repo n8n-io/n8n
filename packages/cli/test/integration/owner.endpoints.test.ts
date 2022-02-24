@@ -17,7 +17,7 @@ describe('/owner endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ namespaces: ['owner'], applyAuth: true });
+			app = utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
 			await utils.initTestDb();
 
 			utils.initLogger();

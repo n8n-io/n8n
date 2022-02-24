@@ -27,7 +27,7 @@ let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
+	app = utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
 	await utils.initTestDb();
 
 	const [

@@ -26,7 +26,7 @@ describe('/me endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
+			app = utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
 			await utils.initTestDb();
 
 			globalOwnerRole = await getGlobalOwnerRole();
@@ -190,7 +190,7 @@ describe('/me endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
+			app = utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncate(['User']);
 		});
@@ -375,7 +375,7 @@ describe('/me endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
+			app = utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncate(['User']);
 		});

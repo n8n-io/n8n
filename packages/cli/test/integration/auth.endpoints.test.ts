@@ -19,7 +19,7 @@ describe('auth endpoints', () => {
 		let app: express.Application;
 
 		beforeAll(async () => {
-			app = utils.initTestServer({ namespaces: ['auth'], applyAuth: true });
+			app = utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
 			await utils.initTestDb();
 			await utils.truncate(['User']);
 
