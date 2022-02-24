@@ -17,8 +17,9 @@ import {
 	randomName,
 	randomString,
 } from './shared/random';
-import { getGlobalOwnerRole } from './shared/utils';
+import { getGlobalOwnerRole, toObject } from './shared/utils';
 
+const dbType = config.get('database.type');
 let globalOwnerRole: Role;
 
 describe('/me endpoints', () => {
@@ -178,10 +179,13 @@ describe('/me endpoints', () => {
 			for (const validPayload of validPayloads) {
 				const response = await authOwnerShellAgent.post('/me/survey').send(validPayload);
 				expect(response.statusCode).toBe(200);
-				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+				expect(toObject(response.body)).toEqual(SUCCESS_RESPONSE_BODY);
 
-				const storedOwnerShell = await Db.collections.User!.findOneOrFail();
-				expect(storedOwnerShell.personalizationAnswers).toEqual(validPayload);
+				const { personalizationAnswers: answers } = await Db.collections.User!.findOneOrFail();
+				// @ts-ignore
+				const storedAnswers = dbType === 'postgresdb' ? JSON.parse(answers) : answers;
+
+				expect(storedAnswers).toEqual(validPayload);
 			}
 		});
 	});
@@ -365,8 +369,11 @@ describe('/me endpoints', () => {
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-				const storedMember = await Db.collections.User!.findOneOrFail();
-				expect(storedMember.personalizationAnswers).toEqual(validPayload);
+				const { personalizationAnswers: answers } = await Db.collections.User!.findOneOrFail();
+				// @ts-ignore
+				const storedAnswers = dbType === 'postgresdb' ? JSON.parse(answers) : answers;
+
+				expect(storedAnswers).toEqual(validPayload);
 			}
 		});
 	});

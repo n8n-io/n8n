@@ -117,6 +117,7 @@ test('DELETE /users/:id should delete the user', async () => {
 		name: randomName(),
 		active: false,
 		connections: {},
+		nodes: [],
 	});
 
 	const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
@@ -222,6 +223,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 		name: randomName(),
 		active: false,
 		connections: {},
+		nodes: [],
 	});
 
 	const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
@@ -308,7 +310,10 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 
 	const third = await authOwnerAgent
 		.get('/resolve-signup-token')
-		.query({ inviterId: '123', inviteeId: '456' });
+		.query({
+			inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
+			inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
+		});
 
 	// user is already setup, thus call should error
 	const fourth = await authOwnerAgent
