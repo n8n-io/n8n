@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import Router from 'vue-router';
+import Router, { Route } from 'vue-router';
 
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
@@ -7,6 +7,8 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
+import { Store } from 'vuex';
+import { IRootState } from './Interface';
 
 Vue.use(Router);
 
@@ -25,8 +27,11 @@ export default new Router({
 			meta: {
 				templatesEnabled: true,
 				telemetry: {
-					params: {
-						id: 'collection_id',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							collection_id: route.params.id,
+							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+						};
 					},
 				},
 			},
@@ -50,8 +55,11 @@ export default new Router({
 			meta: {
 				templatesEnabled: true,
 				telemetry: {
-					params: {
-						id: 'template_id',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							template_id: route.params.id,
+							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+						};
 					},
 				},
 			},
@@ -65,6 +73,13 @@ export default new Router({
 			},
 			meta: {
 				templatesEnabled: true,
+				telemetry: {
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+						};
+					},
+				},
 			},
 		},
 		{
@@ -102,6 +117,11 @@ export default new Router({
 			name: 'WorkflowDemo',
 			components: {
 				default: NodeView,
+			},
+			meta: {
+				telemetry: {
+					disabled: true,
+				},
 			},
 		},
 	],
