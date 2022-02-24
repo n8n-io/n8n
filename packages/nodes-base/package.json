@@ -581,6 +581,7 @@
       "dist/nodes/SendGrid/SendGrid.node.js",
       "dist/nodes/Sendy/Sendy.node.js",
       "dist/nodes/SentryIo/SentryIo.node.js",
+      "dist/nodes/SentryIo/SentryErrorReport.node.js",
       "dist/nodes/ServiceNow/ServiceNow.node.js",
       "dist/nodes/Set/Set.node.js",
       "dist/nodes/Shopify/Shopify.node.js",
@@ -657,6 +658,9 @@
     ]
   },
   "devDependencies": {
+    "@sentry/node": "*",
+    "@sentry/tracing": "*",
+    "@sentry/integrations": "*",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "^1.1.2",
     "@types/cheerio": "^0.22.15",
