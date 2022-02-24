@@ -12,8 +12,8 @@
 				<router-view />
 			</div>
 			<Modals />
+			<Telemetry v-if="!loading" />
 		</div>
-		<Telemetry v-if="!loading && isTelemeteryEnabledOnRoute" />
 	</div>
 </template>
 
@@ -37,9 +37,6 @@ export default mixins(showMessage).extend({
 		...mapGetters('settings', ['isInternalUser', 'isTemplatesEnabled', 'isTemplatesEndpointReachable']),
 		isRootPath(): boolean {
 			return this.$route.path === '/';
-		},
-		isTelemeteryEnabledOnRoute(): boolean {
-			return this.$route.meta && this.$route.meta.telemetry && !this.$route.meta.telemetry.disabled;
 		},
 	},
 	data() {
