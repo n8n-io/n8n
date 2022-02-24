@@ -21,6 +21,7 @@
 				<div :class="$style.filters">
 					<TemplateFilters
 						:categories="allCategories"
+						:areCategoriesPrepopulated="areCategoriesPrepopulated"
 						:loading="loadingCategories"
 						:selected="categories"
 						@clear="onCategoryUnselected"
@@ -125,6 +126,7 @@ export default mixins(genericHelpers).extend({
 	},
 	data() {
 		return {
+			areCategoriesPrepopulated: false,
 			categories: [] as number[],
 			loading: true,
 			loadingCategories: true,
@@ -281,6 +283,7 @@ export default mixins(genericHelpers).extend({
 
 		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
 			this.categories = this.$route.query.categories.split(',').map((categoryId) => parseInt(categoryId, 10));
+			this.areCategoriesPrepopulated = true;
 		}
 	},
 });

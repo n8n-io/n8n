@@ -13,7 +13,9 @@
 				/>
 			</li>
 			<li
-				v-for="category in collapsed ? sortedCategories.slice(0, categoriesToBeSliced) : sortedCategories"
+				v-for="category in collapsed
+					? selectedCategories.slice(0, categoriesToBeSliced)
+					: selectedCategories"
 				:key="category.id"
 				:class="$style.item"
 			>
@@ -26,11 +28,11 @@
 		</ul>
 		<div
 			:class="$style.button"
-			v-if="sortedCategories.length > categoriesToBeSliced && collapsed && !loading"
+			v-if="selectedCategories.length > categoriesToBeSliced && collapsed && !loading"
 			@click="collapseAction"
 		>
 			<n8n-text size="small" color="primary">
-				+ {{ `${sortedCategories.length - categoriesToBeSliced} more` }}
+				+ {{ `${selectedCategories.length - categoriesToBeSliced} more` }}
 			</n8n-text>
 		</div>
 	</div>
@@ -44,6 +46,10 @@ import mixins from 'vue-typed-mixins';
 export default mixins(genericHelpers).extend({
 	name: 'TemplateFilters',
 	props: {
+		areCategoriesPrepopulated: {
+			type: Boolean,
+			default: false,
+		},
 		categories: {
 			type: Array,
 		},
@@ -58,21 +64,30 @@ export default mixins(genericHelpers).extend({
 			type: Array,
 		},
 	},
+	watch: {
+		categories: {
+			handler(categories: ITemplatesCategory[]) {
+				if (!this.areCategoriesPrepopulated) {
+					this.selectedCategories = categories;
+				} else {
+					const selected = this.selected || [];
+					const selectedCategories = categories.filter(({ id }) => selected.includes(id));
+					const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
+					this.selectedCategories = selectedCategories.concat(notSelectedCategories);
+				}
+			},
+			immediate: true,
+		},
+	},
 	data() {
 		return {
 			collapsed: true,
+			selectedCategories: [] as ITemplatesCategory[],
 		};
 	},
 	computed: {
 		allSelected(): boolean {
 			return this.selected.length === 0;
-		},
-		sortedCategories(): ITemplatesCategory[] {
-			const categories = this.categories as ITemplatesCategory[];
-			const selected = this.selected || [];
-			const selectedCategories = categories.filter(({ id }) => selected.includes(id));
-			const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
-			return selectedCategories.concat(notSelectedCategories);
 		},
 	},
 	methods: {
