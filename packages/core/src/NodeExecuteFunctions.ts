@@ -1134,37 +1134,38 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  * @returns {INodeExecutionData[]}
  */
 export function normalizeItemsInArray(items: INodeExecutionData[]): INodeExecutionData[] {
-	let itemsWithJsonKey: INodeExecutionData[] = [];
+	const normalizedItems: INodeExecutionData[] = [];
 
-	if (Array.isArray(items)) {
-		if (items.every((item) => typeof item === 'object' && 'json' in item)) {
-			itemsWithJsonKey = items;
-		} else if (items.some((item) => typeof item === 'object' && 'json' in item)) {
-			throw new Error('Inconsistent item format');
-		} else {
-			if (items.every((item) => typeof item === 'object' && 'binary' in item)) {
-				items.forEach((item) => {
-					const notBinaryKeys = Object.keys(item)
-						.filter((key) => key !== 'binary')
-						.reduce((acc, key) => {
-							return {
-								...acc,
-								[key]: item[key],
-							};
-						}, {});
-					itemsWithJsonKey.push({
-						json: notBinaryKeys,
-						binary: item.binary,
-					});
-				});
-			} else {
-				items.forEach((item) => {
-					itemsWithJsonKey.push({ json: item });
-				});
-			}
-		}
+	if (items.every((item) => typeof item === 'object' && 'json' in item)) return items;
+
+	if (items.some((item) => typeof item === 'object' && 'json' in item)) {
+		throw new Error('Inconsistent item format');
 	}
-	return itemsWithJsonKey;
+
+	if (items.every((item) => typeof item === 'object' && 'binary' in item)) {
+		items.forEach((item) => {
+			const json = Object.keys(item).reduce((acc, key) => {
+				if (key === 'binary') return acc;
+				return { ...acc, [key]: item[key] };
+			}, {});
+
+			normalizedItems.push({
+				json,
+				binary: item.binary,
+			});
+		});
+		return normalizedItems;
+	}
+
+	if (items.some((item) => typeof item === 'object' && 'binary' in item)) {
+		throw new Error('Inconsistent item format');
+	}
+
+	items.forEach((item) => {
+		normalizedItems.push({ json: item });
+	});
+
+	return normalizedItems;
 }
 
 // TODO: Move up later
