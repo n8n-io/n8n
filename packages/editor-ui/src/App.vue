@@ -12,8 +12,8 @@
 				<router-view />
 			</div>
 			<Modals />
-			<Telemetry />
 		</div>
+		<Telemetry v-if="!loading && isTelemeteryEnabledOnRoute" />
 	</div>
 </template>
 
@@ -37,6 +37,9 @@ export default mixins(showMessage).extend({
 		...mapGetters('settings', ['isInternalUser', 'isTemplatesEnabled', 'isTemplatesEndpointReachable']),
 		isRootPath(): boolean {
 			return this.$route.path === '/';
+		},
+		isTelemeteryEnabledOnRoute(): boolean {
+			return this.$route.meta && this.$route.meta.telemetry && !this.$route.meta.telemetry.disabled;
 		},
 	},
 	data() {
@@ -79,14 +82,14 @@ export default mixins(showMessage).extend({
 		},
 		trackPage() {
 			this.$store.commit('ui/setCurrentPage', this.$route.name);
-			this.$telemetry.page('Editor', this.$route);
-
 			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
 				this.$store.commit('templates/setSessionId');
 			}
 			else {
 				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
 			}
+
+			this.$telemetry.page('Editor', this.$route);
 		},
 	},
 	async mounted() {

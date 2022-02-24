@@ -19,7 +19,9 @@ export default Vue.extend({
 		init() {
 			const opts = this.telemetry;
 			if (opts && opts.enabled) {
-				this.$telemetry.init(opts, this.$store.getters.instanceId, this.$store.getters['settings/logLevel']);
+				const instanceId = this.$store.getters.instanceId;
+				const logLevel = this.$store.getters['settings/logLevel'];
+				this.$telemetry.init(opts, {instanceId, logLevel, store: this.$store});
 			}
 		},
 	},
