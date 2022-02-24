@@ -1,9 +1,11 @@
 <template>
 	<TemplatesView :goBackEnabled="true">
 		<template v-slot:header>
-			<div :class="$style.wrapper">
+			<div v-if="showPage" :class="$style.wrapper">
 				<div :class="$style.title">
-					<n8n-heading v-if="template && template.name" tag="h1" size="2xlarge">{{ template.name }}</n8n-heading>
+					<n8n-heading v-if="template && template.name" tag="h1" size="2xlarge">{{
+						template.name
+					}}</n8n-heading>
 					<n8n-text v-if="template && template.name" color="text-base" size="small">
 						{{ $locale.baseText('templates.workflow') }}
 					</n8n-text>
@@ -19,8 +21,11 @@
 					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
 			</div>
+			<div :class="$style.notFound" v-else>
+				<n8n-text>{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
+			</div>
 		</template>
-		<template v-slot:content>
+		<template v-if="showPage" v-slot:content>
 			<div :class="$style.image">
 				<WorkflowPreview
 					v-if="showPreview"
@@ -77,6 +82,7 @@ export default mixins(workflowHelpers).extend({
 		return {
 			loading: true,
 			showPreview: true,
+			showPage: true,
 		};
 	},
 	methods: {
@@ -116,7 +122,8 @@ export default mixins(workflowHelpers).extend({
 
 		try {
 			await this.$store.dispatch('templates/getTemplateById', this.templateId);
-		} catch (e){
+		} catch (e) {
+			this.showPage = false;
 			this.$showMessage({
 				title: 'Error',
 				message: 'Could not find workflow template',
@@ -133,6 +140,10 @@ export default mixins(workflowHelpers).extend({
 .wrapper {
 	display: flex;
 	justify-content: space-between;
+}
+
+.notFound {
+	padding-top: var(--spacing-2xl);
 }
 
 .title {
