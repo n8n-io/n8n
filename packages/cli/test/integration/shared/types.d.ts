@@ -1,4 +1,4 @@
-import { ROUTER_ENDPOINT_GROUP, USER_MANAGEMENT_ENDPOINT_GROUP } from './constants';
+import { ROUTER_ENDPOINT_GROUP, FUNCTION_ENDPOINT_GROUP } from './constants';
 
 import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
 import type { ICredentialsDb } from '../../../src';
@@ -15,7 +15,7 @@ export type SmtpTestAccount = {
 	};
 };
 
-type FunctionEndpointGroup = typeof USER_MANAGEMENT_ENDPOINT_GROUP[number];
+type FunctionEndpointGroup = typeof FUNCTION_ENDPOINT_GROUP[number];
 
 type RouterEndpointGroup = typeof ROUTER_ENDPOINT_GROUP[number];
 
