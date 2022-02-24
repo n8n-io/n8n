@@ -1125,6 +1125,48 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	return returnData;
 }
 
+/**
+ * Automatically put the objects under a 'json' key and don't error,
+ * if some objects contain json/binary keys and others don't, throws error 'Inconsistent item format'
+ *
+ * @export
+ * @param {INodeExecutionData[]} items
+ * @returns {INodeExecutionData[]}
+ */
+export function normalizeItemsInArray(items: INodeExecutionData[]): INodeExecutionData[] {
+	let itemsWithJsonKey: INodeExecutionData[] = [];
+
+	if (Array.isArray(items)) {
+		if (items.every((item) => typeof item === 'object' && 'json' in item)) {
+			itemsWithJsonKey = items;
+		} else if (items.some((item) => typeof item === 'object' && 'json' in item)) {
+			throw new Error('Inconsistent item format');
+		} else {
+			if (items.every((item) => typeof item === 'object' && 'binary' in item)) {
+				items.forEach((item) => {
+					const notBinaryKeys = Object.keys(item)
+						.filter((key) => key !== 'binary')
+						.reduce((acc, key) => {
+							return {
+								...acc,
+								[key]: item[key],
+							};
+						}, {});
+					itemsWithJsonKey.push({
+						json: notBinaryKeys,
+						binary: item.binary,
+					});
+				});
+			} else {
+				items.forEach((item) => {
+					itemsWithJsonKey.push({ json: item });
+				});
+			}
+		}
+	}
+	return itemsWithJsonKey;
+}
+
 // TODO: Move up later
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
@@ -2073,6 +2115,7 @@ export function getExecuteFunctions(
 					);
 				},
 				returnJsonArray,
+				normalizeItemsInArray,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);
