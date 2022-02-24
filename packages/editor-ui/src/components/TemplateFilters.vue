@@ -14,8 +14,8 @@
 			</li>
 			<li
 				v-for="category in collapsed
-					? selectedCategories.slice(0, categoriesToBeSliced)
-					: selectedCategories"
+					? sortedCategories.slice(0, categoriesToBeSliced)
+					: sortedCategories"
 				:key="category.id"
 				:class="$style.item"
 			>
@@ -28,11 +28,11 @@
 		</ul>
 		<div
 			:class="$style.button"
-			v-if="selectedCategories.length > categoriesToBeSliced && collapsed && !loading"
+			v-if="sortedCategories.length > categoriesToBeSliced && collapsed && !loading"
 			@click="collapseAction"
 		>
 			<n8n-text size="small" color="primary">
-				+ {{ `${selectedCategories.length - categoriesToBeSliced} more` }}
+				+ {{ `${sortedCategories.length - categoriesToBeSliced} more` }}
 			</n8n-text>
 		</div>
 	</div>
@@ -68,12 +68,12 @@ export default mixins(genericHelpers).extend({
 		categories: {
 			handler(categories: ITemplatesCategory[]) {
 				if (!this.areCategoriesPrepopulated) {
-					this.selectedCategories = categories;
+					this.sortedCategories = categories;
 				} else {
 					const selected = this.selected || [];
 					const selectedCategories = categories.filter(({ id }) => selected.includes(id));
 					const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
-					this.selectedCategories = selectedCategories.concat(notSelectedCategories);
+					this.sortedCategories = selectedCategories.concat(notSelectedCategories);
 				}
 			},
 			immediate: true,
@@ -82,7 +82,7 @@ export default mixins(genericHelpers).extend({
 	data() {
 		return {
 			collapsed: true,
-			selectedCategories: [] as ITemplatesCategory[],
+			sortedCategories: [] as ITemplatesCategory[],
 		};
 	},
 	computed: {
