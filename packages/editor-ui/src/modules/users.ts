@@ -13,9 +13,9 @@ import {
 } from '../Interface';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from './userHelpers';
 
-const isDefaultUser = (user: IUserResponse | null) => Boolean(user && !user.isSetUp && user.globalRole && user.globalRole.name === ROLE.Owner);
+const isDefaultUser = (user: IUserResponse | null) => Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
 
-const isPendingUser = (user: IUserResponse | null) => Boolean(user && !user.isSetUp && user.globalRole && user.globalRole.name === ROLE.Member);
+const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
 
 
 const module: Module<IUsersState, IRootState> = {

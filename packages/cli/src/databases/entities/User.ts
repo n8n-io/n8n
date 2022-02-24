@@ -122,12 +122,12 @@ export class User {
 	}
 
 	/**
-	 * Whether the user is fully set up or is still a shell.
+	 * Whether the user is pending setup completion.
 	 */
-	isSetUp: boolean;
+	isPending: boolean;
 
 	@AfterLoad()
-	computeIsSetUp(): void {
-		this.isSetUp = this.password !== null;
+	computeIsPending(): void {
+		this.isPending = this.password === null;
 	}
 }

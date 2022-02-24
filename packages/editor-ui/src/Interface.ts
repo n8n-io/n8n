@@ -793,7 +793,7 @@ export interface IUserResponse {
 		id: string;
 	};
 	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
-	isSetUp: boolean;
+	isPending: boolean;
 }
 
 export interface IInviteResponse {
