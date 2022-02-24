@@ -338,6 +338,7 @@ export interface IDiagnosticInfo {
 }
 
 export interface ITelemetryUserDeletionData {
+	instance_id: string;
 	user_id: string;
 	target_user_old_status: 'active' | 'invited';
 	migration_strategy?: 'transfer_data' | 'delete_data';
@@ -362,6 +363,7 @@ export interface IInternalHooksClass {
 		executionId: string,
 		workflow: IWorkflowBase,
 		runData?: IRun,
+		userId?: string,
 	): Promise<void>;
 	onUserDeletion(userId: string, userDeletionData: ITelemetryUserDeletionData): Promise<void>;
 	onUserInvite(userInviteData: { user_id: string; target_user_id: string[] }): Promise<void>;

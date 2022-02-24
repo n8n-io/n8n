@@ -191,12 +191,14 @@ export class Telemetry {
 		userId?: string,
 		properties?: IDataObject | ITelemetryUserDeletionData,
 	): Promise<void> {
+		console.log('backend tracking event', eventName);
 		return new Promise<void>((resolve) => {
 			if (this.client) {
 				let concatenatedUid = '';
 				if (userId) {
 					concatenatedUid = `#${userId}`;
 				}
+				Object.assign(properties, { instance_id: this.instanceId });
 				this.client.track(
 					{
 						userId: `${this.instanceId}${concatenatedUid}`,

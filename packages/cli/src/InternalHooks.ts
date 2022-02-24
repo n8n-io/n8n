@@ -93,6 +93,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		executionId: string,
 		workflow: IWorkflowBase,
 		runData?: IRun,
+		userId?: string,
 	): Promise<void> {
 		const promises = [Promise.resolve()];
 		const properties: IDataObject = {
@@ -100,6 +101,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 			is_manual: false,
 			version_cli: this.versionCli,
 		};
+
+		if (userId) {
+			properties.user_id = userId;
+		}
 
 		if (runData !== undefined) {
 			properties.execution_mode = runData.mode;
