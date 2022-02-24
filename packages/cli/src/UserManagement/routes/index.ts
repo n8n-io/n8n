@@ -12,6 +12,7 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 import { JwtPayload, N8nApp } from '../Interfaces';
 import { authenticationMethods } from './auth';
 import config = require('../../../config');
+import { AUTH_COOKIE_NAME } from '../../constants';
 import { issueCookie, resolveJwtContent } from '../auth/jwt';
 import { meNamespace } from './me';
 import { usersNamespace } from './users';
@@ -21,12 +22,13 @@ import { ownerNamespace } from './owner';
 import { isAuthenticatedRequest } from '../UserManagementHelper';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
+	// needed for testing; not adding overhead since it directly returns if req.cookies exists
 	this.app.use(cookieParser());
 
 	const options = {
 		jwtFromRequest: (req: Request) => {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			return (req.cookies?.['n8n-auth'] as string | undefined) ?? null;
+			return (req.cookies?.[AUTH_COOKIE_NAME] as string | undefined) ?? null;
 		},
 		secretOrKey: config.get('userManagement.jwtSecret') as string,
 	};
