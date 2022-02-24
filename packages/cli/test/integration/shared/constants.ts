@@ -35,3 +35,7 @@ export const LOGGED_OUT_RESPONSE_BODY = {
 		loggedOut: true,
 	},
 } as const;
+
+export const USER_MANAGEMENT_ENDPOINT_GROUP = ['me', 'users', 'auth', 'owner', 'passwordReset'];
+
+export const ROUTER_ENDPOINT_GROUP = ['credentials'];

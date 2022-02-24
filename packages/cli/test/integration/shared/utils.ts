@@ -13,7 +13,7 @@ import { Credentials, UserSettings } from 'n8n-core';
 import { getConnection } from 'typeorm';
 
 import config = require('../../../config');
-import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
+import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT, ROUTER_ENDPOINT_GROUP } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
@@ -21,15 +21,24 @@ import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/ro
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
-import { credentialsEndpoints } from '../../../src/api/namespaces/credentials';
+
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
+import { credentialsRouter } from '../../../src/api/public/credentials.api';
 import { randomEmail, randomValidPassword, randomName } from './random';
 import { getLogger } from '../../../src/Logger';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
+
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
-import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
+import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import type {
+	CredentialPayload,
+	SmtpTestAccount,
+	EndpointGroup,
+	RouterEndpointGroup,
+	FunctionEndpointGroup,
+} from './types';
 
 export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
@@ -46,21 +55,20 @@ export const initLogger = () => {
  * Initialize a test server to make requests to.
  *
  * @param applyAuth Whether to apply auth middleware to the test server.
- * @param namespaces Namespaces of endpoints to apply to the test server.
+ * @param namespaces Groups of endpoints to apply to the test server.
  */
 export function initTestServer({
 	applyAuth,
 	namespaces,
-	externalHooks,
 }: {
 	applyAuth: boolean;
 	externalHooks?: true;
-	namespaces?: EndpointNamespace[];
+	namespaces?: EndpointGroup[];
 }) {
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
-		...(externalHooks ? { externalHooks: ExternalHooks() } : {}),
+		...(namespaces?.includes('credentials') ? { externalHooks: ExternalHooks() } : {}),
 	};
 
 	testServer.app.use(bodyParser.json());
@@ -73,23 +81,47 @@ export function initTestServer({
 		authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
 	}
 
-	if (namespaces) {
-		const map: NamespacesMap = {
+	if (!namespaces) return testServer.app;
+
+	const [routerEndpoints, functionEndpoints] = classifyEndpoints(namespaces);
+
+	if (routerEndpoints.length) {
+		const map: Record<RouterEndpointGroup, express.Router> = {
+			credentials: credentialsRouter,
+		};
+
+		for (const group of routerEndpoints) {
+			testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
+		}
+	}
+
+	if (functionEndpoints.length) {
+		const map: Record<FunctionEndpointGroup, (this: N8nApp) => void> = {
 			me: meEndpoints,
 			users: usersEndpoints,
 			auth: authEndpoints,
 			owner: ownerEndpoints,
 			passwordReset: passwordResetEndpoints,
-			credentials: credentialsEndpoints,
 		};
 
-		for (const namespace of namespaces) {
-			map[namespace].apply(testServer);
+		for (const group of functionEndpoints) {
+			map[group].apply(testServer);
 		}
 	}
 
 	return testServer.app;
 }
+
+const classifyEndpoints = (endpoints: string[]) => {
+	const routerEndpoints: string[] = [];
+	const userManagementEndpoints: string[] = [];
+
+	endpoints.forEach((e) =>
+		(ROUTER_ENDPOINT_GROUP.includes(e) ? routerEndpoints : userManagementEndpoints).push(e),
+	);
+
+	return [routerEndpoints, userManagementEndpoints];
+};
 
 // ----------------------------------
 //           test logger
@@ -101,7 +133,7 @@ export function initTestServer({
 export function initTestLogger() {
 	config.set('logs.output', 'file');
 	LoggerProxy.init(getLogger());
-};
+}
 
 /**
  * Initialize a config file if non-existent.

@@ -1,9 +1,9 @@
+import { ROUTER_ENDPOINT_GROUP, USER_MANAGEMENT_ENDPOINT_GROUP } from './constants';
+
 import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
 import type { ICredentialsDb } from '../../../src';
 import type { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import type { User } from '../../../src/databases/entities/User';
-
-import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 
 export type SmtpTestAccount = {
 	user: string;
@@ -15,9 +15,11 @@ export type SmtpTestAccount = {
 	};
 };
 
-export type EndpointNamespace = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials';
+type FunctionEndpointGroup = typeof USER_MANAGEMENT_ENDPOINT_GROUP[number];
 
-export type NamespacesMap = Readonly<Record<EndpointNamespace, (this: N8nApp) => void>>;
+type RouterEndpointGroup = typeof ROUTER_ENDPOINT_GROUP[number];
+
+type EndpointGroup = FunctionEndpointGroup | RouterEndpointGroup;
 
 export type CredentialPayload = {
 	name: string;
