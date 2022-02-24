@@ -618,7 +618,7 @@ describe('RoutingNode', () => {
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 		const additionalData = Helpers.WorkflowExecuteAdditionalData();
 		const path = '';
-		const nodeType = nodeTypes.getByName(node.type);
+		const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
 		const workflowData = {
 			nodes: [node],
@@ -1596,7 +1596,7 @@ describe('RoutingNode', () => {
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 		const additionalData = Helpers.WorkflowExecuteAdditionalData();
-		const nodeType = nodeTypes.getByName(baseNode.type);
+		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 
 		const inputData: ITaskDataConnections = {
 			main: [
