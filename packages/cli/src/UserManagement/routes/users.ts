@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Response } from 'express';
@@ -198,6 +199,16 @@ export function usersNamespace(this: N8nApp): void {
 					{ inviterId, inviteeId },
 				);
 				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
+			}
+
+			// Postgres validates UUID format
+			for (const userId of [inviterId, inviteeId]) {
+				if (!validator.isUUID(userId)) {
+					Logger.debug('Request to resolve signup token failed because of invalid user ID', {
+						userId,
+					});
+					throw new ResponseHelper.ResponseError('Invalid userId', undefined, 400);
+				}
 			}
 
 			const users = await Db.collections.User!.find({ where: { id: In([inviterId, inviteeId]) } });
