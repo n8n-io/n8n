@@ -1,5 +1,3 @@
-import { ROUTER_ENDPOINT_GROUP, FUNCTION_ENDPOINT_GROUP } from './constants';
-
 import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
 import type { ICredentialsDb } from '../../../src';
 import type { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
@@ -15,11 +13,7 @@ export type SmtpTestAccount = {
 	};
 };
 
-type FunctionEndpointGroup = typeof FUNCTION_ENDPOINT_GROUP[number];
-
-type RouterEndpointGroup = typeof ROUTER_ENDPOINT_GROUP[number];
-
-type EndpointGroup = FunctionEndpointGroup | RouterEndpointGroup;
+type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials';
 
 export type CredentialPayload = {
 	name: string;

@@ -13,7 +13,7 @@ import { Credentials, UserSettings } from 'n8n-core';
 import { getConnection } from 'typeorm';
 
 import config = require('../../../config');
-import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT, ROUTER_ENDPOINT_GROUP } from './constants';
+import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
@@ -32,13 +32,7 @@ import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
-import type {
-	CredentialPayload,
-	SmtpTestAccount,
-	EndpointGroup,
-	RouterEndpointGroup,
-	FunctionEndpointGroup,
-} from './types';
+import type { CredentialPayload, SmtpTestAccount, EndpointGroup } from './types';
 
 export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
@@ -86,7 +80,7 @@ export function initTestServer({
 	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
 	if (routerEndpoints.length) {
-		const map: Record<RouterEndpointGroup, express.Router> = {
+		const map: Record<string, express.Router> = {
 			credentials: credentialsRouter,
 		};
 
@@ -96,7 +90,7 @@ export function initTestServer({
 	}
 
 	if (functionEndpoints.length) {
-		const map: Record<FunctionEndpointGroup, (this: N8nApp) => void> = {
+		const map: Record<string, (this: N8nApp) => void> = {
 			me: meEndpoints,
 			users: usersEndpoints,
 			auth: authEndpoints,
@@ -112,12 +106,12 @@ export function initTestServer({
 	return testServer.app;
 }
 
-const classifyEndpointGroups = (endpoints: string[]) => {
+const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
-	endpoints.forEach((e) =>
-		(ROUTER_ENDPOINT_GROUP.includes(e) ? routerEndpoints : functionEndpoints).push(e),
+	endpointGroups.forEach((group) =>
+		(group === 'credentials' ? routerEndpoints : functionEndpoints).push(group),
 	);
 
 	return [routerEndpoints, functionEndpoints];
