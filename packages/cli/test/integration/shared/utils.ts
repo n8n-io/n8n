@@ -56,7 +56,6 @@ export function initTestServer({
 	endpointGroups,
 }: {
 	applyAuth: boolean;
-	externalHooks?: true;
 	endpointGroups?: EndpointGroup[];
 }) {
 	const testServer = {
