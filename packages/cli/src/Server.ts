@@ -167,7 +167,7 @@ import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpe
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { credentialsRouter } from './api/credentials.api';
+import { credentialsController } from './api/credentials.api';
 
 require('body-parser-xml')(bodyParser);
 
@@ -655,7 +655,7 @@ class App {
 		// ----------------------------------------
 		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
 
-		this.app.use(`/${this.restEndpoint}/credentials`, credentialsRouter);
+		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
 		// ----------------------------------------
 		// Healthcheck

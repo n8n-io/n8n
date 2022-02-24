@@ -26,12 +26,12 @@ import type { CredentialRequest } from '../requests';
 import config = require('../../config');
 import { externalHooks } from '../Server';
 
-export const credentialsRouter = express.Router();
+export const credentialsController = express.Router();
 
 /**
  * GET /credentials
  */
-credentialsRouter.get(
+credentialsController.get(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
 		let credentials: ICredentialsDb[] = [];
@@ -71,7 +71,7 @@ credentialsRouter.get(
  *
  * Generate a unique credential name.
  */
-credentialsRouter.get(
+credentialsController.get(
 	'/new',
 	ResponseHelper.send(async (req: CredentialRequest.NewName): Promise<{ name: string }> => {
 		const { name: newName } = req.query;
@@ -88,7 +88,7 @@ credentialsRouter.get(
  *
  * Test if a credential is valid.
  */
-credentialsRouter.post(
+credentialsController.post(
 	'/credentials-test',
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials, nodeToTestWith } = req.body;
@@ -111,7 +111,7 @@ credentialsRouter.post(
 /**
  * POST /credentials
  */
-credentialsRouter.post(
+credentialsController.post(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.Create) => {
 		delete req.body.id; // delete if sent
@@ -183,7 +183,7 @@ credentialsRouter.post(
 /**
  * DELETE /credentials/:id
  */
-credentialsRouter.delete(
+credentialsController.delete(
 	'/:id',
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
@@ -216,7 +216,7 @@ credentialsRouter.delete(
 /**
  * PATCH /credentials/:id
  */
-credentialsRouter.patch(
+credentialsController.patch(
 	'/:id',
 	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsResponse> => {
 		const { id: credentialId } = req.params;
@@ -323,7 +323,7 @@ credentialsRouter.patch(
 /**
  * GET /credentials/:id
  */
-credentialsRouter.get(
+credentialsController.get(
 	'/:id',
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;

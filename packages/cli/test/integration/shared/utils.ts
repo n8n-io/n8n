@@ -23,7 +23,7 @@ import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/ro
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
-import { credentialsRouter } from '../../../src/api/credentials.api';
+import { credentialsController } from '../../../src/api/credentials.api';
 import { randomEmail, randomValidPassword, randomName } from './random';
 import { getLogger } from '../../../src/Logger';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
@@ -80,7 +80,7 @@ export function initTestServer({
 
 	if (routerEndpoints.length) {
 		const map: Record<string, express.Router> = {
-			credentials: credentialsRouter,
+			credentials: credentialsController,
 		};
 
 		for (const group of routerEndpoints) {
