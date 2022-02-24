@@ -108,9 +108,11 @@ export default Vue.extend({
 			return filterTemplateNodes(nodes);
 		},
 		redirectToCategory(tag: ITag) {
+			this.$store.commit('templates/resetSessionId');
 			this.$router.push(`/templates?categories=${tag.id}`);
 		},
 		redirectToSearchPage(node: INode) {
+			this.$store.commit('templates/resetSessionId');
 			this.$router.push(`/templates?search=${node.displayName}`);
 		},
 	},
