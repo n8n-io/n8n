@@ -11,9 +11,10 @@ import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
 import { Credentials, UserSettings } from 'n8n-core';
 import { getConnection } from 'typeorm';
+import { snakeCase } from 'change-case';
 
 import config = require('../../../config');
-import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
+import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT, TEST_CONNECTION_OPTIONS } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
@@ -101,7 +102,7 @@ export function initTestServer({
 export function initTestLogger() {
 	config.set('logs.output', 'file');
 	LoggerProxy.init(getLogger());
-};
+}
 
 /**
  * Initialize a config file if non-existent.
@@ -120,14 +121,53 @@ export function initConfigFile() {
 // ----------------------------------
 
 export async function initTestDb() {
-	await Db.init();
-	await getConnection().runMigrations({ transaction: 'none' });
+	const dbType = config.get('database.type');
+
+	await Db.init(TEST_CONNECTION_OPTIONS[dbType]);
+
+	if (dbType === 'sqlite') {
+		await getConnection().runMigrations({ transaction: 'none' });
+	}
 }
 
 export async function truncate(entities: Array<keyof IDatabaseCollections>) {
-	await getConnection().query('PRAGMA foreign_keys=OFF');
-	await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
-	await getConnection().query('PRAGMA foreign_keys=ON');
+	const dbType = config.get('database.type');
+
+	if (dbType === 'sqlite') {
+		await getConnection().query('PRAGMA foreign_keys=OFF');
+		await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
+		return getConnection().query('PRAGMA foreign_keys=ON');
+	}
+
+	if (dbType === 'postgresdb') {
+		const tablePrefix = config.get('database.tablePrefix');
+		const map = {
+			Credentials: 'credentials_entity',
+			Workflow: 'workflow_entity',
+			Execution: 'execution_entity',
+			Tag: 'tag_entity',
+			Webhook: 'webhook_entity',
+			Role: 'role',
+			User: 'user',
+			SharedCredentials: 'shared_credentials',
+			SharedWorkflow: 'shared_workflow',
+			Settings: 'settings',
+		};
+
+		return Promise.all(
+			entities.map((entity) =>
+				getConnection().query(
+					`TRUNCATE TABLE ${tablePrefix}"${map[entity]}" RESTART IDENTITY CASCADE;`,
+				),
+			),
+		);
+	}
+
+	if (dbType === 'mysqldb') {
+		// await getConnection().query('SET FOREIGN_KEY_CHECKS = 0;');
+		// await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
+		// return getConnection().query('SET FOREIGN_KEY_CHECKS = 1;');
+	}
 }
 
 export function affixRoleToSaveCredential(role: Role) {
@@ -350,3 +390,10 @@ async function encryptCredentialData(credential: CredentialsEntity) {
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }
+
+/**
+ * Remove quote-escaping backslashes added by Postgres.
+ */
+export const toObject = (json: string) => {
+	return typeof json === 'string' ? JSON.parse(json) : json;
+};
