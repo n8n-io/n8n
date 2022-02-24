@@ -167,7 +167,7 @@ import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpe
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { credentialsRouter } from './api/public/credentials.api';
+import { credentialsRouter } from './api/credentials.api';
 
 require('body-parser-xml')(bodyParser);
 

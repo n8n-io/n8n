@@ -23,7 +23,7 @@ import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/ro
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
-import { credentialsRouter } from '../../../src/api/public/credentials.api';
+import { credentialsRouter } from '../../../src/api/credentials.api';
 import { randomEmail, randomValidPassword, randomName } from './random';
 import { getLogger } from '../../../src/Logger';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';

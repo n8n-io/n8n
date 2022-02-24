@@ -15,16 +15,16 @@ import {
 	ICredentialsDb,
 	ICredentialsResponse,
 	whereClause,
-} from '../..';
-import * as ResponseHelper from '../../ResponseHelper';
+} from '..';
+import * as ResponseHelper from '../ResponseHelper';
 
-import { RESPONSE_ERROR_MESSAGES } from '../../constants';
-import { CredentialsEntity } from '../../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../../databases/entities/SharedCredentials';
-import { validateEntity } from '../../GenericHelpers';
-import type { CredentialRequest } from '../../requests';
-import config = require('../../../config');
-import { externalHooks } from '../../Server';
+import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
+import { SharedCredentials } from '../databases/entities/SharedCredentials';
+import { validateEntity } from '../GenericHelpers';
+import type { CredentialRequest } from '../requests';
+import config = require('../../config');
+import { externalHooks } from '../Server';
 
 export const credentialsRouter = express.Router();
 
