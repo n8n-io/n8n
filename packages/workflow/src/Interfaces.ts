@@ -1193,7 +1193,6 @@ export interface INodeTypes {
 	nodeTypes: INodeTypeData;
 	init(nodeTypes?: INodeTypeData): Promise<void>;
 	getAll(): Array<INodeType | INodeVersionedType>;
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
