@@ -578,7 +578,7 @@ export const workflowHelpers = mixins(
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
-						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `"${e.message}"`,
+						message: (e as Error).message,
 						type: 'error',
 					});
 
