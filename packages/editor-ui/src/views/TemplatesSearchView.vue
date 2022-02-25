@@ -74,6 +74,7 @@ import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery, ITemplatesCa
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { IDataObject } from 'n8n-workflow';
+import { setPageTitle } from '@/components/helpers';
 
 interface ISearchEvent {
 	search_string: string;
@@ -323,6 +324,7 @@ export default mixins(genericHelpers).extend({
 		next();
 	},
 	async mounted() {
+		setPageTitle('n8n - Templates');
 		this.loadCategories();
 		this.loadWorkflowsAndCollections(true);
 	},

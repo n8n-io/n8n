@@ -60,6 +60,7 @@ import {
 } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
+import { setPageTitle } from '@/components/helpers';
 
 export default mixins(workflowHelpers).extend({
 	name: 'TemplatesCollectionView',
@@ -115,6 +116,16 @@ export default mixins(workflowHelpers).extend({
 					behavior: 'smooth',
 				});
 			}, 50);
+		},
+	},
+	watch: {
+		collection(collection: ITemplatesCollection) {
+			if (collection) {
+				setPageTitle(`n8n - Template collection: ${collection.name}`);
+			}
+			else {
+				setPageTitle(`n8n - Templates`);
+			}
 		},
 	},
 	async mounted() {

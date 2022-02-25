@@ -55,3 +55,7 @@ export function filterTemplateNodes(nodes: ITemplatesNode[]) {
 	const results = notCoreNodes.length > 0 ? notCoreNodes : nodes;
 	return results.filter((elem) => !TEMPLATES_NODES_FILTER.includes(elem.name));
 }
+
+export function setPageTitle(title: string) {
+	window.document.title = title;
+}
