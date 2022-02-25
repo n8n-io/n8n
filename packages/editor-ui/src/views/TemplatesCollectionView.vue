@@ -29,7 +29,6 @@
 					<TemplateList
 						:infinite-scroll-enabled="false"
 						:loading="loading"
-						:navigateTo="navigateTo"
 						:use-workflow-button="true"
 						:workflows="loading ? [] : collectionWorkflows"
 					/>
@@ -91,23 +90,6 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	methods: {
-		navigateTo(id: string, page: string, e: PointerEvent) {
-			if (page === 'WorkflowTemplate') {
-				this.$telemetry.track('User inserted workflow template', {
-					template_id: id,
-					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
-					source: 'collection',
-				});
-			}
-
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: page, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				this.$router.push({ name: page, params: { id } });
-			}
-		},
 		scrollToTop() {
 			setTimeout(() => {
 				window.scrollTo({

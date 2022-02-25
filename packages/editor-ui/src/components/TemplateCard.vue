@@ -62,9 +62,6 @@ export default mixins(genericHelpers).extend({
 		loading: {
 			type: Boolean,
 		},
-		navigateTo: {
-			type: Function,
-		},
 	},
 	components: {
 		NodeList,
@@ -82,6 +79,15 @@ export default mixins(genericHelpers).extend({
 				return this.nodesToBeShown - 1;
 			} else {
 				return this.nodesToBeShown;
+			}
+		},
+		navigateTo(id: string, page: string, e: PointerEvent) {
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({ name: page, params: { id } });
+				window.open(route.href, '_blank');
+				return;
+			} else {
+				this.$router.push({ name: page, params: { id } });
 			}
 		},
 	},

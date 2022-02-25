@@ -17,7 +17,6 @@
 					:firstItem="index === 0"
 					:lastItem="index === workflows.length - 1 && !loading"
 					:useWorkflowButton="useWorkflowButton"
-					:navigateTo="navigateTo"
 				/>
 			</div>
 			<div v-if="infiniteScrollEnabled" ref="loader" />
@@ -59,9 +58,6 @@ export default mixins(genericHelpers).extend({
 		totalWorkflows: {
 			type: Number,
 		},
-		navigateTo: {
-			type: Function,
-		},
 	},
 	mounted() {
 		if (this.infiniteScrollEnabled) {
@@ -75,6 +71,23 @@ export default mixins(genericHelpers).extend({
 		TemplateCard,
 	},
 	methods: {
+		navigateTo(id: string, page: string, e: PointerEvent) {
+			if (page === 'WorkflowTemplate') {
+				this.$telemetry.track('User inserted workflow template', {
+					template_id: id,
+					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+					source: 'collection',
+				});
+			}
+
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({ name: page, params: { id } });
+				window.open(route.href, '_blank');
+				return;
+			} else {
+				this.$router.push({ name: page, params: { id } });
+			}
+		},
 		onScroll() {
 			const el = this.$refs.loader;
 			if (!el || this.loading) {

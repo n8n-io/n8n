@@ -42,12 +42,10 @@
 					<CollectionsCarousel
 						:collections="collections"
 						:loading="loadingCollections"
-						:navigate-to="navigateTo"
 					/>
 					<TemplateList
 						:infinite-scroll-enabled="true"
 						:loading="loadingWorkflows"
-						:navigate-to="navigateTo"
 						:total-workflows="totalWorkflows"
 						:workflows="workflows"
 						@loadMore="onLoadMore"
@@ -174,15 +172,6 @@ export default mixins(genericHelpers).extend({
 			if (this.searchEventToTrack) {
 				this.$telemetry.track('User searched workflow templates', this.searchEventToTrack as unknown as IDataObject);
 				this.searchEventToTrack = null;
-			}
-		},
-		navigateTo(id: string, page: string, e: PointerEvent) {
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: page, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				this.$router.push({ name: page, params: { id } });
 			}
 		},
 		openNewWorkflow() {
