@@ -13,7 +13,23 @@
 			</n8n-tooltip>
 		</div>
 		<div v-if="nodeIconData !== null" :class="$style.icon" title="">
-			<NodeIcon :nodeType="nodeType" />
+			<div :class="$style.iconWrapper" :style="iconStyleData">
+				<div v-if="nodeIconData !== null" :class="$style.icon">
+					<img
+						v-if="nodeIconData.type === 'file'"
+						:src="nodeIconData.fileBuffer || nodeIconData.path"
+						:style="imageStyleData"
+					/>
+					<font-awesome-icon
+						v-else
+						:icon="nodeIconData.icon || nodeIconData.path"
+						:style="fontStyleData"
+					/>
+				</div>
+				<div v-else class="node-icon-placeholder">
+					{{ nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
+				</div>
+			</div>
 		</div>
 		<div v-else :class="$style.placeholder">
 			{{ nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
@@ -23,7 +39,6 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import NodeIcon from '@/components/NodeIcon.vue';
 
 import { ITemplatesNode } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
@@ -56,10 +71,12 @@ export default Vue.extend({
 			type: Number,
 		},
 	},
-	components: {
-		NodeIcon,
-	},
 	computed: {
+		fontStyleData(): object {
+			return {
+				'max-width': this.size + 'px',
+			};
+		},
 		iconStyleData(): object {
 			const nodeType = this.nodeType as ITemplatesNode | null;
 			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
@@ -79,6 +96,13 @@ export default Vue.extend({
 					'-webkit-filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
 					filter: 'contrast(40%) brightness(1.5) grayscale(100%)',
 				}),
+			};
+		},
+		imageStyleData(): object {
+			return {
+				width: '100%',
+				'max-width': '100%',
+				'max-height': '100%',
 			};
 		},
 		nodeIconData(): null | NodeIconData {
@@ -131,6 +155,13 @@ export default Vue.extend({
 	display: flex;
 	justify-content: center;
 	align-items: center;
+}
+
+.iconWrapper {
+	svg {
+		height: 100%;
+		width: 100%;
+	}
 }
 
 .placeholder {

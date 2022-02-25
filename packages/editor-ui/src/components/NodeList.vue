@@ -3,7 +3,7 @@
 		<div v-for="node in slicedNodes" :class="[$style.container, $style[size]]" :key="node.name">
 			<HoverableNodeIcon :nodeType="node" :size="size === 'md'? 24: 18" :title="node.name" />
 		</div>
-		<div :class="$style.button" v-if="filteredCoreNodes.length > limit + 1">
+		<div :class="[$style.button, size === 'md' ? $style.buttonMd : $style.buttonSm]" v-if="filteredCoreNodes.length > limit + 1">
 			+{{ hiddenNodes }}
 		</div>
 	</div>
@@ -62,7 +62,6 @@ export default mixins(genericHelpers).extend({
 <style lang="scss" module>
 .list {
 	max-width: 100px;
-	height: 20px;
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
@@ -70,8 +69,6 @@ export default mixins(genericHelpers).extend({
 }
 
 .container {
-	width: 18px;
-	height: 18px;
 	position: relative;
 	display: block;
 }
@@ -84,17 +81,7 @@ export default mixins(genericHelpers).extend({
 	margin-left: var(--spacing-xs);
 }
 
-.image {
-	width: 18px;
-	height: 18px;
-	display: block;
-}
-
 .button {
-	width: 20px;
-	min-width: 20px;
-	height: 20px;
-	margin-left: var(--spacing-2xs);
 	top: 0px;
 	position: relative;
 	display: flex;
@@ -106,5 +93,19 @@ export default mixins(genericHelpers).extend({
 	font-size: 10px;
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-base);
+}
+
+.buttonSm {
+	margin-left: var(--spacing-2xs);
+	width: 20px;
+	min-width: 20px;
+	height: 20px;
+}
+
+.buttonMd {
+	margin-left: var(--spacing-xs);
+	width: 24px;
+	min-width: 24px;
+	height: 24px;
 }
 </style>
