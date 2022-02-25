@@ -338,7 +338,6 @@ export interface IDiagnosticInfo {
 }
 
 export interface ITelemetryUserDeletionData {
-	instance_id: string;
 	user_id: string;
 	target_user_old_status: 'active' | 'invited';
 	migration_strategy?: 'transfer_data' | 'delete_data';

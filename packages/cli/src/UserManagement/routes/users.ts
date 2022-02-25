@@ -418,11 +418,11 @@ export function usersNamespace(this: N8nApp): void {
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
 
-			const telemetryData = {
+			const telemetryData: ITelemetryUserDeletionData = {
 				user_id: req.user.id,
 				target_user_old_status: userToDelete.password ? 'active' : 'invited',
 				target_user_id: idToDelete,
-			} as ITelemetryUserDeletionData;
+			};
 
 			telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
 
