@@ -8,7 +8,7 @@ import bodyParser = require('body-parser');
 import * as util from 'util';
 import { createTestAccount } from 'nodemailer';
 import { v4 as uuid } from 'uuid';
-import { LoggerProxy } from 'n8n-workflow';
+import { INodeTypes, LoggerProxy } from 'n8n-workflow';
 import { Credentials, UserSettings } from 'n8n-core';
 import { getConnection } from 'typeorm';
 
@@ -16,7 +16,13 @@ import config = require('../../../config');
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
-import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
+import {
+	Db,
+	ExternalHooks,
+	ICredentialsDb,
+	IDatabaseCollections,
+	InternalHooksManager,
+} from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
@@ -31,6 +37,7 @@ import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
+import { Telemetry } from '../../../src/telemetry';
 
 export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
@@ -90,6 +97,14 @@ export function initTestServer({
 	}
 
 	return testServer.app;
+}
+
+export function initTestTelemetry() {
+	const mockNodeTypes = { nodeTypes: {} } as INodeTypes;
+
+	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
+
+	jest.spyOn(Telemetry.prototype, 'track').mockResolvedValue();
 }
 
 // ----------------------------------
