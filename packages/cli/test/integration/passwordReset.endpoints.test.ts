@@ -77,7 +77,6 @@ test('POST /forgot-password should send password reset email', async () => {
 		.post('/forgot-password')
 		.send({ email: INITIAL_TEST_USER.email });
 
-	console.log(response.body);
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual({});
 

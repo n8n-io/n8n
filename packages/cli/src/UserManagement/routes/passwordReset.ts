@@ -88,7 +88,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			Logger.info('Sent password reset email successfully', { userId: user.id, email });
 			void InternalHooksManager.getInstance().onUserTransactionalEmail({
-				user_id: req.user.id,
+				user_id: id,
 				message_type: 'Reset password',
 			});
 
