@@ -65,6 +65,17 @@ export function isAuthExcluded(url: string, ignoredEndpoints: string[]): boolean
 		.find((ignoredEndpoint) => url.includes(ignoredEndpoint));
 }
 
+/**
+ * Check if the endpoint is `POST /users/:id`.
+ */
+export function isPostUsersId(req: express.Request, restEndpoint: string): boolean {
+	return (
+		req.method === 'POST' &&
+		new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url) &&
+		!req.url.includes('reinvite')
+	);
+}
+
 export function isAuthenticatedRequest(request: express.Request): request is AuthenticatedRequest {
 	return request.user !== undefined;
 }
