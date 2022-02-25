@@ -2389,7 +2389,11 @@ export default mixins(
 					for (const sourceNode of Object.keys(connections)) {
 						for (const type of Object.keys(connections[sourceNode])) {
 							for (let sourceIndex = 0; sourceIndex < connections[sourceNode][type].length; sourceIndex++) {
-								connections[sourceNode][type][sourceIndex].forEach((
+								const outwardConnections = connections[sourceNode][type][sourceIndex];
+								if (!outwardConnections) {
+									continue;
+								}
+								outwardConnections.forEach((
 									targetData,
 								) => {
 									connectionData = [
