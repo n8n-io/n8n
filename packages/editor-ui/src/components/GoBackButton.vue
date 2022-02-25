@@ -6,10 +6,9 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
+import Vue from 'vue';
 
-export default mixins(genericHelpers).extend({
+export default Vue.extend({
 	name: 'TemplateList',
 	data() {
 		return {
