@@ -22,7 +22,7 @@
 				</div>
 			</div>
 			<div :class="$style.notFound" v-else>
-				<n8n-text>{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
+				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 			</div>
 		</template>
 		<template v-if="showPage" v-slot:content>
@@ -143,7 +143,7 @@ export default mixins(workflowHelpers).extend({
 }
 
 .notFound {
-	padding-top: var(--spacing-2xl);
+	padding-top: var(--spacing-xl);
 }
 
 .title {

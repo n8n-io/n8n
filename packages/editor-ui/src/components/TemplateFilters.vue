@@ -113,10 +113,6 @@ export default mixins(genericHelpers).extend({
 	color: var(--color-text-base);
 }
 
-.spacer {
-	margin: var(--spacing-2xl);
-}
-
 .categories {
 	padding-top: var(--spacing-xs);
 	list-style-type: none;
