@@ -193,14 +193,10 @@ export class Telemetry {
 	): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.client) {
-				let concatenatedUid = '';
-				if (userId) {
-					concatenatedUid = `#${userId}`;
-				}
 				Object.assign(properties, { instance_id: this.instanceId });
 				this.client.track(
 					{
-						userId: `${this.instanceId}${concatenatedUid}`,
+						userId: `${this.instanceId}${userId ? `#${userId}` : ''}`,
 						anonymousId: '000000000000',
 						event: eventName,
 						properties,
