@@ -1,7 +1,7 @@
 <template>
 	<TemplatesView :goBackEnabled="true">
 		<template v-slot:header>
-			<div :class="$style.wrapper">
+			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading v-if="collection && collection.name" tag="h1" size="2xlarge">
 						{{ collection.name }}
@@ -12,8 +12,11 @@
 					<n8n-loading :loading="!collection || !collection.name" :rows="2" variant="h1" />
 				</div>
 			</div>
+			<div :class="$style.notFound" v-else>
+				<n8n-text color="text-base">{{ $locale.baseText('templates.collectionsNotFound') }}</n8n-text>
+			</div>
 		</template>
-		<template v-slot:content>
+		<template v-if="!notFoundError" v-slot:content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
 					<div :class="$style.markdown" v-if="loading || (collection && collection.description)">
@@ -84,6 +87,7 @@ export default mixins(workflowHelpers).extend({
 	data() {
 		return {
 			loading: true,
+			notFoundError: false,
 		};
 	},
 	methods: {
@@ -124,6 +128,7 @@ export default mixins(workflowHelpers).extend({
 		try {
 			await this.$store.dispatch('templates/getCollectionById', this.collectionId);
 		} catch (e) {
+			this.notFoundError = true;
 			this.$showMessage({
 				title: 'Error',
 				message: 'Could not find collection',
@@ -143,6 +148,10 @@ export default mixins(workflowHelpers).extend({
 	@media (max-width: $--breakpoint-xs) {
 		display: block;
 	}
+}
+
+.notFound {
+	padding-top: var(--spacing-xl);
 }
 
 .title {

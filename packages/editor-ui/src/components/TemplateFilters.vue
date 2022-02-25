@@ -13,7 +13,9 @@
 				/>
 			</li>
 			<li
-				v-for="category in collapsed ? sortedCategories.slice(0, categoriesToBeSliced) : sortedCategories"
+				v-for="category in collapsed
+					? sortedCategories.slice(0, categoriesToBeSliced)
+					: sortedCategories"
 				:key="category.id"
 				:class="$style.item"
 			>
@@ -44,6 +46,10 @@ import mixins from 'vue-typed-mixins';
 export default mixins(genericHelpers).extend({
 	name: 'TemplateFilters',
 	props: {
+		sortOnPopulate: {
+			type: Boolean,
+			default: false,
+		},
 		categories: {
 			type: Array,
 		},
@@ -58,21 +64,30 @@ export default mixins(genericHelpers).extend({
 			type: Array,
 		},
 	},
+	watch: {
+		categories: {
+			handler(categories: ITemplatesCategory[]) {
+				if (!this.sortOnPopulate) {
+					this.sortedCategories = categories;
+				} else {
+					const selected = this.selected || [];
+					const selectedCategories = categories.filter(({ id }) => selected.includes(id));
+					const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
+					this.sortedCategories = selectedCategories.concat(notSelectedCategories);
+				}
+			},
+			immediate: true,
+		},
+	},
 	data() {
 		return {
 			collapsed: true,
+			sortedCategories: [] as ITemplatesCategory[],
 		};
 	},
 	computed: {
 		allSelected(): boolean {
 			return this.selected.length === 0;
-		},
-		sortedCategories(): ITemplatesCategory[] {
-			const categories = this.categories as ITemplatesCategory[];
-			const selected = this.selected || [];
-			const selectedCategories = categories.filter(({ id }) => selected.includes(id));
-			const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
-			return selectedCategories.concat(notSelectedCategories);
 		},
 	},
 	methods: {
@@ -96,10 +111,6 @@ export default mixins(genericHelpers).extend({
 .title {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-base);
-}
-
-.spacer {
-	margin: var(--spacing-2xl);
 }
 
 .categories {
