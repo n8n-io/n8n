@@ -7,7 +7,7 @@
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
-import { DateTime } from 'luxon';
+import { DateTime, Duration, Interval } from 'luxon';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -227,7 +227,13 @@ export class WorkflowDataProxy {
 			}
 
 			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
-				throw new Error(`No execution data found for node "${nodeName}"`);
+				if (that.workflow.getNode(nodeName)) {
+					throw new Error(
+						`The node "${nodeName}" hasn't been executed yet, so you can't reference its output data`,
+					);
+				} else {
+					throw new Error(`No node called "${nodeName}" in this workflow`);
+				}
 			}
 
 			runIndex = runIndex === undefined ? that.defaultReturnRunIndex : runIndex;
@@ -480,9 +486,22 @@ export class WorkflowDataProxy {
 					{},
 					{
 						get(target, property, receiver) {
+							if (property === 'pairedItem') {
+								return () => {
+									const executionData = getNodeOutput(nodeName, 0, that.runIndex);
+									if (executionData[that.itemIndex]) {
+										return executionData[that.itemIndex];
+									}
+									return undefined;
+								};
+							}
 							if (property === 'item') {
 								return (itemIndex?: number, branchIndex?: number, runIndex?: number) => {
-									if (itemIndex === undefined) itemIndex = that.itemIndex;
+									if (itemIndex === undefined) {
+										itemIndex = that.itemIndex;
+										branchIndex = 0;
+										runIndex = that.runIndex;
+									}
 									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
 									if (executionData[itemIndex]) {
 										return executionData[itemIndex];
@@ -510,6 +529,12 @@ export class WorkflowDataProxy {
 							if (property === 'all') {
 								return (branchIndex?: number, runIndex?: number) =>
 									getNodeOutput(nodeName, branchIndex, runIndex);
+							}
+							if (property === 'context') {
+								return that.nodeContextGetter(nodeName);
+							}
+							if (property === 'params') {
+								return that.workflow.getNode(nodeName)?.parameters;
 							}
 							return Reflect.get(target, property, receiver);
 						},
@@ -630,6 +655,12 @@ export class WorkflowDataProxy {
 			$thisItemIndex: this.itemIndex,
 			$now: DateTime.now().toJSDate(),
 			$today: DateTime.now().toJSDate().toISOString().split('T')[0],
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			DateTime,
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			Interval,
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			Duration,
 			...that.additionalKeys,
 		};
 

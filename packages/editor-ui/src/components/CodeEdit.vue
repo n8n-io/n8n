@@ -175,10 +175,13 @@ export default mixins(
 
 				const autoComplete$ = `
 				{
+					pairedItem: () => {},\n
 					item: (itemIndex?: number, branchIndex?: number, runIndex?: number) => {},\n
 					first: (branchIndex?: number, runIndex?: number) => {},\n
 					last: (branchIndex?: number, runIndex?: number) => {},\n
 					all: (branchIndex?: number, runIndex?: number) => {},\n
+					context: {},\n
+					params: {},\n
 				}
 				`;
 
@@ -206,7 +209,22 @@ export default mixins(
 					`const $input = ${autoComplete$input}`,
 				];
 
-				const baseKeys = ['$env', '$executionId', '$mode', '$parameter', '$position', '$resumeWebhookUrl', '$workflow', '$now', '$today'];
+				const baseKeys = [
+					'$env',
+					'$executionId',
+					'$mode',
+					'$parameter',
+					'$position',
+					'$resumeWebhookUrl',
+					'$workflow',
+					'$now',
+					'$today',
+					'$thisRunIndex',
+					'$thisItemIndex',
+					'DateTime',
+					'Duration',
+					'Interval',
+				];
 				const additionalKeys = ['$json', '$binary'];
 				if (executedWorkflow && connectionInputData && connectionInputData.length) {
 					baseKeys.push(...additionalKeys);

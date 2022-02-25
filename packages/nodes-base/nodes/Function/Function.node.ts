@@ -36,7 +36,7 @@ export class Function implements INodeType {
 				type: 'string',
 				default: `// Code here will run only once, no matter how many input items there are.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function
-const { DateTime, Duration, Interval } = require("luxon");
+// Tip: you can use the luxon library for date handling
 
 // Loop over inputs and add a new field called 'myNewField' to the JSON of each one
 for (item of items) {
@@ -105,9 +105,7 @@ return items;`,
 		}
 
 		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-			options.require.external = { modules: [...process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','), 'luxon'] };
-		} else {
-			options.require.external = { modules: ['luxon'] };
+			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
 		}
 
 		const vm = new NodeVM(options);
@@ -151,8 +149,9 @@ return items;`,
 			} else {
 				// Try to find the line number which contains the error and attach to error message
 				const stackLines = error.stack.split('\n');
+				console.log(stackLines);
 				if (stackLines.length > 0) {
-					const lineParts = stackLines[1].split(':');
+					const lineParts = stackLines.find((line: string) => line.includes('Function')).split(':');
 					if (lineParts.length > 2) {
 						const lineNumber = lineParts.splice(-2, 1);
 						if (!isNaN(lineNumber)) {

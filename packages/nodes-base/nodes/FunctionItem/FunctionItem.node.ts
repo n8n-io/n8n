@@ -37,7 +37,7 @@ export class FunctionItem implements INodeType {
 				type: 'string',
 				default: `// Code here will run once per input item.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
-const { DateTime, Duration, Interval } = require("luxon");
+// Tip: you can use the luxon library for date handling
 
 // Add a new field called 'myNewField' to the JSON of the item
 item.myNewField = 1;
@@ -115,9 +115,7 @@ return item;`,
 				}
 
 				if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-					options.require.external = { modules: [...process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','), 'luxon'] };
-				} else {
-					options.require.external = { modules: ['luxon'] };
+					options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
 				}
 
 				const vm = new NodeVM(options);
@@ -141,7 +139,7 @@ return item;`,
 						// Try to find the line number which contains the error and attach to error message
 						const stackLines = error.stack.split('\n');
 						if (stackLines.length > 0) {
-							const lineParts = stackLines[1].split(':');
+							const lineParts = stackLines.find((line: string) => line.includes('FunctionItem')).split(':');
 							if (lineParts.length > 2) {
 								const lineNumber = lineParts.splice(-2, 1);
 								if (!isNaN(lineNumber)) {
