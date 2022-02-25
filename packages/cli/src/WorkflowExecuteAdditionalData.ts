@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -39,7 +40,6 @@ import {
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import * as config from '../config';
-// eslint-disable-next-line import/no-cycle
 import {
 	ActiveExecutions,
 	CredentialsHelper,
@@ -60,7 +60,6 @@ import {
 	WorkflowCredentials,
 	WorkflowHelpers,
 } from '.';
-// eslint-disable-next-line import/no-cycle
 import {
 	checkPermissionsForExecution,
 	getUserById,

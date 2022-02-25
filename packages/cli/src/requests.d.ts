@@ -239,7 +239,6 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 	}
 >;
 
-
 // ----------------------------------
 //      /tags
 // ----------------------------------
