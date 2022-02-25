@@ -6,7 +6,7 @@
 			<template v-slot:content>
 				<div :class="$style.icons">
 					<div
-						v-for="node in filterCoreNodes(template.nodes)"
+						v-for="node in filterTemplateNodes(template.nodes)"
 						:key="node.name"
 						:class="$style.icon"
 					>
@@ -59,7 +59,7 @@ import TemplateBlock from '@/components/TemplateBlock.vue';
 import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 
 import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
-import { ITemplatesCategory, ITemplatesNode } from '@/Interface';
+import { ITemplatesCategory } from '@/Interface';
 
 interface INode {
 	displayName: string;
@@ -104,9 +104,7 @@ export default Vue.extend({
 	},
 	methods: {
 		abbreviateNumber,
-		filterCoreNodes(nodes: ITemplatesNode[]) {
-			return filterTemplateNodes(nodes);
-		},
+		filterTemplateNodes,
 		redirectToCategory(tag: ITag) {
 			this.$store.commit('templates/resetSessionId');
 			this.$router.push(`/templates?categories=${tag.id}`);
