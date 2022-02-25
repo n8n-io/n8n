@@ -31,9 +31,10 @@
 				</div>
 				<div :class="$style.search">
 					<n8n-input
-						v-model="search"
+						:value="search"
 						:placeholder="$locale.baseText('templates.searchPlaceholder')"
 						@input="onSearchInput"
+						@blur="trackSearch"
 						clearable
 					>
 						<font-awesome-icon icon="search" slot="prefix" />
@@ -69,9 +70,18 @@ import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery } from '@/Interface';
+import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery, ITemplatesCategory } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
+import { IDataObject } from 'n8n-workflow';
+
+interface ISearchEvent {
+	search_string: string;
+	workflow_results_count: number;
+	collection_results_count: number;
+	categories_applied: ITemplatesCategory[];
+	wf_template_repo_session_id: number;
+}
 
 export default mixins(genericHelpers).extend({
 	name: 'TemplatesSearchView',
@@ -95,7 +105,7 @@ export default mixins(genericHelpers).extend({
 				return this.$locale.baseText('templates.endResult');
 			}
 			if (!this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0) {
-				if (!this.isTemplatesEndpointReachable) {
+				if (!this.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
 					return this.$locale.baseText('templates.connectionWarning');
 				}
 				return this.$locale.baseText('templates.noSearchResults');
@@ -133,28 +143,38 @@ export default mixins(genericHelpers).extend({
 			loadingCollections: true,
 			loadingWorkflows: true,
 			search: '',
+			searchEventToTrack: null as null | ISearchEvent,
+			errorLoadingWorkflows: false,
 		};
 	},
 	methods: {
 		updateSearch() {
 			this.updateQueryParam(this.search, this.categories.join(','));
-			this.loadWorkflows();
-			this.loadCollections();
+			this.loadWorkflowsAndCollections(false);
 		},
-		trackSearch() {
-			if (!this.search && !this.categories.length) {
+		updateSearchTracking(search: string, categories: number[]) {
+			if (!search) {
 				return;
 			}
-			const templateEvent = {
-				search_string: this.search,
-				workflow_results_count: this.totalWorkflows,
-				collection_results_count: this.collections.length,
-				categories_applied: this.categories.map((categoryId) =>
+			if (this.searchEventToTrack && this.searchEventToTrack.search_string.length > search.length) {
+				return;
+			}
+
+			this.searchEventToTrack = {
+				search_string: search,
+				workflow_results_count: this.getSearchedWorkflowsTotal({search, categories}),
+				collection_results_count: this.getSearchedCollections({search, categories}).length,
+				categories_applied: categories.map((categoryId) =>
 					this.$store.getters['templates/getCategoryById'](categoryId),
-				),
+				) as ITemplatesCategory[],
 				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
 			};
-			this.$telemetry.track('User searched workflow templates', templateEvent);
+		},
+		trackSearch() {
+			if (this.searchEventToTrack) {
+				this.$telemetry.track('User searched workflow templates', this.searchEventToTrack as unknown as IDataObject);
+				this.searchEventToTrack = null;
+			}
 		},
 		navigateTo(id: string, page: string, e: PointerEvent) {
 			if (e.metaKey || e.ctrlKey) {
@@ -168,22 +188,40 @@ export default mixins(genericHelpers).extend({
 		openNewWorkflow() {
 			this.$router.push({ name: 'NodeViewNew' });
 		},
-		onSearchInput() {
+		onSearchInput(search: string) {
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
+			this.search = search;
 			this.callDebounced('updateSearch', 500, true);
+
+			if (search.length === 0) {
+				this.trackSearch();
+			}
 		},
 		onCategorySelected(selected: number) {
 			this.categories = this.categories.concat(selected);
 			this.updateSearch();
+			this.trackCategories();
 		},
 		onCategoryUnselected(selected: number) {
 			this.categories = this.categories.filter((id) => id !== selected);
 			this.updateSearch();
+			this.trackCategories();
 		},
 		onCategoriesCleared() {
 			this.categories = [];
 			this.updateSearch();
+		},
+		trackCategories() {
+			if (this.categories.length) {
+				this.$telemetry.track('User changed template filters', {
+					search_string: this.search,
+					categories_applied: this.categories.map((categoryId: number) =>
+						this.$store.getters['templates/getCategoryById'](categoryId),
+					),
+					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+				});
+			}
 		},
 		updateQueryParam(search: string, category: string) {
 			const query = Object.assign({}, this.$route.query);
@@ -246,14 +284,23 @@ export default mixins(genericHelpers).extend({
 			try {
 				this.loadingWorkflows = true;
 				await this.$store.dispatch('templates/getWorkflows', {
-					categories: this.categories,
 					search: this.search,
+					categories: this.categories,
 				});
-				this.trackSearch();
+				this.errorLoadingWorkflows = false;
 			} catch (e) {
+				this.errorLoadingWorkflows = true;
 			}
 
 			this.loadingWorkflows = false;
+		},
+		async loadWorkflowsAndCollections(initialLoad: boolean) {
+			const search = this.search;
+			const categories = [...this.categories];
+			await Promise.all([this.loadWorkflows(), this.loadCollections()]);
+			if (!initialLoad) {
+				this.updateSearchTracking(search, categories);
+			}
 		},
 		scrollToTop() {
 			setTimeout(() => {
@@ -271,10 +318,13 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 	},
+	beforeRouteLeave(to, from, next) {
+		this.trackSearch();
+		next();
+	},
 	async mounted() {
 		this.loadCategories();
-		this.loadCollections();
-		this.loadWorkflows();
+		this.loadWorkflowsAndCollections(true);
 	},
 	async created() {
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {

@@ -1,17 +1,17 @@
 <template>
-	<div>
+	<div :class="$style.container">
+		<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
 		<iframe
-			v-show="showPreview"
 			:class="{
 				[$style.workflow]: !this.nodeViewDetailsOpened,
 				[$style.openNDV]: this.nodeViewDetailsOpened,
+				[$style.show]: this.showPreview,
 			}"
 			ref="preview_iframe"
 			src="/workflows/demo"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
 		></iframe>
-		<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
 	</div>
 </template>
 
@@ -112,11 +112,25 @@ export default mixins(showMessage).extend({
 </script>
 
 <style lang="scss" module>
-.workflow {
+.container {
 	width: 100%;
 	height: 500px;
+}
+
+.workflow {
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
+
+	// firefox bug requires loading iframe as such
+	visibility: hidden;
+	height: 0;
+	width: 0;
+}
+
+.show {
+	visibility: visible;
+	height: 100%;
+	width: 100%;
 }
 
 .openNDV {

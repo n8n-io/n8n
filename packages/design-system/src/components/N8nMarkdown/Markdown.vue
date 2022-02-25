@@ -95,6 +95,12 @@ export default {
 			if (!this.content) {
 			   return '';
 			}
+			let content = this.content;
+
+			// remove all workflow screenshots
+			const screenshotRegex = '!\\[workflow\\-screenshot\\]\\((.*?)(?=\\"|\\))(\\".*\\")?\\)';
+			content = content.replace(new RegExp(screenshotRegex), '');
+
 			const imageUrls: { [key: string]: string } = {};
 			if (this.images) {
 				// @ts-ignore
@@ -111,7 +117,6 @@ export default {
 			// Replace the fileIds with the actual URLs
 			const imageRegexString = '][(]fileId:([0-9]+)[)]';
 			const imageMatches = this.content.match(new RegExp(imageRegexString, 'g')) || [];
-			let content = this.content;
 
 			for (const imageMatch of imageMatches) {
 				const matches = imageMatch.match(new RegExp(imageRegexString));
