@@ -424,9 +424,10 @@ export function usersNamespace(this: N8nApp): void {
 				target_user_id: idToDelete,
 			} as ITelemetryUserDeletionData;
 
+			telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
+
 			if (transferId) {
 				telemetryData.migration_user_id = transferId;
-				telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
 			}
 
 			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData);
