@@ -22,10 +22,6 @@ on:
         type: boolean
         required: true
         default: false
-      success-url:
-        description: 'URL to call after Docker Image got built successfully.'
-        required: false
-        default: ''
 
 jobs:
   build:
@@ -58,7 +54,3 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: n8nio/n8n:${{ github.event.inputs.tag || 'nightly' }}
-      - name: Call Callback URL - optionally
-        run: |
-          [[ "${{github.event.inputs.success-url}}" != "" ]] && curl -I ${{github.event.inputs.success-url}} || echo ""
-        shell: bash
