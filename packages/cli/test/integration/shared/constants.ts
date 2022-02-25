@@ -24,13 +24,13 @@ export const TEST_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
 	logging: false,
 };
 
-export const SUCCESS_RESPONSE_BODY: Readonly<object> = {
+export const SUCCESS_RESPONSE_BODY = {
 	data: {
 		success: true,
 	},
-};
+} as const;
 
-export const LOGGED_OUT_RESPONSE_BODY: Readonly<object> = {
+export const LOGGED_OUT_RESPONSE_BODY = {
 	data: {
 		loggedOut: true,
 	},
