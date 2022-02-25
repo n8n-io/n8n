@@ -10,10 +10,10 @@ import { createTestAccount } from 'nodemailer';
 import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
 import { Credentials, UserSettings } from 'n8n-core';
-import { getConnection } from 'typeorm';
+import { Connection, createConnection, getConnection } from 'typeorm';
 
 import config = require('../../../config');
-import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT, TEST_CONNECTION_OPTIONS } from './constants';
+import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
@@ -31,6 +31,11 @@ import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
+import {
+	getPostgresConnectionOptions,
+	POSTGRES_BOOTSTRAP_CONNECTION_OPTIONS,
+	SQLITE_TEST_CONNECTION_OPTIONS,
+} from './connectionOptions';
 
 export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
@@ -123,11 +128,41 @@ export function initConfigFile() {
 export async function initTestDb() {
 	const dbType = config.get('database.type');
 
-	await Db.init(TEST_CONNECTION_OPTIONS[dbType]);
+	if (dbType === 'postgresdb') {
+		const bootstrap = await createConnection(POSTGRES_BOOTSTRAP_CONNECTION_OPTIONS);
+		await removeTestPostgresDatabases(bootstrap);
+		const newDatabaseName = await createTestPostgresDatabase(bootstrap);
+		bootstrap.close();
+
+		const options = getPostgresConnectionOptions({ databaseName: newDatabaseName });
+		return Db.init(options);
+	}
 
 	if (dbType === 'sqlite') {
-		await getConnection().runMigrations({ transaction: 'none' });
+		await Db.init(SQLITE_TEST_CONNECTION_OPTIONS);
+		return getConnection().runMigrations({ transaction: 'none' });
 	}
+
+	throw new Error('MySQL test connection pending implementation'); // TODO
+}
+
+export async function removeTestPostgresDatabases(bootstrap: Connection) {
+	const results: { db_name: string }[] = await bootstrap.query(
+		'SELECT datname as db_name FROM pg_database;',
+	);
+
+	const promises = results
+		.filter(({ db_name }) => db_name.startsWith('n8n_test_pg_'))
+		.map(({ db_name }) => bootstrap.query(`DROP DATABASE ${db_name};`));
+
+	Promise.all(promises);
+}
+
+export async function createTestPostgresDatabase(bootstrap: Connection) {
+	const newDatabaseName = `n8n_test_pg_${Date.now()}`;
+	await bootstrap.query(`CREATE DATABASE ${newDatabaseName};`);
+
+	return newDatabaseName;
 }
 
 export async function truncate(entities: Array<keyof IDatabaseCollections>) {
