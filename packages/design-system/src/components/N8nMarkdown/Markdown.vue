@@ -30,6 +30,7 @@ const DEFAULT_OPTIONS_MARKDOWN = {
 	html: true,
 	linkify: true,
 	typographer: true,
+	breaks: true,
 };
 
 const DEFAULT_OPTIONS_LINK_ATTRIBUTES = {
