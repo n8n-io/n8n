@@ -19,7 +19,7 @@ import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
 import { ownerNamespace } from './owner';
-import { isAuthenticatedRequest } from '../UserManagementHelper';
+import { isAuthenticatedRequest, isPostUsersId } from '../UserManagementHelper';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	// needed for testing; not adding overhead since it directly returns if req.cookies exists
@@ -62,9 +62,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			req.url.includes('login') ||
 			req.url.includes('logout') ||
 			req.url.startsWith(`/${restEndpoint}/resolve-signup-token`) ||
-			(req.method === 'POST' &&
-				new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url) &&
-				!req.url.includes('reinvite')) ||
+			isPostUsersId(req, restEndpoint) ||
 			req.url.startsWith(`/${restEndpoint}/forgot-password`) ||
 			req.url.startsWith(`/${restEndpoint}/resolve-password-token`) ||
 			req.url.startsWith(`/${restEndpoint}/change-password`)
@@ -104,7 +102,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			(req.method === 'DELETE' &&
 				new RegExp(`/${restEndpoint}/users/[^/]+`, 'gm').test(trimmedUrl)) ||
 			(req.method === 'POST' &&
-				new RegExp(`/${restEndpoint}/users/[^/]/reinvite+`, 'gm').test(trimmedUrl))
+				new RegExp(`/${restEndpoint}/users/[^/]+/reinvite`, 'gm').test(trimmedUrl))
 		) {
 			Logger.verbose('User attempted to access endpoint without authorization', {
 				endpoint: `${req.method} ${trimmedUrl}`,
