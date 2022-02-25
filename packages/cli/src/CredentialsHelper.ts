@@ -54,13 +54,6 @@ const mockNodeTypes: INodeTypes = {
 		// @ts-ignore
 		return Object.values(this.nodeTypes).map((data) => data.type);
 	},
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
-		if (this.nodeTypes[nodeType] === undefined) {
-			return undefined;
-		}
-		return this.nodeTypes[nodeType].type;
-	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
 		if (this.nodeTypes[nodeType] === undefined) {
 			return undefined;
@@ -524,7 +517,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			nodeType = credentialTestFunction.nodeType;
 		} else {
 			const nodeTypes = NodeTypes();
-			nodeType = nodeTypes.getByName('n8n-nodes-base.noOp') as INodeType;
+			nodeType = nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
 		}
 
 		const node: INode = {
