@@ -71,7 +71,6 @@ export default mixins(showMessage).extend({
 		async initialize(): Promise<void> {
 			await this.initSettings();
 			await this.initTemplates();
-			this.loading = false;
 
 			if (!this.isInternalUser && this.$route.name !== 'WorkflowDemo') {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
@@ -97,10 +96,10 @@ export default mixins(showMessage).extend({
 		} else if (this.isRootPath) {
 			this.$router.replace({ name: 'NodeViewNew'});
 		}
-
-		if (!this.isTemplatesEnabled && this.$route.meta && this.$route.meta.templatesEnabled) {
+		else if (!this.isTemplatesEnabled && this.$route.meta && this.$route.meta.templatesEnabled) {
 			this.$router.replace({ name: 'NodeViewNew'});
 		}
+		this.loading = false;
 
 		this.trackPage();
 		this.$externalHooks().run('app.mount');

@@ -37,7 +37,7 @@ interface IUserNodesPanelSession {
 
 class Telemetry {
 
-	private pageEventQueue: Array<{category?: string, route: Route}>;
+	private pageEventQueue: Array<{category: string, route: Route}>;
 	private previousPath: string;
 	private store: Store<IRootState> | null;
 
@@ -107,9 +107,7 @@ class Telemetry {
 		const queue = this.pageEventQueue;
 		this.pageEventQueue = [];
 		queue.forEach(({category, route}) => {
-			if (this.telemetry) {
-				this.telemetry.page(category, route);
-			}
+			this.page(category, route);
 		});
 	}
 
