@@ -82,6 +82,14 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 		navigateTo(id: string, page: string, e: PointerEvent) {
+			if (page === 'WorkflowTemplate') {
+				this.$telemetry.track('User inserted workflow template', {
+					template_id: id,
+					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+					source: 'collection',
+				});
+			}
+
 			if (e.metaKey || e.ctrlKey) {
 				const route = this.$router.resolve({ name: page, params: { id } });
 				window.open(route.href, '_blank');
