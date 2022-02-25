@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
 import {
+	INodeCredentialTestRequest,
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
@@ -70,11 +71,13 @@ export declare namespace CredentialRequest {
 
 	type Delete = Get;
 
-	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string; includeData: string }>;
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
 	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
 
 	type NewName = WorkflowRequest.NewName;
+
+	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 }
 
 // ----------------------------------

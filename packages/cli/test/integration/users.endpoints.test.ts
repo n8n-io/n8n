@@ -7,8 +7,6 @@ import * as utils from './shared/utils';
 import { Db } from '../../src';
 import config = require('../../config');
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { getLogger } from '../../src/Logger';
-import { LoggerProxy } from 'n8n-workflow';
 import { Role } from '../../src/databases/entities/Role';
 import {
 	randomEmail,
@@ -44,12 +42,11 @@ beforeAll(async () => {
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
-	config.set('logs.output', 'file'); // declutter console output
-	utils.initLogger();
+	utils.initTestLogger();
 });
 
 beforeEach(async () => {
-	await utils.truncate(['User']);
+	await utils.truncate(['User', 'Workflow', 'Credentials', 'SharedCredentials', 'SharedWorkflow']);
 
 	jest.isolateModules(() => {
 		jest.mock('../../config');
@@ -68,10 +65,6 @@ beforeEach(async () => {
 	config.set('userManagement.emails.mode', '');
 	// @ts-ignore hack because config doesn't change for helper
 	UMHelper.isEmailSetUp = false;
-});
-
-afterEach(async () => {
-	await utils.truncate(['User']);
 });
 
 afterAll(() => {
@@ -157,27 +150,27 @@ test('DELETE /users/:id should delete the user', async () => {
 	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
 	const user = await Db.collections.User!.findOne(userToDelete.id);
-	expect(user).toBeUndefined();
+	expect(user).toBeUndefined(); // deleted
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOne({
 		relations: ['user'],
 		where: { user: userToDelete },
 	});
-	expect(sharedWorkflow).toBeUndefined();
+	expect(sharedWorkflow).toBeUndefined(); // deleted
 
 	const sharedCredential = await Db.collections.SharedCredentials!.findOne({
 		relations: ['user'],
 		where: { user: userToDelete },
 	});
-	expect(sharedCredential).toBeUndefined();
+	expect(sharedCredential).toBeUndefined(); // deleted
 
 	const workflow = await Db.collections.Workflow!.findOne(savedWorkflow.id);
-	expect(workflow).toBeUndefined();
+	expect(workflow).toBeUndefined(); // deleted
 
 	// TODO: also include active workflow and check whether webhook has been removed
 
 	const credential = await Db.collections.Credentials!.findOne(savedCredential.id);
-	expect(credential).toBeUndefined();
+	expect(credential).toBeUndefined(); // deleted
 });
 
 test('DELETE /users/:id should fail to delete self', async () => {
@@ -277,8 +270,6 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 	expect(sharedWorkflow.user.id).toBe(owner.id);
 	expect(sharedCredential.user.id).toBe(owner.id);
 	expect(deletedUser).toBeUndefined();
-
-	await utils.truncate(['Credentials', 'Workflow']);
 });
 
 test('GET /resolve-signup-token should validate invite token', async () => {
@@ -338,7 +329,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 });
 
 test('POST /users/:id should fill out a user shell', async () => {
-	const authlessAgent = await utils.createAgent(app, { auth: false });
+	const authlessAgent = await utils.createAgent(app);
 
 	const userToFillOut = await Db.collections.User!.save({
 		email: randomEmail(),
@@ -384,7 +375,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 });
 
 test('POST /users/:id should fail with invalid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app, { auth: false });
+	const authlessAgent = await utils.createAgent(app);
 
 	const emailToStore = randomEmail();
 
@@ -405,7 +396,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 });
 
 test('POST /users/:id should fail with already accepted invite', async () => {
-	const authlessAgent = await utils.createAgent(app, { auth: false });
+	const authlessAgent = await utils.createAgent(app);
 
 	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
 		name: 'member',
