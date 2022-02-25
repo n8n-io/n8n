@@ -13,6 +13,13 @@ import { User } from './databases/entities/User';
 import { IExecutionDeleteFilter, IPersonalizationSurveyAnswers } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
 
+export type AuthlessRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>;
+
 export type AuthenticatedRequest<
 	RouteParams = {},
 	ResponseBody = {},
@@ -143,11 +150,11 @@ export declare namespace OwnerRequest {
 // ----------------------------------
 
 export declare namespace PasswordResetRequest {
-	export type Email = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'email'>>;
+	export type Email = AuthlessRequest<{}, {}, Pick<PublicUser, 'email'>>;
 
-	export type Credentials = AuthenticatedRequest<{}, {}, {}, { userId?: string; token?: string }>;
+	export type Credentials = AuthlessRequest<{}, {}, {}, { userId?: string; token?: string }>;
 
-	export type NewPassword = AuthenticatedRequest<
+	export type NewPassword = AuthlessRequest<
 		{},
 		{},
 		Pick<PublicUser, 'password'> & { token?: string; userId?: string }
@@ -161,7 +168,7 @@ export declare namespace PasswordResetRequest {
 export declare namespace UserRequest {
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 
-	export type ResolveSignUp = AuthenticatedRequest<
+	export type ResolveSignUp = AuthlessRequest<
 		{},
 		{},
 		{},
@@ -177,7 +184,7 @@ export declare namespace UserRequest {
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
-	export type Update = AuthenticatedRequest<
+	export type Update = AuthlessRequest<
 		{ id: string },
 		{},
 		{
@@ -188,6 +195,19 @@ export declare namespace UserRequest {
 		}
 	>;
 }
+
+// ----------------------------------
+//             /login
+// ----------------------------------
+
+export type LoginRequest = AuthlessRequest<
+	{},
+	{},
+	{
+		email: string;
+		password: string;
+	}
+>;
 
 // ----------------------------------
 //          oauth endpoints

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -10,6 +11,7 @@ import { issueCookie, resolveJwt } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
+import type { LoginRequest } from '../../requests';
 
 export function authenticationMethods(this: N8nApp): void {
 	/**
@@ -19,7 +21,7 @@ export function authenticationMethods(this: N8nApp): void {
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/login`,
-		ResponseHelper.send(async (req: Request, res: Response): Promise<PublicUser> => {
+		ResponseHelper.send(async (req: LoginRequest, res: Response): Promise<PublicUser> => {
 			if (!req.body.email) {
 				throw new Error('Email is required to log in');
 			}
@@ -32,7 +34,7 @@ export function authenticationMethods(this: N8nApp): void {
 			try {
 				user = await Db.collections.User!.findOne(
 					{
-						email: req.body.email as string,
+						email: req.body.email,
 					},
 					{
 						relations: ['globalRole'],
@@ -111,7 +113,7 @@ export function authenticationMethods(this: N8nApp): void {
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/logout`,
-		ResponseHelper.send(async (req: Request, res: Response): Promise<IDataObject> => {
+		ResponseHelper.send(async (_, res: Response): Promise<IDataObject> => {
 			res.clearCookie(AUTH_COOKIE_NAME);
 			return {
 				loggedOut: true,
