@@ -4,6 +4,8 @@ import {
 
 } from 'n8n-workflow';
 
+import {analyticFields, analyticOperations } from './AnalyticDescription';
+
 import {
 	campaignFields,
 	campaignOperations,
@@ -42,10 +44,10 @@ export class GoogleAds implements INodeType {
 			},
 		],
 		requestDefaults: {
+			returnFullResponse: true,
 			//baseURL: 'https://googleads.googleapis.com',
 			baseURL: 'https://agobrech.free.beeceptor.com',
 			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
 				'developer-token': '={{$credentials.developerToken}}',
 			},
 		},
@@ -63,8 +65,12 @@ export class GoogleAds implements INodeType {
 						name: 'Invoice',
 						value: 'invoice',
 					},
+					{
+						name: 'Analytics',
+						value: 'analytic',
+					},
 				],
-				default: 'invoice',
+				default: 'campaign',
 				description: 'The resource to operate on.',
 			},
 			//-------------------------------
@@ -77,6 +83,11 @@ export class GoogleAds implements INodeType {
 			//-------------------------------
 			...invoiceOperations,
 			...invoiceFields,
+			//-------------------------------
+			// Analytics Operations
+			//-------------------------------
+			...analyticOperations,
+			...analyticFields,
 		],
 	};
 }

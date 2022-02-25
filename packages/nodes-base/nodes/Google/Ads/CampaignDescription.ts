@@ -1,4 +1,7 @@
 import {
+	IExecuteSingleFunctions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -22,9 +25,12 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '/v9/customers/9846033527/googleAds:search',
+						url: '={{"/v9/customers/" + $parameter["clientCustomerId"] + "/googleAds:search"}}',
 						body: {
 							query: 'SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC',
+						},
+						headers: {
+							'login-customer-id': '={{$parameter["managerCustomerId"]}}',
 						},
 					},
 				},
@@ -35,9 +41,17 @@ export const campaignOperations: INodeProperties[] = [
 				description: 'Get a specific campaign',
 				routing: {
 					request: {
-						method: 'GET',
-						url: '/v9/customers:listAccessibleCustomers',
+						method: 'POST',
+						url: '={{"/v9/customers/" + $parameter["clientCustomerId"] + "/googleAds:search"}}',
+						returnFullResponse: true,
+						body: {
+							query: '={{"SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC" + "WHERE campaign.id = " + $parameter["campaignId"]}}',
+						},
+						headers: {
+							'login-customer-id': '={{$parameter["managerCustomerId"]}}',
+						},
 					},
+
 				},
 			},
 			{
@@ -56,8 +70,22 @@ export const campaignFields: INodeProperties[] = [
 	/*                                 calendar:availability                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Customer ID',
-		name: 'customerId',
+		displayName: 'Manager Customer ID',
+		name: 'managerCustomerId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Client Customer ID',
+		name: 'clientCustomerId',
 		type: 'string',
 		required: true,
 		displayOptions: {
