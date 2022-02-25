@@ -5,6 +5,7 @@ import * as jwt from 'jsonwebtoken';
 import { Response } from 'express';
 import { createHash } from 'crypto';
 import { Db } from '../..';
+import { AUTH_COOKIE_NAME } from '../../constants';
 import { JwtToken, JwtPayload } from '../Interfaces';
 import { User } from '../../databases/entities/User';
 import config = require('../../../config');
@@ -62,5 +63,5 @@ export async function resolveJwt(token: string): Promise<User> {
 
 export async function issueCookie(res: Response, user: User): Promise<void> {
 	const userData = await issueJWT(user);
-	res.cookie('n8n-auth', userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+	res.cookie(AUTH_COOKIE_NAME, userData.token, { maxAge: userData.expiresIn, httpOnly: true });
 }

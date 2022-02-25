@@ -11,10 +11,10 @@ import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
 import { Credentials, UserSettings } from 'n8n-core';
 import { getConnection } from 'typeorm';
-import { snakeCase } from 'change-case';
 
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT, TEST_CONNECTION_OPTIONS } from './constants';
+import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
@@ -299,7 +299,7 @@ export async function createAgent(app: express.Application, options?: { auth: tr
 
 	if (options?.auth && options?.user) {
 		const { token } = await issueJWT(options.user);
-		agent.jar.setCookie(`n8n-auth=${token}`);
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 
 	return agent;
@@ -329,7 +329,7 @@ export function prefix(pathSegment: string) {
 /**
  * Extract the value (token) of the auth cookie in a response.
  */
-export function getAuthToken(response: request.Response, authCookieName = 'n8n-auth') {
+export function getAuthToken(response: request.Response, authCookieName = AUTH_COOKIE_NAME) {
 	const cookies: string[] = response.headers['set-cookie'];
 
 	if (!cookies) {
