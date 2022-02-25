@@ -1,7 +1,7 @@
 <template>
 	<TemplatesView :goBackEnabled="true">
 		<template v-slot:header>
-			<div v-if="showPage" :class="$style.wrapper">
+			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading v-if="collection && collection.name" tag="h1" size="2xlarge">
 						{{ collection.name }}
@@ -16,7 +16,7 @@
 				<n8n-text color="text-base">{{ $locale.baseText('templates.collectionsNotFound') }}</n8n-text>
 			</div>
 		</template>
-		<template v-if="showPage" v-slot:content>
+		<template v-if="!notFoundError" v-slot:content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
 					<div :class="$style.markdown" v-if="loading || (collection && collection.description)">
@@ -87,7 +87,7 @@ export default mixins(workflowHelpers).extend({
 	data() {
 		return {
 			loading: true,
-			showPage: true,
+			notFoundError: false,
 		};
 	},
 	methods: {
@@ -128,7 +128,7 @@ export default mixins(workflowHelpers).extend({
 		try {
 			await this.$store.dispatch('templates/getCollectionById', this.collectionId);
 		} catch (e) {
-			this.showPage = false;
+			this.notFoundError = true;
 			this.$showMessage({
 				title: 'Error',
 				message: 'Could not find collection',
