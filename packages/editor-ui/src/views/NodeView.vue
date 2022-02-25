@@ -249,10 +249,10 @@ export default mixins(
 				);
 
 				if (confirmModal === MODAL_CONFIRMED) {
-					const saved = await this.saveCurrentWorkflow();
+					const saved = await this.saveCurrentWorkflow({}, false);
 					if (saved) this.$store.dispatch('settings/fetchPromptsData');
 					this.$store.commit('setStateDirty', false);
-					this.$router.back();
+					next();
 				} else if (confirmModal === MODAL_CANCEL) {
 					this.$store.commit('setStateDirty', false);
 					next();
