@@ -4,7 +4,6 @@
 import TelemetryClient = require('@rudderstack/rudder-sdk-node');
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import config = require('../../config');
-import { ITelemetryUserDeletionData } from '../Interfaces';
 import { getLogger } from '../Logger';
 
 type CountBufferItemKey =
@@ -85,7 +84,7 @@ export class Telemetry {
 		}
 
 		const allPromises = Object.keys(this.executionCountsBuffer.counts).map(async (workflowId) => {
-			const promise = this.track('Workflow execution count', undefined, {
+			const promise = this.track('Workflow execution count', {
 				version_cli: this.versionCli,
 				workflow_id: workflowId,
 				...this.executionCountsBuffer.counts[workflowId],
@@ -100,7 +99,7 @@ export class Telemetry {
 			return promise;
 		});
 
-		allPromises.push(this.track('pulse', undefined, { version_cli: this.versionCli }));
+		allPromises.push(this.track('pulse', { version_cli: this.versionCli }));
 		return Promise.all(allPromises);
 	}
 
@@ -125,7 +124,7 @@ export class Telemetry {
 				(properties.error_node_type as string).startsWith('n8n-nodes-base')
 			) {
 				// errored exec
-				void this.track('Workflow execution errored', undefined, properties);
+				void this.track('Workflow execution errored', properties);
 				// TODO UM: check if user id must be provided above. Owner ID?
 
 				if (properties.is_manual) {
@@ -188,18 +187,18 @@ export class Telemetry {
 
 	async track(
 		eventName: string,
-		userId?: string,
-		properties?: IDataObject | ITelemetryUserDeletionData,
+		properties: { [key: string]: unknown; user_id?: string } = {},
 	): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.client) {
-				Object.assign(properties, { instance_id: this.instanceId });
+				const { user_id, ...rest } = properties;
+				Object.assign(rest, { instance_id: this.instanceId });
 				this.client.track(
 					{
-						userId: `${this.instanceId}${userId ? `#${userId}` : ''}`,
+						userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
 						anonymousId: '000000000000',
 						event: eventName,
-						properties,
+						properties: rest,
 					},
 					resolve,
 				);
