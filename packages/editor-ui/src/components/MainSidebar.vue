@@ -42,43 +42,43 @@
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-save">
+					<n8n-menu-item index="workflow-save" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.save') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-duplicate" :disabled="!onWorkflowPage || !currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.duplicate') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-delete" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-delete" :disabled="!onWorkflowPage || !currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.delete') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-download">
+					<n8n-menu-item index="workflow-download" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="file-download"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.download') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-url">
+					<n8n-menu-item index="workflow-import-url" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="cloud"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromUrl') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-file">
+					<n8n-menu-item index="workflow-import-file" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="hdd"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromFile') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-settings" :disabled="!onWorkflowPage || !currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.settings') }}</span>
@@ -311,6 +311,9 @@ export default mixins(
 			},
 			sidebarMenuBottomItems(): IMenuItem[] {
 				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'bottom');
+			},
+			onWorkflowPage(): boolean {
+				return this.$route.meta && this.$route.meta.nodeView;
 			},
 		},
 		methods: {

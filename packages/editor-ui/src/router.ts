@@ -44,6 +44,9 @@ export default new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
+			meta: {
+				nodeView: true,
+			},
 		},
 		{
 			path: '/templates/:id',
@@ -90,6 +93,9 @@ export default new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
+			meta: {
+				nodeView: true,
+			},
 		},
 		{
 			path: '/workflow/:name',
@@ -98,6 +104,9 @@ export default new Router({
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				nodeView: true,
 			},
 		},
 		{
@@ -119,6 +128,7 @@ export default new Router({
 				default: NodeView,
 			},
 			meta: {
+				nodeView: true,
 				telemetry: {
 					disabled: true,
 				},
