@@ -12,21 +12,23 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 import { JwtPayload, N8nApp } from '../Interfaces';
 import { authenticationMethods } from './auth';
 import config = require('../../../config');
+import { AUTH_COOKIE_NAME } from '../../constants';
 import { issueCookie, resolveJwtContent } from '../auth/jwt';
 import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
 import { ownerNamespace } from './owner';
-import { isAuthenticatedRequest } from '../UserManagementHelper';
+import { isAuthenticatedRequest, isPostUsersId } from '../UserManagementHelper';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
+	// needed for testing; not adding overhead since it directly returns if req.cookies exists
 	this.app.use(cookieParser());
 
 	const options = {
 		jwtFromRequest: (req: Request) => {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			return (req.cookies?.['n8n-auth'] as string | undefined) ?? null;
+			return (req.cookies?.[AUTH_COOKIE_NAME] as string | undefined) ?? null;
 		},
 		secretOrKey: config.get('userManagement.jwtSecret') as string,
 	};
@@ -55,13 +57,12 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			req.url.startsWith('/css/') ||
 			req.url.startsWith('/js/') ||
 			req.url.startsWith('/fonts/') ||
+			req.url.includes('.svg') ||
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
 			req.url.includes('login') ||
 			req.url.includes('logout') ||
 			req.url.startsWith(`/${restEndpoint}/resolve-signup-token`) ||
-			(req.method === 'POST' &&
-				new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url) &&
-				!req.url.includes('reinvite')) ||
+			isPostUsersId(req, restEndpoint) ||
 			req.url.startsWith(`/${restEndpoint}/forgot-password`) ||
 			req.url.startsWith(`/${restEndpoint}/resolve-password-token`) ||
 			req.url.startsWith(`/${restEndpoint}/change-password`)
@@ -101,7 +102,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			(req.method === 'DELETE' &&
 				new RegExp(`/${restEndpoint}/users/[^/]+`, 'gm').test(trimmedUrl)) ||
 			(req.method === 'POST' &&
-				new RegExp(`/${restEndpoint}/users/[^/]/reinvite+`, 'gm').test(trimmedUrl))
+				new RegExp(`/${restEndpoint}/users/[^/]+/reinvite`, 'gm').test(trimmedUrl))
 		) {
 			Logger.verbose('User attempted to access endpoint without authorization', {
 				endpoint: `${req.method} ${trimmedUrl}`,

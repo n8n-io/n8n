@@ -47,6 +47,7 @@ import {
 	Raw,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
+import * as cookieParser from 'cookie-parser';
 import * as history from 'connect-history-api-fallback';
 import * as os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -166,7 +167,7 @@ import type {
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
-import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsEndpoints } from './api/namespaces/credentials';
 
 require('body-parser-xml')(bodyParser);
@@ -315,7 +316,7 @@ class App {
 				enabled:
 					config.get('userManagement.disabled') === false ||
 					config.get('userManagement.hasOwner') === true,
-				showSetupOnFirstLoad: !config.get('userManagement.hasOwner'),
+				// showSetupOnFirstLoad: config.get('userManagement.disabled') === false, // && config.get('userManagement.skipOwnerSetup') === true
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
@@ -526,6 +527,9 @@ class App {
 			});
 		}
 
+		// Parse cookies for easier access
+		this.app.use(cookieParser());
+
 		// Get push connections
 		this.app.use(
 			async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -536,7 +540,7 @@ class App {
 					}
 
 					try {
-						const authCookie = req.headers.cookie?.replace('n8n-auth=', '') ?? '';
+						const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
 						await resolveJwt(authCookie);
 					} catch (error) {
 						res.status(401).send('Unauthorized');

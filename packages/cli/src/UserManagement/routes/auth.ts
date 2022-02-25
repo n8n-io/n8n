@@ -5,16 +5,18 @@ import { Request, Response } from 'express';
 import { compare } from 'bcryptjs';
 import { IDataObject } from 'n8n-workflow';
 import { Db, ResponseHelper } from '../..';
+import { AUTH_COOKIE_NAME } from '../../constants';
 import { issueCookie, resolveJwt } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 
 export function authenticationMethods(this: N8nApp): void {
-	// ----------------------------------------
-	// login a user
-	// ----------------------------------------
-
+	/**
+	 * Log in a user.
+	 *
+	 * Authless endpoint.
+	 */
 	this.app.post(
 		`/${this.restEndpoint}/login`,
 		ResponseHelper.send(async (req: Request, res: Response): Promise<PublicUser> => {
@@ -53,12 +55,18 @@ export function authenticationMethods(this: N8nApp): void {
 		}),
 	);
 
+	/**
+	 * Manually check the `n8n-auth` cookie.
+	 */
 	this.app.get(
 		`/${this.restEndpoint}/login`,
 		ResponseHelper.send(async (req: Request, res: Response): Promise<PublicUser> => {
 			// Manually check the existing cookie.
+			const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
 
-			const cookieContents = req.cookies?.['n8n-auth'] as string | undefined;
+			if (!cookieContents) {
+				throw new ResponseHelper.ResponseError('Missing n8n-auth cookie', undefined, 401);
+			}
 
 			let user: User;
 			if (cookieContents) {
@@ -96,10 +104,15 @@ export function authenticationMethods(this: N8nApp): void {
 		}),
 	);
 
+	/**
+	 * Log out a user.
+	 *
+	 * Authless endpoint.
+	 */
 	this.app.post(
 		`/${this.restEndpoint}/logout`,
 		ResponseHelper.send(async (req: Request, res: Response): Promise<IDataObject> => {
-			res.clearCookie('n8n-auth');
+			res.clearCookie(AUTH_COOKIE_NAME);
 			return {
 				loggedOut: true,
 			};

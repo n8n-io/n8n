@@ -150,7 +150,7 @@ export function usersNamespace(this: N8nApp): void {
 			const emailingResults = await Promise.all(
 				usersPendingSetup.map(async ([email, id]) => {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					const inviteAcceptUrl = `${baseUrl}/signup/inviterId=${req.user.id}&inviteeId=${id}`;
+					const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${id}`;
 					const result = await mailer.invite({
 						email,
 						inviteAcceptUrl,
@@ -186,6 +186,8 @@ export function usersNamespace(this: N8nApp): void {
 
 	/**
 	 * Validate invite token to enable invitee to set up their account.
+	 *
+	 * Authless endpoint.
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/resolve-signup-token`,
@@ -441,7 +443,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			const baseUrl = getInstanceBaseUrl();
-			const inviteAcceptUrl = `${baseUrl}/signup/inviterId=${req.user.id}&inviteeId=${reinvitee.id}`;
+			const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${reinvitee.id}`;
 
 			const result = await getInstance().invite({
 				email: reinvitee.email,
