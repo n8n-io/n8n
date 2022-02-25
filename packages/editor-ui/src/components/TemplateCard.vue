@@ -40,7 +40,6 @@
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes, abbreviateNumber } from './helpers';
-import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 import NodeList from './NodeList.vue';
 
 export default mixins(genericHelpers).extend({
@@ -68,7 +67,6 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	components: {
-		HoverableNodeIcon,
 		NodeList,
 	},
 	data() {

@@ -14,7 +14,7 @@
 							:nodeType="node"
 							:title="node.name"
 							:size="24"
-							@click="redirectToSearchPage"
+							@click="redirectToSearchPage(node)"
 						/>
 					</div>
 				</div>
