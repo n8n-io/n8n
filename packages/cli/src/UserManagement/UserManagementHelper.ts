@@ -80,21 +80,8 @@ export function sanitizeUser(user: User): PublicUser {
 	return sanitizedUser;
 }
 
-async function getCredentialIdByName(name: string): Promise<string | number | null> {
-	const credential = await Db.collections.Credentials!.findOne({
-		where: {
-			name,
-		},
-	});
-	if (credential) {
-		return credential.id;
-	}
-	return null;
-}
-
 export async function getUserById(userId: string): Promise<User> {
-	const user = await Db.collections.User!.findOneOrFail({
-		where: { id: userId },
+	const user = await Db.collections.User!.findOneOrFail(userId, {
 		relations: ['globalRole'],
 	});
 	return user;
@@ -103,15 +90,22 @@ export async function getUserById(userId: string): Promise<User> {
 export async function checkPermissionsForExecution(
 	workflow: Workflow,
 	userId: string,
-): Promise<void> {
+): Promise<boolean> {
 	const credentialIds = new Set();
 	const nodeNames = Object.keys(workflow.nodes);
+	// Iterate over all nodes
 	nodeNames.forEach((nodeName) => {
 		const node = workflow.nodes[nodeName];
+		// And check if any of the nodes uses credentials.
 		if (node.credentials) {
 			const credentialNames = Object.keys(node.credentials);
+			// For every credential this node uses
 			credentialNames.forEach((credentialName) => {
 				const credentialDetail = node.credentials![credentialName];
+				// If it does not contain an id, it means it is a very old
+				// workflow. Nowaways it should not happen anymore.
+				// Migrations should handle the case where a credential does
+				// not have an id.
 				if (!credentialDetail.id) {
 					throw new Error(
 						'Error initializing workflow: credential ID not present. Please open the workflow and save it to fix this error.',
@@ -122,14 +116,17 @@ export async function checkPermissionsForExecution(
 		}
 	});
 
-	// We converted all IDs to string so that the set cannot contain duplicates.
+	// Now that we obtained all credential IDs used by this workflow, we can
+	// now check if the owner of this workflow has access to all of them.
 
 	const ids = Array.from(credentialIds);
 
 	if (ids.length === 0) {
-		return;
+		// If the workflow does not use any credential, then we're fine
+		return true;
 	}
 
+	// Check for the user's permission to all used credentials
 	const credentialCount = await Db.collections.SharedCredentials!.count({
 		where: {
 			user: { id: userId },
@@ -137,7 +134,11 @@ export async function checkPermissionsForExecution(
 		},
 	});
 
+	// Considering the user needs to have access to all credentials
+	// then both arrays (allowed credentials vs used credentials)
+	// must be the same length
 	if (ids.length !== credentialCount) {
 		throw new Error('One or more of the required credentials was not found in the database.');
 	}
+	return true;
 }

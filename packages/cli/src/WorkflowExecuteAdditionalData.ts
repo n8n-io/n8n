@@ -66,6 +66,7 @@ import {
 	getUserById,
 	getWorkflowOwner,
 } from './UserManagement/UserManagementHelper';
+import { whereClause } from './WorkflowHelpers';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -798,14 +799,22 @@ export async function getWorkflowData(
 			await Db.init();
 		}
 		const user = await getUserById(userId);
-		const qb = Db.collections.Workflow!.createQueryBuilder('w');
-		if (user.globalRole.name !== 'owner') {
-			qb.innerJoin('w.shared', 'shared');
-			qb.andWhere('shared.user = :userId', { userId: user.id });
-		}
-		qb.andWhere('w.id = :id', { id: workflowInfo.id });
+		let relations = ['workflow', 'workflow.tags'];
 
-		workflowData = await qb.getOne();
+		if (config.get('workflowTagsDisabled')) {
+			relations = relations.filter((relation) => relation !== 'workflow.tags');
+		}
+
+		const shared = await Db.collections.SharedWorkflow!.findOne({
+			relations,
+			where: whereClause({
+				user,
+				entityType: 'workflow',
+				entityId: workflowInfo.id,
+			}),
+		});
+
+		workflowData = shared?.workflow;
 
 		if (workflowData === undefined) {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
