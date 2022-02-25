@@ -46,7 +46,7 @@ import mixins from 'vue-typed-mixins';
 export default mixins(genericHelpers).extend({
 	name: 'TemplateFilters',
 	props: {
-		areCategoriesPrepopulated: {
+		sortOnPopulate: {
 			type: Boolean,
 			default: false,
 		},
@@ -67,7 +67,7 @@ export default mixins(genericHelpers).extend({
 	watch: {
 		categories: {
 			handler(categories: ITemplatesCategory[]) {
-				if (!this.areCategoriesPrepopulated) {
+				if (!this.sortOnPopulate) {
 					this.sortedCategories = categories;
 				} else {
 					const selected = this.selected || [];

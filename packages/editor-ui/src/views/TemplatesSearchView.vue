@@ -21,7 +21,7 @@
 				<div :class="$style.filters">
 					<TemplateFilters
 						:categories="allCategories"
-						:areCategoriesPrepopulated="areCategoriesPrepopulated"
+						:sortOnPopulate="areCategoriesPrepopulated"
 						:loading="loadingCategories"
 						:selected="categories"
 						@clear="onCategoryUnselected"
