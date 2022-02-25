@@ -11,7 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import { User } from './databases/entities/User';
-import { IExecutionDeleteFilter, IWorkflowDb } from '.';
+import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthenticatedRequest<
@@ -83,7 +83,7 @@ export declare namespace CredentialRequest {
 
 	type Delete = Get;
 
-	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string; includeData: string }>;
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
 	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
 

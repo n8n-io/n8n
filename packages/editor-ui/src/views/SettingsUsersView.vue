@@ -27,7 +27,7 @@
 					:message="$locale.baseText('SMTP_TO_ADD_USERS_WARNING')"
 					:popupClass="$style.alert"
 				/>
-				<n8n-users-list :users="allUsers" @delete="onDelete" @reinvite="onReinvite" />
+				<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
 			</div>
 		</div>
 	</SettingsView>

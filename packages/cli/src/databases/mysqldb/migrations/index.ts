@@ -10,6 +10,8 @@ import { UniqueWorkflowNames1620826335440 } from './1620826335440-UniqueWorkflow
 import { CertifyCorrectCollation1623936588000 } from './1623936588000-CertifyCorrectCollation';
 import { AddWaitColumnId1626183952959 } from './1626183952959-AddWaitColumn';
 import { UpdateWorkflowCredentials1630451444017 } from './1630451444017-UpdateWorkflowCredentials';
+import { AddExecutionEntityIndexes1644424784709 } from './1644424784709-AddExecutionEntityIndexes';
+import { CreateUserManagement1636626154933 } from './1636626154933-CreateUserManagement';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -24,4 +26,6 @@ export const mysqlMigrations = [
 	CertifyCorrectCollation1623936588000,
 	AddWaitColumnId1626183952959,
 	UpdateWorkflowCredentials1630451444017,
+	AddExecutionEntityIndexes1644424784709,
+	CreateUserManagement1636626154933,
 ];

@@ -10,7 +10,9 @@ import {
 } from 'request';
 
 import {
-	IBinaryData, IDataObject, NodeApiError, NodeOperationError,
+	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 // Interface in n8n
@@ -185,6 +187,7 @@ export function getImageBySize(photos: IDataObject[], size: string): IDataObject
 		'small': 0,
 		'medium': 1,
 		'large': 2,
+		'extraLarge': 3,
 	} as IDataObject;
 
 	const index = sizes[size] as number;

@@ -6,6 +6,8 @@ import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
+import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
@@ -19,11 +21,14 @@ import config = require('../../../config');
 export function passwordResetNamespace(this: N8nApp): void {
 	/**
 	 * Send a password reset email.
+	 *
+	 * Authless endpoint.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/forgot-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.Email) => {
 			if (config.get('userManagement.emails.mode') === '') {
+				Logger.debug('Request to send password reset email failed because emailing was not set up');
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to request a password reset email',
 					undefined,
@@ -34,16 +39,29 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { email } = req.body;
 
 			if (!email) {
+				Logger.debug(
+					'Request to send password reset email failed because of missing email in payload',
+					{ payload: req.body },
+				);
 				throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 			}
 
 			if (!validator.isEmail(email)) {
+				Logger.debug(
+					'Request to send password reset email failed because of invalid email in payload',
+					{ invalidEmail: email },
+				);
 				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
-			const user = await Db.collections.User!.findOne({ email });
+			// User should just be able to reset password if one is already present
+			const user = await Db.collections.User!.findOne({ email, password: Not(IsNull()) });
 
-			if (!user) {
+			if (!user || !user.password) {
+				Logger.debug(
+					'Request to send password reset email failed because no user was found for the provided email',
+					{ invalidEmail: email },
+				);
 				return;
 			}
 
@@ -51,25 +69,31 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const { id, firstName, lastName, resetPasswordToken } = user;
 
-			await Db.collections.User!.update(id, { resetPasswordToken });
+			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
+
+			await Db.collections.User!.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
 
 			const baseUrl = getBaseUrl();
 			const url = new URL('/change-password', baseUrl);
 			url.searchParams.append('userId', id);
 			url.searchParams.append('token', resetPasswordToken);
 
-			void UserManagementMailer.getInstance().passwordReset({
+			await UserManagementMailer.getInstance().passwordReset({
 				email,
 				firstName,
 				lastName,
 				passwordResetUrl: url.toString(),
 				domain: baseUrl,
 			});
+
+			Logger.info('Sent password reset email successfully', { userId: user.id, email });
 		}),
 	);
 
 	/**
 	 * Verify password reset token and user ID.
+	 *
+	 * Authless endpoint.
 	 */
 	this.app.get(
 		`/${this.restEndpoint}/resolve-password-token`,
@@ -77,19 +101,43 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { token: resetPasswordToken, userId: id } = req.query;
 
 			if (!resetPasswordToken || !id) {
+				Logger.debug(
+					'Request to resolve password token failed because of missing password reset token or user ID in query string',
+					{
+						queryString: req.query,
+					},
+				);
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
-			const user = await Db.collections.User!.findOne({ resetPasswordToken, id });
+			// Timestamp is saved in seconds
+			const currentTimestamp = Math.floor(Date.now() / 1000);
+
+			const user = await Db.collections.User!.findOne({
+				id,
+				resetPasswordToken,
+				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+			});
 
 			if (!user) {
+				Logger.debug(
+					'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+					{
+						userId: id,
+						resetPasswordToken,
+					},
+				);
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
+
+			Logger.info('Reset-password token resolved successfully', { userId: id });
 		}),
 	);
 
 	/**
 	 * Verify password reset token and user ID and update password.
+	 *
+	 * Authless endpoint.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/change-password`,
@@ -97,21 +145,48 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const { token: resetPasswordToken, userId, password } = req.body;
 
 			if (!resetPasswordToken || !userId || !password) {
-				throw new ResponseHelper.ResponseError('Parameter missing', undefined, 400);
+				Logger.debug(
+					'Request to change password failed because of missing user ID or password or reset password token in payload',
+					{
+						payload: req.body,
+					},
+				);
+				throw new ResponseHelper.ResponseError(
+					'Missing user ID or password or reset password token',
+					undefined,
+					400,
+				);
 			}
 
 			const validPassword = validatePassword(password);
 
-			const user = await Db.collections.User!.findOne({ id: userId, resetPasswordToken });
+			// Timestamp is saved in seconds
+			const currentTimestamp = Math.floor(Date.now() / 1000);
+
+			const user = await Db.collections.User!.findOne({
+				id: userId,
+				resetPasswordToken,
+				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+			});
 
 			if (!user) {
+				Logger.debug(
+					'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+					{
+						userId,
+						resetPasswordToken,
+					},
+				);
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
 			await Db.collections.User!.update(userId, {
 				password: hashSync(validPassword, genSaltSync(10)),
 				resetPasswordToken: null,
+				resetPasswordTokenExpiration: null,
 			});
+
+			Logger.info('User password updated successfully', { userId });
 
 			await issueCookie(res, user);
 		}),

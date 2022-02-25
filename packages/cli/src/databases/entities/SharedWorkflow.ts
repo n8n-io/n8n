@@ -1,5 +1,12 @@
 /* eslint-disable import/no-cycle */
-import { BeforeUpdate, CreateDateColumn, Entity, ManyToOne, UpdateDateColumn } from 'typeorm';
+import {
+	BeforeUpdate,
+	CreateDateColumn,
+	Entity,
+	ManyToOne,
+	RelationId,
+	UpdateDateColumn,
+} from 'typeorm';
 import { IsDate, IsOptional } from 'class-validator';
 
 import config = require('../../../config');
@@ -30,11 +37,17 @@ export class SharedWorkflow {
 	@ManyToOne(() => User, (user) => user.sharedWorkflows, { primary: true })
 	user: User;
 
+	@RelationId((sharedWorkflow: SharedWorkflow) => sharedWorkflow.user)
+	userId: string;
+
 	@ManyToOne(() => WorkflowEntity, (workflow) => workflow.shared, {
 		primary: true,
 		onDelete: 'CASCADE',
 	})
 	workflow: WorkflowEntity;
+
+	@RelationId((sharedWorkflow: SharedWorkflow) => sharedWorkflow.workflow)
+	workflowId: number;
 
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	@IsOptional() // ignored by validation because set at DB level

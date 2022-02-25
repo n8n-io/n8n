@@ -3,11 +3,13 @@
 /* eslint-disable import/no-cycle */
 import { Workflow } from 'n8n-workflow';
 import { In, IsNull, Not } from 'typeorm';
+import express = require('express');
 import { PublicUser } from './Interfaces';
 import { Db, GenericHelpers, ResponseHelper } from '..';
 import config = require('../../config');
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
 import { Role } from '../databases/entities/Role';
+import { AuthenticatedRequest } from '../requests';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
 	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
@@ -76,7 +78,14 @@ export function validatePassword(password?: string): string {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User): PublicUser {
-	const { password, resetPasswordToken, createdAt, updatedAt, ...sanitizedUser } = user;
+	const {
+		password,
+		resetPasswordToken,
+		resetPasswordTokenExpiration,
+		createdAt,
+		updatedAt,
+		...sanitizedUser
+	} = user;
 	return sanitizedUser;
 }
 
@@ -141,4 +150,19 @@ export async function checkPermissionsForExecution(
 		throw new Error('One or more of the required credentials was not found in the database.');
 	}
 	return true;
+}
+
+/**
+ * Check if the endpoint is `POST /users/:id`.
+ */
+export function isPostUsersId(req: express.Request, restEndpoint: string): boolean {
+	return (
+		req.method === 'POST' &&
+		new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url) &&
+		!req.url.includes('reinvite')
+	);
+}
+
+export function isAuthenticatedRequest(request: express.Request): request is AuthenticatedRequest {
+	return request.user !== undefined;
 }
