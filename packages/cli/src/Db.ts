@@ -178,17 +178,20 @@ export async function init(
 		}
 	}
 
-	collections.Credentials = getRepository(entities.CredentialsEntity);
-	collections.Execution = getRepository(entities.ExecutionEntity);
-	collections.Workflow = getRepository(entities.WorkflowEntity);
-	collections.Webhook = getRepository(entities.WebhookEntity);
-	collections.Tag = getRepository(entities.TagEntity);
+	collections.Credentials = getRepository(entities.CredentialsEntity, testConnectionOptions?.name);
+	collections.Execution = getRepository(entities.ExecutionEntity, testConnectionOptions?.name);
+	collections.Workflow = getRepository(entities.WorkflowEntity, testConnectionOptions?.name);
+	collections.Webhook = getRepository(entities.WebhookEntity, testConnectionOptions?.name);
+	collections.Tag = getRepository(entities.TagEntity, testConnectionOptions?.name);
 
-	collections.Role = getRepository(entities.Role);
-	collections.User = getRepository(entities.User);
-	collections.SharedCredentials = getRepository(entities.SharedCredentials);
-	collections.SharedWorkflow = getRepository(entities.SharedWorkflow);
-	collections.Settings = getRepository(entities.Settings);
+	collections.Role = getRepository(entities.Role, testConnectionOptions?.name);
+	collections.User = getRepository(entities.User, testConnectionOptions?.name);
+	collections.SharedCredentials = getRepository(
+		entities.SharedCredentials,
+		testConnectionOptions?.name,
+	);
+	collections.SharedWorkflow = getRepository(entities.SharedWorkflow, testConnectionOptions?.name);
+	collections.Settings = getRepository(entities.Settings, testConnectionOptions?.name);
 
 	return collections;
 }

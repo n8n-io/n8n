@@ -1,6 +1,5 @@
 import { hashSync, genSaltSync } from 'bcryptjs';
 import express = require('express');
-import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
@@ -21,17 +20,22 @@ import { getGlobalOwnerRole, toObject } from './shared/utils';
 
 const dbType = config.get('database.type');
 let app: express.Application;
+let testDbName = '';
+let bootstrapName = '';
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
-	await utils.initTestDb();
+	const initResult = await utils.initTestDb();
+	testDbName = initResult.testDbName;
+	bootstrapName = initResult.bootstrapName;
+
 	globalOwnerRole = await getGlobalOwnerRole();
 	utils.initLogger();
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await utils.terminateTestDb(testDbName, bootstrapName);
 });
 
 describe('Owner shell', () => {
@@ -40,7 +44,7 @@ describe('Owner shell', () => {
 	});
 
 	afterEach(async () => {
-		await utils.truncate(['User']);
+		await utils.truncate(['User'], testDbName);
 	});
 
 	test('GET /me should return sanitized owner shell', async () => {
@@ -179,7 +183,7 @@ describe('Owner shell', () => {
 			expect(toObject(response.body)).toEqual(SUCCESS_RESPONSE_BODY);
 
 			const { personalizationAnswers: answers } = await Db.collections.User!.findOneOrFail();
-			// @ts-ignore
+			// @ts-ignore TODO: JSON.parse() at model level
 			const storedAnswers = dbType === 'postgresdb' ? JSON.parse(answers) : answers;
 
 			expect(storedAnswers).toEqual(validPayload);
@@ -216,7 +220,7 @@ describe('Member', () => {
 	});
 
 	afterEach(async () => {
-		await utils.truncate(['User']);
+		await utils.truncate(['User'], testDbName);
 	});
 
 	test('GET /me should return sanitized member', async () => {
@@ -355,7 +359,7 @@ describe('Member', () => {
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
 			const { personalizationAnswers: answers } = await Db.collections.User!.findOneOrFail();
-			// @ts-ignore
+			// @ts-ignore TODO: JSON.parse() at model level
 			const storedAnswers = dbType === 'postgresdb' ? JSON.parse(answers) : answers;
 
 			expect(storedAnswers).toEqual(validPayload);
@@ -378,7 +382,7 @@ describe('Owner', () => {
 	});
 
 	afterEach(async () => {
-		await utils.truncate(['User']);
+		await utils.truncate(['User'], testDbName);
 	});
 
 	test('GET /me should return sanitized owner', async () => {

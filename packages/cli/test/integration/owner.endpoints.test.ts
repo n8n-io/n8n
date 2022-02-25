@@ -1,5 +1,4 @@
 import express = require('express');
-import { getConnection } from 'typeorm';
 import validator from 'validator';
 
 import * as utils from './shared/utils';
@@ -13,10 +12,14 @@ import {
 } from './shared/random';
 
 let app: express.Application;
+let testDbName = '';
+let bootstrapName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['owner'], applyAuth: true });
-	await utils.initTestDb();
+	const initResult = await utils.initTestDb();
+	testDbName = initResult.testDbName;
+	bootstrapName = initResult.bootstrapName;
 
 	utils.initLogger();
 });
@@ -26,11 +29,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate(['User']);
+	await utils.truncate(['User'], testDbName);
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await utils.terminateTestDb(testDbName, bootstrapName);
 });
 
 test('POST /owner should create owner and enable hasOwner setting', async () => {

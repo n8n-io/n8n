@@ -26,28 +26,28 @@ export const SQLITE_TEST_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
 //            postgres
 // ----------------------------------
 
-/**
- * Bootstrap connection used for creating and dropping test Postgres DBs.
- */
-export const POSTGRES_BOOTSTRAP_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
-	name: 'bootstrap',
-	type: 'postgres',
-	database: 'postgres',
-	host: 'localhost',
-	port: 5432,
-	username: 'postgres', // TODO: Make configurable
-	password: 'password', // TODO: Make configurable
-	schema: 'public',
-};
+export const getPostgresBootstrapConnectionOptions = ({ name }: { name: string }): ConnectionOptions => {
+	return {
+		name,
+		type: 'postgres',
+		database: 'postgres',
+		host: 'localhost',
+		port: 5432,
+		username: 'postgres', // TODO: Make configurable
+		password: 'password', // TODO: Make configurable
+		schema: 'public',
+	};
+}
 
 export const getPostgresConnectionOptions = ({
-	databaseName,
+	name,
 }: {
-	databaseName: string;
+	name: string;
 }): ConnectionOptions => {
 	return {
+		name,
 		type: 'postgres',
-		database: databaseName,
+		database: name,
 		host: 'localhost',
 		port: 5432,
 		password: 'password', // TODO: Make configurable

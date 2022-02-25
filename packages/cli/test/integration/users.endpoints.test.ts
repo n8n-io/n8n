@@ -1,5 +1,4 @@
 import express = require('express');
-import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
@@ -21,6 +20,8 @@ import * as UMHelper from '../../src/UserManagement/UserManagementHelper';
 import { compare } from 'bcryptjs';
 
 let app: express.Application;
+let testDbName = '';
+let bootstrapName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
@@ -28,7 +29,9 @@ let credentialOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
-	await utils.initTestDb();
+	const initResult = await utils.initTestDb();
+	testDbName = initResult.testDbName;
+	bootstrapName = initResult.bootstrapName;
 
 	const [
 		fetchedGlobalOwnerRole,
@@ -46,7 +49,10 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await utils.truncate(['User', 'Workflow', 'Credentials', 'SharedCredentials', 'SharedWorkflow']);
+	await utils.truncate(
+		['User', 'Workflow', 'Credentials', 'SharedCredentials', 'SharedWorkflow'],
+		testDbName,
+	);
 
 	jest.isolateModules(() => {
 		jest.mock('../../config');
@@ -67,8 +73,8 @@ beforeEach(async () => {
 	UMHelper.isEmailSetUp = false;
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await utils.terminateTestDb(testDbName, bootstrapName);
 });
 
 test('GET /users should return all users', async () => {
@@ -308,12 +314,10 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 
 	const second = await authOwnerAgent.get('/resolve-signup-token').query({ inviteeId });
 
-	const third = await authOwnerAgent
-		.get('/resolve-signup-token')
-		.query({
-			inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
-			inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
-		});
+	const third = await authOwnerAgent.get('/resolve-signup-token').query({
+		inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
+		inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
+	});
 
 	// user is already setup, thus call should error
 	const fourth = await authOwnerAgent

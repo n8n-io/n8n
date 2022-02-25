@@ -1,6 +1,5 @@
 import { hashSync, genSaltSync } from 'bcryptjs';
 import express = require('express');
-import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
@@ -15,11 +14,16 @@ import { getGlobalOwnerRole } from './shared/utils';
 let globalOwnerRole: Role;
 
 let app: express.Application;
+let testDbName = '';
+let bootstrapName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['auth'], applyAuth: true });
-	await utils.initTestDb();
-	await utils.truncate(['User']);
+	const initResult = await utils.initTestDb();
+	testDbName = initResult.testDbName;
+	bootstrapName = initResult.bootstrapName;
+
+	await utils.truncate(['User'], testDbName);
 
 	globalOwnerRole = await getGlobalOwnerRole();
 	utils.initLogger();
@@ -44,11 +48,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate(['User']);
+	await utils.truncate(['User'], testDbName);
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await utils.terminateTestDb(testDbName, bootstrapName);
 });
 
 test('POST /login should log user in', async () => {

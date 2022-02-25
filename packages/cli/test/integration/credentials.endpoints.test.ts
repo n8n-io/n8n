@@ -1,5 +1,4 @@
 import express = require('express');
-import { getConnection } from 'typeorm';
 import { UserSettings } from 'n8n-core';
 
 import { Db } from '../../src';
@@ -8,6 +7,8 @@ import * as utils from './shared/utils';
 import type { SaveCredentialFunction } from './shared/types';
 
 let app: express.Application;
+let testDbName = '';
+let bootstrapName = '';
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
@@ -16,7 +17,10 @@ beforeAll(async () => {
 		applyAuth: true,
 		externalHooks: true,
 	});
-	await utils.initTestDb();
+	const initResult = await utils.initTestDb();
+	testDbName = initResult.testDbName;
+	bootstrapName = initResult.bootstrapName;
+
 	utils.initConfigFile();
 
 	const credentialOwnerRole = await utils.getCredentialOwnerRole();
@@ -28,11 +32,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate(['User', 'Credentials', 'SharedCredentials']);
+	await utils.truncate(['User', 'Credentials', 'SharedCredentials'], testDbName);
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await utils.terminateTestDb(testDbName, bootstrapName);
 });
 
 test('POST /credentials should create cred', async () => {

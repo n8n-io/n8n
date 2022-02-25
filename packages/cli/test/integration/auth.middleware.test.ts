@@ -1,6 +1,5 @@
 import express = require('express');
 import * as request from 'supertest';
-import { getConnection } from 'typeorm';
 import {
 	REST_PATH_SEGMENT,
 	ROUTES_REQUIRING_AUTHORIZATION,
@@ -10,15 +9,19 @@ import {
 import * as utils from './shared/utils';
 
 let app: express.Application;
+let testDbName = '';
+let bootstrapName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ applyAuth: true, namespaces: ['me', 'auth', 'owner', 'users'] });
-	await utils.initTestDb();
+	const initResult = await utils.initTestDb();
+	testDbName = initResult.testDbName;
+	bootstrapName = initResult.bootstrapName;
 	utils.initLogger();
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await utils.terminateTestDb(testDbName, bootstrapName);
 });
 
 ROUTES_REQUIRING_AUTHENTICATION.forEach((route) => {

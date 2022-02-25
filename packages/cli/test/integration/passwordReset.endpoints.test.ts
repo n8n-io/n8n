@@ -1,5 +1,4 @@
 import express = require('express');
-import { getConnection } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import * as utils from './shared/utils';
@@ -16,11 +15,16 @@ import { Role } from '../../src/databases/entities/Role';
 
 let app: express.Application;
 let globalOwnerRole: Role;
+let testDbName = '';
+let bootstrapName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['passwordReset'], applyAuth: true });
-	await utils.initTestDb();
-	await utils.truncate(['User']);
+	const initResult = await utils.initTestDb();
+	testDbName = initResult.testDbName;
+	bootstrapName = initResult.bootstrapName;
+
+	await utils.truncate(['User'], testDbName);
 
 	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
 		name: 'owner',
@@ -48,11 +52,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate(['User']);
+	await utils.truncate(['User'], testDbName);
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await utils.terminateTestDb(testDbName, bootstrapName);
 });
 
 test('POST /forgot-password should send password reset email', async () => {

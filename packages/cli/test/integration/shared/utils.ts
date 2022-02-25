@@ -10,7 +10,7 @@ import { createTestAccount } from 'nodemailer';
 import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
 import { Credentials, UserSettings } from 'n8n-core';
-import { Connection, createConnection, getConnection } from 'typeorm';
+import { createConnection, getConnection } from 'typeorm';
 
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
@@ -32,8 +32,8 @@ import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
 import {
+	getPostgresBootstrapConnectionOptions,
 	getPostgresConnectionOptions,
-	POSTGRES_BOOTSTRAP_CONNECTION_OPTIONS,
 	SQLITE_TEST_CONNECTION_OPTIONS,
 } from './connectionOptions';
 
@@ -126,27 +126,44 @@ export function initConfigFile() {
 // ----------------------------------
 
 export async function initTestDb() {
-	const dbType = config.get('database.type');
-
-	if (dbType === 'postgresdb') {
-		const bootstrap = await createConnection(POSTGRES_BOOTSTRAP_CONNECTION_OPTIONS);
-		await removeTestPostgresDatabases(bootstrap);
-		const newDatabaseName = await createTestPostgresDatabase(bootstrap);
-		bootstrap.close();
-
-		const options = getPostgresConnectionOptions({ databaseName: newDatabaseName });
-		return Db.init(options);
-	}
+	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysql';
 
 	if (dbType === 'sqlite') {
 		await Db.init(SQLITE_TEST_CONNECTION_OPTIONS);
-		return getConnection().runMigrations({ transaction: 'none' });
+		await getConnection().runMigrations({ transaction: 'none' });
+
+		return { testDbName: 'temp', bootstrapName: 'temp' }; // TODO
+	}
+
+	if (dbType === 'postgresdb') {
+		const bootstrapName = `n8n_bs_${Date.now()}`;
+		const bsConnectionOptions = getPostgresBootstrapConnectionOptions({ name: bootstrapName });
+		await createConnection(bsConnectionOptions);
+		const testDbName = await createPostgresTestDb(bootstrapName);
+
+		const pgConnectionOptions = getPostgresConnectionOptions({ name: testDbName });
+		await Db.init(pgConnectionOptions);
+
+		return { testDbName, bootstrapName };
 	}
 
 	throw new Error('MySQL test connection pending implementation'); // TODO
 }
 
-export async function removeTestPostgresDatabases(bootstrap: Connection) {
+export async function terminateTestDb(testDbName: string, bootstrapName: string) {
+	const dbType = config.get('database.type');
+
+	if (dbType === 'postgresdb') {
+		await getConnection(testDbName).close();
+
+		await removePostgresTestDb(bootstrapName);
+		await getConnection(bootstrapName).close();
+	}
+}
+
+export async function removePostgresTestDb(bootstrapName: string) {
+	const bootstrap = getConnection(bootstrapName);
+
 	const results: { db_name: string }[] = await bootstrap.query(
 		'SELECT datname as db_name FROM pg_database;',
 	);
@@ -155,17 +172,23 @@ export async function removeTestPostgresDatabases(bootstrap: Connection) {
 		.filter(({ db_name }) => db_name.startsWith('n8n_test_pg_'))
 		.map(({ db_name }) => bootstrap.query(`DROP DATABASE ${db_name};`));
 
-	Promise.all(promises);
+	await Promise.all(promises);
 }
 
-export async function createTestPostgresDatabase(bootstrap: Connection) {
-	const newDatabaseName = `n8n_test_pg_${Date.now()}`;
-	await bootstrap.query(`CREATE DATABASE ${newDatabaseName};`);
+export async function createPostgresTestDb(bootstrapName: string) {
+	const testDbName = `n8n_test_pg_${Date.now()}`;
+	await getConnection(bootstrapName).query(`CREATE DATABASE ${testDbName};`);
 
-	return newDatabaseName;
+	return testDbName;
 }
 
-export async function truncate(entities: Array<keyof IDatabaseCollections>) {
+/**
+ * Truncate tables for an array of entities.
+ *
+ * @param entities Array of entity names whose tables to truncate.
+ * @param testDbName Name of the test DB to truncate tables in.
+ */
+export async function truncate(entities: Array<keyof IDatabaseCollections>, testDbName: string) {
 	const dbType = config.get('database.type');
 
 	if (dbType === 'sqlite') {
@@ -175,7 +198,6 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>) {
 	}
 
 	if (dbType === 'postgresdb') {
-		const tablePrefix = config.get('database.tablePrefix');
 		const map = {
 			Credentials: 'credentials_entity',
 			Workflow: 'workflow_entity',
@@ -191,14 +213,15 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>) {
 
 		return Promise.all(
 			entities.map((entity) =>
-				getConnection().query(
-					`TRUNCATE TABLE ${tablePrefix}"${map[entity]}" RESTART IDENTITY CASCADE;`,
+				getConnection(testDbName).query(
+					`TRUNCATE TABLE "${map[entity]}" RESTART IDENTITY CASCADE;`,
 				),
 			),
 		);
 	}
 
 	if (dbType === 'mysqldb') {
+		// TODO
 		// await getConnection().query('SET FOREIGN_KEY_CHECKS = 0;');
 		// await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
 		// return getConnection().query('SET FOREIGN_KEY_CHECKS = 1;');
