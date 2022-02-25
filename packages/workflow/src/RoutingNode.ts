@@ -121,7 +121,6 @@ export class RoutingNode {
 					this.additionalData,
 					this.mode,
 				);
-
 				const requestData: IRequestOptionsFromParameters = {
 					options: {
 						qs: {},
@@ -135,7 +134,6 @@ export class RoutingNode {
 				if (nodeType.description.requestOperations) {
 					requestData.requestOperations = { ...nodeType.description.requestOperations };
 				}
-
 				if (nodeType.description.requestDefaults) {
 					for (const key of Object.keys(nodeType.description.requestDefaults)) {
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,7 +141,6 @@ export class RoutingNode {
 						// Parse the headers value as expression so that we can use complex values
 						if (key === 'headers') {
 							for (const headerName of Object.keys(value)) {
-								console.log(value);
 								value[headerName] = this.getParameterValue(
 									value[headerName],
 									i,
@@ -151,7 +148,6 @@ export class RoutingNode {
 									{ $credentials: credentials },
 									true,
 								) as string;
-								console.log(value);
 							}
 						} else {
 							value = this.getParameterValue(
@@ -161,9 +157,9 @@ export class RoutingNode {
 								{ $credentials: credentials },
 								true,
 							) as string;
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(requestData.options as Record<string, any>)[key] = value;
 						}
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(requestData.options as Record<string, any>)[key] = value;
 					}
 				}
 
@@ -385,7 +381,6 @@ export class RoutingNode {
 	): Promise<INodeExecutionData[]> {
 		let responseData: IN8nHttpFullResponse;
 		requestData.options.returnFullResponse = true;
-
 		if (credentialType) {
 			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
 				executeSingleFunctions,
@@ -398,7 +393,6 @@ export class RoutingNode {
 				requestData.options as IHttpRequestOptions,
 			)) as IN8nHttpFullResponse;
 		}
-
 		let returnData: INodeExecutionData[] = [
 			{
 				json: responseData.body as IDataObject,
@@ -598,7 +592,6 @@ export class RoutingNode {
 			requestOperations: {},
 		};
 		let basePath = path ? `${path}.` : '';
-
 		if (!NodeHelpers.displayParameter(this.node.parameters, nodeProperties, this.node.parameters)) {
 			return undefined;
 		}
@@ -613,19 +606,30 @@ export class RoutingNode {
 			if (nodeProperties.routing.operations) {
 				returnData.requestOperations = { ...nodeProperties.routing.operations };
 			}
-
 			if (nodeProperties.routing.request) {
 				for (const key of Object.keys(nodeProperties.routing.request)) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					let propertyValue = (nodeProperties.routing.request as Record<string, any>)[key];
 					// If the value is an expression resolve it
-					propertyValue = this.getParameterValue(
-						propertyValue,
-						itemIndex,
-						runIndex,
-						{ ...additionalKeys, $value: parameterValue },
-						true,
-					) as string;
+					if (key === 'headers') {
+						for (const headerName of Object.keys(propertyValue)) {
+							propertyValue[headerName] = this.getParameterValue(
+								propertyValue[headerName],
+								itemIndex,
+								runIndex,
+								{ ...additionalKeys, $value: parameterValue },
+								true,
+							) as string;
+						}
+					} else {
+						propertyValue = this.getParameterValue(
+							propertyValue,
+							itemIndex,
+							runIndex,
+							{ ...additionalKeys, $value: parameterValue },
+							true,
+						) as string;
+					}
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(returnData.options as Record<string, any>)[key] = propertyValue;
 				}
@@ -822,7 +826,6 @@ export class RoutingNode {
 				}
 			}
 		}
-
 		return returnData;
 	}
 }
