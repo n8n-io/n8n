@@ -78,7 +78,6 @@ import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
 import axios, {
-	AxiosError,
 	AxiosPromise,
 	AxiosProxyConfig,
 	AxiosRequestConfig,
@@ -96,7 +95,6 @@ import {
 	IWorkflowSettings,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 } from '.';
-import { consoleTestResultHandler } from 'tslint/lib/test';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
