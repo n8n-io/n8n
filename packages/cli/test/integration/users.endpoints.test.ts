@@ -42,6 +42,7 @@ beforeAll(async () => {
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
+	utils.initTestTelemetry();
 	utils.initTestLogger();
 });
 

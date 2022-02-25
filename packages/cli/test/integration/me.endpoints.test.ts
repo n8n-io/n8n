@@ -26,6 +26,7 @@ beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
 	await utils.initTestDb();
 	globalOwnerRole = await getGlobalOwnerRole();
+	utils.initTestTelemetry();
 	utils.initLogger();
 });
 

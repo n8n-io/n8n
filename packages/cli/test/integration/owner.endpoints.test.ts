@@ -17,7 +17,7 @@ let app: express.Application;
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['owner'], applyAuth: true });
 	await utils.initTestDb();
-
+	utils.initTestTelemetry();
 	utils.initLogger();
 });
 
