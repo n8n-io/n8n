@@ -241,7 +241,7 @@ export class WorkflowDataProxy {
 				runIndex === -1 ? that.runExecutionData.resultData.runData[nodeName].length - 1 : runIndex;
 
 			if (that.runExecutionData.resultData.runData[nodeName].length < runIndex) {
-				throw new Error(`No execution data found for run "${runIndex}" of node "${nodeName}"`);
+				throw new Error(`Run ${runIndex} of node "${nodeName}" not found`);
 			}
 
 			const taskData = that.runExecutionData.resultData.runData[nodeName][runIndex].data!;
@@ -274,9 +274,7 @@ export class WorkflowDataProxy {
 			}
 
 			if (taskData.main.length < outputIndex) {
-				throw new Error(
-					`No data found from "main" input with index "${outputIndex}" via which node is connected with.`,
-				);
+				throw new Error(`Node "${nodeName}" has no branch with index ${outputIndex}.`);
 			}
 
 			executionData = taskData.main[outputIndex] as INodeExecutionData[];
@@ -479,7 +477,7 @@ export class WorkflowDataProxy {
 				// $(nodeName).all(branchIndex?, runIndex?)
 
 				if (!nodeName) {
-					return undefined;
+					throw new Error(`When calling $(), please specify a node`);
 				}
 
 				return new Proxy(
@@ -506,7 +504,12 @@ export class WorkflowDataProxy {
 									if (executionData[itemIndex]) {
 										return executionData[itemIndex];
 									}
-									return undefined;
+									throw new Error(
+										`No item found at index ${itemIndex}
+										 of branch ${branchIndex || 0}
+										 in run ${runIndex || that.runIndex}
+										 (for node "${nodeName}")`,
+									);
 								};
 							}
 							if (property === 'first') {
