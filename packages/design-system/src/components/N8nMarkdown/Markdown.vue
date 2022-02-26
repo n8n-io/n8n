@@ -106,9 +106,8 @@ export default {
 			}
 
 			const fileIdRegex = new RegExp('fileId:([0-9]+)');
-			const html = this.md.render(this.content);
+			const html = this.md.render(escapeMarkdown(this.content));
 			const safeHtml = xss(html, {
-				escapeHtml: (html: string) => escapeMarkdown(html),
 				onTagAttr: (tag, name, value, isWhiteAttr) => {
 					if (tag === 'img' && name === 'src') {
 						if (value.match(fileIdRegex)) {
