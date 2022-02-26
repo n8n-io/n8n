@@ -15,21 +15,12 @@
 
 		<div :class="$style.slider" v-else-if="collections.length">
 			<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4">
-				<Card
+				<CollectionCard
 					v-for="collection in collections"
 					:key="collection.id"
-					:loading="loading"
-					:title="collection.name"
-					@click="navigateTo(collection.id, 'TemplatesCollectionView', $event)"
-				>
-					<template v-slot:footer>
-						<n8n-text size="small" color="text-light">
-							{{ collection.workflows.length }}
-							{{ $locale.baseText('templates.workflows') }}
-						</n8n-text>
-						<NodeList :nodes="collection.nodes" :showMore="false" />
-					</template>
-				</Card>
+					:collection="collection"
+					@click="(e) => onCardClick(e, collection.id)"
+				/>
 			</agile>
 			<div :class="$style.buttons">
 				<button v-show="carouselScrollPosition > 0" :class="$style.button" @click="scrollLeft">
@@ -45,7 +36,7 @@
 
 <script lang="ts">
 import Card from '@/components/Card.vue';
-import NodeList from '@/components/NodeList.vue';
+import CollectionCard from '@/components/CollectionCard.vue';
 import VueAgile from 'vue-agile';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -82,7 +73,7 @@ export default mixins(genericHelpers).extend({
 	},
 	components: {
 		Card,
-		NodeList,
+		CollectionCard,
 		VueAgile,
 	},
 	data() {
@@ -109,22 +100,8 @@ export default mixins(genericHelpers).extend({
 				}
 			}
 		},
-		navigateTo(id: string, page: string, e: PointerEvent) {
-			if (page === 'WorkflowTemplate') {
-				this.$telemetry.track('User inserted workflow template', {
-					template_id: id,
-					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
-					source: 'collection',
-				});
-			}
-
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: page, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				this.$router.push({ name: page, params: { id } });
-			}
+		onCardClick(event: MouseEvent, id: string) {
+			this.$emit('openCollection', {event, id});
 		},
 		scrollLeft() {
 			const list = document.querySelector('.agile__list');

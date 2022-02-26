@@ -42,6 +42,7 @@
 					<CollectionsCarousel
 						:collections="collections"
 						:loading="loadingCollections"
+						@openCollection="onOpenCollection"
 					/>
 					<TemplateList
 						:infinite-scroll-enabled="true"
@@ -148,13 +149,19 @@ export default mixins(genericHelpers).extend({
 		};
 	},
 	methods: {
+		onOpenCollection({event, id}: {event: MouseEvent, id: string}) {
+			this.navigateTo(event, 'TemplatesCollectionView', id);
+		},
 		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
-			if (event.metaKey || event.ctrlKey) {
-				const route = this.$router.resolve({ name: 'TemplatesWorkflowView', params: { id } });
+			this.navigateTo(event, 'TemplatesWorkflowView', id);
+		},
+		navigateTo(e: MouseEvent, page: string, id: string) {
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({ name: page, params: { id } });
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: 'TemplatesWorkflowView', params: { id } });
+				this.$router.push({ name: page, params: { id } });
 			}
 		},
 		updateSearch() {
