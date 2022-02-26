@@ -59,6 +59,7 @@ export default {
 		},
 		variant: {
 			type: String,
+			default: 'p',
 			validator: (value: string): boolean => ['p', 'h1', 'button', 'image'].includes(value),
 		},
 	},
