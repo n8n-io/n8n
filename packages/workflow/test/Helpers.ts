@@ -654,5 +654,6 @@ export function WorkflowExecuteAdditionalData(): IWorkflowExecuteAdditionalData 
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
+		userId: '123',
 	};
 }

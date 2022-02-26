@@ -37,6 +37,7 @@ import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { User } from './databases/entities/User';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -92,6 +93,7 @@ export function isWorkflowIdValid(id: string | null | undefined | number): boole
 export async function executeErrorWorkflow(
 	workflowId: string,
 	workflowErrorData: IWorkflowErrorData,
+	runningUser: User,
 ): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
@@ -103,6 +105,15 @@ export async function executeErrorWorkflow(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
 				{ workflowId },
+			);
+			return;
+		}
+
+		const user = await getWorkflowOwner(workflowId);
+		if (user.id !== runningUser.id) {
+			// The error workflow could not be found
+			Logger.warn(
+				`An attempt to execute workflow ID ${workflowId} as error workflow was blocked due to wrong permission`,
 			);
 			return;
 		}
@@ -170,6 +181,7 @@ export async function executeErrorWorkflow(
 			executionMode,
 			executionData: runExecutionData,
 			workflowData,
+			userId: user.id,
 		};
 
 		const workflowRunner = new WorkflowRunner();
