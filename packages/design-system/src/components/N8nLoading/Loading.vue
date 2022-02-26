@@ -5,29 +5,35 @@
 				v-if="variant === 'button'"
 				:variant="variant"
 			/>
+
 			<div v-if="variant === 'h1'">
-				<el-skeleton-item
+				<div
 					v-for="(item, index) in rows"
-					:key="`${index}-${item}`"
+					:key="index"
 					:class="{
 						[$style.h1Last]: item === rows && rows > 1,
 					}"
-					:variant="variant"
-				/>
+				>
+					<el-skeleton-item
+						:variant="variant"
+					/>
+				</div>
 			</div>
 			<el-skeleton-item
 				v-if="variant === 'image'"
 				:variant="variant"
 			/>
 			<div v-if="variant === 'p'">
-				<el-skeleton-item
+				<div
 					v-for="(item, index) in rows"
-					:key="`${index}-${item}`"
+					:key="index"
 					:class="{
-						[$style.last]: item === rows && rows > 1,
-					}"
-					:variant="variant"
-				/>
+						[$style.pLast]: item === rows && rows > 1,
+					}">
+						<el-skeleton-item
+							:variant="variant"
+						/>
+				</div>
 			</div>
 		</template>
 	</el-skeleton>
@@ -67,10 +73,10 @@ export default {
 
 <style lang="scss" module>
 .h1Last {
-  width: 40% !important;
+  width: 40%;
 }
 
-.last {
-  width: 61% !important;
+.pLast {
+  width: 61%;
 }
 </style>
