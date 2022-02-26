@@ -62,6 +62,7 @@ import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
+import { setPageTitle } from '@/components/helpers';
 
 export default mixins(workflowHelpers).extend({
 	name: 'TemplatesWorkflowView',
@@ -110,6 +111,16 @@ export default mixins(workflowHelpers).extend({
 			window.scrollTo({
 				top: 0,
 			});
+		},
+	},
+	watch: {
+		template(template: ITemplatesWorkflowFull) {
+			if (template) {
+				setPageTitle(`n8n - Template template: ${template.name}`);
+			}
+			else {
+				setPageTitle(`n8n - Templates`);
+			}
 		},
 	},
 	async mounted() {
