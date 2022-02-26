@@ -2709,24 +2709,23 @@ export default mixins(
 				} catch (e) {
 				}
 			},
+			async onImportWorkflowDataEvent(data: IDataObject) {
+				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
+			},
+			async onImportWorkflowUrlEvent(data: IDataObject) {
+				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
+				if (workflowData !== undefined) {
+					await this.importWorkflowData(workflowData);
+				}
+			},
 		},
 
 		async mounted () {
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
-
-			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
-				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
-			});
-
+			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$on('newWorkflow', this.newWorkflow);
-
-			this.$root.$on('importWorkflowUrl', async (data: IDataObject) => {
-				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
-				if (workflowData !== undefined) {
-					await this.importWorkflowData(workflowData);
-				}
-			});
+			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 
 			this.startLoading();
 
@@ -2785,6 +2784,9 @@ export default mixins(
 			this.resetWorkspace();
 			this.$store.commit('setStateDirty', false);
 			window.removeEventListener('message', this.onPostMessageReceived);
+			this.$root.$off('newWorkflow', this.newWorkflow);
+			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
+			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		},
 	});
 </script>
