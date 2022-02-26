@@ -105,9 +105,9 @@ export default Vue.extend({
 	methods: {
 		abbreviateNumber,
 		filterTemplateNodes,
-		redirectToCategory(tag: ITag) {
+		redirectToCategory(id: string) {
 			this.$store.commit('templates/resetSessionId');
-			this.$router.push(`/templates?categories=${tag.id}`);
+			this.$router.push(`/templates?categories=${id}`);
 		},
 		redirectToSearchPage(node: INode) {
 			this.$store.commit('templates/resetSessionId');

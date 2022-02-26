@@ -12,7 +12,7 @@
 				<router-view />
 			</div>
 			<Modals />
-			<Telemetry v-if="!loading" />
+			<Telemetry />
 		</div>
 	</div>
 </template>
