@@ -1,6 +1,7 @@
 <template>
 	<div
 		:class="[$style.card, lastItem && $style.last, firstItem && $style.first, !loading && $style.loaded]"
+		@click="onCardClick"
 	>
 		<div :class="$style.loading" v-if="loading">
 			<n8n-loading-blocks :blocks="2" :loading="loading" />
@@ -30,7 +31,7 @@
 				v-if="useWorkflowButton"
 				type="outline"
 				label="Use workflow"
-				@click.stop="navigateTo(workflow.id, 'WorkflowTemplate', $event)"
+				@click.stop="onUseWorkflowClick"
 			/>
 		</div>
 	</div>
@@ -40,7 +41,6 @@
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes, abbreviateNumber } from './helpers';
-import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 import NodeList from './NodeList.vue';
 
 export default mixins(genericHelpers).extend({
@@ -63,12 +63,8 @@ export default mixins(genericHelpers).extend({
 		loading: {
 			type: Boolean,
 		},
-		navigateTo: {
-			type: Function,
-		},
 	},
 	components: {
-		HoverableNodeIcon,
 		NodeList,
 	},
 	data() {
@@ -85,6 +81,12 @@ export default mixins(genericHelpers).extend({
 			} else {
 				return this.nodesToBeShown;
 			}
+		},
+		onUseWorkflowClick(e: MouseEvent) {
+			this.$emit('useWorkflow', e);
+		},
+		onCardClick(e: MouseEvent) {
+			this.$emit('click', e);
 		},
 	},
 });

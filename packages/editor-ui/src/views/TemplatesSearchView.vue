@@ -42,15 +42,14 @@
 					<CollectionsCarousel
 						:collections="collections"
 						:loading="loadingCollections"
-						:navigate-to="navigateTo"
 					/>
 					<TemplateList
 						:infinite-scroll-enabled="true"
 						:loading="loadingWorkflows"
-						:navigate-to="navigateTo"
 						:total-workflows="totalWorkflows"
 						:workflows="workflows"
 						@loadMore="onLoadMore"
+						@openTemplate="onOpenTemplate"
 					/>
 					<div v-if="endOfSearchMessage" :class="$style.endText">
 						<n8n-text size="medium" color="text-base">
@@ -149,6 +148,15 @@ export default mixins(genericHelpers).extend({
 		};
 	},
 	methods: {
+		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
+			if (event.metaKey || event.ctrlKey) {
+				const route = this.$router.resolve({ name: 'TemplatesWorkflowView', params: { id } });
+				window.open(route.href, '_blank');
+				return;
+			} else {
+				this.$router.push({ name: 'TemplatesWorkflowView', params: { id } });
+			}
+		},
 		updateSearch() {
 			this.updateQueryParam(this.search, this.categories.join(','));
 			this.loadWorkflowsAndCollections(false);
@@ -175,15 +183,6 @@ export default mixins(genericHelpers).extend({
 			if (this.searchEventToTrack) {
 				this.$telemetry.track('User searched workflow templates', this.searchEventToTrack as unknown as IDataObject);
 				this.searchEventToTrack = null;
-			}
-		},
-		navigateTo(id: string, page: string, e: PointerEvent) {
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: page, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				this.$router.push({ name: page, params: { id } });
 			}
 		},
 		openNewWorkflow() {

@@ -29,9 +29,10 @@
 					<TemplateList
 						:infinite-scroll-enabled="false"
 						:loading="loading"
-						:navigateTo="navigateTo"
 						:use-workflow-button="true"
 						:workflows="loading ? [] : collectionWorkflows"
+						@useWorkflow="onUseWorkflow"
+						@openTemplate="onOpenTemplate"
 					/>
 				</div>
 				<div :class="$style.details">
@@ -92,23 +93,6 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	methods: {
-		navigateTo(id: string, page: string, e: PointerEvent) {
-			if (page === 'WorkflowTemplate') {
-				this.$telemetry.track('User inserted workflow template', {
-					template_id: id,
-					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
-					source: 'collection',
-				});
-			}
-
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: page, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				this.$router.push({ name: page, params: { id } });
-			}
-		},
 		scrollToTop() {
 			setTimeout(() => {
 				window.scrollTo({
@@ -116,6 +100,27 @@ export default mixins(workflowHelpers).extend({
 					behavior: 'smooth',
 				});
 			}, 50);
+		},
+		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
+			this.navigateTo(event, 'TemplatesWorkflowView', id);
+		},
+		onUseWorkflow({event, id}: {event: MouseEvent, id: string}) {
+			this.$telemetry.track('User inserted workflow template', {
+				template_id: id,
+				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+				source: 'collection',
+			});
+
+			this.navigateTo(event, 'WorkflowTemplate', id);
+		},
+		navigateTo(e: MouseEvent, page: string, id: string) {
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({ name: page, params: { id } });
+				window.open(route.href, '_blank');
+				return;
+			} else {
+				this.$router.push({ name: page, params: { id } });
+			}
 		},
 	},
 	watch: {

@@ -7,19 +7,16 @@
 			</n8n-heading>
 		</div>
 		<div :class="$style.container">
-			<div
+			<TemplateCard
 				v-for="(workflow, index) in workflows"
-				:key="'workflow-' + index"
-				@click="navigateTo(workflow.id, 'TemplatesWorkflowView', $event)"
-			>
-				<TemplateCard
-					:workflow="workflow"
-					:firstItem="index === 0"
-					:lastItem="index === workflows.length - 1 && !loading"
-					:useWorkflowButton="useWorkflowButton"
-					:navigateTo="navigateTo"
-				/>
-			</div>
+				:key="workflow.id"
+				:workflow="workflow"
+				:firstItem="index === 0"
+				:lastItem="index === workflows.length - 1 && !loading"
+				:useWorkflowButton="useWorkflowButton"
+				@click="(e) => onCardClick(e, workflow.id)"
+				@useWorkflow="(e) => onUseWorkflow(e, workflow.id)"
+			/>
 			<div v-if="infiniteScrollEnabled" ref="loader" />
 			<div v-if="loading">
 				<TemplateCard
@@ -59,9 +56,6 @@ export default mixins(genericHelpers).extend({
 		totalWorkflows: {
 			type: Number,
 		},
-		navigateTo: {
-			type: Function,
-		},
 	},
 	mounted() {
 		if (this.infiniteScrollEnabled) {
@@ -91,6 +85,12 @@ export default mixins(genericHelpers).extend({
 			if (inView) {
 				this.$emit('loadMore');
 			}
+		},
+		onCardClick(event: MouseEvent, id: string) {
+			this.$emit('openTemplate', {event, id});
+		},
+		onUseWorkflow(event: MouseEvent, id: string) {
+			this.$emit('useWorkflow', {event, id});
 		},
 	},
 });
