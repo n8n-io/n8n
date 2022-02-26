@@ -1,4 +1,4 @@
-import {IExecuteFunctions,} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,11 +12,17 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {asanaApiRequest, asanaApiRequestAllItems, getTaskFields, getWorkspaces,} from './GenericFunctions';
+import {
+	asanaApiRequest,
+	asanaApiRequestAllItems,
+	getColorOptions,
+	getTaskFields,
+	getWorkspaces,
+} from './GenericFunctions';
 
 import * as moment from 'moment-timezone';
 
-import {snakeCase,} from 'change-case';
+import { snakeCase } from 'change-case';
 
 export class Asana implements INodeType {
 	description: INodeTypeDescription = {
@@ -1600,8 +1606,9 @@ export class Asana implements INodeType {
 					{
 						displayName: 'Color',
 						name: 'color',
-						type: 'string',
-						default: '',
+						type: 'options',
+						options: getColorOptions(),
+						default: 'none',
 						description: 'Color of the project.',
 					},
 					{
@@ -1793,10 +1800,9 @@ export class Asana implements INodeType {
 				description: 'The workspace in which to get users.',
 			},
 			{
-				displayName: 'Project',
-				name: 'projectId',
+				displayName: 'Project ID',
+				name: 'id',
 				type: 'string',
-				options: [],
 				default: '',
 				required: true,
 				displayOptions: {
@@ -1809,7 +1815,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The project to update info on.',
+				description: 'The ID of the project to update the data of.',
 			},
 			{
 				displayName: 'Update Fields',
@@ -1832,8 +1838,9 @@ export class Asana implements INodeType {
 					{
 						displayName: 'Color',
 						name: 'color',
-						type: 'string',
-						default: '',
+						type: 'options',
+						options: getColorOptions(),
+						default: 'none',
 						description: 'Color of the project.',
 					},
 					{
@@ -2488,9 +2495,9 @@ export class Asana implements INodeType {
 
 						endpoint = `/projects/${projectId}`;
 
-						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-						responseData = responseData.data;
+						responseData = { success: true };
 					}
 
 					if (operation === 'get') {
@@ -2548,7 +2555,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 						//        project:update
 						// ----------------------------------
-						const projectId = this.getNodeParameter('projectId', i) as string;
+						const projectId = this.getNodeParameter('id', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						// request parameters

@@ -86,6 +86,36 @@ export async function getWorkspaces(this: ILoadOptionsFunctions): Promise<INodeP
 	return returnData;
 }
 
+
+export function getColorOptions(): INodePropertyOptions[] {
+	return [
+		'dark-blue',
+		'dark-brown',
+		'dark-green',
+		'dark-orange',
+		'dark-pink',
+		'dark-purple',
+		'dark-red',
+		'dark-teal',
+		'dark-warm-gray',
+		'light-blue',
+		'light-green',
+		'light-orange',
+		'light-pink',
+		'light-purple',
+		'light-red',
+		'light-teal',
+		'light-warm-gray',
+		'light-yellow',
+		'none',
+	].map(value => {
+		return {
+			name: value,
+			value: value,
+		};
+	});
+}
+
 export function getTaskFields() {
 	return [
 		'*',
