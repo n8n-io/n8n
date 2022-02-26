@@ -14,7 +14,7 @@
 			</li>
 			<li
 				v-for="category in collapsed
-					? sortedCategories.slice(0, categoriesToBeSliced)
+					? sortedCategories.slice(0, maxToShow)
 					: sortedCategories"
 				:key="category.id"
 				:class="$style.item"
@@ -28,11 +28,11 @@
 		</ul>
 		<div
 			:class="$style.button"
-			v-if="sortedCategories.length > categoriesToBeSliced && collapsed && !loading"
+			v-if="sortedCategories.length > maxToShow && collapsed && !loading"
 			@click="collapseAction"
 		>
 			<n8n-text size="small" color="primary">
-				+ {{ `${sortedCategories.length - categoriesToBeSliced} more` }}
+				+ {{ `${sortedCategories.length - maxToShow} more` }}
 			</n8n-text>
 		</div>
 	</div>
@@ -53,7 +53,7 @@ export default mixins(genericHelpers).extend({
 		categories: {
 			type: Array,
 		},
-		categoriesToBeSliced: {
+		maxToShow: {
 			type: Number,
 			default: 12,
 		},
