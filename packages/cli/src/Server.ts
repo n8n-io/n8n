@@ -318,7 +318,9 @@ class App {
 				enabled:
 					config.get('userManagement.disabled') === false ||
 					config.get('userManagement.hasOwner') === true,
-				// showSetupOnFirstLoad: config.get('userManagement.disabled') === false, // && config.get('userManagement.skipOwnerSetup') === true
+				showSetupOnFirstLoad:
+					config.get('userManagement.disabled') === false &&
+					config.get('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),

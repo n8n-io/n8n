@@ -79,12 +79,12 @@ export function ownerNamespace(this: N8nApp): void {
 
 			Logger.info('Owner updated successfully', { userId: req.user.id });
 
-			config.set('userManagement.hasOwner', true);
-
 			await Db.collections.Settings!.update(
 				{ key: 'userManagement.hasOwner' },
 				{ value: JSON.stringify(true) },
 			);
+
+			config.set('userManagement.hasOwner', true);
 
 			Logger.debug('Setting hasOwner updated successfully', { userId: req.user.id });
 
@@ -93,4 +93,20 @@ export function ownerNamespace(this: N8nApp): void {
 			return sanitizeUser(owner);
 		}),
 	);
+
+	/**
+	 * Persist that the instance owner setup has been skipped
+	 */
+		 this.app.post(
+			`/${this.restEndpoint}/owner/skip-setup`,
+			ResponseHelper.send(async (req: OwnerRequest.Post, res: express.Response) => {
+				await Db.collections.Settings!.update(
+					{ key: 'userManagement.skipInstanceOwnerSetup' },
+					{ value: JSON.stringify(true) },
+				);
+
+				config.set('userManagement.skipInstanceOwnerSetup', true);
+
+				return { success: true };
+			})
 }

@@ -51,6 +51,10 @@ export class Reset extends Command {
 			await Db.collections.User!.save(Object.assign(owner, this.defaultUserProps));
 
 			await Db.collections.Settings!.update({ key: 'userManagement.hasOwner' }, { value: 'false' });
+			await Db.collections.Settings!.update(
+				{ key: 'userManagement.skipInstanceOwnerSetup' },
+				{ value: 'false' },
+			);
 		} catch (error) {
 			console.error('Error resetting database. See log messages for details.');
 			if (error instanceof Error) logger.error(error.message);
