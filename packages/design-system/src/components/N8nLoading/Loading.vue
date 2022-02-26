@@ -11,7 +11,7 @@
 					v-for="(item, index) in rows"
 					:key="index"
 					:class="{
-						[$style.h1Last]: item === rows && rows > 1,
+						[$style.h1Last]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
 					<el-skeleton-item
@@ -28,7 +28,7 @@
 					v-for="(item, index) in rows"
 					:key="index"
 					:class="{
-						[$style.pLast]: item === rows && rows > 1,
+						[$style.pLast]: item === rows && rows > 1 && shrinkLast,
 					}">
 						<el-skeleton-item
 							:variant="variant"
@@ -61,6 +61,10 @@ export default {
 		rows: {
 			type: Number,
 			default: 1,
+		},
+		shrinkLast: {
+			type: Boolean,
+			default: true,
 		},
 		variant: {
 			type: String,

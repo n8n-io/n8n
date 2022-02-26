@@ -4,8 +4,7 @@
 		@click="onCardClick"
 	>
 		<div :class="$style.loading" v-if="loading">
-			<n8n-loading :rows="1" :loading="loading" />
-			<n8n-loading :rows="1" :loading="loading" />
+			<n8n-loading :rows="2" :shrinkLast="false" :loading="loading" />
 		</div>
 		<div v-else>
 			<n8n-heading :bold="true" size="small">{{ workflow.name }}</n8n-heading>
