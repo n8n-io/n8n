@@ -93,7 +93,7 @@ export default mixins(genericHelpers).extend({
 				return;
 			}
 			// @ts-ignore
-			this.listElement = slider.$el.querySelector('.agile__list');;
+			this.listElement = slider.$el.querySelector('.agile__list');
 			if (this.listElement) {
 				this.listElement.addEventListener('scroll', this.updateCarouselScroll);
 			}
