@@ -110,7 +110,6 @@ export default {
 			const safeHtml = xss(html, {
 				escapeHtml: (html: string) => escapeMarkdown(html),
 				onTagAttr: (tag, name, value, isWhiteAttr) => {
-					console.log(tag, name, value);
 					if (tag === 'img' && name === 'src') {
 						if (value.match(fileIdRegex)) {
 							const id = value.split('fileId:')[1];
