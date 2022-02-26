@@ -4,7 +4,7 @@ export default {
 	title: 'Atoms/Tag',
 	component: N8nTag,
 	argTypes: {
-		tag: {
+		text: {
 			control: {
 				control: 'text',
 			},
@@ -22,3 +22,6 @@ const Template = (args, { argTypes }) => ({
 });
 
 export const Tag = Template.bind({});
+Tag.args = {
+	text: 'tag name',
+};
