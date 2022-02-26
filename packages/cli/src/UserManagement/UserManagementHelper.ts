@@ -131,7 +131,7 @@ export async function checkPermissionsForExecution(
 	const ids = Array.from(credentialIds);
 
 	if (ids.length === 0) {
-		// If the workflow does not use any credential, then we're fine
+		// If the workflow does not use any credentials, then we're fine
 		return true;
 	}
 
@@ -147,7 +147,7 @@ export async function checkPermissionsForExecution(
 	// then both arrays (allowed credentials vs used credentials)
 	// must be the same length
 	if (ids.length !== credentialCount) {
-		throw new Error('One or more of the required credentials was not found in the database.');
+		throw new Error('One or more of the used credentials are not accessable.');
 	}
 	return true;
 }
