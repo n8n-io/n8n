@@ -1,5 +1,5 @@
 <template>
-	<div class="template-details">
+	<div>
 		<n8n-loading :loading="loading" :rows="5" variant="p" />
 
 		<template-details-block v-if="!loading && template.nodes.length > 0" :title="blockTitle">
