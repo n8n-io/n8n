@@ -22,7 +22,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
-	name: 'CollectionsCard',
+	name: 'Card',
 	props: {
 		loading: {
 			type: Boolean,

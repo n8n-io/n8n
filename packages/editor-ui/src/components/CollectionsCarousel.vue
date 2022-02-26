@@ -9,13 +9,13 @@
 
 		<div v-if="loading" :class="$style.slider">
 			<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4">
-				<CollectionsCard v-for="n in 4" :key="n" :loading="loading" />
+				<Card v-for="n in 4" :key="n" :loading="loading" />
 			</agile>
 		</div>
 
 		<div :class="$style.slider" v-else-if="collections.length">
 			<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4">
-				<CollectionsCard
+				<Card
 					v-for="collection in collections"
 					:key="collection.id"
 					:loading="loading"
@@ -29,7 +29,7 @@
 						</n8n-text>
 						<NodeList :nodes="collection.nodes" :showMore="false" />
 					</template>
-				</CollectionsCard>
+				</Card>
 			</agile>
 			<div :class="$style.buttons">
 				<button v-show="carouselScrollPosition > 0" :class="$style.button" @click="scrollLeft">
@@ -44,7 +44,7 @@
 </template>
 
 <script lang="ts">
-import CollectionsCard from '@/components/CollectionsCard.vue';
+import Card from '@/components/Card.vue';
 import NodeList from '@/components/NodeList.vue';
 import VueAgile from 'vue-agile';
 
@@ -81,7 +81,7 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	components: {
-		CollectionsCard,
+		Card,
 		NodeList,
 		VueAgile,
 	},
