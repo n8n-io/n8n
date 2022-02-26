@@ -145,11 +145,6 @@ export default mixins(workflowHelpers).extend({
 			await this.$store.dispatch('templates/getCollectionById', this.collectionId);
 		} catch (e) {
 			this.notFoundError = true;
-			this.$showMessage({
-				title: 'Error',
-				message: 'Could not find collection',
-				type: 'error',
-			});
 		}
 		this.loading = false;
 	},

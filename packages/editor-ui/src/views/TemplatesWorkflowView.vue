@@ -135,11 +135,6 @@ export default mixins(workflowHelpers).extend({
 			await this.$store.dispatch('templates/getTemplateById', this.templateId);
 		} catch (e) {
 			this.notFoundError = true;
-			this.$showMessage({
-				title: 'Error',
-				message: 'Could not find workflow template',
-				type: 'error',
-			});
 		}
 
 		this.loading = false;
