@@ -39,11 +39,20 @@
 					>
 						<font-awesome-icon icon="search" slot="prefix" />
 					</n8n-input>
-					<CollectionsCarousel
-						:collections="collections"
-						:loading="loadingCollections"
-						@openCollection="onOpenCollection"
-					/>
+					<div :class="$style.carouselContainer" v-show="collections.length || loadingCollections">
+						<div :class="$style.header">
+							<n8n-heading :bold="true" size="medium" color="text-light">
+								{{ $locale.baseText('templates.collections') }}
+								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
+							</n8n-heading>
+						</div>
+
+						<CollectionsCarousel
+							:collections="collections"
+							:loading="loadingCollections"
+							@openCollection="onOpenCollection"
+						/>
+					</div>
 					<TemplateList
 						:infinite-scroll-enabled="true"
 						:loading="loadingWorkflows"
@@ -378,6 +387,10 @@ export default mixins(genericHelpers).extend({
 	@media (max-width: $--breakpoint-xs) {
 		padding-left: 0;
 	}
+}
+
+.header {
+	margin-bottom: var(--spacing-2xs);
 }
 
 </style>

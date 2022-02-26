@@ -1,36 +1,20 @@
 <template>
-	<div :class="$style.container" v-if="collections.length || loading">
-		<div :class="$style.header">
-			<n8n-heading :bold="true" size="medium" color="text-light">
-				{{ $locale.baseText('templates.collections') }}
-				<span v-if="!loading" v-text="`(${collections.length})`" />
-			</n8n-heading>
-		</div>
-
-		<div v-if="loading" :class="$style.slider">
-			<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4">
-				<Card v-for="n in 4" :key="n" :loading="loading" />
-			</agile>
-		</div>
-
-		<div :class="$style.slider" v-else-if="collections.length">
-			<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4">
-				<CollectionCard
-					v-for="collection in collections"
-					:key="collection.id"
-					:collection="collection"
-					@click="(e) => onCardClick(e, collection.id)"
-				/>
-			</agile>
-			<div :class="$style.buttons">
-				<button v-show="carouselScrollPosition > 0" :class="$style.button" @click="scrollLeft">
-					<font-awesome-icon icon="chevron-left" />
-				</button>
-				<button v-show="!scrollEnd" :class="$style.button" @click="scrollRight">
-					<font-awesome-icon icon="chevron-right" />
-				</button>
-			</div>
-		</div>
+	<div :class="$style.container" v-show="loading || collections.length">
+		<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4" @after-change="updateCarouselScroll">
+			<Card v-for="n in (loading ? 4: 0)" :key="`loading-${n}`" :loading="loading" />
+			<CollectionCard
+				v-for="collection in (loading? []: collections)"
+				:key="collection.id"
+				:collection="collection"
+				@click="(e) => onCardClick(e, collection.id)"
+			/>
+		</agile>
+		<button v-show="carouselScrollPosition > 0" :class="$style.leftButton" @click="scrollLeft">
+			<font-awesome-icon icon="chevron-left" />
+		</button>
+		<button v-show="!scrollEnd" :class="$style.rightButton" @click="scrollRight">
+			<font-awesome-icon icon="chevron-right" />
+		</button>
 	</div>
 </template>
 
@@ -53,22 +37,15 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	watch: {
-		collections(collections) {
-			if (!collections.length) {
-				if (this.$refs.slider) {
-					// @ts-ignore
-					this.$refs.slider.destroy();
-				}
-			}
+		collections() {
+			setTimeout(() => {
+				this.updateCarouselScroll();
+			}, 0);
 		},
 		loading() {
-			const list = document.querySelector('.agile__list');
-			if (list) {
-				const width = list.clientWidth;
-				const collectionsWidth = this.collections.length * (this.carouselWidth + this.collections.length * 2);
-				this.scrollEnd = collectionsWidth < width;
-				list.addEventListener('scroll', this.handleCarouselScroll);
-			}
+			setTimeout(() => {
+				this.updateCarouselScroll();
+			}, 0);
 		},
 	},
 	components: {
@@ -79,48 +56,46 @@ export default mixins(genericHelpers).extend({
 	data() {
 		return {
 			carouselScrollPosition: 0,
-			carouselWidth: 240,
+			cardWidth: 240,
 			scrollEnd: false,
+			listElement: null as null | Element,
 		};
 	},
 	methods: {
-		handleCarouselScroll() {
-			const list = document.querySelector('.agile__list');
-			if (list) {
-				this.carouselScrollPosition = Number(list.scrollLeft.toFixed());
+		updateCarouselScroll() {
+			if (this.listElement) {
+				this.carouselScrollPosition = Number(this.listElement.scrollLeft.toFixed());
 
-				const width = list.clientWidth;
-				const scrollWidth = list.scrollWidth;
+				const width = this.listElement.clientWidth;
+				const scrollWidth = this.listElement.scrollWidth;
 				const scrollLeft = this.carouselScrollPosition;
-
-				if (scrollWidth - width <= scrollLeft + 7) {
-					this.scrollEnd = true;
-				} else {
-					this.scrollEnd = false;
-				}
+				this.scrollEnd = scrollWidth - width <= scrollLeft + 7;
 			}
 		},
 		onCardClick(event: MouseEvent, id: string) {
 			this.$emit('openCollection', {event, id});
 		},
 		scrollLeft() {
-			const list = document.querySelector('.agile__list');
-			if (list) {
-				list.scrollBy({ left: -(this.carouselWidth * 2), top: 0, behavior: 'smooth' });
+			if (this.listElement) {
+				this.listElement.scrollBy({ left: -(this.cardWidth * 2), top: 0, behavior: 'smooth' });
 			}
 		},
 		scrollRight() {
-			const list = document.querySelector('.agile__list');
-			if (list) {
-				list.scrollBy({ left: this.carouselWidth * 2, top: 0, behavior: 'smooth' });
+			if (this.listElement) {
+				this.listElement.scrollBy({ left: this.cardWidth * 2, top: 0, behavior: 'smooth' });
 			}
 		},
 	},
 	mounted() {
-		const list = document.querySelector('.agile__list');
 		this.$nextTick(() => {
-			if (list) {
-				list.addEventListener('scroll', this.handleCarouselScroll);
+			const slider = this.$refs.slider;
+			if (!slider) {
+				return;
+			}
+			// @ts-ignore
+			this.listElement = slider.$el.querySelector('.agile__list');;
+			if (this.listElement) {
+				this.listElement.addEventListener('scroll', this.updateCarouselScroll);
 			}
 		});
 	},
@@ -129,7 +104,7 @@ export default mixins(genericHelpers).extend({
 			// @ts-ignore
 			this.$refs.slider.destroy();
 		}
-		window.removeEventListener('scroll', this.handleCarouselScroll);
+		window.removeEventListener('scroll', this.updateCarouselScroll);
 	},
 });
 </script>
@@ -139,70 +114,44 @@ export default mixins(genericHelpers).extend({
 	position: relative;
 }
 
-.header {
-	padding-bottom: var(--spacing-2xs);
-}
-
-.buttons {
-	width: 100%;
-	height: 0;
-	top: 45%;
-	position: absolute;
-	background: transparent;
-	border: none;
-	font-size: var(--font-size-xl);
-	transition-duration: 0.1s;
-	cursor: pointer;
-	z-index: 1;
-}
-
 .button {
 	width: 28px;
 	height: 37px;
 	position: absolute;
+	top: 35%;
 	border-radius: var(--border-radius-large);
-	border: $--version-card-border;
+	border: var(--border-base);
 	background-color: #fbfcfe;
-	opacity: 1;
 	cursor: pointer;
 
-	&:nth-child(1) {
-		left: -30px;
-
-		&:after {
-			content: '';
-			width: 40px;
-			height: 140px;
-			top: -54px;
-			left: 27px;
-			position: absolute;
-			position: absolute;
-			background: linear-gradient(270deg, rgba(255, 255, 255, 0.25) 0%, rgba(248, 249, 251, 1) 86%);
-			z-index: -1;
-		}
+	&:after {
+		content: '';
+		width: 40px;
+		height: 140px;
+		top: -55px;
+		position: absolute;
 	}
-
-	&:nth-child(2) {
-		right: -30px;
-
-		&:after {
-			content: '';
-			width: 40px;
-			height: 140px;
-			top: -54px;
-			right: 27px;
-			position: absolute;
-			background: linear-gradient(
-				270deg,
-				rgba(248, 249, 251, 1) 25%,
-				rgba(255, 255, 255, 0.25) 100%
-			);
-			z-index: -1;
-		}
-	}
-
 	svg {
 		color: var(--color-foreground-xdark);
+	}
+}
+
+.leftButton {
+	composes: button;
+	left: -30px;
+
+	&:after {
+		left: 27px;
+		background: linear-gradient(270deg, rgba(255, 255, 255, 0.25) 0%, rgba(248, 249, 251, 1) 86%);
+	}
+}
+
+.rightButton {
+	composes: button;
+	right: -30px;
+	&:after {
+		right: 27px;
+		background: linear-gradient(270deg,rgba(248, 249, 251, 1) 25%, rgba(255, 255, 255, 0.25) 100%);
 	}
 }
 </style>
