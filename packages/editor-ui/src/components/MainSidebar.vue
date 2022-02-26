@@ -488,7 +488,7 @@ export default mixins(
 						);
 
 						if (confirmModal === MODAL_CONFIRMED) {
-							const saved = await this.saveCurrentWorkflow();
+							const saved = await this.saveCurrentWorkflow({}, false);
 							if (saved) this.$store.dispatch('settings/fetchPromptsData');
 
 							if (this.$router.currentRoute.name === 'NodeViewNew') {
