@@ -2,60 +2,54 @@
 	<div class="template-details">
 		<n8n-loading :loading="loading" :rows="5" variant="p" />
 
-		<template-block v-if="!loading && template.nodes.length > 0" :title="blockTitle">
-			<template v-slot:content>
-				<div :class="$style.icons">
-					<div
-						v-for="node in filterTemplateNodes(template.nodes)"
-						:key="node.name"
-						:class="$style.icon"
-					>
-						<HoverableNodeIcon
-							:nodeType="node"
-							:title="node.name"
-							:size="24"
-							@click="redirectToSearchPage(node)"
-						/>
-					</div>
+		<template-details-block v-if="!loading && template.nodes.length > 0" :title="blockTitle">
+			<div :class="$style.icons">
+				<div
+					v-for="node in filterTemplateNodes(template.nodes)"
+					:key="node.name"
+					:class="$style.icon"
+				>
+					<HoverableNodeIcon
+						:nodeType="node"
+						:title="node.name"
+						:size="24"
+						@click="redirectToSearchPage(node)"
+					/>
 				</div>
-			</template>
-		</template-block>
+			</div>
+		</template-details-block>
 
-		<template-block
+		<template-details-block
 			v-if="!loading && template.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
-			<template v-slot:content>
-				<n8n-tags :tags="template.categories" @click="redirectToCategory" />
-			</template>
-		</template-block>
+			<n8n-tags :tags="template.categories" @click="redirectToCategory" />
+		</template-details-block>
 
-		<template-block v-if="!loading" :title="$locale.baseText('template.details.details')">
-			<template v-slot:content>
-				<div :class="$style.text">
-					<n8n-text size="small" color="text-base">
-						{{ $locale.baseText('template.details.created') }}
-						<TimeAgo :date="template.createdAt" />
-						<span>{{ $locale.baseText('template.details.by') }}</span>
-						<span v-if="template.user"> {{ template.user.username }}</span>
-						<span v-else> n8n team</span>
-					</n8n-text>
-				</div>
-				<div :class="$style.text">
-					<n8n-text v-if="template.totalViews !== 0" size="small" color="text-base">
-						{{ $locale.baseText('template.details.viewed') }}
-						{{ abbreviateNumber(template.totalViews) }}
-						{{ $locale.baseText('template.details.times') }}
-					</n8n-text>
-				</div>
-			</template>
-		</template-block>
+		<template-details-block v-if="!loading" :title="$locale.baseText('template.details.details')">
+			<div :class="$style.text">
+				<n8n-text size="small" color="text-base">
+					{{ $locale.baseText('template.details.created') }}
+					<TimeAgo :date="template.createdAt" />
+					<span>{{ $locale.baseText('template.details.by') }}</span>
+					<span v-if="template.user"> {{ template.user.username }}</span>
+					<span v-else> n8n team</span>
+				</n8n-text>
+			</div>
+			<div :class="$style.text">
+				<n8n-text v-if="template.totalViews !== 0" size="small" color="text-base">
+					{{ $locale.baseText('template.details.viewed') }}
+					{{ abbreviateNumber(template.totalViews) }}
+					{{ $locale.baseText('template.details.times') }}
+				</n8n-text>
+			</div>
+		</template-details-block>
 	</div>
 </template>
 <script lang="ts">
 import Vue from 'vue';
 
-import TemplateBlock from '@/components/TemplateBlock.vue';
+import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 
 import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
@@ -76,7 +70,7 @@ export default Vue.extend({
 	},
 	components: {
 		HoverableNodeIcon,
-		TemplateBlock,
+		TemplateDetailsBlock,
 	},
 	methods: {
 		abbreviateNumber,
@@ -101,10 +95,6 @@ export default Vue.extend({
 .icon {
 	margin-right: var(--spacing-xs);
 	margin-bottom: var(--spacing-xs);
-}
-
-.tags {
-	display: flex;
 }
 
 .text {

@@ -4,7 +4,7 @@
 			<n8n-heading tag="h3" size="small" color="text-base">{{ title }}</n8n-heading>
 		</div>
 		<div :class="$style.content">
-			<slot name="content"></slot>
+			<slot></slot>
 		</div>
 	</div>
 </template>
@@ -13,7 +13,7 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: 'TemplateBlock',
+	name: 'TemplateDetailsBlock',
 	props: {
 		title: {
 			type: String,
