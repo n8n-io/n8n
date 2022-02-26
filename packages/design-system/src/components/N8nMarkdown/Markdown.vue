@@ -45,10 +45,6 @@ const DEFAULT_OPTIONS_TASKLISTS = {
 	labelAfter: true,
 };
 
-const DEFAULT_XSS_OPTIONS = {
-	escapeHtml: (html: string) => escapeMarkdown(html),
-};
-
 interface IImage {
 	id: string;
 	url: string;
@@ -86,7 +82,6 @@ export default {
 					markdown: DEFAULT_OPTIONS_MARKDOWN,
 					linkAttributes: DEFAULT_OPTIONS_LINK_ATTRIBUTES,
 					tasklists: DEFAULT_OPTIONS_TASKLISTS,
-					xssOptions: DEFAULT_XSS_OPTIONS,
 				};
 			},
 		},
@@ -96,11 +91,6 @@ export default {
 			if (!this.content) {
 				 return '';
 			}
-			let content = this.content;
-
-			// remove all workflow screenshots
-			const screenshotRegex = '!\\[workflow\\-screenshot\\]\\((.*?)(?=\\"|\\))(\\".*\\")?\\)';
-			content = content.replace(new RegExp(screenshotRegex), '');
 
 			const imageUrls: { [key: string]: string } = {};
 			if (this.images) {
@@ -111,33 +101,36 @@ export default {
 						// still has a reference to it
 						return;
 					}
-					imageUrls[image.id] = `${image.url}`;
+					imageUrls[image.id] = image.url;
 				});
 			}
 
-			// Replace the fileIds with the actual URLs
-			const imageRegexString = '][(]fileId:([0-9]+)[)]';
-			const imageMatches = this.content.match(new RegExp(imageRegexString, 'g')) || [];
-
-			for (const imageMatch of imageMatches) {
-				const matches = imageMatch.match(new RegExp(imageRegexString));
-				if (matches) {
-					const imageId = matches[1];
-					if (!imageUrls[imageId]) {
-						// Image is missing for some unknown reason
-						continue;
+			const fileIdRegex = new RegExp('fileId:([0-9]+)');
+			const html = this.md.render(this.content);
+			const safeHtml = xss(html, {
+				escapeHtml: (html: string) => escapeMarkdown(html),
+				onTagAttr: (tag, name, value, isWhiteAttr) => {
+					console.log(tag, name, value);
+					if (tag === 'img' && name === 'src') {
+						if (value.match(fileIdRegex)) {
+							const id = value.split('fileId:')[1];
+							return `src=${xss.friendlyAttrValue(imageUrls[id])}` || '';
+						}
+						if (!value.startsWith('https://')) {
+							return '';
+						}
 					}
-					const imageUrl = imageUrls[imageId];
-					content = content.replace(
-						new RegExp('][(]fileId:' + imageId + '[)]'),
-						`](${imageUrl})`,
-					);
-				}
-			}
+					// Return nothing, means keep the default handling measure
+				},
+				onTag: function (tag, html, options) {
+					if (tag === 'img' && html.includes(`alt="workflow-screenshot"`)) {
+						return '';
+					}
+					// return nothing, keep tag
+				},
+			});
 
-			content = xss(content, this.options.xssOptions);
-
-			return this.md.render(content);
+			return safeHtml;
 		},
 	},
 	data() {
