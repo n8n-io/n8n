@@ -38,3 +38,6 @@ const Template = (args, { argTypes }) => ({
 });
 
 export const Loading = Template.bind({});
+Loading.args = {
+	variant: 'p',
+};

@@ -51,12 +51,15 @@ export default {
 		},
 		loading: {
 			type: Boolean,
+			default: true,
 		},
 		rows: {
 			type: Number,
+			default: 1,
 		},
 		variant: {
 			type: String,
+			validator: (value: string): boolean => ['p', 'h1', 'button', 'image'].includes(value),
 		},
 	},
 };
