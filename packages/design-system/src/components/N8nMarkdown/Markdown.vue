@@ -1,5 +1,5 @@
 <template>
-  <div>
+	<div>
 		<div v-if="!loading" ref="editor" :class="$style.markdown" v-html="htmlContent" />
 		<div v-else :class="$style.markdown">
 			<div v-for="(block, index) in loadingBlocks"
@@ -94,7 +94,7 @@ export default {
 	computed: {
 		htmlContent(): string {
 			if (!this.content) {
-			   return '';
+				 return '';
 			}
 			let content = this.content;
 
@@ -203,7 +203,7 @@ export default {
 		background-color: var(--color-background-base);
 	}
 
-  .label {
+	.label {
 		color: var(--color-text-base);
 	}
 
@@ -214,9 +214,9 @@ export default {
 		border: var(--border-width-base) var(--color-foreground-base) var(--border-style-base);
 		border-radius: var(--border-radius-large);
 	}
+}
 
-	.spacer {
-		margin: var(--spacing-2xl);
-	}
+.spacer {
+	margin: var(--spacing-2xl);
 }
 </style>
