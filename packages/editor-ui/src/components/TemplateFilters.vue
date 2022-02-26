@@ -2,7 +2,7 @@
 	<div :class="$style.filters" class="template-filters">
 		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
 		<div v-if="loading" :class="$style.list">
-			<n8n-loading :loading="loading" :rows="10" />
+			<n8n-loading :loading="loading" :rows="expandLimit" />
 		</div>
 		<ul v-if="!loading" :class="$style.categories">
 			<li :class="$style.item">
@@ -14,7 +14,7 @@
 			</li>
 			<li
 				v-for="category in collapsed
-					? sortedCategories.slice(0, maxToShow)
+					? sortedCategories.slice(0, expandLimit)
 					: sortedCategories"
 				:key="category.id"
 				:class="$style.item"
@@ -28,11 +28,11 @@
 		</ul>
 		<div
 			:class="$style.button"
-			v-if="sortedCategories.length > maxToShow && collapsed && !loading"
+			v-if="sortedCategories.length > expandLimit && collapsed && !loading"
 			@click="collapseAction"
 		>
 			<n8n-text size="small" color="primary">
-				+ {{ `${sortedCategories.length - maxToShow} more` }}
+				+ {{ `${sortedCategories.length - expandLimit} more` }}
 			</n8n-text>
 		</div>
 	</div>
@@ -53,7 +53,7 @@ export default mixins(genericHelpers).extend({
 		categories: {
 			type: Array,
 		},
-		maxToShow: {
+		expandLimit: {
 			type: Number,
 			default: 12,
 		},
