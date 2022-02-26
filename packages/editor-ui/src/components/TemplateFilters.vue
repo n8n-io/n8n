@@ -2,7 +2,7 @@
 	<div :class="$style.filters" class="template-filters">
 		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
 		<div v-if="loading" :class="$style.list">
-			<n8n-loading-blocks :blocks="1" :loading="loading" :rows="6" />
+			<n8n-loading :loading="loading" :rows="10" />
 		</div>
 		<ul v-if="!loading" :class="$style.categories">
 			<li :class="$style.item">
