@@ -253,7 +253,7 @@ export interface IWorkflowDataUpdate {
 }
 
 export interface IWorkflowTemplate {
-	id: string;
+	id: number;
 	name: string;
 	workflow: {
 		nodes: INodeUi[];
@@ -518,11 +518,11 @@ export interface ITemplatesCollection {
 	id: number;
 	name: string;
 	nodes: ITemplatesNode[];
-	workflows: Array<{id: string}>;
+	workflows: Array<{id: number}>;
 }
 
 interface ITemplatesImage {
-	id: string;
+	id: number;
 	url: string;
 }
 
@@ -542,7 +542,7 @@ export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtend
 }
 
 export interface ITemplatesWorkflow {
-	id: string;
+	id: number;
 	createdAt: string;
 	name: string;
 	nodes: ITemplatesNode[];
@@ -552,10 +552,9 @@ export interface ITemplatesWorkflow {
 	};
 }
 
-export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow {
+export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflowTemplate {
 	description: string | null;
 	image: ITemplatesImage[];
-	workflow: object;
 	categories: ITemplatesCategory[];
 }
 

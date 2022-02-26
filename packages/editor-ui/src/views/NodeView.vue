@@ -535,7 +535,7 @@ export default mixins(
 				let data: IWorkflowTemplate | undefined;
 				try {
 					this.$externalHooks().run('template.requested', { templateId });
-					data = await this.$store.dispatch('workflows/getWorkflowTemplate', templateId);
+					data = await this.$store.dispatch('templates/getWorkflowTemplate', templateId);
 
 					if (!data) {
 						throw new Error(

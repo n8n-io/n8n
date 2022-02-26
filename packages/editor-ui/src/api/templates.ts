@@ -1,4 +1,4 @@
-import { ITemplatesCategory, ITemplatesCollection, ITemplatesQuery, ITemplatesWorkflow, ITemplatesCollectionResponse, ITemplatesWorkflowResponse } from '@/Interface';
+import { ITemplatesCategory, ITemplatesCollection, ITemplatesQuery, ITemplatesWorkflow, ITemplatesCollectionResponse, ITemplatesWorkflowResponse, IWorkflowTemplate } from '@/Interface';
 import { get } from './helpers';
 
 function stringifyArray(arr: number[]) {
@@ -30,4 +30,8 @@ export async function getCollectionById(apiEndpoint: string, collectionId: strin
 
 export async function getTemplateById(apiEndpoint: string, templateId: string): Promise<{workflow: ITemplatesWorkflowResponse}> {
 	return await get(apiEndpoint, `/templates/workflows/${templateId}`);
+}
+
+export async function getWorkflowTemplate(apiEndpoint: string, templateId: string): Promise<IWorkflowTemplate> {
+	return await get(apiEndpoint, `/workflows/templates/${templateId}`);
 }

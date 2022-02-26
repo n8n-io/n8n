@@ -1,4 +1,4 @@
-import { getCategories, getCollectionById, getCollections, getTemplateById, getWorkflows, testHealthEndpoint } from '@/api/templates';
+import { getCategories, getCollectionById, getCollections, getTemplateById, getWorkflows, getWorkflowTemplate, testHealthEndpoint } from '@/api/templates';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
@@ -9,6 +9,7 @@ import {
 	ITemplatesQuery,
 	ITemplatesWorkflowFull,
 	ITemplatesCollectionFull,
+	IWorkflowTemplate,
 } from '../Interface';
 
 import Vue from 'vue';
@@ -264,6 +265,10 @@ const module: Module<ITemplateState, IRootState> = {
 				context.commit('setWorkflowSearchLoaded', query);
 				throw e;
 			}
+		},
+		getWorkflowTemplate: async (context: ActionContext<ITemplateState, IRootState>, templateId: string): Promise<IWorkflowTemplate> => {
+			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+			return await getWorkflowTemplate(apiEndpoint, templateId);
 		},
 	},
 };
