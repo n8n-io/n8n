@@ -31,6 +31,7 @@
 						:loading="loading"
 						:use-workflow-button="true"
 						:workflows="loading ? [] : collectionWorkflows"
+						@useWorkflow="onUseWorkflow"
 					/>
 				</div>
 				<div :class="$style.details">
@@ -98,6 +99,21 @@ export default mixins(workflowHelpers).extend({
 					behavior: 'smooth',
 				});
 			}, 50);
+		},
+		onUseWorkflow({event, id}: {event: MouseEvent, id: string}) {
+			this.$telemetry.track('User inserted workflow template', {
+				template_id: id,
+				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+				source: 'collection',
+			});
+
+			if (event.metaKey || event.ctrlKey) {
+				const route = this.$router.resolve({ name: 'WorkflowTemplate', params: { id } });
+				window.open(route.href, '_blank');
+				return;
+			} else {
+				this.$router.push({ name: 'WorkflowTemplate', params: { id } });
+			}
 		},
 	},
 	watch: {

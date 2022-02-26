@@ -17,6 +17,7 @@
 					:firstItem="index === 0"
 					:lastItem="index === workflows.length - 1 && !loading"
 					:useWorkflowButton="useWorkflowButton"
+					@useWorkflow="(e) => onUseWorkflow(e, workflow.id)"
 				/>
 			</div>
 			<div v-if="infiniteScrollEnabled" ref="loader" />
@@ -96,6 +97,9 @@ export default mixins(genericHelpers).extend({
 			if (inView) {
 				this.$emit('loadMore');
 			}
+		},
+		onUseWorkflow(event: MouseEvent, id: string) {
+			this.$emit('useWorkflow', {event, id});
 		},
 	},
 });
