@@ -708,7 +708,7 @@ export interface IVersionNode {
 		icon?: string;
 		fileBuffer?: string;
 	};
-	typeVersion: number;
+	typeVersion?: number;
 }
 
 export interface ITemplatesNode extends IVersionNode {
