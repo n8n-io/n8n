@@ -18,15 +18,12 @@
 
 .el-skeleton__p {
   width: 100%;
+  height: 16px;
+  margin-top: 16px;
 }
 
 .el-skeleton__h1 {
   height: 20px;
-  margin-top: 14px;
-}
-
-.el-skeleton__h1--last {
-  width: 40%;
   margin-top: 14px;
 }
 
@@ -53,13 +50,7 @@
 
 .el-skeleton__first-line,
 .el-skeleton__paragraph {
-  height: 16px;
-  margin-top: 16px;
   background: var(--color-background-base);
-}
-
-.el-skeleton__paragraph.last {
-  width: 61%;
 }
 
 .el-skeleton.is-animated .el-skeleton__item {

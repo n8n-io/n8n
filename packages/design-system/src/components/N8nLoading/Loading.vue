@@ -10,7 +10,7 @@
 					v-for="(item, index) in rows"
 					:key="`${index}-${item}`"
 					:class="{
-						'el-skeleton__h1--last': item === rows && rows > 1,
+						[$style.h1Last]: item === rows && rows > 1,
 					}"
 					:variant="variant"
 				/>
@@ -21,11 +21,10 @@
 			/>
 			<div v-if="variant === 'p'">
 				<el-skeleton-item
-					class="el-skeleton__paragraph"
 					v-for="(item, index) in rows"
 					:key="`${index}-${item}`"
 					:class="{
-						'last': item === rows && rows > 1,
+						[$style.last]: item === rows && rows > 1,
 					}"
 					:variant="variant"
 				/>
@@ -65,3 +64,13 @@ export default {
 	},
 };
 </script>
+
+<style lang="scss" module>
+.h1Last {
+  width: 40% !important;
+}
+
+.last {
+  width: 61% !important;
+}
+</style>
