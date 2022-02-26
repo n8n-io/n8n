@@ -186,6 +186,7 @@ export default {
 
 	pre {
 		margin-bottom: var(--spacing-s);
+		display: grid;
 	}
 
 	pre > code {
@@ -213,6 +214,12 @@ export default {
 		object-fit: cover;
 		border: var(--border-width-base) var(--color-foreground-base) var(--border-style-base);
 		border-radius: var(--border-radius-large);
+	}
+
+	blockquote {
+		padding-left: 10px;
+		font-style: italic;
+		border-left: var(--border-color-base) 2px solid;
 	}
 }
 
