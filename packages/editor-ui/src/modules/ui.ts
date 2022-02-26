@@ -108,7 +108,7 @@ const module: Module<IUiState, IRootState> = {
 		toggleSidebarMenuCollapse: (state: IUiState) => {
 			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;
 		},
-		setCurrentPage: (state: IUiState, currentView: string) => {
+		setCurrentView: (state: IUiState, currentView: string) => {
 			state.currentView = currentView;
 		},
 	},

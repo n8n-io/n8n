@@ -77,7 +77,7 @@ export default mixins(showMessage).extend({
 			}
 		},
 		trackPage() {
-			this.$store.commit('ui/setCurrentPage', this.$route.name);
+			this.$store.commit('ui/setCurrentView', this.$route.name);
 			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
 				this.$store.commit('templates/setSessionId');
 			}
