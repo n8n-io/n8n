@@ -32,6 +32,7 @@
 						:use-workflow-button="true"
 						:workflows="loading ? [] : collectionWorkflows"
 						@useWorkflow="onUseWorkflow"
+						@openTemplate="onOpenTemplate"
 					/>
 				</div>
 				<div :class="$style.details">
@@ -99,6 +100,15 @@ export default mixins(workflowHelpers).extend({
 					behavior: 'smooth',
 				});
 			}, 50);
+		},
+		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
+			if (event.metaKey || event.ctrlKey) {
+				const route = this.$router.resolve({ name: 'Templates', params: { id } });
+				window.open(route.href, '_blank');
+				return;
+			} else {
+				this.$router.push({ name: 'TemplatesWorkflowView', params: { id } });
+			}
 		},
 		onUseWorkflow({event, id}: {event: MouseEvent, id: string}) {
 			this.$telemetry.track('User inserted workflow template', {

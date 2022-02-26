@@ -1,6 +1,7 @@
 <template>
 	<div
 		:class="[$style.card, lastItem && $style.last, firstItem && $style.first, !loading && $style.loaded]"
+		@click="onCardClick"
 	>
 		<div :class="$style.loading" v-if="loading">
 			<n8n-loading-blocks :blocks="2" :loading="loading" />
@@ -83,6 +84,9 @@ export default mixins(genericHelpers).extend({
 		},
 		onUseWorkflowClick(e: MouseEvent) {
 			this.$emit('useWorkflow', e);
+		},
+		onCardClick(e: MouseEvent) {
+			this.$emit('click', e);
 		},
 	},
 });
