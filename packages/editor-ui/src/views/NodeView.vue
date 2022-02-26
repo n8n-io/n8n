@@ -2,7 +2,7 @@
 	<div class="node-view-root">
 		<div
 			class="node-view-wrapper"
-			:class="{workflowClasses}"
+			:class="workflowClasses"
 			@touchstart="mouseDown"
 			@touchend="mouseUp"
 			@touchmove="mouseMoveNodeWorkflow"
