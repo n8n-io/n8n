@@ -59,31 +59,7 @@ import TemplateBlock from '@/components/TemplateBlock.vue';
 import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
 
 import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
-import { ITemplatesCategory } from '@/Interface';
-
-interface INode {
-	displayName: string;
-	defaults: {
-		color: string;
-	};
-	categories: ITemplatesCategory[];
-	icon: string;
-	iconData?: {
-		fileBuffer?: string;
-		type?: string;
-	};
-	name: string;
-	typeVersion: number;
-}
-
-interface ITag {
-	id: string;
-	name: string;
-}
-
-interface INode {
-	displayName: string;
-}
+import { ITemplatesNode } from '@/Interface';
 
 export default Vue.extend({
 	name: 'TemplateDetails',
@@ -109,7 +85,7 @@ export default Vue.extend({
 			this.$store.commit('templates/resetSessionId');
 			this.$router.push(`/templates?categories=${id}`);
 		},
-		redirectToSearchPage(node: INode) {
+		redirectToSearchPage(node: ITemplatesNode) {
 			this.$store.commit('templates/resetSessionId');
 			this.$router.push(`/templates?search=${node.displayName}`);
 		},
