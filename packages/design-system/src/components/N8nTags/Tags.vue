@@ -24,5 +24,9 @@ export default {
 .tags {
 	display: flex;
 	flex-wrap: wrap;
+
+	* {
+		margin: 0 var(--spacing-4xs) var(--spacing-4xs) 0;
+	}
 }
 </style>
