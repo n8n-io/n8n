@@ -77,7 +77,7 @@ export function validatePassword(password?: string): string {
 /**
  * Remove sensitive properties from the user to return to the client.
  */
-export function sanitizeUser(user: User): PublicUser {
+export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 	const {
 		password,
 		resetPasswordToken,
@@ -86,6 +86,12 @@ export function sanitizeUser(user: User): PublicUser {
 		updatedAt,
 		...sanitizedUser
 	} = user;
+	if (withoutKeys) {
+		withoutKeys.forEach((key) => {
+			// @ts-ignore
+			delete sanitizedUser[key];
+		});
+	}
 	return sanitizedUser;
 }
 
