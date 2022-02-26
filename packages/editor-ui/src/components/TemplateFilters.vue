@@ -55,7 +55,7 @@ export default mixins(genericHelpers).extend({
 		},
 		categoriesToBeSliced: {
 			type: Number,
-			default: 6,
+			default: 12,
 		},
 		loading: {
 			type: Boolean,
