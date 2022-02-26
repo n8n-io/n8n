@@ -150,7 +150,7 @@ export default mixins(genericHelpers).extend({
 	methods: {
 		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
 			if (event.metaKey || event.ctrlKey) {
-				const route = this.$router.resolve({ name: 'Templates', params: { id } });
+				const route = this.$router.resolve({ name: 'TemplatesWorkflowView', params: { id } });
 				window.open(route.href, '_blank');
 				return;
 			} else {

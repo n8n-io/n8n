@@ -102,13 +102,7 @@ export default mixins(workflowHelpers).extend({
 			}, 50);
 		},
 		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
-			if (event.metaKey || event.ctrlKey) {
-				const route = this.$router.resolve({ name: 'Templates', params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				this.$router.push({ name: 'TemplatesWorkflowView', params: { id } });
-			}
+			this.navigateTo(event, 'TemplatesWorkflowView', id);
 		},
 		onUseWorkflow({event, id}: {event: MouseEvent, id: string}) {
 			this.$telemetry.track('User inserted workflow template', {
@@ -117,12 +111,15 @@ export default mixins(workflowHelpers).extend({
 				source: 'collection',
 			});
 
-			if (event.metaKey || event.ctrlKey) {
-				const route = this.$router.resolve({ name: 'WorkflowTemplate', params: { id } });
+			this.navigateTo(event, 'WorkflowTemplate', id);
+		},
+		navigateTo(e: MouseEvent, page: string, id: string) {
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({ name: page, params: { id } });
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: 'WorkflowTemplate', params: { id } });
+				this.$router.push({ name: page, params: { id } });
 			}
 		},
 	},
