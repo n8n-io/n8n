@@ -45,10 +45,6 @@ export default Vue.extend({
 	margin-right: var(--spacing-2xs);
 	color: var(--color-foreground-dark);
 	font-size: var(--font-size-m);
-
-	&:hover {
-		color: var(--color-primary);
-	}
 }
 
 .text {
