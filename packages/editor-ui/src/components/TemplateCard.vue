@@ -168,7 +168,7 @@ export default mixins(genericHelpers).extend({
 .nodesContainer {
 	min-width: 175px;
 	display: flex;
-	justify-content: right;
+	justify-content: flex-end;
 	align-items: center;
 	flex-grow: 1;
 }
