@@ -111,7 +111,7 @@ export function getColorOptions(): INodePropertyOptions[] {
 	].map(value => {
 		return {
 			name: value,
-			value: value,
+			value,
 		};
 	});
 }
