@@ -381,7 +381,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	position: absolute;
 	width: 100px;
 	height: 100px;
-	pointer-events: all;
 
 	.node-description {
 		position: absolute;
