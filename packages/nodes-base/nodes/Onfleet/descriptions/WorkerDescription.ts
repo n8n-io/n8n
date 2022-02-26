@@ -38,11 +38,11 @@ export const workerOperations: INodeProperties[] = [
 				value: 'getSchedule',
 				description: 'Get a specific Onfleet worker schedule',
 			},
-			{
-				name: 'Set Worker\'s Schedule',
-				value: 'setSchedule',
-				description: 'Set the worker\'s schedule',
-			},
+			// {
+			// 	name: 'Set Worker\'s Schedule',
+			// 	value: 'setSchedule',
+			// 	description: 'Set the worker\'s schedule',
+			// },
 			{
 				name: 'Update',
 				value: 'update',
@@ -54,11 +54,11 @@ export const workerOperations: INodeProperties[] = [
 ];
 
 const byLocationField = {
-	displayName: 'Search By Location',
+	displayName: 'Search by Location',
 	name: 'byLocation',
 	type: 'boolean',
 	default: false,
-	description: 'Whether searching workers who are currently within a certain target area or not',
+	description: 'Whether to search for only those workers who are currently within a certain target area',
 } as INodeProperties;
 
 const nameField = {
@@ -74,7 +74,7 @@ const phoneField = {
 	name: 'phone',
 	type: 'string',
 	default: '',
-	description: 'A valid phone number as per the worker\'s organization\'s country',
+	description: 'A list of worker’s phone numbers',
 } as INodeProperties;
 
 const capacityField = {
@@ -144,7 +144,7 @@ const vehicleColorField = {
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Teams',
+	displayName: 'Teams Name/ID',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
@@ -155,7 +155,7 @@ const teamsField = {
 } as INodeProperties;
 
 const teamsFilterField = {
-	displayName: 'Teams',
+	displayName: 'Teams ID/Name',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
@@ -364,8 +364,12 @@ export const workerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['getAll'],
+				resource: [
+					'worker'
+				],
+				operation: [
+					'getAll',
+				],
 			},
 		},
 	},
@@ -375,7 +379,9 @@ export const workerFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: ['worker'],
+				resource: [
+					'worker',
+				],
 				operation: [
 					'get',
 					'getSchedule',
@@ -393,8 +399,12 @@ export const workerFields: INodeProperties[] = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['create'],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -403,8 +413,12 @@ export const workerFields: INodeProperties[] = [
 		...phoneField,
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['create'],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -413,8 +427,12 @@ export const workerFields: INodeProperties[] = [
 		...teamsField,
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['create'],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -423,9 +441,15 @@ export const workerFields: INodeProperties[] = [
 		...longitudeFilterField,
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['getAll'],
-				byLocation: [true],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'getAll',
+				],
+				byLocation: [
+					true,
+				],
 			},
 		},
 		required: true,
@@ -434,9 +458,15 @@ export const workerFields: INodeProperties[] = [
 		...latitudeFilterField,
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['getAll'],
-				byLocation: [true],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'getAll',
+				],
+				byLocation: [
+					true,
+				],
 			},
 		},
 		required: true,
@@ -490,8 +520,12 @@ export const workerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['create'],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		options: [
@@ -538,14 +572,18 @@ export const workerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['update'],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		options: [
-			nameField,
 			capacityField,
 			displayNameField,
+			nameField,
 			teamsField,
 		],
 	},
@@ -557,9 +595,15 @@ export const workerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['getAll'],
-				byLocation: [true],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'getAll',
+				],
+				byLocation: [
+					true,
+				],
 			},
 		},
 		options: [
@@ -574,14 +618,20 @@ export const workerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['getAll'],
-				byLocation: [false],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'getAll',
+				],
+				byLocation: [
+					false,
+				],
 			},
 		},
 		options: [
-			teamsFilterField,
 			statesFilterField,
+			teamsFilterField,
 			phonesFilterField,
 		],
 	},
@@ -593,9 +643,12 @@ export const workerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['getAll'],
-				byLocation: [false],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'getAll',
+				],
 			},
 		},
 		options: [
@@ -610,15 +663,15 @@ export const workerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['get'],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'get',
+				],
 			},
 		},
 		options: [
-			{
-				...filterField,
-				required: false,
-			},
 			{
 				displayName: 'Analytics',
 				name: 'analytics',
@@ -626,6 +679,10 @@ export const workerFields: INodeProperties[] = [
 				default: true,
 				required: false,
 				description: 'Whether a more detailed response is needed, includes basic worker duty event, traveled distance (meters) and time analytics',
+			},
+			{
+				...filterField,
+				required: false,
 			},
 		],
 	},
@@ -636,8 +693,12 @@ export const workerFields: INodeProperties[] = [
 		placeholder: 'Add Schedule',
 		displayOptions: {
 			show: {
-				resource: ['worker'],
-				operation: ['setSchedule'],
+				resource: [
+					'worker',
+				],
+				operation: [
+					'setSchedule',
+				],
 			},
 		},
 		default: {},

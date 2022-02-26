@@ -13,7 +13,9 @@ export const hubOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: ['hub'],
+				resource: [
+					'hub',
+				],
 			},
 		},
 		options: [
@@ -46,7 +48,7 @@ const nameField = {
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Teams',
+	displayName: 'Teams Name/ID',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
@@ -63,8 +65,12 @@ export const hubFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: ['hub'],
-				operation: ['update'],
+				resource: [
+					'hub',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		default: '',
@@ -116,8 +122,12 @@ export const hubFields: INodeProperties[] = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: ['hub'],
-				operation: ['create'],
+				resource: [
+					'hub',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -126,8 +136,12 @@ export const hubFields: INodeProperties[] = [
 		...destinationExternalField,
 		displayOptions: {
 			show: {
-				resource: ['hub'],
-				operation: ['create'],
+				resource: [
+					'hub',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
@@ -139,8 +153,12 @@ export const hubFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['hub'],
-				operation: ['create'],
+				resource: [
+					'hub',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		options: [
@@ -158,18 +176,22 @@ export const hubFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['hub'],
-				operation: ['update'],
+				resource: [
+					'hub',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		options: [
+			{
+				...destinationExternalField,
+				required: false,
+			},
 			nameField,
 			{
 				...teamsField,
-				required: false,
-			},
-			{
-				...destinationExternalField,
 				required: false,
 			},
 		],

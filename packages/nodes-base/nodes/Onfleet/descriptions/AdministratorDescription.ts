@@ -77,7 +77,9 @@ export const adminFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: ['admin'],
+				resource: [
+					'admin',
+				],
 			},
 			hide: {
 				operation: [
@@ -134,8 +136,12 @@ export const adminFields: INodeProperties[] = [
 	{
 		displayOptions: {
 			show: {
-				resource: ['admin'],
-				operation: ['create'],
+				resource: [
+					'admin',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -144,8 +150,12 @@ export const adminFields: INodeProperties[] = [
 	{
 		displayOptions: {
 			show: {
-				resource: ['admin'],
-				operation: ['create'],
+				resource: [
+					'admin',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -159,8 +169,12 @@ export const adminFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['admin'],
-				operation: ['create'],
+				resource: [
+					'admin',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		options: [
@@ -176,8 +190,12 @@ export const adminFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['admin'],
-				operation: ['update'],
+				resource: [
+					'admin',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		options: [

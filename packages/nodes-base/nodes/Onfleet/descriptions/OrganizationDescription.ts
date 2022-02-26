@@ -9,7 +9,9 @@ export const organizationOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'organization' ],
+				resource: [
+					'organization',
+				],
 			},
 		},
 		options: [
@@ -36,8 +38,12 @@ export const organizationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'organization' ],
-				operation: [ 'getDelegatee' ],
+				resource: [
+					'organization',
+				],
+				operation: [
+					'getDelegatee',
+				],
 			},
 		},
 		default: '',

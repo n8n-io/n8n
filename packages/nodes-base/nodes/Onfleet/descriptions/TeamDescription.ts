@@ -9,7 +9,9 @@ export const teamOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'team' ],
+				resource: [
+					'team',
+				],
 			},
 		},
 		options: [
@@ -62,7 +64,7 @@ const nameField = {
 } as INodeProperties;
 
 const workersField = {
-	displayName: 'Workers',
+	displayName: 'Workers Name/ID',
 	name: 'workers',
 	type: 'multiOptions',
 	typeOptions: {
@@ -73,18 +75,18 @@ const workersField = {
 } as INodeProperties;
 
 const managersField = {
-	displayName: 'Administrators',
+	displayName: 'Administrators Name/ID',
 	name: 'managers',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getAdmins',
 	},
 	default: [],
-	description: 'A list of managing administrator',
+	description: 'A list of managing administrators',
 } as INodeProperties;
 
 const hubField = {
-	displayName: 'Hub',
+	displayName: 'Hub Name/ID',
 	name: 'hub',
 	type: 'options',
 	typeOptions: {
@@ -112,7 +114,7 @@ const maxTasksPerRouteField = {
 		minValue: 1,
 	},
 	description: 'Total number of tasks allowed on a route',
-}as INodeProperties;
+} as INodeProperties;
 
 const serviceTimeField = {
 	displayName: 'Service Time',
@@ -130,10 +132,22 @@ const routeEndField = {
 	name: 'routeEnd',
 	type: 'options',
 	options: [
-		{ name: 'Team’s Hub', value: 'team_hub' },
-		{ name: 'Worker Routing Address', value: 'worker_routing_address' },
-		{ name: 'Hub', value: 'hub' },
-		{ name: 'End Anywhere', value: 'anywhere' },
+		{
+			name: 'Team’s Hub',
+			value: 'team_hub',
+		},
+		{
+			name: 'Worker Routing Address',
+			value: 'worker_routing_address',
+		},
+		{
+			name: 'Hub',
+			value: 'hub',
+		},
+		{
+			name: 'End Anywhere',
+			value: 'anywhere',
+		},
 	],
 	default: '',
 	description: 'Where the route will end',
@@ -246,7 +260,9 @@ export const teamFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'team' ],
+				resource: [
+					'team',
+				],
 				operation: [
 					'get',
 					'update',
@@ -264,8 +280,12 @@ export const teamFields: INodeProperties[] = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [ 'team' ],
-				operation: [ 'create' ],
+				resource: [
+					'team',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -274,8 +294,12 @@ export const teamFields: INodeProperties[] = [
 		...workersField,
 		displayOptions: {
 			show: {
-				resource: [ 'team' ],
-				operation: [ 'create' ],
+				resource: [
+					'team',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -284,8 +308,12 @@ export const teamFields: INodeProperties[] = [
 		...managersField,
 		displayOptions: {
 			show: {
-				resource: [ 'team' ],
-				operation: [ 'create' ],
+				resource: [
+					'team',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -298,14 +326,59 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'team' ],
-				operation: [ 'create' ],
+				resource: [
+					'team',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		options: [
 			hubField,
 			enableSelfAssignmentField,
 		],
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 64,
+		},
+		default: 64,
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Update Fields',
@@ -315,16 +388,20 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'team' ],
-				operation: [ 'update' ],
+				resource: [
+					'team',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		options: [
-			nameField,
-			workersField,
 			managersField,
 			hubField,
+			nameField,
 			enableSelfAssignmentField,
+			workersField,
 		],
 	},
 	{
@@ -335,13 +412,15 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'team' ],
-				operation: [ 'autoDispatch' ],
+				resource: [
+					'team',
+				],
+				operation: [
+					'autoDispatch',
+				],
 			},
 		},
 		options: [
-			maxAllowedDelayField,
-			maxTasksPerRouteField,
 			{
 				displayName: 'Ending Route',
 				name: 'endingRoute',
@@ -362,7 +441,9 @@ export const teamFields: INodeProperties[] = [
 								...hubField,
 								displayOptions: {
 									show: {
-										routeEnd: [ 'hub' ],
+										routeEnd: [
+											'hub',
+										],
 									},
 								},
 								required: false,
@@ -371,6 +452,8 @@ export const teamFields: INodeProperties[] = [
 					},
 				],
 			},
+			maxAllowedDelayField,
+			maxTasksPerRouteField,
 			{
 				displayName: 'Schedule Time Window',
 				name: 'scheduleTimeWindow',
@@ -438,8 +521,12 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'team' ],
-				operation: [ 'getTimeEstimates' ],
+				resource: [
+					'team',
+				],
+				operation: [
+					'getTimeEstimates',
+				],
 			},
 		},
 		options: [
@@ -447,6 +534,7 @@ export const teamFields: INodeProperties[] = [
 				displayName: 'Drop Off',
 				name: 'dropOff',
 				type: 'fixedCollection',
+				placeholder: 'Add Drop Off',
 				default: {},
 				options: [
 					{
@@ -472,6 +560,7 @@ export const teamFields: INodeProperties[] = [
 				name: 'pickUp',
 				type: 'fixedCollection',
 				default: {},
+				placeholder: 'Add Pick Up',
 				options: [
 					{
 						displayName: 'Pick Up Properties',

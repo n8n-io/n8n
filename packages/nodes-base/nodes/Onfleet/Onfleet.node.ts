@@ -96,7 +96,6 @@ import {
 } from 'request';
 
 import * as moment from 'moment-timezone';
-
 export class Onfleet implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Onfleet',
@@ -105,10 +104,9 @@ export class Onfleet implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Onfleet API',
+		description: 'Consume Onfleet API',
 		defaults: {
 			color: '#AA81F3',
-			description: 'Use the Onfleet API',
 			name: 'Onfleet',
 			testedBy: 'onfeletApiTest',
 		},
@@ -373,6 +371,9 @@ export class Onfleet implements INodeType {
 			/* -------------------------------------------------------------------------- */
 			const updateFields = this.getNodeParameter('updateFields', item) as IDataObject;
 			const adminData: OnfleetAdmins = {};
+			if (!Object.keys(updateFields).length) {
+				throw new NodeOperationError(this.getNode(), 'Select at least one field to be updated');
+			}
 			// Adding additional fields
 			Object.assign(adminData, updateFields);
 			return adminData;
@@ -411,6 +412,11 @@ export class Onfleet implements INodeType {
 
 			// Adding additional fields
 			const updateFields = this.getNodeParameter('updateFields', item) as IDataObject;
+
+			if (!Object.keys(updateFields).length) {
+				throw new NodeOperationError(this.getNode(), 'Select at least one field to be updated');
+			}
+			
 			Object.assign(hubData, updateFields);
 			return hubData;
 		}
@@ -435,16 +441,16 @@ export class Onfleet implements INodeType {
 
 			// Adding additional fields
 			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
-		
+
 			if (additionalFields.vehicle) {
 				const { vehicleProperties } = additionalFields.vehicle as IDataObject;
 				Object.assign(workerData, { vehicle: vehicleProperties });
 				delete additionalFields.vehicle;
 			}
-		
+
 			Object.assign(workerData, additionalFields);
 
-				return workerData;
+			return workerData;
 		} else if (operation === 'update') {
 			/* -------------------------------------------------------------------------- */
 			/*                        Get fields for update worker                        */
@@ -454,6 +460,10 @@ export class Onfleet implements INodeType {
 
 			// Adding additional fields
 			const updateFields = this.getNodeParameter('updateFields', item) as IDataObject;
+
+			if (!Object.keys(updateFields).length) {
+				throw new NodeOperationError(this.getNode(), 'Select at least one field to be updated');
+			}
 
 			Object.assign(workerData, updateFields);
 			return workerData;
@@ -499,12 +509,12 @@ export class Onfleet implements INodeType {
 			/*                            Set a worker schedule                           */
 			/* -------------------------------------------------------------------------- */
 			const { scheduleProperties } = this.getNodeParameter('schedule', item) as IDataObject;
-			const entries = (scheduleProperties as IDataObject[]).map(entry => {
+			const entries = (scheduleProperties as IDataObject[] || []).map(entry => {
 				const { timezone, date, shifts } = entry as IDataObject;
 				const { shiftsProperties } = shifts as IDataObject;
 				return {
 					timezone: timezone as string,
-					date: moment(new Date(date as Date)).format('YYYY-MM-DD'),
+					date: moment(date as Date).format('YYYY-MM-DD'),
 					shifts: (shiftsProperties as IDataObject[]).map(({ start, end }) => [
 						new Date(start as Date).getTime(),
 						new Date(end as Date).getTime(),
@@ -550,6 +560,7 @@ export class Onfleet implements INodeType {
 	 */
 	static formatRecipient(
 		name: string, phone: string, additionalFields: IDataObject,
+		options: IDataObject = {},
 	): OnfleetRecipient {
 		const recipient: OnfleetRecipient = { name, phone };
 
@@ -560,8 +571,8 @@ export class Onfleet implements INodeType {
 		if (additionalFields.recipientSkipSMSNotifications) {
 			recipient.skipSMSNotifications = additionalFields.recipientSkipSMSNotifications as boolean;
 		}
-		if (additionalFields.recipientSkipPhoneNumberValidation) {
-			recipient.skipPhoneNumberValidation = additionalFields.recipientSkipPhoneNumberValidation as boolean;
+		if ('recipientSkipPhoneNumberValidation' in options) {
+			recipient.skipPhoneNumberValidation = options.recipientSkipPhoneNumberValidation as boolean || false;
 		}
 
 		return recipient;
@@ -583,6 +594,7 @@ export class Onfleet implements INodeType {
 			/* -------------------------------------------------------------------------- */
 			if (shared) {
 				const { recipient: recipientData = {} } = this.getNodeParameter('additionalFields', item) as IDataObject;
+				const options = this.getNodeParameter('options', item) as IDataObject;
 				const { recipientProperties: recipient = {} } = recipientData as IDataObject;
 				if (!recipient || Object.keys(recipient).length === 0) {
 					return null;
@@ -592,12 +604,14 @@ export class Onfleet implements INodeType {
 					name as string,
 					phone as string,
 					additionalFields as IDataObject,
+					options,
 				);
 			} else {
 				const name = this.getNodeParameter('recipientName', item) as string;
 				const phone = this.getNodeParameter('recipientPhone', item) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
-				return Onfleet.formatRecipient(name, phone, additionalFields) as OnfleetRecipient;
+				const options = this.getNodeParameter('options', item) as IDataObject;
+				return Onfleet.formatRecipient(name, phone, additionalFields, options) as OnfleetRecipient;
 			}
 		} else if (operation === 'update') {
 			/* -------------------------------------------------------------------------- */
@@ -653,6 +667,11 @@ export class Onfleet implements INodeType {
 			/* -------------------------------------------------------------------------- */
 			const updateFields = this.getNodeParameter('updateFields', item) as IDataObject;
 			const taskData: OnfleetTaskUpdate = {};
+
+			if (!Object.keys(updateFields).length) {
+				throw new NodeOperationError(this.getNode(), 'Select at least one field to be updated');
+			}
+
 			const { completeAfter = null, completeBefore = null, ...extraFields } = updateFields;
 			if (completeAfter) taskData.completeAfter = new Date(completeAfter as Date).getTime();
 			if (completeBefore) taskData.completeBefore = new Date(completeBefore as Date).getTime();
@@ -662,17 +681,17 @@ export class Onfleet implements INodeType {
 			/* -------------------------------------------------------------------------- */
 			/*                          Get fields to clone task                          */
 			/* -------------------------------------------------------------------------- */
-			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
+			const overrideFields = this.getNodeParameter('overrideFields', item) as IDataObject;
 
 			const options: OnfleetCloneTaskOptions = {};
-			if (additionalFields.includeMetadata) options.includeMetadata = additionalFields.includeMetadata as boolean;
-			if (additionalFields.includeBarcodes) options.includeBarcodes = additionalFields.includeBarcodes as boolean;
-			if (additionalFields.includeDependencies) options.includeDependencies = additionalFields.includeDependencies as boolean;
+			if (overrideFields.includeMetadata) options.includeMetadata = overrideFields.includeMetadata as boolean;
+			if (overrideFields.includeBarcodes) options.includeBarcodes = overrideFields.includeBarcodes as boolean;
+			if (overrideFields.includeDependencies) options.includeDependencies = overrideFields.includeDependencies as boolean;
 
 			// Adding overrides data
 			const {
 				notes, pickupTask, serviceTime, completeAfter, completeBefore,
-			} = additionalFields as IDataObject;
+			} = overrideFields as IDataObject;
 			const overridesData = {} as OnfleetCloneOverrideTaskOptions;
 
 			if (notes) overridesData.notes = notes as string;
@@ -693,6 +712,8 @@ export class Onfleet implements INodeType {
 			const filters = this.getNodeParameter('filters', item) as IDataObject;
 			const listTaskData: OnfleetListTaskFilters = {};
 
+			const AllStates = '0,1,2,3';
+
 			const twoWeeksInMilisecods = () => (604800 * 1000);
 
 			// Adding extra fields to search tasks
@@ -706,6 +727,9 @@ export class Onfleet implements INodeType {
 			}
 			if (filters.state) {
 				listTaskData.state = (filters.state as number[]).join(',');
+				if (listTaskData.state.includes('all')) {
+					listTaskData.state = AllStates
+				}
 			}
 
 			return listTaskData;
@@ -750,6 +774,11 @@ export class Onfleet implements INodeType {
 			const teamData: OnfleetTeams = {};
 			// Adding additional fields
 			const updateFields = this.getNodeParameter('updateFields', item) as IDataObject;
+
+			if (!Object.keys(updateFields).length) {
+				throw new NodeOperationError(this.getNode(), 'Select at least one field to be updated');
+			}
+
 			Object.assign(teamData, updateFields);
 			return teamData;
 		} else if (operation === 'getTimeEstimates') {
@@ -1379,7 +1408,7 @@ export class Onfleet implements INodeType {
 					/*                      Add or update tasks to container                      */
 					/* -------------------------------------------------------------------------- */
 					const containerId = this.getNodeParameter('containerId', index) as string;
-					const containerType = this.getNodeParameter('containerType', index) as string;
+					const containerType = this.getNodeParameter('containerType', index, 'workers') as string;
 					const options = this.getNodeParameter('options', index) as IDataObject;
 
 					const tasks = this.getNodeParameter('tasks', index) as Array<string | number>;
@@ -1431,7 +1460,14 @@ export class Onfleet implements INodeType {
 					/* -------------------------------------------------------------------------- */
 					/*                                Get all teams                               */
 					/* -------------------------------------------------------------------------- */
-					responseData.push(...await onfleetApiRequest.call(this, 'GET', resource));
+					const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+					let teams = await onfleetApiRequest.call(this, 'GET', resource);
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						teams = teams.slice(0, limit);
+					}
+
+					responseData.push(...teams);
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Get a single team                             */

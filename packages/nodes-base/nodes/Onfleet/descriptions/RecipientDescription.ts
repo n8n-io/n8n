@@ -9,7 +9,9 @@ export const recipientOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'recipient' ],
+				resource: [
+					'recipient',
+				],
 			},
 		},
 		options: [
@@ -50,14 +52,6 @@ const additionalRecipientFields: INodeProperties[] = [
 		description: 'Whether this recipient has requested to skip SMS notifications',
 		required: false,
 	},
-	{
-		displayName: 'Skip Recipient Phone Number Validation',
-		name: 'recipientSkipPhoneNumberValidation',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to skip validation for this recipient\'s phone number',
-		required: false,
-	},
 ];
 
 const recipientName = {
@@ -82,10 +76,6 @@ const updateFields: INodeProperties[] = [
 		required: false,
 	},
 	{
-		...recipientPhone,
-		required: false,
-	},
-	{
 		displayName: 'Recipient Notes',
 		name: 'notes',
 		type: 'string',
@@ -93,18 +83,15 @@ const updateFields: INodeProperties[] = [
 		description: 'Notes for this recipient: these are global notes that should not be task- or destination-specific',
 	},
 	{
+		...recipientPhone,
+		required: false,
+	},
+	{
 		displayName: 'Skip Recipient SMS Notifications',
 		name: 'skipSMSNotifications',
 		type: 'boolean',
 		default: false,
 		description: 'Whether this recipient has requested to skip SMS notifications',
-	},
-	{
-		displayName: 'Skip Recipient Phone Number Validation',
-		name: 'skipPhoneNumberValidation',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to skip validation for this recipient\'s phone number',
 	},
 ];
 
@@ -141,8 +128,12 @@ export const recipientFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'recipient' ],
-				operation: [ 'get' ],
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'get',
+				],
 			},
 		},
 		options: [
@@ -169,9 +160,15 @@ export const recipientFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'recipient' ],
-				operation: [ 'get' ],
-				getBy: [ 'id' ],
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'get',
+				],
+				getBy: [
+					'id',
+				],
 			},
 		},
 		default: '',
@@ -184,8 +181,12 @@ export const recipientFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'recipient' ],
-				operation: [ 'update' ],
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		default: '',
@@ -198,9 +199,15 @@ export const recipientFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'recipient' ],
-				operation: [ 'get' ],
-				getBy: [ 'name' ],
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'get',
+				],
+				getBy: [
+					'name',
+				],
 			},
 		},
 		default: '',
@@ -213,9 +220,15 @@ export const recipientFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [ 'recipient' ],
-				operation: [ 'get' ],
-				getBy: [ 'phone' ],
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'get',
+				],
+				getBy: [
+					'phone',
+				],
 			},
 		},
 		default: '',
@@ -225,8 +238,12 @@ export const recipientFields: INodeProperties[] = [
 	{
 		displayOptions: {
 			show: {
-				resource: [ 'recipient' ],
-				operation: [ 'create' ],
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		...recipientName,
@@ -235,8 +252,12 @@ export const recipientFields: INodeProperties[] = [
 	{
 		displayOptions: {
 			show: {
-				resource: [ 'recipient' ],
-				operation: ['create' ],
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		...recipientPhone,
@@ -250,8 +271,12 @@ export const recipientFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'recipient' ],
-				operation: [ 'create' ],
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		options: additionalRecipientFields,
@@ -264,10 +289,41 @@ export const recipientFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'recipient' ],
-				operation: [ 'update' ],
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		options: updateFields,
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Skip Recipient Phone Number Validation',
+				name: 'recipientSkipPhoneNumberValidation',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to skip validation for this recipient\'s phone number',
+				required: false,
+			},
+		],
 	},
 ];

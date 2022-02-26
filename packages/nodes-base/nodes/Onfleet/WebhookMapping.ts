@@ -1,4 +1,6 @@
-import { OnfleetWebhooksMapping } from './interfaces';
+import { 
+	OnfleetWebhooksMapping,
+} from './interfaces';
 
 export const webhookMapping: OnfleetWebhooksMapping = {
 	taskStarted: {
@@ -7,7 +9,7 @@ export const webhookMapping: OnfleetWebhooksMapping = {
 		key: 0,
 	},
 	taskEta: {
-		name: 'Task Eta',
+		name: 'Task ETA',
 		value: 'taskEta',
 		key: 1,
 	},
@@ -67,7 +69,7 @@ export const webhookMapping: OnfleetWebhooksMapping = {
 		key: 13,
 	},
 	smsRecipientResponseMissed: {
-		name: 'Sms Recipient Response Missed',
+		name: 'SMS Recipient Response Missed',
 		value: 'smsRecipientResponseMissed',
 		key: 14,
 	},

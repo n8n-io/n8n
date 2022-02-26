@@ -6,17 +6,23 @@ import {
 	webhookMapping,
 } from '../WebhookMapping';
 
+ const sort = (a: { name: string }, b: { name: string }) => {
+	if (a.name < b.name) { return -1; }
+	if (a.name > b.name) { return 1; }
+	return 0;
+};
+
+
 export const eventDisplay: INodeProperties = {
-	displayName: 'Event',
-	name: 'event',
+	displayName: 'Trigger On',
+	name: 'trigger On',
 	type: 'options',
 	options: Object.keys(webhookMapping).map((webhook) => {
 		const { name, value } = webhookMapping[webhook];
 		return { name, value };
-	}),
+	}).sort(sort),
 	required: true,
 	default: [],
-	description: 'The event to listen to',
 };
 
 export const eventNameField = {

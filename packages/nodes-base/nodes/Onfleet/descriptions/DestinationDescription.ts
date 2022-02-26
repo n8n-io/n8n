@@ -9,7 +9,9 @@ export const destinationOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: ['destination'],
+				resource: [
+					'destination',
+				],
 			},
 		},
 		options: [
@@ -136,7 +138,9 @@ export const destinationExternalField = {
 					...unparsedAddressField,
 					displayOptions: {
 						show: {
-							unparsed: [true],
+							unparsed: [
+								true,
+							],
 						},
 					},
 					required: true,
@@ -145,7 +149,9 @@ export const destinationExternalField = {
 					...unparsedAddressNumberField,
 					displayOptions: {
 						show: {
-							unparsed: [false],
+							unparsed: [
+								false,
+							],
 						},
 					},
 					required: true,
@@ -154,7 +160,9 @@ export const destinationExternalField = {
 					...unparsedAddressStreetField,
 					displayOptions: {
 						show: {
-							unparsed: [false],
+							unparsed: [
+								false,
+							],
 						},
 					},
 					required: true,
@@ -163,7 +171,9 @@ export const destinationExternalField = {
 					...unparsedAddressCityField,
 					displayOptions: {
 						show: {
-							unparsed: [false],
+							unparsed: [
+								false,
+							],
 						},
 					},
 					required: true,
@@ -172,7 +182,9 @@ export const destinationExternalField = {
 					...unparsedAddressStateField,
 					displayOptions: {
 						show: {
-							unparsed: [false],
+							unparsed: [
+								false,
+							],
 						},
 					},
 					required: true,
@@ -181,7 +193,9 @@ export const destinationExternalField = {
 					...unparsedAddressCountryField,
 					displayOptions: {
 						show: {
-							unparsed: [false],
+							unparsed: [
+								false,
+							],
 						},
 					},
 					required: true,
@@ -201,7 +215,9 @@ export const destinationExternalField = {
 				{
 					displayOptions: {
 						show: {
-							unparsed: [false],
+							unparsed: [
+								false,
+							],
 						},
 					},
 					...addressPostalCodeField,
@@ -219,10 +235,14 @@ export const destinationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: ['destination'],
+				resource: [
+					'destination',
+				],
 			},
 			hide: {
-				operation: ['create'],
+				operation: [
+					'create',
+				],
 			},
 		},
 		default: '',
@@ -233,8 +253,12 @@ export const destinationFields: INodeProperties[] = [
 		...unparsedField,
 		displayOptions: {
 			show: {
-				resource: ['destination'],
-				operation: ['create'],
+				resource: [
+					'destination',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -243,9 +267,15 @@ export const destinationFields: INodeProperties[] = [
 		...unparsedAddressField,
 		displayOptions: {
 			show: {
-				resource: ['destination'],
-				operation: ['create'],
-				unparsed: [true],
+				resource: [
+					'destination',
+				],
+				operation: [
+					'create',
+				],
+				unparsed: [
+					true,
+				],
 			},
 		},
 		required: true,
@@ -254,9 +284,15 @@ export const destinationFields: INodeProperties[] = [
 		...unparsedAddressNumberField,
 		displayOptions: {
 			show: {
-				resource: ['destination'],
-				operation: ['create'],
-				unparsed: [false],
+				resource: [
+					'destination',
+				],
+				operation: [
+					'create',
+				],
+				unparsed: [
+					false,
+				],
 			},
 		},
 		required: true,
@@ -265,9 +301,15 @@ export const destinationFields: INodeProperties[] = [
 		...unparsedAddressStreetField,
 		displayOptions: {
 			show: {
-				resource: ['destination'],
-				operation: ['create'],
-				unparsed: [false],
+				resource: [
+					'destination',
+				],
+				operation: [
+					'create',
+				],
+				unparsed: [
+					false,
+				],
 			},
 		},
 		required: true,
@@ -276,9 +318,15 @@ export const destinationFields: INodeProperties[] = [
 		...unparsedAddressCityField,
 		displayOptions: {
 			show: {
-				resource: ['destination'],
-				operation: ['create'],
-				unparsed: [false],
+				resource: [
+					'destination',
+				],
+				operation: [
+					'create',
+				],
+				unparsed: [
+					false,
+				],
 			},
 		},
 		required: true,
@@ -287,9 +335,15 @@ export const destinationFields: INodeProperties[] = [
 		...unparsedAddressCountryField,
 		displayOptions: {
 			show: {
-				resource: ['destination'],
-				operation: ['create'],
-				unparsed: [false],
+				resource: [
+					'destination',
+				],
+				operation: [
+					'create',
+				],
+				unparsed: [
+					false,
+				],
 			},
 		},
 		required: true,
@@ -302,14 +356,20 @@ export const destinationFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['destination'],
-				operation: ['create'],
-				unparsed: [true],
+				resource: [
+					'destination',
+				],
+				operation: [
+					'create',
+				],
+				unparsed: [
+					true,
+				],
 			},
 		},
 		options: [
-			addressNameField,
 			addressApartmentField,
+			addressNameField,
 			addressNoteField,
 		],
 	},
@@ -321,14 +381,20 @@ export const destinationFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['destination'],
-				operation: ['create'],
-				unparsed: [false],
+				resource: [
+					'destination',
+				],
+				operation: [
+					'create',
+				],
+				unparsed: [
+					false,
+				],
 			},
 		},
 		options: [
-			addressNameField,
 			addressApartmentField,
+			addressNameField,
 			addressNoteField,
 			addressPostalCodeField,
 		],

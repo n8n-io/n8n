@@ -1,8 +1,14 @@
 import {
 	INodeProperties
 } from 'n8n-workflow';
-import { destinationExternalField } from './DestinationDescription';
-import { recipientExternalField } from './RecipientDescription';
+
+import {
+	destinationExternalField,
+} from './DestinationDescription';
+
+import {
+	recipientExternalField,
+} from './RecipientDescription';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -11,7 +17,9 @@ export const taskOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: ['task'],
+				resource: [
+					'task',
+				],
 			},
 		},
 		options: [
@@ -127,7 +135,9 @@ export const taskFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: ['task'],
+				resource: [
+					'task',
+				],
 			},
 			hide: {
 				operation: [
@@ -185,21 +195,29 @@ export const taskFields: INodeProperties[] = [
 		...destinationExternalField,
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['create'],
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		default: {},
 		required: true,
 	},
 	{
-		displayName: 'Success',
+		displayName: 'Complete as a Success',
 		name: 'success',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['complete'],
+				resource: [
+					'task',
+				],
+				operation: [
+					'complete',
+				],
 			},
 		},
 		description: 'Whether the task\'s completion was successful',
@@ -214,8 +232,12 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['getAll'],
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
 			},
 		},
 		options: [
@@ -227,17 +249,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'The starting time of the range. Tasks created or completed at or after this time will be included.',
 			},
 			{
-				displayName: 'To',
-				name: 'to',
-				type: 'dateTime',
-				default: '',
-				description: 'The ending time of the range. Defaults to current time if not specified.',
-			},
-			{
 				displayName: 'State',
 				name: 'state',
 				type: 'multiOptions',
 				options: [
+					{
+						name: '[All]',
+						value: 'all',
+					},
 					{
 						name: 'Active',
 						value: 2,
@@ -255,29 +274,40 @@ export const taskFields: INodeProperties[] = [
 						value: 0,
 					},
 				],
-				default: [],
+				default: ['all'],
 				description: 'The state of the tasks',
+			},
+			{
+				displayName: 'To',
+				name: 'to',
+				type: 'dateTime',
+				default: '',
+				description: 'The ending time of the range. Defaults to current time if not specified.',
 			},
 		],
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Override Fields',
+		name: 'overrideFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['clone'],
+				resource: [
+					'task',
+				],
+				operation: [
+					'clone',
+				],
 			},
 		},
 		options: [
 			{
-				displayName: 'Include Metadata',
-				name: 'includeMetadata',
-				type: 'boolean',
-				default: false,
+				...completeAfterField,
+			},
+			{
+				...completeBeforeField,
 			},
 			{
 				displayName: 'Include Barcodes',
@@ -288,6 +318,12 @@ export const taskFields: INodeProperties[] = [
 			{
 				displayName: 'Include Dependencies',
 				name: 'includeDependencies',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Include Metadata',
+				name: 'includeMetadata',
 				type: 'boolean',
 				default: false,
 			},
@@ -303,14 +339,6 @@ export const taskFields: INodeProperties[] = [
 				...serviceTimeField,
 				required: false,
 			},
-			{
-				...completeAfterField,
-				required: false,
-			},
-			{
-				...completeBeforeField,
-				required: false,
-			},
 		],
 	},
 	{
@@ -321,17 +349,21 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['update'],
+				resource: [
+					'task',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		options: [
-			merchantIdField,
-			executorIdField,
 			completeAfterField,
 			completeBeforeField,
-			pickupTaskField,
+			executorIdField,
+			merchantIdField,
 			notesField,
+			pickupTaskField,
 			quantityField,
 			serviceTimeField,
 		],
@@ -344,8 +376,12 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['complete'],
+				resource: [
+					'task',
+				],
+				operation: [
+					'complete',
+				],
 			},
 		},
 		options: [
@@ -366,23 +402,26 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['create'],
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		options: [
-			recipientExternalField,
-			merchantIdField,
-			executorIdField,
 			completeAfterField,
 			completeBeforeField,
-			pickupTaskField,
+			executorIdField,
+			merchantIdField,
 			notesField,
+			pickupTaskField,
 			quantityField,
-			serviceTimeField,
+			recipientExternalField,
 			{
 				displayName: 'Recipient Name Override',
-				name: 'recipientNameOverride',
+				name: 'recipientName',
 				type: 'string',
 				default: '',
 				description: 'Override the recipient name for this task only',
@@ -401,6 +440,7 @@ export const taskFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to override the recipient notification settings for this task',
 			},
+			serviceTimeField,
 			{
 				displayName: 'Use Merchant For Proxy Override',
 				name: 'useMerchantForProxy',

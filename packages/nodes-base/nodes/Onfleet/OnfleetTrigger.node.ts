@@ -35,12 +35,11 @@ export class OnfleetTrigger implements INodeType {
 		icon: 'file:Onfleet.svg',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{$parameter["events"]}}',
+		subtitle: '={{$parameter["triggerOn"]}}',
 		description: 'Starts the workflow when Onfleet events occur',
 		defaults: {
 			name: 'Onfleet Trigger',
 			color: '#AA81F3',
-			description: 'Handle Onfleet events via webhooks',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -75,7 +74,7 @@ export class OnfleetTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const event = this.getNodeParameter('event') as string;
+				const triggerOn = this.getNodeParameter('triggerOn') as string;
 				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
@@ -94,7 +93,7 @@ export class OnfleetTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const { name = '' } = this.getNodeParameter('additionalFields') as IDataObject;
-				const event = this.getNodeParameter('event') as string;
+				const triggerOn = this.getNodeParameter('triggerOn') as string;
 				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
@@ -112,7 +111,7 @@ export class OnfleetTrigger implements INodeType {
 				const body = {
 					name: newWebhookName,
 					url: webhookUrl,
-					trigger: webhookMapping[event].key,
+					trigger: webhookMapping[triggerOn].key,
 				};
 
 				try {

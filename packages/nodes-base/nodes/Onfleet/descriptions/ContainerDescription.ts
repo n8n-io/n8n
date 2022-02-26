@@ -9,7 +9,9 @@ export const containerOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [ 'container' ],
+				resource: [
+					'container',
+				],
 			},
 		},
 		options: [
@@ -82,7 +84,6 @@ const insertTypeField = {
 		},
 	],
 	default: '',
-	description: 'The index given indicates the position where the tasks are going to be inserted',
 } as INodeProperties;
 
 const indexField = {
@@ -118,11 +119,12 @@ export const containerFields: INodeProperties[] = [
 		...containerTypeField,
 		displayOptions: {
 			show: {
-				resource: [ 'container' ],
+				resource: [
+					'container',
+				],
 				operation: [
 					'get',
 					'add',
-					'update',
 				],
 			},
 		},
@@ -132,7 +134,9 @@ export const containerFields: INodeProperties[] = [
 		...containerIdField,
 		displayOptions: {
 			show: {
-				resource: [ 'container' ],
+				resource: [
+					'container',
+				],
 				operation: [
 					'get',
 					'add',
@@ -146,8 +150,12 @@ export const containerFields: INodeProperties[] = [
 		...insertTypeField,
 		displayOptions: {
 			show: {
-				resource: [ 'container' ],
-				operation: [ 'add' ],
+				resource: [
+					'container',
+				],
+				operation: [
+					'add',
+				],
 			},
 		},
 		required: true,
@@ -156,9 +164,15 @@ export const containerFields: INodeProperties[] = [
 		...indexField,
 		displayOptions: {
 			show: {
-				resource: [ 'container' ],
-				operation: [ 'add' ],
-				type: [ 1 ],
+				resource: [
+					'container',
+				],
+				operation: [
+					'add',
+				],
+				type: [
+					1,
+				],
 			},
 		},
 		required: true,
@@ -167,7 +181,9 @@ export const containerFields: INodeProperties[] = [
 		...tasksField,
 		displayOptions: {
 			show: {
-				resource: [ 'container' ],
+				resource: [
+					'container',
+				],
 				operation: [
 					'add',
 					'update',
@@ -184,7 +200,9 @@ export const containerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [ 'container' ],
+				resource: [
+					'container',
+				],
 				operation: [
 					'add',
 					'update',
