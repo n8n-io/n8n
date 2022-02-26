@@ -71,13 +71,13 @@ export default {
 		},
 		loadingBlocks: {
 			type: Number,
-			default: 2
+			default: 2,
 		},
 		loadingRows: {
 			type: Number,
 			default: () => {
 				return 3;
-			}
+			},
 		},
 		options: {
 			type: Object,
