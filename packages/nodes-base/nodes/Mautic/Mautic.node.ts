@@ -46,16 +46,6 @@ import {
 } from './ContactSegmentDescription';
 
 import {
-	contactPointFields,
-	contactPointOperations,
-} from './ContactPointDescription';
-
-import {
-	contactDncFields,
-	contactDncOperations,
-} from './ContactDncDescription';
-
-import {
 	campaignContactFields,
 	campaignContactOperations,
 } from './CampaignContactDescription';
@@ -147,16 +137,6 @@ export class Mautic implements INodeType {
 						description: 'Create & modify contacts',
 					},
 					{
-						name: 'Contact Do Not Contact',
-						value: 'contactDnc',
-						description: 'Add/remove Contact to/from Do Not Contact',
-					},
-					{
-						name: 'Contact Point',
-						value: 'contactPoint',
-						description: 'Add/remove points to/from a contact',
-					},
-					{
 						name: 'Contact Segment',
 						value: 'contactSegment',
 						description: 'Add/remove contacts to/from a segment',
@@ -175,10 +155,6 @@ export class Mautic implements INodeType {
 			...contactFields,
 			...contactSegmentOperations,
 			...contactSegmentFields,
-			...contactPointOperations,
-			...contactPointFields,
-			...contactDncOperations,
-			...contactDncFields,
 			...campaignContactOperations,
 			...campaignContactFields,
 			...companyContactOperations,
@@ -868,6 +844,30 @@ export class Mautic implements INodeType {
 						const campaignEmailId = this.getNodeParameter('campaignEmailId', i) as string;
 						responseData = await mauticApiRequest.call(this, 'POST', `/emails/${campaignEmailId}/contact/${contactId}/send`);
 					}
+					//https://developer.mautic.org/#add-do-not-contact
+					//https://developer.mautic.org/#remove-from-do-not-contact
+					if (operation === 'editDoNotContactList') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const action = this.getNodeParameter('action', i) as string;
+						const channel = this.getNodeParameter('channel', i) as string;
+						const body: IDataObject = {};
+						if (action === 'add') {
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							Object.assign(body, additionalFields);
+						}
+						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/dnc/${channel}/${action}`, body);
+						responseData = responseData.contact;
+					}
+
+					//https://developer.mautic.org/#add-points
+					//https://developer.mautic.org/#subtract-points
+					if (operation === 'editContactPoint') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const action = this.getNodeParameter('action', i) as string;
+						const points = this.getNodeParameter('points', i) as string;
+						const path = (action === 'add') ? 'plus' : 'minus';
+						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/points/${path}/${points}`);
+					}
 				}
 
 				if (resource === 'contactSegment') {
@@ -882,41 +882,6 @@ export class Mautic implements INodeType {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const segmentId = this.getNodeParameter('segmentId', i) as string;
 						responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/remove`);
-					}
-				}
-
-				if (resource === 'contactPoint') {
-					//https://developer.mautic.org/#add-points
-					if (operation === 'add') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
-						const points = this.getNodeParameter('points', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/points/plus/${points}`);
-					}
-					//https://developer.mautic.org/#subtract-points
-					if (operation === 'remove') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
-						const points = this.getNodeParameter('points', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/points/minus/${points}`);
-					}
-				}
-
-				if (resource === 'contactDnc') {
-					//https://developer.mautic.org/#add-do-not-contact
-					if (operation === 'add') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
-						const channel = this.getNodeParameter('channel', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const body: IDataObject = {};
-						Object.assign(body, additionalFields);
-						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/dnc/${channel}/add`, body);
-						responseData = responseData.contact;
-					}
-					//https://developer.mautic.org/#remove-from-do-not-contact
-					if (operation === 'remove') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
-						const channel = this.getNodeParameter('channel', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/dnc/${channel}/remove`);
-						responseData = responseData.contact;
 					}
 				}
 
