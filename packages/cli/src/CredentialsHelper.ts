@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -423,7 +424,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
 	}
 
@@ -460,8 +460,25 @@ export class CredentialsHelper extends ICredentialsHelper {
 				for (const credential of nodeType.description.credentials ?? []) {
 					if (credential.name === credentialType && !!credential.testedBy) {
 						if (typeof credential.testedBy === 'string') {
+							if (Object.prototype.hasOwnProperty.call(node, 'nodeVersions')) {
+								// The node is versioned. So check all versions for test function
+								// starting with the latest
+								const versions = Object.keys((node as INodeVersionedType).nodeVersions)
+									.sort()
+									.reverse();
+								for (const version of versions) {
+									const versionedNode = (node as INodeVersionedType).nodeVersions[
+										parseInt(version, 10)
+									];
+									if (
+										versionedNode.methods?.credentialTest &&
+										versionedNode.methods?.credentialTest[credential.testedBy]
+									) {
+										return versionedNode.methods?.credentialTest[credential.testedBy];
+									}
+								}
+							}
 							// Test is defined as string which links to a functoin
-							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							return (node as unknown as INodeType).methods?.credentialTest![credential.testedBy];
 						}
 
