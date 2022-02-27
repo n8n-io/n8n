@@ -9,7 +9,7 @@ import { Db, ResponseHelper } from '../..';
 import config = require('../../../config');
 import { User } from '../../databases/entities/User';
 import { validateEntity } from '../../GenericHelpers';
-import { OwnerRequest } from '../../requests';
+import { AuthenticatedRequest, OwnerRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
 import { sanitizeUser, validatePassword } from '../UserManagementHelper';
@@ -97,16 +97,18 @@ export function ownerNamespace(this: N8nApp): void {
 	/**
 	 * Persist that the instance owner setup has been skipped
 	 */
-		 this.app.post(
-			`/${this.restEndpoint}/owner/skip-setup`,
-			ResponseHelper.send(async (req: OwnerRequest.Post, res: express.Response) => {
-				await Db.collections.Settings!.update(
-					{ key: 'userManagement.skipInstanceOwnerSetup' },
-					{ value: JSON.stringify(true) },
-				);
+	this.app.post(
+		`/${this.restEndpoint}/owner/skip-setup`,
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		ResponseHelper.send(async (_req: AuthenticatedRequest, _res: express.Response) => {
+			await Db.collections.Settings!.update(
+				{ key: 'userManagement.skipInstanceOwnerSetup' },
+				{ value: JSON.stringify(true) },
+			);
 
-				config.set('userManagement.skipInstanceOwnerSetup', true);
+			config.set('userManagement.skipInstanceOwnerSetup', true);
 
-				return { success: true };
-			})
+			return { success: true };
+		}),
+	);
 }

@@ -229,8 +229,6 @@ class App {
 
 	presetCredentialsLoaded: boolean;
 
-	isUserManagementEnabled: boolean;
-
 	webhookMethods: WebhookHttpMethod[];
 
 	constructor() {
@@ -268,11 +266,24 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
 
-		// TODO UM: remove this flag
-		this.isUserManagementEnabled = !config.get('userManagement.disabled');
+		this.frontendSettings = this.getCurrentFrontendSettings();
+	}
 
+	/**
+	 * Returns the current epoch time
+	 *
+	 * @returns {number}
+	 * @memberof App
+	 */
+	getCurrentDate(): Date {
+		return new Date();
+	}
+
+	/**
+	 * Returns the current settings for the frontend
+	 */
+	getCurrentFrontendSettings(): IN8nUISettings {
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
-
 		const telemetrySettings: ITelemetrySettings = {
 			enabled: config.get('diagnostics.enabled') as boolean,
 		};
@@ -289,7 +300,7 @@ class App {
 			telemetrySettings.config = { key, url };
 		}
 
-		this.frontendSettings = {
+		return {
 			endpointWebhook: this.endpointWebhook,
 			endpointWebhookTest: this.endpointWebhookTest,
 			saveDataErrorExecution: this.saveDataErrorExecution,
@@ -320,22 +331,13 @@ class App {
 					config.get('userManagement.hasOwner') === true,
 				showSetupOnFirstLoad:
 					config.get('userManagement.disabled') === false &&
+					config.get('userManagement.hasOwner') === false &&
 					config.get('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
 			logLevel: config.get('logs.level'),
 		};
-	}
-
-	/**
-	 * Returns the current epoch time
-	 *
-	 * @returns {number}
-	 * @memberof App
-	 */
-	getCurrentDate(): Date {
-		return new Date();
 	}
 
 	async config(): Promise<void> {
@@ -2695,12 +2697,12 @@ class App {
 		// Settings
 		// ----------------------------------------
 
-		// Returns the settings which are needed in the UI
+		// Returns the current settings for the UI
 		this.app.get(
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					return this.frontendSettings;
+					return this.getCurrentFrontendSettings();
 				},
 			),
 		);

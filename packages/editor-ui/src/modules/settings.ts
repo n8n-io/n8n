@@ -7,7 +7,7 @@ import {
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getPromptsData, submitValueSurvey, submitContactInfo, getSettings } from '../api/settings';
+import { getPromptsData, submitValueSurvey, submitContactInfo, getSettings, submitSkipOwnerSetup } from '../api/settings';
 import Vue from 'vue';
 import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
@@ -127,6 +127,15 @@ const module: Module<ISettingsState, IRootState> = {
 				const instanceId = context.state.settings.instanceId;
 				const userId = context.rootGetters['users/currentUserId'];
 				return await submitValueSurvey(instanceId, userId, params);
+			} catch (e) {
+				return e;
+			}
+		},
+		async skipOwnerSetup(context: ActionContext<ISettingsState, IRootState>) {
+			try {
+				context.commit('stopShowingSetupPage');
+				await submitSkipOwnerSetup(context.rootGetters.getRestApiContext);
+				return true;
 			} catch (e) {
 				return e;
 			}
