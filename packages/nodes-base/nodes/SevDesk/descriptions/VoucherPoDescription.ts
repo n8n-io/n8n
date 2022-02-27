@@ -30,40 +30,7 @@ export const voucherPoFields: INodeProperties[] = [
 	// ----------------------------------------
 	//            voucherPo: getAll
 	// ----------------------------------------
-	// {
-	// 	displayName: 'Voucher[id]',
-	// 	name: 'voucher[id]',
-	// 	description: 'Retrieve all vouchers positions belonging to this voucher. Must be provided with voucher[objectName].',
-	// 	type: 'number',
-	// 	default: 0,
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'VoucherPo',
-	// 			],
-	// 			operation: [
-	// 				'getAll',
-	// 			],
-	// 		},
-	// 	},
-	// },
-	// {
-	// 	displayName: 'voucher[objectName]',
-	// 	name: 'voucher[objectName]',
-	// 	description: 'Only required if voucher[id] was provided. \'Voucher\' should be used as value.',
-	// 	type: 'string',
-	// 	default: '',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'VoucherPo',
-	// 			],
-	// 			operation: [
-	// 				'getAll',
-	// 			],
-	// 		},
-	// 	},
-	// },
+
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -93,7 +60,7 @@ export const voucherPoFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'VoucherPo',
+					'voucherPo',
 				],
 				operation: [
 					'getAll',
@@ -103,5 +70,38 @@ export const voucherPoFields: INodeProperties[] = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'voucherPo',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Voucher ID',
+				name: 'voucherId',
+				description: 'Retrieve all voucher positions belonging to this voucher. Must be provided with Voucher Object Name.',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Voucher Object Name',
+				name: 'voucherObjectName',
+				description: 'Only required if voucher ID was provided. "Voucher" should be used as value.',
+				type: 'string',
+				default: 'Voucher',
+			},
+		],
 	},
 ];

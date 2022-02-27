@@ -50,7 +50,7 @@ export const accountingContactFields: INodeProperties[] = [
 				name: 'id',
 				description: 'Unique identifier of the contact',
 				type: 'string',
-				default: 0,
+				default: '',
 			},
 			{
 				displayName: 'Object Name',
@@ -81,14 +81,14 @@ export const accountingContactFields: INodeProperties[] = [
 			{
 				displayName: 'Debitor Number',
 				name: 'debitorNumber',
-				description: 'Debitor number of the accounting contact.',
+				description: 'Debitor number of the accounting contact',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'Creditor Number',
 				name: 'creditorNumber',
-				description: 'Creditor number of the accounting contact.',
+				description: 'Creditor number of the accounting contact',
 				type: 'string',
 				default: '',
 			},

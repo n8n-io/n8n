@@ -63,7 +63,7 @@ export const communicationWayFields: INodeProperties[] = [
 				name: 'id',
 				description: 'Unique identifier of the contact',
 				type: 'string',
-				default: 0,
+				default: '',
 			},
 			{
 				displayName: 'Object Name',
@@ -77,7 +77,7 @@ export const communicationWayFields: INodeProperties[] = [
 	{
 		displayName: 'Type',
 		name: 'type',
-		description: 'Type of the communication way. One of "EMAIL", "PHONE", "WEB", "MOBILE"',
+		description: 'Type of the communication way. One of "EMAIL", "PHONE", "WEB", "MOBILE".',
 		type: 'string',
 		required: true,
 		default: '',
@@ -133,7 +133,7 @@ export const communicationWayFields: INodeProperties[] = [
 				name: 'id',
 				description: 'Unique identifier of the key',
 				type: 'string',
-				default: 0,
+				default: '',
 			},
 			{
 				displayName: 'Object Name',
@@ -208,5 +208,53 @@ export const communicationWayFields: INodeProperties[] = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		description: 'There are a multitude of parameter which can be used to filter. A few of them are attached but for a complete list please check out <a href="https://5677.extern.sevdesk.dev/apiOverview/index.html#/doc-invoices#filtering">this</> list.',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'communicationWay',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Contact ID',
+				name: 'contactId',
+				description: 'Retrieve all invoices with this contact. Must be provided with Contact Object Name.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Contact Object Name',
+				name: 'contactId',
+				description: 'Only required if Contact ID was provided. "Contact" should be used as value.',
+				type: 'string',
+				default: 'Contact',
+			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				description: 'Type of the communication ways you want to get',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Main',
+				name: 'main',
+				description: 'Define if you only want the main communication way',
+				type: 'number',
+				default: 0,
+			},
+		],
 	},
 ];

@@ -19,7 +19,7 @@ export const orderPoOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Creates an order position for an order.',
+				description: 'Creates an order position for an order',
 			},
 			{
 				name: 'Get All',
@@ -38,7 +38,7 @@ export const orderPoFields: INodeProperties[] = [
 	{
 		displayName: 'Order',
 		name: 'order',
-		description: 'The order to which the position belongs.',
+		description: 'The order to which the position belongs',
 		type: 'collection',
 		required: true,
 		default: {},
@@ -57,7 +57,7 @@ export const orderPoFields: INodeProperties[] = [
 				displayName: 'ID',
 				name: 'id',
 				description: 'Unique identifier of the order',
-				type: 'string',
+				type: 'number',
 				default: 0,
 			},
 			{
@@ -127,7 +127,7 @@ export const orderPoFields: INodeProperties[] = [
 		description: 'Tax rate of the position',
 		type: 'number',
 		required: true,
-		default: '',
+		default: 0,
 		displayOptions: {
 			show: {
 				resource: [
@@ -157,9 +157,30 @@ export const orderPoFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Discount',
+				name: 'discount',
+				description: 'An optional discount of the position',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				description: 'Name of the article/part',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Optional',
+				name: 'optional',
+				description: 'Defines if the position is optional',
+				type: 'boolean',
+				default: false,
+			},
+			{
 				displayName: 'Part',
 				name: 'part',
-				description: 'Part from your inventory which is used in the position.',
+				description: 'Part from your inventory which is used in the position',
 				type: 'collection',
 				default: {},
 				options: [
@@ -180,16 +201,16 @@ export const orderPoFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Price',
-				name: 'price',
-				description: 'Price of the article/part. Is either gross or net, depending on the sevDesk account setting.',
+				displayName: 'Position Number',
+				name: 'positionNumber',
+				description: 'Position number of your position. Can be used to order multiple positions.',
 				type: 'number',
 				default: 0,
 			},
 			{
-				displayName: 'Price Tax',
-				name: 'priceTax',
-				description: 'Tax on the price of the part',
+				displayName: 'Price',
+				name: 'price',
+				description: 'Price of the article/part. Is either gross or net, depending on the sevDesk account setting.',
 				type: 'number',
 				default: 0,
 			},
@@ -201,16 +222,9 @@ export const orderPoFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Name',
-				name: 'name',
-				description: 'Name of the article/part',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Position Number',
-				name: 'positionNumber',
-				description: 'Position number of your position. Can be used to order multiple positions.',
+				displayName: 'Price Tax',
+				name: 'priceTax',
+				description: 'Tax on the price of the part',
 				type: 'number',
 				default: 0,
 			},
@@ -221,59 +235,11 @@ export const orderPoFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-			{
-				displayName: 'Discount',
-				name: 'discount',
-				description: 'An optional discount of the position',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Optional',
-				name: 'optional',
-				description: 'Defines if the position is optional',
-				type: 'boolean',
-				default: false,
-			},
 		],
 	},
 	// ----------------------------------------
 	//             orderPo: getAll
 	// ----------------------------------------
-	// {
-	// 	displayName: 'Order[id]',
-	// 	name: 'order[id]',
-	// 	description: 'Retrieve all order positions belonging to this order. Must be provided with voucher[objectName].',
-	// 	type: 'number',
-	// 	default: 0,
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'orderPo',
-	// 			],
-	// 			operation: [
-	// 				'getAll',
-	// 			],
-	// 		},
-	// 	},
-	// },
-	// {
-	// 	displayName: 'order[objectName]',
-	// 	name: 'order[objectName]',
-	// 	description: 'Only required if order[id] was provided. \'Order\' should be used as value.',
-	// 	type: 'string',
-	// 	default: '',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'orderPo',
-	// 			],
-	// 			operation: [
-	// 				'getAll',
-	// 			],
-	// 		},
-	// 	},
-	// },
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -313,5 +279,38 @@ export const orderPoFields: INodeProperties[] = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'orderPo',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Order ID',
+				name: 'orderId',
+				description: 'Retrieve all order positions belonging to this order. Must be provided with Order Object Name.',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Order Object Name',
+				name: 'orderObjectName',
+				description: 'Only required if order ID was provided. "Order" should be used as value.',
+				type: 'string',
+				default: 'Order',
+			},
+		],
 	},
 ];

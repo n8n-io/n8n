@@ -50,7 +50,7 @@ export const contactAddressFields: INodeProperties[] = [
 				name: 'id',
 				description: 'Unique identifier of the contact',
 				type: 'string',
-				default: 0,
+				default: '',
 			},
 			{
 				displayName: 'Object Name',
@@ -83,7 +83,7 @@ export const contactAddressFields: INodeProperties[] = [
 				displayName: 'ID',
 				name: 'id',
 				description: 'Unique identifier of the contact',
-				type: 'string',
+				type: 'number',
 				default: 0,
 			},
 			{
@@ -113,27 +113,6 @@ export const contactAddressFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Street',
-				name: 'street',
-				description: 'Street name',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Zip Code',
-				name: 'zip',
-				description: 'Zip Code',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'City',
-				name: 'city',
-				description: 'City Name',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Category',
 				name: 'category',
 				description: 'Category of the contact address. For all categories, send a GET to /Category?objectType=ContactAddress.',
@@ -145,7 +124,7 @@ export const contactAddressFields: INodeProperties[] = [
 						displayName: 'ID',
 						name: 'id',
 						description: 'Unique identifier of the category',
-						type: 'string',
+						type: 'number',
 						default: 0,
 					},
 					{
@@ -156,6 +135,13 @@ export const contactAddressFields: INodeProperties[] = [
 						default: 'Category',
 					},
 				],
+			},
+			{
+				displayName: 'City',
+				name: 'city',
+				description: 'City Name',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Name',
@@ -182,6 +168,19 @@ export const contactAddressFields: INodeProperties[] = [
 				displayName: 'Fourth Name',
 				name: 'name4',
 				description: 'Fourth Name in address',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Street',
+				name: 'street',
+				description: 'Street name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Zip Code',
+				name: 'zip',
 				type: 'string',
 				default: '',
 			},

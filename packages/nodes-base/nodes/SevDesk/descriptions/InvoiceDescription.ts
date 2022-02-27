@@ -210,10 +210,10 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Check account transaction',
+				displayName: 'Check Account Transaction',
 				name: 'checkAccountTransaction',
 				type: 'collection',
-				default: 0,
+				default: {},
 				description: 'The check account transaction on which should be booked. The transaction will be linked to the invoice.',
 				options: [
 					{
@@ -237,7 +237,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'createFeed',
 				type: 'boolean',
 				default: false,
-				description: 'Determines if a feed is created for the booking process.',
+				description: 'Whether a feed is created for the booking process',
 			},
 		],
 	},
@@ -289,7 +289,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Contact',
 		name: 'contact',
 		type: 'collection',
-		default: 0,
+		default: {},
 		description: 'The contact used in the invoice',
 		displayOptions: {
 			show: {
@@ -340,7 +340,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'discount',
 		type: 'number',
 		default: 0,
-		description: 'If you want to give a discount, define the percentage here. Otherwise provide zero as value',
+		description: 'If you want to give a discount, define the percentage here. Otherwise provide zero as value.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -357,7 +357,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'deliveryDate',
 		type: 'dateTime' || 'string',
 		default: '',
-		description: 'Timestamp. This can also be a date range if you also use the attribute deliveryDateUntil',
+		description: 'Timestamp. This can also be a date range if you also use the attribute deliveryDateUntil.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -409,7 +409,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'smallSettlement',
 		type: 'boolean',
 		default: false,
-		description: 'Defines if the client uses the small settlement scheme. If yes, the invoice must not contain any vat.',
+		description: 'Whether the client uses the small settlement scheme. If yes, the invoice must not contain any vat.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -427,7 +427,7 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'The user who acts as a contact person for the invoice',
 		type: 'collection',
 		required: true,
-		default: 'Invoice',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -476,7 +476,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Tax Text',
 		name: 'taxText',
 		type: 'string',
-		default: 0,
+		default: '',
 		description: 'A common tax text would be "Umsatzsteuer 19%"',
 		displayOptions: {
 			show: {
@@ -494,7 +494,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'taxType',
 		type: 'string',
 		default: 'default',
-		description: 'Tax type of the invoice. There are four tax types: <ol> <li>default - Umsatzsteuer ausweisen</li> <li>eu - Steuerfreie innergemeinschaftliche Lieferung (Europäische Union)</li> <li>noteu - Steuerschuldnerschaft des Leistungsempfängers (außerhalb EU, z. B. Schweiz)</li> <li>custom - Using custom tax set Tax rates are heavily connected to the tax type used.</li> </ol>',
+		description: 'Tax type of the invoice. There are four tax types: <ol> <li>default - Umsatzsteuer ausweisen</li> <li>eu - Steuerfreie innergemeinschaftliche Lieferung (Europäische Union)</li> <li>noteu - Steuerschuldnerschaft des Leistungsempfängers (außerhalb EU, z. B. Schweiz)</li> <li>custom - Using custom tax set Tax rates are heavily connected to the tax type used.</li> </ol>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -511,7 +511,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'invoiceType',
 		type: 'string',
 		default: 'RE',
-		description: 'Type of the invoice. For more information on the different types, check <a href="https://5677.extern.sevdesk.dev/apiOverview/index.html#/doc-invoices#types">this</a> section of our API-Overview',
+		description: 'Type of the invoice. For more information on the different types, check <a href="https://5677.extern.sevdesk.dev/apiOverview/index.html#/doc-invoices#types">this</a> section of our API-Overview.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -528,7 +528,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'currency',
 		type: 'string',
 		default: 'EUR',
-		description: 'Currency used in the invoice. Needs to be currency code according to ISO-4217',
+		description: 'Currency used in the invoice. Needs to be currency code according to ISO-4217.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -572,267 +572,266 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 		},
-		options: [
-			{
-				displayName: 'Invoice Number',
-				name: 'invoiceNumber',
-				type: 'string',
-				default: '',
-				description: 'The invoice number. Example: RE-1000',
-			},
-			{
-				displayName: 'Invoice Number',
-				name: 'invoiceNumber',
-				type: 'string',
-				default: '',
-				description: 'The invoice number. Example: RE-1000',
-			},
-			{
-				displayName: 'Create Date',
-				name: 'create',
-				type: 'dateTime',
-				default: '',
-				description: 'Date of invoice creation',
-			},
-			{
-				displayName: 'Update Date',
-				name: 'update',
-				type: 'dateTime',
-				default: '',
-				description: 'Date of last invoice update',
-			},
-			{
-				displayName: 'Header',
-				name: 'header',
-				type: 'string',
-				default: '',
-				description: 'Normally consist of prefix plus the invoice number',
-			},
-			{
-				displayName: 'Head Text',
-				name: 'headText',
-				type: 'string',
-				default: '',
-				description: 'Certain html tags can be used here to format your text',
-			},
-			{
-				displayName: 'Foot Text',
-				name: 'footText',
-				type: 'string',
-				default: '',
-				description: 'Certain html tags can be used here to format your text',
-			},
-			{
-				displayName: 'Time to pay',
-				name: 'timeToPay',
-				type: 'number',
-				default: '',
-				description: 'The time the customer has to pay the invoice in days',
-			},
-			{
-				displayName: 'Discount Time',
-				name: 'discountTime',
-				type: 'number',
-				default: 0,
-				description: 'If a value other than zero is used for the discount attribute, you need to specify the amount of days for which the discount is granted.',
-			},
-			{
-				displayName: 'Pay Date',
-				name: 'payDate',
-				type: 'dateTime' || 'string',
-				default: '',
-				description: 'Needs to be timestamp or dd.mm.yyyy',
-			},
-			{
-				displayName: 'Dunning Level',
-				name: 'dunningLevel',
-				type: 'number',
-				default: 1,
-				description: 'Defines how many reminders have already been sent for the invoice. Starts with 1 (Payment reminder) and should be incremented by one every time another reminder is sent.',
-			},
-			{
-				displayName: 'Payment Method',
-				name: 'paymentMethod',
-				type: 'collection',
-				default: {},
-				description: 'Payment method used for the invoice',
-				options: [
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'number',
-						default: 0,
-						description: 'Unique identifier of the payment method',
-					},
-					{
-						displayName: 'Object Name',
-						name: 'objectName',
-						type: 'string',
-						default: 'PaymentMethod',
-						description: 'Model name, which is "PaymentMethod"',
-					},
-				],
-			},
-			{
-				displayName: 'Cost Centre',
-				name: 'costCentre',
-				type: 'collection',
-				default: {},
-				description: 'Cost Centre for the invoice',
-				options: [
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'number',
-						default: 0,
-						description: 'Unique identifier of the Cost Centre',
-					},
-					{
-						displayName: 'Object Name',
-						name: 'objectName',
-						type: 'string',
-						default: 'CostCentre',
-						description: 'Model name, which is "CostCentre"',
-					},
-				],
-			},
-			{
-				displayName: 'Send Date',
-				name: 'sendDate',
-				type: 'dateTime',
-				default: '',
-				description: 'The date the invoice was sent to the customer',
-			},
-			{
-				displayName: 'Origin',
-				name: 'origin',
-				type: 'collection',
-				default: {},
-				description: 'Origin of the invoice. Could f.e. be an order',
-				options: [
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'number',
-						default: 0,
-						description: 'Unique identifier of the object',
-					},
-					{
-						displayName: 'Object Name',
-						name: 'objectName',
-						type: 'string',
-						default: '',
-						description: 'Model name. Could f.e. be "Order"',
-					},
-				],
-			},
-			{
-				displayName: 'Account Intervall',
-				name: 'accountIntervall',
-				type: 'string',
-				default: '',
-				description: 'The interval in which recurring invoices are due as ISO-8601 duration. Necessary attribute for all recurring invoices.',
-			},
-			{
-				displayName: 'Account Next Invoice',
-				name: 'accountNextInvoice',
-				type: 'dateTime',
-				default: '',
-				description: 'Timestamp when the next invoice will be generated by this recurring invoice',
-			},
-			{
-				displayName: 'Reminder Total',
-				name: 'reminderTotal',
-				type: 'number',
-				default: '',
-				description: 'Total reminder amount',
-			},
-			{
-				displayName: 'Reminder Debit',
-				name: 'reminderDebit',
-				type: 'number',
-				default: '',
-				description: 'Debit of the reminder',
-			},
-			{
-				displayName: 'Reminder Deadline',
-				name: 'reminderDeadline',
-				type: 'dateTime',
-				default: '',
-				description: 'Deadline of the reminder as timestamp',
-			},
-			{
-				displayName: 'Reminder Charge',
-				name: 'reminderCharge',
-				type: 'dateTime',
-				default: '',
-				description: 'The additional reminder charge',
-			},
-			{
-				displayName: 'Tax Set',
-				name: 'taxSet',
-				type: 'collection',
-				default: {},
-				description: 'Origin of the invoice. Could f.e. be an order',
-				options: [
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'number',
-						default: 0,
-						description: 'Unique identifier of the object',
-					},
-					{
-						displayName: 'Object Name',
-						name: 'objectName',
-						type: 'string',
-						default: 'TaxSet',
-						description: 'Model name, which is "TaxSet"',
-					},
-				],
-			},
-			{
-				displayName: 'Address',
-				name: 'address',
-				type: 'string',
-				default: '',
-				description: 'Complete address of the recipient including name, street, city, zip and country. * Line breaks can be used and will be displayed on the invoice pdf.',
-			},
-			{
-				displayName: 'Customer Internal Note',
-				name: 'customerInternalNote',
-				type: 'string',
-				default: '',
-				description: 'Internal note of the customer. Contains data entered into field "Referenz/Bestellnummer".',
-			},
-			{
-				displayName: 'Show Net',
-				name: 'showNet',
-				type: 'boolean',
-				default: true,
-				description: 'If true, the net amount of each position will be shown on the invoice. Otherwise gross amount.',
-			},
-			{
-				displayName: 'Enshrined',
-				name: 'enshrined',
-				type: 'dateTime',
-				default: '',
-				description: 'Defines if and when invoice was enshrined. Enshrined invoices can not be manipulated.',
-			},
-			{
-				displayName: 'Send Type',
-				name: 'sendType',
-				type: 'string',
-				default: '',
-				description: 'Type which was used to send the invoice. IMPORTANT: Please refer to the invoice section of the * API-Overview to understand how this attribute can be used before using it!',
-			},
-			{
-				displayName: 'Delivery Date Until',
-				name: 'deliveryDateUntil',
-				type: 'number',
-				default: '',
-				description: 'If the delivery date should be a time range, another timestamp can be provided in this attribute * to define a range from timestamp used in deliveryDate attribute to the timestamp used here.',
-			},
+		options: [{
+			displayName: 'Account Intervall',
+			name: 'accountIntervall',
+			type: 'string',
+			default: '',
+			description: 'The interval in which recurring invoices are due as ISO-8601 duration. Necessary attribute for all recurring invoices.',
+		},
+		{
+			displayName: 'Account Next Invoice',
+			name: 'accountNextInvoice',
+			type: 'dateTime',
+			default: '',
+			description: 'Timestamp when the next invoice will be generated by this recurring invoice',
+		},
+		{
+			displayName: 'Address',
+			name: 'address',
+			type: 'string',
+			default: '',
+			description: 'Complete address of the recipient including name, street, city, zip and country. * Line breaks can be used and will be displayed on the invoice pdf.',
+		},
+		{
+			displayName: 'Cost Centre',
+			name: 'costCentre',
+			type: 'collection',
+			default: {},
+			description: 'Cost Centre for the invoice',
+			options: [
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'number',
+					default: 0,
+					description: 'Unique identifier of the Cost Centre',
+				},
+				{
+					displayName: 'Object Name',
+					name: 'objectName',
+					type: 'string',
+					default: 'CostCentre',
+					description: 'Model name, which is "CostCentre"',
+				},
+			],
+		},
+		{
+			displayName: 'Create Date',
+			name: 'create',
+			type: 'dateTime',
+			default: '',
+			description: 'Date of invoice creation',
+		},
+		{
+			displayName: 'Customer Internal Note',
+			name: 'customerInternalNote',
+			type: 'string',
+			default: '',
+			description: 'Internal note of the customer. Contains data entered into field "Referenz/Bestellnummer".',
+		},
+		{
+			displayName: 'Delivery Date Until',
+			name: 'deliveryDateUntil',
+			type: 'number',
+			default: 0,
+			description: 'If the delivery date should be a time range, another timestamp can be provided in this attribute * to define a range from timestamp used in deliveryDate attribute to the timestamp used here',
+		},
+		{
+			displayName: 'Discount Time',
+			name: 'discountTime',
+			type: 'number',
+			default: 0,
+			description: 'If a value other than zero is used for the discount attribute, you need to specify the amount of days for which the discount is granted',
+		},
+		{
+			displayName: 'Dunning Level',
+			name: 'dunningLevel',
+			type: 'number',
+			default: 1,
+			description: 'Defines how many reminders have already been sent for the invoice. Starts with 1 (Payment reminder) and should be incremented by one every time another reminder is sent.',
+		},
+		{
+			displayName: 'Enshrined',
+			name: 'enshrined',
+			type: 'dateTime',
+			default: '',
+			description: 'Defines if and when invoice was enshrined. Enshrined invoices can not be manipulated.',
+		},
+		{
+			displayName: 'Foot Text',
+			name: 'footText',
+			type: 'string',
+			default: '',
+			description: 'Certain html tags can be used here to format your text',
+		},
+		{
+			displayName: 'Head Text',
+			name: 'headText',
+			type: 'string',
+			default: '',
+			description: 'Certain html tags can be used here to format your text',
+		},
+		{
+			displayName: 'Header',
+			name: 'header',
+			type: 'string',
+			default: '',
+			description: 'Normally consist of prefix plus the invoice number',
+		},
+		{
+			displayName: 'Invoice Number',
+			name: 'invoiceNumber',
+			type: 'string',
+			default: '',
+			description: 'The invoice number. Example: RE-1000.',
+		},
+		{
+			displayName: 'Invoice Number',
+			name: 'invoiceNumber',
+			type: 'string',
+			default: '',
+			description: 'The invoice number. Example: RE-1000.',
+		},
+		{
+			displayName: 'Origin',
+			name: 'origin',
+			type: 'collection',
+			default: {},
+			description: 'Origin of the invoice. Could be an order.',
+			options: [
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'number',
+					default: 0,
+					description: 'Unique identifier of the object',
+				},
+				{
+					displayName: 'Object Name',
+					name: 'objectName',
+					type: 'string',
+					default: '',
+					description: 'Model name. Could be "Order".',
+				},
+			],
+		},
+		{
+			displayName: 'Pay Date',
+			name: 'payDate',
+			type: 'dateTime',
+			default: '',
+			description: 'Needs to be timestamp or dd.mm.yyyy',
+		},
+		{
+			displayName: 'Payment Method',
+			name: 'paymentMethod',
+			type: 'collection',
+			default: {},
+			description: 'Payment method used for the invoice',
+			options: [
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'number',
+					default: 0,
+					description: 'Unique identifier of the payment method',
+				},
+				{
+					displayName: 'Object Name',
+					name: 'objectName',
+					type: 'string',
+					default: 'PaymentMethod',
+					description: 'Model name, which is "PaymentMethod"',
+				},
+			],
+		},
+		{
+			displayName: 'Reminder Charge',
+			name: 'reminderCharge',
+			type: 'dateTime',
+			default: '',
+			description: 'The additional reminder charge',
+		},
+		{
+			displayName: 'Reminder Deadline',
+			name: 'reminderDeadline',
+			type: 'dateTime',
+			default: '',
+			description: 'Deadline of the reminder as timestamp',
+		},
+		{
+			displayName: 'Reminder Debit',
+			name: 'reminderDebit',
+			type: 'number',
+			default: 0,
+			description: 'Debit of the reminder',
+		},
+		{
+			displayName: 'Reminder Total',
+			name: 'reminderTotal',
+			type: 'number',
+			default: 0,
+			description: 'Total reminder amount',
+		},
+		{
+			displayName: 'Send Date',
+			name: 'sendDate',
+			type: 'dateTime',
+			default: '',
+			description: 'The date the invoice was sent to the customer',
+		},
+		{
+			displayName: 'Send Type',
+			name: 'sendType',
+			type: 'string',
+			default: '',
+			description: 'Type which was used to send the invoice. IMPORTANT: Please refer to the invoice section of the <a href="https://5677.extern.sevdesk.dev/apiOverview/index.html#/doc-invoices#types">API-Overview</a> to understand how this attribute can be used before using it.',
+		},
+		{
+			displayName: 'Show Net',
+			name: 'showNet',
+			type: 'boolean',
+			default: true,
+			description: 'Whether the net amount of each position will be shown on the invoice. Otherwise gross amount.',
+		},
+		{
+			displayName: 'Tax Set',
+			name: 'taxSet',
+			type: 'collection',
+			default: {},
+			description: 'Origin of the invoice. Could be an order.',
+			options: [
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'number',
+					default: 0,
+					description: 'Unique identifier of the object',
+				},
+				{
+					displayName: 'Object Name',
+					name: 'objectName',
+					type: 'string',
+					default: 'TaxSet',
+					description: 'Model name, which is "TaxSet"',
+				},
+			],
+		},
+		{
+			displayName: 'Time To Pay',
+			name: 'timeToPay',
+			type: 'number',
+			default: 0,
+			description: 'The time the customer has to pay the invoice in days',
+		},
+		{
+			displayName: 'Update Date',
+			name: 'update',
+			type: 'dateTime',
+			default: '',
+			description: 'Date of last invoice update',
+		},
 		],
 	},
 	{
@@ -840,7 +839,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'invoicePositions',
 		type: 'collection',
 		placeholder: 'Add Field',
-		default: [],
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -857,14 +856,14 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'invoicePosSave',
 				type: 'json',
 				default: 'null',
-				description: 'The invoice positions you want to create. If you don\'t have any, set to null. You can find the Model <a href="https://my.sevdesk.de/swaggerUI/index.html#/Models">here</a>',
+				description: 'The invoice positions you want to create. If you don\'t have any, set to null. You can find the Model <a href="https://my.sevdesk.de/swaggerUI/index.html#/Models">here</a>.',
 			},
 			{
 				displayName: 'Delete Invoice Positions',
 				name: 'invoicePosDelete',
 				type: 'json',
 				default: 'null',
-				description: 'The invoice positions you want to delete. If you don\'t have any, set to null. You can find the Model <a href="https://my.sevdesk.de/swaggerUI/index.html#/Models">here</a>',
+				description: 'The invoice positions you want to delete. If you don\'t have any, set to null. You can find the Model <a href="https://my.sevdesk.de/swaggerUI/index.html#/Models">here</a>.',
 			},
 		],
 	},
@@ -890,14 +889,14 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'discountSave',
 				type: 'json',
 				default: 'null',
-				description: 'The discounts you want to create. If you don\'t have any, set to null. You can find the Model <a href="https://my.sevdesk.de/swaggerUI/index.html#/Models">here</a>',
+				description: 'The discounts you want to create. If you don\'t have any, set to null. You can find the Model <a href="https://my.sevdesk.de/swaggerUI/index.html#/Models">here</a>.',
 			},
 			{
 				displayName: 'Delete Discounts',
 				name: 'discountDelete',
 				type: 'json',
 				default: 'null',
-				description: 'The discounts you want to create. If you don\'t have any, set to null. You can find the Model <a href="https://my.sevdesk.de/swaggerUI/index.html#/Models">here</a>',
+				description: 'The discounts you want to create. If you don\'t have any, set to null. You can find the Model <a href="https://my.sevdesk.de/swaggerUI/index.html#/Models">here</a>.',
 			},
 		],
 	},
@@ -948,7 +947,7 @@ export const invoiceFields: INodeProperties[] = [
 	{
 		displayName: 'Force Reload',
 		name: 'forceReload',
-		description: 'Define if a forceful re-render should occur.',
+		description: 'Define if a forceful re-render should occur',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
@@ -989,108 +988,6 @@ export const invoiceFields: INodeProperties[] = [
 	//             invoice: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Status',
-		name: 'status',
-		description: 'Status of the invoices',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'invoiceNumber',
-		name: 'invoiceNumber',
-		description: 'Retrieve all invoices with this invoice number',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'startDate',
-		name: 'startDate',
-		description: 'Retrieve all invoices with a date equal or higher',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'endDate',
-		name: 'endDate',
-		description: 'Retrieve all invoices with a date equal or lower',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Contact[id]',
-		name: 'contact[id]',
-		description: 'Retrieve all invoices with this contact. Must be provided with contact[objectName].',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'contact[objectName]',
-		name: 'contact[objectName]',
-		description: 'Only required if contact[id] was provided. "Contact" should be used as value.',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -1126,6 +1023,85 @@ export const invoiceFields: INodeProperties[] = [
 				],
 				returnAll: [
 					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		description: 'There are a multitude of parameter which can be used to filter. A few of them are attached but for a complete list please check out <a href="https://5677.extern.sevdesk.dev/apiOverview/index.html#/doc-invoices#filtering">this</> list.',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Contact ID',
+				name: 'contactId',
+				description: 'Retrieve all invoices with this contact. Must be provided with Contact Object Name.',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Contact Object Name',
+				name: 'contactObjectName',
+				description: 'Only required if Contact ID was provided. "Contact" should be used as value.',
+				type: 'string',
+				default: 'Contact',
+			},
+			{
+				displayName: 'End Date',
+				name: 'endDate',
+				description: 'Retrieve all invoices with a date equal or lower',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Invoice Number',
+				name: 'invoiceNumber',
+				description: 'Retrieve all invoices with this invoice number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				description: 'Retrieve all invoices with a date equal or higher',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				description: 'Status of the invoices to retrieve. One of "50", "100", "1000".',
+				type: 'number',
+				default: 0,
+			},
+		],
+	},
+	{
+		displayName: 'Additional Filters',
+		name: 'additionalFilters',
+		description: 'There are a multitude of parameter which can be used to filter. A few of them are attached but for a complete list please check out <a href="https://5677.extern.sevdesk.dev/apiOverview/index.html#/doc-invoices#filtering">this</> list. Provide filters as JSON.',
+		type: 'json',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
+					'getAll',
 				],
 			},
 		},
@@ -1353,14 +1329,14 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'copy',
 				type: 'boolean',
 				default: false,
-				description: 'Should a copy of this email be sent to you?',
+				description: 'Whether a copy of this email is sent to you',
 			},
 			{
 				displayName: 'Additional Attachments',
 				name: 'additionalAttachments',
 				type: 'string',
 				default: '',
-				description: 'Additional attachments to the mail. String of IDs of existing documents in your * sevdesk account separated by ","',
+				description: 'Additional attachments to the mail. String of IDs of existing documents in your * sevdesk account separated by ",".',
 			},
 			{
 				displayName: 'CC Email',
