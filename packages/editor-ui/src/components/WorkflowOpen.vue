@@ -112,10 +112,14 @@ export default mixins(
 				});
 		},
 	},
-	mounted() {
+	async mounted() {
 		this.filterText = '';
 		this.filterTagIds = [];
-		this.openDialog();
+
+		this.isDataLoading = true;
+		await this.loadActiveWorkflows();
+		await this.loadWorkflows();
+		this.isDataLoading = false;
 
 		Vue.nextTick(() => {
 			// Make sure that users can directly type in the filter
@@ -195,29 +199,30 @@ export default mixins(
 				this.$store.commit('ui/closeAllModals');
 			}
 		},
-		openDialog () {
-			this.isDataLoading = true;
-			this.restApi().getWorkflows()
-				.then(
-					(data) => {
-						this.workflows = data;
-
-						this.workflows.forEach((workflowData: IWorkflowShortResponse) => {
-							workflowData.createdAt = convertToDisplayDate(workflowData.createdAt as number);
-							workflowData.updatedAt = convertToDisplayDate(workflowData.updatedAt as number);
-						});
-						this.isDataLoading = false;
-					},
-				)
-				.catch(
-					(error: Error) => {
-						this.$showError(
-							error,
-							this.$locale.baseText('workflowOpen.showError.title'),
-						);
-						this.isDataLoading = false;
-					},
+		async loadWorkflows () {
+			try {
+				this.workflows = await this.restApi().getWorkflows();
+				this.workflows.forEach((workflowData: IWorkflowShortResponse) => {
+					workflowData.createdAt = convertToDisplayDate(workflowData.createdAt as number);
+					workflowData.updatedAt = convertToDisplayDate(workflowData.updatedAt as number);
+				});
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('workflowOpen.showError.title'),
 				);
+			}
+		},
+		async loadActiveWorkflows () {
+			try {
+				const activeWorkflows = await this.restApi().getActiveWorkflows();
+				this.$store.commit('setActiveWorkflows', activeWorkflows);
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('workflowOpen.couldNotLoadActiveWorkflows'),
+				);
+			}
 		},
 		workflowActiveChanged (data: { id: string, active: boolean }) {
 			for (const workflow of this.workflows) {

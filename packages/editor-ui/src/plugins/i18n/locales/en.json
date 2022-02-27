@@ -959,7 +959,8 @@
 			"message": "This is the current workflow",
 			"title": "Workflow already open"
 		},
-		"updated": "Updated"
+		"updated": "Updated",
+		"couldNotLoadActiveWorkflows": "Could not load active workflows"
 	},
 	"workflowRun": {
 		"noActiveConnectionToTheServer": "Lost connection to the server",
