@@ -85,6 +85,23 @@ test('POST /owner should fail with invalid inputs', async () => {
 	}
 });
 
+test('POST /owner/skip-setup should persist skipping setup to the DB', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+
+	const response = await authOwnerAgent.post('/owner/skip-setup').send();
+
+	expect(response.statusCode).toBe(200);
+
+	const skipConfig = config.get('userManagement.skipInstanceOwnerSetup');
+	expect(skipConfig).toBe(true);
+
+	const { value } = await Db.collections.Settings!.findOneOrFail({
+		key: 'userManagement.skipInstanceOwnerSetup',
+	});
+	expect(value).toBe('true');
+});
+
 const TEST_USER = {
 	email: randomEmail(),
 	firstName: randomName(),
