@@ -16,19 +16,19 @@ export const containerOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Insert Tasks (Or Append)',
-				value: 'add',
-				description: 'Insert tasks at index (or append)',
-			},
-			{
-				name: 'Update Tasks',
-				value: 'update',
-				description: 'Fully replace a container\'s tasks',
+				name: 'Add Tasks',
+				value: 'addTask',
+				description: 'Add task at index (or append)',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get container information',
+			},
+			{
+				name: 'Update Tasks',
+				value: 'updateTask',
+				description: 'Fully replace a container\'s tasks',
 			},
 		],
 		default: 'get',
@@ -124,7 +124,7 @@ export const containerFields: INodeProperties[] = [
 				],
 				operation: [
 					'get',
-					'add',
+					'addTask',
 				],
 			},
 		},
@@ -139,8 +139,8 @@ export const containerFields: INodeProperties[] = [
 				],
 				operation: [
 					'get',
-					'add',
-					'update',
+					'addTask',
+					'updateTask',
 				],
 			},
 		},
@@ -154,7 +154,7 @@ export const containerFields: INodeProperties[] = [
 					'container',
 				],
 				operation: [
-					'add',
+					'addTask',
 				],
 			},
 		},
@@ -168,7 +168,7 @@ export const containerFields: INodeProperties[] = [
 					'container',
 				],
 				operation: [
-					'add',
+					'addTask',
 				],
 				type: [
 					1,
@@ -185,8 +185,8 @@ export const containerFields: INodeProperties[] = [
 					'container',
 				],
 				operation: [
-					'add',
-					'update',
+					'addTask',
+					'updateTask',
 				],
 			},
 		},
@@ -204,8 +204,8 @@ export const containerFields: INodeProperties[] = [
 					'container',
 				],
 				operation: [
-					'add',
-					'update',
+					'addTask',
+					'updateTask',
 				],
 			},
 		},

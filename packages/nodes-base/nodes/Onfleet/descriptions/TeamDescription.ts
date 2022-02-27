@@ -64,7 +64,7 @@ const nameField = {
 } as INodeProperties;
 
 const workersField = {
-	displayName: 'Workers Name/ID',
+	displayName: 'Workers Names/IDs',
 	name: 'workers',
 	type: 'multiOptions',
 	typeOptions: {
@@ -75,7 +75,7 @@ const workersField = {
 } as INodeProperties;
 
 const managersField = {
-	displayName: 'Administrators Name/ID',
+	displayName: 'Administrators Names/IDs',
 	name: 'managers',
 	type: 'multiOptions',
 	typeOptions: {
@@ -425,6 +425,7 @@ export const teamFields: INodeProperties[] = [
 				displayName: 'Ending Route',
 				name: 'endingRoute',
 				type: 'fixedCollection',
+				placeholder: 'Add Route',
 				default: {},
 				options: [
 					{
@@ -458,6 +459,7 @@ export const teamFields: INodeProperties[] = [
 				displayName: 'Schedule Time Window',
 				name: 'scheduleTimeWindow',
 				type: 'fixedCollection',
+				placeholder: 'Add Time Window',
 				default: {},
 				options: [
 					{
@@ -487,6 +489,7 @@ export const teamFields: INodeProperties[] = [
 				displayName: 'Task Time Window',
 				name: 'taskTimeWindow',
 				type: 'fixedCollection',
+				placeholder: 'Add Time Window',
 				default: {},
 				options: [
 					{
@@ -514,10 +517,10 @@ export const teamFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {

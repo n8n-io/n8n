@@ -9,7 +9,9 @@ export const adminOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: ['admin'],
+				resource: [
+					'admin',
+				],
 			},
 		},
 		options: [

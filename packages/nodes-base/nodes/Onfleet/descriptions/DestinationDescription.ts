@@ -201,6 +201,17 @@ export const destinationExternalField = {
 					required: true,
 				},
 				{
+					displayOptions: {
+						show: {
+							unparsed: [
+								false,
+							],
+						},
+					},
+					...addressPostalCodeField,
+					required: false,
+				},
+				{
 					...addressNameField,
 					required: false,
 				},
@@ -210,17 +221,6 @@ export const destinationExternalField = {
 				},
 				{
 					...addressNoteField,
-					required: false,
-				},
-				{
-					displayOptions: {
-						show: {
-							unparsed: [
-								false,
-							],
-						},
-					},
-					...addressPostalCodeField,
 					required: false,
 				},
 			],

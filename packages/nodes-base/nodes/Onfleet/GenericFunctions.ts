@@ -1,16 +1,14 @@
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
-	INodePropertyOptions,
-	JsonObject,
-	NodeApiError
-} from 'n8n-workflow';
-import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	IWebhookFunctions,
-} from 'n8n-core';
+	JsonObject,
+	NodeApiError
+} from 'n8n-workflow';
 
 import {
 	OptionsWithUri,
@@ -47,13 +45,12 @@ export async function onfleetApiRequest(
 		//@ts-ignore
 		return await this.helpers.request(options);
 	} catch (error) {
-		console.log(options);
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function onfleetApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: string,
 	endpoint: string,

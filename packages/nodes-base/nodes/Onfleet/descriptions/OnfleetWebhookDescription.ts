@@ -6,16 +6,15 @@ import {
 	webhookMapping,
 } from '../WebhookMapping';
 
- const sort = (a: { name: string }, b: { name: string }) => {
+const sort = (a: { name: string }, b: { name: string }) => {
 	if (a.name < b.name) { return -1; }
 	if (a.name > b.name) { return 1; }
 	return 0;
 };
 
-
 export const eventDisplay: INodeProperties = {
 	displayName: 'Trigger On',
-	name: 'trigger On',
+	name: 'triggerOn',
 	type: 'options',
 	options: Object.keys(webhookMapping).map((webhook) => {
 		const { name, value } = webhookMapping[webhook];

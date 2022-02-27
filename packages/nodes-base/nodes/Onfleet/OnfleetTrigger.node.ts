@@ -74,7 +74,6 @@ export class OnfleetTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const triggerOn = this.getNodeParameter('triggerOn') as string;
 				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 

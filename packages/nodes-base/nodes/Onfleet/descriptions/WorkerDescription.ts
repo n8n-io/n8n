@@ -144,7 +144,7 @@ const vehicleColorField = {
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Teams Name/ID',
+	displayName: 'Teams Names/IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
@@ -365,7 +365,7 @@ export const workerFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'worker'
+					'worker',
 				],
 				operation: [
 					'getAll',

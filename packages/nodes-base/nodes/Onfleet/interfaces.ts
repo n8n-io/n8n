@@ -101,7 +101,7 @@ export interface OnfleetAdmins {
 	isReadOnly?: boolean;
 }
 
-export interface OnfleetHubs extends OnfleetDestination{
+export interface OnfleetHubs extends OnfleetDestination {
 	name?: string;
 	teams?: string[];
 }

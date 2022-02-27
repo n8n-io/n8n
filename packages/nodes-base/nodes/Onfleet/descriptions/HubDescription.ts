@@ -48,7 +48,7 @@ const nameField = {
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Teams Name/ID',
+	displayName: 'Teams Names/IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {

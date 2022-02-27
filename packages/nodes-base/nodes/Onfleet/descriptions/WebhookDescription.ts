@@ -13,7 +13,9 @@ export const webhookOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: ['webhook'],
+				resource: [
+					'webhook',
+				],
 			},
 		},
 		options: [
@@ -82,8 +84,12 @@ export const webhookFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: ['webhook'],
-				operation: ['delete'],
+				resource: [
+					'webhook',
+				],
+				operation: [
+					'delete',
+				],
 			},
 		},
 		default: '',
@@ -94,8 +100,12 @@ export const webhookFields: INodeProperties[] = [
 		...urlField,
 		displayOptions: {
 			show: {
-				resource: ['webhook'],
-				operation: ['create'],
+				resource: [
+					'webhook',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -104,8 +114,12 @@ export const webhookFields: INodeProperties[] = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: ['webhook'],
-				operation: ['create'],
+				resource: [
+					'webhook',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -114,8 +128,12 @@ export const webhookFields: INodeProperties[] = [
 		...triggerField,
 		displayOptions: {
 			show: {
-				resource: ['webhook'],
-				operation: ['create'],
+				resource: [
+					'webhook',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		required: true,
@@ -128,10 +146,16 @@ export const webhookFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['webhook'],
-				operation: ['create'],
+				resource: [
+					'webhook',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
-		options: [thresholdField],
+		options: [
+			thresholdField,
+		],
 	},
 ];

@@ -1,4 +1,4 @@
-import { 
+import {
 	OnfleetWebhooksMapping,
 } from './interfaces';
 
