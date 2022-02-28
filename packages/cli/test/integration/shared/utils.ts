@@ -185,10 +185,16 @@ export async function initTestDb() {
 export async function terminateTestDb(testDbName: string) {
 	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
 
-	if (dbType === 'postgresdb' || dbType === 'mysqldb') {
+	if (dbType === 'postgresdb') {
 		await getConnection(testDbName).close();
 		await getConnection('n8n_bs_postgres').query(`DROP DATABASE ${testDbName}`);
 		await getConnection('n8n_bs_postgres').close();
+	}
+
+	if (dbType === 'mysqldb') {
+		await getConnection(testDbName).close();
+		await getConnection('n8n_bs_mysql').query(`DROP DATABASE ${testDbName}`);
+		await getConnection('n8n_bs_mysql').close();
 	}
 }
 
