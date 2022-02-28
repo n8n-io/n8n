@@ -1,4 +1,3 @@
-import { table } from 'console';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import config = require('../../../../config');
@@ -41,38 +40,7 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 				CONSTRAINT \`FK_${tablePrefix}f0609be844f9200ff4365b1bb3d\` FOREIGN KEY (\`globalRoleId\`)
 				REFERENCES role (\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION
 			);`,
-		); // n8n.role???
-
-		// await queryRunner.query(
-		// 	'CREATE TABLE `' +
-		// 		tablePrefix +
-		// 		'user` ( ' +
-		// 		'`id` VARCHAR(36) NOT NULL, ' +
-		// 		'`email` VARCHAR(255) NULL DEFAULT NULL, ' +
-		// 		'`firstName` VARCHAR(32) NULL DEFAULT NULL, ' +
-		// 		'`lastName` VARCHAR(32) NULL DEFAULT NULL, ' +
-		// 		'`password` VARCHAR(255) NULL DEFAULT NULL, ' +
-		// 		'`resetPasswordToken` VARCHAR(255) NULL DEFAULT NULL, ' +
-		// 		'`resetPasswordTokenExpiration` INT NULL DEFAULT NULL, ' +
-		// 		'`personalizationAnswers` TEXT NULL DEFAULT NULL, ' +
-		// 		'`createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
-		// 		'`updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
-		// 		'`globalRoleId` INT NOT NULL, ' +
-		// 		'PRIMARY KEY (`id`), ' +
-		// 		'UNIQUE INDEX `IDX_' +
-		// 		tablePrefix +
-		// 		'e12875dfb3b1d92d7d7c5377e2` (`email` ASC), ' +
-		// 		'INDEX `FK_' +
-		// 		tablePrefix +
-		// 		'f0609be844f9200ff4365b1bb3d` (`globalRoleId` ASC), ' +
-		// 		'CONSTRAINT `FK_' +
-		// 		tablePrefix +
-		// 		'f0609be844f9200ff4365b1bb3d` ' +
-		// 		'FOREIGN KEY (`globalRoleId`) ' +
-		// 		'REFERENCES `n8n`.`role` (`id`) ' +
-		// 		'ON DELETE NO ACTION ' +
-		// 		'ON UPDATE NO ACTION);',
-		// );
+		);
 
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}shared_workflow (
@@ -93,54 +61,6 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 			);`,
 		);
 
-		// await queryRunner.query(
-		// 	'CREATE TABLE `' +
-		// 		tablePrefix +
-		// 		'shared_workflow` ( ' +
-		// 		'`createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
-		// 		'`updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
-		// 		'`roleId` INT NOT NULL, ' +
-		// 		'`userId` VARCHAR(36) NOT NULL, ' +
-		// 		'`workflowId` INT NOT NULL, ' +
-		// 		'INDEX `FK_' +
-		// 		tablePrefix +
-		// 		'3540da03964527aa24ae014b780x` (`roleId` ASC), ' +
-		// 		'INDEX `FK_' +
-		// 		tablePrefix +
-		// 		'82b2fd9ec4e3e24209af8160282x` (`userId` ASC), ' +
-		// 		'INDEX `FK_' +
-		// 		tablePrefix +
-		// 		'b83f8d2530884b66a9c848c8b88x` (`workflowId` ASC), ' +
-		// 		'PRIMARY KEY (`userId`, `workflowId`), ' +
-		// 		'CONSTRAINT `FK_' +
-		// 		tablePrefix +
-		// 		'3540da03964527aa24ae014b780` ' +
-		// 		'FOREIGN KEY (`roleId`) ' +
-		// 		'REFERENCES `' +
-		// 		tablePrefix +
-		// 		'role` (`id`) ' +
-		// 		'ON DELETE NO ACTION ' +
-		// 		'ON UPDATE NO ACTION, ' +
-		// 		'CONSTRAINT `FK_' +
-		// 		tablePrefix +
-		// 		'82b2fd9ec4e3e24209af8160282` ' +
-		// 		'FOREIGN KEY (`userId`) ' +
-		// 		'REFERENCES `' +
-		// 		tablePrefix +
-		// 		'user` (`id`) ' +
-		// 		'ON DELETE CASCADE ' +
-		// 		'ON UPDATE NO ACTION, ' +
-		// 		'CONSTRAINT `FK_' +
-		// 		tablePrefix +
-		// 		'b83f8d2530884b66a9c848c8b88` ' +
-		// 		'FOREIGN KEY (`workflowId`) ' +
-		// 		'REFERENCES `' +
-		// 		tablePrefix +
-		// 		'workflow_entity` (`id`) ' +
-		// 		'ON DELETE CASCADE ' +
-		// 		'ON UPDATE NO ACTION);',
-		// );
-
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}shared_credentials (
 					\`createdAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -160,54 +80,6 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 				);`,
 		);
 
-		// await queryRunner.query(
-		// 	'CREATE TABLE `' +
-		// 		tablePrefix +
-		// 		'shared_credentials` ( ' +
-		// 		'`createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
-		// 		'`updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
-		// 		'`roleId` INT NOT NULL, ' +
-		// 		'`userId` VARCHAR(36) NOT NULL, ' +
-		// 		'`credentialsId` INT NOT NULL, ' +
-		// 		'INDEX `FK_' +
-		// 		tablePrefix +
-		// 		'c68e056637562000b68f480815a` (`roleId` ASC), ' +
-		// 		'INDEX `FK_' +
-		// 		tablePrefix +
-		// 		'484f0327e778648dd04f1d70493` (`userId` ASC), ' +
-		// 		'INDEX `FK_' +
-		// 		tablePrefix +
-		// 		'68661def1d4bcf2451ac8dbd949` (`credentialsId` ASC), ' +
-		// 		'PRIMARY KEY (`userId`, `credentialsId`), ' +
-		// 		'CONSTRAINT `FK_' +
-		// 		tablePrefix +
-		// 		'c68e056637562000b68f480815a` ' +
-		// 		'FOREIGN KEY (`roleId`) ' +
-		// 		'REFERENCES `' +
-		// 		tablePrefix +
-		// 		'role` (`id`) ' +
-		// 		'ON DELETE NO ACTION ' +
-		// 		'ON UPDATE NO ACTION, ' +
-		// 		'CONSTRAINT `FK_' +
-		// 		tablePrefix +
-		// 		'484f0327e778648dd04f1d70493` ' +
-		// 		'FOREIGN KEY (`userId`) ' +
-		// 		'REFERENCES `' +
-		// 		tablePrefix +
-		// 		'user` (`id`) ' +
-		// 		'ON DELETE CASCADE ' +
-		// 		'ON UPDATE NO ACTION, ' +
-		// 		'CONSTRAINT `FK_' +
-		// 		tablePrefix +
-		// 		'68661def1d4bcf2451ac8dbd949` ' +
-		// 		'FOREIGN KEY (`credentialsId`) ' +
-		// 		'REFERENCES `' +
-		// 		tablePrefix +
-		// 		'credentials_entity` (`id`) ' +
-		// 		'ON DELETE CASCADE ' +
-		// 		'ON UPDATE NO ACTION);',
-		// );
-
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}settings (
 				\`key\` VARCHAR(255) NOT NULL,
@@ -217,39 +89,13 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 			);`,
 		);
 
-		// await queryRunner.query(
-		// 	'CREATE TABLE `' +
-		// 		tablePrefix +
-		// 		'settings` ( ' +
-		// 		'`key` VARCHAR(255) NOT NULL, ' +
-		// 		'`value` TEXT NOT NULL, ' +
-		// 		'`loadOnStartup` TINYINT(1) NOT NULL DEFAULT 0, ' +
-		// 		'PRIMARY KEY (`key`));',
-		// );
-
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_entity DROP INDEX IDX_${tablePrefix}943d8f922be094eb507cb9a7f9`,
 		);
 
-		// await queryRunner.query(
-		// 	'ALTER TABLE `' +
-		// 		tablePrefix +
-		// 		'workflow_entity` DROP INDEX `IDX_' +
-		// 		tablePrefix +
-		// 		'943d8f922be094eb507cb9a7f9`',
-		// );
-
 		await queryRunner.query(
 			`CREATE INDEX IDX_${tablePrefix}xeendlvptc5jy4hbol17b5xery ON ${tablePrefix}execution_entity (\`workflowId\`)`,
 		);
-
-		// await queryRunner.query(
-		// 	'CREATE INDEX `IDX_' +
-		// 		tablePrefix +
-		// 		'xeendlvptc5jy4hbol17b5xery` ON `' +
-		// 		tablePrefix +
-		// 		'execution_entity` (`workflowId`)',
-		// );
 
 		// Insert initial roles
 		await queryRunner.query(
