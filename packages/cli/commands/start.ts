@@ -392,7 +392,7 @@ export class Start extends Command {
 				const saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
 
 				if (saveManualExecutions) {
-					this.log('\nManual executions will be saved only for the owner');
+					this.log('\nManual executions will be visible only for the owner');
 				}
 
 				// Allow to open n8n editor by pressing "o"
