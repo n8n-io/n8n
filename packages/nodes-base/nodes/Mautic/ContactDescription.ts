@@ -26,6 +26,16 @@ export const contactOperations: INodeProperties[] = [
 				description: 'Delete a contact',
 			},
 			{
+				name: 'Edit Contact Points',
+				value: 'editContactPoint',
+				description: 'Edit contact\'s points',
+			},
+			{
+				name: 'Edit Do Not Contact List',
+				value: 'editDoNotContactList',
+				description: 'Add/remove contacts from/to the do not contact list',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a contact',
@@ -34,6 +44,11 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all contacts',
+			},
+			{
+				name: 'Send Email',
+				value: 'sendEmail',
+				description: 'Send email to contact',
 			},
 			{
 				name: 'Update',
@@ -1030,6 +1045,187 @@ export const contactFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
+	/*                   contact:editDoNotContactList                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'editDoNotContactList',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: '',
+		description: 'Contact ID',
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: [
+					'editDoNotContactList',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Add',
+				value: 'add',
+			},
+			{
+				name: 'Remove',
+				value: 'remove',
+			},
+		],
+		default: 'add',
+	},
+	{
+		displayName: 'Channel',
+		name: 'channel',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'editDoNotContactList',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Email',
+				value: 'email',
+			},
+			{
+				name: 'SMS',
+				value: 'sms',
+			},
+		],
+		default: 'email',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'editDoNotContactList',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Reason To Do Not Contact',
+				name: 'reason',
+				type: 'options',
+				options: [
+					{
+						name: 'Unsubscribed',
+						value: '1',
+					},
+					{
+						name: 'Bounced',
+						value: '2',
+					},
+					{
+						name: 'Manual',
+						value: '3',
+					},
+				],
+				default: '3',
+			},
+			{
+				displayName: 'Comments',
+				name: 'comments',
+				type: 'string',
+				default: '',
+				description: 'A text describing details of Do Not Contact entry',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                   contact:editContactPoint                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'editContactPoint',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: '',
+		description: 'Contact ID',
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: [
+					'editContactPoint',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Add',
+				value: 'add',
+			},
+			{
+				name: 'Remove',
+				value: 'remove',
+			},
+		],
+		default: 'add',
+	},
+	{
+		displayName: 'Points',
+		name: 'points',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'editContactPoint',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: 0,
+	},
+	/* -------------------------------------------------------------------------- */
 	/*                                 contact:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
@@ -1127,6 +1323,13 @@ export const contactFields: INodeProperties[] = [
 			show: {
 				'resource': [
 					'contact',
+				],
+			},
+			hide: {
+				operation: [
+					'sendEmail',
+					'editDoNotContactList',
+					'editContactPoint',
 				],
 			},
 		},
@@ -1238,5 +1441,44 @@ export const contactFields: INodeProperties[] = [
 			},
 		],
 	},
-
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:sendEmail                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Campaign Email ID',
+		name: 'campaignEmailId',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'sendEmail',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getCampaignEmails',
+		},
+		default: '',
+	},
+	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'sendEmail',
+				],
+			},
+		},
+		default: '',
+	},
 ];
