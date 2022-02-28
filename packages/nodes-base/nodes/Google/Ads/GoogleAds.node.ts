@@ -45,8 +45,7 @@ export class GoogleAds implements INodeType {
 		],
 		requestDefaults: {
 			returnFullResponse: true,
-			//baseURL: 'https://googleads.googleapis.com',
-			baseURL: 'https://agobrech.free.beeceptor.com',
+			baseURL: 'https://googleads.googleapis.com',
 			headers: {
 				'developer-token': '={{$credentials.developerToken}}',
 			},
