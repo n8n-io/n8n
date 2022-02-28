@@ -56,7 +56,7 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[PERSONALIZATION_MODAL_KEY]: {
-				open: true,
+				open: false,
 			},
 			[INVITE_USER_MODAL_KEY]: {
 				open: false,
