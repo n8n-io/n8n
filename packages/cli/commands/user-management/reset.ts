@@ -12,8 +12,8 @@ export class Reset extends Command {
 	static description = '\nResets the database to the default user state';
 
 	private defaultUserProps = {
-		firstName: 'default',
-		lastName: 'default',
+		firstName: null,
+		lastName: null,
 		email: null,
 		password: null,
 		resetPasswordToken: null,
