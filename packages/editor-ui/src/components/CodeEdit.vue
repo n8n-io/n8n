@@ -220,6 +220,7 @@ export default mixins(
 					'$now',
 					'$today',
 					'$thisRunIndex',
+					'$jmespath',
 					'DateTime',
 					'Duration',
 					'Interval',
