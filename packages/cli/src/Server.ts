@@ -286,6 +286,11 @@ class App {
 			},
 			defaultLocale: config.get('defaultLocale'),
 			logLevel: config.get('logs.level'),
+			deploymentType: config.get('deployment.type'),
+			templates: {
+				enabled: config.get('templates.enabled'),
+				host: config.get('templates.host'),
+			},
 		};
 	}
 
