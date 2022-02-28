@@ -13,7 +13,7 @@
 		:closeOnClickModal="false"
 		:closeOnPressEscape="false"
 		width="460px"
-		@enter="save"
+		@enter="onSave"
 	>
 		<template v-slot:content>
 			<div v-if="submitted" :class="$style.submittedContainer">
@@ -21,7 +21,7 @@
 				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
 			</div>
 			<div :class="$style.container" v-else>
-				<n8n-form-inputs :inputs="survey" :columnView="true" :filterInput="filterInput" />
+				<n8n-form-inputs :inputs="survey" :columnView="true" :eventBus="formBus" :filterInput="filterInput" @submit="onSubmit"/>
 			</div>
 		</template>
 		<template v-slot:footer>
@@ -34,7 +34,7 @@
 				/>
 				<n8n-button
 					v-else
-					@click="save"
+					@click="onSave"
 					:loading="isSaving"
 					:label="$locale.baseText('personalizationModal.continue')"
 					float="right"
@@ -46,6 +46,8 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
+
+const SURVEY_VERSION = 'v2';
 
 import {
 	CODING_SKILL_KEY,
@@ -106,12 +108,11 @@ import {
 	OTHER_FOCUS,
 	COMPANY_INDUSTRY_EXTENDED_KEY,
 	OTHER_COMPANY_INDUSTRY_EXTENDED_KEY,
-	COMPANY_INDUSTRY_KEY,
 } from '../constants';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IFormInput, IFormInputs, IPersonalizationSurveyAnswers } from '@/Interface';
+import { IFormInput, IFormInputs, IPersonalizationSurveyAnswersV2 } from '@/Interface';
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
 
@@ -127,7 +128,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			otherCompanyIndustryFieldVisible: false,
 			showAllIndustryQuestions: true,
 			modalBus: new Vue(),
-			values: {} as IPersonalizationSurveyAnswers,
+			formBus: new Vue(),
 		};
 	},
 	computed: {
@@ -449,7 +450,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		closeDialog() {
 			this.modalBus.$emit('close');
 		},
-		filterInput(input: IFormInput, values: IPersonalizationSurveyAnswers) {
+		filterInput(input: IFormInput, values: IPersonalizationSurveyAnswersV2) {
 			const companyType = values[COMPANY_TYPE_KEY];
 			if (input.name === CUSTOMER_TYPE_KEY) {
 				return (
@@ -477,7 +478,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			}
 
 			if (input.name === OTHER_COMPANY_INDUSTRY_EXTENDED_KEY) {
-				const companyIndustry = values[COMPANY_INDUSTRY_KEY];
+				const companyIndustry = values[COMPANY_INDUSTRY_EXTENDED_KEY];
 				return companyIndustry && companyIndustry.includes(OTHER_INDUSTRY_OPTION);
 			}
 
@@ -491,13 +492,16 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			return true;
 		},
-		async save(): Promise<void> {
+		onSave() {
+			this.formBus.$emit('submit');
+		},
+		async onSubmit(values: IPersonalizationSurveyAnswersV2): Promise<void> {
 			this.$data.isSaving = true;
 
 			try {
-				await this.$store.dispatch('users/submitPersonalizationSurvey', this.values);
+				await this.$store.dispatch('users/submitPersonalizationSurvey', {...values, version: SURVEY_VERSION});
 
-				if (Object.keys(this.values).length === 0) {
+				if (Object.keys(values).length === 0) {
 					this.closeDialog();
 				}
 

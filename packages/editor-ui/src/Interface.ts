@@ -483,21 +483,26 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-// must remain backwards compatible even as survey changes
-export type IPersonalizationSurveyAnswers = {
-	automationGoal?: string | null;
+export type IPersonalizationSurveyAnswersV1 = {
 	codingSkill?: string | null;
 	companyIndustry?: string[] | null;
+	companySize?: string | null;
+	otherCompanyIndustry?: string | null;
+	otherWorkArea?: string | null;
+	workArea?: string[] | string | null;
+};
+
+export type IPersonalizationSurveyAnswersV2 = {
+	version: 'v2';
+	automationGoal?: string | null;
+	codingSkill?: string | null;
 	companyIndustryExtended?: string[] | null;
 	companySize?: string | null;
 	companyType?: string | null;
 	mspFocus?: string[] | null;
 	mspFocusOther?: string | null;
 	otherAutomationGoal?: string | null;
-	otherCompanyIndustry?: string | null;
 	otherCompanyIndustryExtended?: string[] | null;
-	otherWorkArea?: string | null;
-	workArea?: string[] | string | null;
 };
 
 export interface IN8nPrompts {
@@ -798,7 +803,7 @@ export interface IUserResponse {
 		name: IRole;
 		id: string;
 	};
-	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
+	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
 }
 
 export interface IInviteResponse {
