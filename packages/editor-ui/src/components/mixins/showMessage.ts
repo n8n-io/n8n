@@ -150,6 +150,23 @@ export const showMessage = mixins(externalHooks).extend({
 			}
 		},
 
+		async confirmModal (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string, showClose = false): Promise<string> {
+			try {
+				const options: ElMessageBoxOptions  = {
+					confirmButtonText: confirmButtonText || this.$locale.baseText('showMessage.ok'),
+					cancelButtonText: cancelButtonText || this.$locale.baseText('showMessage.cancel'),
+					dangerouslyUseHTMLString: true,
+					showClose,
+					...(type && { type }),
+				};
+
+				await this.$confirm(message, headline, options);
+				return 'confirmed';
+			} catch (e) {
+				return e as string;
+			}
+		},
+
 		clearAllStickyNotifications() {
 			stickyNotificationQueue.map((notification: ElNotificationComponent) => {
 				if (notification) {
