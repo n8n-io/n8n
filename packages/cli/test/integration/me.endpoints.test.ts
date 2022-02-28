@@ -21,21 +21,19 @@ import { getGlobalOwnerRole, toObject } from './shared/utils';
 const dbType = config.get('database.type');
 let app: express.Application;
 let testDbName = '';
-let bootstrapName = '';
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
 	const initResult = await utils.initTestDb();
 	testDbName = initResult.testDbName;
-	bootstrapName = initResult.bootstrapName;
 
 	globalOwnerRole = await getGlobalOwnerRole();
 	utils.initLogger();
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName, bootstrapName);
+	await utils.terminateTestDb(testDbName);
 });
 
 describe('Owner shell', () => {

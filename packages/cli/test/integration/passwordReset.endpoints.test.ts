@@ -16,13 +16,11 @@ import { Role } from '../../src/databases/entities/Role';
 let app: express.Application;
 let globalOwnerRole: Role;
 let testDbName = '';
-let bootstrapName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['passwordReset'], applyAuth: true });
 	const initResult = await utils.initTestDb();
 	testDbName = initResult.testDbName;
-	bootstrapName = initResult.bootstrapName;
 
 	await utils.truncate(['User'], testDbName);
 
@@ -56,7 +54,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName, bootstrapName);
+	await utils.terminateTestDb(testDbName);
 });
 
 test('POST /forgot-password should send password reset email', async () => {

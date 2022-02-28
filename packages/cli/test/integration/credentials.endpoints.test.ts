@@ -8,7 +8,6 @@ import type { SaveCredentialFunction } from './shared/types';
 
 let app: express.Application;
 let testDbName = '';
-let bootstrapName = '';
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
@@ -19,7 +18,6 @@ beforeAll(async () => {
 	});
 	const initResult = await utils.initTestDb();
 	testDbName = initResult.testDbName;
-	bootstrapName = initResult.bootstrapName;
 
 	utils.initConfigFile();
 
@@ -36,7 +34,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName, bootstrapName);
+	await utils.terminateTestDb(testDbName);
 });
 
 test('POST /credentials should create cred', async () => {

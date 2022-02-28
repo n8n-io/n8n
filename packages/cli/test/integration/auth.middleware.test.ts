@@ -10,18 +10,16 @@ import * as utils from './shared/utils';
 
 let app: express.Application;
 let testDbName = '';
-let bootstrapName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ applyAuth: true, namespaces: ['me', 'auth', 'owner', 'users'] });
 	const initResult = await utils.initTestDb();
 	testDbName = initResult.testDbName;
-	bootstrapName = initResult.bootstrapName;
 	utils.initLogger();
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName, bootstrapName);
+	await utils.terminateTestDb(testDbName);
 });
 
 ROUTES_REQUIRING_AUTHENTICATION.concat(ROUTES_REQUIRING_AUTHORIZATION).forEach((route) => {

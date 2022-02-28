@@ -11,7 +11,7 @@ if (dbType === 'mysqldb') {
 	const port = config.get('database.mysqldb.port');
 
 	exec(
-		`echo "CREATE DATABASE IF NOT EXISTS n8n_bs_mysql" | mysql -h ${host} -u ${username} -p${password}`,
+		`echo "CREATE DATABASE IF NOT EXISTS n8n_bs_mysql" | mysql -h ${host} -u ${username} -p${password}; USE n8n_bs_mysql`,
 	);
 
 	const bsMySqlConnectionOptions: ConnectionOptions = {

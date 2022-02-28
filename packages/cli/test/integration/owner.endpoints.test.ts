@@ -13,13 +13,11 @@ import {
 
 let app: express.Application;
 let testDbName = '';
-let bootstrapName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['owner'], applyAuth: true });
 	const initResult = await utils.initTestDb();
 	testDbName = initResult.testDbName;
-	bootstrapName = initResult.bootstrapName;
 
 	utils.initLogger();
 });
@@ -33,7 +31,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName, bootstrapName);
+	await utils.terminateTestDb(testDbName);
 });
 
 test('POST /owner should create owner and enable hasOwner setting', async () => {

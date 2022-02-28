@@ -164,15 +164,19 @@ export async function initTestDb() {
 	}
 
 	if (dbType === 'mysqldb') {
-		const bootstrapName = 'n8n_bs_mysql';
 		await createConnection(getBootstrapMySqlOptions());
 
-		const testDbName = `n8n_test_pg_${Date.now()}`;
-		await getConnection(bootstrapName).query(`CREATE DATABASE ${testDbName};`);
+		const testDbName = `n8n_test_mysql_${Date.now()}`;
+		await getConnection('n8n_bs_mysql').query(`CREATE DATABASE ${testDbName};`);
 
-		await Db.init(getMySqlOptions({ name: testDbName }));
+		try {
+			await Db.init(getMySqlOptions({ name: testDbName }));
+		} catch (e) {
+			console.log(e);
+		}
 
-		return { testDbName, bootstrapName };
+
+		return { testDbName };
 	}
 
 	throw new Error(`Unrecognized DB type: ${dbType}`);

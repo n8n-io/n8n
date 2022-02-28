@@ -81,14 +81,6 @@ export const getPostgresOptions = ({ name }: { name: string }): ConnectionOption
 //             mysql
 // ----------------------------------
 
-export const MYSQL_TEST_CONNECTION_OPTIONS: ConnectionOptions = {
-	type: 'mysql',
-	database: 'n8n',
-	username: 'root',
-	password: 'password',
-	host: 'localhost',
-	port: 3306,
-};
 
 export const getBootstrapMySqlOptions = (): ConnectionOptions => {
 	const username = config.get('database.mysqldb.user');

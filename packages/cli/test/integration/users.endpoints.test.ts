@@ -21,7 +21,6 @@ import { compare } from 'bcryptjs';
 
 let app: express.Application;
 let testDbName = '';
-let bootstrapName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
@@ -31,7 +30,6 @@ beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
 	const initResult = await utils.initTestDb();
 	testDbName = initResult.testDbName;
-	bootstrapName = initResult.bootstrapName;
 
 	const [
 		fetchedGlobalOwnerRole,
@@ -74,7 +72,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName, bootstrapName);
+	await utils.terminateTestDb(testDbName);
 });
 
 test('GET /users should return all users', async () => {
