@@ -203,9 +203,9 @@ export default mixins(
 				const autoCompleteItems = [
 					`function $evaluateExpression(expression: string, itemIndex?: number): any {};`,
 					`function getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): any {};`,
-					`function getWorkflowStaticData(type: string): object {};`,
-					`function $item(itemIndex: number, runIndex?: number) {};`,
-					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number) {};`,
+					`function getWorkflowStaticData(type: string): {};`,
+					`function $item(itemIndex: number, runIndex?: number): {};`,
+					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number): {};`,
 					`function $(nodeName?: ${workflowNodes.join(' | ')}): ${autoComplete$}`,
 					`const $input = ${autoComplete$input}`,
 				];
@@ -220,7 +220,6 @@ export default mixins(
 					'$now',
 					'$today',
 					'$thisRunIndex',
-					'$jmespath',
 					'DateTime',
 					'Duration',
 					'Interval',
@@ -230,6 +229,7 @@ export default mixins(
 					'$json',
 					'$binary',
 					'$position',
+					'$thisItem',
 					'$thisItemIndex',
 				];
 
@@ -271,6 +271,7 @@ export default mixins(
 					} catch(error) {}
 				}
 				autoCompleteItems.push(`const $node = ${JSON.stringify(nodes)}`);
+				autoCompleteItems.push(`function $jmespath(jsonDoc: object, query: string): {};`);
 
 				if (this.codeAutocomplete === 'function') {
 					if (connectionInputData) {
@@ -279,7 +280,6 @@ export default mixins(
 						autoCompleteItems.push(`const items: {json: {[key: string]: any}}[] = []`);
 					}
 				} else if (this.codeAutocomplete === 'functionItem') {
-					autoCompleteItems.push(`const $thisItem = {};`);
 					if (connectionInputData) {
 						autoCompleteItems.push(`const item = $json`);
 					} else {

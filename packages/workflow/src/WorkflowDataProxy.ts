@@ -468,6 +468,14 @@ export class WorkflowDataProxy {
 			return executionData;
 		};
 
+		// replacing proxies with the actual data.
+		const jmespathProxyToData = (data: IDataObject | IDataObject[], query: string) => {
+			if (!Array.isArray(data) && typeof data === 'object') {
+				return jmespath.search({ ...data }, query);
+			}
+			return jmespath.search(data, query);
+		};
+
 		const base = {
 			//------------------------------------------------------------------------------------------------
 			$: (nodeName: string) => {
@@ -659,7 +667,7 @@ export class WorkflowDataProxy {
 			$thisItemIndex: this.itemIndex,
 			$now: DateTime.now().toJSDate(),
 			$today: DateTime.now().toJSDate().toISOString().split('T')[0],
-			$jmespath: jmespath.search,
+			$jmespath: jmespathProxyToData,
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			DateTime,
 			// eslint-disable-next-line @typescript-eslint/naming-convention
