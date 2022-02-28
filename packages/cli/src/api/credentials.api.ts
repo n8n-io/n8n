@@ -84,12 +84,12 @@ credentialsController.get(
 );
 
 /**
- * POST /credentials/credentials-test
+ * POST /credentials/test
  *
  * Test if a credential is valid.
  */
 credentialsController.post(
-	'/credentials-test',
+	'/test',
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials, nodeToTestWith } = req.body;
 
