@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -226,20 +227,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 	async getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
-		userId?: string,
 	): Promise<Credentials> {
 		if (!nodeCredentials.id) {
 			throw new Error(`Credentials "${nodeCredentials.name}" for type "${type}" don't have an ID.`);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const qb = Db.collections.Credentials!.createQueryBuilder('c');
-		qb.where('c.id = :id and c.type = :type', { id: nodeCredentials.id, type });
-		if (userId) {
-			// TODO UM: implement this.
-			// qb.
-		}
-		const credentials = await qb.getOne();
+		const credentials = await Db.collections.Credentials!.findOne(nodeCredentials.id);
 
 		if (!credentials) {
 			throw new Error(
@@ -300,9 +293,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		mode: WorkflowExecuteMode,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
-		userId?: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		const credentials = await this.getCredentials(nodeCredentials, type, userId);
+		const credentials = await this.getCredentials(nodeCredentials, type);
 		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
 
 		if (raw === true) {
@@ -506,6 +498,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async testCredentials(
+		user: User,
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 		nodeToTestWith?: string,
@@ -604,7 +597,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			},
 		};
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(node.parameters);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id, node.parameters);
 
 		const routingNode = new RoutingNode(
 			workflow,

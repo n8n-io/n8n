@@ -24,7 +24,7 @@ afterAll(async () => {
 	await utils.terminateTestDb(testDbName, bootstrapName);
 });
 
-ROUTES_REQUIRING_AUTHENTICATION.forEach((route) => {
+ROUTES_REQUIRING_AUTHENTICATION.concat(ROUTES_REQUIRING_AUTHORIZATION).forEach((route) => {
 	const [method, endpoint] = getMethodAndEndpoint(route);
 
 	test(`${route} should return 401 Unauthorized if no cookie`, async () => {
