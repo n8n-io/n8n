@@ -301,9 +301,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		mode: WorkflowExecuteMode,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
-		userId?: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		const credentials = await this.getCredentials(nodeCredentials, type, userId);
+		const credentials = await this.getCredentials(nodeCredentials, type);
 		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
 
 		if (raw === true) {
@@ -507,6 +506,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async testCredentials(
+		user: User,
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 		nodeToTestWith?: string,
@@ -605,7 +605,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			},
 		};
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(node.parameters);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id, node.parameters);
 
 		const routingNode = new RoutingNode(
 			workflow,
