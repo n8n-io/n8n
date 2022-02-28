@@ -2,7 +2,7 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Response } from 'express';
-import { getConnection, In } from 'typeorm';
+import { In } from 'typeorm';
 import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
@@ -118,7 +118,7 @@ export function usersNamespace(this: N8nApp): void {
 			Logger.debug(total > 1 ? `Creating ${total} user shells...` : `Creating 1 user shell...`);
 
 			try {
-				await getConnection().transaction(async (transactionManager) => {
+				await Db.transaction(async (transactionManager) => {
 					return Promise.all(
 						usersToSetUp.map(async (email) => {
 							const newUser = Object.assign(new User(), {
@@ -366,7 +366,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (transferId) {
 				const transferee = users.find((user) => user.id === transferId);
-				await getConnection().transaction(async (transactionManager) => {
+				await Db.transaction(async (transactionManager) => {
 					await transactionManager.update(
 						SharedWorkflow,
 						{ user: userToDelete },
@@ -394,7 +394,7 @@ export function usersNamespace(this: N8nApp): void {
 				}),
 			]);
 
-			await getConnection().transaction(async (transactionManager) => {
+			await Db.transaction(async (transactionManager) => {
 				const ownedWorkflows = await Promise.all(
 					ownedSharedWorkflows.map(async ({ workflow }) => {
 						if (workflow.active) {

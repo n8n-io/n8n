@@ -8,8 +8,11 @@ import {
 	Connection,
 	ConnectionOptions,
 	createConnection,
+	EntityManager,
+	EntityTarget,
 	getRepository,
 	LoggerOptions,
+	Repository,
 } from 'typeorm';
 import { TlsOptions } from 'tls';
 import * as path from 'path';
@@ -38,6 +41,16 @@ export const collections: IDatabaseCollections = {
 	Settings: null,
 };
 
+let connection: Connection;
+
+export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
+	return connection.transaction(fn);
+}
+
+export function findRepository<Entity>(entityClass: EntityTarget<Entity>): Repository<Entity> {
+	return getRepository(entityClass, connection.name);
+}
+
 export async function init(
 	testConnectionOptions?: ConnectionOptions,
 ): Promise<IDatabaseCollections> {
@@ -45,7 +58,6 @@ export async function init(
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
 	let connectionOptions: ConnectionOptions;
-	let connection: Connection;
 
 	const entityPrefix = config.get('database.tablePrefix');
 
@@ -179,20 +191,17 @@ export async function init(
 	}
 
 	// TODO: Remove testConnectionOptions if possible
-	collections.Credentials = getRepository(entities.CredentialsEntity, testConnectionOptions?.name);
-	collections.Execution = getRepository(entities.ExecutionEntity, testConnectionOptions?.name);
-	collections.Workflow = getRepository(entities.WorkflowEntity, testConnectionOptions?.name);
-	collections.Webhook = getRepository(entities.WebhookEntity, testConnectionOptions?.name);
-	collections.Tag = getRepository(entities.TagEntity, testConnectionOptions?.name);
+	collections.Credentials = findRepository(entities.CredentialsEntity);
+	collections.Execution = findRepository(entities.ExecutionEntity);
+	collections.Workflow = findRepository(entities.WorkflowEntity);
+	collections.Webhook = findRepository(entities.WebhookEntity);
+	collections.Tag = findRepository(entities.TagEntity);
 
-	collections.Role = getRepository(entities.Role, testConnectionOptions?.name);
-	collections.User = getRepository(entities.User, testConnectionOptions?.name);
-	collections.SharedCredentials = getRepository(
-		entities.SharedCredentials,
-		testConnectionOptions?.name,
-	);
-	collections.SharedWorkflow = getRepository(entities.SharedWorkflow, testConnectionOptions?.name);
-	collections.Settings = getRepository(entities.Settings, testConnectionOptions?.name);
+	collections.Role = findRepository(entities.Role);
+	collections.User = findRepository(entities.User);
+	collections.SharedCredentials = findRepository(entities.SharedCredentials);
+	collections.SharedWorkflow = findRepository(entities.SharedWorkflow);
+	collections.Settings = findRepository(entities.Settings);
 
 	return collections;
 }

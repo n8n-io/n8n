@@ -3,7 +3,7 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
-import { getConnection, In } from 'typeorm';
+import { In } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
 import { INodeCredentialTestResult } from 'n8n-workflow';
 
@@ -112,7 +112,7 @@ export function credentialsEndpoints(this: N8nApp): void {
 				scope: 'credential',
 			});
 
-			const { id, ...rest } = await getConnection().transaction(async (transactionManager) => {
+			const { id, ...rest } = await Db.transaction(async (transactionManager) => {
 				const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
 
 				savedCredential.data = newCredential.data;
