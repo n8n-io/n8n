@@ -30,55 +30,66 @@
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.new') }}</span>
 						</template>
 					</n8n-menu-item>
+					<n8n-menu-item v-if="isTemplatesEnabled" index="template-new">
+						<template slot="title">
+							<font-awesome-icon icon="box-open"/>&nbsp;
+							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.newTemplate') }}</span>
+						</template>
+					</n8n-menu-item>
 					<n8n-menu-item index="workflow-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>&nbsp;
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.open') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-save">
+					<n8n-menu-item index="workflow-save" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.save') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-duplicate" :disabled="!onWorkflowPage || !currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.duplicate') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-delete" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-delete" :disabled="!onWorkflowPage || !currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.delete') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-download">
+					<n8n-menu-item index="workflow-download" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="file-download"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.download') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-url">
+					<n8n-menu-item index="workflow-import-url" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="cloud"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromUrl') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-import-file">
+					<n8n-menu-item index="workflow-import-file" :disabled="!onWorkflowPage">
 						<template slot="title">
 							<font-awesome-icon icon="hdd"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.importFromFile') }}</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-settings" :disabled="!onWorkflowPage || !currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
 							<span slot="title" class="item-title">{{ $locale.baseText('mainSidebar.settings') }}</span>
 						</template>
 					</n8n-menu-item>
 				</el-submenu>
+
+				<n8n-menu-item v-if="isTemplatesEnabled" index="templates">
+					<font-awesome-icon icon="box-open"/>&nbsp;
+					<span slot="title" class="item-title-root">{{ $locale.baseText('mainSidebar.templates') }}</span>
+				</n8n-menu-item>
 
 				<el-submenu index="credentials" :title="$locale.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
 					<template slot="title">
@@ -165,7 +176,19 @@ import { saveAs } from 'file-saver';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
-import { CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, EXECUTIONS_MODAL_KEY } from '@/constants';
+import {
+	CREDENTIAL_LIST_MODAL_KEY,
+	CREDENTIAL_SELECT_MODAL_KEY,
+	DUPLICATE_MODAL_KEY,
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRMED,
+	TAGS_MANAGER_MODAL_KEY,
+	VERSIONS_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_OPEN_MODAL_KEY,
+	EXECUTIONS_MODAL_KEY,
+} from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -199,6 +222,9 @@ export default mixins(
 			...mapGetters('versions', [
 				'hasVersionUpdates',
 				'nextVersions',
+			]),
+			...mapGetters('settings', [
+				'isTemplatesEnabled',
 			]),
 			helpMenuItems (): object[] {
 				return [
@@ -285,6 +311,9 @@ export default mixins(
 			},
 			sidebarMenuBottomItems(): IMenuItem[] {
 				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'bottom');
+			},
+			onWorkflowPage(): boolean {
+				return this.$route.meta && this.$route.meta.nodeView;
 			},
 		},
 		methods: {
@@ -449,14 +478,30 @@ export default mixins(
 				} else if (key === 'workflow-new') {
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
-						const importConfirm = await this.confirmMessage(
+						const confirmModal = await this.confirmModal(
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.message'),
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.headline'),
 							'warning',
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.confirmButtonText'),
 							this.$locale.baseText('mainSidebar.confirmMessage.workflowNew.cancelButtonText'),
+							true,
 						);
-						if (importConfirm === true) {
+
+						if (confirmModal === MODAL_CONFIRMED) {
+							const saved = await this.saveCurrentWorkflow({}, false);
+							if (saved) this.$store.dispatch('settings/fetchPromptsData');
+
+							if (this.$router.currentRoute.name === 'NodeViewNew') {
+								this.$root.$emit('newWorkflow');
+							} else {
+								this.$router.push({ name: 'NodeViewNew' });
+							}
+
+							this.$showMessage({
+								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
+								type: 'success',
+							});
+						} else if (confirmModal === MODAL_CANCEL) {
 							this.$store.commit('setStateDirty', false);
 							if (this.$router.currentRoute.name === 'NodeViewNew') {
 								this.$root.$emit('newWorkflow');
@@ -468,6 +513,8 @@ export default mixins(
 								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
 								type: 'success',
 							});
+						} else if (confirmModal === MODAL_CLOSE) {
+							return;
 						}
 					} else {
 						if (this.$router.currentRoute.name !== 'NodeViewNew') {
@@ -480,6 +527,10 @@ export default mixins(
 						});
 					}
 					this.$titleReset();
+				} else if (key === 'templates' || key === 'template-new') {
+					if (this.$router.currentRoute.name !== 'TemplatesSearchView') {
+						this.$router.push({ name: 'TemplatesSearchView' });
+					}
 				} else if (key === 'credentials-open') {
 					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
 				} else if (key === 'credentials-new') {
@@ -554,12 +605,19 @@ export default mixins(
 			}
 			.item-title {
 				position: absolute;
-				left: 73px;
+				left: 56px;
+				font-size: var(--font-size-s);
 			}
 			.item-title-root {
 				position: absolute;
 				left: 60px;
 				top: 1px;
+			}
+		}
+
+		.el-menu--inline {
+			.el-menu-item {
+				padding-left: 30px!important;
 			}
 		}
 
