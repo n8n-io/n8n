@@ -128,6 +128,6 @@ export class User {
 
 	@AfterLoad()
 	computeIsPending(): void {
-		this.isPending = this.password === null;
+		this.isPending = !!this.password;
 	}
 }
