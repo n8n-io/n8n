@@ -70,7 +70,8 @@ export class ActiveWorkflowRunner {
 		// Here I guess we can have a flag on the workflow table like hasTrigger
 		// so intead of pulling all the active wehhooks just pull the actives that have a trigger
 		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow!.find({
-			active: true,
+			where: { active: true },
+			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		})) as IWorkflowDb[];
 
 		if (!config.get('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
@@ -255,7 +256,9 @@ export class ActiveWorkflowRunner {
 			});
 		}
 
-		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId);
+		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId, {
+			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+		});
 		if (workflowData === undefined) {
 			throw new ResponseHelper.ResponseError(
 				`Could not find workflow with id "${webhook.workflowId}"`,
@@ -276,7 +279,9 @@ export class ActiveWorkflowRunner {
 			settings: workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			workflowData.shared[0].user.id,
+		);
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,
@@ -512,7 +517,9 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async removeWorkflowWebhooks(workflowId: string): Promise<void> {
-		const workflowData = await Db.collections.Workflow!.findOne(workflowId);
+		const workflowData = await Db.collections.Workflow!.findOne(workflowId, {
+			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+		});
 		if (workflowData === undefined) {
 			throw new Error(`Could not find workflow with id "${workflowId}"`);
 		}
@@ -531,7 +538,9 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			workflowData.shared[0].user.id,
+		);
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
@@ -598,6 +607,7 @@ export class ActiveWorkflowRunner {
 
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
+			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
 			workflowData,
@@ -701,7 +711,9 @@ export class ActiveWorkflowRunner {
 		let workflowInstance: Workflow;
 		try {
 			if (workflowData === undefined) {
-				workflowData = (await Db.collections.Workflow!.findOne(workflowId)) as IWorkflowDb;
+				workflowData = (await Db.collections.Workflow!.findOne(workflowId, {
+					relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+				})) as IWorkflowDb;
 			}
 
 			if (!workflowData) {
@@ -730,7 +742,9 @@ export class ActiveWorkflowRunner {
 			}
 
 			const mode = 'trigger';
-			const additionalData = await WorkflowExecuteAdditionalData.getBase();
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(
+				(workflowData as WorkflowEntity).shared[0].user.id,
+			);
 			const getTriggerFunctions = this.getExecuteTriggerFunctions(
 				workflowData,
 				additionalData,

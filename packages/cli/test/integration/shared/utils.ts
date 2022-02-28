@@ -13,6 +13,7 @@ import { Credentials, UserSettings } from 'n8n-core';
 import { getConnection } from 'typeorm';
 
 import config = require('../../../config');
+import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
@@ -284,7 +285,7 @@ export async function createAgent(app: express.Application, options?: { auth: tr
 
 	if (options?.auth && options?.user) {
 		const { token } = await issueJWT(options.user);
-		agent.jar.setCookie(`n8n-auth=${token}`);
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 
 	return agent;
@@ -314,7 +315,7 @@ export function prefix(pathSegment: string) {
 /**
  * Extract the value (token) of the auth cookie in a response.
  */
-export function getAuthToken(response: request.Response, authCookieName = 'n8n-auth') {
+export function getAuthToken(response: request.Response, authCookieName = AUTH_COOKIE_NAME) {
 	const cookies: string[] = response.headers['set-cookie'];
 
 	if (!cookies) {

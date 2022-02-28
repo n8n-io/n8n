@@ -104,7 +104,7 @@ credentialsController.post(
 
 		const helper = new CredentialsHelper(encryptionKey);
 
-		return helper.testCredentials(credentials.type, credentials, nodeToTestWith);
+		return helper.testCredentials(req.user, credentials.type, credentials, nodeToTestWith);
 	}),
 );
 
