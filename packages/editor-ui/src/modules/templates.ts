@@ -1,4 +1,4 @@
-import { getCategories, getCollectionById, getCollections, getTemplateById, getWorkflows, getWorkflowTemplate, testHealthEndpoint } from '@/api/templates';
+import { getCategories, getCollectionById, getCollections, getTemplateById, getWorkflows, getWorkflowTemplate } from '@/api/templates';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
@@ -179,7 +179,8 @@ const module: Module<ITemplateState, IRootState> = {
 	actions: {
 		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string): Promise<ITemplatesWorkflowFull> {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const response = await getTemplateById(apiEndpoint, templateId);
+			const versionCli: string = context.rootGetters['versionCli'];
+			const response = await getTemplateById(apiEndpoint, templateId, { 'n8n-version': versionCli });
 			const template: ITemplatesWorkflowFull = {
 				...response.workflow,
 				full: true,
@@ -190,7 +191,8 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string): Promise<ITemplatesCollection> {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const response = await getCollectionById(apiEndpoint, collectionId);
+			const versionCli: string = context.rootGetters['versionCli'];
+			const response = await getCollectionById(apiEndpoint, collectionId, { 'n8n-version': versionCli });
 			const collection: ITemplatesCollectionFull = {
 				...response.collection,
 				full: true,
@@ -207,7 +209,8 @@ const module: Module<ITemplateState, IRootState> = {
 				return cachedCategories;
 			}
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const response = await getCategories(apiEndpoint);
+			const versionCli: string = context.rootGetters['versionCli'];
+			const response = await getCategories(apiEndpoint, { 'n8n-version': versionCli });
 			const categories = response.categories;
 
 			context.commit('addCategories', categories);
@@ -221,7 +224,8 @@ const module: Module<ITemplateState, IRootState> = {
 			}
 
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const response = await getCollections(apiEndpoint, query);
+			const versionCli: string = context.rootGetters['versionCli'];
+			const response = await getCollections(apiEndpoint, query, { 'n8n-version': versionCli });
 			const collections = response.collections;
 
 			context.commit('addCollections', collections);
@@ -237,8 +241,9 @@ const module: Module<ITemplateState, IRootState> = {
 			}
 
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+			const versionCli: string = context.rootGetters['versionCli'];
 
-			const payload = await getWorkflows(apiEndpoint, {...query, skip: 0, limit: TEMPLATES_PAGE_SIZE});
+			const payload = await getWorkflows(apiEndpoint, {...query, skip: 0, limit: TEMPLATES_PAGE_SIZE}, { 'n8n-version': versionCli });
 
 			context.commit('addWorkflows', payload.workflows);
 			context.commit('addWorkflowsSearch', {...payload, query});
@@ -268,7 +273,8 @@ const module: Module<ITemplateState, IRootState> = {
 		},
 		getWorkflowTemplate: async (context: ActionContext<ITemplateState, IRootState>, templateId: string): Promise<IWorkflowTemplate> => {
 			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			return await getWorkflowTemplate(apiEndpoint, templateId);
+			const versionCli: string = context.rootGetters['versionCli'];
+			return await getWorkflowTemplate(apiEndpoint, templateId, { 'n8n-version': versionCli });
 		},
 	},
 };
