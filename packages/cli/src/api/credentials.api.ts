@@ -62,7 +62,9 @@ credentialsController.get(
 			});
 		}
 
-		return credentials.map(({ id, ...rest }) => ({ id: id.toString(), ...rest }));
+		return credentials.map((credential) =>
+			Object.assign(credential, { id: credential.id.toString() }),
+		);
 	}),
 );
 
