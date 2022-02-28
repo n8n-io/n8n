@@ -144,6 +144,7 @@ export class Mautic implements INodeType {
 					{
 						name: 'Segment Email',
 						value: 'segmentEmail',
+						description: 'Send an email',
 					},
 				],
 				default: 'contact',

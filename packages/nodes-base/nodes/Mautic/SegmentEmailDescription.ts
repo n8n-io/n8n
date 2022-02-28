@@ -21,7 +21,7 @@ export const segmentEmailOperations: INodeProperties[] = [
 				value: 'send',
 			},
 		],
-		default: 'segmentEmail',
+		default: 'send',
 	},
 ];
 
