@@ -1,6 +1,8 @@
 import { ConnectionOptions } from 'typeorm';
+import config = require('../../../config');
 
 import { entities } from '../../../src/databases/entities';
+import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
 import { postgresMigrations } from '../../../src/databases/postgresdb/migrations';
 import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
 
@@ -74,3 +76,51 @@ const getPostgresConnectionOptions = ({ name }: { name: string }): ConnectionOpt
 // ----------------------------------
 
 // TODO: Pending mysql connection options
+
+export const MYSQL_TEST_CONNECTION_OPTIONS: ConnectionOptions = {
+	type: 'mysql',
+	database: 'n8n',
+	username: 'root',
+	password: 'password',
+	host: 'localhost',
+	port: 3306,
+};
+
+export const getBootstrapMySqlConnectionOptions = (): ConnectionOptions => {
+	const username = config.get('database.mysqldb.user');
+	const password = config.get('database.mysqldb.password');
+	// const password = 'password';
+	const host = config.get('database.mysqldb.host');
+	const port = config.get('database.mysqldb.port');
+
+	return {
+		name: 'n8n_bs_mysql',
+		database: 'n8n_bs_mysql',
+		type: 'mysql',
+		host,
+		port,
+		username,
+		password,
+	};
+};
+
+export const getMySqlConnectionOptions = ({ name }: { name: string }): ConnectionOptions => {
+	const username = config.get('database.mysqldb.user');
+	const password = config.get('database.mysqldb.password');
+	// const password = 'password';
+	const host = config.get('database.mysqldb.host');
+	const port = config.get('database.mysqldb.port');
+
+	return {
+		name,
+		database: name,
+		type: 'mysql',
+		host,
+		port,
+		username,
+		password,
+		migrations: mysqlMigrations,
+		migrationsTableName: 'migrations',
+		migrationsRun: true,
+	};
+};

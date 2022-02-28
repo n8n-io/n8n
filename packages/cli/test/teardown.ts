@@ -1,9 +1,10 @@
 import { createConnection, getConnection } from 'typeorm';
 import config = require('../config');
 import { getOptions } from './integration/shared/connectionOptions';
+const { exec } = require('child_process');
 
 module.exports = async function () {
-	const dbType = config.get('database.type');
+	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
 
 	// clean up any remaining test Postgres DBs prefixed with `n8n_test_pg_`
 	if (dbType === 'postgresdb') {
@@ -21,5 +22,16 @@ module.exports = async function () {
 		await Promise.all(promises);
 
 		await getConnection(bootstrapName).close();
+	}
+
+	if (dbType === 'mysqldb') {
+		const user = config.get('database.mysqldb.user');
+		// const password = config.get('database.mysqldb.password') ?? 'password'; // TODO
+		const password = 'password';
+		const host = config.get('database.mysqldb.host');
+
+		exec(
+			`echo "DROP DATABASE n8n_bs_mysql" | mysql -h ${host} -u ${user} -p${password}`,
+		);
 	}
 };

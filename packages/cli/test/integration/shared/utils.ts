@@ -31,7 +31,13 @@ import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
-import { getOptions, SQLITE_TEST_CONNECTION_OPTIONS } from './connectionOptions';
+import {
+	getBootstrapMySqlConnectionOptions,
+	getMySqlConnectionOptions,
+	getOptions,
+	MYSQL_TEST_CONNECTION_OPTIONS,
+	SQLITE_TEST_CONNECTION_OPTIONS,
+} from './connectionOptions';
 
 export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
@@ -122,7 +128,7 @@ export function initConfigFile() {
 // ----------------------------------
 
 export async function initTestDb() {
-	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysql';
+	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
 
 	if (dbType === 'sqlite') {
 		await Db.init(SQLITE_TEST_CONNECTION_OPTIONS);
@@ -143,13 +149,29 @@ export async function initTestDb() {
 		return { testDbName, bootstrapName };
 	}
 
-	throw new Error('MySQL test connection pending implementation'); // TODO
+	if (dbType === 'mysqldb') {
+		const bootstrapName = `n8n_bs_mysql`;
+		await createConnection(getBootstrapMySqlConnectionOptions());
+
+		const testDbName = `n8n_test_pg_${Date.now()}`;
+		await getConnection(bootstrapName).query(`CREATE DATABASE ${testDbName};`);
+
+		await Db.init(getMySqlConnectionOptions({ name: testDbName }));
+
+		// TODO
+		// await Db.init(MYSQL_TEST_CONNECTION_OPTIONS);
+		// await createConnection(getOptions({ name: 'n8n_bs_test' }));
+
+		return { testDbName, bootstrapName };
+	}
+
+	throw new Error(`Unrecognized DB type: ${dbType}`);
 }
 
 export async function terminateTestDb(testDbName: string, bootstrapName: string) {
-	const dbType = config.get('database.type');
+	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
 
-	if (dbType === 'postgresdb') {
+	if (dbType === 'postgresdb' || dbType === 'mysqldb') {
 		await getConnection(testDbName).close();
 		await getConnection(bootstrapName).query(`DROP DATABASE ${testDbName}`);
 		await getConnection(bootstrapName).close();
