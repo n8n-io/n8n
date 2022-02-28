@@ -10,6 +10,7 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
+	AfterLoad,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import config = require('../../../config');
@@ -118,5 +119,15 @@ export class User {
 	@BeforeUpdate()
 	setUpdateDate(): void {
 		this.updatedAt = new Date();
+	}
+
+	/**
+	 * Whether the user is pending setup completion.
+	 */
+	isPending: boolean;
+
+	@AfterLoad()
+	computeIsPending(): void {
+		this.isPending = !!this.password;
 	}
 }

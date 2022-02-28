@@ -317,7 +317,7 @@ class App {
 			userManagement: {
 				enabled:
 					config.get('userManagement.disabled') === false ||
-					config.get('userManagement.hasOwner') === true,
+					config.get('userManagement.isInstanceOwnerSetUp') === true,
 				// showSetupOnFirstLoad: config.get('userManagement.disabled') === false, // && config.get('userManagement.skipOwnerSetup') === true
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
