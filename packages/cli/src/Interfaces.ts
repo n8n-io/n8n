@@ -429,7 +429,7 @@ export interface IN8nUISettings {
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
 	telemetry: ITelemetrySettings;
-	personalizationSurvey: IPersonalizationSurvey;
+	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	workflowTagsDisabled: boolean;
@@ -443,11 +443,6 @@ export interface IPersonalizationSurveyAnswers {
 	otherCompanyIndustry: string | null;
 	otherWorkArea: string | null;
 	workArea: string[] | string | null;
-}
-
-export interface IPersonalizationSurvey {
-	answers?: IPersonalizationSurveyAnswers;
-	shouldShow: boolean;
 }
 
 export interface IUserManagementSettings {
@@ -579,7 +574,7 @@ export interface IWorkflowExecutionDataProcess {
 	sessionId?: string;
 	startNodes?: string[];
 	workflowData: IWorkflowBase;
-	userId?: string;
+	userId: string;
 }
 
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
@@ -587,6 +582,7 @@ export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExe
 	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
 	nodeTypeData: ITransferNodeTypes;
+	userId: string;
 }
 
 export interface IWorkflowExecuteProcess {

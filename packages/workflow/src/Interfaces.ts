@@ -173,7 +173,6 @@ export abstract class ICredentialsHelper {
 		mode: WorkflowExecuteMode,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
-		userId?: string,
 	): Promise<ICredentialDataDecryptedObject>;
 
 	abstract updateCredentials(
@@ -1179,7 +1178,7 @@ export interface IWorkflowMetadata {
 	active: boolean;
 }
 
-export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS';
+export type WebhookHttpMethod = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT' | 'OPTIONS';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
@@ -1187,7 +1186,7 @@ export interface IWebhookResponseData {
 	noWebhookResponse?: boolean;
 }
 
-export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary';
+export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
 export type WebhookResponseMode = 'onReceived' | 'lastNode';
 
 export interface INodeTypes {
@@ -1325,7 +1324,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
-	userId?: string; // this is a UUID - used to firewall actions in user management
+	userId: string;
 }
 
 export type WorkflowExecuteMode =

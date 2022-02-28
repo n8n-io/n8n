@@ -1,7 +1,8 @@
 /* eslint-disable import/no-cycle */
 import { Application } from 'express';
 import { JwtFromRequestFunction } from 'passport-jwt';
-import { IPersonalizationSurveyAnswers } from '../Interfaces';
+import type { IExternalHooksClass, IPersonalizationSurveyAnswers } from '../Interfaces';
+import { ActiveWorkflowRunner } from '..';
 
 export interface JwtToken {
 	token: string;
@@ -32,4 +33,7 @@ export interface PublicUser {
 export interface N8nApp {
 	app: Application;
 	restEndpoint: string;
+	externalHooks: IExternalHooksClass;
+	defaultCredentialsName: string;
+	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 }

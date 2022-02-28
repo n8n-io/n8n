@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+import { existsSync } from 'fs';
 import express = require('express');
 import * as superagent from 'superagent';
 import * as request from 'supertest';
@@ -7,23 +9,30 @@ import * as util from 'util';
 import { createTestAccount } from 'nodemailer';
 import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
+import { Credentials, UserSettings } from 'n8n-core';
+import { getConnection } from 'typeorm';
 
 import config = require('../../../config');
+import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
-import { Db, IDatabaseCollections } from '../../../src';
-import { User } from '../../../src/databases/entities/User';
+import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
-import { getConnection } from 'typeorm';
+import { credentialsEndpoints } from '../../../src/api/namespaces/credentials';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { randomEmail, randomValidPassword, randomName } from './random';
-import type { EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
-import { Role } from '../../../src/databases/entities/Role';
 import { getLogger } from '../../../src/Logger';
+import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
+import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
+import type { Role } from '../../../src/databases/entities/Role';
+import type { User } from '../../../src/databases/entities/User';
+import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
+
+export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
 // ----------------------------------
 //            test server
@@ -43,13 +52,16 @@ export const initLogger = () => {
 export function initTestServer({
 	applyAuth,
 	namespaces,
+	externalHooks,
 }: {
 	applyAuth: boolean;
+	externalHooks?: true;
 	namespaces?: EndpointNamespace[];
 }) {
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
+		...(externalHooks ? { externalHooks: ExternalHooks() } : {}),
 	};
 
 	testServer.app.use(bodyParser.json());
@@ -69,6 +81,7 @@ export function initTestServer({
 			auth: authEndpoints,
 			owner: ownerEndpoints,
 			passwordReset: passwordResetEndpoints,
+			credentials: credentialsEndpoints,
 		};
 
 		for (const namespace of namespaces) {
@@ -77,6 +90,30 @@ export function initTestServer({
 	}
 
 	return testServer.app;
+}
+
+// ----------------------------------
+//           test logger
+// ----------------------------------
+
+/**
+ * Initialize a silent logger for test runs.
+ */
+export function initTestLogger() {
+	config.set('logs.output', 'file');
+	LoggerProxy.init(getLogger());
+}
+
+/**
+ * Initialize a config file if non-existent.
+ */
+export function initConfigFile() {
+	const settingsPath = UserSettings.getUserSettingsPath();
+
+	if (!existsSync(settingsPath)) {
+		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
+		UserSettings.writeUserSettings(userSettings, settingsPath);
+	}
 }
 
 // ----------------------------------
@@ -92,6 +129,39 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>) {
 	await getConnection().query('PRAGMA foreign_keys=OFF');
 	await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
 	await getConnection().query('PRAGMA foreign_keys=ON');
+}
+
+export function affixRoleToSaveCredential(role: Role) {
+	return (credentialPayload: CredentialPayload, { user }: { user: User }) =>
+		saveCredential(credentialPayload, { user, role });
+}
+
+/**
+ * Save a credential to the DB, sharing it with a user.
+ */
+async function saveCredential(
+	credentialPayload: CredentialPayload,
+	{ user, role }: { user: User; role: Role },
+) {
+	const newCredential = new CredentialsEntity();
+
+	Object.assign(newCredential, credentialPayload);
+
+	const encryptedData = await encryptCredentialData(newCredential);
+
+	Object.assign(newCredential, encryptedData);
+
+	const savedCredential = await Db.collections.Credentials!.save(newCredential);
+
+	savedCredential.data = newCredential.data;
+
+	await Db.collections.SharedCredentials!.save({
+		user,
+		credentials: savedCredential,
+		role,
+	});
+
+	return savedCredential;
 }
 
 /**
@@ -120,25 +190,24 @@ export async function createUser(
 		lastName: randomName(),
 	},
 ) {
-	return await Db.collections.User!.save({
+	const globalRole = role ?? (await getGlobalMemberRole());
+	return Db.collections.User!.save({
 		id,
 		email,
 		password,
 		firstName,
 		lastName,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: role ?? (await getGlobalMemberRole()),
+		globalRole,
 	});
 }
 
 export async function createOwnerShell() {
-	await Db.collections.User!.save({
-		id: uuid(),
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: await getGlobalOwnerRole(),
-	});
+	const globalRole = await getGlobalOwnerRole();
+	return Db.collections.User!.save({ globalRole });
+}
+export async function createMemberShell() {
+	const globalRole = await getGlobalMemberRole();
+	return Db.collections.User!.save({ globalRole });
 }
 
 export async function getGlobalOwnerRole() {
@@ -178,25 +247,20 @@ export function getAllRoles() {
 	]);
 }
 
-
 // ----------------------------------
 //           request agent
 // ----------------------------------
 
-export async function createAgent(
-	app: express.Application,
-	{ auth, user }: { auth: boolean; user?: User } = { auth: false },
-) {
+/**
+ * Create a request agent, optionally with an auth cookie.
+ */
+export async function createAgent(app: express.Application, options?: { auth: true; user: User }) {
 	const agent = request.agent(app);
 	agent.use(prefix(REST_PATH_SEGMENT));
 
-	if (auth && !user) {
-		throw new Error('User required for auth agent creation');
-	}
-
-	if (auth && user) {
-		const { token } = await issueJWT(user);
-		agent.jar.setCookie(`n8n-auth=${token}`);
+	if (options?.auth && options?.user) {
+		const { token } = await issueJWT(options.user);
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 
 	return agent;
@@ -226,7 +290,7 @@ export function prefix(pathSegment: string) {
 /**
  * Extract the value (token) of the auth cookie in a response.
  */
-export function getAuthToken(response: request.Response, authCookieName = 'n8n-auth') {
+export function getAuthToken(response: request.Response, authCookieName = AUTH_COOKIE_NAME) {
 	const cookies: string[] = response.headers['set-cookie'];
 
 	if (!cookies) {
@@ -265,5 +329,25 @@ export async function getHasOwnerSetting() {
  */
 export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
 
-// TODO: Phase out
-export const isTestRun = process.argv[1].split('/').includes('jest');
+// ----------------------------------
+//            encryption
+// ----------------------------------
+
+async function encryptCredentialData(credential: CredentialsEntity) {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+
+	if (!encryptionKey) {
+		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
+	}
+
+	const coreCredential = new Credentials(
+		{ id: null, name: credential.name },
+		credential.type,
+		credential.nodesAccess,
+	);
+
+	// @ts-ignore
+	coreCredential.setData(credential.data, encryptionKey);
+
+	return coreCredential.getDataToSave() as ICredentialsDb;
+}

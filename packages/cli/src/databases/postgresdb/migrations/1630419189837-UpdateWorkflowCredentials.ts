@@ -149,7 +149,6 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 				queryRunner.query(updateQuery, updateParams);
 			}
 		});
-		console.timeEnd(this.name);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
