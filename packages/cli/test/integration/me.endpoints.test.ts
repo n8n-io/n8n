@@ -23,7 +23,7 @@ let app: express.Application;
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ namespaces: ['me'], applyAuth: true });
+	app = utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
 	await utils.initTestDb();
 	globalOwnerRole = await getGlobalOwnerRole();
 	utils.initLogger();

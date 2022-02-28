@@ -3,8 +3,6 @@ import type { ICredentialsDb } from '../../../src';
 import type { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import type { User } from '../../../src/databases/entities/User';
 
-import type { N8nApp } from '../../../src/UserManagement/Interfaces';
-
 export type SmtpTestAccount = {
 	user: string;
 	pass: string;
@@ -15,9 +13,7 @@ export type SmtpTestAccount = {
 	};
 };
 
-export type EndpointNamespace = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials';
-
-export type NamespacesMap = Readonly<Record<EndpointNamespace, (this: N8nApp) => void>>;
+type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials';
 
 export type CredentialPayload = {
 	name: string;

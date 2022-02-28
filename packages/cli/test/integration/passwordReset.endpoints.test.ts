@@ -18,7 +18,7 @@ let app: express.Application;
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ namespaces: ['passwordReset'], applyAuth: true });
+	app = utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
 	await utils.initTestDb();
 	await utils.truncate(['User']);
 

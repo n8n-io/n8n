@@ -12,7 +12,7 @@ import * as utils from './shared/utils';
 let app: express.Application;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ applyAuth: true, namespaces: ['me', 'auth', 'owner', 'users'] });
+	app = utils.initTestServer({ applyAuth: true, endpointGroups: ['me', 'auth', 'owner', 'users'] });
 	await utils.initTestDb();
 	utils.initLogger();
 });
