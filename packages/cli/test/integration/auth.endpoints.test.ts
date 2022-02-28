@@ -51,6 +51,8 @@ afterEach(async () => {
 	await utils.truncate(['User'], testDbName);
 });
 
+// TODO: find a post-entire-run hook to clean up DBs
+
 afterAll(async () => {
 	await utils.terminateTestDb(testDbName, bootstrapName);
 });

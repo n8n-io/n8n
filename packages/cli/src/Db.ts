@@ -178,6 +178,7 @@ export async function init(
 		}
 	}
 
+	// TODO: Remove testConnectionOptions if possible
 	collections.Credentials = getRepository(entities.CredentialsEntity, testConnectionOptions?.name);
 	collections.Execution = getRepository(entities.ExecutionEntity, testConnectionOptions?.name);
 	collections.Workflow = getRepository(entities.WorkflowEntity, testConnectionOptions?.name);
