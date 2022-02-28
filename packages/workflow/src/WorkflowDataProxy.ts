@@ -8,6 +8,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import { DateTime, Duration, Interval } from 'luxon';
+import * as jmespath from 'jmespath';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -658,6 +659,7 @@ export class WorkflowDataProxy {
 			$thisItemIndex: this.itemIndex,
 			$now: DateTime.now().toJSDate(),
 			$today: DateTime.now().toJSDate().toISOString().split('T')[0],
+			$jmespath: jmespath.search,
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			DateTime,
 			// eslint-disable-next-line @typescript-eslint/naming-convention

@@ -15,6 +15,7 @@
 
 <script lang="ts">
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import {DateTime} from 'luxon';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -175,7 +176,7 @@ export default mixins(
 
 				const autoComplete$ = `
 				{
-					pairedItem: () => {},\n
+					${this.codeAutocomplete === 'functionItem' ? 'pairedItem: () => {}' : ''},\n
 					item: (itemIndex?: number, branchIndex?: number, runIndex?: number) => {},\n
 					first: (branchIndex?: number, runIndex?: number) => {},\n
 					last: (branchIndex?: number, runIndex?: number) => {},\n
@@ -214,18 +215,28 @@ export default mixins(
 					'$executionId',
 					'$mode',
 					'$parameter',
-					'$position',
 					'$resumeWebhookUrl',
 					'$workflow',
 					'$now',
 					'$today',
 					'$thisRunIndex',
-					'$thisItemIndex',
 					'DateTime',
 					'Duration',
 					'Interval',
 				];
-				const additionalKeys = ['$json', '$binary'];
+
+				const functionItemKeys = [
+					'$json',
+					'$binary',
+					'$position',
+					'$thisItemIndex',
+				];
+
+				const additionalKeys: string[] = [];
+				if (this.codeAutocomplete === 'functionItem') {
+					additionalKeys.push(...functionItemKeys);
+				}
+
 				if (executedWorkflow && connectionInputData && connectionInputData.length) {
 					baseKeys.push(...additionalKeys);
 				} else {
