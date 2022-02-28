@@ -62,9 +62,11 @@ credentialsController.get(
 			});
 		}
 
-		return credentials.map((credential) =>
-			Object.assign(credential, { id: credential.id.toString() }),
-		);
+		return credentials.map((credential) => {
+			// eslint-disable-next-line no-param-reassign
+			credential.id = credential.id.toString();
+			return credential as ICredentialsResponse;
+		});
 	}),
 );
 
