@@ -1,10 +1,9 @@
-import { getNewWorkflow, getWorkflowTemplate } from '@/api/workflows';
+import { getNewWorkflow } from '@/api/workflows';
 import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
 	IWorkflowsState,
-	IWorkflowTemplate,
 } from '../Interface';
 
 const module: Module<IWorkflowsState, IRootState> = {
@@ -39,12 +38,9 @@ const module: Module<IWorkflowsState, IRootState> = {
 				newName = newWorkflow.name;
 			}
 			catch (e) {
-			}			
+			}
 
 			return newName;
-		},
-		getWorkflowTemplate: async (context: ActionContext<IWorkflowsState, IRootState>, templateId: string): Promise<IWorkflowTemplate> => {
-			return await getWorkflowTemplate(templateId);
 		},
 	},
 };

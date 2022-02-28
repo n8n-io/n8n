@@ -161,16 +161,14 @@ export class I18nClass {
 			},
 
 			/**
-			 * Placeholder for a `string` or `collection` or `fixedCollection` param.
-			 * - For a `string` parameter, the placeholder is unselectable greyed-out sample text.
-			 * - For a `collection` or `fixedCollection` parameter, the placeholder is the button text.
+			 * Placeholder for a `string` param.
 			 */
 			placeholder(
-				{ name: parameterName, displayName }: { name: string; displayName: string; },
+				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
-					fallback: displayName,
+					fallback: placeholder,
 				});
 			},
 		};
