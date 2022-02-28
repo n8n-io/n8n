@@ -237,7 +237,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			? await Db.collections
 					.SharedCredentials!.findOneOrFail({
 						relations: ['credentials'],
-						where: { id: nodeCredential.id, type, user: { id: userId } },
+						where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
 					})
 					.then((shared) => shared.credentials)
 			: await Db.collections.Credentials!.findOneOrFail({ id: nodeCredential.id, type });
