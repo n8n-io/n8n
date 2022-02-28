@@ -2,6 +2,20 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.165.0
+
+### What changed?
+
+The Hive node now correctly rejects invalid SSL certificates when the "Ignore SSL Issues" option is set to False.
+
+### When is action necassary?
+
+If you are using a self signed certificate with The Hive.
+
+### How to upgrade:
+
+Go to the credentials for The Hive, Enable the "Ignore SSL Issues" option.
+
 ## 0.139.0
 
 ### What changed?
