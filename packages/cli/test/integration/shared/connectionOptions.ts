@@ -26,10 +26,10 @@ export const SQLITE_TEST_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
 //            postgres
 // ----------------------------------
 
-export function getOptions({ connectionName }: { connectionName: string }) {
-	return connectionName.startsWith('n8n_bs_')
-		? getPostgresBootstrapConnectionOptions({ name: connectionName })
-		: getPostgresConnectionOptions({ name: connectionName });
+export function getOptions({ name }: { name: string }) {
+	return name.startsWith('n8n_bs_')
+		? getPostgresBootstrapConnectionOptions({ name })
+		: getPostgresConnectionOptions({ name });
 }
 
 const getPostgresBootstrapConnectionOptions = ({ name }: { name: string }): ConnectionOptions => {

@@ -31,10 +31,7 @@ import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
-import {
-	getOptions,
-	SQLITE_TEST_CONNECTION_OPTIONS,
-} from './connectionOptions';
+import { getOptions, SQLITE_TEST_CONNECTION_OPTIONS } from './connectionOptions';
 
 export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
@@ -136,25 +133,12 @@ export async function initTestDb() {
 
 	if (dbType === 'postgresdb') {
 		const bootstrapName = `n8n_bs_${Date.now()}`;
-		const bootstrapConnection = await createConnection(
-			getOptions({ connectionName: bootstrapName }),
-		);
-
-		// TODO: Remove later -- Temp for cleanup
-		// const results: { db_name: string }[] = await bootstrapConnection.query(
-		// 	'SELECT datname as db_name FROM pg_database;',
-		// );
-
-		// const promises = results
-		// 	.filter(({ db_name }) => db_name.startsWith('n8n_test_pg_'))
-		// 	.map(({ db_name }) => bootstrap.query(`DROP DATABASE ${db_name};`));
-
-		// await Promise.all(promises);
+		await createConnection(getOptions({ name: bootstrapName }));
 
 		const testDbName = `n8n_test_pg_${Date.now()}`;
 		await getConnection(bootstrapName).query(`CREATE DATABASE ${testDbName};`);
 
-		await Db.init(getOptions({ connectionName: testDbName }));
+		await Db.init(getOptions({ name: testDbName }));
 
 		return { testDbName, bootstrapName };
 	}
