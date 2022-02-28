@@ -32,10 +32,9 @@ import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
 import {
-	getBootstrapMySqlConnectionOptions,
-	getMySqlConnectionOptions,
-	getOptions,
-	MYSQL_TEST_CONNECTION_OPTIONS,
+	getBootstrapMySqlOptions,
+	getMySqlOptions,
+	getPostgresOptions,
 	SQLITE_TEST_CONNECTION_OPTIONS,
 } from './connectionOptions';
 
@@ -127,6 +126,7 @@ export function initConfigFile() {
 //            test DB
 // ----------------------------------
 
+// TODO: Create and drop separate DBs per test run
 export async function initTestDb() {
 	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
 
@@ -134,33 +134,43 @@ export async function initTestDb() {
 		await Db.init(SQLITE_TEST_CONNECTION_OPTIONS);
 		await getConnection().runMigrations({ transaction: 'none' });
 
-		return { testDbName: 'temp', bootstrapName: 'temp' }; // TODO
+		return { testDbName: 'temp', bootstrapName: 'temp' };
 	}
 
 	if (dbType === 'postgresdb') {
-		const bootstrapName = `n8n_bs_${Date.now()}`;
-		await createConnection(getOptions({ name: bootstrapName }));
+		const username = config.get('database.postgresdb.user');
+		const password = config.get('database.postgresdb.password');
+		const host = config.get('database.postgresdb.host');
+		const port = config.get('database.postgresdb.port');
+		const schema = config.get('database.postgresdb.schema');
+
+		await createConnection({
+			name: 'n8n_bs_postgres',
+			type: 'postgres',
+			database: 'postgres', // pre-existing
+			host,
+			port,
+			username, // change via env to 'postgres'
+			password, // change via env to 'password'
+			schema,
+		});
 
 		const testDbName = `n8n_test_pg_${Date.now()}`;
-		await getConnection(bootstrapName).query(`CREATE DATABASE ${testDbName};`);
+		await getConnection('n8n_bs_postgres').query(`CREATE DATABASE ${testDbName};`);
 
-		await Db.init(getOptions({ name: testDbName }));
+		await Db.init(getPostgresOptions({ name: testDbName }));
 
-		return { testDbName, bootstrapName };
+		return { testDbName };
 	}
 
 	if (dbType === 'mysqldb') {
-		const bootstrapName = `n8n_bs_mysql`;
-		await createConnection(getBootstrapMySqlConnectionOptions());
+		const bootstrapName = 'n8n_bs_mysql';
+		await createConnection(getBootstrapMySqlOptions());
 
 		const testDbName = `n8n_test_pg_${Date.now()}`;
 		await getConnection(bootstrapName).query(`CREATE DATABASE ${testDbName};`);
 
-		await Db.init(getMySqlConnectionOptions({ name: testDbName }));
-
-		// TODO
-		// await Db.init(MYSQL_TEST_CONNECTION_OPTIONS);
-		// await createConnection(getOptions({ name: 'n8n_bs_test' }));
+		await Db.init(getMySqlOptions({ name: testDbName }));
 
 		return { testDbName, bootstrapName };
 	}
@@ -168,13 +178,13 @@ export async function initTestDb() {
 	throw new Error(`Unrecognized DB type: ${dbType}`);
 }
 
-export async function terminateTestDb(testDbName: string, bootstrapName: string) {
+export async function terminateTestDb(testDbName: string) {
 	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
 
 	if (dbType === 'postgresdb' || dbType === 'mysqldb') {
 		await getConnection(testDbName).close();
-		await getConnection(bootstrapName).query(`DROP DATABASE ${testDbName}`);
-		await getConnection(bootstrapName).close();
+		await getConnection('n8n_bs_postgres').query(`DROP DATABASE ${testDbName}`);
+		await getConnection('n8n_bs_postgres').close();
 	}
 }
 
@@ -298,6 +308,7 @@ export async function createOwnerShell() {
 	const globalRole = await getGlobalOwnerRole();
 	return Db.collections.User!.save({ globalRole });
 }
+
 export async function createMemberShell() {
 	const globalRole = await getGlobalMemberRole();
 	return Db.collections.User!.save({ globalRole });

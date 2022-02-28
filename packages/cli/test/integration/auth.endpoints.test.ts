@@ -15,13 +15,11 @@ let globalOwnerRole: Role;
 
 let app: express.Application;
 let testDbName = '';
-let bootstrapName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ namespaces: ['auth'], applyAuth: true });
 	const initResult = await utils.initTestDb();
 	testDbName = initResult.testDbName;
-	bootstrapName = initResult.bootstrapName;
 
 	await utils.truncate(['User'], testDbName);
 
@@ -51,10 +49,8 @@ afterEach(async () => {
 	await utils.truncate(['User'], testDbName);
 });
 
-// TODO: find a post-entire-run hook to clean up DBs
-
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName, bootstrapName);
+	await utils.terminateTestDb(testDbName);
 });
 
 test('POST /login should log user in', async () => {

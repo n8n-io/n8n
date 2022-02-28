@@ -28,37 +28,43 @@ export const SQLITE_TEST_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
 //            postgres
 // ----------------------------------
 
-export function getOptions({ name }: { name: string }) {
-	return name.startsWith('n8n_bs_')
-		? getPostgresBootstrapConnectionOptions({ name })
-		: getPostgresConnectionOptions({ name });
-}
+export const getBootstrapPostgresOptions = (): ConnectionOptions => {
+	const username = config.get('database.postgresdb.user');
+	const password = config.get('database.postgresdb.password');
+	const host = config.get('database.postgresdb.host');
+	const port = config.get('database.postgresdb.port');
+	const schema = config.get('database.postgresdb.schema');
 
-const getPostgresBootstrapConnectionOptions = ({ name }: { name: string }): ConnectionOptions => {
 	return {
-		name,
+		name: 'n8n_bs_postgres',
 		type: 'postgres',
-		database: 'postgres',
-		host: 'localhost',
-		port: 5432, // TODO: Make configurable?
-		username: 'postgres', // TODO: Make configurable?
-		password: 'password', // TODO: Make configurable?
-		schema: 'public', // TODO: Make configurable?
+		database: 'postgres', // pre-existing
+		host,
+		port,
+		username, // change via env to 'postgres'
+		password, // change via env to 'password'
+		schema,
 	};
 };
 
-const getPostgresConnectionOptions = ({ name }: { name: string }): ConnectionOptions => {
+export const getPostgresOptions = ({ name }: { name: string }): ConnectionOptions => {
+	const username = config.get('database.postgresdb.user');
+	const password = config.get('database.postgresdb.password');
+	const host = config.get('database.postgresdb.host');
+	const port = config.get('database.postgresdb.port');
+	const schema = config.get('database.postgresdb.schema');
+
 	return {
 		name,
 		type: 'postgres',
 		database: name,
-		host: 'localhost',
-		port: 5432, // TODO: Make configurable?
-		password: 'password', // TODO: Make configurable?
-		username: 'postgres', // TODO: Make configurable?
+		host,
+		port,
+		username, // change via env to 'postgres'
+		password, // change via env to 'password'
 
 		entityPrefix: '',
-		schema: 'public', // TODO: Make configurable?
+		schema,
 		dropSchema: true,
 
 		migrations: postgresMigrations,
@@ -75,8 +81,6 @@ const getPostgresConnectionOptions = ({ name }: { name: string }): ConnectionOpt
 //             mysql
 // ----------------------------------
 
-// TODO: Pending mysql connection options
-
 export const MYSQL_TEST_CONNECTION_OPTIONS: ConnectionOptions = {
 	type: 'mysql',
 	database: 'n8n',
@@ -86,10 +90,9 @@ export const MYSQL_TEST_CONNECTION_OPTIONS: ConnectionOptions = {
 	port: 3306,
 };
 
-export const getBootstrapMySqlConnectionOptions = (): ConnectionOptions => {
+export const getBootstrapMySqlOptions = (): ConnectionOptions => {
 	const username = config.get('database.mysqldb.user');
-	const password = config.get('database.mysqldb.password');
-	// const password = 'password';
+	const password = config.get('database.mysqldb.password'); // change via env to 'password'
 	const host = config.get('database.mysqldb.host');
 	const port = config.get('database.mysqldb.port');
 
@@ -104,10 +107,9 @@ export const getBootstrapMySqlConnectionOptions = (): ConnectionOptions => {
 	};
 };
 
-export const getMySqlConnectionOptions = ({ name }: { name: string }): ConnectionOptions => {
+export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions => {
 	const username = config.get('database.mysqldb.user');
-	const password = config.get('database.mysqldb.password');
-	// const password = 'password';
+	const password = config.get('database.mysqldb.password'); // change via env to 'password'
 	const host = config.get('database.mysqldb.host');
 	const port = config.get('database.mysqldb.port');
 
