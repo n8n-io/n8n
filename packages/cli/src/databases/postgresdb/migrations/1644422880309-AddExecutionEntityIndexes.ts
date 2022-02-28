@@ -1,15 +1,10 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
-import { isTestRun } from '../../../../test/integration/shared/utils';
 
 export class AddExecutionEntityIndexes1644422880309 implements MigrationInterface {
 	name = 'AddExecutionEntityIndexes1644422880309';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		!isTestRun &&
-			console.log(
-				'\n\nINFO: Started migration for execution entity indexes.\n      Depending on the number of saved executions, it may take a while.\n\n',
-			);
 
 		let tablePrefix = config.get('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
