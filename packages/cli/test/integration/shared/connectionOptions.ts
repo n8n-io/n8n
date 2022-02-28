@@ -26,35 +26,37 @@ export const SQLITE_TEST_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
 //            postgres
 // ----------------------------------
 
-export const getPostgresBootstrapConnectionOptions = ({ name }: { name: string }): ConnectionOptions => {
+export function getOptions({ connectionName }: { connectionName: string }) {
+	return connectionName.startsWith('n8n_bs_')
+		? getPostgresBootstrapConnectionOptions({ name: connectionName })
+		: getPostgresConnectionOptions({ name: connectionName });
+}
+
+const getPostgresBootstrapConnectionOptions = ({ name }: { name: string }): ConnectionOptions => {
 	return {
 		name,
 		type: 'postgres',
 		database: 'postgres',
 		host: 'localhost',
-		port: 5432,
-		username: 'postgres', // TODO: Make configurable
-		password: 'password', // TODO: Make configurable
-		schema: 'public',
+		port: 5432, // TODO: Make configurable?
+		username: 'postgres', // TODO: Make configurable?
+		password: 'password', // TODO: Make configurable?
+		schema: 'public', // TODO: Make configurable?
 	};
-}
+};
 
-export const getPostgresConnectionOptions = ({
-	name,
-}: {
-	name: string;
-}): ConnectionOptions => {
+const getPostgresConnectionOptions = ({ name }: { name: string }): ConnectionOptions => {
 	return {
 		name,
 		type: 'postgres',
 		database: name,
 		host: 'localhost',
-		port: 5432,
-		password: 'password', // TODO: Make configurable
-		username: 'postgres', // TODO: Make configurable
+		port: 5432, // TODO: Make configurable?
+		password: 'password', // TODO: Make configurable?
+		username: 'postgres', // TODO: Make configurable?
 
 		entityPrefix: '',
-		schema: 'public',
+		schema: 'public', // TODO: Make configurable?
 		dropSchema: true,
 
 		migrations: postgresMigrations,

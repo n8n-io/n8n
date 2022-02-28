@@ -32,8 +32,7 @@ import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
 import {
-	getPostgresBootstrapConnectionOptions,
-	getPostgresConnectionOptions,
+	getOptions,
 	SQLITE_TEST_CONNECTION_OPTIONS,
 } from './connectionOptions';
 
@@ -137,12 +136,25 @@ export async function initTestDb() {
 
 	if (dbType === 'postgresdb') {
 		const bootstrapName = `n8n_bs_${Date.now()}`;
-		const bsConnectionOptions = getPostgresBootstrapConnectionOptions({ name: bootstrapName });
-		await createConnection(bsConnectionOptions);
-		const testDbName = await createPostgresTestDb(bootstrapName);
+		const bootstrapConnection = await createConnection(
+			getOptions({ connectionName: bootstrapName }),
+		);
 
-		const pgConnectionOptions = getPostgresConnectionOptions({ name: testDbName });
-		await Db.init(pgConnectionOptions);
+		// TODO: Remove later -- Temp for cleanup
+		// const results: { db_name: string }[] = await bootstrapConnection.query(
+		// 	'SELECT datname as db_name FROM pg_database;',
+		// );
+
+		// const promises = results
+		// 	.filter(({ db_name }) => db_name.startsWith('n8n_test_pg_'))
+		// 	.map(({ db_name }) => bootstrap.query(`DROP DATABASE ${db_name};`));
+
+		// await Promise.all(promises);
+
+		const testDbName = `n8n_test_pg_${Date.now()}`;
+		await getConnection(bootstrapName).query(`CREATE DATABASE ${testDbName};`);
+
+		await Db.init(getOptions({ connectionName: testDbName }));
 
 		return { testDbName, bootstrapName };
 	}
@@ -155,31 +167,9 @@ export async function terminateTestDb(testDbName: string, bootstrapName: string)
 
 	if (dbType === 'postgresdb') {
 		await getConnection(testDbName).close();
-
-		await removePostgresTestDb(bootstrapName);
+		await getConnection(bootstrapName).query(`DROP DATABASE ${testDbName}`);
 		await getConnection(bootstrapName).close();
 	}
-}
-
-export async function removePostgresTestDb(bootstrapName: string) {
-	const bootstrap = getConnection(bootstrapName);
-
-	const results: { db_name: string }[] = await bootstrap.query(
-		'SELECT datname as db_name FROM pg_database;',
-	);
-
-	const promises = results
-		.filter(({ db_name }) => db_name.startsWith('n8n_test_pg_'))
-		.map(({ db_name }) => bootstrap.query(`DROP DATABASE ${db_name};`));
-
-	await Promise.all(promises);
-}
-
-export async function createPostgresTestDb(bootstrapName: string) {
-	const testDbName = `n8n_test_pg_${Date.now()}`;
-	await getConnection(bootstrapName).query(`CREATE DATABASE ${testDbName};`);
-
-	return testDbName;
 }
 
 /**
