@@ -6,16 +6,16 @@
 				v-else-if="type === 'select' || type === 'multi-select'"
 				:value="value"
 				:placeholder="placeholder"
-				:multi="type === 'multi-select'"
+				:multiple="type === 'multi-select'"
+				@change="onInput"
+				@focus="onFocus"
+				@blur="onBlur"
 			>
 				<n8n-option
 					v-for="option in (options || [])"
 					:key="option.value"
 					:value="option.value"
 					:label="option.label"
-					@change="onInput"
-					@focus="onFocus"
-					@blur="onBlur"
 				/>
 			</n8n-select>
 			<n8n-input
@@ -74,7 +74,6 @@ export default Vue.extend({
 	},
 	props: {
 		value: {
-			type: String,
 		},
 		label: {
 			type: String,

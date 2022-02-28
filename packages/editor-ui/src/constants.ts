@@ -142,6 +142,7 @@ export const OTHER_FOCUS = 'other';
 export const MSP_FOCUS_OTHER_KEY = 'mspFocusOther';
 
 export const COMPANY_INDUSTRY_KEY = 'companyIndustry';
+export const COMPANY_INDUSTRY_EXTENDED_KEY = 'companyIndustryExtended';
 export const EDUCATION_INDUSTRY = 'education';
 export const AUTOMATION_CONSULTING_INDUSTRY = 'automation-consulting';
 export const PHYSICAL_RETAIL_OR_SERVICES = 'physical-retail-or-services';
@@ -171,9 +172,10 @@ export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
 export const CODING_SKILL_KEY = 'codingSkill';
 export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
 export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
+export const OTHER_COMPANY_INDUSTRY_EXTENDED_KEY = 'otherCompanyIndustryExtended';
 
-export const AUTOMATION_GOAL_KEY = 'automationGoalKey';
-export const AUTOMATION_GOAL_OTHER_KEY = 'automationGoalOtherKey';
+export const AUTOMATION_GOAL_KEY = 'automationGoal';
+export const AUTOMATION_GOAL_OTHER_KEY = 'otherAutomationGoal';
 export const CUSTOMER_INTEGRATIONS_GOAL = 'customer-integrations';
 export const CUSTOMER_SUPPORT_GOAL = 'customer-support';
 export const FINANCE_ACCOUNTING_GOAL = 'finance-accounting';

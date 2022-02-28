@@ -483,15 +483,21 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export type IPersonalizationSurveyKeys = 'codingSkill' | 'companyIndustry' | 'companySize' | 'otherCompanyIndustry' | 'otherWorkArea' | 'workArea';
-
+// must remain backwards compatible even as survey changes
 export type IPersonalizationSurveyAnswers = {
-	codingSkill: string | null;
-	companyIndustry: string[];
-	companySize: string | null;
-	otherCompanyIndustry: string | null;
-	otherWorkArea: string | null;
-	workArea: string[] | string | null;
+	automationGoal?: string | null;
+	codingSkill?: string | null;
+	companyIndustry?: string[] | null;
+	companyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	mspFocus?: string[] | null;
+	mspFocusOther?: string | null;
+	otherAutomationGoal?: string | null;
+	otherCompanyIndustry?: string | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	otherWorkArea?: string | null;
+	workArea?: string[] | string | null;
 };
 
 export interface IN8nPrompts {

@@ -176,7 +176,7 @@ export function getPersonalizedNodeTypes(answers: IPersonalizationSurveyAnswers)
 		}
 	}
 
-	const workAreaIsEmpty = workArea === null || workArea.length === 0;
+	const workAreaIsEmpty = !workArea|| workArea.length === 0;
 
 	if (companySize === null && workAreaIsEmpty && answers[CODING_SKILL_KEY] === null) {
 		return [];
