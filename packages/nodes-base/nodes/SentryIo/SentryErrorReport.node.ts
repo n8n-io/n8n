@@ -8,12 +8,8 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { reportToSentry } from './ErrorReportFunctions';
 
-
-const Sentry = require("@sentry/node");
-const Tracing = require("@sentry/tracing");
-import { Severity, Transaction } from '@sentry/types';
-import { RewriteFrames } from "@sentry/integrations";
 
 export class SentryErrorReport implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,32 +31,15 @@ export class SentryErrorReport implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items:IDataObject[] = this.getInputData();
 		const returnData: IDataObject[] = [];
-		let responseData;
 
-		
-		Sentry.init({
-			dsn: "http://59131fb3409749e5a6feba4e57b2d2b7@sentry.cgpo2o.cn/3",
-			tracesSampleRate: 1.0,
-			integrations: [
-				new RewriteFrames({
-					root: global.__dirname,
-				}),
-			],
-		});
+		for (let i = 0; i < items.length; i++){
+			// @ts-ignore
+			let responseData = await reportToSentry.call(this, items[i].json);
+			if (responseData){
+				returnData.push({json: responseData});
+			}
+		}
 
-		const transaction = Sentry.startTransaction({ // @ts-ignore
-			op: items[0].json.execution.lastNodeExecuted, // @ts-ignore
-			name: items[0].json.workflow.name,
-		});
-
-		//@ts-ignore
-		Sentry.configureScope(scope => {
-			scope.setSpan(transaction);
-		});
-
-		// @ts-ignore
-		const id = Sentry.captureException(items[0].json);
-		transaction.finish();
-		return [this.helpers.returnJsonArray([])];
+		return [this.helpers.returnJsonArray(returnData)];
 	};
 };
