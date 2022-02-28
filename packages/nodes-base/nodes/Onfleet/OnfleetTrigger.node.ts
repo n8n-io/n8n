@@ -24,9 +24,6 @@ import {
 	webhookMapping,
 } from './WebhookMapping';
 
-import {
-	OptionsWithUri,
-} from 'request';
 
 export class OnfleetTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,7 +44,7 @@ export class OnfleetTrigger implements INodeType {
 			{
 				name: 'onfleetApi',
 				required: true,
-				testedBy: 'onfeletApiTest',
+				testedBy: 'onfleetApiTest',
 			},
 		],
 		webhooks: [

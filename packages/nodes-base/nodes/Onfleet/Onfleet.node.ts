@@ -83,7 +83,6 @@ export class Onfleet implements INodeType {
 		defaults: {
 			color: '#AA81F3',
 			name: 'Onfleet',
-			testedBy: 'onfeletApiTest',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -91,7 +90,7 @@ export class Onfleet implements INodeType {
 			{
 				name: 'onfleetApi',
 				required: true,
-				testedBy: 'onfeletApiTest',
+				testedBy: 'onfleetApiTest',
 			},
 		],
 		properties: [
@@ -171,7 +170,7 @@ export class Onfleet implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async onfeletApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async onfleetApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
 
 				const options: OptionsWithUri = {
