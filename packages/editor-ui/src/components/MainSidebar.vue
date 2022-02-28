@@ -318,17 +318,12 @@ export default mixins(
 					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: this.$locale.baseText('mainSidebar.showMessage.stopExecution.title'),
-						message: this.$locale.baseText(
-							'mainSidebar.showMessage.stopExecution.message',
-							{ interpolate: { executionId }},
-						),
 						type: 'success',
 					});
 				} catch (error) {
 					this.$showError(
 						error,
 						this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-						this.$locale.baseText('mainSidebar.showError.stopExecution.message') + ':',
 					);
 				}
 				this.stopExecutionInProgress = false;
@@ -411,7 +406,6 @@ export default mixins(
 						this.$showError(
 							error,
 							this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-							this.$locale.baseText('mainSidebar.showError.stopExecution.message') + ':',
 						);
 						return;
 					}
@@ -420,10 +414,6 @@ export default mixins(
 					this.$titleReset();
 					this.$showMessage({
 						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
-						message: this.$locale.baseText(
-							'mainSidebar.showMessage.handleSelect1.message',
-							{ interpolate: { workflowName: this.workflowName }},
-						),
 						type: 'success',
 					});
 
@@ -476,7 +466,6 @@ export default mixins(
 
 							this.$showMessage({
 								title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
-								message: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.message'),
 								type: 'success',
 							});
 						}
@@ -487,7 +476,6 @@ export default mixins(
 
 						this.$showMessage({
 							title: this.$locale.baseText('mainSidebar.showMessage.handleSelect3.title'),
-							message: this.$locale.baseText('mainSidebar.showMessage.handleSelect3.message'),
 							type: 'success',
 						});
 					}

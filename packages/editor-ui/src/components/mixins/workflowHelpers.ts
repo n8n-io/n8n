@@ -24,7 +24,6 @@ import {
 	IRunExecutionData,
 	IWorfklowIssues,
 	IWorkflowDataProxyAdditionalKeys,
-	TelemetryHelpers,
 	Workflow,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -223,17 +222,6 @@ export const workflowHelpers = mixins(
 					getAll: (): Array<INodeType | INodeVersionedType> => {
 						// Does not get used in Workflow so no need to return it
 						return [];
-					},
-					getByName: (nodeType: string): INodeType | INodeVersionedType | undefined => {
-						const nodeTypeDescription = this.$store.getters.nodeType(nodeType) as INodeTypeDescription | null;
-
-						if (nodeTypeDescription === null) {
-							return undefined;
-						}
-
-						return {
-							description: nodeTypeDescription,
-						};
 					},
 					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
 						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version) as INodeTypeDescription | null;
@@ -500,12 +488,12 @@ export const workflowHelpers = mixins(
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
-				} catch (e) {
+				} catch (error) {
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
-						message: this.$locale.baseText('workflowHelpers.showMessage.message') + `"${e.message}"`,
+						message: error.message,
 						type: 'error',
 					});
 

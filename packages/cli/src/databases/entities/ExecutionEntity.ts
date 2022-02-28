@@ -23,6 +23,11 @@ function resolveDataType(dataType: string) {
 }
 
 @Entity()
+@Index(['workflowId', 'id'])
+@Index(['waitTill', 'id'])
+@Index(['finished', 'id'])
+@Index(['workflowId', 'finished', 'id'])
+@Index(['workflowId', 'waitTill', 'id'])
 export class ExecutionEntity implements IExecutionFlattedDb {
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -52,11 +57,9 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column(resolveDataType('json'))
 	workflowData: IWorkflowDb;
 
-	@Index()
 	@Column({ nullable: true })
 	workflowId: string;
 
-	@Index()
 	@Column({ type: resolveDataType('datetime') as ColumnOptions['type'], nullable: true })
 	waitTill: Date;
 }
