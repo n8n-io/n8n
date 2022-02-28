@@ -469,7 +469,7 @@ export class WorkflowDataProxy {
 		};
 
 		// replacing proxies with the actual data.
-		const jmespathProxyToData = (data: IDataObject | IDataObject[], query: string) => {
+		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
 			if (!Array.isArray(data) && typeof data === 'object') {
 				return jmespath.search({ ...data }, query);
 			}
@@ -667,7 +667,7 @@ export class WorkflowDataProxy {
 			$thisItemIndex: this.itemIndex,
 			$now: DateTime.now().toJSDate(),
 			$today: DateTime.now().toJSDate().toISOString().split('T')[0],
-			$jmespath: jmespathProxyToData,
+			$jmespath: jmespathWrapper,
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			DateTime,
 			// eslint-disable-next-line @typescript-eslint/naming-convention
