@@ -37,7 +37,7 @@ export class FunctionItem implements INodeType {
 				type: 'string',
 				default: `// Code here will run once per input item.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
-// Tip: you can use the luxon library for date handling
+// Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Add a new field called 'myNewField' to the JSON of the item
 item.myNewField = 1;
