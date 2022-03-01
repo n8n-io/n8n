@@ -470,6 +470,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 							},
 						],
 					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
+						return companyType !== PERSONAL_COMPANY_TYPE;
+					},
 				},
 			];
 
