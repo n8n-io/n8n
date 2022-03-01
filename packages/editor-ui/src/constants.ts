@@ -142,7 +142,7 @@ export const NETWORKING_COMMUNICATION_FOCUS = 'networking-communication';
 export const SECURITY_FOCUS = 'security';
 export const OTHER_FOCUS = 'other';
 
-export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
+export const COMPANY_INDUSTRY_EXTENDED_KEY = 'companyIndustryExtended';
 export const OTHER_COMPANY_INDUSTRY_EXTENDED_KEY = 'otherCompanyIndustryExtended';
 export const EDUCATION_INDUSTRY = 'education';
 export const PHYSICAL_RETAIL_OR_SERVICES = 'physical-retail-or-services';
