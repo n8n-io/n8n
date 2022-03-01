@@ -201,7 +201,7 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2) {
 	let nodeTypes: string[] = [];
 
 	const {version, ...data} = answers;
-	if (Object.values(data).length === 0) {
+	if (Object.keys(data).length === 0) {
 		return [];
 	}
 
