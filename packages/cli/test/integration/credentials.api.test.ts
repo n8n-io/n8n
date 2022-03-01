@@ -12,9 +12,8 @@ let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
 	app = utils.initTestServer({
-		namespaces: ['credentials'],
+		endpointGroups: ['credentials'],
 		applyAuth: true,
-		externalHooks: true,
 	});
 	const initResult = await utils.initTestDb();
 	testDbName = initResult.testDbName;

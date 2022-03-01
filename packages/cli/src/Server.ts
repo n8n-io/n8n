@@ -170,9 +170,12 @@ import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpe
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
-import { credentialsEndpoints } from './api/namespaces/credentials';
+// import { credentialsEndpoints } from './api/namespaces/credentials';
+import { credentialsController } from './api/credentials.api';
 
 require('body-parser-xml')(bodyParser);
+
+export const externalHooks: IExternalHooksClass = ExternalHooks();
 
 class App {
 	app: express.Application;
@@ -263,7 +266,7 @@ class App {
 		this.sslKey = config.get('ssl_key');
 		this.sslCert = config.get('ssl_cert');
 
-		this.externalHooks = ExternalHooks();
+		this.externalHooks = externalHooks;
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
@@ -658,6 +661,8 @@ class App {
 		// User Management
 		// ----------------------------------------
 		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
+
+		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
 		// ----------------------------------------
 		// Healthcheck
@@ -1563,7 +1568,7 @@ class App {
 		// Credentials
 		// ----------------------------------------
 
-		credentialsEndpoints.apply(this);
+		// credentialsEndpoints.apply(this);
 
 		// ----------------------------------------
 		// Credential-Types

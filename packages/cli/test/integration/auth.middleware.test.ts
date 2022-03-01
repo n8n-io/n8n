@@ -12,7 +12,7 @@ let app: express.Application;
 let testDbName = '';
 
 beforeAll(async () => {
-	app = utils.initTestServer({ applyAuth: true, namespaces: ['me', 'auth', 'owner', 'users'] });
+	app = utils.initTestServer({ applyAuth: true, endpointGroups: ['me', 'auth', 'owner', 'users'] });
 	const initResult = await utils.initTestDb();
 	testDbName = initResult.testDbName;
 	utils.initLogger();

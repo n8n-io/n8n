@@ -33,7 +33,7 @@ import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/ro
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
-import { credentialsEndpoints } from '../../../src/api/namespaces/credentials';
+// import { credentialsEndpoints } from '../../../src/api/namespaces/credentials.X';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { randomEmail, randomValidPassword, randomName } from './random';
 import { getLogger } from '../../../src/Logger';
@@ -48,6 +48,8 @@ import {
 	getPostgresOptions,
 	SQLITE_TEST_CONNECTION_OPTIONS,
 } from './connectionOptions';
+import { N8nApp } from '../../../src/UserManagement/Interfaces';
+import { credentialsController } from '../../../src/api/credentials.api';
 
 export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
@@ -68,17 +70,15 @@ export const initLogger = () => {
  */
 export function initTestServer({
 	applyAuth,
-	namespaces,
-	externalHooks,
+	endpointGroups,
 }: {
 	applyAuth: boolean;
-	externalHooks?: true;
-	namespaces?: EndpointNamespace[];
+	endpointGroups?: EndpointNamespace[];
 }) {
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
-		...(externalHooks ? { externalHooks: ExternalHooks() } : {}),
+		...(endpointGroups?.includes('credentials') ? { externalHooks: ExternalHooks() } : {}),
 	};
 
 	testServer.app.use(bodyParser.json());
@@ -91,23 +91,47 @@ export function initTestServer({
 		authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
 	}
 
-	if (namespaces) {
-		const map: NamespacesMap = {
+	if (!endpointGroups) return testServer.app;
+
+	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
+
+	if (routerEndpoints.length) {
+		const map: Record<string, express.Router> = {
+			credentials: credentialsController,
+		};
+
+		for (const group of routerEndpoints) {
+			testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
+		}
+	}
+
+	if (functionEndpoints.length) {
+		const map: Record<string, (this: N8nApp) => void> = {
 			me: meEndpoints,
 			users: usersEndpoints,
 			auth: authEndpoints,
 			owner: ownerEndpoints,
 			passwordReset: passwordResetEndpoints,
-			credentials: credentialsEndpoints,
 		};
 
-		for (const namespace of namespaces) {
-			map[namespace].apply(testServer);
+		for (const group of functionEndpoints) {
+			map[group].apply(testServer);
 		}
 	}
 
 	return testServer.app;
 }
+
+const classifyEndpointGroups = (endpointGroups: string[]) => {
+	const routerEndpoints: string[] = [];
+	const functionEndpoints: string[] = [];
+
+	endpointGroups.forEach((group) =>
+		(group === 'credentials' ? routerEndpoints : functionEndpoints).push(group),
+	);
+
+	return [routerEndpoints, functionEndpoints];
+};
 
 // ----------------------------------
 //           test logger

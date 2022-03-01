@@ -18,7 +18,7 @@ let globalOwnerRole: Role;
 let testDbName = '';
 
 beforeAll(async () => {
-	app = utils.initTestServer({ namespaces: ['passwordReset'], applyAuth: true });
+	app = utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
 	const initResult = await utils.initTestDb();
 	testDbName = initResult.testDbName;
 
