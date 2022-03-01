@@ -114,7 +114,7 @@
     "lodash.merge": "^4.6.2",
     "mysql2": "~2.3.0",
     "n8n-core": "~0.106.0",
-    "n8n-editor-ui": "~0.132.0",
+    "n8n-editor-ui": "~0.132.1",
     "n8n-nodes-base": "~0.163.0",
     "n8n-workflow": "~0.88.0",
     "oauth-1.0a": "^2.2.6",
