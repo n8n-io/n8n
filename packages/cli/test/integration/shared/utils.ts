@@ -198,10 +198,10 @@ export async function initTestDb() {
 	}
 
 	if (dbType === 'mysqldb') {
-		await createConnection(getBootstrapMySqlOptions());
+		const bootstrapMysql = await createConnection(getBootstrapMySqlOptions());
 
 		const testDbName = `n8n_test_mysql_${Date.now()}`;
-		await getConnection(BOOTSTRAP_MYSQL_CONNECTION_NAME).query(`CREATE DATABASE ${testDbName};`);
+		await bootstrapMysql.query(`CREATE DATABASE ${testDbName};`);
 
 		await Db.init(getMySqlOptions({ name: testDbName }));
 
