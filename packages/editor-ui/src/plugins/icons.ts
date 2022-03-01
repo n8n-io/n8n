@@ -75,6 +75,7 @@ import {
 	faSignInAlt,
 	faSlidersH,
 	faSpinner,
+	faStickyNote,
 	faStop,
 	faSun,
 	faSync,
@@ -167,6 +168,7 @@ addIcon(faServer);
 addIcon(faSignInAlt);
 addIcon(faSlidersH);
 addIcon(faSpinner);
+addIcon(faStickyNote);
 addIcon(faStop);
 addIcon(faSun);
 addIcon(faSync);
