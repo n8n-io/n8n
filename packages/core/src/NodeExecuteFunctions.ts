@@ -78,6 +78,7 @@ import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
 import axios, {
+	AxiosError,
 	AxiosPromise,
 	AxiosProxyConfig,
 	AxiosRequestConfig,
@@ -932,7 +933,6 @@ export async function requestOAuth2(
 						client_secret: credentials.clientSecret as string,
 					};
 					tokenRefreshOptions.body = body;
-					// Override authorization property so the credentails are not included in it
 					tokenRefreshOptions.headers = {
 						Authorization: '',
 					};
@@ -954,12 +954,12 @@ export async function requestOAuth2(
 					credentialsType,
 					credentials,
 				);
-				return this.helpers.httpRequest(newRequestOptions);
+				const refreshedRequestOption = newToken.sign(requestOptions as clientOAuth2.RequestObject);
+				return this.helpers.httpRequest(refreshedRequestOption);
 			}
 			throw error;
 		});
 	}
-
 	return this.helpers.request!(newRequestOptions).catch(async (error: IResponseError) => {
 		const statusCodeReturned =
 			oAuth2Options?.tokenExpiredStatusCode === undefined
