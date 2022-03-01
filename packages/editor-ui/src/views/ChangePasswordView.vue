@@ -37,6 +37,15 @@ export default mixins(
 			redirectLink: '/signin',
 			inputs: [
 				{
+					name: 'currentPassword',
+					properties: {
+						label: 'Current Password',
+						type: 'password',
+						required: true,
+						autocomplete: 'current-password',
+					},
+				},
+				{
 					name: 'password',
 					properties: {
 						label: 'New password',
