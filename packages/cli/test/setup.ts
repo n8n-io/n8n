@@ -2,8 +2,9 @@ import { ConnectionOptions, createConnection } from 'typeorm';
 import config = require('../config');
 import { exec } from 'child_process';
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME } from './integration/shared/constants';
+import { DatabaseType } from '../src';
 
-const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
+const dbType = config.get('database.type') as DatabaseType;
 
 if (dbType === 'mysqldb') {
 	const username = config.get('database.mysqldb.user');

@@ -2,9 +2,10 @@ import { createConnection } from 'typeorm';
 import config = require('../config');
 import { getBootstrapPostgresOptions } from './integration/shared/connectionOptions';
 import { exec } from 'child_process';
+import { DatabaseType } from '../src';
 
 module.exports = async function () {
-	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
+	const dbType = config.get('database.type') as DatabaseType;
 
 	// clean up any remaining test Postgres DBs prefixed with `n8n_test_pg_`
 	if (dbType === 'postgresdb') {

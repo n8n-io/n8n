@@ -16,7 +16,7 @@ import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME, REST_PATH_SEGMENT } from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
-import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
+import { DatabaseType, Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
@@ -128,7 +128,7 @@ export function initConfigFile() {
 
 // TODO: Create and drop separate DBs per test run
 export async function initTestDb() {
-	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
+	const dbType = config.get('database.type') as DatabaseType;
 
 	if (dbType === 'sqlite') {
 		await Db.init(SQLITE_TEST_CONNECTION_OPTIONS);
@@ -178,7 +178,7 @@ export async function initTestDb() {
 }
 
 export async function terminateTestDb(testDbName: string) {
-	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
+	const dbType = config.get('database.type') as DatabaseType;
 
 	if (dbType === 'postgresdb') {
 		await getConnection(testDbName).close();
