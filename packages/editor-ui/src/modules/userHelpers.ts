@@ -200,6 +200,11 @@ export function getPersonalizedNodeTypes(answers: IPersonalizationSurveyAnswersV
 function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2) {
 	let nodeTypes: string[] = [];
 
+	const {version, ...data} = answers;
+	if (Object.values(data).length === 0) {
+		return [];
+	}
+
 	const companySize = answers[COMPANY_SIZE_KEY];
 	const companyType = answers[COMPANY_TYPE_KEY];
 	const automationGoal = answers[AUTOMATION_GOAL_KEY];
