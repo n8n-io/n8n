@@ -22,7 +22,7 @@ export class Discord extends NodeVersionedType {
 			group: ['output'],
 			defaultVersion: 2,
 			description: 'Send messages to Discord',
-			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			subtitle: 'Webhook',
 		};
 
 		const nodeVersions: INodeVersionedType['nodeVersions'] = {

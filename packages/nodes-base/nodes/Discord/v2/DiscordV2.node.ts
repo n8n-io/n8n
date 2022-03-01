@@ -4,7 +4,7 @@ import {
 import { IDataObject } from 'n8n-workflow';
 import { INodeExecutionData } from 'n8n-workflow';
 import { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
-import { DiscordWebhook } from './Interfaces';
+import { DiscordWebhook, DiscordAttachment } from './Interfaces';
 
 export class DiscordV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -57,6 +57,13 @@ export class DiscordV2 implements INodeType {
 					placeholder: 'Captain Hook',
 				},
 				{
+					displayName: 'Additional Fields',
+					name: 'additionalFields',
+					type: 'collection',
+					placeholder: 'Add Field',
+					default: {},
+					options: [
+				{
 					displayName: 'Avatar URL',
 					name: 'avatarUrl',
 					type: 'string',
@@ -86,6 +93,41 @@ export class DiscordV2 implements INodeType {
 					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
 					default: '',
 				},
+				{
+					displayName: 'Components',
+					name: 'components',
+					type: 'json',
+					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					default: '',
+				},
+				{
+					displayName: 'Flags',
+					name: 'flags',
+					type: 'number',
+					default: '',
+				},
+				{
+					displayName: 'Attachments',
+					name: 'attachments',
+					type: 'json',
+					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					default: '',
+				},
+				{
+					displayName: 'Json Payload',
+					name: 'payloadJson',
+					type: 'json',
+					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					default: '',
+				},
+				{
+					displayName: 'File',
+					name: 'file',
+					type: 'string',
+					default: '',
+				},
+			],
+		},
 			],
 		};
 
@@ -118,6 +160,19 @@ export class DiscordV2 implements INodeType {
 		body.allowed_mentions =
 			nodeInput['allowedMentions'] ||
 			(this.getNodeParameter('allowedMentions', 0, '') as any);
+		body.flags =
+			nodeInput['flags'] || (this.getNodeParameter('flags', 0, '') as number);
+		body.components =
+			nodeInput['components'] || (this.getNodeParameter('components', 0, '') as any);
+		body.payload_json =
+			nodeInput['payloadJson'] || (this.getNodeParameter('payloadJson', 0, '') as any);
+		body.attachments =
+			nodeInput['attachments'] || (this.getNodeParameter('attachments', 0, '') as DiscordAttachment);
+
+		if (this.getNodeParameter('binaryData', 0)) {
+			const propertyNameUpload = this.getNodeParameter('file', 0) as string;
+			body.file = await this.helpers.getBinaryDataBuffer(0, propertyNameUpload);
+		}
 
 		if (!body.content && !body.embeds) {
 			throw new Error('Either content or embeds must be set.');
@@ -141,6 +196,12 @@ export class DiscordV2 implements INodeType {
 		if (!body.avatar_url) delete body.avatar_url;
 		if (!body.embeds) delete body.embeds;
 		if (!body.allowed_mentions) delete body.allowed_mentions;
+		if (!body.flags) delete body.flags;
+		if (!body.components) delete body.components;
+		if (!body.payload_json) delete body.payload_json;
+		if (!body.attachments) delete body.attachments;
+		if (!body.file) delete body.file;
+
 
 		const options = {
 			method: 'POST',
