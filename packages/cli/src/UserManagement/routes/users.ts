@@ -42,7 +42,7 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			if (!config.get('userManagement.hasOwner')) {
+			if (!config.get('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because emailing was not set up',
 				);

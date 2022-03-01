@@ -139,7 +139,7 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`INSERT INTO ${tablePrefix}settings ("key", "value", "loadOnStartup") VALUES ('userManagement.hasOwner', 'false', true)`,
+			`INSERT INTO ${tablePrefix}settings ("key", "value", "loadOnStartup") VALUES ('userManagement.isInstanceOwnerSetUp', 'false', true)`,
 		);
 	}
 

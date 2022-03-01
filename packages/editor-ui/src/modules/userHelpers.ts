@@ -73,6 +73,21 @@ export const PERMISSIONS: IUserPermissions = {
 				um: false,
 			},
 		},
+		TemplatesCollectionView: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+		},
+		TemplatesSearchView: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+		},
+		TemplatesWorkflowView: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+		},
 		UsersSettings: {
 			allow: {
 				role: [ROLE.Default, ROLE.Owner],
@@ -92,6 +107,11 @@ export const PERMISSIONS: IUserPermissions = {
 		NotFoundView: {
 			allow: {
 				loginStatus: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
+			},
+		},
+		WorkflowDemo: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
 			},
 		},
 	},

@@ -16,7 +16,7 @@ import {
 	ICredentialsResponse,
 	whereClause,
 } from '..';
-import * as ResponseHelper from '../ResponseHelper';
+import * as ResponseHelper from './ResponseHelper2'; // TODO: Workaround
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';

@@ -10,12 +10,15 @@ import {
 	faArrowRight,
 	faAt,
 	faBook,
+	faBoxOpen,
 	faBug,
 	faCalendar,
 	faCheck,
 	faCheckCircle,
 	faChevronDown,
 	faChevronUp,
+	faChevronLeft,
+	faChevronRight,
 	faCode,
 	faCodeBranch,
 	faCog,
@@ -103,10 +106,13 @@ addIcon(faArrowLeft);
 addIcon(faArrowRight);
 addIcon(faAt);
 addIcon(faBook);
+addIcon(faBoxOpen);
 addIcon(faBug);
 addIcon(faCalendar);
 addIcon(faCheck);
 addIcon(faCheckCircle);
+addIcon(faChevronLeft);
+addIcon(faChevronRight);
 addIcon(faChevronDown);
 addIcon(faChevronUp);
 addIcon(faCode);

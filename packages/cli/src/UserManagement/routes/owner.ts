@@ -17,7 +17,7 @@ import { sanitizeUser, validatePassword } from '../UserManagementHelper';
 export function ownerNamespace(this: N8nApp): void {
 	/**
 	 * Promote a shell into the owner of the n8n instance,
-	 * and enable `hasOwner` instance setting.
+	 * and enable `isInstanceOwnerSetUp` setting.
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/owner`,
@@ -25,7 +25,7 @@ export function ownerNamespace(this: N8nApp): void {
 			const { email, firstName, lastName, password } = req.body;
 			const { id: userId } = req.user;
 
-			if (config.get('userManagement.hasOwner')) {
+			if (config.get('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
 					'Request to claim instance ownership failed because instance owner already exists',
 					{
@@ -79,14 +79,14 @@ export function ownerNamespace(this: N8nApp): void {
 
 			Logger.info('Owner updated successfully', { userId: req.user.id });
 
-			config.set('userManagement.hasOwner', true);
+			config.set('userManagement.isInstanceOwnerSetUp', true);
 
 			await Db.collections.Settings!.update(
-				{ key: 'userManagement.hasOwner' },
+				{ key: 'userManagement.isInstanceOwnerSetUp' },
 				{ value: JSON.stringify(true) },
 			);
 
-			Logger.debug('Setting hasOwner updated successfully', { userId: req.user.id });
+			Logger.debug('Setting isInstanceOwnerSetUp updated successfully', { userId: req.user.id });
 
 			await issueCookie(res, owner);
 

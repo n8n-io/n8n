@@ -36,7 +36,7 @@ beforeEach(async () => {
 		jest.mock('../../config');
 	});
 
-	config.set('userManagement.hasOwner', true);
+	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
 
 	await utils.createUser({

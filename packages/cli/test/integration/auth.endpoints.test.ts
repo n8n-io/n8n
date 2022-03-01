@@ -37,10 +37,10 @@ beforeEach(async () => {
 		role: globalOwnerRole,
 	});
 
-	config.set('userManagement.hasOwner', true);
+	config.set('userManagement.isInstanceOwnerSetUp', true);
 
 	await Db.collections.Settings!.update(
-		{ key: 'userManagement.hasOwner' },
+		{ key: 'userManagement.isInstanceOwnerSetUp' },
 		{ value: JSON.stringify(true) },
 	);
 });

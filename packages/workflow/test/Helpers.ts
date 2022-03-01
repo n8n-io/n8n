@@ -23,6 +23,7 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
+	INodeVersionedType,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowBase,
@@ -614,7 +615,7 @@ class NodeTypesClass implements INodeTypes {
 		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
 	}
 
-	getByName(nodeType: string): INodeType {
+	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
 		return this.getByNameAndVersion(nodeType);
 	}
 

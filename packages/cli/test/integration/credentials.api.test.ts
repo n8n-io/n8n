@@ -1,6 +1,5 @@
 import express = require('express');
 import { UserSettings } from 'n8n-core';
-
 import { Db } from '../../src';
 import { randomName, randomString } from './shared/random';
 import * as utils from './shared/utils';

@@ -170,7 +170,6 @@ import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpe
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
-// import { credentialsEndpoints } from './api/namespaces/credentials';
 import { credentialsController } from './api/credentials.api';
 
 require('body-parser-xml')(bodyParser);
@@ -320,12 +319,17 @@ class App {
 			userManagement: {
 				enabled:
 					config.get('userManagement.disabled') === false ||
-					config.get('userManagement.hasOwner') === true,
+					config.get('userManagement.isInstanceOwnerSetUp') === true,
 				// showSetupOnFirstLoad: config.get('userManagement.disabled') === false, // && config.get('userManagement.skipOwnerSetup') === true
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
 			logLevel: config.get('logs.level'),
+			deploymentType: config.get('deployment.type'),
+			templates: {
+				enabled: config.get('templates.enabled'),
+				host: config.get('templates.host'),
+			},
 		};
 	}
 
@@ -1563,12 +1567,6 @@ class App {
 				return this.activeWorkflowRunner.getActivationError(workflowId);
 			}),
 		);
-
-		// ----------------------------------------
-		// Credentials
-		// ----------------------------------------
-
-		// credentialsEndpoints.apply(this);
 
 		// ----------------------------------------
 		// Credential-Types

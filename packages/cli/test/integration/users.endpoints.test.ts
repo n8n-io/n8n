@@ -65,7 +65,7 @@ beforeEach(async () => {
 		role: globalOwnerRole,
 	});
 
-	config.set('userManagement.hasOwner', true);
+	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
 	// @ts-ignore hack because config doesn't change for helper
 	UMHelper.isEmailSetUp = false;
