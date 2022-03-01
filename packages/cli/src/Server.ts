@@ -348,10 +348,10 @@ class App {
 		Object.assign(this.frontendSettings.userManagement, {
 			enabled:
 				config.get('userManagement.disabled') === false ||
-				config.get('userManagement.hasOwner') === true,
+				config.get('userManagement.isInstanceOwnerSetUp') === true,
 			showSetupOnFirstLoad:
 				config.get('userManagement.disabled') === false &&
-				config.get('userManagement.hasOwner') === false &&
+				config.get('userManagement.isInstanceOwnerSetUp') === false &&
 				config.get('userManagement.skipInstanceOwnerSetup') === false,
 		});
 
@@ -1290,7 +1290,7 @@ class App {
 						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 					if (
-						config.get('userManagement.hasOwner') === true &&
+						config.get('userManagement.isInstanceOwnerSetUp') === true &&
 						req.user.globalRole.name !== 'owner'
 					) {
 						throw new ResponseHelper.ResponseError(
