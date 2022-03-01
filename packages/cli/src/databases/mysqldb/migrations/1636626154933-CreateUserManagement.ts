@@ -43,9 +43,6 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 			) ENGINE=InnoDB;`,
 		);
 
-		// CONSTRAINT \`FK_${tablePrefix}f0609be844f9200ff4365b1bb3d\` FOREIGN KEY (\`globalRoleId\`)
-		// REFERENCES role (\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION
-
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}user\` ADD CONSTRAINT \`FK_${tablePrefix}f0609be844f9200ff4365b1bb3d\` FOREIGN KEY (\`globalRoleId\`) REFERENCES \`${tablePrefix}role\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`,
 		);
@@ -63,10 +60,6 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 				PRIMARY KEY (\`userId\`, \`workflowId\`)
 			) ENGINE=InnoDB;`,
 		);
-
-		// CONSTRAINT \`FK_${tablePrefix}3540da03964527aa24ae014b780\` FOREIGN KEY (\`roleId\`) REFERENCES \`${tablePrefix}role\` (\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION
-		// CONSTRAINT \`FK_${tablePrefix}82b2fd9ec4e3e24209af8160282\` FOREIGN KEY (\`userId\`) REFERENCES \`${tablePrefix}user\` (\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION,
-		// CONSTRAINT \`FK_${tablePrefix}b83f8d2530884b66a9c848c8b88\` FOREIGN KEY (\`workflowId\`) REFERENCES \`${tablePrefix}workflow_entity\` (\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION
 
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}shared_workflow\` ADD CONSTRAINT \`FK_${tablePrefix}3540da03964527aa24ae014b780\` FOREIGN KEY (\`roleId\`) REFERENCES \`${tablePrefix}role\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`,
@@ -93,12 +86,6 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 				PRIMARY KEY (\`userId\`, \`credentialsId\`)
 			) ENGINE=InnoDB;`,
 		);
-
-		// CONSTRAINT \`FK_${tablePrefix}484f0327e778648dd04f1d70493\` FOREIGN KEY (\`userId\`) REFERENCES \`${tablePrefix}user\` (\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION,
-
-		// CONSTRAINT \`FK_${tablePrefix}68661def1d4bcf2451ac8dbd949\` FOREIGN KEY (\`credentialsId\`) REFERENCES \`${tablePrefix}credentials_entity\` (\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION
-
-		// CONSTRAINT \`FK_${tablePrefix}c68e056637562000b68f480815a\` FOREIGN KEY (\`roleId\`) REFERENCES \`${tablePrefix}role\` (\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION
 
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}shared_credentials\` ADD CONSTRAINT \`FK_${tablePrefix}484f0327e778648dd04f1d70493\` FOREIGN KEY (\`userId\`) REFERENCES \`${tablePrefix}user\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`,
