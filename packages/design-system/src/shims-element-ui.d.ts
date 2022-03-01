@@ -9,4 +9,6 @@ declare module 'element-ui/lib/menu';
 declare module 'element-ui/lib/menu-item';
 declare module 'element-ui/lib/row';
 declare module 'element-ui/lib/tag';
+declare module 'element-ui/lib/skeleton';
+declare module 'element-ui/lib/skeleton-item';
 
