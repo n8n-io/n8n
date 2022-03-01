@@ -258,7 +258,7 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2) {
 	}
 
 	// slot 4 usecase #1
-	if (companySize === COMPANY_SIZE_1000_OR_MORE || companySize === COMPANY_SIZE_1000_OR_MORE) {
+	if (companySize === COMPANY_SIZE_500_999 || companySize === COMPANY_SIZE_1000_OR_MORE) {
 		switch (automationGoal) {
 			case CUSTOMER_INTEGRATIONS_GOAL:
 				nodeTypes = nodeTypes.concat(HTTP_REQUEST_NODE_TYPE);
