@@ -47,7 +47,6 @@ export {
 	N8nInputNumber,
 	N8nLoading,
 	N8nMarkdown,
-	N8nHeading,
 	N8nMenu,
 	N8nMenuItem,
 	N8nLink,
