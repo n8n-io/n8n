@@ -192,14 +192,14 @@ export class Telemetry {
 	): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.client) {
-				const { user_id, ...rest } = properties;
-				Object.assign(rest, { instance_id: this.instanceId });
+				const { user_id } = properties;
+				Object.assign(properties, { instance_id: this.instanceId });
 				this.client.track(
 					{
 						userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
 						anonymousId: '000000000000',
 						event: eventName,
-						properties: rest,
+						properties,
 					},
 					resolve,
 				);
