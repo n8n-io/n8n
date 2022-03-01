@@ -5,7 +5,7 @@
 		<template v-slot="{ bp }">
 			<div :class="bp === 'md' || columnView? $style.grid : $style.gridMulti">
 				<div
-					v-for="(input) in inputs"
+					v-for="(input) in filteredInputs"
 					:key="input.name"
 				>
 					<n8n-text color="text-base" v-if="input.properties.type === 'text'" tag="div" align="center">
@@ -55,7 +55,7 @@ export default Vue.extend({
 	data() {
 		return {
 			showValidationWarnings: false,
-			values: {} as {[key: string]: string},
+			values: {} as {[key: string]: any},
 			validity: {} as {[key: string]: boolean},
 		};
 	},
@@ -71,6 +71,9 @@ export default Vue.extend({
 		}
 	},
 	computed: {
+		filteredInputs(): IFormInput[] {
+			return this.inputs.filter((input: IFormInput) => typeof input.shouldDisplay === 'function'? input.shouldDisplay(this.values): true);
+		},
 		isReadyToSubmit(): boolean {
 			for (let key in this.validity) {
 				if (!this.validity[key]) {
@@ -82,7 +85,7 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onInput(name: string, value: string) {
+		onInput(name: string, value: any) {
 			this.values = {
 				...this.values,
 				[name]: value,

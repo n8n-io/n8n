@@ -5,7 +5,7 @@ import {  ActionContext, Module } from 'vuex';
 import {
 	IInviteResponse,
 	IPermissions,
-	IPersonalizationSurveyAnswers,
+	IPersonalizationSurveyAnswersV2,
 	IRootState,
 	IUser,
 	IUserResponse,
@@ -51,7 +51,7 @@ const module: Module<IUsersState, IRootState> = {
 		deleteUser: (state: IUsersState, userId: string) => {
 			Vue.delete(state.users, userId);
 		},
-		setPersonalizationAnswers(state: IUsersState, answers: IPersonalizationSurveyAnswers) {
+		setPersonalizationAnswers(state: IUsersState, answers: IPersonalizationSurveyAnswersV2) {
 			if (!state.currentUserId) {
 				return;
 			}
@@ -191,7 +191,7 @@ const module: Module<IUsersState, IRootState> = {
 		async reinviteUser(context: ActionContext<IUsersState, IRootState>, params: {id: string}) {
 			await reinvite(context.rootGetters.getRestApiContext, params);
 		},
-		async submitPersonalizationSurvey(context: ActionContext<IUsersState, IRootState>, results: IPersonalizationSurveyAnswers) {
+		async submitPersonalizationSurvey(context: ActionContext<IUsersState, IRootState>, results: IPersonalizationSurveyAnswersV2) {
 			await submitPersonalizationSurvey(context.rootGetters.getRestApiContext, results);
 
 			context.commit('setPersonalizationAnswers', results);
