@@ -27,7 +27,7 @@ let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ namespaces: ['users'], applyAuth: true });
+	app = utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
 	await utils.initTestDb();
 
 	const [
@@ -62,7 +62,7 @@ beforeEach(async () => {
 		role: globalOwnerRole,
 	});
 
-	config.set('userManagement.hasOwner', true);
+	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
 	// @ts-ignore hack because config doesn't change for helper
 	UMHelper.isEmailSetUp = false;
@@ -99,7 +99,7 @@ test('GET /users should return all users', async () => {
 		expect(email).toBeDefined();
 		expect(firstName).toBeDefined();
 		expect(lastName).toBeDefined();
-		expect(personalizationAnswers).toBeNull();
+		expect(personalizationAnswers).toBeUndefined();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
 		expect(globalRole).toBeDefined();

@@ -28,16 +28,19 @@ import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/ro
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
-import { credentialsEndpoints } from '../../../src/api/namespaces/credentials';
+
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
+import { credentialsController } from '../../../src/api/credentials.api';
 import { randomEmail, randomValidPassword, randomName } from './random';
 import { getLogger } from '../../../src/Logger';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
+
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
-import type { CredentialPayload, EndpointNamespace, NamespacesMap, SmtpTestAccount } from './types';
 import { Telemetry } from '../../../src/telemetry';
+import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import type { CredentialPayload, SmtpTestAccount, EndpointGroup } from './types';
 
 export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
 
@@ -54,45 +57,56 @@ export const initLogger = () => {
  * Initialize a test server to make requests to.
  *
  * @param applyAuth Whether to apply auth middleware to the test server.
- * @param namespaces Namespaces of endpoints to apply to the test server.
+ * @param endpointGroups Groups of endpoints to apply to the test server.
  */
 export function initTestServer({
 	applyAuth,
-	namespaces,
-	externalHooks,
+	endpointGroups,
 }: {
 	applyAuth: boolean;
-	externalHooks?: true;
-	namespaces?: EndpointNamespace[];
+	endpointGroups?: EndpointGroup[];
 }) {
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
-		...(externalHooks ? { externalHooks: ExternalHooks() } : {}),
+		...(endpointGroups?.includes('credentials') ? { externalHooks: ExternalHooks() } : {}),
 	};
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
 
 	config.set('userManagement.jwtSecret', 'My JWT secret');
-	config.set('userManagement.hasOwner', false);
+	config.set('userManagement.isInstanceOwnerSetUp', false);
 
 	if (applyAuth) {
 		authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
 	}
 
-	if (namespaces) {
-		const map: NamespacesMap = {
+	if (!endpointGroups) return testServer.app;
+
+	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
+
+	if (routerEndpoints.length) {
+		const map: Record<string, express.Router> = {
+			credentials: credentialsController,
+		};
+
+		for (const group of routerEndpoints) {
+			testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
+		}
+	}
+
+	if (functionEndpoints.length) {
+		const map: Record<string, (this: N8nApp) => void> = {
 			me: meEndpoints,
 			users: usersEndpoints,
 			auth: authEndpoints,
 			owner: ownerEndpoints,
 			passwordReset: passwordResetEndpoints,
-			credentials: credentialsEndpoints,
 		};
 
-		for (const namespace of namespaces) {
-			map[namespace].apply(testServer);
+		for (const group of functionEndpoints) {
+			map[group].apply(testServer);
 		}
 	}
 
@@ -106,6 +120,17 @@ export function initTestTelemetry() {
 
 	jest.spyOn(Telemetry.prototype, 'track').mockResolvedValue();
 }
+
+const classifyEndpointGroups = (endpointGroups: string[]) => {
+	const routerEndpoints: string[] = [];
+	const functionEndpoints: string[] = [];
+
+	endpointGroups.forEach((group) =>
+		(group === 'credentials' ? routerEndpoints : functionEndpoints).push(group),
+	);
+
+	return [routerEndpoints, functionEndpoints];
+};
 
 // ----------------------------------
 //           test logger
@@ -327,9 +352,9 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 //            settings
 // ----------------------------------
 
-export async function getHasOwnerSetting() {
+export async function isInstanceOwnerSetUp() {
 	const { value } = await Db.collections.Settings!.findOneOrFail({
-		key: 'userManagement.hasOwner',
+		key: 'userManagement.isInstanceOwnerSetUp',
 	});
 
 	return Boolean(value);

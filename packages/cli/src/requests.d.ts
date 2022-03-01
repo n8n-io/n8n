@@ -1,16 +1,17 @@
 /* eslint-disable import/no-cycle */
 import express = require('express');
 import {
-	INodeCredentialTestRequest,
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
 	INode,
+	INodeCredentialTestRequest,
+	IRunData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
 import { User } from './databases/entities/User';
-import { IExecutionDeleteFilter, IPersonalizationSurveyAnswers } from '.';
+import type { IExecutionDeleteFilter, IPersonalizationSurveyAnswers, IWorkflowDb } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthlessRequest<
@@ -57,6 +58,17 @@ export declare namespace WorkflowRequest {
 	type GetAllActive = AuthenticatedRequest;
 
 	type GetAllActivationErrors = Get;
+
+	type ManualRun = AuthenticatedRequest<
+		{},
+		{},
+		{
+			workflowData: IWorkflowDb;
+			runData: IRunData;
+			startNodes?: string[];
+			destinationNode?: string;
+		}
+	>;
 }
 
 // ----------------------------------
@@ -246,3 +258,11 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 		credentials: string;
 	}
 >;
+
+// ----------------------------------
+//      /tags
+// ----------------------------------
+
+export declare namespace TagsRequest {
+	type Delete = AuthenticatedRequest<{ id: string }>;
+}

@@ -266,7 +266,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			result = {
 				// tslint:disable-next-line: no-any
 				type: 'relation', relation: (value.relationValue).reduce((acc: [], cur: any) => {
-					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation })));
+					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
 				}, []),
 			};
 			break;
@@ -397,9 +397,7 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		} else if (key === 'phone_number') {
 			key = 'phone';
 		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
-			valuePropertyName = (valuePropertyName !== undefined && !Object.keys(valuePropertyName).length) ? {} : moment.tz(value.date, timezone).utc().format();
-		} else if (key === 'number') {
-			key = 'text';
+			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();		
 		} else if (key === 'boolean') {
 			key = 'checkbox';
 		}
@@ -421,57 +419,70 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 }
 
 // tslint:disable-next-line: no-any
+function simplifyProperty(property: any) {
+	// tslint:disable-next-line: no-any
+	let result: any;
+	const type = (property as IDataObject).type as string;
+	if (['text'].includes(property.type)) {
+		result = property.plain_text;
+	} else if (['rich_text', 'title'].includes(property.type)) {
+		if (Array.isArray(property[type]) && property[type].length !== 0) {
+				// tslint:disable-next-line: no-any
+			result = property[type].map((text: any) => simplifyProperty(text) as string).join('');
+		} else {
+			result = '';
+		}
+	} else if (['url', 'created_time', 'checkbox', 'number', 'last_edited_time', 'email', 'phone_number', 'date'].includes(property.type)) {
+		// tslint:disable-next-line: no-any
+		result = property[type] as any;
+	} else if (['created_by', 'last_edited_by', 'select'].includes(property.type)) {
+		result = (property[type]) ? property[type].name : null;
+	} else if (['people'].includes(property.type)) {
+		if (Array.isArray(property[type])) {
+			// tslint:disable-next-line: no-any
+			result = property[type].map((person: any) => person.person?.email || {});
+		} else {
+			result = property[type];
+		}
+	} else if (['multi_select'].includes(property.type)) {
+		if (Array.isArray(property[type])) {
+			result = property[type].map((e: IDataObject) => e.name || {});
+		} else {
+			result = property[type].options.map((e: IDataObject) => e.name || {});
+		}
+	} else if (['relation'].includes(property.type)) {
+		if (Array.isArray(property[type])) {
+			result = property[type].map((e: IDataObject) => e.id || {});
+		} else {
+			result = property[type].database_id;
+		}
+	} else if (['formula'].includes(property.type)) {
+		result = property[type][property[type].type];
+
+	} else if (['rollup'].includes(property.type)) {
+		const rollupFunction = property[type].function as string;
+		if (rollupFunction.startsWith('count') || rollupFunction.includes('empty')) {
+			result = property[type].number;
+			if (rollupFunction.includes('percent')) {
+				result = result * 100;
+			}
+		} else if (rollupFunction.startsWith('show') && property[type].type === 'array') {
+			const elements = property[type].array.map(simplifyProperty).flat();
+			result = rollupFunction === 'show_unique' ? [...new Set(elements)] : elements;
+		}
+	} else if (['files'].includes(property.type)) {
+		// tslint:disable-next-line: no-any
+		result = property[type].map((file: { type: string, [key: string]: any }) => (file[file.type].url));
+	}
+	return result;
+}
+
+// tslint:disable-next-line: no-any
 export function simplifyProperties(properties: any) {
 	// tslint:disable-next-line: no-any
 	const results: any = {};
 	for (const key of Object.keys(properties)) {
-		const type = (properties[key] as IDataObject).type as string;
-		if (['text'].includes(properties[key].type)) {
-			const texts = properties[key].text.map((e: { plain_text: string }) => e.plain_text || {}).join('');
-			results[`${key}`] = texts;
-		} else if (['rich_text'].includes(properties[key].type)) {
-			const texts = properties[key].rich_text.map((e: { plain_text: string }) => e.plain_text || {}).join('');
-			results[`${key}`] = texts;
-		} else if (['url', 'created_time', 'checkbox', 'number', 'last_edited_time', 'email', 'phone_number', 'date'].includes(properties[key].type)) {
-			// tslint:disable-next-line: no-any
-			results[`${key}`] = properties[key][type] as any;
-		} else if (['title'].includes(properties[key].type)) {
-			if (Array.isArray(properties[key][type]) && properties[key][type].length !== 0) {
-				results[`${key}`] = properties[key][type][0].plain_text;
-			} else {
-				results[`${key}`] = '';
-			}
-		} else if (['created_by', 'last_edited_by', 'select'].includes(properties[key].type)) {
-			results[`${key}`] = (properties[key][type]) ? properties[key][type].name : null;
-		} else if (['people'].includes(properties[key].type)) {
-			if (Array.isArray(properties[key][type])) {
-				// tslint:disable-next-line: no-any
-				results[`${key}`] = properties[key][type].map((person: any) => person.person?.email || {});
-			} else {
-				results[`${key}`] = properties[key][type];
-			}
-		} else if (['multi_select'].includes(properties[key].type)) {
-			if (Array.isArray(properties[key][type])) {
-				results[`${key}`] = properties[key][type].map((e: IDataObject) => e.name || {});
-			} else {
-				results[`${key}`] = properties[key][type].options.map((e: IDataObject) => e.name || {});
-			}
-		} else if (['relation'].includes(properties[key].type)) {
-			if (Array.isArray(properties[key][type])) {
-				results[`${key}`] = properties[key][type].map((e: IDataObject) => e.id || {});
-			} else {
-				results[`${key}`] = properties[key][type].database_id;
-			}
-		} else if (['formula'].includes(properties[key].type)) {
-			results[`${key}`] = properties[key][type][properties[key][type].type];
-
-		} else if (['rollup'].includes(properties[key].type)) {
-			//TODO figure how to resolve rollup field type
-			// results[`${key}`] = properties[key][type][properties[key][type].type];
-		} else if (['files'].includes(properties[key].type)) {
-			// tslint:disable-next-line: no-any
-			results[`${key}`] = properties[key][type].map((file: { type: string, [key: string]: any }) => (file[file.type].url));
-		}
+		results[`${key}`] = simplifyProperty(properties[key]);
 	}
 	return results;
 }
@@ -482,7 +493,7 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 		objects = [objects];
 	}
 	const results: IDataObject[] = [];
-	for (const { object, id, properties, parent, title, json, binary, url, created_time, last_edited_time } of objects) {
+	for (const { object, id, properties, parent, title, json, binary, url } of objects) {
 		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
 			results.push({
 				id,
@@ -499,9 +510,9 @@ export function simplifyObjects(objects: any, download = false, version = 2) {
 		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
 			results.push({
 				json: {
-					id,
+					id: json.id,
 					...(version === 2) ? { name: getPropertyTitle(json.properties) } : {},
-					...(version === 2) ? { url } : {},
+					...(version === 2) ? { url: json.url } : {},
 					...(version === 2) ? { ...prepend('property', simplifyProperties(json.properties)) } : { ...simplifyProperties(json.properties) },
 				},
 				binary,

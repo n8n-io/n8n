@@ -57,6 +57,7 @@ import {
 } from '.';
 import * as Queue from './Queue';
 import { InternalHooksManager } from './InternalHooksManager';
+import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -247,13 +248,10 @@ export class WorkflowRunner {
 			staticData: data.workflowData.staticData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			data.userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
-		if (data.userId) {
-			// @ts-ignore
-			additionalData.userId = data.userId;
-		}
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
@@ -270,6 +268,9 @@ export class WorkflowRunner {
 				`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
 				{ executionId },
 			);
+
+			await checkPermissionsForExecution(workflow, data.userId);
+
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
 				data,
 				executionId,

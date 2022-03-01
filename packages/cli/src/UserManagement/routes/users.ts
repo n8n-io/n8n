@@ -7,7 +7,7 @@ import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
-import { N8nApp } from '../Interfaces';
+import { N8nApp, PublicUser } from '../Interfaces';
 import { UserRequest } from '../../requests';
 import {
 	getInstanceBaseUrl,
@@ -41,7 +41,7 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			if (!config.get('userManagement.hasOwner')) {
+			if (!config.get('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because emailing was not set up',
 				);
@@ -327,7 +327,7 @@ export function usersNamespace(this: N8nApp): void {
 		ResponseHelper.send(async () => {
 			const users = await Db.collections.User!.find({ relations: ['globalRole'] });
 
-			return users.map(sanitizeUser);
+			return users.map((user): PublicUser => sanitizeUser(user, ['personalizationAnswers']));
 		}),
 	);
 
