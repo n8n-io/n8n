@@ -12,7 +12,6 @@ import {v4 as uuid} from 'uuid';
 
 import {IDataObject, NodeApiError,} from 'n8n-workflow';
 
-const SENTRY_DSN = 'http://sentry.cgpo2o.cn/api/3/store/';
 const TRACE_LINE_REGEXPs = [
 	/    at (?<raw_function>.*) \((?<abs_path>.*):(?<lineno>[0-9]+):(?<colno>[0-9]+)\)/,
 	/    at (?<abs_path>.*):(?<lineno>[0-9]+):(?<colno>[0-9]+)/
@@ -55,7 +54,6 @@ export async function sentryIoErrorApiRequest(
 function buildXauthHeaderValue(credentials: IDataObject) {
 	const timestamp = Date.now().valueOf();
 	return `Sentry sentry_version=7,sentry_timestamp=${timestamp},sentry_key=${credentials.sentry_key},sentry_client=sentry-javascript/1.0`;
-
 }
 
 
@@ -63,7 +61,9 @@ export async function reportToSentry(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	errorInfo: IDataObject): Promise<IDataObject> {
 	const errorPaylaod = convertToErrorPayload(errorInfo);
-	return sentryIoErrorApiRequest.call(this, SENTRY_DSN, 'POST', errorPaylaod);
+	const credentials = await this.getCredentials('sentryErrorApi') as IDataObject;
+	const endpoint = `${credentials.url}/api/${credentials.project_id}/store`;
+	return sentryIoErrorApiRequest.call(this, endpoint, 'POST', errorPaylaod);
 }
 
 
