@@ -1275,7 +1275,7 @@ class App {
 						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 					if (
-						config.get('userManagement.hasOwner') === true &&
+						config.get('userManagement.isInstanceOwnerSetUp') === true &&
 						req.user.globalRole.name !== 'owner'
 					) {
 						throw new ResponseHelper.ResponseError(
