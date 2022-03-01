@@ -71,6 +71,7 @@ export class Strapi implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
+		const { apiVersion } = await this.getCredentials('strapiApi') as IDataObject;
 		const { jwt } = await getToken.call(this);
 
 		headers.Authorization = `Bearer ${jwt}`;
@@ -115,30 +116,60 @@ export class Strapi implements INodeType {
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						if (options.sort && (options.sort as string[]).length !== 0) {
-							const sortFields = options.sort as string[];
-							qs._sort = sortFields.join(',');
-						}
-
-						if (options.where) {
-							const query = validateJSON(options.where as string);
-							if (query !== undefined) {
-								qs._where = query;
-							} else {
-								throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
+						if(apiVersion === 'v4') {
+							// Sort Option
+							if(options.sort && (options.sort as string[]).length !== 0) {
+								const sortFields = options.sort as string[];
+								qs.sort = sortFields.join(',');
 							}
-						}
-
-						if (options.publicationState) {
-							qs._publicationState = options.publicationState as string;
-						}
-
-						if (returnAll) {
-							responseData = await strapiApiRequestAllItems.call(this, 'GET', `/${contentType}`, {}, qs, headers);
+							// Filter Option
+							if (options.where) {
+								const query = validateJSON(options.where as string);
+								if (query !== undefined) {
+									qs.filters = query;
+								} else {
+									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
+								}
+							}
+							// Publication Option
+							if (options.publicationState) {
+								qs.publicationState = options.publicationState as string;
+							}
+							// Limit Option
+							if (returnAll) {
+								// To Do: Implement returnAll
+								responseData = await strapiApiRequestAllItems.call(this, 'GET', `/api/${contentType}`, {}, qs, headers);
+							} else {
+								// To Do: Add pagination
+								//qs.pagination[pageSize] = this.getNodeParameter('limit', i) as number;
+								({ data:responseData } = await strapiApiRequest.call(this, 'GET', `/api/${contentType}`, {}, qs, undefined, headers));
+							}
 						} else {
-							qs._limit = this.getNodeParameter('limit', i) as number;
-
-							responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}`, {}, qs, undefined, headers);
+							// Sort Option
+							if (options.sort && (options.sort as string[]).length !== 0) {
+								const sortFields = options.sort as string[];
+								qs._sort = sortFields.join(',');
+							}
+							// Filter Option
+							if (options.where) {
+								const query = validateJSON(options.where as string);
+								if (query !== undefined) {
+									qs._where = query;
+								} else {
+									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
+								}
+							}
+							// Publication Option
+							if (options.publicationState) {
+								qs._publicationState = options.publicationState as string;
+							}
+							// Limit Option
+							if (returnAll) {
+								responseData = await strapiApiRequestAllItems.call(this, 'GET', `/${contentType}`, {}, qs, headers);
+							} else {
+								qs._limit = this.getNodeParameter('limit', i) as number;
+								responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}`, {}, qs, undefined, headers);
+							}
 						}
 						returnData.push.apply(returnData, responseData);
 					}
