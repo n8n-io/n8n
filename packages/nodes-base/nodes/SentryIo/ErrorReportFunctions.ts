@@ -107,7 +107,7 @@ export function extractStacktrace(errorInfo: IDataObject) {
 		// @ts-ignore
 		frames.unshift(parseStacktraceLine(line));
 	});
-	return (frames.length) ? {frames: frames} : {};
+	return {frames: frames};
 }
 
 function convertToErrorPayload(errorInfo: IDataObject) {
