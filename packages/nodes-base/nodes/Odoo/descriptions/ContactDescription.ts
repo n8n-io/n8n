@@ -111,7 +111,6 @@ export const contactDescription: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Enter contact name',
 	},
 	{
 		displayName: 'Additional Fields',

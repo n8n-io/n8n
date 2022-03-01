@@ -66,7 +66,6 @@ export const noteDescription: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Enter note text',
 	},
 	{
 		displayName: 'Additional Fields',

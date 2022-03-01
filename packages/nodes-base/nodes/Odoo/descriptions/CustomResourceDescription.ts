@@ -4,6 +4,22 @@ import {
 
 export const customResourceOperations: INodeProperties[] = [
 	{
+		displayName: 'Custom Resource',
+		name: 'customResource',
+		type: 'options',
+		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getModels',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'custom',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
@@ -47,29 +63,11 @@ export const customResourceOperations: INodeProperties[] = [
 ];
 
 export const customResourceDescription: INodeProperties[] = [
-	{
-		displayName: 'Custom Resource',
-		name: 'customResource',
-		type: 'options',
-		default: '',
-		noDataExpression: true,
-		typeOptions: {
-			loadOptionsMethod: 'getModels',
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'custom',
-				],
-			},
-		},
-	},
-
 	/* -------------------------------------------------------------------------- */
 	/*                                custom:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Fields',
 		name: 'fieldsToCreateOrUpdate',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -98,7 +96,6 @@ export const customResourceDescription: INodeProperties[] = [
 						name: 'fieldName',
 						type: 'options',
 						default: '',
-						noDataExpression: true,
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',
 						},
@@ -243,7 +240,6 @@ export const customResourceDescription: INodeProperties[] = [
 						name: 'fieldName',
 						type: 'options',
 						default: '',
-						noDataExpression: true,
 						typeOptions: {
 							loadOptionsDependsOn: [
 								'customResource',
@@ -283,7 +279,7 @@ export const customResourceDescription: INodeProperties[] = [
 								value: 'greaterOrEqual',
 							},
 							{
-								name: 'Chield Of',
+								name: ' Child of',
 								value: 'childOf',
 							},
 							{
@@ -362,7 +358,6 @@ export const customResourceDescription: INodeProperties[] = [
 						name: 'fieldName',
 						type: 'options',
 						default: '',
-						noDataExpression: true,
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',
 						},
