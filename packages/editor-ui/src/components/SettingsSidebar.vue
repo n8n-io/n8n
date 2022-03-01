@@ -48,7 +48,7 @@ export default Vue.extend({
 			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 		},
 		onReturn() {
-			this.$router.go(-1);
+			this.$router.push({name: 'NodeViewNew'});
 		},
 	},
 });
