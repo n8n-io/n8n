@@ -6,6 +6,7 @@
 		:size="$options.methods.getSize(props.size)"
 		:class="$style[$options.methods.getClass(props)]"
 		:popper-class="$options.methods.getPopperClass(props, $style)"
+		:popper-append-to-body="false"
 		v-on="listeners"
 		:ref="data.ref"
 	>
