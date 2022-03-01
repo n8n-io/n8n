@@ -21,7 +21,7 @@
 				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
 			</div>
 			<div :class="$style.container" v-else>
-				<n8n-form-inputs :inputs="survey" :columnView="true" :eventBus="formBus" :filterInput="filterInput" @submit="onSubmit"/>
+				<n8n-form-inputs :inputs="survey" :columnView="true" :eventBus="formBus" @submit="onSubmit"/>
 			</div>
 		</template>
 		<template v-slot:footer>
@@ -217,6 +217,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 				},
 				{
 					name: CUSTOMER_TYPE_KEY,
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
+						return (
+							!!companyType && ![ OTHER_COMPANY_TYPE, PERSONAL_COMPANY_TYPE, ECOMMERCE_COMPANY_TYPE, MSP_COMPANY_TYPE].includes(companyType)
+						);
+					},
 					properties: {
 						label: this.$locale.baseText('personalizationModal.whatKindOfCustomersDoYouServe'),
 						type: 'select',
@@ -243,6 +249,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 				},
 				{
 					name: MSP_FOCUS_KEY,
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
+						return companyType === MSP_COMPANY_TYPE;
+					},
 					properties: {
 						label: this.$locale.baseText('personalizationModal.whatDoesYourCompanyFocusOn'),
 						type: 'multi-select',
@@ -277,6 +287,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText(
 							'personalizationModal.pleaseSpecifyYourCompanyFocus',
 						),
+					},
+					shouldDisplay(values): boolean {
+						const mspFocus = (values as IPersonalizationSurveyAnswersV2)[MSP_FOCUS_KEY];
+						return !!mspFocus && mspFocus.includes(OTHER_FOCUS);
 					},
 				},
 				{
@@ -344,11 +358,19 @@ export default mixins(showMessage, workflowHelpers).extend({
 							},
 						],
 					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
+						return companyType === OTHER_COMPANY_TYPE;
+					},
 				},
 				{
 					name: OTHER_COMPANY_INDUSTRY_EXTENDED_KEY,
 					properties: {
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourCompanysIndustry'),
+					},
+					shouldDisplay(values): boolean {
+						const companyIndustry = (values as IPersonalizationSurveyAnswersV2)[COMPANY_INDUSTRY_EXTENDED_KEY];
+						return !!companyIndustry && companyIndustry.includes(OTHER_INDUSTRY_OPTION);
 					},
 				},
 				{
@@ -400,11 +422,19 @@ export default mixins(showMessage, workflowHelpers).extend({
 							},
 						],
 					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
+						return companyType !== PERSONAL_COMPANY_TYPE;
+					},
 				},
 				{
 					name: AUTOMATION_GOAL_OTHER_KEY,
 					properties: {
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourAutomationGoal'),
+					},
+					shouldDisplay(values): boolean {
+						const automationGoal = (values as IPersonalizationSurveyAnswersV2)[AUTOMATION_GOAL_KEY];
+						return automationGoal === OTHER_AUTOMATION_GOAL;
 					},
 				},
 				{
@@ -449,48 +479,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 	methods: {
 		closeDialog() {
 			this.modalBus.$emit('close');
-		},
-		filterInput(input: IFormInput, values: IPersonalizationSurveyAnswersV2) {
-			const companyType = values[COMPANY_TYPE_KEY];
-			if (input.name === CUSTOMER_TYPE_KEY) {
-				return (
-					companyType &&
-					![
-						OTHER_COMPANY_TYPE,
-						PERSONAL_COMPANY_TYPE,
-						ECOMMERCE_COMPANY_TYPE,
-						MSP_COMPANY_TYPE,
-					].includes(companyType)
-				);
-			}
-
-			if (input.name === MSP_FOCUS_KEY) {
-				return companyType === MSP_COMPANY_TYPE;
-			}
-
-			if (input.name === MSP_FOCUS_OTHER_KEY) {
-				const mspFocus = values[MSP_FOCUS_KEY];
-				return mspFocus && mspFocus.includes(OTHER_FOCUS);
-			}
-
-			if (input.name === COMPANY_INDUSTRY_EXTENDED_KEY) {
-				return companyType === OTHER_COMPANY_TYPE;
-			}
-
-			if (input.name === OTHER_COMPANY_INDUSTRY_EXTENDED_KEY) {
-				const companyIndustry = values[COMPANY_INDUSTRY_EXTENDED_KEY];
-				return companyIndustry && companyIndustry.includes(OTHER_INDUSTRY_OPTION);
-			}
-
-			if (input.name === AUTOMATION_GOAL_KEY || input.name === COMPANY_SIZE_KEY) {
-				return companyType !== PERSONAL_COMPANY_TYPE;
-			}
-
-			if (input.name === AUTOMATION_GOAL_OTHER_KEY) {
-				return values[AUTOMATION_GOAL_KEY] === OTHER_AUTOMATION_GOAL;
-			}
-
-			return true;
 		},
 		onSave() {
 			this.formBus.$emit('submit');

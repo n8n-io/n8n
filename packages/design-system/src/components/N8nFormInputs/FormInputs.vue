@@ -51,9 +51,6 @@ export default Vue.extend({
 		columnView: {
 			type: Boolean,
 		},
-		filterInput: {
-			type: Function,
-		},
 	},
 	data() {
 		return {
@@ -75,11 +72,7 @@ export default Vue.extend({
 	},
 	computed: {
 		filteredInputs(): IFormInput[] {
-			if (!this.filterInput) {
-				return this.inputs;
-			}
-
-			return this.inputs.filter((input: IFormInput) => this.filterInput(input, this.values));
+			return this.inputs.filter((input: IFormInput) => typeof input.shouldDisplay === 'function'? input.shouldDisplay(this.values): true);
 		},
 		isReadyToSubmit(): boolean {
 			for (let key in this.validity) {
