@@ -1,6 +1,6 @@
-import { ConnectionOptions, createConnection, getConnection } from 'typeorm';
+import { ConnectionOptions, createConnection } from 'typeorm';
 import config = require('../config');
-const { exec } = require('child_process');
+import { exec } from 'child_process';
 
 const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
 

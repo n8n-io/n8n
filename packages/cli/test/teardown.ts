@@ -1,7 +1,7 @@
 import { createConnection } from 'typeorm';
 import config = require('../config');
 import { getBootstrapPostgresOptions } from './integration/shared/connectionOptions';
-const { exec } = require('child_process');
+import { exec } from 'child_process';
 
 module.exports = async function () {
 	const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
@@ -25,7 +25,7 @@ module.exports = async function () {
 
 	if (dbType === 'mysqldb') {
 		const user = config.get('database.mysqldb.user');
-		const password = config.get('database.mysqldb.password'); // change via env to 'password'
+		const password = config.get('database.mysqldb.password');
 		const host = config.get('database.mysqldb.host');
 
 		exec(`echo "DROP DATABASE n8n_bs_mysql" | mysql -h ${host} -u ${user} -p${password}`);
