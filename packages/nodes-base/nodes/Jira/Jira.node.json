@@ -19,9 +19,13 @@
 		],
 		"generic": [
 			{
-				"label": "Creating Custom Incident Response Workflows with n8n",
-				"icon": "🚨",
-				"url": "https://medium.com/n8n-io/creating-custom-incident-response-workflows-with-n8n-9baef0bbedb9"
+				"label": "5 workflow automations for Mattermost that we love at n8n",
+				"icon": "🤖",
+				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
+			},
+			{
+				"label": "How to automate every step of an incident response workflow",
+				"url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/"
 			}
 		]
 	}

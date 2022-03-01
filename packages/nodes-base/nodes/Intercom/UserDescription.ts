@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const userOpeations = [
+export const userOpeations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -19,6 +19,11 @@ export const userOpeations = [
 				description: 'Create a new user',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a user',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a user',
@@ -33,23 +38,17 @@ export const userOpeations = [
 				value: 'update',
 				description: 'Update a user',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a user',
-			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                 user:delete                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -69,10 +68,9 @@ export const userFields = [
 		description: 'The Intercom defined id representing the Lead',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  user:getAll                                 */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                  user:getAll                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -146,27 +144,26 @@ export const userFields = [
 				description: 'The email address of the user',
 			},
 			{
-				displayName: 'Tag ID',
-				name: 'tag_id',
-				type: 'string',
-				default: '',
-				description: 'Tag representing the user',
-			},
-			{
 				displayName: 'Segment ID',
 				name: 'segment_id',
 				type: 'string',
 				default: '',
 				description: 'Segment representing the user',
 			},
+			{
+				displayName: 'Tag ID',
+				name: 'tag_id',
+				type: 'string',
+				default: '',
+				description: 'Tag representing the user',
+			},
 		],
 	},
 
 
-/* -------------------------------------------------------------------------- */
-/*                                  user:get                                 */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                  user:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Select By',
 		name: 'selectBy',
@@ -217,10 +214,9 @@ export const userFields = [
 		description: 'View by value',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 user:update                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Update By',
 		name: 'updateBy',
@@ -275,10 +271,9 @@ export const userFields = [
 		description: 'Value of the property to identify the user to update',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 user:create                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Identifier Type',
 		name: 'identifierType',
@@ -363,6 +358,23 @@ export const userFields = [
 		},
 		options: [
 			{
+				displayName: 'Avatar',
+				name: 'avatar',
+				type: 'string',
+				default: '',
+				description: 'An avatar image URL. note: the image url needs to be https.',
+			},
+			{
+				displayName: 'Companies',
+				name: 'companies',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getCompanies',
+				},
+				default: [],
+				description: 'Identifies the companies this user belongs to.',
+			},
+			{
 				displayName: 'Email',
 				name: 'email',
 				displayOptions: {
@@ -383,6 +395,29 @@ export const userFields = [
 				type: 'string',
 				default: '',
 				description: 'Email of the user',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				placeholder: '',
+				description: 'Name of the user',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				description: 'The phone number of the user',
+			},
+			{
+				displayName: 'Session Count',
+				name: 'sessionCount',
+				type: 'number',
+				default: false,
+				options: [],
+				description: `How many sessions the user has recorded`,
 			},
 			{
 				displayName: 'User ID',
@@ -408,21 +443,6 @@ export const userFields = [
 				description: 'Email of the user',
 			},
 			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				description: 'The phone number of the user',
-			},
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				placeholder: '',
-				description: 'Name of the user',
-			},
-			{
 				displayName: 'Unsubscribed From Emails',
 				name: 'unsubscribedFromEmails',
 				type: 'boolean',
@@ -436,46 +456,7 @@ export const userFields = [
 				type: 'boolean',
 				default: false,
 				options: [],
-				description: 'A boolean value, which if true, instructs Intercom to update the users<br />last_request_at value to the current API service time in UTC.',
-			},
-			{
-				displayName: 'Session Count',
-				name: 'sessionCount',
-				type: 'number',
-				default: false,
-				options: [],
-				description: `How many sessions the user has recorded`,
-			},
-			{
-				displayName: 'Companies',
-				name: 'companies',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getCompanies',
-				},
-				default: [],
-				description: 'Identifies the companies this user belongs to.',
-			},
-			{
-				displayName: 'Avatar',
-				name: 'avatar',
-				type: 'string',
-				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
-			},
-			{
-				displayName: 'UTM Source',
-				name: 'utmSource',
-				type: 'string',
-				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
-			},
-			{
-				displayName: 'UTM Medium',
-				name: 'utmMedium',
-				type: 'string',
-				default: '',
-				description: 'Identifies what type of link was used',
+				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC.',
 			},
 			{
 				displayName: 'UTM Campaign',
@@ -485,18 +466,32 @@ export const userFields = [
 				description: 'Identifies a specific product promotion or strategic campaign',
 			},
 			{
-				displayName: 'UTM Term',
-				name: 'utmTerm',
-				type: 'string',
-				default: '',
-				description: 'Identifies search terms',
-			},
-			{
 				displayName: 'UTM Content',
 				name: 'utmContent',
 				type: 'string',
 				default: '',
 				description: 'Identifies what specifically was clicked to bring the user to the site',
+			},
+			{
+				displayName: 'UTM Medium',
+				name: 'utmMedium',
+				type: 'string',
+				default: '',
+				description: 'Identifies what type of link was used',
+			},
+			{
+				displayName: 'UTM Source',
+				name: 'utmSource',
+				type: 'string',
+				default: '',
+				description: 'An avatar image URL. note: the image url needs to be https.',
+			},
+			{
+				displayName: 'UTM Term',
+				name: 'utmTerm',
+				type: 'string',
+				default: '',
+				description: 'Identifies search terms',
 			},
 		],
 	},
@@ -571,4 +566,4 @@ export const userFields = [
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
-] as INodeProperties[];
+];

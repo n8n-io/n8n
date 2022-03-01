@@ -14,9 +14,19 @@
 		],
 		"generic": [
 			{
-				"label": "Giving kudos to contributors with GitHub, Slack, and n8n",
+				"label": "What are APIs and how to use them with no code",
+				"icon": " 🪢",
+				"url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/"
+			},
+			{
+				"label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n",
 				"icon": "👏",
-				"url": "https://medium.com/n8n-io/giving-kudos-to-contributors-with-github-slack-and-n8n-b3f5f4a653a6"
+				"url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/"
+			},
+			{
+				"label": "How Goomer automated their operations with over 200 n8n workflows",
+				"icon": "🛵",
+				"url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/"
 			}
 		]
 	}

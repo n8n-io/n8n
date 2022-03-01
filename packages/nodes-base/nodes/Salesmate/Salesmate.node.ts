@@ -8,6 +8,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	salesmateApiRequest,
@@ -48,7 +49,6 @@ export class Salesmate implements INodeType {
 		description: 'Consume Salesmate API',
 		defaults: {
 			name: 'Salesmate',
-			color: '#004ef6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -313,7 +313,7 @@ export class Salesmate implements INodeType {
 					}
 					if (options.fields) {
 						if ((options.fields as string).trim() === '') {
-							throw new Error('You have to add at least one field');
+							throw new NodeOperationError(this.getNode(), 'You have to add at least one field');
 						}
 						body.fields = (options.fields as string).split(',') as string[];
 					} else {
@@ -478,7 +478,7 @@ export class Salesmate implements INodeType {
 					}
 					if (options.fields) {
 						if ((options.fields as string).trim() === '') {
-							throw new Error('You have to add at least one field');
+							throw new NodeOperationError(this.getNode(), 'You have to add at least one field');
 						}
 						body.fields = (options.fields as string).split(',') as string[];
 					} else {
@@ -670,7 +670,7 @@ export class Salesmate implements INodeType {
 					}
 					if (options.fields !== undefined) {
 						if ((options.fields as string).trim() === '') {
-							throw new Error('You have to add at least one field');
+							throw new NodeOperationError(this.getNode(), 'You have to add at least one field');
 						}
 						body.fields = (options.fields as string).split(',') as string[];
 					} else {

@@ -10,6 +10,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -35,10 +37,9 @@ export class HubspotTrigger implements INodeType {
 		icon: 'file:hubspot.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when HubSpot events occur.',
+		description: 'Starts the workflow when HubSpot events occur',
 		defaults: {
 			name: 'Hubspot Trigger',
-			color: '#ff7f64',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -141,6 +142,9 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								typeOptions: {
+									loadOptionsDependsOn: [
+										'contact.propertyChange',
+									],
 									loadOptionsMethod: 'getContactProperties',
 								},
 								displayOptions: {
@@ -158,6 +162,9 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								typeOptions: {
+									loadOptionsDependsOn: [
+										'company.propertyChange',
+									],
 									loadOptionsMethod: 'getCompanyProperties',
 								},
 								displayOptions: {
@@ -175,6 +182,9 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								typeOptions: {
+									loadOptionsDependsOn: [
+										'deal.propertyChange',
+									],
 									loadOptionsMethod: 'getDealProperties',
 								},
 								displayOptions: {
@@ -218,51 +228,48 @@ export class HubspotTrigger implements INodeType {
 			// select them easily
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const field of contactFields) {
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
 					returnData.push({
-						name: capitalCase(field.label),
-						value: field.id,
+						name: propertyName,
+						value: propertyId,
 					});
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
 				return returnData;
 			},
 			// Get all the available companies to display them to user so that he can
 			// select them easily
 			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const field of companyFields) {
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
 					returnData.push({
-						name: capitalCase(field.label),
-						value: field.id,
+						name: propertyName,
+						value: propertyId,
 					});
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
 				return returnData;
 			},
 			// Get all the available deals to display them to user so that he can
 			// select them easily
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const field of dealFields) {
+				const endpoint = '/properties/v2/deals/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
 					returnData.push({
-						name: capitalCase(field.label),
-						value: field.id,
+						name: propertyName,
+						value: propertyId,
 					});
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
 				return returnData;
 			},
 		},
@@ -275,12 +282,12 @@ export class HubspotTrigger implements INodeType {
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
 				const currentWebhookUrl = this.getNodeWebhookUrl('default') as string;
-				const { appId } = this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				const { appId } = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
 
 				try {
 					const { targetUrl } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/settings`, {});
 					if (targetUrl !== currentWebhookUrl) {
-						throw new Error(`The APP ID ${appId} already has a target url ${targetUrl}. Delete it or use another APP ID before executing the trigger. Due to Hubspot API limitations, you can have just one trigger per APP.`);
+						throw new NodeOperationError(this.getNode(), `The APP ID ${appId} already has a target url ${targetUrl}. Delete it or use another APP ID before executing the trigger. Due to Hubspot API limitations, you can have just one trigger per APP.`);
 					}
 				} catch (error) {
 					if (error.statusCode === 404) {
@@ -302,7 +309,7 @@ export class HubspotTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const { appId } = this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				const { appId } = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
 				const events = (this.getNodeParameter('eventsUi') as IDataObject || {}).eventValues as IDataObject[] || [];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 				let endpoint = `/webhooks/v3/${appId}/settings`;
@@ -316,7 +323,7 @@ export class HubspotTrigger implements INodeType {
 				endpoint = `/webhooks/v3/${appId}/subscriptions`;
 
 				if (Array.isArray(events) && events.length === 0) {
-					throw new Error(`You must define at least one event`);
+					throw new NodeOperationError(this.getNode(), `You must define at least one event`);
 				}
 
 				for (const event of events) {
@@ -334,7 +341,7 @@ export class HubspotTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const { appId } = this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				const { appId } = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
 
 				const { results: subscriptions } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/subscriptions`, {});
 
@@ -344,7 +351,7 @@ export class HubspotTrigger implements INodeType {
 
 				try {
 					await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/settings`, {});
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -354,10 +361,10 @@ export class HubspotTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 
-		const credentials = this.getCredentials('hubspotDeveloperApi') as IDataObject;
+		const credentials = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
 
 		if (credentials === undefined) {
-			throw new Error('No credentials found!');
+			throw new NodeOperationError(this.getNode(), 'No credentials found!');
 		}
 
 		const req = this.getRequestObject();
@@ -368,15 +375,11 @@ export class HubspotTrigger implements INodeType {
 			return {};
 		}
 
-		// check signare if client secret is defined
-
-		if (credentials.clientSecret !== '') {
-			const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
-			const signature = createHash('sha256').update(hash).digest('hex');
-			//@ts-ignore
-			if (signature !== headerData['x-hubspot-signature']) {
-				return {};
-			}
+		const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
+		const signature = createHash('sha256').update(hash).digest('hex');
+		//@ts-ignore
+		if (signature !== headerData['x-hubspot-signature']) {
+			return {};
 		}
 
 		for (let i = 0; i < bodyData.length; i++) {

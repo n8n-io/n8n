@@ -19,9 +19,24 @@
 		],
 		"generic": [
 			{
-				"label": "Mattias Larsson talks about running n8n on ships",
+				"label": "Why business process automation with n8n can change your daily life",
+				"icon": "🧬",
+				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
+			},
+			{
+				"label": "Running n8n on ships: An interview with Maranics",
 				"icon": "🛳",
-				"url": "https://medium.com/n8n-io/mattias-larsson-talks-about-running-n8n-on-ships-d5d72f108461"
+				"url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/"
+			},
+			{
+				"label": "Automate your data processing pipeline in 9 steps",
+				"icon": "⚙️",
+				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+			},
+			{
+				"label": "How uProc scraped a multi-page website with a low-code workflow",
+				"icon": " 🕸️",
+				"url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/"
 			}
 		]
 	}

@@ -1,21 +1,19 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
-
-import uuid = require('uuid');
 
 import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 } from './GenericFunctions';
+
+import { v4 as uuid } from 'uuid';
 
 export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +26,6 @@ export class GoogleDrive implements INodeType {
 		description: 'Access data on Google Drive',
 		defaults: {
 			name: 'Google Drive',
-			color: '#4285F4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -137,6 +134,11 @@ export class GoogleDrive implements INodeType {
 						description: 'Share a file',
 					},
 					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a file',
+					},
+					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
@@ -205,7 +207,6 @@ export class GoogleDrive implements INodeType {
 				description: 'The ID of the file to copy.',
 			},
 
-
 			// ----------------------------------
 			//         file/folder:delete
 			// ----------------------------------
@@ -234,7 +235,7 @@ export class GoogleDrive implements INodeType {
 			//         file:download
 			// ----------------------------------
 			{
-				displayName: 'File Id',
+				displayName: 'File ID',
 				name: 'fileId',
 				type: 'string',
 				default: '',
@@ -267,7 +268,151 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to<br />write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'download',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Google File Conversion',
+						name: 'googleFileConversion',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: false,
+						},
+						default: {},
+						placeholder: 'Add Conversion',
+						options: [
+							{
+								displayName: 'Conversion',
+								name: 'conversion',
+								values: [
+									{
+										displayName: 'Google Docs',
+										name: 'docsToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To MS Word',
+												value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+											{
+												name: 'To OpenOffice Doc',
+												value: 'application/vnd.oasis.opendocument.text',
+											},
+											{
+												name: 'To HTML',
+												value: 'text/html',
+											},
+											{
+												name: 'To Rich Text',
+												value: 'application/rtf',
+											},
+										],
+										default: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+										description: 'Format used to export when downloading Google Docs files',
+									},
+									{
+										displayName: 'Google Drawings',
+										name: 'drawingsToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To JPEG',
+												value: 'image/jpeg',
+											},
+											{
+												name: 'To PNG',
+												value: 'image/png',
+											},
+											{
+												name: 'To SVG',
+												value: 'image/svg+xml',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+										],
+										default: 'image/jpeg',
+										description: 'Format used to export when downloading Google Drawings files',
+									},
+									{
+										displayName: 'Google Slides',
+										name: 'slidesToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To MS PowerPoint',
+												value: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+											{
+												name: 'To OpenOffice Presentation',
+												value: 'application/vnd.oasis.opendocument.presentation',
+											},
+											{
+												name: 'To Plain Text',
+												value: 'text/plain',
+											},
+										],
+										default: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+										description: 'Format used to export when downloading Google Slides files',
+									},
+									{
+										displayName: 'Google Sheets',
+										name: 'sheetsToFormat',
+										type: 'options',
+										options: [
+											{
+												name: 'To MS Excel',
+												value: 'application/x-vnd.oasis.opendocument.spreadsheet',
+											},
+											{
+												name: 'To PDF',
+												value: 'application/pdf',
+											},
+											{
+												name: 'To CSV',
+												value: 'text/csv',
+											},
+										],
+										default: 'application/x-vnd.oasis.opendocument.spreadsheet',
+										description: 'Format used to export when downloading Google Spreadsheets files',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						description: 'File name. Ex: data.pdf',
+					},
+				],
 			},
 
 
@@ -522,7 +667,7 @@ export class GoogleDrive implements INodeType {
 				name: 'permissionsUi',
 				placeholder: 'Add Permission',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
@@ -597,7 +742,7 @@ export class GoogleDrive implements INodeType {
 									},
 								],
 								default: '',
-								description: 'Information about the different types can be found <a href="https://developers.google.com/drive/api/v3/ref-roles" target="_blank">here</a>.',
+								description: 'Information about the different types can be found <a href="https://developers.google.com/drive/api/v3/ref-roles">here</a>.',
 							},
 							{
 								displayName: 'Email Address',
@@ -708,9 +853,182 @@ export class GoogleDrive implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+				description: 'Name of the binary property which contains the data for the file to be uploaded.',
 			},
 
+			// ----------------------------------
+			//         file:update
+			// ----------------------------------
+			{
+				displayName: 'ID',
+				name: 'fileId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'The ID of the file to update.',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						description: `The name of the file`,
+					},
+					{
+						displayName: 'Keep Revision Forever',
+						name: 'keepRevisionForever',
+						type: 'boolean',
+						default: false,
+						description: `Whether to set the 'keepForever' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.`,
+					},
+					{
+						displayName: 'OCR Language',
+						name: 'ocrLanguage',
+						type: 'string',
+						default: '',
+						description: `A language hint for OCR processing during image import (ISO 639-1 code).`,
+					},
+					{
+						displayName: 'Parent ID',
+						name: 'parentId',
+						type: 'string',
+						default: '',
+						description: `The ID of the parent to set.`,
+					},
+					{
+						displayName: 'Use Content As Indexable Text',
+						name: 'useContentAsIndexableText',
+						type: 'boolean',
+						default: false,
+						description: `Whether to use the uploaded content as indexable text.`,
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						options: [
+							{
+								name: '*',
+								value: '*',
+								description: 'All fields.',
+							},
+							{
+								name: 'explicitlyTrashed',
+								value: 'explicitlyTrashed',
+							},
+							{
+								name: 'exportLinks',
+								value: 'exportLinks',
+							},
+							{
+								name: 'iconLink',
+								value: 'iconLink',
+							},
+							{
+								name: 'hasThumbnail',
+								value: 'hasThumbnail',
+							},
+							{
+								name: 'id',
+								value: 'id',
+							},
+							{
+								name: 'kind',
+								value: 'kind',
+							},
+							{
+								name: 'name',
+								value: 'name',
+							},
+							{
+								name: 'mimeType',
+								value: 'mimeType',
+							},
+							{
+								name: 'permissions',
+								value: 'permissions',
+							},
+							{
+								name: 'shared',
+								value: 'shared',
+							},
+							{
+								name: 'spaces',
+								value: 'spaces',
+							},
+							{
+								name: 'starred',
+								value: 'starred',
+							},
+							{
+								name: 'thumbnailLink',
+								value: 'thumbnailLink',
+							},
+							{
+								name: 'trashed',
+								value: 'trashed',
+							},
+							{
+								name: 'version',
+								value: 'version',
+							},
+							{
+								name: 'webViewLink',
+								value: 'webViewLink',
+							},
+						],
+						required: true,
+						default: [],
+						description: 'The fields to return.',
+					},
+				],
+			},
 			// ----------------------------------
 			//         file:upload
 			// ----------------------------------
@@ -732,6 +1050,24 @@ export class GoogleDrive implements INodeType {
 				},
 				placeholder: 'invoice_1.pdf',
 				description: 'The name the file should be saved as.',
+			},
+			// ----------------------------------
+			{
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'upload',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'By default the response only contain the ID of the file. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Parents',
@@ -787,9 +1123,16 @@ export class GoogleDrive implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				displayOptions: {
-					hide: {
-						resource: [
-							'drive',
+					show: {
+						'/operation': [
+							'copy',
+							'list',
+							'share',
+							'create',
+						],
+						'/resource': [
+							'file',
+							'folder',
 						],
 					},
 				},
@@ -828,8 +1171,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: `Set to true to opt in to API behavior that aims for all items to have exactly one parent<br>
-						This parameter only takes effect if the item is not in a shared drive`,
+						description: `Set to true to opt in to API behavior that aims for all items to have exactly one parent. This parameter only takes effect if the item is not in a shared drive.`,
 					},
 					{
 						displayName: 'Fields',
@@ -838,48 +1180,8 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'share',
-								],
-								'/resource': [
-									'file',
-									'folder',
-								],
-							},
-						},
-						options: [
-							{
-								name: '*',
-								value: '*',
-								description: 'All fields.',
-							},
-							{
-								name: 'Email Address',
-								value: 'emailAddress',
-							},
-							{
-								name: 'Display Name',
-								value: 'displayName',
-							},
-							{
-								name: 'Deleted',
-								value: 'deleted',
-							},
-						],
-						default: [],
-						description: 'The fields to return.',
-					},
-					{
-						displayName: 'Fields',
-						name: 'fields',
-						type: 'multiOptions',
-						displayOptions: {
-							hide: {
-								'/operation': [
-									'share',
-								],
-								'/resource': [
-									'file',
-									'folder',
+									'list',
+									'copy',
 								],
 							},
 						},
@@ -974,8 +1276,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: '',
-						description: `This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.<br>
-						When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed`,
+						description: `<p>This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.</p><p>When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed.</p>`,
 					},
 					{
 						displayName: 'Send Notification Email',
@@ -1440,8 +1741,8 @@ export class GoogleDrive implements INodeType {
 								name: 'adminManagedRestrictions',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,<br/>
-								should be disabled for readers and commenters. When this restriction is set to true, it will<br/>
+								description: `Whether the options to copy, print, or download files inside this shared drive,
+								should be disabled for readers and commenters. When this restriction is set to true, it will
 								override the similarly named field to true for any file inside this shared drive.`,
 							},
 							{
@@ -1449,8 +1750,8 @@ export class GoogleDrive implements INodeType {
 								name: 'copyRequiresWriterPermission',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,<br/>
-								should be disabled for readers and commenters. When this restriction is set to true, it will<br/>
+								description: `Whether the options to copy, print, or download files inside this shared drive,
+								should be disabled for readers and commenters. When this restriction is set to true, it will
 								override the similarly named field to true for any file inside this shared drive.`,
 							},
 							{
@@ -1458,8 +1759,8 @@ export class GoogleDrive implements INodeType {
 								name: 'domainUsersOnly',
 								type: 'boolean',
 								default: false,
-								description: `Whether access to this shared drive and items inside this shared drive<br/>
-								is restricted to users of the domain to which this shared drive belongs. This restriction<br/>
+								description: `Whether access to this shared drive and items inside this shared drive
+								is restricted to users of the domain to which this shared drive belongs. This restriction
 								may be overridden by other sharing policies controlled outside of this shared drive.`,
 							},
 							{
@@ -1607,7 +1908,7 @@ export class GoogleDrive implements INodeType {
 						name: 'q',
 						type: 'string',
 						default: '',
-						description: 'Query string for searching shared drives. See the <a href="https://developers.google.com/drive/api/v3/search-shareddrives" target="_blank">"Search for shared drives"</a> guide for supported syntax.',
+						description: 'Query string for searching shared drives. See the <a href="https://developers.google.com/drive/api/v3/search-shareddrives">"Search for shared drives"</a> guide for supported syntax.',
 					},
 					{
 						displayName: 'Use Domain Admin Access',
@@ -1682,8 +1983,8 @@ export class GoogleDrive implements INodeType {
 								name: 'adminManagedRestrictions',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,<br/>
-								should be disabled for readers and commenters. When this restriction is set to true, it will<br/>
+								description: `Whether the options to copy, print, or download files inside this shared drive,
+								should be disabled for readers and commenters. When this restriction is set to true, it will
 								override the similarly named field to true for any file inside this shared drive.`,
 							},
 							{
@@ -1691,8 +1992,8 @@ export class GoogleDrive implements INodeType {
 								name: 'copyRequiresWriterPermission',
 								type: 'boolean',
 								default: false,
-								description: `Whether the options to copy, print, or download files inside this shared drive,<br/>
-								should be disabled for readers and commenters. When this restriction is set to true, it will<br/>
+								description: `Whether the options to copy, print, or download files inside this shared drive,
+								should be disabled for readers and commenters. When this restriction is set to true, it will
 								override the similarly named field to true for any file inside this shared drive.`,
 							},
 							{
@@ -1700,8 +2001,8 @@ export class GoogleDrive implements INodeType {
 								name: 'domainUsersOnly',
 								type: 'boolean',
 								default: false,
-								description: `Whether access to this shared drive and items inside this shared drive<br/>
-								is restricted to users of the domain to which this shared drive belongs. This restriction<br/>
+								description: `Whether access to this shared drive and items inside this shared drive
+								is restricted to users of the domain to which this shared drive belongs. This restriction
 								may be overridden by other sharing policies controlled outside of this shared drive.`,
 							},
 							{
@@ -1710,6 +2011,91 @@ export class GoogleDrive implements INodeType {
 								type: 'boolean',
 								default: false,
 								description: `Whether access to items inside this shared drive is restricted to its members.`,
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'upload',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'APP Properties',
+						name: 'appPropertiesUi',
+						placeholder: 'Add Property',
+						type: 'fixedCollection',
+						default: '',
+						typeOptions: {
+							multipleValues: true,
+						},
+						description: 'A collection of arbitrary key-value pairs which are private to the requesting app',
+						options: [
+							{
+								name: 'appPropertyValues',
+								displayName: 'APP Property',
+								values: [
+									{
+										displayName: 'Key',
+										name: 'key',
+										type: 'string',
+										default: '',
+										description: 'Name of the key to add.',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value to set for the key.',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Properties',
+						name: 'propertiesUi',
+						placeholder: 'Add Property',
+						type: 'fixedCollection',
+						default: '',
+						typeOptions: {
+							multipleValues: true,
+						},
+						description: 'A collection of arbitrary key-value pairs which are visible to all apps.',
+						options: [
+							{
+								name: 'propertyValues',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Key',
+										name: 'key',
+										type: 'string',
+										default: '',
+										description: 'Name of the key to add.',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value to set for the key.',
+									},
+								],
 							},
 						],
 					},
@@ -1727,394 +2113,475 @@ export class GoogleDrive implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-			const options = this.getNodeParameter('options', i, {}) as IDataObject;
+			try {
+				const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-			let queryFields = 'id, name';
-			if (options && options.fields) {
-				const fields = options.fields as string[];
-				if (fields.includes('*')) {
-					queryFields = '*';
-				} else {
-					queryFields = fields.join(', ');
-				}
-			}
-
-			if (resource === 'drive') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					const name = this.getNodeParameter('name', i) as string;
-
-					const body: IDataObject = {
-						name,
-					};
-
-					Object.assign(body, options);
-
-					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/drives`, body, { requestId: uuid() });
-
-					returnData.push(response as IDataObject);
-				}
-				if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					const driveId = this.getNodeParameter('driveId', i) as string;
-
-					await googleApiRequest.call(this, 'DELETE', `/drive/v3/drives/${driveId}`);
-
-					returnData.push({ success: true });
-				}
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					const driveId = this.getNodeParameter('driveId', i) as string;
-
-					const qs: IDataObject = {};
-
-					Object.assign(qs, options);
-
-					const response = await googleApiRequest.call(this, 'GET', `/drive/v3/drives/${driveId}`, {}, qs);
-
-					returnData.push(response as IDataObject);
-				}
-				if (operation === 'list') {
-					// ----------------------------------
-					//         list
-					// ----------------------------------
-
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					const qs: IDataObject = {};
-
-					let response: IDataObject[] = [];
-
-					Object.assign(qs, options);
-
-					if (returnAll === true) {
-						response = await googleApiRequestAllItems.call(this, 'drives', 'GET', `/drive/v3/drives`, {}, qs);
+				let queryFields = 'id, name';
+				if (options && options.fields) {
+					const fields = options.fields as string[];
+					if (fields.includes('*')) {
+						queryFields = '*';
 					} else {
-						qs.pageSize = this.getNodeParameter('limit', i) as number;
-						const data = await googleApiRequest.call(this, 'GET', `/drive/v3/drives`, {}, qs);
-						response = data.drives as IDataObject[];
+						queryFields = fields.join(', ');
 					}
-					returnData.push.apply(returnData, response);
-				}
-				if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-
-					const driveId = this.getNodeParameter('driveId', i) as string;
-
-					const body: IDataObject = {};
-
-					Object.assign(body, options);
-
-					const response = await googleApiRequest.call(this, 'PATCH', `/drive/v3/drives/${driveId}`, body);
-
-					returnData.push(response as IDataObject);
 				}
 
-			} else if (resource === 'file') {
-				if (operation === 'copy') {
-					// ----------------------------------
-					//         copy
-					// ----------------------------------
+				if (resource === 'drive') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
 
-					const fileId = this.getNodeParameter('fileId', i) as string;
+						const name = this.getNodeParameter('name', i) as string;
 
-					const body: IDataObject = {
-						fields: queryFields,
-					};
+						const body: IDataObject = {
+							name,
+						};
 
-					const optionProperties = ['name', 'parents'];
-					for (const propertyName of optionProperties) {
-						if (options[propertyName] !== undefined) {
-							body[propertyName] = options[propertyName];
-						}
+						Object.assign(body, options);
+
+						const response = await googleApiRequest.call(this, 'POST', `/drive/v3/drives`, body, { requestId: uuid() });
+
+						returnData.push(response as IDataObject);
 					}
+					if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
 
-					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body);
+						const driveId = this.getNodeParameter('driveId', i) as string;
 
-					returnData.push(response as IDataObject);
+						await googleApiRequest.call(this, 'DELETE', `/drive/v3/drives/${driveId}`);
 
-				} else if (operation === 'download') {
-					// ----------------------------------
-					//         download
-					// ----------------------------------
-
-					const fileId = this.getNodeParameter('fileId', i) as string;
-
-					const requestOptions = {
-						resolveWithFullResponse: true,
-						encoding: null,
-						json: false,
-					};
-
-					const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { alt: 'media' }, undefined, requestOptions);
-
-					let mimeType: string | undefined;
-					if (response.headers['content-type']) {
-						mimeType = response.headers['content-type'];
+						returnData.push({ success: true });
 					}
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
 
-					const newItem: INodeExecutionData = {
-						json: items[i].json,
-						binary: {},
-					};
+						const driveId = this.getNodeParameter('driveId', i) as string;
 
-					if (items[i].binary !== undefined) {
-						// Create a shallow copy of the binary data so that the old
-						// data references which do not get changed still stay behind
-						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
+						const qs: IDataObject = {};
+
+						Object.assign(qs, options);
+
+						const response = await googleApiRequest.call(this, 'GET', `/drive/v3/drives/${driveId}`, {}, qs);
+
+						returnData.push(response as IDataObject);
 					}
+					if (operation === 'list') {
+						// ----------------------------------
+						//         list
+						// ----------------------------------
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					items[i] = newItem;
+						const qs: IDataObject = {};
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						let response: IDataObject[] = [];
 
-					const data = Buffer.from(response.body as string);
+						Object.assign(qs, options);
 
-					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, undefined, mimeType);
-
-				} else if (operation === 'list') {
-					// ----------------------------------
-					//         list
-					// ----------------------------------
-
-					let querySpaces = '';
-					if (options.spaces) {
-						const spaces = options.spaces as string[];
-						if (spaces.includes('*')) {
-							querySpaces = 'appDataFolder, drive, photos';
+						if (returnAll === true) {
+							response = await googleApiRequestAllItems.call(this, 'drives', 'GET', `/drive/v3/drives`, {}, qs);
 						} else {
-							querySpaces = spaces.join(', ');
-						}
-					}
-
-					let queryCorpora = '';
-					if (options.corpora) {
-						queryCorpora = options.corpora as string;
-					}
-
-					let driveId: string | undefined;
-					driveId = options.driveId as string;
-					if (driveId === '') {
-						driveId = undefined;
-					}
-
-					let queryString = '';
-					const useQueryString = this.getNodeParameter('useQueryString', i) as boolean;
-					if (useQueryString === true) {
-						// Use the user defined query string
-						queryString = this.getNodeParameter('queryString', i) as string;
-					} else {
-						// Build query string out of parameters set by user
-						const queryFilters = this.getNodeParameter('queryFilters', i) as IDataObject;
-
-						const queryFilterFields: string[] = [];
-						if (queryFilters.name) {
-							(queryFilters.name as IDataObject[]).forEach(nameFilter => {
-								let operation = nameFilter.operation;
-								if (operation === 'is') {
-									operation = '=';
-								} else if (operation === 'isNot') {
-									operation = '!=';
-								}
-								queryFilterFields.push(`name ${operation} '${nameFilter.value}'`);
-							});
-
-							queryString += queryFilterFields.join(' or ');
+							qs.pageSize = this.getNodeParameter('limit', i) as number;
+							const data = await googleApiRequest.call(this, 'GET', `/drive/v3/drives`, {}, qs);
+							response = data.drives as IDataObject[];
 						}
 
-						queryFilterFields.length = 0;
-						if (queryFilters.mimeType) {
-							(queryFilters.mimeType as IDataObject[]).forEach(mimeTypeFilter => {
-								let mimeType = mimeTypeFilter.mimeType;
-								if (mimeTypeFilter.mimeType === 'custom') {
-									mimeType = mimeTypeFilter.customMimeType;
-								}
-								queryFilterFields.push(`mimeType = '${mimeType}'`);
-							});
+						returnData.push.apply(returnData, response);
+					}
+					if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
 
-							if (queryFilterFields.length) {
-								if (queryString !== '') {
-									queryString += ' and ';
-								}
+						const driveId = this.getNodeParameter('driveId', i) as string;
+
+						const body: IDataObject = {};
+
+						Object.assign(body, options);
+
+						const response = await googleApiRequest.call(this, 'PATCH', `/drive/v3/drives/${driveId}`, body);
+
+						returnData.push(response as IDataObject);
+					}
+
+				}
+				if (resource === 'file') {
+					if (operation === 'copy') {
+						// ----------------------------------
+						//         copy
+						// ----------------------------------
+
+						const fileId = this.getNodeParameter('fileId', i) as string;
+
+						const body: IDataObject = {
+							fields: queryFields,
+						};
+
+						const optionProperties = ['name', 'parents'];
+						for (const propertyName of optionProperties) {
+							if (options[propertyName] !== undefined) {
+								body[propertyName] = options[propertyName];
+							}
+						}
+
+						const qs = {
+							supportsAllDrives: true,
+						};
+
+						const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body, qs);
+
+						returnData.push(response as IDataObject);
+
+					} else if (operation === 'download') {
+						// ----------------------------------
+						//         download
+						// ----------------------------------
+
+						const fileId = this.getNodeParameter('fileId', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						const requestOptions = {
+							resolveWithFullResponse: true,
+							encoding: null,
+							json: false,
+						};
+
+						const file = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { fields: 'mimeType' });
+						let response;
+
+						if (file.mimeType.includes('vnd.google-apps')) {
+							const parameterKey = 'options.googleFileConversion.conversion';
+							const type = file.mimeType.split('.')[2];
+							let mime;
+							if (type === 'document') {
+								mime = this.getNodeParameter(`${parameterKey}.docsToFormat`, i, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') as string;
+							} else if (type === 'presentation') {
+								mime = this.getNodeParameter(`${parameterKey}.slidesToFormat`, i, 'application/vnd.openxmlformats-officedocument.presentationml.presentation') as string;
+							} else if (type === 'spreadsheet') {
+								mime = this.getNodeParameter(`${parameterKey}.sheetsToFormat`, i, 'application/x-vnd.oasis.opendocument.spreadsheet') as string;
+							} else {
+								mime = this.getNodeParameter(`${parameterKey}.drawingsToFormat`, i, 'image/jpeg') as string;
+							}
+							response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}/export`, {}, { mimeType: mime }, undefined, requestOptions);
+						} else {
+							response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { alt: 'media' }, undefined, requestOptions);
+						}
+
+						let mimeType: string | undefined;
+						let fileName: string | undefined = undefined;
+						if (response.headers['content-type']) {
+							mimeType = response.headers['content-type'];
+						}
+
+						if (options.fileName) {
+							fileName = options.fileName as string;
+						}
+
+						const newItem: INodeExecutionData = {
+							json: items[i].json,
+							binary: {},
+						};
+
+						if (items[i].binary !== undefined) {
+							// Create a shallow copy of the binary data so that the old
+							// data references which do not get changed still stay behind
+							// but the incoming data does not get changed.
+							Object.assign(newItem.binary, items[i].binary);
+						}
+
+						items[i] = newItem;
+
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+						const data = Buffer.from(response.body as string);
+
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName, mimeType);
+
+					} else if (operation === 'list') {
+						// ----------------------------------
+						//         list
+						// ----------------------------------
+
+						let querySpaces = '';
+						if (options.spaces) {
+							const spaces = options.spaces as string[];
+							if (spaces.includes('*')) {
+								querySpaces = 'appDataFolder, drive, photos';
+							} else {
+								querySpaces = spaces.join(', ');
+							}
+						}
+
+						let queryCorpora = '';
+						if (options.corpora) {
+							queryCorpora = options.corpora as string;
+						}
+
+						let driveId: string | undefined;
+						driveId = options.driveId as string;
+						if (driveId === '') {
+							driveId = undefined;
+						}
+
+						let queryString = '';
+						const useQueryString = this.getNodeParameter('useQueryString', i) as boolean;
+						if (useQueryString === true) {
+							// Use the user defined query string
+							queryString = this.getNodeParameter('queryString', i) as string;
+						} else {
+							// Build query string out of parameters set by user
+							const queryFilters = this.getNodeParameter('queryFilters', i) as IDataObject;
+
+							const queryFilterFields: string[] = [];
+							if (queryFilters.name) {
+								(queryFilters.name as IDataObject[]).forEach(nameFilter => {
+									let operation = nameFilter.operation;
+									if (operation === 'is') {
+										operation = '=';
+									} else if (operation === 'isNot') {
+										operation = '!=';
+									}
+									queryFilterFields.push(`name ${operation} '${nameFilter.value}'`);
+								});
 
 								queryString += queryFilterFields.join(' or ');
 							}
+
+							queryFilterFields.length = 0;
+							if (queryFilters.mimeType) {
+								(queryFilters.mimeType as IDataObject[]).forEach(mimeTypeFilter => {
+									let mimeType = mimeTypeFilter.mimeType;
+									if (mimeTypeFilter.mimeType === 'custom') {
+										mimeType = mimeTypeFilter.customMimeType;
+									}
+									queryFilterFields.push(`mimeType = '${mimeType}'`);
+								});
+
+								if (queryFilterFields.length) {
+									if (queryString !== '') {
+										queryString += ' and ';
+									}
+
+									queryString += queryFilterFields.join(' or ');
+								}
+							}
 						}
+
+						const pageSize = this.getNodeParameter('limit', i) as number;
+
+						const qs = {
+							pageSize,
+							orderBy: 'modifiedTime',
+							fields: `nextPageToken, files(${queryFields})`,
+							spaces: querySpaces,
+							q: queryString,
+							includeItemsFromAllDrives: (queryCorpora !== '' || driveId !== ''),
+							supportsAllDrives: (queryCorpora !== '' || driveId !== ''),
+						};
+
+						const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files`, {}, qs);
+
+						const files = response!.files;
+
+						return [this.helpers.returnJsonArray(files as IDataObject[])];
+
+					} else if (operation === 'upload') {
+						// ----------------------------------
+						//         upload
+						// ----------------------------------
+						const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
+
+						let mimeType = 'text/plain';
+						let body;
+						let originalFilename: string | undefined;
+						if (this.getNodeParameter('binaryData', i) === true) {
+							// Is binary file to upload
+							const item = items[i];
+
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+							if (item.binary[propertyNameUpload] === undefined) {
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+							}
+
+							if (item.binary[propertyNameUpload].mimeType) {
+								mimeType = item.binary[propertyNameUpload].mimeType;
+							}
+
+							if (item.binary[propertyNameUpload].fileName) {
+								originalFilename = item.binary[propertyNameUpload].fileName;
+							}
+
+							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+						} else {
+							// Is text file
+							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
+						}
+
+						const name = this.getNodeParameter('name', i) as string;
+						const parents = this.getNodeParameter('parents', i) as string[];
+
+						let qs: IDataObject = {
+							fields: queryFields,
+							uploadType: 'media',
+						};
+
+						const requestOptions = {
+							headers: {
+								'Content-Type': mimeType,
+								'Content-Length': body.byteLength,
+							},
+							encoding: null,
+							json: false,
+						};
+
+						let response = await googleApiRequest.call(this, 'POST', `/upload/drive/v3/files`, body, qs, undefined, requestOptions);
+
+						body = {
+							mimeType,
+							name,
+							originalFilename,
+						};
+
+						const properties = this.getNodeParameter('options.propertiesUi.propertyValues', i, []) as IDataObject[];
+
+						if (properties.length) {
+							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) });
+						}
+
+						const appProperties = this.getNodeParameter('options.appPropertiesUi.appPropertyValues', i, []) as IDataObject[];
+
+						if (properties.length) {
+							Object.assign(body, { appProperties: appProperties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) });
+						}
+
+						qs = {
+							addParents: parents.join(','),
+							// When set to true shared drives can be used.
+							supportsAllDrives: true,
+						};
+
+						response = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${JSON.parse(response).id}`, body, qs);
+
+						if (resolveData === true) {
+							response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${response.id}`, {}, { fields: '*' });
+						}
+
+						returnData.push(response as IDataObject);
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         file:update
+						// ----------------------------------
+
+						const id = this.getNodeParameter('fileId', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+
+						const qs: IDataObject = {
+							supportsAllDrives: true,
+						};
+
+						Object.assign(qs, options);
+
+						qs.fields = queryFields;
+
+						const body: IDataObject = {};
+
+						if (updateFields.fileName) {
+							body.name = updateFields.fileName;
+						}
+
+						if (updateFields.parentId && updateFields.parentId !== '') {
+							qs.addParents = updateFields.parentId;
+						}
+
+						const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, body, qs);
+						returnData.push(responseData as IDataObject);
 					}
 
-					const pageSize = this.getNodeParameter('limit', i) as number;
+				}
+				if (resource === 'folder') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         folder:create
+						// ----------------------------------
 
-					const qs = {
-						pageSize,
-						orderBy: 'modifiedTime',
-						fields: `nextPageToken, files(${queryFields})`,
-						spaces: querySpaces,
-						q: queryString,
-						includeItemsFromAllDrives: (queryCorpora !== '' || driveId !== ''),
-						supportsAllDrives: (queryCorpora !== '' || driveId !== ''),
-					};
+						const name = this.getNodeParameter('name', i) as string;
 
-					const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files`, {}, qs);
+						const body = {
+							name,
+							mimeType: 'application/vnd.google-apps.folder',
+							parents: options.parents || [],
+						};
 
-					const files = response!.files;
+						const qs = {
+							fields: queryFields,
+							supportsAllDrives: true,
+						};
 
-					return [this.helpers.returnJsonArray(files as IDataObject[])];
+						const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
 
-				} else if (operation === 'upload') {
-					// ----------------------------------
-					//         upload
-					// ----------------------------------
-					const options = this.getNodeParameter('options', i) as IDataObject;
+						returnData.push(response as IDataObject);
+					}
+				}
+				if (['file', 'folder'].includes(resource)) {
+					if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
 
-					let mimeType = 'text/plain';
-					let body;
-					let originalFilename: string | undefined;
-					if (this.getNodeParameter('binaryData', i) === true) {
-						// Is binary file to upload
-						const item = items[i];
+						const fileId = this.getNodeParameter('fileId', i) as string;
 
-						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+						const response = await googleApiRequest.call(this, 'DELETE', `/drive/v3/files/${fileId}`);
+
+						// If we are still here it did succeed
+						returnData.push({
+							fileId,
+							success: true,
+						});
+					}
+					if (operation === 'share') {
+
+						const fileId = this.getNodeParameter('fileId', i) as string;
+
+						const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
+
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						const body: IDataObject = {};
+
+						const qs: IDataObject = {};
+
+						if (permissions.permissionsValues) {
+							Object.assign(body, permissions.permissionsValues);
 						}
 
-						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+						Object.assign(qs, options);
 
-						if (item.binary[propertyNameUpload] === undefined) {
-							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
-						}
+						const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/permissions`, body, qs);
 
-						if (item.binary[propertyNameUpload].mimeType) {
-							mimeType = item.binary[propertyNameUpload].mimeType;
-						}
-
-						if (item.binary[propertyNameUpload].fileName) {
-							originalFilename = item.binary[propertyNameUpload].fileName;
-						}
-
-						body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
+						returnData.push(response as IDataObject);
+					}
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					if (resource === 'file' && operation === 'download') {
+						items[i].json = { error: error.message };
 					} else {
-						// Is text file
-						body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
+						returnData.push({ error: error.message });
 					}
-
-					const name = this.getNodeParameter('name', i) as string;
-					const parents = this.getNodeParameter('parents', i) as string[];
-
-					let qs: IDataObject = {
-						fields: queryFields,
-						uploadType: 'media',
-					};
-
-					const requestOptions = {
-						headers: {
-							'Content-Type': mimeType,
-							'Content-Length': body.byteLength,
-						},
-						encoding: null,
-						json: false,
-					};
-
-					let response = await googleApiRequest.call(this, 'POST', `/upload/drive/v3/files`, body, qs, undefined, requestOptions);
-
-					body = {
-						mimeType,
-						name,
-						originalFilename,
-					};
-
-					qs = {
-						addParents: parents.join(','),
-						// When set to true shared drives can be used.
-						supportsAllDrives: true,
-					};
-
-					response = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${JSON.parse(response).id}`, body, qs);
-
-					returnData.push(response as IDataObject);
+					continue;
 				}
-
-			} else if (resource === 'folder') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         folder:create
-					// ----------------------------------
-
-					const name = this.getNodeParameter('name', i) as string;
-
-					const body = {
-						name,
-						mimeType: 'application/vnd.google-apps.folder',
-						parents: options.parents || [],
-					};
-
-					const qs = {
-						fields: queryFields,
-					};
-
-					const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
-
-					returnData.push(response as IDataObject);
-				}
-			}
-			if (['file', 'folder'].includes(resource)) {
-				if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					const fileId = this.getNodeParameter('fileId', i) as string;
-
-					const response = await googleApiRequest.call(this, 'DELETE', `/drive/v3/files/${fileId}`);
-
-					// If we are still here it did succeed
-					returnData.push({
-						fileId,
-						success: true,
-					});
-				}
-				if (operation === 'share') {
-
-					const fileId = this.getNodeParameter('fileId', i) as string;
-
-					const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
-
-					const options = this.getNodeParameter('options', i) as IDataObject;
-
-					const body: IDataObject = {};
-
-					const qs: IDataObject = {};
-
-					if (permissions.permissionsValues) {
-						Object.assign(body, permissions.permissionsValues);
-					}
-
-					Object.assign(qs, options);
-
-					if (qs.fields) {
-						qs.fields = (qs.fields as string[]).join(',');
-					}
-
-					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/permissions`, body, qs);
-
-					returnData.push(response as IDataObject);
-				}
-			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw error;
 			}
 		}
-
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);

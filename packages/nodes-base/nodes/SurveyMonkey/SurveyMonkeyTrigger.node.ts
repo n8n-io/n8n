@@ -11,6 +11,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -35,13 +37,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SurveyMonkey Trigger',
 		name: 'surveyMonkeyTrigger',
-		icon: 'file:surveyMonkey.png',
+		icon: 'file:surveyMonkey.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Survey Monkey events occure.',
+		description: 'Starts the workflow when Survey Monkey events occur',
 		defaults: {
 			name: 'SurveyMonkey Trigger',
-			color: '#53b675',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -323,7 +324,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default the webhook-data only contain the IDs. If this option gets activated it<br />will resolve the data automatically.',
+				description: 'By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Only Answers',
@@ -471,7 +472,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 					try {
 						await surveyMonkeyApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 
@@ -495,9 +496,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 		const webhookName = this.getWebhookName();
 
 		if (authenticationMethod === 'accessToken') {
-			credentials = this.getCredentials('surveyMonkeyApi') as IDataObject;
+			credentials = await this.getCredentials('surveyMonkeyApi') as IDataObject;
 		} else {
-			credentials = this.getCredentials('surveyMonkeyOAuth2Api') as IDataObject;
+			credentials = await this.getCredentials('surveyMonkeyOAuth2Api') as IDataObject;
 		}
 
 		if (webhookName === 'setup') {
@@ -737,8 +738,8 @@ export class SurveyMonkeyTrigger implements INodeType {
 				});
 			});
 
-			req.on('error', (err) => {
-				throw new Error(err.message);
+			req.on('error', (error) => {
+				throw new NodeOperationError(this.getNode(), error);
 			});
 		});
 	}

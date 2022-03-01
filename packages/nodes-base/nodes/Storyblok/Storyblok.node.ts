@@ -40,7 +40,6 @@ export class Storyblok implements INodeType {
 		description: 'Consume Storyblok API',
 		defaults: {
 			name: 'Storyblok',
-			color: '#09b3af',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -187,146 +186,154 @@ export class Storyblok implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-			if (source === 'contentApi') {
-				if (resource === 'story') {
-					if (operation === 'get') {
-						const identifier = this.getNodeParameter('identifier', i) as string;
+			try {
+				if (source === 'contentApi') {
+					if (resource === 'story') {
+						if (operation === 'get') {
+							const identifier = this.getNodeParameter('identifier', i) as string;
 
-						responseData = await storyblokApiRequest.call(this, 'GET', `/v1/cdn/stories/${identifier}`);
-						responseData = responseData.story;
-					}
-					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						Object.assign(qs, filters);
+							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/cdn/stories/${identifier}`);
+							responseData = responseData.story;
+						}
+						if (operation === 'getAll') {
+							const filters = this.getNodeParameter('filters', i) as string;
+							const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+							Object.assign(qs, filters);
 
-						if (returnAll) {
-							responseData = await storyblokApiRequestAllItems.call(this, 'stories', 'GET', '/v1/cdn/stories', {}, qs);
-						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							qs.per_page = limit;
-							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/cdn/stories`, {}, qs);
-							responseData = responseData.stories;
+							if (returnAll) {
+								responseData = await storyblokApiRequestAllItems.call(this, 'stories', 'GET', '/v1/cdn/stories', {}, qs);
+							} else {
+								const limit = this.getNodeParameter('limit', i) as number;
+								qs.per_page = limit;
+								responseData = await storyblokApiRequest.call(this, 'GET', `/v1/cdn/stories`, {}, qs);
+								responseData = responseData.stories;
+							}
 						}
 					}
 				}
-			}
-			if (source === 'managementApi') {
-				if (resource === 'story') {
-					// if (operation === 'create') {
-					// 	const space = this.getNodeParameter('space', i) as string;
-					// 	const name = this.getNodeParameter('name', i) as string;
-					// 	const slug = this.getNodeParameter('slug', i) as string;
-					// 	const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
-					// 	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					// 	const body: IDataObject = {
-					// 		name,
-					// 		slug,
-					// 	};
+				if (source === 'managementApi') {
+					if (resource === 'story') {
+						// if (operation === 'create') {
+						// 	const space = this.getNodeParameter('space', i) as string;
+						// 	const name = this.getNodeParameter('name', i) as string;
+						// 	const slug = this.getNodeParameter('slug', i) as string;
+						// 	const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						// 	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						// 	const body: IDataObject = {
+						// 		name,
+						// 		slug,
+						// 	};
 
-					// 	if (jsonParameters) {
-					// 		if (additionalFields.contentJson) {
-					// 			const json = validateJSON(additionalFields.contentJson as string);
-					// 			body.content = json;
-					// 		}
-					// 	} else {
-					// 		if (additionalFields.contentUi) {
-					// 			const contentValue = (additionalFields.contentUi as IDataObject).contentValue as IDataObject;
-					// 			const content: { component: string, body: IDataObject[] } = { component: '', body: [] };
-					// 			if (contentValue) {
-					// 				content.component = contentValue.component as string;
-					// 				const elementValues = (contentValue.elementUi as IDataObject).elementValues as IDataObject[];
-					// 				for (const elementValue of elementValues) {
-					// 					const body: IDataObject = {};
-					// 					body._uid = uuidv4();
-					// 					body.component = elementValue.component;
-					// 					if (elementValue.dataUi) {
-					// 						const dataValues = (elementValue.dataUi as IDataObject).dataValues as IDataObject[];
-					// 						for (const dataValue of dataValues) {
-					// 							body[dataValue.key as string] = dataValue.value;
-					// 						}
-					// 					}
-					// 					content.body.push(body);
-					// 				}
-					// 			}
-					// 			body.content = content;
-					// 		}
-					// 	}
+						// 	if (jsonParameters) {
+						// 		if (additionalFields.contentJson) {
+						// 			const json = validateJSON(additionalFields.contentJson as string);
+						// 			body.content = json;
+						// 		}
+						// 	} else {
+						// 		if (additionalFields.contentUi) {
+						// 			const contentValue = (additionalFields.contentUi as IDataObject).contentValue as IDataObject;
+						// 			const content: { component: string, body: IDataObject[] } = { component: '', body: [] };
+						// 			if (contentValue) {
+						// 				content.component = contentValue.component as string;
+						// 				const elementValues = (contentValue.elementUi as IDataObject).elementValues as IDataObject[];
+						// 				for (const elementValue of elementValues) {
+						// 					const body: IDataObject = {};
+						// 					body._uid = uuidv4();
+						// 					body.component = elementValue.component;
+						// 					if (elementValue.dataUi) {
+						// 						const dataValues = (elementValue.dataUi as IDataObject).dataValues as IDataObject[];
+						// 						for (const dataValue of dataValues) {
+						// 							body[dataValue.key as string] = dataValue.value;
+						// 						}
+						// 					}
+						// 					content.body.push(body);
+						// 				}
+						// 			}
+						// 			body.content = content;
+						// 		}
+						// 	}
 
-					// 	if (additionalFields.parentId) {
-					// 		body.parent_id = additionalFields.parentId as string;
-					// 	}
-					// 	if (additionalFields.path) {
-					// 		body.path = additionalFields.path as string;
-					// 	}
-					// 	if (additionalFields.isStartpage) {
-					// 		body.is_startpage = additionalFields.isStartpage as string;
-					// 	}
-					// 	if (additionalFields.firstPublishedAt) {
-					// 		body.first_published_at = additionalFields.firstPublishedAt as string;
-					// 	}
+						// 	if (additionalFields.parentId) {
+						// 		body.parent_id = additionalFields.parentId as string;
+						// 	}
+						// 	if (additionalFields.path) {
+						// 		body.path = additionalFields.path as string;
+						// 	}
+						// 	if (additionalFields.isStartpage) {
+						// 		body.is_startpage = additionalFields.isStartpage as string;
+						// 	}
+						// 	if (additionalFields.firstPublishedAt) {
+						// 		body.first_published_at = additionalFields.firstPublishedAt as string;
+						// 	}
 
-					// 	responseData = await storyblokApiRequest.call(this, 'POST', `/v1/spaces/${space}/stories`, { story: body });
-					// 	responseData = responseData.story;
-					// }
-					if (operation === 'delete') {
-						const space = this.getNodeParameter('space', i) as string;
-						const storyId = this.getNodeParameter('storyId', i) as string;
+						// 	responseData = await storyblokApiRequest.call(this, 'POST', `/v1/spaces/${space}/stories`, { story: body });
+						// 	responseData = responseData.story;
+						// }
+						if (operation === 'delete') {
+							const space = this.getNodeParameter('space', i) as string;
+							const storyId = this.getNodeParameter('storyId', i) as string;
 
-						responseData = await storyblokApiRequest.call(this, 'DELETE', `/v1/spaces/${space}/stories/${storyId}`);
-						responseData = responseData.story;
-					}
-					if (operation === 'get') {
-						const space = this.getNodeParameter('space', i) as string;
-						const storyId = this.getNodeParameter('storyId', i) as string;
-
-						responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}`);
-						responseData = responseData.story;
-					}
-					if (operation === 'getAll') {
-						const space = this.getNodeParameter('space', i) as string;
-						const filters = this.getNodeParameter('filters', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						Object.assign(qs, filters);
-
-						if (returnAll) {
-							responseData = await storyblokApiRequestAllItems.call(this, 'stories', 'GET', `/v1/spaces/${space}/stories`, {}, qs);
-						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							qs.per_page = limit;
-							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories`, {}, qs);
-							responseData = responseData.stories;
+							responseData = await storyblokApiRequest.call(this, 'DELETE', `/v1/spaces/${space}/stories/${storyId}`);
+							responseData = responseData.story;
 						}
-					}
-					if (operation === 'publish') {
-						const space = this.getNodeParameter('space', i) as string;
-						const storyId = this.getNodeParameter('storyId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const query: IDataObject = {};
-						// Not sure if these two options work
-						if (options.releaseId) {
-							query.release_id = options.releaseId as string;
-						}
-						if (options.language) {
-							query.lang = options.language as string;
-						}
+						if (operation === 'get') {
+							const space = this.getNodeParameter('space', i) as string;
+							const storyId = this.getNodeParameter('storyId', i) as string;
 
-						responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}/publish`, {}, query);
-						responseData = responseData.story;
-					}
-					if (operation === 'unpublish') {
-						const space = this.getNodeParameter('space', i) as string;
-						const storyId = this.getNodeParameter('storyId', i) as string;
+							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}`);
+							responseData = responseData.story;
+						}
+						if (operation === 'getAll') {
+							const space = this.getNodeParameter('space', i) as string;
+							const filters = this.getNodeParameter('filters', i) as string;
+							const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+							Object.assign(qs, filters);
 
-						responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}/unpublish`);
-						responseData = responseData.story;
+							if (returnAll) {
+								responseData = await storyblokApiRequestAllItems.call(this, 'stories', 'GET', `/v1/spaces/${space}/stories`, {}, qs);
+							} else {
+								const limit = this.getNodeParameter('limit', i) as number;
+								qs.per_page = limit;
+								responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories`, {}, qs);
+								responseData = responseData.stories;
+							}
+						}
+						if (operation === 'publish') {
+							const space = this.getNodeParameter('space', i) as string;
+							const storyId = this.getNodeParameter('storyId', i) as string;
+							const options = this.getNodeParameter('options', i) as IDataObject;
+							const query: IDataObject = {};
+							// Not sure if these two options work
+							if (options.releaseId) {
+								query.release_id = options.releaseId as string;
+							}
+							if (options.language) {
+								query.lang = options.language as string;
+							}
+
+							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}/publish`, {}, query);
+							responseData = responseData.story;
+						}
+						if (operation === 'unpublish') {
+							const space = this.getNodeParameter('space', i) as string;
+							const storyId = this.getNodeParameter('storyId', i) as string;
+
+							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/${storyId}/unpublish`);
+							responseData = responseData.story;
+						}
 					}
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

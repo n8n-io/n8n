@@ -3,6 +3,7 @@ import {
 } from 'url';
 
 import {
+	Request,
 	sign,
 } from 'aws4';
 
@@ -22,7 +23,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -30,39 +31,29 @@ import {
 } from 'lodash';
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('aws');
+	const credentials = await this.getCredentials('aws');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const endpoint = new URL(((credentials.sesEndpoint as string || '').replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`) + path);
 
 	// Sign AWS API request with the user credentials
 
-	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body };
+	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
 		method,
 		uri: endpoint.href,
-		body: signOpts.body,
+		body: signOpts.body as string,
 	};
 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = (error.response && error.response.body.message) || (error.response && error.response.body.Message) || error.message;
-
-		if (error.statusCode === 403) {
-			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new Error('The AWS credentials are not valid!');
-			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
-				throw new Error('The AWS credentials are not valid!');
-			}
-		}
-
-		throw new Error(`AWS error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error, { parseXml: true });
 	}
 }
 
@@ -70,7 +61,7 @@ export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return JSON.parse(response);
-	} catch (e) {
+	} catch (error) {
 		return response;
 	}
 }
@@ -86,7 +77,7 @@ export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions
 				resolve(data);
 			});
 		});
-	} catch (e) {
+	} catch (error) {
 		return response;
 	}
 }

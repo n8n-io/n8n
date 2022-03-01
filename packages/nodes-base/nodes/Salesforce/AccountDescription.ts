@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const accountOperations = [
+export const accountOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,6 +24,11 @@ export const accountOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an account',
+			},
+			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new account, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Get',
@@ -54,13 +59,55 @@ export const accountOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const accountFields = [
+export const accountFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                account:create                              */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Match Against',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'resource',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `The field to check to see if the account already exists`,
+	},
+	{
+		displayName: 'Value to Match',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If this value exists in the 'match against' field, update the account. Otherwise create a new one`,
+	},
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -74,6 +121,7 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -92,10 +140,18 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
 		options: [
+			{
+				displayName: 'Account Number',
+				name: 'accountNumber',
+				type: 'string',
+				default: '',
+				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
+			},
 			{
 				displayName: 'Account Source',
 				name: 'accountSource',
@@ -171,7 +227,7 @@ export const accountFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -221,7 +277,7 @@ export const accountFields = [
 			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
-				type: 'integer',
+				type: 'number',
 				default: '',
 				description: 'Number of employees',
 			},
@@ -243,9 +299,19 @@ export const accountFields = [
 				description: 'Phone number for the account.',
 			},
 			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
+			},
+			{
 				displayName: 'SicDesc',
 				name: 'sicDesc',
 				type: 'string',
+				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -352,6 +418,13 @@ export const accountFields = [
 		},
 		options: [
 			{
+				displayName: 'Account Number',
+				name: 'accountNumber',
+				type: 'string',
+				default: '',
+				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
+			},
+			{
 				displayName: 'Account Source',
 				name: 'accountSource',
 				type: 'options',
@@ -426,7 +499,7 @@ export const accountFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -491,6 +564,15 @@ export const accountFields = [
 				description: 'Phone number for the account.',
 			},
 			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
+			},
+			{
 				displayName: 'Type',
 				name: 'type',
 				type: 'options',
@@ -510,7 +592,7 @@ export const accountFields = [
 			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
-				type: 'integer',
+				type: 'number',
 				default: '',
 				description: 'Number of employees',
 			},
@@ -525,6 +607,7 @@ export const accountFields = [
 				displayName: 'SicDesc',
 				name: 'sicDesc',
 				type: 'string',
+				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -838,4 +921,4 @@ export const accountFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -5,7 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, INodePropertyOptions,
+	IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {OptionsWithUri} from 'request';
@@ -39,10 +39,10 @@ interface ScriptObject {
  */
 export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<INodePropertyOptions[]> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	const host = credentials.host as string;
 	const db = credentials.db as string;
@@ -63,8 +63,7 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
 		items.sort((a, b) => a.name > b.name ? 0 : 1);
 		return items;
 	} catch (error) {
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -90,11 +89,11 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
  */
 export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	const host = credentials.host as string;
 	const db = credentials.db as string;
@@ -126,11 +125,11 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // 
  */
 export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	const host = credentials.host as string;
 	const db = credentials.db as string;
@@ -162,10 +161,10 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
  */
 export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	const host = credentials.host as string;
 	const db = credentials.db as string;
@@ -208,9 +207,9 @@ function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
 }
 
 export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const host = credentials.host as string;
@@ -247,28 +246,19 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 		const response = await this.helpers.request!(requestOptions);
 
 		if (typeof response === 'string') {
-			throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+			throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 		}
 
 		return response.response.token;
 	} catch (error) {
-		let errorMessage;
-		if (error.response) {
-			errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
-		} else {
-			errorMessage = `${error.message} (${error.name})`;
-		}
-		if (errorMessage !== undefined) {
-			throw errorMessage;
-		}
-		throw error.message;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
 export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions, token: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const host = credentials.host as string;
@@ -290,7 +280,7 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 		const response = await this.helpers.request!(requestOptions);
 
 		if (typeof response === 'string') {
-			throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+			throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 		}
 
 		return response;

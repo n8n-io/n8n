@@ -1,0 +1,84 @@
+@charset "UTF-8";
+@use 'common/var';
+@use 'mixins/button';
+@use 'mixins/mixins';
+@use 'mixins/utils';
+@use 'mixins/function';
+
+@include mixins.b(button-group) {
+	@include utils.utils-clearfix;
+	display: inline-block;
+	vertical-align: middle;
+
+	& > .el-button {
+		float: left;
+		position: relative;
+		& + .el-button {
+			margin-left: 0;
+		}
+		&.is-disabled {
+			z-index: 1;
+		}
+		&:first-child {
+			border-top-right-radius: 0;
+			border-bottom-right-radius: 0;
+		}
+		&:last-child {
+			border-top-left-radius: 0;
+			border-bottom-left-radius: 0;
+		}
+		&:first-child:last-child {
+			border-top-right-radius: var(--border-radius-base);
+			border-bottom-right-radius: var(--border-radius-base);
+			border-top-left-radius: var(--border-radius-base);
+			border-bottom-left-radius: var(--border-radius-base);
+
+			&.is-round {
+				border-radius: 20px;
+			}
+
+			&.is-circle {
+				border-radius: 50%;
+			}
+		}
+		&:not(:first-child):not(:last-child) {
+			border-radius: 0;
+		}
+		&:not(:last-child) {
+			margin-right: -1px;
+		}
+
+		&:hover,
+		&:focus,
+		&:active {
+			z-index: 1;
+		}
+
+		@include mixins.when(active) {
+			z-index: 1;
+		}
+	}
+
+	& > .el-dropdown {
+		& > .el-button {
+			border-top-left-radius: 0;
+			border-bottom-left-radius: 0;
+			border-left-color: rgba(var.$color-white, 0.5);
+		}
+	}
+
+	@each $type in (primary, success, warning, danger, info) {
+		.el-button--#{$type} {
+			&:first-child {
+				border-right-color: rgba(var.$color-white, 0.5);
+			}
+			&:last-child {
+				border-left-color: rgba(var.$color-white, 0.5);
+			}
+			&:not(:first-child):not(:last-child) {
+				border-left-color: rgba(var.$color-white, 0.5);
+				border-right-color: rgba(var.$color-white, 0.5);
+			}
+		}
+	}
+}

@@ -11,6 +11,8 @@ import {
 
 import {
 	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 // Interface in n8n
@@ -142,22 +144,21 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: object, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('telegramApi');
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const credentials = await this.getCredentials('telegramApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	query = query || {};
 
 	const options: OptionsWithUri = {
-		headers: {
-		},
+		headers: {},
 		method,
+		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
 		body,
 		qs: query,
-		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
 		json: true,
 	};
 
@@ -176,20 +177,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Telegram credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.error_code) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Telegram error response [${errorBody.error_code}]: ${errorBody.description}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -199,9 +187,14 @@ export function getImageBySize(photos: IDataObject[], size: string): IDataObject
 		'small': 0,
 		'medium': 1,
 		'large': 2,
+		'extraLarge': 3,
 	} as IDataObject;
 
 	const index = sizes[size] as number;
 
 	return photos[index];
+}
+
+export function getPropertyName(operation: string) {
+	return operation.replace('send', '').toLowerCase();
 }

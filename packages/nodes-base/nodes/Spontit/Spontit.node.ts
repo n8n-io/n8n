@@ -30,7 +30,6 @@ export class Spontit implements INodeType {
 		description: 'Consume Spontit API',
 		defaults: {
 			name: 'Spontit',
-			color: '#00deff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -67,46 +66,54 @@ export class Spontit implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'push') {
-				if (operation === 'create') {
-					const content = this.getNodeParameter('content', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+			try {
+				if (resource === 'push') {
+					if (operation === 'create') {
+						const content = this.getNodeParameter('content', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const body: IDataObject = {
-						content,
-					};
+						const body: IDataObject = {
+							content,
+						};
 
-					Object.assign(body, additionalFields);
+						Object.assign(body, additionalFields);
 
-					if (body.pushToFollowers) {
-						body.pushToFollowers = (body.pushToFollowers as string).split(',');
+						if (body.pushToFollowers) {
+							body.pushToFollowers = (body.pushToFollowers as string).split(',');
+						}
+
+						if (body.pushToPhoneNumbers) {
+							body.pushToPhoneNumbers = (body.pushToPhoneNumbers as string).split(',');
+						}
+
+						if (body.pushToEmails) {
+							body.pushToEmails = (body.pushToEmails as string).split(',');
+						}
+
+						if (body.schedule) {
+							body.scheduled = moment.tz(body.schedule, timezone).unix();
+						}
+
+						if (body.expirationStamp) {
+							body.expirationStamp = moment.tz(body.expirationStamp, timezone).unix();
+						}
+
+						responseData = await spontitApiRequest.call(this, 'POST', '/push', body);
+
+						responseData = responseData.data;
 					}
-
-					if (body.pushToPhoneNumbers) {
-						body.pushToPhoneNumbers = (body.pushToPhoneNumbers as string).split(',');
-					}
-
-					if (body.pushToEmails) {
-						body.pushToEmails = (body.pushToEmails as string).split(',');
-					}
-
-					if (body.schedule) {
-						body.scheduled = moment.tz(body.schedule, timezone).unix();
-					}
-
-					if (body.expirationStamp) {
-						body.expirationStamp = moment.tz(body.expirationStamp, timezone).unix();
-					}
-
-					responseData = await spontitApiRequest.call(this, 'POST', '/push', body);
-
-					responseData = responseData.data;
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 

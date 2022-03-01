@@ -18,13 +18,12 @@ export class MailjetTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailjet Trigger',
 		name: 'mailjetTrigger',
-		icon: 'file:mailjet.png',
+		icon: 'file:mailjet.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Mailjet events via webhooks',
 		defaults: {
 			name: 'Mailjet Trigger',
-			color: '#ff9f48',
 		},
 		inputs: [],
 		outputs: ['main'],

@@ -10,12 +10,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function spontitApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('spontitApi') as IDataObject;
+	const credentials = await this.getCredentials('spontitApi') as IDataObject;
 
 	try {
 		const options: OptionsWithUri = {
@@ -35,15 +35,6 @@ export async function spontitApiRequest(this: IExecuteFunctions | ILoadOptionsFu
 		//@ts-ignore
 		return await this.helpers?.request(options);
 	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.message) {
-
-			const messages = error.response.body.message;
-			// Try to return the error prettier
-			throw new Error(
-				`Spontit error response [${error.statusCode}]: ${messages}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

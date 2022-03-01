@@ -21,10 +21,9 @@ export class MailerLiteTrigger implements INodeType {
 		icon: 'file:mailerLite.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a MailerLite events occurs.',
+		description: 'Starts the workflow when MailerLite events occur',
 		defaults: {
 			name: 'MailerLite Trigger',
-			color: '#58be72',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -162,7 +161,7 @@ export class MailerLiteTrigger implements INodeType {
 
 					try {
 						await mailerliteApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

@@ -37,6 +37,37 @@ export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties 
 		],
 	},
 	{
+		displayName: 'Headers',
+		name: 'headers',
+		placeholder: 'Add Header',
+		description: 'Headers to add.',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'header',
+				displayName: 'Header',
+				values: [
+					{
+						displayName: 'Key',
+						name: 'key',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Auto Delete',
 		name: 'autoDelete',
 		type: 'boolean',

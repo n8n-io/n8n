@@ -3,6 +3,7 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
+import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 import {
 	OptionsWithUri,
@@ -33,11 +34,11 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 
 
 	// if (authenticationMethod === 'cloud') {
-		const credentials = this.getCredentials('twakeCloudApi');
+		const credentials = await this.getCredentials('twakeCloudApi');
 		options.headers!.Authorization = `Bearer ${credentials!.workspaceKey}`;
 
 	// } else {
-	// 	const credentials = this.getCredentials('twakeServerApi');
+	// 	const credentials = await this.getCredentials('twakeServerApi');
 	// 	options.auth = { user: credentials!.publicId as string, pass: credentials!.privateApiKey as string };
 	// 	options.uri = `${credentials!.hostUrl}/api/v1${resource}`;
 	// }
@@ -46,23 +47,8 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.error.code === 'ECONNREFUSED') {
-			throw new Error('Twake host is not accessible!');
-
+			throw new NodeApiError(this.getNode(), error, { message: 'Twake host is not accessible!' });
 		}
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Twake credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.errors) {
-			// Try to return the error prettier
-			const errorMessages = error.response.body.errors.map((errorData: { message: string }) => {
-				return errorData.message;
-			});
-			throw new Error(`Twake error response [${error.statusCode}]: ${errorMessages.join(' | ')}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

@@ -4,7 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -42,36 +42,18 @@ export async function redditApiRequest(
 	}
 
 	if (authRequired) {
-		let response;
-
 		try {
-			response = await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
 		} catch (error) {
-			if (error.response.body && error.response.body.message) {
-				const message = error.response.body.message;
-				throw new Error(`Reddit error response [${error.statusCode}]: ${message}`);
-			}
+			throw new NodeApiError(this.getNode(), error);
 		}
-
-		if ((response.errors && response.errors.length !== 0) || (response.json && response.json.errors && response.json.errors.length !== 0)) {
-			const errors = response?.errors || response?.json?.errors;
-			const errorMessage = errors.map((error: []) => error.join('-'));
-
-			throw new Error(`Reddit error response [400]: ${errorMessage.join('|')}`);
-		}
-
-		return response;
 
 	} else {
 
 		try {
 			return await this.helpers.request.call(this, options);
 		} catch (error) {
-			const errorMessage = error?.response?.body?.message;
-			if (errorMessage) {
-				throw new Error(`Reddit error response [${error.statusCode}]: ${errorMessage}`);
-			}
-			throw error;
+			throw new NodeApiError(this.getNode(), error);
 		}
 	}
 }

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -49,9 +49,9 @@ export const contactOperations = [
 		default: 'upsert',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:upsert                              */
@@ -88,7 +88,7 @@ export const contactFields = [
 			},
 		},
 		default: true,
-		description: 'By default the response only includes the ID. If this option gets activated it<br />will resolve the data automatically.',
+		description: 'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -397,10 +397,7 @@ export const contactFields = [
 					},
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Postal Code',
@@ -580,10 +577,7 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Property Mode',
@@ -706,10 +700,7 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Property Mode',
@@ -854,10 +845,7 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Property Mode',
@@ -1042,10 +1030,7 @@ export const contactFields = [
 				],
 			},
 		],
-		description: `When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator.<br>
-		When multiple filterGroups are provided, they will be combined using a logical OR operator.<br>
-		The system supports a maximum of three filterGroups with up to three filters each.<br>
-		More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>`,
+		description: `When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -1093,10 +1078,7 @@ export const contactFields = [
 					'lastname',
 					'email',
 				],
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Query',
@@ -1116,4 +1098,4 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

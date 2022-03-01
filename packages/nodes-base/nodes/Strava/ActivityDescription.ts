@@ -3,7 +3,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const activityOperations = [
+export const activityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -60,9 +60,9 @@ export const activityOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const activityFields = [
+export const activityFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                activity:create                           */
@@ -107,6 +107,7 @@ export const activityFields = [
 		displayName: 'Start Date',
 		name: 'startDate',
 		type: 'dateTime',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -413,4 +414,4 @@ export const activityFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];
