@@ -25,6 +25,12 @@ export class SentryErrorReport implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		credentials: [
+			{
+				name: 'sentryErrorApi', 
+				required: true
+			}
+		],
 		properties: [],
 	};
 

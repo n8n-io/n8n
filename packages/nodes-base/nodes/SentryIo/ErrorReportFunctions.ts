@@ -12,8 +12,7 @@ import {v4 as uuid} from 'uuid';
 
 import {IDataObject, NodeApiError,} from 'n8n-workflow';
 
-const SENTRY_DSN = 'http://sentry.cgpo2o.cn/api/3/store/'; // TODO: move this in credentials ?
-const SENTRY_KEY = 'SENTRY_SECRET'; // TODO: move this in credentials ?
+const SENTRY_DSN = 'http://sentry.cgpo2o.cn/api/3/store/';
 const TRACE_LINE_REGEXPs = [
 	/    at (?<raw_function>.*) \((?<abs_path>.*):(?<lineno>[0-9]+):(?<colno>[0-9]+)\)/,
 	/    at (?<abs_path>.*):(?<lineno>[0-9]+):(?<colno>[0-9]+)/
@@ -40,9 +39,9 @@ export async function sentryIoErrorApiRequest(
 	}
 
 	let credentialName;
-	// const credentials = await this.getCredentials('sentryErrorApi') as IDataObject;
+	const credentials = await this.getCredentials('sentryErrorApi') as IDataObject;
 	options.headers = {
-		"X-Sentry-Auth": buildXauthHeaderValue({}),
+		"X-Sentry-Auth": buildXauthHeaderValue(credentials),
 	};
 
 	try {
@@ -55,7 +54,7 @@ export async function sentryIoErrorApiRequest(
 
 function buildXauthHeaderValue(credentials: IDataObject) {
 	const timestamp = Date.now().valueOf();
-	return `Sentry sentry_version=7,sentry_timestamp=${timestamp},sentry_key=${SENTRY_KEY},sentry_client=sentry-javascript/1.0`;
+	return `Sentry sentry_version=7,sentry_timestamp=${timestamp},sentry_key=${credentials.sentry_key},sentry_client=sentry-javascript/1.0`;
 
 }
 
@@ -92,6 +91,7 @@ export function parseStacktraceLine(traceLine: string) {
 	result.lineno = parseInt(result.lineno as string);
 	if (result.raw_function) {
 		result.raw_function = (result.raw_function as string).trim();
+		result.function = result.raw_function;
 	}
 	return result;
 }

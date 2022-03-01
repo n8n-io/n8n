@@ -246,6 +246,7 @@
       "dist/credentials/SendGridApi.credentials.js",
       "dist/credentials/SendyApi.credentials.js",
       "dist/credentials/SentryIoApi.credentials.js",
+      "dist/credentials/SentryIoErrorReportApi.credentials.js",
       "dist/credentials/SentryIoOAuth2Api.credentials.js",
       "dist/credentials/SentryIoServerApi.credentials.js",
       "dist/credentials/ServiceNowOAuth2Api.credentials.js",
