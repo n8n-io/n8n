@@ -289,8 +289,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 						),
 					},
 					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
 						const mspFocus = (values as IPersonalizationSurveyAnswersV2)[MSP_FOCUS_KEY];
-						return !!mspFocus && mspFocus.includes(OTHER_FOCUS);
+						return companyType === MSP_COMPANY_TYPE && !!mspFocus && mspFocus.includes(OTHER_FOCUS);
 					},
 				},
 				{
@@ -369,8 +370,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourCompanysIndustry'),
 					},
 					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
 						const companyIndustry = (values as IPersonalizationSurveyAnswersV2)[COMPANY_INDUSTRY_EXTENDED_KEY];
-						return !!companyIndustry && companyIndustry.includes(OTHER_INDUSTRY_OPTION);
+						return companyType === OTHER_COMPANY_TYPE && !!companyIndustry && companyIndustry.includes(OTHER_INDUSTRY_OPTION);
 					},
 				},
 				{
@@ -433,8 +435,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourAutomationGoal'),
 					},
 					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
 						const automationGoal = (values as IPersonalizationSurveyAnswersV2)[AUTOMATION_GOAL_KEY];
-						return automationGoal === OTHER_AUTOMATION_GOAL;
+						return companyType !== PERSONAL_COMPANY_TYPE && automationGoal === OTHER_AUTOMATION_GOAL;
 					},
 				},
 				{
