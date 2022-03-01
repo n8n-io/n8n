@@ -113,18 +113,10 @@ export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 export const WORK_AREA_KEY = 'workArea';
 export const FINANCE_WORK_AREA = 'finance';
-export const HR_WORK_AREA = 'HR';
 export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
-export const LEGAL_WORK_AREA = 'legal';
-export const MARKETING_WORK_AREA = 'marketing-growth';
 export const PRODUCT_WORK_AREA = 'product';
 export const SALES_BUSINESSDEV_WORK_AREA = 'sales-businessDevelopment';
 export const SECURITY_WORK_AREA = 'security';
-export const SUPPORT_WORK_AREA = 'support';
-export const OPS_WORK_AREA = 'ops';
-export const EXECUTIVE_WORK_AREA = 'executive';
-export const OTHER_WORK_AREA_OPTION = 'other';
-export const NOT_APPLICABLE_WORK_AREA = 'n/a';
 
 export const COMPANY_TYPE_KEY = 'companyType';
 export const SAAS_COMPANY_TYPE = 'saas';
@@ -143,21 +135,18 @@ export const MEDIUM_CUSTOMER_TYPE = 'medium';
 export const LARGE_CUSTOMER_TYPE = 'large';
 
 export const MSP_FOCUS_KEY = 'mspFocus';
+export const MSP_FOCUS_OTHER_KEY = 'mspFocusOther';
 export const CLOUD_INFRA_FOCUS = 'cloud-infra';
 export const IT_SUPPORT_FOCUS = 'it-support';
 export const NETWORKING_COMMUNICATION_FOCUS = 'networking-communication';
 export const SECURITY_FOCUS = 'security';
 export const OTHER_FOCUS = 'other';
 
-export const MSP_FOCUS_OTHER_KEY = 'mspFocusOther';
-
-export const COMPANY_INDUSTRY_KEY = 'companyIndustry';
-export const COMPANY_INDUSTRY_EXTENDED_KEY = 'companyIndustryExtended';
+export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
+export const OTHER_COMPANY_INDUSTRY_EXTENDED_KEY = 'otherCompanyIndustryExtended';
 export const EDUCATION_INDUSTRY = 'education';
-export const AUTOMATION_CONSULTING_INDUSTRY = 'automation-consulting';
 export const PHYSICAL_RETAIL_OR_SERVICES = 'physical-retail-or-services';
 export const REAL_ESTATE_OR_CONSTRUCTION = 'real-estate-or-construction';
-export const SYSTEM_INTEGRATION_INDUSTRY = 'systems-integration';
 export const GOVERNMENT_INDUSTRY = 'government';
 export const LEGAL_INDUSTRY = 'legal-industry';
 export const MARKETING_INDUSTRY = 'marketing-industry';
@@ -167,7 +156,6 @@ export const HEALTHCARE_INDUSTRY= 'healthcare';
 export const FINANCE_INSURANCE_INDUSTRY = 'finance-insurance-industry';
 export const IT_INDUSTRY = 'it-industry';
 export const SECURITY_INDUSTRY = 'security-industry';
-export const SAAS_INDUSTRY = 'saas';
 export const TELECOMS_INDUSTRY = 'telecoms';
 export const OTHER_INDUSTRY_OPTION = 'other';
 
@@ -180,9 +168,6 @@ export const COMPANY_SIZE_1000_OR_MORE = '1000+';
 export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
 
 export const CODING_SKILL_KEY = 'codingSkill';
-export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
-export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
-export const OTHER_COMPANY_INDUSTRY_EXTENDED_KEY = 'otherCompanyIndustryExtended';
 
 export const AUTOMATION_GOAL_KEY = 'automationGoal';
 export const AUTOMATION_GOAL_OTHER_KEY = 'otherAutomationGoal';
