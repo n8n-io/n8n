@@ -13,7 +13,7 @@ import { Credentials, UserSettings } from 'n8n-core';
 import { createConnection, getConnection } from 'typeorm';
 
 import config = require('../../../config');
-import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
+import { AUTHLESS_ENDPOINTS, BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME, REST_PATH_SEGMENT } from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
@@ -145,7 +145,7 @@ export async function initTestDb() {
 		const schema = config.get('database.postgresdb.schema');
 
 		await createConnection({
-			name: 'n8n_bs_postgres',
+			name: BOOTSTRAP_POSTGRES_CONNECTION_NAME,
 			type: 'postgres',
 			database: 'postgres', // pre-existing
 			host,
@@ -156,7 +156,7 @@ export async function initTestDb() {
 		});
 
 		const testDbName = `n8n_test_pg_${Date.now()}`;
-		await getConnection('n8n_bs_postgres').query(`CREATE DATABASE ${testDbName};`);
+		await getConnection(BOOTSTRAP_POSTGRES_CONNECTION_NAME).query(`CREATE DATABASE ${testDbName};`);
 
 		await Db.init(getPostgresOptions({ name: testDbName }));
 
@@ -167,7 +167,7 @@ export async function initTestDb() {
 		await createConnection(getBootstrapMySqlOptions());
 
 		const testDbName = `n8n_test_mysql_${Date.now()}`;
-		await getConnection('n8n_bs_mysql').query(`CREATE DATABASE ${testDbName};`);
+		await getConnection(BOOTSTRAP_MYSQL_CONNECTION_NAME).query(`CREATE DATABASE ${testDbName};`);
 
 		await Db.init(getMySqlOptions({ name: testDbName }));
 
@@ -182,14 +182,17 @@ export async function terminateTestDb(testDbName: string) {
 
 	if (dbType === 'postgresdb') {
 		await getConnection(testDbName).close();
-		await getConnection('n8n_bs_postgres').query(`DROP DATABASE ${testDbName}`);
-		await getConnection('n8n_bs_postgres').close();
+
+		const bootstrapPostgres = getConnection(BOOTSTRAP_POSTGRES_CONNECTION_NAME);
+		await bootstrapPostgres.query(`DROP DATABASE ${testDbName}`);
+		await bootstrapPostgres.close();
 	}
 
 	if (dbType === 'mysqldb') {
 		await getConnection(testDbName).close();
-		await getConnection('n8n_bs_mysql').query(`DROP DATABASE ${testDbName}`);
-		await getConnection('n8n_bs_mysql').close();
+		const bootstrapMySql = getConnection(BOOTSTRAP_MYSQL_CONNECTION_NAME);
+		await bootstrapMySql.query(`DROP DATABASE ${testDbName}`);
+		await bootstrapMySql.close();
 	}
 }
 

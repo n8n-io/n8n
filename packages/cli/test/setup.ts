@@ -1,6 +1,7 @@
 import { ConnectionOptions, createConnection } from 'typeorm';
 import config = require('../config');
 import { exec } from 'child_process';
+import { BOOTSTRAP_MYSQL_CONNECTION_NAME } from './integration/shared/constants';
 
 const dbType = config.get('database.type') as 'sqlite' | 'postgresdb' | 'mysqldb';
 
@@ -11,12 +12,12 @@ if (dbType === 'mysqldb') {
 	const port = config.get('database.mysqldb.port');
 
 	exec(
-		`echo "CREATE DATABASE IF NOT EXISTS n8n_bs_mysql" | mysql -h ${host} -u ${username} -p${password}; USE n8n_bs_mysql`,
+		`echo "CREATE DATABASE IF NOT EXISTS ${BOOTSTRAP_MYSQL_CONNECTION_NAME}" | mysql -h ${host} -u ${username} -p${password}; USE ${BOOTSTRAP_MYSQL_CONNECTION_NAME}`,
 	);
 
 	const bsMySqlConnectionOptions: ConnectionOptions = {
-		name: 'n8n_bs_mysql',
-		database: 'n8n_bs_mysql',
+		name: BOOTSTRAP_MYSQL_CONNECTION_NAME,
+		database: BOOTSTRAP_MYSQL_CONNECTION_NAME,
 		type: 'mysql',
 		host,
 		port,

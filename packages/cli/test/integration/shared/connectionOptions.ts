@@ -5,6 +5,7 @@ import { entities } from '../../../src/databases/entities';
 import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
 import { postgresMigrations } from '../../../src/databases/postgresdb/migrations';
 import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
+import { BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME } from './constants';
 
 // ----------------------------------
 //             sqlite
@@ -36,7 +37,7 @@ export const getBootstrapPostgresOptions = (): ConnectionOptions => {
 	const schema = config.get('database.postgresdb.schema');
 
 	return {
-		name: 'n8n_bs_postgres',
+		name: BOOTSTRAP_POSTGRES_CONNECTION_NAME,
 		type: 'postgres',
 		database: 'postgres', // pre-existing
 		host,
@@ -89,8 +90,8 @@ export const getBootstrapMySqlOptions = (): ConnectionOptions => {
 	const port = config.get('database.mysqldb.port');
 
 	return {
-		name: 'n8n_bs_mysql',
-		database: 'n8n_bs_mysql',
+		name: BOOTSTRAP_MYSQL_CONNECTION_NAME,
+		database: BOOTSTRAP_MYSQL_CONNECTION_NAME,
 		type: 'mysql',
 		host,
 		port,

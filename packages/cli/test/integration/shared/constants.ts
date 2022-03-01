@@ -44,3 +44,15 @@ export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'DELETE /users/123',
 	'POST /users/123/reinvite',
 ];
+
+/**
+ * Name of the connection used for creating and dropping a Postgres DB
+ * for each suite test run.
+ */
+export const BOOTSTRAP_POSTGRES_CONNECTION_NAME: Readonly<string> = 'n8n_bs_postgres';
+
+/**
+ * Name of the connection (and database) used for creating and dropping a MySQL DB
+ * for each suite test run.
+ */
+export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
