@@ -47,7 +47,7 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 	return connection.transaction(fn);
 }
 
-export function findRepository<Entity>(entityClass: EntityTarget<Entity>): Repository<Entity> {
+export function linkRepository<Entity>(entityClass: EntityTarget<Entity>): Repository<Entity> {
 	return getRepository(entityClass, connection.name);
 }
 
@@ -190,18 +190,17 @@ export async function init(
 		}
 	}
 
-	// TODO: Remove testConnectionOptions if possible
-	collections.Credentials = findRepository(entities.CredentialsEntity);
-	collections.Execution = findRepository(entities.ExecutionEntity);
-	collections.Workflow = findRepository(entities.WorkflowEntity);
-	collections.Webhook = findRepository(entities.WebhookEntity);
-	collections.Tag = findRepository(entities.TagEntity);
+	collections.Credentials = linkRepository(entities.CredentialsEntity);
+	collections.Execution = linkRepository(entities.ExecutionEntity);
+	collections.Workflow = linkRepository(entities.WorkflowEntity);
+	collections.Webhook = linkRepository(entities.WebhookEntity);
+	collections.Tag = linkRepository(entities.TagEntity);
 
-	collections.Role = findRepository(entities.Role);
-	collections.User = findRepository(entities.User);
-	collections.SharedCredentials = findRepository(entities.SharedCredentials);
-	collections.SharedWorkflow = findRepository(entities.SharedWorkflow);
-	collections.Settings = findRepository(entities.Settings);
+	collections.Role = linkRepository(entities.Role);
+	collections.User = linkRepository(entities.User);
+	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
+	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
+	collections.Settings = linkRepository(entities.Settings);
 
 	return collections;
 }
