@@ -12,7 +12,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -29,10 +28,10 @@ import {
 import {
 	IOdooFilterOperations,
 	odooCreate,
-	odooGetDBName,
 	odooDelete,
 	odooGet,
 	odooGetAll,
+	odooGetDBName,
 	odooGetModelFields,
 	odooGetUserID,
 	odooJSONRPCRequest,

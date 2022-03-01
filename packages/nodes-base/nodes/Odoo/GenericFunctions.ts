@@ -223,7 +223,7 @@ export async function odooGet(
 	fieldsToReturn?: IDataObject[],
 ) {
 	try {
-		if (!parseInt(itemsID)) {
+		if (!parseInt(itemsID, 10)) {
 			throw new NodeApiError(this.getNode(), {
 				status: 'Error',
 				message: `Please specify a valid ID: ${itemsID}`,
