@@ -266,23 +266,6 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
 
-		this.frontendSettings = this.getCurrentFrontendSettings();
-	}
-
-	/**
-	 * Returns the current epoch time
-	 *
-	 * @returns {number}
-	 * @memberof App
-	 */
-	getCurrentDate(): Date {
-		return new Date();
-	}
-
-	/**
-	 * Returns the current settings for the frontend
-	 */
-	getCurrentFrontendSettings(): IN8nUISettings {
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
 			enabled: config.get('diagnostics.enabled') as boolean,
@@ -300,7 +283,7 @@ class App {
 			telemetrySettings.config = { key, url };
 		}
 
-		return {
+		this.frontendSettings = {
 			endpointWebhook: this.endpointWebhook,
 			endpointWebhookTest: this.endpointWebhookTest,
 			saveDataErrorExecution: this.saveDataErrorExecution,
@@ -338,6 +321,34 @@ class App {
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
 			logLevel: config.get('logs.level'),
 		};
+	}
+
+	/**
+	 * Returns the current epoch time
+	 *
+	 * @returns {number}
+	 * @memberof App
+	 */
+	getCurrentDate(): Date {
+		return new Date();
+	}
+
+	/**
+	 * Returns the current settings for the frontend
+	 */
+	getSettingsForFrontend(): IN8nUISettings {
+		// refresh user management status
+		Object.assign(this.frontendSettings.userManagement, {
+			enabled:
+				config.get('userManagement.disabled') === false ||
+				config.get('userManagement.hasOwner') === true,
+			showSetupOnFirstLoad:
+				config.get('userManagement.disabled') === false &&
+				config.get('userManagement.hasOwner') === false &&
+				config.get('userManagement.skipInstanceOwnerSetup') === false,
+		});
+
+		return this.frontendSettings;
 	}
 
 	async config(): Promise<void> {
@@ -2702,7 +2713,7 @@ class App {
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					return this.getCurrentFrontendSettings();
+					return this.getSettingsForFrontend();
 				},
 			),
 		);
