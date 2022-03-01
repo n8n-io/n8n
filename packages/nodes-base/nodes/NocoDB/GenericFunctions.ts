@@ -45,7 +45,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	const options: OptionsWithUri = {
 		headers: {
-			'xc-auth': credentials.apiToken,
+			'xc-token': credentials.apiToken,
 		},
 		method,
 		body,
