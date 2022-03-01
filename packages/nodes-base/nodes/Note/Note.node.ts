@@ -18,8 +18,8 @@ export class Note implements INodeType {
 			name: 'Note',
 			color: '#FFD233',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [],
+		outputs: [],
 		properties: [
 			{
 				displayName: 'Content',
@@ -29,7 +29,7 @@ export class Note implements INodeType {
 				typeOptions: {
 					rows: 4,
 				},
-				default: 'I am a heading. This is how you bold text and this is how you create an inline link.',
+				default: '##I am a heading.\nThis is how you *bold* text and this is how you create an [inline link](https://n8n.io/)',
 				description: 'Content',
 			},
 			{
