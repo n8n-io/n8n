@@ -313,7 +313,7 @@ export class Odoo implements INodeType {
 						let additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (additionalFields.address) {
-							const addressFields = (additionalFields.address as IDataObject).fields as IDataObject;
+							const addressFields = (additionalFields.address as IDataObject).value as IDataObject;
 							if (addressFields) {
 								additionalFields = {
 									...additionalFields,
@@ -356,7 +356,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
+						const fields = this.getNodeParameter('options.fieldsList', i) as IDataObject;
 						responseData = await odooGet.call(
 							this,
 							db,
@@ -463,7 +463,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
-						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
+						const fields = this.getNodeParameter('options.fieldsList', i) as IDataObject;
 						responseData = await odooGet.call(
 							this,
 							db,
@@ -563,7 +563,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const noteId = this.getNodeParameter('noteId', i) as string;
-						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
+						const fields = this.getNodeParameter('options.fieldsList', i) as IDataObject;
 						responseData = await odooGet.call(
 							this,
 							db,
@@ -662,7 +662,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
-						const fields = this.getNodeParameter('fieldsList', i) as IDataObject;
+						const fields = this.getNodeParameter('options.fieldsList', i) as IDataObject;
 						responseData = await odooGet.call(
 							this,
 							db,

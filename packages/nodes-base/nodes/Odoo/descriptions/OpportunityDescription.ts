@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -9,7 +11,9 @@ export const opportunityOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['opportunity'],
+				resource: [
+					'opportunity',
+				],
 			},
 		},
 		options: [
@@ -117,8 +121,12 @@ export const opportunityDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['opportunity'],
+				operation: [
+					'create',
+				],
+				resource: [
+					'opportunity',
+				],
 			},
 		},
 	},
@@ -131,8 +139,12 @@ export const opportunityDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['opportunity'],
+				operation: [
+					'create',
+				],
+				resource: [
+					'opportunity',
+				],
 			},
 		},
 		options: [...opportunityFields],
@@ -149,8 +161,13 @@ export const opportunityDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['get', 'delete'],
-				resource: ['opportunity'],
+				operation: [
+					'get',
+					'delete',
+				],
+				resource: [
+					'opportunity',
+				],
 			},
 		},
 	},
@@ -164,8 +181,12 @@ export const opportunityDescription: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: ['opportunity'],
-				operation: ['getAll'],
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'getAll',
+				],
 			},
 		},
 		default: false,
@@ -179,9 +200,15 @@ export const opportunityDescription: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				resource: ['opportunity'],
-				operation: ['getAll'],
-				returnAll: [false],
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
 			},
 		},
 		typeOptions: {
@@ -198,8 +225,13 @@ export const opportunityDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['getAll', 'get'],
-				resource: ['opportunity'],
+				operation: [
+					'getAll',
+					'get',
+				],
+				resource: [
+					'opportunity',
+				],
 			},
 		},
 		options: [
@@ -225,8 +257,12 @@ export const opportunityDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['update'],
-				resource: ['opportunity'],
+				operation: [
+					'update',
+				],
+				resource: [
+					'opportunity',
+				],
 			},
 		},
 	},
@@ -238,8 +274,12 @@ export const opportunityDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['update'],
-				resource: ['opportunity'],
+				operation: [
+					'update',
+				],
+				resource: [
+					'opportunity',
+				],
 			},
 		},
 		options: [

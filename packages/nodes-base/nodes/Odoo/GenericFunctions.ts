@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -7,7 +9,11 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	JsonObject,
+	NodeApiError,
+} from 'n8n-workflow';
 
 const serviceJSONRPC = 'object';
 const methodJSONRPC = 'execute';
@@ -222,7 +228,6 @@ export async function odooGet(
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
 					[+itemsID] || [],
-					// (fieldsToReturn && processResponceFields(fieldsToReturn)) || [],
 					fieldsToReturn || [],
 				],
 			},
@@ -262,7 +267,6 @@ export async function odooGetAll(
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
 					(filters && processFilters(filters)) || [],
-					// (fieldsToReturn && processResponceFields(fieldsToReturn)) || [],
 					fieldsToReturn || [],
 					0, // offset
 					limit,
