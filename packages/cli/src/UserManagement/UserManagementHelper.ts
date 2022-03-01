@@ -159,6 +159,15 @@ export async function checkPermissionsForExecution(
 }
 
 /**
+ * Check if a URL contains an auth-excluded endpoint.
+ */
+export function isAuthExcluded(url: string, ignoredEndpoints: string[]): boolean {
+	return !!ignoredEndpoints
+		.filter(Boolean) // skip empty paths
+		.find((ignoredEndpoint) => url.includes(ignoredEndpoint));
+}
+
+/**
  * Check if the endpoint is `POST /users/:id`.
  */
 export function isPostUsersId(req: express.Request, restEndpoint: string): boolean {

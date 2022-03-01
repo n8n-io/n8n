@@ -1,6 +1,8 @@
+/* eslint-disable import/no-cycle */
 import { existsSync, readFileSync } from 'fs';
 import { IDataObject } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
+import { GenericHelpers } from '../..';
 import config = require('../../../config');
 import {
 	InviteEmailData,
@@ -10,8 +12,11 @@ import {
 } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
 
-function getTemplate(configKeyName: string, defaultFilename: string) {
-	const templateOverride = config.get(`userManagement.emails.templates.${configKeyName}`) as string;
+async function getTemplate(configKeyName: string, defaultFilename: string) {
+	const templateOverride = (await GenericHelpers.getConfigValue(
+		`userManagement.emails.templates.${configKeyName}`,
+	)) as string;
+
 	let template;
 	if (templateOverride && existsSync(templateOverride)) {
 		template = readFileSync(templateOverride, {
@@ -46,7 +51,7 @@ export class UserManagementMailer {
 	}
 
 	async invite(inviteEmailData: InviteEmailData): Promise<SendEmailResult> {
-		let template = getTemplate('invite', 'invite.html');
+		let template = await getTemplate('invite', 'invite.html');
 		template = replaceStrings(template, inviteEmailData);
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -61,7 +66,7 @@ export class UserManagementMailer {
 	}
 
 	async passwordReset(passwordResetData: PasswordResetData): Promise<SendEmailResult> {
-		let template = getTemplate('passwordReset', 'passwordReset.html');
+		let template = await getTemplate('passwordReset', 'passwordReset.html');
 		template = replaceStrings(template, passwordResetData);
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion

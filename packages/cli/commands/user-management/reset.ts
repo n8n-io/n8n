@@ -12,8 +12,8 @@ export class Reset extends Command {
 	static description = '\nResets the database to the default user state';
 
 	private defaultUserProps = {
-		firstName: 'default',
-		lastName: 'default',
+		firstName: null,
+		lastName: null,
 		email: null,
 		password: null,
 		resetPasswordToken: null,
@@ -50,7 +50,10 @@ export class Reset extends Command {
 			await Db.collections.User!.delete({ id: Not(owner.id) });
 			await Db.collections.User!.save(Object.assign(owner, this.defaultUserProps));
 
-			await Db.collections.Settings!.update({ key: 'userManagement.hasOwner' }, { value: 'false' });
+			await Db.collections.Settings!.update(
+				{ key: 'userManagement.isInstanceOwnerSetUp' },
+				{ value: 'false' },
+			);
 			await Db.collections.Settings!.update(
 				{ key: 'userManagement.skipInstanceOwnerSetup' },
 				{ value: 'false' },

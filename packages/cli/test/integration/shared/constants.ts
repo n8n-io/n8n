@@ -45,7 +45,6 @@ export const ROUTES_REQUIRING_AUTHENTICATION: Readonly<string[]> = [
 	'PATCH /me/password',
 	'POST /me/survey',
 	'POST /owner',
-	'GET /login',
 	'GET /non-existent',
 ];
 
