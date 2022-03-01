@@ -39,7 +39,7 @@ export const getBootstrapPostgresOptions = (): ConnectionOptions => {
 	return {
 		name: BOOTSTRAP_POSTGRES_CONNECTION_NAME,
 		type: 'postgres',
-		database: 'postgres', // pre-existing
+		database: 'postgres', // pre-existing default database
 		host,
 		port,
 		username,
