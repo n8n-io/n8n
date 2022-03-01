@@ -269,10 +269,11 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 	}
 
 	if (dbType === 'mysqldb') {
-		const testDb = getConnection(testDbName);
-		await testDb.query('SET FOREIGN_KEY_CHECKS = 0;');
-		await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
-		return testDb.query('SET FOREIGN_KEY_CHECKS = 1;');
+		await Promise.all(
+			entities.map(async (entity) => {
+				await Db.collections[entity]!.delete({});
+			}),
+		);
 	}
 }
 

@@ -47,10 +47,9 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await utils.truncate(
-		['User', 'Workflow', 'Credentials', 'SharedCredentials', 'SharedWorkflow'],
-		testDbName,
-	);
+	// do not combine calls - shared tables must be cleared first and separately
+	await utils.truncate(['SharedCredentials', 'SharedWorkflow'], testDbName);
+	await utils.truncate(['User', 'Workflow', 'Credentials'], testDbName);
 
 	jest.isolateModules(() => {
 		jest.mock('../../config');
