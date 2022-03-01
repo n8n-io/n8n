@@ -150,8 +150,8 @@ export async function initTestDb() {
 			database: 'postgres', // pre-existing
 			host,
 			port,
-			username, // change via env to 'postgres'
-			password, // change via env to 'password'
+			username,
+			password,
 			schema,
 		});
 
@@ -169,12 +169,7 @@ export async function initTestDb() {
 		const testDbName = `n8n_test_mysql_${Date.now()}`;
 		await getConnection('n8n_bs_mysql').query(`CREATE DATABASE ${testDbName};`);
 
-		try {
-			await Db.init(getMySqlOptions({ name: testDbName }));
-		} catch (e) {
-			console.log(e);
-		}
-
+		await Db.init(getMySqlOptions({ name: testDbName }));
 
 		return { testDbName };
 	}

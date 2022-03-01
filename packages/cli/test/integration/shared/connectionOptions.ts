@@ -41,8 +41,8 @@ export const getBootstrapPostgresOptions = (): ConnectionOptions => {
 		database: 'postgres', // pre-existing
 		host,
 		port,
-		username, // change via env to 'postgres'
-		password, // change via env to 'password'
+		username,
+		password,
 		schema,
 	};
 };
@@ -60,8 +60,8 @@ export const getPostgresOptions = ({ name }: { name: string }): ConnectionOption
 		database: name,
 		host,
 		port,
-		username, // change via env to 'postgres'
-		password, // change via env to 'password'
+		username,
+		password,
 
 		entityPrefix: '',
 		schema,
@@ -84,7 +84,7 @@ export const getPostgresOptions = ({ name }: { name: string }): ConnectionOption
 
 export const getBootstrapMySqlOptions = (): ConnectionOptions => {
 	const username = config.get('database.mysqldb.user');
-	const password = config.get('database.mysqldb.password'); // change via env to 'password'
+	const password = config.get('database.mysqldb.password');
 	const host = config.get('database.mysqldb.host');
 	const port = config.get('database.mysqldb.port');
 
@@ -101,7 +101,7 @@ export const getBootstrapMySqlOptions = (): ConnectionOptions => {
 
 export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions => {
 	const username = config.get('database.mysqldb.user');
-	const password = config.get('database.mysqldb.password'); // change via env to 'password'
+	const password = config.get('database.mysqldb.password');
 	const host = config.get('database.mysqldb.host');
 	const port = config.get('database.mysqldb.port');
 
