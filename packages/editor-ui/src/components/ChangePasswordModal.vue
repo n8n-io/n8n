@@ -53,6 +53,15 @@ export default mixins(showMessage).extend({
 	mounted() {
 		this.config = [
 			{
+				name: 'currentPassword',
+				properties: {
+					label: 'Current Password',
+					type: 'password',
+					required: true,
+					autocomplete: 'current-password',
+				},
+			},
+			{
 				name: 'password',
 				properties: {
 					label: 'New password',
