@@ -143,11 +143,12 @@
 			:value="displayValue"
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
+			:title="displayTitle"
+			:placeholder="$locale.baseText('parameterInput.select')"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
 			@blur="onBlur"
-			:title="displayTitle"
 		>
 			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="getOptionsOptionDisplayName(option)">
 				<div class="list-option">
@@ -302,6 +303,9 @@ export default mixins(
 			},
 		},
 		computed: {
+			areExpressionsDisabled(): boolean {
+				return this.$store.getters['ui/areExpressionsDisabled'];
+			},
 			codeAutocomplete (): string | undefined {
 				return this.getArgument('codeAutocomplete') as string | undefined;
 			},
@@ -419,6 +423,10 @@ export default mixins(
 				return false;
 			},
 			expressionValueComputed (): NodeParameterValue | null {
+				if (this.areExpressionsDisabled) {
+					return this.value;
+				}
+
 				if (this.node === null) {
 					return null;
 				}
@@ -661,6 +669,10 @@ export default mixins(
 				this.valueChanged(value);
 			},
 			openExpressionEdit() {
+				if (this.areExpressionsDisabled) {
+					return;
+				}
+
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					this.trackExpressionEditOpen();

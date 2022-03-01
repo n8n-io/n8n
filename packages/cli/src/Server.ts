@@ -170,9 +170,11 @@ import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpe
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
-import { credentialsEndpoints } from './api/namespaces/credentials';
+import { credentialsController } from './api/credentials.api';
 
 require('body-parser-xml')(bodyParser);
+
+export const externalHooks: IExternalHooksClass = ExternalHooks();
 
 class App {
 	app: express.Application;
@@ -263,7 +265,7 @@ class App {
 		this.sslKey = config.get('ssl_key');
 		this.sslCert = config.get('ssl_cert');
 
-		this.externalHooks = ExternalHooks();
+		this.externalHooks = externalHooks;
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
@@ -317,12 +319,17 @@ class App {
 			userManagement: {
 				enabled:
 					config.get('userManagement.disabled') === false ||
-					config.get('userManagement.hasOwner') === true,
+					config.get('userManagement.isInstanceOwnerSetUp') === true,
 				// showSetupOnFirstLoad: config.get('userManagement.disabled') === false, // && config.get('userManagement.skipOwnerSetup') === true
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
 			logLevel: config.get('logs.level'),
+			deploymentType: config.get('deployment.type'),
+			templates: {
+				enabled: config.get('templates.enabled'),
+				host: config.get('templates.host'),
+			},
 		};
 	}
 
@@ -658,6 +665,8 @@ class App {
 		// User Management
 		// ----------------------------------------
 		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
+
+		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
 		// ----------------------------------------
 		// Healthcheck
@@ -1558,12 +1567,6 @@ class App {
 				return this.activeWorkflowRunner.getActivationError(workflowId);
 			}),
 		);
-
-		// ----------------------------------------
-		// Credentials
-		// ----------------------------------------
-
-		credentialsEndpoints.apply(this);
 
 		// ----------------------------------------
 		// Credential-Types

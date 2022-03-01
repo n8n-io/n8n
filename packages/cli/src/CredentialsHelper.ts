@@ -58,13 +58,6 @@ const mockNodeTypes: INodeTypes = {
 		// @ts-ignore
 		return Object.values(this.nodeTypes).map((data) => data.type);
 	},
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
-		if (this.nodeTypes[nodeType] === undefined) {
-			return undefined;
-		}
-		return this.nodeTypes[nodeType].type;
-	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
 		if (this.nodeTypes[nodeType] === undefined) {
 			return undefined;
@@ -219,32 +212,40 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance
 	 *
-	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
-	 * @param {string} type Type of the credentials to return instance of
+	 * @param {INodeCredentialsDetails} nodeCredential id and name to return instance of
+	 * @param {string} type Type of the credential to return instance of
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
 	 */
 	async getCredentials(
-		nodeCredentials: INodeCredentialsDetails,
+		nodeCredential: INodeCredentialsDetails,
 		type: string,
+		userId?: string,
 	): Promise<Credentials> {
-		if (!nodeCredentials.id) {
-			throw new Error(`Credentials "${nodeCredentials.name}" for type "${type}" don't have an ID.`);
+		if (!nodeCredential.id) {
+			throw new Error(`Credential "${nodeCredential.name}" of type "${type}" has no ID.`);
 		}
 
-		const credentials = await Db.collections.Credentials!.findOne(nodeCredentials.id);
+		const credential = userId
+			? await Db.collections
+					.SharedCredentials!.findOneOrFail({
+						relations: ['credentials'],
+						where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
+					})
+					.then((shared) => shared.credentials)
+			: await Db.collections.Credentials!.findOneOrFail({ id: nodeCredential.id, type });
 
-		if (!credentials) {
+		if (!credential) {
 			throw new Error(
-				`Credentials with ID "${nodeCredentials.id}" don't exist for type "${type}".`,
+				`Credential with ID "${nodeCredential.id}" does not exist for type "${type}".`,
 			);
 		}
 
 		return new Credentials(
-			{ id: credentials.id.toString(), name: credentials.name },
-			credentials.type,
-			credentials.nodesAccess,
-			credentials.data,
+			{ id: credential.id.toString(), name: credential.name },
+			credential.type,
+			credential.nodesAccess,
+			credential.data,
 		);
 	}
 
@@ -434,7 +435,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
 	}
 
@@ -471,8 +471,25 @@ export class CredentialsHelper extends ICredentialsHelper {
 				for (const credential of nodeType.description.credentials ?? []) {
 					if (credential.name === credentialType && !!credential.testedBy) {
 						if (typeof credential.testedBy === 'string') {
+							if (Object.prototype.hasOwnProperty.call(node, 'nodeVersions')) {
+								// The node is versioned. So check all versions for test function
+								// starting with the latest
+								const versions = Object.keys((node as INodeVersionedType).nodeVersions)
+									.sort()
+									.reverse();
+								for (const version of versions) {
+									const versionedNode = (node as INodeVersionedType).nodeVersions[
+										parseInt(version, 10)
+									];
+									if (
+										versionedNode.methods?.credentialTest &&
+										versionedNode.methods?.credentialTest[credential.testedBy]
+									) {
+										return versionedNode.methods?.credentialTest[credential.testedBy];
+									}
+								}
+							}
 							// Test is defined as string which links to a functoin
-							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							return (node as unknown as INodeType).methods?.credentialTest![credential.testedBy];
 						}
 
@@ -529,7 +546,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			nodeType = credentialTestFunction.nodeType;
 		} else {
 			const nodeTypes = NodeTypes();
-			nodeType = nodeTypes.getByName('n8n-nodes-base.noOp') as INodeType;
+			nodeType = nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
 		}
 
 		const node: INode = {

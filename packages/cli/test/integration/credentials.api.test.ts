@@ -11,11 +11,7 @@ let app: express.Application;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	app = utils.initTestServer({
-		namespaces: ['credentials'],
-		applyAuth: true,
-		externalHooks: true,
-	});
+	app = utils.initTestServer({ endpointGroups: ['credentials'], applyAuth: true });
 	await utils.initTestDb();
 	utils.initConfigFile();
 
