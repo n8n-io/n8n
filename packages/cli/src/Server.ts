@@ -325,6 +325,11 @@ class App {
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
 			logLevel: config.get('logs.level'),
+			deploymentType: config.get('deployment.type'),
+			templates: {
+				enabled: config.get('templates.enabled'),
+				host: config.get('templates.host'),
+			},
 		};
 	}
 
