@@ -44,6 +44,7 @@ export const analyticFields: INodeProperties[] = [
 		name: 'managerCustomerId',
 		type: 'string',
 		required: true,
+		placeholder: '9998887777',
 		displayOptions: {
 			show: {
 				resource: [
@@ -58,6 +59,7 @@ export const analyticFields: INodeProperties[] = [
 		name: 'clientCustomerId',
 		type: 'string',
 		required: true,
+		placeholder: '6665554444',
 		displayOptions: {
 			show: {
 				resource: [

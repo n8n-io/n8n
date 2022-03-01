@@ -41,6 +41,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'customerId',
 		type: 'string',
 		required: true,
+		placeholder: '123456789',
 		displayOptions: {
 			show: {
 				resource: [
@@ -74,6 +75,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'issueYear',
 		type: 'string',
 		required: true,
+		placeholder: '2021',
 		displayOptions: {
 			show: {
 				resource: [
@@ -92,6 +94,7 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'issueMonth',
 		type: 'string',
 		required: true,
+		placeholder: 'DECEMBER',
 		displayOptions: {
 			show: {
 				resource: [

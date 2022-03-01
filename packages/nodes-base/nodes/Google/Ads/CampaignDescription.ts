@@ -74,6 +74,7 @@ export const campaignFields: INodeProperties[] = [
 		name: 'managerCustomerId',
 		type: 'string',
 		required: true,
+		placeholder: '9998887777',
 		displayOptions: {
 			show: {
 				resource: [
@@ -88,6 +89,7 @@ export const campaignFields: INodeProperties[] = [
 		name: 'clientCustomerId',
 		type: 'string',
 		required: true,
+		placeholder: '6665554444',
 		displayOptions: {
 			show: {
 				resource: [
@@ -120,6 +122,7 @@ export const campaignFields: INodeProperties[] = [
 		name: 'customGQL',
 		type: 'string',
 		required: true,
+		placeholder: 'SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC',
 		displayOptions: {
 			show: {
 				operation: [
