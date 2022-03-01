@@ -292,7 +292,7 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2) {
 			case CUSTOMER_SUPPORT_GOAL:
 				nodeTypes = nodeTypes.concat(ZENDESK_NODE_TYPE);
 				break;
-			case SALES_MARKETING_GOAL:
+			case FINANCE_ACCOUNTING_GOAL:
 				nodeTypes = nodeTypes.concat(QUICKBOOKS_NODE_TYPE);
 				break;
 			case HR_GOAL:
@@ -301,7 +301,7 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2) {
 			case PRODUCT_GOAL:
 				nodeTypes = nodeTypes.concat(JIRA_NODE_TYPE);
 				break;
-			case FINANCE_ACCOUNTING_GOAL:
+			case SALES_MARKETING_GOAL:
 				nodeTypes = nodeTypes.concat(GOOGLE_SHEETS_NODE_TYPE);
 				break;
 			case SECURITY_GOAL:
