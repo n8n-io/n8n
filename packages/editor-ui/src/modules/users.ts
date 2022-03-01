@@ -147,6 +147,7 @@ const module: Module<IUsersState, IRootState> = {
 			if (user) {
 				context.commit('addUsers', [user]);
 				context.commit('setCurrentUserId', user.id);
+				context.commit('settings/stopShowingSetupPage');
 			}
 		},
 		async validateSignupToken(context: ActionContext<IUsersState, IRootState>, params: {inviteeId: string, inviterId: string}): Promise<{ inviter: { firstName: string, lastName: string } }> {

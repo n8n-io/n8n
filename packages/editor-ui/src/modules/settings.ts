@@ -152,10 +152,7 @@ const module: Module<ISettingsState, IRootState> = {
 			try {
 				context.commit('stopShowingSetupPage');
 				await submitSkipOwnerSetup(context.rootGetters.getRestApiContext);
-				return true;
-			} catch (e) {
-				return e;
-			}
+			} catch (error) {}
 		},
 		async testTemplatesEndpoint(context: ActionContext<ISettingsState, IRootState>) {
 			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
