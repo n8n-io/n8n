@@ -13,10 +13,21 @@ import { Credentials, UserSettings } from 'n8n-core';
 import { createConnection, getConnection } from 'typeorm';
 
 import config = require('../../../config');
-import { AUTHLESS_ENDPOINTS, BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME, REST_PATH_SEGMENT } from './constants';
+import {
+	AUTHLESS_ENDPOINTS,
+	BOOTSTRAP_MYSQL_CONNECTION_NAME,
+	BOOTSTRAP_POSTGRES_CONNECTION_NAME,
+	REST_PATH_SEGMENT,
+} from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
-import { DatabaseType, Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
+import {
+	DatabaseType,
+	Db,
+	ExternalHooks,
+	ICredentialsDb,
+	IDatabaseCollections,
+} from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
@@ -126,7 +137,6 @@ export function initConfigFile() {
 //            test DB
 // ----------------------------------
 
-// TODO: Create and drop separate DBs per test run
 export async function initTestDb() {
 	const dbType = config.get('database.type') as DatabaseType;
 
@@ -235,10 +245,10 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 	}
 
 	if (dbType === 'mysqldb') {
-		// TODO
-		// await getConnection().query('SET FOREIGN_KEY_CHECKS = 0;');
-		// await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
-		// return getConnection().query('SET FOREIGN_KEY_CHECKS = 1;');
+		const testDb = getConnection(testDbName);
+		await testDb.query('SET FOREIGN_KEY_CHECKS = 0;');
+		await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
+		return testDb.query('SET FOREIGN_KEY_CHECKS = 1;');
 	}
 }
 
