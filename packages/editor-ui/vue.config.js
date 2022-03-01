@@ -1,4 +1,5 @@
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+const webpack = require('webpack');
 
 module.exports = {
 	chainWebpack: config => {
@@ -26,6 +27,7 @@ module.exports = {
 		},
 		plugins: [
 			new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] }),
+			new webpack.NormalModuleReplacementPlugin(/element-ui[\/\\]lib[\/\\]locale[\/\\]lang[\/\\]zh-CN/, 'element-ui/lib/locale/lang/en'),
 		],
 	},
 	css: {
@@ -37,5 +39,5 @@ module.exports = {
 			},
 		},
 	},
-	publicPath: process.env.VUE_APP_PUBLIC_PATH && process.env.VUE_APP_PUBLIC_PATH !== '/%BASE_PATH%/' ? process.env.VUE_APP_PUBLIC_PATH : '/',
+	publicPath: process.env.VUE_APP_PUBLIC_PATH ? process.env.VUE_APP_PUBLIC_PATH : '/',
 };

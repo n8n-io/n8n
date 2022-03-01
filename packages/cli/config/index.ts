@@ -690,6 +690,21 @@ const config = convict({
 		},
 	},
 
+	templates: {
+		enabled: {
+			doc: 'Whether templates feature is enabled to load workflow templates.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_TEMPLATES_ENABLED',
+		},
+		host: {
+			doc: 'Endpoint host to retrieve workflow templates from endpoints.',
+			format: String,
+			default: 'https://api.n8n.io/',
+			env: 'N8N_TEMPLATES_HOST',
+		},
+	},
+
 	binaryDataManager: {
 		availableModes: {
 			format: String,
