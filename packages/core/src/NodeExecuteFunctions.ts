@@ -1134,8 +1134,6 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  * @returns {INodeExecutionData[]}
  */
 export function normalizeItemsInArray(items: INodeExecutionData[]): INodeExecutionData[] {
-	const normalizedItems: INodeExecutionData[] = [];
-
 	if (items.every((item) => typeof item === 'object' && 'json' in item)) return items;
 
 	if (items.some((item) => typeof item === 'object' && 'json' in item)) {
@@ -1143,6 +1141,7 @@ export function normalizeItemsInArray(items: INodeExecutionData[]): INodeExecuti
 	}
 
 	if (items.every((item) => typeof item === 'object' && 'binary' in item)) {
+		const normalizedItems: INodeExecutionData[] = [];
 		items.forEach((item) => {
 			const json = Object.keys(item).reduce((acc, key) => {
 				if (key === 'binary') return acc;
@@ -1161,11 +1160,9 @@ export function normalizeItemsInArray(items: INodeExecutionData[]): INodeExecuti
 		throw new Error('Inconsistent item format');
 	}
 
-	items.forEach((item) => {
-		normalizedItems.push({ json: item });
+	return items.map((item) => {
+		return { json: item };
 	});
-
-	return normalizedItems;
 }
 
 // TODO: Move up later
