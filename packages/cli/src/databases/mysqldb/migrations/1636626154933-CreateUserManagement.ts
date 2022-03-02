@@ -210,7 +210,7 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 				'user` ' +
 				'(id, globalRoleId, personalizationAnswers) values  ' +
 				'(?, ?, ?)',
-			[ownerUserId, instanceOwnerRole[0].insertId, survey ?? null],
+			[ownerUserId, instanceOwnerRole[0].insertId, survey],
 		);
 
 		await queryRunner.query(
