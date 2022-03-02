@@ -186,7 +186,7 @@ const module: Module<IUsersState, IRootState> = {
 		},
 		async inviteUsers(context: ActionContext<IUsersState, IRootState>, params: Array<{email: string}>): Promise<IInviteResponse[]> {
 			const users = await inviteUsers(context.rootGetters.getRestApiContext, params);
-			context.commit('addUsers', users.map(({user}) => user));
+			context.commit('addUsers', users.map(({user}) => ({isPending: true, ...user})));
 			return users;
 		},
 		async reinviteUser(context: ActionContext<IUsersState, IRootState>, params: {id: string}) {
