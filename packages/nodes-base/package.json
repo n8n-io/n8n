@@ -71,6 +71,7 @@
       "dist/credentials/CortexApi.credentials.js",
       "dist/credentials/CrateDb.credentials.js",
       "dist/credentials/CustomerIoApi.credentials.js",
+      "dist/credentials/DatagmaApi.credentials.js",
       "dist/credentials/DeepLApi.credentials.js",
       "dist/credentials/DemioApi.credentials.js",
       "dist/credentials/DhlApi.credentials.js",
