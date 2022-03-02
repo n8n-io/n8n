@@ -4,7 +4,7 @@ import {
 import { IDataObject } from 'n8n-workflow';
 import { INodeExecutionData } from 'n8n-workflow';
 import { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
-import { DiscordWebhook, DiscordAttachment } from './Interfaces';
+import { DiscordAttachment, DiscordWebhook } from './Interfaces';
 
 export class DiscordV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -16,7 +16,7 @@ export class DiscordV2 implements INodeType {
 			icon: 'file:discord.svg',
 			group: ['output'],
 			version: 2,
-			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			subtitle: '={{"Webhook: " + $parameter["webhookUri"]}}',
 			description: 'Consume Discord API',
 			defaults: {
 				name: 'Discord',
@@ -56,13 +56,6 @@ export class DiscordV2 implements INodeType {
 					required: false,
 					placeholder: 'Captain Hook',
 				},
-				{
-					displayName: 'Additional Fields',
-					name: 'additionalFields',
-					type: 'collection',
-					placeholder: 'Add Field',
-					default: {},
-					options: [
 				{
 					displayName: 'Avatar URL',
 					name: 'avatarUrl',
@@ -127,8 +120,6 @@ export class DiscordV2 implements INodeType {
 					default: '',
 				},
 			],
-		},
-			],
 		};
 
 
@@ -167,11 +158,14 @@ export class DiscordV2 implements INodeType {
 		body.payload_json =
 			nodeInput['payloadJson'] || (this.getNodeParameter('payloadJson', 0, '') as any);
 		body.attachments =
-			nodeInput['attachments'] || (this.getNodeParameter('attachments', 0, '') as DiscordAttachment);
+			nodeInput['attachments'] || (this.getNodeParameter('attachments', 0, '') as any);
 
-		if (this.getNodeParameter('binaryData', 0)) {
-			const propertyNameUpload = this.getNodeParameter('file', 0) as string;
+
+		if (this.getNodeParameter('file', 0, '') as any) {
+			console.log('passed');
+			const propertyNameUpload = this.getNodeParameter('file', 0, '') as string;
 			body.file = await this.helpers.getBinaryDataBuffer(0, propertyNameUpload);
+
 		}
 
 		if (!body.content && !body.embeds) {
@@ -190,6 +184,25 @@ export class DiscordV2 implements INodeType {
 			}
 		}
 
+		if (body.components) {
+			try {
+				//@ts-expect-error
+				body.components = JSON.parse(body.components);
+				if (!Array.isArray(body.components)) {
+					throw new Error('components must be an array of components.');
+				}
+			} catch (e) {
+				throw new Error('components must be valid JSON.');
+			}
+		}
+
+		if (body.allowed_mentions) {
+				//@ts-expect-error
+				body.allowed_mentions = JSON.parse(body.allowed_mentions);
+		}
+
+
+
 		//* Not used props, delete them from the payload as Discord won't need them :^
 		if (!body.content) delete body.content;
 		if (!body.username) delete body.username;
@@ -202,17 +215,29 @@ export class DiscordV2 implements INodeType {
 		if (!body.attachments) delete body.attachments;
 		if (!body.file) delete body.file;
 
-
-		const options = {
-			method: 'POST',
-			body,
-			uri: webhookUri,
-			headers: {
-				'content-type': 'application/json; charset=utf-8',
-			},
-			json: true,
-		};
-
+		let options;
+		console.log(body);
+		if(!body.payload_json){
+			 options = {
+				method: 'POST',
+				body,
+				uri: webhookUri,
+				headers: {
+					'content-type': 'application/json; charset=utf-8',
+				},
+				json: true,
+			};
+		}else {
+			 options = {
+				method: 'POST',
+				body,
+				uri: webhookUri,
+				headers: {
+					'content-type': 'multipart/form-data; charset=utf-8',
+				},
+				json: true,
+			};
+		}
 		let maxTries = 5;
 		do {
 			try {
