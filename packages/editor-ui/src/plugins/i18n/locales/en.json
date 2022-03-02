@@ -1159,7 +1159,7 @@
 	"SETTING_UP_OWNER_ERROR": "Problem setting up owner",
 	"SETUP_SMTP_TO_INVITE_USERS_MESSAGE": "Set up SMTP to invite users. <a href=\"https://docs.n8n.io/reference/user-management#smtp\" target=\"_blank\">Instructions</a>",
 	"SET_UP_ACCOUNT_ERROR": "Problem setting up your account",
-	"SET_UP_ACCOUNT_MESSAGE": "Set up your account",
+	"SET_UP_ACCOUNT": "Set up your account",
 	"SET_UP_MY_ACCOUNT": "Set up my owner account",
 	"SET_UP_OWNER": "Set up owner account",
 	"SET_UP_TO_INVITE_USERS_WARNING": "Set up an owner account in order to invite other users. Once set up, each user will need to use a password to access this instance.",
