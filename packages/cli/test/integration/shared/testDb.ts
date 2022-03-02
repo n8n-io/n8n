@@ -85,7 +85,7 @@ export async function terminate(testDbName: string) {
 }
 
 /**
- * Truncate tables for an array of entities.
+ * Truncate DB tables for specified entities.
  *
  * @param entities Array of entity names whose tables to truncate.
  * @param testDbName Name of the test DB to truncate tables in.
@@ -123,8 +123,7 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 		);
 	}
 
-	// Truncation in MySQL requires globals, which cannot be safely manipulated
-	// by multiple parallel tests, hence the use of `repository.delete()`.
+	// MySQL truncation requires globals, which cannot be safely manipulated by parallel tests
 	if (dbType === 'mysqldb') {
 		await Promise.all(
 			entities.map(async (entity) => {
