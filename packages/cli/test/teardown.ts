@@ -7,7 +7,6 @@ import { getBootstrapPostgresOptions } from './integration/shared/testDb';
 export default async () => {
 	const dbType = config.get('database.type') as DatabaseType;
 
-	// clean up any remaining test Postgres DBs prefixed with `n8n_test_pg_`
 	if (dbType === 'postgresdb') {
 		const bootstrap = await createConnection(getBootstrapPostgresOptions());
 
