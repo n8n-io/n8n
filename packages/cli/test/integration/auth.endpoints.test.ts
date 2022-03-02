@@ -9,7 +9,8 @@ import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import { Role } from '../../src/databases/entities/Role';
 import { randomEmail, randomValidPassword, randomName } from './shared/random';
-import { getGlobalOwnerRole } from './shared/utils';
+import { getGlobalOwnerRole } from './shared/testDb';
+import * as testDb from './shared/testDb';
 
 let globalOwnerRole: Role;
 
@@ -18,17 +19,17 @@ let testDbName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
-	const initResult = await utils.initTestDb();
+	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
-	await utils.truncate(['User'], testDbName);
+	await testDb.truncate(['User'], testDbName);
 
 	globalOwnerRole = await getGlobalOwnerRole();
 	utils.initLogger();
 });
 
 beforeEach(async () => {
-	await utils.createUser({
+	await testDb.createUser({
 		id: uuid(),
 		email: TEST_USER.email,
 		firstName: TEST_USER.firstName,
@@ -46,11 +47,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate(['User'], testDbName);
+	await testDb.truncate(['User'], testDbName);
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName);
+	await testDb.terminate(testDbName);
 });
 
 test('POST /login should log user in', async () => {

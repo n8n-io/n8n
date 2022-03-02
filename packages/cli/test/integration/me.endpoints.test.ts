@@ -16,7 +16,8 @@ import {
 	randomName,
 	randomString,
 } from './shared/random';
-import { getGlobalOwnerRole, toObject } from './shared/utils';
+import { toObject } from './shared/utils';
+import * as testDb from './shared/testDb';
 
 const dbType = config.get('database.type');
 let app: express.Application;
@@ -25,24 +26,24 @@ let globalOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
-	const initResult = await utils.initTestDb();
+	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
-	globalOwnerRole = await getGlobalOwnerRole();
+	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	utils.initLogger();
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName);
+	await testDb.terminate(testDbName);
 });
 
 describe('Owner shell', () => {
 	beforeEach(async () => {
-		await utils.createOwnerShell();
+		await testDb.createOwnerShell();
 	});
 
 	afterEach(async () => {
-		await utils.truncate(['User'], testDbName);
+		await testDb.truncate(['User'], testDbName);
 	});
 
 	test('GET /me should return sanitized owner shell', async () => {
@@ -218,7 +219,7 @@ describe('Member', () => {
 	});
 
 	afterEach(async () => {
-		await utils.truncate(['User'], testDbName);
+		await testDb.truncate(['User'], testDbName);
 	});
 
 	test('GET /me should return sanitized member', async () => {
@@ -381,7 +382,7 @@ describe('Owner', () => {
 
 
 	afterEach(async () => {
-		await utils.truncate(['User'], testDbName);
+		await testDb.truncate(['User'], testDbName);
 	});
 
 	test('GET /me should return sanitized owner', async () => {

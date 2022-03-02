@@ -12,6 +12,7 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import { Role } from '../../src/databases/entities/Role';
+import * as testDb from './shared/testDb';
 
 let app: express.Application;
 let globalOwnerRole: Role;
@@ -19,10 +20,10 @@ let testDbName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
-	const initResult = await utils.initTestDb();
+	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
-	await utils.truncate(['User'], testDbName);
+	await testDb.truncate(['User'], testDbName);
 
 	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
 		name: 'owner',
@@ -39,7 +40,7 @@ beforeEach(async () => {
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
 
-	await utils.createUser({
+	await testDb.createUser({
 		id: INITIAL_TEST_USER.id,
 		email: INITIAL_TEST_USER.email,
 		password: INITIAL_TEST_USER.password,
@@ -50,11 +51,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate(['User'], testDbName);
+	await testDb.truncate(['User'], testDbName);
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName);
+	await testDb.terminate(testDbName);
 });
 
 test('POST /forgot-password should send password reset email', async () => {

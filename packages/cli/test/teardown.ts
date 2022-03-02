@@ -1,10 +1,10 @@
 import { createConnection } from 'typeorm';
 import config = require('../config');
-import { getBootstrapPostgresOptions } from './integration/shared/connectionOptions';
 import { exec } from 'child_process';
 import { DatabaseType } from '../src';
+import { getBootstrapPostgresOptions } from './integration/shared/testDb';
 
-module.exports = async function () {
+export default async () => {
 	const dbType = config.get('database.type') as DatabaseType;
 
 	// clean up any remaining test Postgres DBs prefixed with `n8n_test_pg_`

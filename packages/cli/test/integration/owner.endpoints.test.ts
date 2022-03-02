@@ -2,6 +2,7 @@ import express = require('express');
 import validator from 'validator';
 
 import * as utils from './shared/utils';
+import * as testDb from './shared/testDb';
 import { Db } from '../../src';
 import config = require('../../config');
 import {
@@ -16,22 +17,22 @@ let testDbName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
-	const initResult = await utils.initTestDb();
+	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
 	utils.initLogger();
 });
 
 beforeEach(async () => {
-	await utils.createOwnerShell();
+	await testDb.createOwnerShell();
 });
 
 afterEach(async () => {
-	await utils.truncate(['User'], testDbName);
+	await testDb.truncate(['User'], testDbName);
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName);
+	await testDb.terminate(testDbName);
 });
 
 test('POST /owner should create owner and enable isInstanceOwnerSetUp', async () => {

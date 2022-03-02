@@ -3,7 +3,10 @@ import { UserSettings } from 'n8n-core';
 import { Db } from '../../src';
 import { randomName, randomString } from './shared/random';
 import * as utils from './shared/utils';
-import type { SaveCredentialFunction } from './shared/types';
+import type { CredentialPayload, SaveCredentialFunction } from './shared/types';
+import { Role } from '../../src/databases/entities/Role';
+import { User } from '../../src/databases/entities/User';
+import * as testDb from './shared/testDb';
 
 let app: express.Application;
 let testDbName = '';
@@ -14,27 +17,27 @@ beforeAll(async () => {
 		endpointGroups: ['credentials'],
 		applyAuth: true,
 	});
-	const initResult = await utils.initTestDb();
+	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
 	utils.initConfigFile();
 
-	const credentialOwnerRole = await utils.getCredentialOwnerRole();
-	saveCredential = utils.affixRoleToSaveCredential(credentialOwnerRole);
+	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
+	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 });
 
 beforeEach(async () => {
-	await utils.createOwnerShell();
+	await testDb.createOwnerShell();
 });
 
 afterEach(async () => {
 	// do not combine calls - shared table must be cleared first and separately
-	await utils.truncate(['SharedCredentials'], testDbName);
-	await utils.truncate(['User', 'Credentials'], testDbName);
+	await testDb.truncate(['SharedCredentials'], testDbName);
+	await testDb.truncate(['User', 'Credentials'], testDbName);
 });
 
 afterAll(async () => {
-	await utils.terminateTestDb(testDbName);
+	await testDb.terminate(testDbName);
 });
 
 test('POST /credentials should create cred', async () => {
@@ -132,7 +135,7 @@ test('DELETE /credentials/:id should delete owned cred for owner', async () => {
 test('DELETE /credentials/:id should delete non-owned cred for owner', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 
 	const response = await authOwnerAgent.delete(`/credentials/${savedCredential.id}`);
@@ -150,7 +153,7 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 });
 
 test('DELETE /credentials/:id should delete owned cred for member', async () => {
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 
@@ -170,7 +173,7 @@ test('DELETE /credentials/:id should delete owned cred for member', async () => 
 
 test('DELETE /credentials/:id should not delete non-owned cred for member', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
 
@@ -233,7 +236,7 @@ test('PATCH /credentials/:id should update owned cred for owner', async () => {
 test('PATCH /credentials/:id should update non-owned cred for owner', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 	const patchPayload = credentialPayload();
 
@@ -266,7 +269,7 @@ test('PATCH /credentials/:id should update non-owned cred for owner', async () =
 });
 
 test('PATCH /credentials/:id should update owned cred for member', async () => {
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 	const patchPayload = credentialPayload();
@@ -301,7 +304,7 @@ test('PATCH /credentials/:id should update owned cred for member', async () => {
 
 test('PATCH /credentials/:id should not update non-owned cred for member', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
 	const patchPayload = credentialPayload();
@@ -362,7 +365,7 @@ test('GET /credentials should retrieve all creds for owner', async () => {
 		await saveCredential(credentialPayload(), { user: owner });
 	}
 
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 
 	await saveCredential(credentialPayload(), { user: member });
 
@@ -382,7 +385,7 @@ test('GET /credentials should retrieve all creds for owner', async () => {
 });
 
 test('GET /credentials should retrieve owned creds for member', async () => {
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 
 	for (let i = 0; i < 3; i++) {
@@ -406,7 +409,7 @@ test('GET /credentials should retrieve owned creds for member', async () => {
 
 test('GET /credentials should not retrieve non-owned creds for member', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 
 	for (let i = 0; i < 3; i++) {
@@ -445,7 +448,7 @@ test('GET /credentials/:id should retrieve owned cred for owner', async () => {
 });
 
 test('GET /credentials/:id should retrieve owned cred for member', async () => {
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: member });
 
@@ -472,7 +475,7 @@ test('GET /credentials/:id should retrieve owned cred for member', async () => {
 
 test('GET /credentials/:id should not retrieve non-owned cred for member', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const member = await utils.createUser();
+	const member = await testDb.createUser();
 	const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
 
@@ -541,3 +544,8 @@ const INVALID_PAYLOADS = [
 	[],
 	undefined,
 ];
+
+function affixRoleToSaveCredential(role: Role) {
+	return (credentialPayload: CredentialPayload, { user }: { user: User }) =>
+		testDb.saveCredential(credentialPayload, { user, role });
+}
