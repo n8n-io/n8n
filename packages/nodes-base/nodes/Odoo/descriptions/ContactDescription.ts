@@ -46,51 +46,6 @@ export const contactOperations: INodeProperties[] = [
 	},
 ];
 
-const contactFields: INodeProperties[] = [
-	{
-		displayName: 'Tax ID',
-		name: 'vat',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Job Position',
-		name: 'function',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Website',
-		name: 'website',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Phone',
-		name: 'phone',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Mobile',
-		name: 'mobile',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Internal Notes',
-		name: 'comment',
-		type: 'string',
-		default: '',
-	},
-];
-
 export const contactDescription: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create                              */
@@ -144,18 +99,6 @@ export const contactDescription: INodeProperties[] = [
 						displayName: 'Address',
 						values: [
 							{
-								displayName: 'Street',
-								name: 'street',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Street 2',
-								name: 'street2',
-								type: 'string',
-								default: '',
-							},
-							{
 								displayName: 'City',
 								name: 'city',
 								type: 'string',
@@ -180,6 +123,18 @@ export const contactDescription: INodeProperties[] = [
 								},
 							},
 							{
+								displayName: 'Street',
+								name: 'street',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Street 2',
+								name: 'street2',
+								type: 'string',
+								default: '',
+							},
+							{
 								displayName: 'Zip Code',
 								name: 'zip',
 								type: 'string',
@@ -189,7 +144,48 @@ export const contactDescription: INodeProperties[] = [
 					},
 				],
 			},
-			...contactFields,
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Internal Notes',
+				name: 'comment',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Job Position',
+				name: 'function',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Mobile',
+				name: 'mobile',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax ID',
+				name: 'vat',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+			},
 		],
 	},
 
@@ -343,18 +339,6 @@ export const contactDescription: INodeProperties[] = [
 						displayName: 'Address',
 						values: [
 							{
-								displayName: 'Street',
-								name: 'street',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Street 2',
-								name: 'street2',
-								type: 'string',
-								default: '',
-							},
-							{
 								displayName: 'City',
 								name: 'city',
 								type: 'string',
@@ -379,6 +363,18 @@ export const contactDescription: INodeProperties[] = [
 								},
 							},
 							{
+								displayName: 'Street',
+								name: 'street',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Street 2',
+								name: 'street2',
+								type: 'string',
+								default: '',
+							},
+							{
 								displayName: 'Zip Code',
 								name: 'zip',
 								type: 'string',
@@ -389,12 +385,53 @@ export const contactDescription: INodeProperties[] = [
 				],
 			},
 			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Internal Notes',
+				name: 'comment',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Job Position',
+				name: 'function',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Mobile',
+				name: 'mobile',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
 			},
-			...contactFields,
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax ID',
+				name: 'vat',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+			},
 		],
 	},
 ];

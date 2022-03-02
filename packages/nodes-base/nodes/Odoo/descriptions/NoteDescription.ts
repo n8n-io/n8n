@@ -67,31 +67,31 @@ export const noteDescription: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		default: {},
-		placeholder: 'Add Field',
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'note',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-			},
-		],
-	},
+	// {
+	// 	displayName: 'Additional Fields',
+	// 	name: 'additionalFields',
+	// 	type: 'collection',
+	// 	default: {},
+	// 	placeholder: 'Add Field',
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: [
+	// 				'create',
+	// 			],
+	// 			resource: [
+	// 				'note',
+	// 			],
+	// 		},
+	// 	},
+	// 	options: [
+	// 		{
+	// 			displayName: 'Name',
+	// 			name: 'name',
+	// 			type: 'string',
+	// 			default: '',
+	// 		},
+	// 	],
+	// },
 
 	/* -------------------------------------------------------------------------- */
 	/*                                note:get                                    */
@@ -210,11 +210,11 @@ export const noteDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
-		type: 'collection',
-		default: {},
-		placeholder: 'Add Field',
+		displayName: 'Memo',
+		name: 'memo',
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: [
@@ -225,19 +225,36 @@ export const noteDescription: INodeProperties[] = [
 				],
 			},
 		},
-		options: [
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Memo',
-				name: 'memo',
-				type: 'string',
-				default: '',
-			},
-		],
 	},
+	// {
+	// 	displayName: 'Update Fields',
+	// 	name: 'updateFields',
+	// 	type: 'collection',
+	// 	default: {},
+	// 	placeholder: 'Add Field',
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: [
+	// 				'update',
+	// 			],
+	// 			resource: [
+	// 				'note',
+	// 			],
+	// 		},
+	// 	},
+	// 	options: [
+	// 		{
+	// 			displayName: 'Name',
+	// 			name: 'name',
+	// 			type: 'string',
+	// 			default: '',
+	// 		},
+	// 		{
+	// 			displayName: 'Memo',
+	// 			name: 'memo',
+	// 			type: 'string',
+	// 			default: '',
+	// 		},
+	// 	],
+	// },
 ];

@@ -534,11 +534,11 @@ export class Odoo implements INodeType {
 
 				if (resource === 'note') {
 					if (operation === 'create') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						// const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const memo = this.getNodeParameter('memo', i) as string;
 						const fields: IDataObject = {
 							memo,
-							...additionalFields,
+							// ...additionalFields,
 						};
 						responseData = await odooCreate.call(
 							this,
@@ -618,7 +618,10 @@ export class Odoo implements INodeType {
 
 					if (operation === 'update') {
 						const noteId = this.getNodeParameter('noteId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const memo = this.getNodeParameter('memo', i) as string;
+						const fields: IDataObject = {
+							memo,
+						};
 						responseData = await odooUpdate.call(
 							this,
 							db,
@@ -628,7 +631,7 @@ export class Odoo implements INodeType {
 							operation,
 							url,
 							noteId,
-							updateFields,
+							fields,
 						);
 					}
 				}
@@ -641,6 +644,8 @@ export class Odoo implements INodeType {
 							name,
 							...additionalFields,
 						};
+
+						console.log(fields);
 						responseData = await odooCreate.call(
 							this,
 							db,

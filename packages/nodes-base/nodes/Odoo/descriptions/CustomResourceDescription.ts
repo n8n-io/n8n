@@ -267,7 +267,7 @@ export const customResourceDescription: INodeProperties[] = [
 								value: 'equal',
 							},
 							{
-								name: '=<',
+								name: '<=',
 								value: 'lesserOrEqual',
 							},
 							{
