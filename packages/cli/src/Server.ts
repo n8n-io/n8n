@@ -231,8 +231,6 @@ class App {
 
 	presetCredentialsLoaded: boolean;
 
-	isUserManagementEnabled: boolean;
-
 	webhookMethods: WebhookHttpMethod[];
 
 	constructor() {
@@ -270,11 +268,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
 
-		// TODO UM: remove this flag
-		this.isUserManagementEnabled = !config.get('userManagement.disabled');
-
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
-
 		const telemetrySettings: ITelemetrySettings = {
 			enabled: config.get('diagnostics.enabled') as boolean,
 		};
@@ -320,7 +314,10 @@ class App {
 				enabled:
 					config.get('userManagement.disabled') === false ||
 					config.get('userManagement.isInstanceOwnerSetUp') === true,
-				// showSetupOnFirstLoad: config.get('userManagement.disabled') === false, // && config.get('userManagement.skipOwnerSetup') === true
+				showSetupOnFirstLoad:
+					config.get('userManagement.disabled') === false &&
+					config.get('userManagement.isInstanceOwnerSetUp') === false &&
+					config.get('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
@@ -341,6 +338,24 @@ class App {
 	 */
 	getCurrentDate(): Date {
 		return new Date();
+	}
+
+	/**
+	 * Returns the current settings for the frontend
+	 */
+	getSettingsForFrontend(): IN8nUISettings {
+		// refresh user management status
+		Object.assign(this.frontendSettings.userManagement, {
+			enabled:
+				config.get('userManagement.disabled') === false ||
+				config.get('userManagement.isInstanceOwnerSetUp') === true,
+			showSetupOnFirstLoad:
+				config.get('userManagement.disabled') === false &&
+				config.get('userManagement.isInstanceOwnerSetUp') === false &&
+				config.get('userManagement.skipInstanceOwnerSetup') === false,
+		});
+
+		return this.frontendSettings;
 	}
 
 	async config(): Promise<void> {
@@ -920,7 +935,13 @@ class App {
 					}),
 				});
 
-				if (!shared) return {};
+				if (!shared) {
+					throw new ResponseHelper.ResponseError(
+						`Workflow with ID "${workflowId}" could not be found.`,
+						undefined,
+						404,
+					);
+				}
 
 				const {
 					workflow: { id, tags, ...rest },
@@ -1275,7 +1296,7 @@ class App {
 						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 					if (
-						config.get('userManagement.hasOwner') === true &&
+						config.get('userManagement.isInstanceOwnerSetUp') === true &&
 						req.user.globalRole.name !== 'owner'
 					) {
 						throw new ResponseHelper.ResponseError(
@@ -2696,12 +2717,12 @@ class App {
 		// Settings
 		// ----------------------------------------
 
-		// Returns the settings which are needed in the UI
+		// Returns the current settings for the UI
 		this.app.get(
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					return this.frontendSettings;
+					return this.getSettingsForFrontend();
 				},
 			),
 		);

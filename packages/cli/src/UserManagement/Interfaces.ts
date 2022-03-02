@@ -28,6 +28,7 @@ export interface PublicUser {
 	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
 	password?: string;
 	passwordResetToken?: string;
+	isPending: boolean;
 }
 
 export interface N8nApp {

@@ -36,7 +36,7 @@ ROUTES_REQUIRING_AUTHORIZATION.forEach(async (route) => {
 
 	test(`${route} should return 403 Forbidden for member`, async () => {
 		const member = await utils.createUser();
-		const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 		const response = await authMemberAgent[method](endpoint);
 		if (response.statusCode === 500) {
 			console.log(response);

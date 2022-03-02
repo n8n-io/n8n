@@ -341,7 +341,13 @@ credentialsController.get(
 			}),
 		});
 
-		if (!shared) return {};
+		if (!shared) {
+			throw new ResponseHelper.ResponseError(
+				`Credentials with ID "${credentialId}" could not be found.`,
+				undefined,
+				404,
+			);
+		}
 
 		const { credentials: credential } = shared;
 

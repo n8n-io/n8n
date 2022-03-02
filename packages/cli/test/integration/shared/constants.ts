@@ -56,4 +56,6 @@ export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'GET /users',
 	'DELETE /users/123',
 	'POST /users/123/reinvite',
+	'POST /owner',
+	'POST /owner/skip-setup',
 ];
