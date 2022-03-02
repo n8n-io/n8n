@@ -472,8 +472,8 @@ test('GET /credentials/:id should not retrieve non-owned cred for member', async
 
 	const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
 
-	expect(response.statusCode).toBe(200);
-	expect(response.body.data).toEqual({}); // owner's cred not returned
+	expect(response.statusCode).toBe(404);
+	expect(response.body.data).toBeUndefined(); // owner's cred not returned
 });
 
 test('GET /credentials/:id should fail with missing encryption key', async () => {
@@ -493,14 +493,13 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 	mock.mockRestore();
 });
 
-test('GET /credentials/:id should return empty if cred not found', async () => {
+test('GET /credentials/:id should return 404 if cred not found', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authMemberAgent.get('/credentials/789');
 
-	expect(response.statusCode).toBe(200);
-	expect(response.body).toEqual({ data: {} });
+	expect(response.statusCode).toBe(404);
 });
 
 const credentialPayload = () => ({

@@ -198,7 +198,7 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 				tablePrefix +
 				'user" ' +
 				'("id", "globalRoleId", "personalizationAnswers") values ($1, $2, $3)',
-			[ownerUserId, instanceOwnerRole[0].insertId, survey ?? null],
+			[ownerUserId, instanceOwnerRole[0].insertId, survey],
 		);
 		await queryRunner.query(
 			'INSERT INTO "' +

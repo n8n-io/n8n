@@ -97,7 +97,32 @@ export async function executeErrorWorkflow(
 ): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
-		const workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
+		let workflowData;
+		if (workflowId.toString() !== workflowErrorData.workflow.id?.toString()) {
+			// To make this code easier to understand, we split it in 2 parts:
+			// 1) Fetch the owner of the errored workflows and then
+			// 2) if now instance owner, then check if the user has access to the
+			//    triggered workflow.
+
+			const user = await getWorkflowOwner(workflowErrorData.workflow.id!);
+
+			if (user.globalRole.name === 'owner') {
+				workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
+			} else {
+				const sharedWorkflowData = await Db.collections.SharedWorkflow!.findOne({
+					where: {
+						workflow: { id: workflowId },
+						user,
+					},
+					relations: ['workflow'],
+				});
+				if (sharedWorkflowData) {
+					workflowData = sharedWorkflowData.workflow;
+				}
+			}
+		} else {
+			workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
+		}
 
 		if (workflowData === undefined) {
 			// The error workflow could not be found

@@ -80,7 +80,7 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 			INSERT INTO "${tablePrefix}user" (id, globalRoleId, personalizationAnswers) values
 			(?, ?, ?)
 		`,
-			[ownerUserId, instanceOwnerRole[0].insertId, survey ?? null],
+			[ownerUserId, instanceOwnerRole[0].insertId, survey],
 		);
 
 		await queryRunner.query(`
