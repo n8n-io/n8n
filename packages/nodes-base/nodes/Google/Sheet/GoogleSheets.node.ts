@@ -1193,7 +1193,7 @@ export class GoogleSheets implements INodeType {
 				});
 				if (requests && requests.length) {
 					const sheetResp = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {requests});
-
+					// tslint:disable: no-any
 					(sheetResp.replies as any[]).forEach(reply => {
 						returnData.push({
 							value: reply.addSheet.properties.sheetId,
@@ -1243,12 +1243,13 @@ export class GoogleSheets implements INodeType {
 							});
 						}
 					});
+					// The orignal author decided to clear the all the sheets for some reasons.
 					//clear
-					if (existedSheetTitles && existedSheetTitles.length) {
-						existedSheetTitles.forEach(async sheetTitle => {
-							await sheet.clearData(encodeURIComponent(`${sheetTitle}`));
-						});
-					}
+					// if (existedSheetTitles && existedSheetTitles.length) {
+					// 	existedSheetTitles.forEach(async sheetTitle => {
+					// 		await sheet.clearData(encodeURIComponent(`${sheetTitle}`));
+					// 	});
+					// }
 					if (sheetTitleArr && sheetTitleArr.length) {
 						const titleArr = Array.from(new Set(sheetTitleArr)).filter(title => !existedSheetTitles!.includes(title));
 						const sheets = await createSheet(titleArr);
