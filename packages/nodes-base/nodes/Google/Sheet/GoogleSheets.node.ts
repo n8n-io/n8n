@@ -1211,7 +1211,7 @@ export class GoogleSheets implements INodeType {
 
 					const updateData: ISheetUpdateData[] = [];
 
-					let groups: any = null;
+					let groups: GroupResult[];
 					if (dimensions && dimensions.length) {
 						groups = groupBy(items.map(item => item.json), dimensions);
 					}
@@ -1538,7 +1538,7 @@ export class GoogleSheets implements INodeType {
 				}
 			} else if (operation === 'updateByColumnOrRow') {
 				const sheetTitleField = (this.getNodeParameter('sheetTitleField', 0) as string).trim();
-				let dimensions = null, existedSheetTitles: string[] = [];
+				let dimensions: string[] = [], existedSheetTitles: string[] = [];
 				if (sheetTitleField && sheetTitleField.length) {
 					dimensions = sheetTitleField.split(',');
 				}
@@ -1561,31 +1561,6 @@ export class GoogleSheets implements INodeType {
 						});
 					}
 					existedSheetTitles = returnData.map(item => item.name);
-
-					// create sheets
-					// const items = this.getInputData();
-					// const cartesian =
-					// 	(...a) => a.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())));
-					// let b: string[][] = [];
-					// items.forEach(item => {
-					// 	dimensions.forEach((dim, i) => {
-					// 		(b[i] = b[i] || []).push((item.json[dim] as string).trim());
-					// 	});
-					// });
-					// b = b.map(arr => Array.from(new Set(arr)));
-					// const groups = b.length === 1 ? b[0].map(x=>[x]) : cartesian(...b);
-					//
-					// console.assert(groups[0].length === dimensions.length);
-					//
-					// const allSheetTitles = groups.map((groupValueArr: string[]) => {
-					// 	let group: IDataObject = {};
-					// 	groupValueArr.forEach((val, j) => {
-					// 		group[dimensions[j]] = val;
-					// 	});
-					// 	return getGroupName(group);
-					// });
-					//
-					// const shouldCreateTitleArr = allSheetTitles.filter(title => !existedSheetTitles.includes(title));
 				}
 				return updateByColumnOrRow(dimensions, existedSheetTitles);
 			}
