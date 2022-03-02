@@ -1,3 +1,5 @@
+// tslint:disable: no-any
+
 import {
 	IExecuteFunctions
 } from 'n8n-core';

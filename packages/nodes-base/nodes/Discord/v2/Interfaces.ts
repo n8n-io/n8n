@@ -1,10 +1,11 @@
-import { descriptions } from './../../SyncroMSP/v1/actions/customer/index';
+// tslint:disable: no-any
+
 export interface DiscordWebhook {
 	content?: string;
 	username?: string;
 	avatar_url?: string;
 	tts?: boolean;
-	file?: any;
+	file?: string;
 	embeds?: any[];
 	allowed_mentions?: {
 		parse: Array<'roles' | 'users' | 'everyone'>;
