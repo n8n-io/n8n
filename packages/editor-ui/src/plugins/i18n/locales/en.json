@@ -1146,6 +1146,10 @@
 	"PASSWORD_RESET_SUCCESS": "Password reset successfully",
 	"PASSWORD_RESET_SUCCESS_MESSAGE": "You can now sign in with your new password",
 	"PASSWORD_RESET_ERROR": "Problem changing the password",
+	"PERSONAL": "Personal",
+	"USERS": "Users",
+	"VERSION": "Version",
+	"SETTINGS": "Settings",
 	"workflowPreview": {
 		"showError": {
 			"previewError": {
