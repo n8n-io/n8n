@@ -7,7 +7,6 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, ResponseHelper } from '../..';
 import config = require('../../../config');
-import { User } from '../../databases/entities/User';
 import { validateEntity } from '../../GenericHelpers';
 import { AuthenticatedRequest, OwnerRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
