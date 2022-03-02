@@ -25,6 +25,7 @@ export async function init() {
 	const dbType = config.get('database.type') as DatabaseType;
 
 	if (dbType === 'sqlite') {
+		// no bootstrap connection required
 		const testDbName = `n8n_test_sqlite_${Date.now()}`;
 		await Db.init(getSqliteOptions({ name: testDbName }));
 		await getConnection(testDbName).runMigrations({ transaction: 'none' });
@@ -263,7 +264,7 @@ export function getAllRoles() {
 
 /**
  * Generate options to for an in-memory sqlite database connection,
- * one per test suite run. No bootstrap connection required.
+ * one per test suite run.
  */
 export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions => {
 	return {
