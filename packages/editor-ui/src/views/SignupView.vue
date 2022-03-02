@@ -24,7 +24,7 @@ export default mixins(
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
 			title: this.$locale.baseText('SET_UP_ACCOUNT_MESSAGE'),
-			buttonText: this.$locale.baseText('FINISH_ACCOUNT_SET_UP'),
+			buttonText: this.$locale.baseText('FINISH_ACCOUNT_SETUP'),
 			inputs: [
 				{
 					name: 'firstName',

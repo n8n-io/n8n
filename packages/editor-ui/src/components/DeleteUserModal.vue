@@ -15,7 +15,7 @@
 				<div :class="$style.content" v-else>
 					<div><n8n-text color="text-base">{{ $locale.baseText('CONFIRM_DATA_HANDLING_AFTER_DELETION') }}</n8n-text></div>
 					<el-radio :value="operation" label="transfer" @change="() => setOperation('transfer')">
-						<n8n-text color="text-dark">{{ $locale.baseText('TRANSFER_WORKFLOWS_CREDENTIALS') }}</n8n-text>
+						<n8n-text color="text-dark">{{ $locale.baseText('TRANSFER_WORKFLOWS_AND_CREDENTIALS') }}</n8n-text>
 					</el-radio>
 					<div :class="$style.optionInput" v-if="operation === 'transfer'">
 						<n8n-input-label :label="$locale.baseText('USER_TO_TRANSFER_TO')">
@@ -29,7 +29,7 @@
 						</n8n-input-label>
 					</div>
 					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
-						<n8n-text color="text-dark">{{ $locale.baseText('DELETE_WORKFLOWS_CREDENTIALS') }}</n8n-text>
+						<n8n-text color="text-dark">{{ $locale.baseText('DELETE_WORKFLOWS_AND_CREDENTIALS') }}</n8n-text>
 					</el-radio>
 					<div :class="$style.optionInput" v-if="operation === 'delete'">
 						<n8n-input-label :label="$locale.baseText('DELETE_CONFIRMATION_MESSAGE')">
