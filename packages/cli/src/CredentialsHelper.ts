@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -53,13 +54,6 @@ const mockNodeTypes: INodeTypes = {
 	getAll(): Array<INodeType | INodeVersionedType> {
 		// @ts-ignore
 		return Object.values(this.nodeTypes).map((data) => data.type);
-	},
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
-		if (this.nodeTypes[nodeType] === undefined) {
-			return undefined;
-		}
-		return this.nodeTypes[nodeType].type;
 	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
 		if (this.nodeTypes[nodeType] === undefined) {
@@ -430,7 +424,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
 	}
 
@@ -467,8 +460,25 @@ export class CredentialsHelper extends ICredentialsHelper {
 				for (const credential of nodeType.description.credentials ?? []) {
 					if (credential.name === credentialType && !!credential.testedBy) {
 						if (typeof credential.testedBy === 'string') {
+							if (Object.prototype.hasOwnProperty.call(node, 'nodeVersions')) {
+								// The node is versioned. So check all versions for test function
+								// starting with the latest
+								const versions = Object.keys((node as INodeVersionedType).nodeVersions)
+									.sort()
+									.reverse();
+								for (const version of versions) {
+									const versionedNode = (node as INodeVersionedType).nodeVersions[
+										parseInt(version, 10)
+									];
+									if (
+										versionedNode.methods?.credentialTest &&
+										versionedNode.methods?.credentialTest[credential.testedBy]
+									) {
+										return versionedNode.methods?.credentialTest[credential.testedBy];
+									}
+								}
+							}
 							// Test is defined as string which links to a functoin
-							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							return (node as unknown as INodeType).methods?.credentialTest![credential.testedBy];
 						}
 
@@ -524,7 +534,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			nodeType = credentialTestFunction.nodeType;
 		} else {
 			const nodeTypes = NodeTypes();
-			nodeType = nodeTypes.getByName('n8n-nodes-base.noOp') as INodeType;
+			nodeType = nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
 		}
 
 		const node: INode = {

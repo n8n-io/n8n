@@ -38,8 +38,7 @@ export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
 
-// templates
-export const TEMPLATES_BASE_URL = `https://api.n8n.io/`;
+export const N8N_IO_BASE_URL = `https://api.n8n.io/`;
 
 // node types
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
@@ -136,6 +135,36 @@ export const CODING_SKILL_KEY = 'codingSkill';
 export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
 export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
 
+export const MODAL_CANCEL = 'cancel';
+export const MODAL_CLOSE = 'close';
+export const MODAL_CONFIRMED = 'confirmed';
+
 export const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 
+export const HIRING_BANNER = `
+                                                                    //////
+                                                                 ///////////
+                                                               /////      ////
+                                               ///////////////////         ////
+                                             //////////////////////       ////
+     ///////               ///////          ////                /////////////
+  ////////////          ////////////       ////                    ///////
+ ////       ////       ////       ////    ////
+/////        /////////////         //////////
+ /////     ////       ////       ////     ////
+  ////////////          ////////////       ////           ////////
+    ///////                //////           ////        /////////////
+                                             /////////////        ////
+                                                //////////        ////
+                                                       ////      ////
+                                                        ///////////
+                                                          //////
+
+Love n8n? Help us build the future of automation! https://n8n.io/careers
+`;
+
+export const TEMPLATES_NODES_FILTER = [
+	'n8n-nodes-base.start',
+	'n8n-nodes-base.respondToWebhook',
+];
