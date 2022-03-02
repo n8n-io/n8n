@@ -15,7 +15,6 @@ import {
 } from './shared/random';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
-import * as UMHelper from '../../src/UserManagement/UserManagementHelper';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 
@@ -66,8 +65,6 @@ beforeEach(async () => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
-	// @ts-ignore hack because config doesn't change for helper
-	UMHelper.isEmailSetUp = false;
 });
 
 afterAll(async () => {
@@ -454,8 +451,6 @@ test('POST /users should email invites and create user shells', async () => {
 		smtp: { host, port, secure },
 	} = await utils.getSmtpTestAccount();
 
-	// @ts-ignore hack because config doesn't change for helper
-	UMHelper.isEmailSetUp = true;
 	config.set('userManagement.emails.mode', 'smtp');
 	config.set('userManagement.emails.smtp.host', host);
 	config.set('userManagement.emails.smtp.port', port);
@@ -492,8 +487,6 @@ test('POST /users should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	// @ts-ignore hack because config doesn't change for helper
-	UMHelper.isEmailSetUp = true;
 	config.set('userManagement.emails.mode', 'smtp');
 
 	const invalidPayloads = [
@@ -517,8 +510,6 @@ test('POST /users should ignore an empty payload', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
 
-	// @ts-ignore hack because config doesn't change for helper
-	UMHelper.isEmailSetUp = true;
 	config.set('userManagement.emails.mode', 'smtp');
 
 	const response = await authOwnerAgent.post('/users').send([]);
