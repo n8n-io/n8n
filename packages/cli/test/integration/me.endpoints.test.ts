@@ -16,7 +16,6 @@ import {
 	randomName,
 	randomString,
 } from './shared/random';
-import { toObject } from './shared/utils';
 import * as testDb from './shared/testDb';
 
 const dbType = config.get('database.type');
@@ -179,7 +178,7 @@ describe('Owner shell', () => {
 		for (const validPayload of validPayloads) {
 			const response = await authOwnerShellAgent.post('/me/survey').send(validPayload);
 			expect(response.statusCode).toBe(200);
-			expect(toObject(response.body)).toEqual(SUCCESS_RESPONSE_BODY);
+			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
 			const { personalizationAnswers: answers } = await Db.collections.User!.findOneOrFail();
 			// @ts-ignore TODO: JSON.parse() at model level

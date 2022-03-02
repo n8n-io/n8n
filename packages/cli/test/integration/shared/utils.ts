@@ -211,9 +211,3 @@ export async function isInstanceOwnerSetUp() {
  */
 export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
 
-/**
- * Remove quote-escaping backslashes added by Postgres.
- */
-export const toObject = (json: string) => {
-	return typeof json === 'string' ? JSON.parse(json) : json;
-};
