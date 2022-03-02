@@ -1095,7 +1095,6 @@
 			"arrayEmpty": "Must have an array of nodes"
 		}
 	},
-	"404_NOT_FOUND_MESSAGE": "Oops, couldn’t find that",
 	"BASIC_INFORMATION": "Basic Information",
 	"CHANGE_PASSWORD": "Change Password",
 	"CHECK_INBOX_AND_SPAM": "Please check your inbox (and perhaps your spam folder)",
@@ -1126,7 +1125,7 @@
 	"INVITE_X_USER": "Invite {count} user",
 	"LAST_NAME": "Last name",
 	"LOADING": "Loading",
-	"LOGGING_IN_ERROR": "Problem logging in",
+	"LOGIN_ERROR": "Problem logging in",
 	"MEMBER_ROLE": "Member",
 	"MISSING_INVITE_TOKEN_ERROR": "Missing invite token",
 	"MISSING_TOKEN_ERROR": "Missing token",
@@ -1140,6 +1139,7 @@
 	"PASSWORD": "Password",
 	"PASSWORDS_MUST_MATCH_ERROR": "Passwords must match",
 	"DEFAULT_PASSWORD_REQUIREMENTS": "At least 8 characters with 1 number and 1 uppercase",
+	"PAGE_NOT_FOUND_MESSAGE": "Oops, couldn’t find that",
 	"PASSWORD_UPDATE_ERROR": "Problem changing the password",
 	"PASSWORD_UPDATE_SUCCESS": "Password updated successfully",
 	"PASSWORD_UPDATE_SUCCESS_MESSAGE": "You can now sign in with your new password",

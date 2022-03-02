@@ -196,7 +196,7 @@ const router = new Router({
 			name: 'NotFoundView',
 			component: ErrorView,
 			props: {
-				messageKey: '404_NOT_FOUND_MESSAGE',
+				messageKey: 'PAGE_NOT_FOUND_MESSAGE',
 				errorCode: 404,
 				redirectTextKey: 'GO_TO_EDITOR',
 				redirectPage: 'NodeViewNew',
