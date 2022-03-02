@@ -196,9 +196,9 @@ const router = new Router({
 			name: 'NotFoundView',
 			component: ErrorView,
 			props: {
-				message: 'Oops, couldn’t find that',
+				messageKey: '404_NOT_FOUND_MESSAGE',
 				errorCode: 404,
-				redirectText: 'Go to editor',
+				redirectTextKey: 'GO_TO_EDITOR_LABEL',
 				redirectLink: '/',
 			},
 			meta: {

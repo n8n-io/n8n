@@ -4,7 +4,7 @@
 		<div :class="$style.message">
 			<div>
 				<n8n-heading size="2xlarge">
-					{{message}}
+					{{$locale.baseText(messageKey)}}
 				</n8n-heading>
 			</div>
 			<div>
@@ -14,7 +14,7 @@
 			</div>
 		</div>
 		<n8n-button
-			:label="redirectText"
+			:label="$locale.baseText(redirectTextKey)"
 			@click="onButtonClick"
 		/>
 	</div>
@@ -26,14 +26,14 @@ import Vue from 'vue';
 export default Vue.extend({
 	name: 'ErrorView',
 	props: {
-		message: {
+		messageKey: {
 			type: String,
 			required: true,
 		},
 		errorCode: {
 			type: Number,
 		},
-		redirectText: {
+		redirectTextKey: {
 			type: String,
 		},
 		redirectLink: {

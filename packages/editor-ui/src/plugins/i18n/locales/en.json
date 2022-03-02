@@ -1136,6 +1136,8 @@
 	"SENDING_EMAIL_ERROR": "Problem sending email",
 	"WORKFLOW_IMPORT_ERROR": "Could not import workflow",
 	"WORKFLOW_NOT_FOUND_ERROR": "Could not find workflow",
+	"404_NOT_FOUND_MESSAGE": "Oops, couldn’t find that",
+	"GO_TO_EDITOR_LABEL": "Go to editor",
 	"workflowPreview": {
 		"showError": {
 			"previewError": {
