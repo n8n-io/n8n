@@ -33,7 +33,7 @@ export default mixins(
 						label: this.$locale.baseText('EMAIL'),
 						type: 'email',
 						required: true,
-						validationRules: [{name: 'VALID_EMAIL'}],
+						validationRules: [{ name: 'VALID_EMAIL' }],
 						showRequiredAsterisk: false,
 						validateOnBlur: false,
 						autocomplete: 'email',

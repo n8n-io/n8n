@@ -79,7 +79,7 @@ export default mixins(showMessage).extend({
 			const user = getUserById(userId) as IUser | null;
 			if (user) {
 				try {
-					await this.$store.dispatch('users/reinviteUser', {id: user.id});
+					await this.$store.dispatch('users/reinviteUser', { id: user.id });
 
 					this.$showToast({
 						type: 'success',

@@ -42,7 +42,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onButtonClick() {
-			this.$router.push({name: this.redirectPage});
+			this.$router.push({ name: this.redirectPage });
 		},
 	},
 });

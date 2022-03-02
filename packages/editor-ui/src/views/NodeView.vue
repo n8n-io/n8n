@@ -2697,7 +2697,7 @@ export default mixins(
 							await this.importWorkflowExact(json);
 						} catch (e) {
 							if (window.top) {
-								window.top.postMessage(JSON.stringify({command: 'error', message: this.$locale.baseText('WORKFLOW_IMPORT_ERROR')}), '*');
+								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('WORKFLOW_IMPORT_ERROR') }), '*');
 							}
 							this.$showMessage({
 								title: this.$locale.baseText('WORKFLOW_IMPORT_ERROR'),
