@@ -199,7 +199,7 @@ const router = new Router({
 				messageKey: '404_NOT_FOUND_MESSAGE',
 				errorCode: 404,
 				redirectTextKey: 'GO_TO_EDITOR',
-				redirectLink: '/',
+				redirectPage: 'NodeViewNew',
 			},
 			meta: {
 				nodeView: true,

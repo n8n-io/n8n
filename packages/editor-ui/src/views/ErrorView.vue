@@ -36,13 +36,13 @@ export default Vue.extend({
 		redirectTextKey: {
 			type: String,
 		},
-		redirectLink: {
+		redirectPage: {
 			type: String,
 		},
 	},
 	methods: {
 		onButtonClick() {
-			this.$router.push(this.redirectLink);
+			this.$router.push({name: this.redirectPage});
 		},
 	},
 });
