@@ -1,6 +1,6 @@
 import { ConnectionOptions } from 'typeorm';
-import config = require('../../../config');
 
+import config = require('../../../config');
 import { entities } from '../../../src/databases/entities';
 import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
 import { postgresMigrations } from '../../../src/databases/postgresdb/migrations';
@@ -11,24 +11,31 @@ import { BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME } f
 //             sqlite
 // ----------------------------------
 
-export const SQLITE_TEST_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
-	type: 'sqlite',
-	database: ':memory:',
-
-	entityPrefix: '',
-	dropSchema: true,
-
-	migrations: sqliteMigrations,
-	migrationsTableName: 'migrations',
-	migrationsRun: false,
-
-	logging: false,
+/**
+ * Generate options to for an in-memory sqlite database connection,
+ * one per test suite run. No bootstrap connection required.
+ */
+export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions => {
+	return {
+		name,
+		type: 'sqlite',
+		database: ':memory:',
+		entityPrefix: '',
+		dropSchema: true,
+		migrations: sqliteMigrations,
+		migrationsTableName: 'migrations',
+		migrationsRun: false,
+	};
 };
 
 // ----------------------------------
 //            postgres
 // ----------------------------------
 
+/**
+ * Generate options for a bootstrap Postgres connection,
+ * to create and drop test Postgres databases.
+ */
 export const getBootstrapPostgresOptions = (): ConnectionOptions => {
 	const username = config.get('database.postgresdb.user');
 	const password = config.get('database.postgresdb.password');
@@ -63,15 +70,12 @@ export const getPostgresOptions = ({ name }: { name: string }): ConnectionOption
 		port,
 		username,
 		password,
-
 		entityPrefix: '',
 		schema,
 		dropSchema: true,
-
 		migrations: postgresMigrations,
 		migrationsRun: true,
 		migrationsTableName: 'migrations',
-
 		entities: Object.values(entities),
 		synchronize: false,
 		logging: false,
@@ -82,7 +86,10 @@ export const getPostgresOptions = ({ name }: { name: string }): ConnectionOption
 //             mysql
 // ----------------------------------
 
-
+/**
+ * Generate options for a bootstrap MySQL connection,
+ * to create and drop test MySQL databases.
+ */
 export const getBootstrapMySqlOptions = (): ConnectionOptions => {
 	const username = config.get('database.mysqldb.user');
 	const password = config.get('database.mysqldb.password');
@@ -100,6 +107,10 @@ export const getBootstrapMySqlOptions = (): ConnectionOptions => {
 	};
 };
 
+/**
+ * Generate options to for a MySQL database connection,
+ * one per test suite run.
+ */
 export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions => {
 	const username = config.get('database.mysqldb.user');
 	const password = config.get('database.mysqldb.password');

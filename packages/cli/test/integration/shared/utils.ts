@@ -46,7 +46,7 @@ import {
 	getBootstrapMySqlOptions,
 	getMySqlOptions,
 	getPostgresOptions,
-	SQLITE_TEST_CONNECTION_OPTIONS,
+	getSqliteOptions,
 } from './connectionOptions';
 import { credentialsController } from '../../../src/api/credentials.api';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
@@ -58,7 +58,7 @@ export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: P
 // ----------------------------------
 
 export const initLogger = () => {
-	config.set('logs.output', 'file'); // declutter console output during tests
+	config.set('logs.output', 'file'); // declutter console output
 	LoggerProxy.init(getLogger());
 };
 
@@ -134,7 +134,7 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 };
 
 // ----------------------------------
-//           test logger
+//          initializers
 // ----------------------------------
 
 /**
@@ -146,7 +146,7 @@ export function initTestLogger() {
 }
 
 /**
- * Initialize a config file if non-existent.
+ * Initialize a user settings config file if non-existent.
  */
 export function initConfigFile() {
 	const settingsPath = UserSettings.getUserSettingsPath();
@@ -165,10 +165,11 @@ export async function initTestDb() {
 	const dbType = config.get('database.type') as DatabaseType;
 
 	if (dbType === 'sqlite') {
-		await Db.init(SQLITE_TEST_CONNECTION_OPTIONS);
-		await getConnection().runMigrations({ transaction: 'none' });
+		const testDbName = `n8n_test_sqlite_${Date.now()}`;
+		await Db.init(getSqliteOptions({ name: testDbName }));
+		await getConnection(testDbName).runMigrations({ transaction: 'none' });
 
-		return { testDbName: 'temp', bootstrapName: 'temp' };
+		return { testDbName };
 	}
 
 	if (dbType === 'postgresdb') {
@@ -214,6 +215,10 @@ export async function initTestDb() {
 export async function terminateTestDb(testDbName: string) {
 	const dbType = config.get('database.type') as DatabaseType;
 
+	if (dbType === 'sqlite') {
+		await getConnection(testDbName).close();
+	}
+
 	if (dbType === 'postgresdb') {
 		await getConnection(testDbName).close();
 
@@ -224,6 +229,7 @@ export async function terminateTestDb(testDbName: string) {
 
 	if (dbType === 'mysqldb') {
 		await getConnection(testDbName).close();
+
 		const bootstrapMySql = getConnection(BOOTSTRAP_MYSQL_CONNECTION_NAME);
 		await bootstrapMySql.query(`DROP DATABASE ${testDbName}`);
 		await bootstrapMySql.close();
@@ -240,13 +246,14 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 	const dbType = config.get('database.type');
 
 	if (dbType === 'sqlite') {
-		await getConnection().query('PRAGMA foreign_keys=OFF');
+		const testDb = getConnection(testDbName);
+		await testDb.query('PRAGMA foreign_keys=OFF');
 		await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
-		return getConnection().query('PRAGMA foreign_keys=ON');
+		return testDb.query('PRAGMA foreign_keys=ON');
 	}
 
 	if (dbType === 'postgresdb') {
-		const map = {
+		const map: { [K in keyof IDatabaseCollections]: string } = {
 			Credentials: 'credentials_entity',
 			Workflow: 'workflow_entity',
 			Execution: 'execution_entity',
