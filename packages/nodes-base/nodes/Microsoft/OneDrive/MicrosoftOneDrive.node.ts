@@ -150,7 +150,8 @@ export class MicrosoftOneDrive implements INodeType {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_get?view=odsp-graph-online
 					if (operation === 'get') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${fileId}`);
+						const uri = (fileId.startsWith('root:/')) ? `/drive/${fileId}:/children` : `/drive/items/${fileId}/children`;
+						responseData = await microsoftApiRequest.call(this, 'GET', uri);
 						returnData.push(responseData as IDataObject);
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
@@ -238,7 +239,8 @@ export class MicrosoftOneDrive implements INodeType {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_list_children?view=odsp-graph-online
 					if (operation === 'getChildren') {
 						const folderId = this.getNodeParameter('folderId', i) as string;
-						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/items/${folderId}/children`);
+						const uri = (folderId.startsWith('root:/')) ? `/drive/${folderId}:/children` : `/drive/items/${folderId}/children`;
+						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', uri);
 						returnData.push.apply(returnData, responseData as IDataObject[]);
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
