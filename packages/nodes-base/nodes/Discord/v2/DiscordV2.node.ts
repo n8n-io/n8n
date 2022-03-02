@@ -164,7 +164,6 @@ export class DiscordV2 implements INodeType {
 
 
 		if (this.getNodeParameter('file', 0, '') as any) {
-			console.log('passed');
 			const propertyNameUpload = this.getNodeParameter('file', 0, '') as any;
 			body.file = await this.helpers.getBinaryDataBuffer(0, propertyNameUpload);
 
@@ -218,7 +217,6 @@ export class DiscordV2 implements INodeType {
 		if (!body.file) delete body.file;
 
 		let options;
-		console.log(body);
 		if(!body.payload_json){
 			 options = {
 				method: 'POST',
