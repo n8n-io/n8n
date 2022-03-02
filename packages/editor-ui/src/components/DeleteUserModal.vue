@@ -138,7 +138,7 @@ export default mixins(showMessage).extend({
 				if (this.transferId) {
 					const getUserById = this.$store.getters['users/getUserById'];
 					const transferUser: IUser = getUserById(this.transferId);
-					message = this.$locale.baseText('TRANSFERRED_TO_USER', { user: transferUser.fullName });
+					message = this.$locale.baseText('TRANSFERRED_TO_USER', { interpolate: { user: transferUser.fullName }});
 				}
 
 				this.$showMessage({
