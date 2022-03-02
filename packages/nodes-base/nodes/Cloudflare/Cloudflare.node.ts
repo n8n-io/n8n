@@ -91,6 +91,30 @@ export class Cloudflare implements INodeType {
 
 				if (resource === 'certificate') {
 
+					//https://api.cloudflare.com/#zone-level-authenticated-origin-pulls-list-certificates
+					if (operation === 'getAll') {
+
+						const zoneId = this.getNodeParameter('zoneId', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
+
+						Object.assign(qs, filters);
+
+						responseData = await cloudflareApiRequest.call(
+							this,
+							'GET',
+							`/zones/${zoneId}/origin_tls_client_auth`,
+							{},
+							qs,
+						);
+
+						responseData = responseData.results;
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.slice(0, limit);
+						}
+					}
 					//https://api.cloudflare.com/#zone-level-authenticated-origin-pulls-upload-certificate
 					if (operation === 'upload') {
 
@@ -114,6 +138,8 @@ export class Cloudflare implements INodeType {
 						responseData = responseData.result;
 					}
 				}
+
+
 
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);

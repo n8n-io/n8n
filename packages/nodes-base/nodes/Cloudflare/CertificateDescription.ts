@@ -16,6 +16,11 @@ export const certificateOperations = [
 		},
 		options: [
 			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all certificates',
+			},
+			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a certificate',
@@ -44,6 +49,7 @@ export const certificateFields = [
 				],
 				operation: [
 					'upload',
+					'getAll',
 				],
 			},
 		},
@@ -103,6 +109,7 @@ export const certificateFields = [
 			},
 		},
 		default: '',
+		description: `The zone's leaf certificate`,
 	},
 	{
 		displayName: 'Private Key',
@@ -121,5 +128,91 @@ export const certificateFields = [
 		},
 		default: '',
 	},
-
+	/* -------------------------------------------------------------------------- */
+	/*                          certificate:getAll                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'certificate',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 25,
+		typeOptions: {
+			minValue: 5,
+			maxValue: 50,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'certificate',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		description: 'The number of results to return',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'certificate',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Active',
+						value: 'active',
+					},
+					{
+						name: 'Expired',
+						value: 'expired',
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+					},
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+				],
+				default: '',
+				description: 'Status of the zone\'s custom SSL',
+			},
+		],
+	},
 ] as INodeProperties[];
