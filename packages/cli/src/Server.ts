@@ -789,9 +789,18 @@ class App {
 				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 				void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow);
 
-				const { id, ...rest } = savedWorkflow;
+				const { id, tags, ...rest } = savedWorkflow;
 
-				return { id: id.toString(), ...rest };
+				return {
+					id: id.toString(),
+					...rest,
+					tags:
+						tags?.map((tag) => {
+							// @ts-ignore
+							tag.id = tag.id.toString();
+							return tag;
+						}) ?? [],
+				};
 			}),
 		);
 
@@ -898,7 +907,12 @@ class App {
 					return {
 						id: id.toString(),
 						...rest,
-						tags: tags?.map(({ id, ...rest }) => ({ id: id.toString(), ...rest })) ?? [],
+						tags:
+							tags?.map((tag) => {
+								// @ts-ignore
+								tag.id = tag.id.toString();
+								return tag;
+							}) ?? [],
 					};
 				});
 			}),
@@ -950,7 +964,12 @@ class App {
 				return {
 					id: id.toString(),
 					...rest,
-					tags: tags?.map(({ id, ...rest }) => ({ id: id.toString(), ...rest })) ?? [],
+					tags:
+						tags?.map((tag) => {
+							// @ts-ignore
+							tag.id = tag.id.toString();
+							return tag;
+						}) ?? [],
 				};
 			}),
 		);
@@ -962,7 +981,7 @@ class App {
 				const { id: workflowId } = req.params;
 
 				const updateData = new WorkflowEntity();
-				const { tags, ...rest } = req.body;
+				const { tags: currentTags, ...rest } = req.body;
 				Object.assign(updateData, rest);
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
@@ -1025,12 +1044,12 @@ class App {
 
 				await Db.collections.Workflow!.update(workflowId, updateData);
 
-				if (tags && !config.get('workflowTagsDisabled')) {
+				if (currentTags && !config.get('workflowTagsDisabled')) {
 					const tablePrefix = config.get('database.tablePrefix');
 					await TagHelpers.removeRelations(workflowId, tablePrefix);
 
-					if (tags.length) {
-						await TagHelpers.createRelations(workflowId, tags, tablePrefix);
+					if (currentTags.length) {
+						await TagHelpers.createRelations(workflowId, currentTags, tablePrefix);
 					}
 				}
 
@@ -1086,11 +1105,17 @@ class App {
 					}
 				}
 
-				const { id, ...remainder } = updatedWorkflow;
+				const { id, tags, ...remainder } = updatedWorkflow;
 
 				return {
 					id: id.toString(),
 					...remainder,
+					tags:
+						tags?.map((tag) => {
+							// @ts-ignore
+							tag.id = tag.id.toString();
+							return tag;
+						}) ?? [],
 				};
 			}),
 		);
