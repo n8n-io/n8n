@@ -80,21 +80,31 @@ export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions |
 export async function strapiApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
+	const {apiVersion} = await this.getCredentials('strapiApi') as IDataObject;
 
 	let responseData;
+	if(apiVersion === 'v4') {
+		query["pagination[pageSize]"] = 20;
+		query["pagination[page]"] = 0;
+		do {
+			({data:responseData} = await strapiApiRequest.call(this, method, resource, body, query, undefined, headers));
+			query["pagination[page]"] += query["pagination[pageSize]"];
+			returnData.push.apply(returnData, responseData);
+		} while (
+			responseData.length !== 0
+		);
 
-	query._limit = 20;
-
-	query._start = 0;
-
-	do {
-		responseData = await strapiApiRequest.call(this, method, resource, body, query, undefined, headers);
-		query._start += query._limit;
-		returnData.push.apply(returnData, responseData);
-	} while (
-		responseData.length !== 0
-	);
-
+	} else {
+		query._limit = 20;
+		query._start = 0;
+		do {
+			responseData = await strapiApiRequest.call(this, method, resource, body, query, undefined, headers);
+			query._start += query._limit;
+			returnData.push.apply(returnData, responseData);
+		} while (
+			responseData.length !== 0
+		);
+	}
 	return returnData;
 }
 

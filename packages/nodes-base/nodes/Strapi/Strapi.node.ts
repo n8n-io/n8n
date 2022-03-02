@@ -137,11 +137,9 @@ export class Strapi implements INodeType {
 							}
 							// Limit Option
 							if (returnAll) {
-								// To Do: Implement returnAll
 								responseData = await strapiApiRequestAllItems.call(this, 'GET', `/api/${contentType}`, {}, qs, headers);
 							} else {
-								// To Do: Add pagination
-								//qs.pagination[pageSize] = this.getNodeParameter('limit', i) as number;
+								qs["pagination[pageSize]"] = this.getNodeParameter('limit', i) as number;
 								({ data:responseData } = await strapiApiRequest.call(this, 'GET', `/api/${contentType}`, {}, qs, undefined, headers));
 							}
 						} else {
