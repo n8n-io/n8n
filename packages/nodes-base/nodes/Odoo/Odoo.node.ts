@@ -410,7 +410,7 @@ export class Odoo implements INodeType {
 						let updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (updateFields.address) {
-							const addressFields = (updateFields.address as IDataObject).fields as IDataObject;
+							const addressFields = (updateFields.address as IDataObject).value as IDataObject;
 							if (addressFields) {
 								updateFields = {
 									...updateFields,
