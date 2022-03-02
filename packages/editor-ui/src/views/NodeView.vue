@@ -1240,6 +1240,7 @@ export default mixins(
 				const node = this.$store.getters.getNodeByName(nodeName);
 				if (node) {
 					this.nodeSelected(node);
+					// console.log(node);
 				}
 
 				this.$store.commit('setLastSelectedNode', node.name);
@@ -1270,26 +1271,8 @@ export default mixins(
 					duration: 0,
 				});
 			},
-			async injectNode (nodeTypeName: string) {
-				const nodeTypeData: INodeTypeDescription | null = this.$store.getters.nodeType(nodeTypeName);
 
-				if (nodeTypeData === null) {
-					this.$showMessage({
-						title: this.$locale.baseText('nodeView.showMessage.addNodeButton.title'),
-						message: this.$locale.baseText(
-							'nodeView.showMessage.addNodeButton.message',
-							{ interpolate: { nodeTypeName } },
-						),
-						type: 'error',
-					});
-					return;
-				}
-
-				if (nodeTypeData.maxNodes !== undefined && this.getNodeTypeCount(nodeTypeName) >= nodeTypeData.maxNodes) {
-					this.showMaxNodeTypeError(nodeTypeData);
-					return;
-				}
-
+			async addNodeDataWithDefaultCredential(nodeTypeData: INodeTypeDescription) {
 				const newNodeData: INodeUi = {
 					name: nodeTypeData.defaults.name as string,
 					type: nodeTypeData.name,
@@ -1312,6 +1295,10 @@ export default mixins(
 					};
 					newNodeData.credentials = credentials;
 
+					await this.loadNodesProperties([newNodeData].map(node => ({name: node.type, version: node.typeVersion})));
+					const nodeType = this.$store.getters.nodeType(newNodeData.type, newNodeData.typeVersion) as INodeTypeDescription;
+				 	const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, {}, true, false);
+
 					if (nodeTypeData.credentials){
 						const authentication = nodeTypeData.credentials.find(type => type.name === defaultCredential.type);
 						const authDisplayOptions = get(authentication, `displayOptions.show`);
@@ -1319,15 +1306,49 @@ export default mixins(
 						if(
 							authentication && authDisplayOptions
 						) {
+							let parameters: { [key:string]: string } = {};
 							for (const displayOption of Object.keys(authDisplayOptions)) {
+								if (nodeParameters && !nodeParameters[displayOption]) {
+									parameters = {};
+									newNodeData.credentials = undefined;
+									break;
+								}
 								const optionValue = get(authentication, `displayOptions.show[${displayOption}][0]`);
 								if (optionValue) {
-									newNodeData.parameters[displayOption] = optionValue;
+									parameters[displayOption] = optionValue;
 								}
+								newNodeData.parameters = {
+									...newNodeData.parameters,
+									...parameters,
+								};
 							}
 						}
 					}
 				}
+				return newNodeData;
+			},
+
+			async injectNode (nodeTypeName: string) {
+				const nodeTypeData: INodeTypeDescription | null = this.$store.getters.nodeType(nodeTypeName);
+
+				if (nodeTypeData === null) {
+					this.$showMessage({
+						title: this.$locale.baseText('nodeView.showMessage.addNodeButton.title'),
+						message: this.$locale.baseText(
+							'nodeView.showMessage.addNodeButton.message',
+							{ interpolate: { nodeTypeName } },
+						),
+						type: 'error',
+					});
+					return;
+				}
+
+				if (nodeTypeData.maxNodes !== undefined && this.getNodeTypeCount(nodeTypeName) >= nodeTypeData.maxNodes) {
+					this.showMaxNodeTypeError(nodeTypeData);
+					return;
+				}
+
+				const newNodeData = await this.addNodeDataWithDefaultCredential(nodeTypeData);
 
 				// when pulling new connection from node or injecting into a connection
 				const lastSelectedNode = this.lastSelectedNode;
