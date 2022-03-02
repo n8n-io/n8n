@@ -1134,6 +1134,8 @@
 	"RECOVERY_EMAIL_SENT_MESSAGE": "Recovery email sent",
 	"CHECK_INBOX_AND_SPAM_MESSAGE": "Please check your inbox (and perhaps your spam folder)",
 	"SENDING_EMAIL_ERROR": "Problem sending email",
+	"WORKFLOW_IMPORT_ERROR": "Could not import workflow",
+	"WORKFLOW_NOT_FOUND_ERROR": "Could not find workflow",
 	"workflowPreview": {
 		"showError": {
 			"previewError": {
