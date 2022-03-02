@@ -5,7 +5,7 @@
 				<n8n-heading size="2xlarge">{{ $locale.baseText('USERS_LABEL') }}</n8n-heading>
 				<div :class="$style.buttonContainer" v-if="!showUMSetupWarning">
 						<n8n-tooltip :disabled="isSmtpSetup" placement="bottom">
-							<div slot="content">{{$locale.baseText('SETUP_SMTP_TO_INVITE_USERS_MESSAGE')}} <a href="https://docs.n8n.io/reference/user-management#smtp" target="_blank">{{$locale.baseText('INSTRUCTIONS_LABEL')}}</a></div>
+							<div slot="content" v-html="$locale.baseText('SETUP_SMTP_TO_INVITE_USERS_MESSAGE')"></div>
 							<div>
 								<n8n-button :label="$locale.baseText('INVITE_LABEL')" @click="onInvite" size="large" :disabled="!isSmtpSetup" />
 							</div>

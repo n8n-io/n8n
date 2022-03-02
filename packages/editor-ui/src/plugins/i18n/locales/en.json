@@ -1085,7 +1085,7 @@
 		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
 		"gotIt": "Got it"
 	},
-	"SETUP_SMTP_TO_INVITE_USERS_MESSAGE": "Set up SMTP to invite users.",
+	"SETUP_SMTP_TO_INVITE_USERS_MESSAGE": "Set up SMTP to invite users. <a href=\"https://docs.n8n.io/reference/user-management#smtp\" target=\"_blank\">Instructions</a>",
 	"SMTP_TO_ADD_USERS_WARNING": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management#smtp\">Instructions</a>",
 	"PASSWORD_REQUIREMENTS_MESSAGE": "At least 8 characters with 1 number and 1 uppercase",
 	"FIRST_NAME": "First name",
