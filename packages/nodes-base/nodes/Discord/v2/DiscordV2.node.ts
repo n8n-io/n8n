@@ -165,7 +165,7 @@ export class DiscordV2 implements INodeType {
 
 		if (this.getNodeParameter('file', 0, '') as any) {
 			console.log('passed');
-			const propertyNameUpload = this.getNodeParameter('file', 0, '') as string;
+			const propertyNameUpload = this.getNodeParameter('file', 0, '') as any;
 			body.file = await this.helpers.getBinaryDataBuffer(0, propertyNameUpload);
 
 		}

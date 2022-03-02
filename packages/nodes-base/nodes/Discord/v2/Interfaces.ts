@@ -5,7 +5,7 @@ export interface DiscordWebhook {
 	username?: string;
 	avatar_url?: string;
 	tts?: boolean;
-	file?: string;
+	file?: Buffer;
 	embeds?: any[];
 	allowed_mentions?: {
 		parse: Array<'roles' | 'users' | 'everyone'>;
