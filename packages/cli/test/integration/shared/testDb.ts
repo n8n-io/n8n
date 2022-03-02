@@ -133,6 +133,10 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 	}
 }
 
+// ----------------------------------
+//        credential creation
+// ----------------------------------
+
 /**
  * Save a credential to the test DB, sharing it with a user.
  */
@@ -160,6 +164,10 @@ export async function saveCredential(
 
 	return savedCredential;
 }
+
+// ----------------------------------
+//          user creation
+// ----------------------------------
 
 /**
  * Store a user in the test DB, defaulting to a `member`.
@@ -207,6 +215,10 @@ export async function createMemberShell() {
 	const globalRole = await getGlobalMemberRole();
 	return Db.collections.User!.save({ globalRole });
 }
+
+// ----------------------------------
+//          role fetchers
+// ----------------------------------
 
 export async function getGlobalOwnerRole() {
 	return await Db.collections.Role!.findOneOrFail({
