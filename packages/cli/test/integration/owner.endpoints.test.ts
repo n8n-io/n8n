@@ -35,7 +35,7 @@ afterAll(() => {
 
 test('POST /owner should create owner and enable isInstanceOwnerSetUp', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.post('/owner').send(TEST_USER);
 
@@ -50,6 +50,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 		globalRole,
 		password,
 		resetPasswordToken,
+		isPending,
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
@@ -58,6 +59,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 	expect(lastName).toBe(TEST_USER.lastName);
 	expect(personalizationAnswers).toBeNull();
 	expect(password).toBeUndefined();
+	expect(isPending).toBe(false);
 	expect(resetPasswordToken).toBeUndefined();
 	expect(globalRole.name).toBe('owner');
 	expect(globalRole.scope).toBe('global');

@@ -10,7 +10,7 @@ import { JwtToken, JwtPayload } from '../Interfaces';
 import { User } from '../../databases/entities/User';
 import config = require('../../../config');
 
-export async function issueJWT(user: User): Promise<JwtToken> {
+export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
 	const expiresIn = 7 * 86400000; // 7 days
 
@@ -62,6 +62,6 @@ export async function resolveJwt(token: string): Promise<User> {
 }
 
 export async function issueCookie(res: Response, user: User): Promise<void> {
-	const userData = await issueJWT(user);
+	const userData = issueJWT(user);
 	res.cookie(AUTH_COOKIE_NAME, userData.token, { maxAge: userData.expiresIn, httpOnly: true });
 }
