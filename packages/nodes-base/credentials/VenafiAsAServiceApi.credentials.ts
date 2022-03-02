@@ -13,11 +13,5 @@ export class VenafiAsAServiceApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
-		{
-			displayName: 'Allow Self-Signed Certificates',
-			name: 'allowUnauthorizedCerts',
-			type: 'boolean' as NodePropertyTypes,
-			default: true,
-		},
 	];
 }
