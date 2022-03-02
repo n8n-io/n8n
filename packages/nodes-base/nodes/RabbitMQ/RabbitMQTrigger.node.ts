@@ -8,12 +8,14 @@ import {
 	ITriggerResponse,
 } from 'n8n-workflow';
 
-import {
-	rabbitDefaultOptions,
-} from './DefaultOptions';
+import { ConsumeMessage } from 'amqplib';
+
+import * as nodeProperties from './nodeProperties';
 
 import {
-	rabbitmqConnectQueue,
+	fixAssertOptions,
+	isDataObject,
+	rabbitmqConnect,
 } from './GenericFunctions';
 
 export class RabbitMQTrigger implements INodeType {
@@ -37,21 +39,60 @@ export class RabbitMQTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Queue / Topic',
+				displayName: 'Queue',
 				name: 'queue',
 				type: 'string',
 				default: '',
 				placeholder: 'queue-name',
 				description: 'Name of the queue to publish to.',
 			},
-
+			nodeProperties.queueOptions,
 			{
-				displayName: 'Options',
+				displayName: 'Subscriptions',
+				name: 'subscriptions',
+				placeholder: 'Bind to Exchange',
+				description: 'Bind the queue to an exchange or subscribe to a topic. (IMPORTANT: bindings are not removed when deactivated)',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'bindings',
+						displayName: 'Binding',
+						values: [
+							{
+								displayName: 'Exchange',
+								name: 'exchange',
+								type: 'string',
+								default: 'amq.topic',
+							},
+							{
+								displayName: 'Routing Pattern',
+								name: 'pattern',
+								placeholder: '*.orange.*',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Trigger Options',
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add Trigger Option',
 				options: [
+					{
+						displayName: 'Prefetch count',
+						name: 'prefetch',
+						type: 'number',
+						default: 100,
+						description: 'Number of messages to fetch at a time',
+					},
 					{
 						displayName: 'Content is Binary',
 						name: 'contentIsBinary',
@@ -87,86 +128,116 @@ export class RabbitMQTrigger implements INodeType {
 						default: false,
 						description: 'Returns only the content property.',
 					},
-					...rabbitDefaultOptions,
-				].sort((a, b) => {
-					if ((a as INodeProperties).displayName.toLowerCase() < (b as INodeProperties).displayName.toLowerCase()) { return -1; }
-					if ((a as INodeProperties).displayName.toLowerCase() > (b as INodeProperties).displayName.toLowerCase()) { return 1; }
-					return 0;
-				}) as INodeProperties[],
+				],
 			},
 		],
 	};
 
-
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const queue = this.getNodeParameter('queue') as string;
-		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const queue = String(this.getNodeParameter('queue'));
+		const queueOptions = fixAssertOptions(
+			this.getNodeParameter('queueOptions', {}),
+		);
 
-		const channel = await rabbitmqConnectQueue.call(this, queue, options);
-
-		const self = this;
-
-		const startConsumer = async () => {
-			await channel.consume(queue, async (message: IDataObject) => {
-				if (message !== null) {
-					let content: IDataObject | string = message!.content!.toString();
-
-					const item: INodeExecutionData = {
-						json: {},
-					};
-
-					if (options.contentIsBinary === true) {
-						item.binary = {
-							data: await this.helpers.prepareBinaryData(message.content),
-						};
-
-						item.json = message;
-						message.content = undefined;
-					} else {
-						if (options.jsonParseBody === true) {
-							content = JSON.parse(content as string);
-						}
-						if (options.onlyContent === true) {
-							item.json = content as IDataObject;
-						} else {
-							message.content = content;
-							item.json = message;
-						}
-					}
-
-					self.emit([
-						[
-							item,
-						],
-					]);
-					channel.ack(message);
+		const options = this.getNodeParameter('options', {});
+		if (!isDataObject(options)) {
+			throw new Error('Unexpected type for options');
+		}
+		const subscriptions = this.getNodeParameter('subscriptions', {});
+		const bindings: IDataObject[] = [];
+		if (isDataObject(subscriptions) && Array.isArray(subscriptions.bindings)) {
+			for (const binding of subscriptions.bindings) {
+				if (isDataObject(binding)) {
+					bindings.push(binding);
 				}
-			});
-		};
-
-		startConsumer();
-
-		// The "closeFunction" function gets called by n8n whenever
-		// the workflow gets deactivated and can so clean up.
-		async function closeFunction() {
-			await channel.close();
-			await channel.connection.close();
+			}
 		}
 
-		// The "manualTriggerFunction" function gets called by n8n
-		// when a user is in the workflow editor and starts the
-		// workflow manually. So the function has to make sure that
-		// the emit() gets called with similar data like when it
-		// would trigger by itself so that the user knows what data
-		// to expect.
-		async function manualTriggerFunction() {
-			startConsumer();
+		const channel = await rabbitmqConnect(this, async (channel) => {
+			await channel.assertQueue(queue, queueOptions);
+			await channel.prefetch(Number(options?.prefetch || 100));
+			for (const { exchange, pattern } of bindings) {
+				await channel.bindQueue(queue, String(exchange), String(pattern));
+			}
+			// we can't unbind other exchanges because amqp doesn't expose a listing
+		});
+
+		const handler = async (message: ConsumeMessage) => {
+			if (message !== null) {
+				messageToItem(this, message, options)
+					.then(item => {
+						this.emit([ [ item ] ]);
+						channel.ack(message);
+					})
+					.catch(error => {
+						console.error(`Error consuming RabbitMQ message: ${error.message || error}`);
+						// TODO should we nack it? It probably won't succeed on a reattempt, but it wasn't successful either
+						// FIXME how do we report a failure to the ux?
+						// channel.nack(message);
+					})
+				;
+			}
+		};
+
+		const startConsumer = () => channel.consume(queue, handler);
+		if (this.getActivationMode() !== 'manual') {
+			await startConsumer();
 		}
 
 		return {
-			closeFunction,
-			manualTriggerFunction,
+			// The "closeFunction" function gets called by n8n whenever
+			// the workflow gets deactivated and can so clean up.
+			async closeFunction() {
+				await channel.close();
+			},
+
+			// The "manualTriggerFunction" function gets called by n8n
+			// when a user is in the workflow editor and starts the
+			// workflow manually. So the function has to make sure that
+			// the emit() gets called with similar data like when it
+			// would trigger by itself so that the user knows what data
+			// to expect.
+			async manualTriggerFunction() {
+				await startConsumer();
+			},
+		};
+	}
+}
+
+/** Transform a RabbitMQ message to an N8n item */
+async function messageToItem(
+	{ helpers }: ITriggerFunctions,
+	message: ConsumeMessage,
+	options: IDataObject,
+): Promise<INodeExecutionData> {
+	const contentType: string[] | undefined = message?.properties?.contentType?.toLowerCase()?.split(/; ?/);
+	const mimeType = contentType?.[0];
+
+	if (options.contentIsBinary === true) {
+		const { content, ...context } = message;
+		const data = await helpers.prepareBinaryData(content, undefined, mimeType);
+		return {
+			binary: { data },
+			json: { ...context },
 		};
 	}
 
+	let content = message.content instanceof Buffer
+		? String(message.content)
+		: message.content;
+	if (typeof content === 'string') {
+		if (isJsonMimeType(mimeType) || options.jsonParseBody === true) {
+			content = JSON.parse(content);
+		}
+	}
+
+	return {
+		json: (options.onlyContent === true && isDataObject(content))
+			? content
+			: { ...message, content },
+	};
+}
+
+function isJsonMimeType(mimeType: string | undefined): boolean {
+	return !!mimeType && (['application/json', 'text/json'].includes(mimeType) || mimeType.endsWith('+json'));
 }

@@ -11,6 +11,7 @@
 		"module": "commonjs",
 		"removeComments": true,
 		"strict": true,
+		"skipLibCheck": true,
 		"preserveConstEnums": true,
 		"resolveJsonModule": true,
 		"declaration": true,

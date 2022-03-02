@@ -1,6 +1,6 @@
 {
 	"node": "n8n-nodes-base.rabbitmq",
-	"nodeVersion": "1.0",
+	"nodeVersion": "2.0",
 	"codexVersion": "1.0",
 	"categories": [
 		"Development"
