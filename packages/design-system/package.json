@@ -37,11 +37,8 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
     "@fortawesome/free-solid-svg-icons": "^5.15.3",
     "@fortawesome/vue-fontawesome": "^2.0.2",
-<<<<<<< HEAD
-=======
     "core-js": "^3.6.5",
     "element-ui": "2.15.x",
->>>>>>> a1e7bccf553ac2f60127aaf1c24f3fda9807baff
     "@storybook/addon-actions": "^6.3.6",
     "@storybook/addon-essentials": "^6.3.6",
     "@storybook/addon-links": "^6.3.6",
@@ -59,8 +56,6 @@
     "@vue/eslint-config-typescript": "^7.0.0",
     "@vue/test-utils": "^1.0.3",
     "babel-loader": "^8.2.2",
-    "core-js": "^3.6.5",
-    "element-ui": "~2.13.0",
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "^3.4.0",
     "eslint-plugin-vue": "^7.16.0",
