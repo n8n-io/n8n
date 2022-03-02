@@ -3,11 +3,21 @@ import {
 } from 'n8n-core';
 
 import {
+	OptionsWithUri,
+} from 'request';
+
+import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
+	ICredentialsDecrypted,
+	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -40,6 +50,7 @@ export class Strapi implements INodeType {
 			{
 				name: 'strapiApi',
 				required: true,
+				testedBy: 'strapiApiTest',
 			},
 		],
 		properties: [
@@ -61,6 +72,55 @@ export class Strapi implements INodeType {
 			...entryFields,
 		],
 	};
+
+	methods ={
+		credentialTest: {
+			async strapiApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				const credentials = await credential.data as IDataObject;
+				let options = {} as OptionsWithUri;
+
+				if(credentials.apiVersion === 'v4') {
+					options = {
+						headers: {
+							'content-type': `application/json`,
+						},
+						method: 'POST',
+						body: {
+							identifier: credentials.email,
+							password: credentials.password,
+						},
+						uri: `${credentials.url}/api/auth/local`,
+						json: true,
+					};
+				} else {
+						options = {
+							headers: {
+								'content-type': `application/json`,
+							},
+							method: 'POST',
+							uri: `${credentials.url}/auth/local`,
+							body: {
+								identifier: credentials.email,
+								password: credentials.password,
+							},
+							json: true,
+						};
+					}
+					try {
+						await this.helpers.request(options);
+						return {
+							status: 'OK',
+							message: 'Authentication successful',
+						};
+					} catch (error) {
+						return {
+							status: 'Error',
+							message: `Auth settings are not valid: ${error}`,
+						};
+					}
+			}
+		}
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
