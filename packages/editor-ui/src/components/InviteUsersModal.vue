@@ -104,7 +104,7 @@ export default mixins(showMessage).extend({
 		},
 		buttonLabel(): string {
 			if (this.emailsCount > 1) {
-				return this.$locale.baseText('INVITE_X_USER', {interpolate: {count: this.emailsCount}});
+				return this.$locale.baseText('INVITE_X_USER', { interpolate: { count: this.emailsCount }});
 			}
 
 			return this.$locale.baseText('INVITE_USER');
@@ -119,7 +119,7 @@ export default mixins(showMessage).extend({
 				const parsed = getEmail(email);
 
 				if (!!parsed.trim() && !VALID_EMAIL_REGEX.test(String(parsed).trim().toLowerCase())) {
-					throw new Error(this.$locale.baseText('INVALID_EMAIL_ERROR', {interpolate: {email: parsed}}));
+					throw new Error(this.$locale.baseText('INVALID_EMAIL_ERROR', { interpolate: { email: parsed }}));
 				}
 			});
 		},
@@ -158,7 +158,7 @@ export default mixins(showMessage).extend({
 					this.$showMessage({
 						type: 'success',
 						title: this.$locale.baseText(invitedEmails.success.length > 1 ? 'USERS_INVITED_SUCCESS' : 'USER_INVITED_SUCCESS'),
-						message: this.$locale.baseText('EMAIL_INVITES_SENT', {interpolate: {emails: invitedEmails.success.join(',')}}),
+						message: this.$locale.baseText('EMAIL_INVITES_SENT', { interpolate: { emails: invitedEmails.success.join(',') }}),
 					});
 				}
 
@@ -167,7 +167,7 @@ export default mixins(showMessage).extend({
 						this.$showMessage({
 							type: 'error',
 							title: this.$locale.baseText(invitedEmails.error.length > 1 ? 'USERS_INVITED_ERROR': 'USER_INVITED_ERROR'),
-							message: this.$locale.baseText('EMAIL_INVITES_SENT_ERROR', {interpolate: {emails: invitedEmails.error.join(',')}}),
+							message: this.$locale.baseText('EMAIL_INVITES_SENT_ERROR', { interpolate: { emails: invitedEmails.error.join(',') }}),
 						});
 					}, 0); // notifications stack on top of each other otherwise
 				}

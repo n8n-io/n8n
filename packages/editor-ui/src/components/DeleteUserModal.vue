@@ -29,7 +29,7 @@
 						</n8n-input-label>
 					</div>
 					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
-						<n8n-text color="text-dark">{{$locale.baseText('DELETE_WORKFLOWS_CREDENTIALS')}}</n8n-text>
+						<n8n-text color="text-dark">{{ $locale.baseText('DELETE_WORKFLOWS_CREDENTIALS') }}</n8n-text>
 					</el-radio>
 					<div :class="$style.optionInput" v-if="operation === 'delete'">
 						<n8n-input-label :label="$locale.baseText('DELETE_CONFIRMATION_MESSAGE')">
@@ -91,7 +91,7 @@ export default mixins(showMessage).extend({
 		},
 		title(): string {
 			const user = this.userToDelete && (this.userToDelete.fullName || this.userToDelete.email);
-			return this.$locale.baseText('DELETE_USER', {interpolate: { user }});
+			return this.$locale.baseText('DELETE_USER', { interpolate: { user }});
 		},
 		enabled(): boolean {
 			if (this.isPending) {

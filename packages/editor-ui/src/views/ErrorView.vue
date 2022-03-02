@@ -4,7 +4,7 @@
 		<div :class="$style.message">
 			<div>
 				<n8n-heading size="2xlarge">
-					{{$locale.baseText(messageKey)}}
+					{{ $locale.baseText(messageKey) }}
 				</n8n-heading>
 			</div>
 			<div>

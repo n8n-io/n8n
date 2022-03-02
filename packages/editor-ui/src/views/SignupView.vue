@@ -71,7 +71,7 @@ export default mixins(
 				throw new Error(this.$locale.baseText('MISSING_INVITE_TOKEN_ERROR'));
 			}
 
-			const invite = await this.$store.dispatch('users/validateSignupToken', {inviterId, inviteeId});
+			const invite = await this.$store.dispatch('users/validateSignupToken', { inviterId, inviteeId});
 			this.inviter = invite.inviter as {firstName: string, lastName: string};
 		} catch (e) {
 			this.$showError(e, this.$locale.baseText('TOKEN_VALIDATION_ERROR'));
