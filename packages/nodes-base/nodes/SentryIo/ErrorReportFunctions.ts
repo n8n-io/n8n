@@ -62,7 +62,7 @@ export async function reportToSentry(
 	errorInfo: IDataObject): Promise<IDataObject> {
 	const errorPaylaod = convertToErrorPayload(errorInfo);
 	const credentials = await this.getCredentials('sentryErrorApi') as IDataObject;
-	const endpoint = `${credentials.url}/api/${credentials.project_id}/store`;
+	const endpoint = `${credentials.url}/api/${credentials.project_id}/store/`;
 	return sentryIoErrorApiRequest.call(this, endpoint, 'POST', errorPaylaod);
 }
 
