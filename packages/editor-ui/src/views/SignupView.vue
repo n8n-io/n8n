@@ -49,7 +49,7 @@ export default mixins(
 					properties: {
 						label: this.$locale.baseText('PASSWORD'),
 						type: 'password',
-						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+						validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
 						required: true,
 						infoText: this.$locale.baseText('DEFAULT_PASSWORD_REQUIREMENTS'),
 						autocomplete: 'new-password',
