@@ -342,6 +342,7 @@ export default mixins(genericHelpers).extend({
 		setPageTitle('n8n - Templates');
 		this.loadCategories();
 		this.loadWorkflowsAndCollections(true);
+		this.$store.dispatch('users/showPersonalizationSurvey');
 	},
 	async created() {
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {

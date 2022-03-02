@@ -28,7 +28,9 @@ import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
 import { mapGetters } from 'vuex';
 
-export default mixins(showMessage).extend({
+export default mixins(
+	showMessage,
+).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -191,3 +193,4 @@ export default mixins(showMessage).extend({
 	position: fixed;
 }
 </style>
+
