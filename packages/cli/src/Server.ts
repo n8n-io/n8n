@@ -920,7 +920,13 @@ class App {
 					}),
 				});
 
-				if (!shared) return {};
+				if (!shared) {
+					throw new ResponseHelper.ResponseError(
+						`Workflow with ID "${workflowId}" could not be found.`,
+						undefined,
+						404,
+					);
+				}
 
 				const {
 					workflow: { id, tags, ...rest },
