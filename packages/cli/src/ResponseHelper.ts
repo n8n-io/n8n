@@ -15,7 +15,6 @@ import {
 	IExecutionResponse,
 	IWorkflowDb,
 } from '.';
-import { isTestRun } from '../test/integration/shared/utils';
 
 /**
  * Special Error which allows to return also an error code and http status code
@@ -103,7 +102,9 @@ export function sendErrorResponse(res: Response, error: ResponseError, shouldLog
 		httpStatusCode = error.httpStatusCode;
 	}
 
-	if (process.env.NODE_ENV !== 'production' && shouldLog && !isTestRun) {
+	shouldLog = !process.argv[1].split('/').includes('jest');
+
+	if (process.env.NODE_ENV !== 'production' && shouldLog) {
 		console.error('ERROR RESPONSE');
 		console.error(error);
 	}

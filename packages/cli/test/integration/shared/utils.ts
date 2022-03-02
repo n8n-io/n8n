@@ -28,8 +28,6 @@ import type { User } from '../../../src/databases/entities/User';
 import type { EndpointGroup, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 
-export const isTestRun = process.argv[1].split('/').includes('jest'); // TODO: Phase out
-
 /**
  * Initialize a test server.
  *
