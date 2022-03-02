@@ -1,12 +1,12 @@
 <template>
 	<div :class="$style.container">
 		<n8n-menu :router="true" :default-active="$route.path" type="secondary">
-			<n8n-menu-item index="/workflow" :class="$style.returnButton">
+			<div :class="$style.returnButton" @click="onReturn">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="arrow-left" />
 				</i>
 				<n8n-heading slot="title" size="large" :bold="true">Settings</n8n-heading>
-			</n8n-menu-item>
+			</div>
 			<n8n-menu-item index="/settings/personal" v-if="canAccessUsersView('PersonalSettings')" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-circle" />
@@ -47,6 +47,9 @@ export default Vue.extend({
 		onVersionClick() {
 			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 		},
+		onReturn() {
+			this.$router.push({name: 'NodeViewNew'});
+		},
 	},
 });
 </script>
@@ -68,6 +71,21 @@ export default Vue.extend({
 .returnButton {
 	composes: tab;
 	margin-bottom: var(--spacing-xl);
+	padding: 0 var(--spacing-xs);
+	height: 38px;
+	display: flex;
+	align-items: center;
+	color: var(--color-text-base);
+	font-size: var(--font-size-s);
+	cursor: pointer;
+
+	i {
+		color: var(--color-text-light);
+	}
+
+	&:hover > * {
+		color: var(--color-primary);
+	}
 }
 
 .icon {

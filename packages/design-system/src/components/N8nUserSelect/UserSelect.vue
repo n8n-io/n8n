@@ -20,7 +20,7 @@
 			:class="$style.itemContainer"
 			:label="getLabel(user)"
 		>
-			<n8n-user-info v-bind="user" />
+			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 		</el-option>
 	</el-select>
 </template>
@@ -68,6 +68,9 @@ export default Vue.extend({
 		noDataText: {
 			type: String,
 			default: 'No users',
+		},
+		currentUserId: {
+			type: String,
 		},
 	},
 	data() {

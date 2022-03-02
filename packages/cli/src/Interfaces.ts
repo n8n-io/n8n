@@ -29,6 +29,11 @@ import { Url } from 'url';
 import { Request } from 'express';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { TagEntity } from './databases/entities/TagEntity';
+import { Role } from './databases/entities/Role';
+import { User } from './databases/entities/User';
+import { SharedCredentials } from './databases/entities/SharedCredentials';
+import { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import { Settings } from './databases/entities/Settings';
 
 export interface IActivationError {
 	time: number;
@@ -72,6 +77,11 @@ export interface IDatabaseCollections {
 	Workflow: Repository<WorkflowEntity> | null;
 	Webhook: Repository<IWebhookDb> | null;
 	Tag: Repository<TagEntity> | null;
+	Role: Repository<Role> | null;
+	User: Repository<User> | null;
+	SharedCredentials: Repository<SharedCredentials> | null;
+	SharedWorkflow: Repository<SharedWorkflow> | null;
+	Settings: Repository<Settings> | null;
 }
 
 export interface IWebhookDb {
@@ -81,6 +91,16 @@ export interface IWebhookDb {
 	node: string;
 	webhookId?: string;
 	pathLength?: number;
+}
+
+// ----------------------------------
+//               settings
+// ----------------------------------
+
+export interface ISettingsDb {
+	key: string;
+	value: string | boolean | IDataObject | number;
+	loadOnStartup: boolean;
 }
 
 // ----------------------------------
@@ -409,9 +429,16 @@ export interface IN8nUISettings {
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
 	telemetry: ITelemetrySettings;
-	personalizationSurvey: IPersonalizationSurvey;
+	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
+	userManagement: IUserManagementSettings;
+	workflowTagsDisabled: boolean;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
+	deploymentType: string;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {
@@ -423,9 +450,10 @@ export interface IPersonalizationSurveyAnswers {
 	workArea: string[] | string | null;
 }
 
-export interface IPersonalizationSurvey {
-	answers?: IPersonalizationSurveyAnswers;
-	shouldShow: boolean;
+export interface IUserManagementSettings {
+	enabled: boolean;
+	showSetupOnFirstLoad?: boolean;
+	smtpSetup: boolean;
 }
 
 export interface IPackageVersions {
@@ -551,6 +579,7 @@ export interface IWorkflowExecutionDataProcess {
 	sessionId?: string;
 	startNodes?: string[];
 	workflowData: IWorkflowBase;
+	userId: string;
 }
 
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
@@ -558,6 +587,7 @@ export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExe
 	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
 	nodeTypeData: ITransferNodeTypes;
+	userId: string;
 }
 
 export interface IWorkflowExecuteProcess {
@@ -565,3 +595,5 @@ export interface IWorkflowExecuteProcess {
 	workflow: Workflow;
 	workflowExecute: WorkflowExecute;
 }
+
+export type WhereClause = Record<string, { id: string }>;

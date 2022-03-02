@@ -37,6 +37,7 @@ import MessageBox from 'element-ui/lib/message-box';
 import Message from 'element-ui/lib/message';
 import Notification from 'element-ui/lib/notification';
 import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
+import VueAgile from 'vue-agile';
 
 // @ts-ignore
 import lang from 'element-ui/lib/locale/lang/en';
@@ -56,6 +57,9 @@ import {
 	N8nInputLabel,
 	N8nInputNumber,
 	N8nLink,
+	N8nLoading,
+	N8nHeading,
+	N8nMarkdown,
 	N8nMenu,
 	N8nMenuItem,
 	N8nOption,
@@ -64,6 +68,8 @@ import {
 	N8nFormInputs,
 	N8nFormBox,
 	N8nSquareButton,
+	N8nTags,
+	N8nTag,
 	N8nText,
 	N8nTooltip,
 	N8nOption,
@@ -85,14 +91,18 @@ Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
+Vue.component('n8n-loading', N8nLoading);
 Vue.use(N8nHeading);
 Vue.use(N8nLink);
+Vue.component('n8n-markdown', N8nMarkdown);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
 Vue.use(N8nOption);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
 Vue.component('n8n-square-button', N8nSquareButton);
+Vue.use(N8nTags);
+Vue.use(N8nTag);
 Vue.component('n8n-text', N8nText);
 Vue.use(N8nTooltip);
 Vue.use(N8nOption);
@@ -128,6 +138,7 @@ Vue.use(Badge);
 Vue.use(Card);
 Vue.use(ColorPicker);
 Vue.use(Container);
+Vue.use(VueAgile);
 
 Vue.component(CollapseTransition.name, CollapseTransition);
 
@@ -158,7 +169,8 @@ Vue.prototype.$confirm = async (message: string, configOrTitle: string | ElMessa
 		roundButton: true,
 		cancelButtonClass: 'btn--cancel',
 		confirmButtonClass: 'btn--confirm',
-		showClose: false,
+		distinguishCancelAndClose: true,
+		showClose: config.showClose || false,
 		closeOnClickModal: false,
 	};
 

@@ -86,8 +86,12 @@ const module: Module<IUiState, IRootState> = {
 		modalStack: [],
 		sidebarMenuCollapsed: true,
 		isPageLoading: true,
+		currentView: '',
 	},
 	getters: {
+		areExpressionsDisabled(state: IUiState) {
+			return state.currentView === 'WorkflowDemo';
+		},
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
 		},
@@ -135,23 +139,26 @@ const module: Module<IUiState, IRootState> = {
 		toggleSidebarMenuCollapse: (state: IUiState) => {
 			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;
 		},
+		setCurrentView: (state: IUiState, currentView: string) => {
+			state.currentView = currentView;
+		},
 	},
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
 			context.commit('openModal', modalKey);
 		},
 		openDeleteUserModal: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
-			context.commit('setActiveId', {name: DELETE_USER_MODAL_KEY, id});
+			context.commit('setActiveId', { name: DELETE_USER_MODAL_KEY, id });
 			context.commit('openModal', DELETE_USER_MODAL_KEY);
 		},
 		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
-			context.commit('setActiveId', {name: CREDENTIAL_EDIT_MODAL_KEY, id});
-			context.commit('setMode', {name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit'});
+			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id });
+			context.commit('setMode', { name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' });
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
 		},
 		openNewCredential: async (context: ActionContext<IUiState, IRootState>, { type }: {type: string}) => {
-			context.commit('setActiveId', {name: CREDENTIAL_EDIT_MODAL_KEY, id: type});
-			context.commit('setMode', {name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new'});
+			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id: type });
+			context.commit('setMode', { name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' });
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
 		},
 	},

@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -14,6 +15,7 @@ import {
 	IExecutionResponse,
 	IWorkflowDb,
 } from '.';
+import { isTestRun } from '../test/integration/shared/utils';
 
 /**
  * Special Error which allows to return also an error code and http status code
@@ -101,7 +103,7 @@ export function sendErrorResponse(res: Response, error: ResponseError, shouldLog
 		httpStatusCode = error.httpStatusCode;
 	}
 
-	if (process.env.NODE_ENV !== 'production' && shouldLog) {
+	if (process.env.NODE_ENV !== 'production' && shouldLog && !isTestRun) {
 		console.error('ERROR RESPONSE');
 		console.error(error);
 	}
@@ -133,6 +135,9 @@ export function sendErrorResponse(res: Response, error: ResponseError, shouldLog
 	res.status(httpStatusCode).json(response);
 }
 
+const isUniqueConstraintError = (error: Error) =>
+	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
+
 /**
  * A helper function which does not just allow to return Promises it also makes sure that
  * all the responses have the same format
@@ -148,10 +153,12 @@ export function send(processFunction: (req: Request, res: Response) => Promise<a
 		try {
 			const data = await processFunction(req, res);
 
-			// Success response
 			sendSuccessResponse(res, data);
 		} catch (error) {
-			// Error response
+			if (error instanceof Error && isUniqueConstraintError(error)) {
+				error.message = 'There is already an entry with this name';
+			}
+
 			sendErrorResponse(res, error);
 		}
 	};

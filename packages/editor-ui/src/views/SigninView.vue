@@ -63,6 +63,7 @@ export default mixins(
 			try {
 				this.loading = true;
 				await this.$store.dispatch('users/loginWithCreds', values);
+				this.clearAllStickyNotifications();
 				this.loading = false;
 
 				if (typeof this.$route.query.redirect === 'string') {

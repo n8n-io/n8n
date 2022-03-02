@@ -42,7 +42,7 @@ export default {
 			type: String,
 			default: 'primary',
 			validator: (value: string): boolean =>
-				['primary', 'danger', 'text'].indexOf(value) !== -1,
+				['primary', 'danger', 'text'].includes(value),
 		},
 	},
 	components: {

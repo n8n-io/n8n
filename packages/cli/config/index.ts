@@ -290,6 +290,20 @@ const config = convict({
 	},
 
 	queue: {
+		health: {
+			active: {
+				doc: 'If health checks should be enabled',
+				format: 'Boolean',
+				default: false,
+				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
+			},
+			port: {
+				doc: 'Port to serve health check on if activated',
+				format: Number,
+				default: 5678,
+				env: 'QUEUE_HEALTH_CHECK_PORT',
+			},
+		},
 		bull: {
 			prefix: {
 				doc: 'Prefix for all queue keys',
@@ -337,6 +351,7 @@ const config = convict({
 			},
 		},
 	},
+
 	generic: {
 		// The timezone to use. Is important for nodes like "Cron" which start the
 		// workflow automatically at a specified time. This setting can also be
@@ -559,6 +574,90 @@ const config = convict({
 		},
 	},
 
+	workflowTagsDisabled: {
+		format: Boolean,
+		default: false,
+		env: 'N8N_WORKFLOW_TAGS_DISABLED',
+		doc: 'Disable worfklow tags.',
+	},
+
+	userManagement: {
+		disabled: {
+			doc: 'Disable user management and hide it completely.',
+			format: Boolean,
+			default: false,
+			env: 'N8N_USER_MANAGEMENT_DISABLED',
+		},
+		jwtSecret: {
+			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
+			format: String,
+			default: '',
+			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
+		},
+		emails: {
+			mode: {
+				doc: 'How to send emails',
+				format: ['', 'smtp'],
+				default: '',
+				env: 'N8N_UM_EMAIL_MODE',
+			},
+			smtp: {
+				host: {
+					doc: 'SMTP server host',
+					format: String,
+					default: 'smtp.gmail.com',
+					env: 'N8N_UM_EMAIL_SMTP_HOST',
+				},
+				port: {
+					doc: 'SMTP Server port',
+					format: Number,
+					default: 465,
+					env: 'N8N_UM_EMAIL_SMTP_PORT',
+				},
+				secure: {
+					doc: 'Whether or not to use SSL',
+					format: Boolean,
+					default: true,
+					env: 'N8N_UM_EMAIL_SMTP_SSL',
+				},
+				auth: {
+					user: {
+						doc: 'SMTP Login username',
+						format: String,
+						default: 'youremail@gmail.com',
+						env: 'N8N_UM_EMAIL_SMTP_USER',
+					},
+					pass: {
+						doc: 'SMTP Login password',
+						format: String,
+						default: 'my-super-password',
+						env: 'N8N_UM_EMAIL_SMTP_PASS',
+					},
+				},
+				sender: {
+					doc: 'How to display sender name',
+					format: String,
+					default: '"n8n rocks" <n8n@n8n.io>',
+					env: 'N8N_UM_EMAIL_SMTP_SENDER',
+				},
+			},
+			templates: {
+				invite: {
+					doc: 'Overrides default HTML template for inviting new people (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_INVITE',
+				},
+				passwordReset: {
+					doc: 'Overrides default HTML template for resetting password (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
+				},
+			},
+		},
+	},
+
 	externalHookFiles: {
 		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
 		format: String,
@@ -622,8 +721,8 @@ const config = convict({
 
 	logs: {
 		level: {
-			doc: 'Log output level. Options are error, warn, info, verbose and debug.',
-			format: String,
+			doc: 'Log output level',
+			format: ['error', 'warn', 'info', 'verbose', 'debug'],
 			default: 'info',
 			env: 'N8N_LOG_LEVEL',
 		},
@@ -676,6 +775,21 @@ const config = convict({
 		},
 	},
 
+	templates: {
+		enabled: {
+			doc: 'Whether templates feature is enabled to load workflow templates.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_TEMPLATES_ENABLED',
+		},
+		host: {
+			doc: 'Endpoint host to retrieve workflow templates from endpoints.',
+			format: String,
+			default: 'https://api.n8n.io/',
+			env: 'N8N_TEMPLATES_HOST',
+		},
+	},
+
 	binaryDataManager: {
 		availableModes: {
 			format: String,
@@ -684,10 +798,10 @@ const config = convict({
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
 		mode: {
-			format: String,
+			format: ['default', 'filesystem'],
 			default: 'default',
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
-			doc: 'Storage mode for binary data, default | filesystem',
+			doc: 'Storage mode for binary data',
 		},
 		localStoragePath: {
 			format: String,

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -10,8 +11,10 @@ import { BinaryDataManager, IBinaryDataConfig, TUNNEL_SUBDOMAIN_ENV, UserSetting
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
+import { AES, enc } from 'crypto-js';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import { createHash } from 'crypto';
 import * as config from '../config';
 import {
 	ActiveExecutions,
@@ -31,6 +34,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { RESPONSE_ERROR_MESSAGES } from '../src/constants';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -166,6 +170,28 @@ export class Start extends Command {
 				// Make sure the settings exist
 				const userSettings = await UserSettings.prepareUserSettings();
 
+				if (!config.get('userManagement.jwtSecret')) {
+					// If we don't have a JWT secret set, generate
+					// one based and save to config.
+					const encryptionKey = await UserSettings.getEncryptionKey();
+					if (!encryptionKey) {
+						throw new Error('Fatal error setting up user management: no encryption key set.');
+					}
+
+					// For a key off every other letter from encryption key
+					// CAREFUL: do not change this or it breaks all existing tokens.
+					let baseKey = '';
+					for (let i = 0; i < encryptionKey.length; i++) {
+						if (i % 2 === 0) {
+							baseKey += encryptionKey[i];
+						}
+					}
+					config.set(
+						'userManagement.jwtSecret',
+						createHash('sha256').update(baseKey).digest('hex'),
+					);
+				}
+
 				// Load all node and credential types
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
 				await loadNodesAndCredentials.init();
@@ -186,6 +212,50 @@ export class Start extends Command {
 
 				// Wait till the database is ready
 				await startDbInitPromise;
+
+				const encryptionKey = await UserSettings.getEncryptionKey();
+
+				if (!encryptionKey) {
+					throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
+				}
+
+				if (config.get('userManagement.emails.mode') === 'smtp') {
+					const { auth, ...rest } = config.get('userManagement.emails.smtp');
+
+					const encryptedAuth = {
+						user: auth.user,
+						pass: AES.encrypt(auth.pass, encryptionKey).toString(),
+					};
+
+					await Db.collections.Settings!.save({
+						key: 'userManagement.emails.smtp',
+						value: JSON.stringify({ ...rest, auth: encryptedAuth }),
+						loadOnStartup: false,
+					});
+				} else {
+					// If we don't have SMTP settings, try loading from db.
+					const smtpSetting = await Db.collections.Settings!.findOne({
+						key: 'userManagement.emails.smtp',
+					});
+
+					if (smtpSetting) {
+						const { auth, ...rest } = JSON.parse(smtpSetting.value) as SmtpConfig;
+
+						const decryptedAuth = {
+							user: auth.user,
+							pass: AES.decrypt(auth.pass, encryptionKey).toString(enc.Utf8),
+						};
+
+						config.set('userManagement.emails.mode', 'smtp');
+						config.set('userManagement.emails.smtp', { ...rest, auth: decryptedAuth });
+					}
+				}
+
+				// Load settings from database and set them to config.
+				const databaseSettings = await Db.collections.Settings!.find({ loadOnStartup: true });
+				databaseSettings.forEach((setting) => {
+					config.set(setting.key, JSON.parse(setting.value));
+				});
 
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');
@@ -318,6 +388,12 @@ export class Start extends Command {
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
+
+				const saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+
+				if (saveManualExecutions) {
+					this.log('\nManual executions will be visible only for the owner');
+				}
 
 				// Allow to open n8n editor by pressing "o"
 				if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {

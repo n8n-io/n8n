@@ -1,10 +1,11 @@
-import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
+import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
 import {
 	IPermissions,
-	IPersonalizationSurveyAnswers,
+	IInviteResponse,
+	IPersonalizationSurveyAnswersV2,
 	IRootState,
 	IUser,
 	IUserResponse,
@@ -12,9 +13,9 @@ import {
 } from '../Interface';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from './userHelpers';
 
-const isDefaultUser = (user: IUserResponse | null) => Boolean(user && !user.email);
+const isDefaultUser = (user: IUserResponse | null) => Boolean(user && !user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
 
-const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.email && !user.firstName && !user.lastName);
+const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
 
 
 const module: Module<IUsersState, IRootState> = {
@@ -26,13 +27,17 @@ const module: Module<IUsersState, IRootState> = {
 	mutations: {
 		addUsers: (state: IUsersState, users: IUserResponse[]) => {
 			users.forEach((userResponse: IUserResponse) => {
-				const user: IUser = {
+				const prevUser = state.users[userResponse.id] || {};
+				const updatedUser = {
+					...prevUser,
 					...userResponse,
-					fullName: userResponse.firstName? `${userResponse.firstName} ${userResponse.lastName || ''}`: undefined,
-					isDefaultUser: isDefaultUser(userResponse),
-					isPendingUser: isPendingUser(userResponse),
-					isCurrentUser: userResponse.id === state.currentUserId,
-					isOwner: Boolean(userResponse.globalRole && userResponse.globalRole.name === ROLE.Owner),
+				};
+				const user: IUser = {
+					...updatedUser,
+					fullName: userResponse.firstName? `${updatedUser.firstName} ${updatedUser.lastName || ''}`: undefined,
+					isDefaultUser: isDefaultUser(updatedUser),
+					isPendingUser: isPendingUser(updatedUser),
+					isOwner: Boolean(updatedUser.globalRole && updatedUser.globalRole.name === ROLE.Owner),
 				};
 				Vue.set(state.users, user.id, user);
 			});
@@ -46,7 +51,7 @@ const module: Module<IUsersState, IRootState> = {
 		deleteUser: (state: IUsersState, userId: string) => {
 			Vue.delete(state.users, userId);
 		},
-		setPersonalizationAnswers(state: IUsersState, answers: IPersonalizationSurveyAnswers) {
+		setPersonalizationAnswers(state: IUsersState, answers: IPersonalizationSurveyAnswersV2) {
 			if (!state.currentUserId) {
 				return;
 			}
@@ -93,11 +98,6 @@ const module: Module<IUsersState, IRootState> = {
 		},
 		showUMSetupWarning(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, getters);
-		},
-		isDefaultUser(state: IUsersState, getters: any): boolean { // tslint:disable-line:no-any
-			const user = getters.currentUser as IUser | null;
-
-			return isDefaultUser(user);
 		},
 		isUMEnabled(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any): boolean { // tslint:disable-line:no-any
 			return rootGetters['settings/isUserManagementEnabled'];
@@ -183,15 +183,15 @@ const module: Module<IUsersState, IRootState> = {
 			const users = await getUsers(context.rootGetters.getRestApiContext);
 			context.commit('addUsers', users);
 		},
-		async inviteUsers(context: ActionContext<IUsersState, IRootState>, params: Array<{email: string}>): Promise<Array<Partial<IUserResponse>>> {
+		async inviteUsers(context: ActionContext<IUsersState, IRootState>, params: Array<{email: string}>): Promise<IInviteResponse[]> {
 			const users = await inviteUsers(context.rootGetters.getRestApiContext, params);
-			context.commit('addUsers', users);
+			context.commit('addUsers', users.map(({user}) => user));
 			return users;
 		},
 		async reinviteUser(context: ActionContext<IUsersState, IRootState>, params: {id: string}) {
 			await reinvite(context.rootGetters.getRestApiContext, params);
 		},
-		async submitPersonalizationSurvey(context: ActionContext<IUsersState, IRootState>, results: IPersonalizationSurveyAnswers) {
+		async submitPersonalizationSurvey(context: ActionContext<IUsersState, IRootState>, results: IPersonalizationSurveyAnswersV2) {
 			await submitPersonalizationSurvey(context.rootGetters.getRestApiContext, results);
 
 			context.commit('setPersonalizationAnswers', results);

@@ -1,26 +1,25 @@
 <template>
-	<div :class="$style.container">
+  <div :class="$style.wrapper">
 		<div :class="$style.spinner">
 			<n8n-spinner />
 		</div>
-		<n8n-heading>
-			{{ $locale.baseText('LOADING_LABEL') }}
-		</n8n-heading>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
-	height: 100%;
+.wrapper {
 	width: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-direction: column;
+	height: 100%;
+	position: absolute;
+	background-color: var(--color-background-light);
 }
 
 .spinner {
 	margin-bottom: var(--spacing-l);
+	position: absolute;
+	left: 50%;
+	top: 30%;
+
 	* {
 		color: var(--color-primary);
 		min-height: 40px;

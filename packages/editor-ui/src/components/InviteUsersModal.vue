@@ -29,7 +29,7 @@ import mixins from "vue-typed-mixins";
 import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
-import { IFormInputs, IUserResponse } from "@/Interface";
+import { IFormInputs, IInviteResponse, IUserResponse } from "@/Interface";
 import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from "@/constants";
 import { ROLE } from "@/modules/userHelpers";
 
@@ -133,26 +133,44 @@ export default mixins(showMessage).extend({
 				this.loading = true;
 
 				const emails = this.emails.split(',')
-					.map((email) => ({email: getEmail(email).trim()}))
+					.map((email) => ({email: getEmail(email)}))
 					.filter((invite) => !!invite.email);
 
 				if (emails.length === 0) {
 					throw new Error('No users to invite');
 				}
 
-				const invited: Array<Partial<IUserResponse>> = await this.$store.dispatch('users/inviteUsers', emails);
-				const invitedEmails = invited.reduce((accu, user) => {
-					if (user.email) {
-						return accu ? `${accu}, ${user.email}` : user.email;
+				const invited: IInviteResponse[] = await this.$store.dispatch('users/inviteUsers', emails);
+				const invitedEmails = invited.reduce((accu, {user, error}) => {
+					if (error) {
+						accu.error.push(user.email);
+					}
+					else {
+						accu.success.push(user.email);
 					}
 					return accu;
-				}, '');
-
-				this.$showMessage({
-					type: 'success',
-					title: `User${invited.length > 1 ? 's' : ''} invited successfully`,
-					message: `An invite email was sent to ${invitedEmails}`,
+				}, {
+					success: [] as string[],
+					error: [] as string[],
 				});
+
+				if (invitedEmails.success.length) {
+					this.$showMessage({
+						type: 'success',
+						title: `User${invitedEmails.success.length > 1 ? 's' : ''} invited successfully`,
+						message: `An invite email was sent to ${invitedEmails.success.join(',')}`,
+					});
+				}
+
+				if (invitedEmails.error.length) {
+					setTimeout(() => {
+						this.$showMessage({
+							type: 'error',
+							title: `User${invitedEmails.error.length > 1 ? 's' : ''} could not be invited`,
+							message: `Could not invite ${invitedEmails.error.join(',')}`,
+						});
+					}, 0); // notifications stack on top of each other otherwise
+				}
 
 				this.modalBus.$emit('close');
 

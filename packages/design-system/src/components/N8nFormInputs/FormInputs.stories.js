@@ -4,8 +4,7 @@ import { action } from '@storybook/addon-actions';
 export default {
 	title: 'Modules/FormInputs',
 	component: N8nFormInputs,
-	argTypes: {
-	},
+	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
 	},

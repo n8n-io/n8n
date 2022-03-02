@@ -37,13 +37,13 @@ export default {
 		type: {
 			type: String,
 			validator: (value: string): boolean =>
-				['text', 'textarea', 'number', 'password', 'email'].indexOf(value) !== -1,
+				['text', 'textarea', 'number', 'password', 'email'].includes(value),
 		},
 		size: {
 			type: String,
 			default: 'large',
 			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].indexOf(value) !== -1,
+				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		placeholder: {
 			type: String,

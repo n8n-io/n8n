@@ -60,7 +60,7 @@ export const pushConnection = mixins(
 
 				const connectionUrl = `${this.$store.getters.getRestUrl}/push?sessionId=${this.sessionId}`;
 
-				this.eventSource = new EventSource(connectionUrl);
+				this.eventSource = new EventSource(connectionUrl, { withCredentials: true });
 				this.eventSource.addEventListener('message', this.pushMessageReceived, false);
 
 				this.eventSource.addEventListener('open', () => {
@@ -264,7 +264,6 @@ export const pushConnection = mixins(
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
 							title: this.$locale.baseText('pushConnection.showMessage.title'),
-							message: this.$locale.baseText('pushConnection.showMessage.message'),
 							type: 'success',
 						});
 					}

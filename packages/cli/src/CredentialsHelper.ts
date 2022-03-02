@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -43,8 +44,11 @@ import {
 	Db,
 	ICredentialsDb,
 	NodeTypes,
+	WhereClause,
 	WorkflowExecuteAdditionalData,
 } from '.';
+// eslint-disable-next-line import/no-cycle
+import { User } from './databases/entities/User';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
@@ -53,13 +57,6 @@ const mockNodeTypes: INodeTypes = {
 	getAll(): Array<INodeType | INodeVersionedType> {
 		// @ts-ignore
 		return Object.values(this.nodeTypes).map((data) => data.type);
-	},
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
-		if (this.nodeTypes[nodeType] === undefined) {
-			return undefined;
-		}
-		return this.nodeTypes[nodeType].type;
 	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
 		if (this.nodeTypes[nodeType] === undefined) {
@@ -206,7 +203,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		let types: string[] = [];
 		credentialType.extends.forEach((type: string) => {
-			types = [...types, typeName, ...this.getParentTypes(type)];
+			types = [...types, type, ...this.getParentTypes(type)];
 		});
 
 		return types;
@@ -215,32 +212,40 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance
 	 *
-	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
-	 * @param {string} type Type of the credentials to return instance of
+	 * @param {INodeCredentialsDetails} nodeCredential id and name to return instance of
+	 * @param {string} type Type of the credential to return instance of
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
 	 */
 	async getCredentials(
-		nodeCredentials: INodeCredentialsDetails,
+		nodeCredential: INodeCredentialsDetails,
 		type: string,
+		userId?: string,
 	): Promise<Credentials> {
-		if (!nodeCredentials.id) {
-			throw new Error(`Credentials "${nodeCredentials.name}" for type "${type}" don't have an ID.`);
+		if (!nodeCredential.id) {
+			throw new Error(`Credential "${nodeCredential.name}" of type "${type}" has no ID.`);
 		}
 
-		const credentials = await Db.collections.Credentials?.findOne({ id: nodeCredentials.id, type });
+		const credential = userId
+			? await Db.collections
+					.SharedCredentials!.findOneOrFail({
+						relations: ['credentials'],
+						where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
+					})
+					.then((shared) => shared.credentials)
+			: await Db.collections.Credentials!.findOneOrFail({ id: nodeCredential.id, type });
 
-		if (!credentials) {
+		if (!credential) {
 			throw new Error(
-				`Credentials with ID "${nodeCredentials.id}" don't exist for type "${type}".`,
+				`Credential with ID "${nodeCredential.id}" does not exist for type "${type}".`,
 			);
 		}
 
 		return new Credentials(
-			{ id: credentials.id.toString(), name: credentials.name },
-			credentials.type,
-			credentials.nodesAccess,
-			credentials.data,
+			{ id: credential.id.toString(), name: credential.name },
+			credential.type,
+			credential.nodesAccess,
+			credential.data,
 		);
 	}
 
@@ -430,7 +435,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
 	}
 
@@ -467,8 +471,25 @@ export class CredentialsHelper extends ICredentialsHelper {
 				for (const credential of nodeType.description.credentials ?? []) {
 					if (credential.name === credentialType && !!credential.testedBy) {
 						if (typeof credential.testedBy === 'string') {
+							if (Object.prototype.hasOwnProperty.call(node, 'nodeVersions')) {
+								// The node is versioned. So check all versions for test function
+								// starting with the latest
+								const versions = Object.keys((node as INodeVersionedType).nodeVersions)
+									.sort()
+									.reverse();
+								for (const version of versions) {
+									const versionedNode = (node as INodeVersionedType).nodeVersions[
+										parseInt(version, 10)
+									];
+									if (
+										versionedNode.methods?.credentialTest &&
+										versionedNode.methods?.credentialTest[credential.testedBy]
+									) {
+										return versionedNode.methods?.credentialTest[credential.testedBy];
+									}
+								}
+							}
 							// Test is defined as string which links to a functoin
-							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							return (node as unknown as INodeType).methods?.credentialTest![credential.testedBy];
 						}
 
@@ -494,6 +515,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async testCredentials(
+		user: User,
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 		nodeToTestWith?: string,
@@ -524,7 +546,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			nodeType = credentialTestFunction.nodeType;
 		} else {
 			const nodeTypes = NodeTypes();
-			nodeType = nodeTypes.getByName('n8n-nodes-base.noOp') as INodeType;
+			nodeType = nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
 		}
 
 		const node: INode = {
@@ -592,7 +614,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			},
 		};
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(node.parameters);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id, node.parameters);
 
 		const routingNode = new RoutingNode(
 			workflow,
@@ -658,4 +680,48 @@ export class CredentialsHelper extends ICredentialsHelper {
 			message: 'Connection successful!',
 		};
 	}
+}
+
+/**
+ * Build a `where` clause for a `find()` or `findOne()` operation
+ * in the `shared_workflow` or `shared_credentials` tables.
+ */
+export function whereClause({
+	user,
+	entityType,
+	entityId = '',
+}: {
+	user: User;
+	entityType: 'workflow' | 'credentials';
+	entityId?: string;
+}): WhereClause {
+	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
+
+	if (user.globalRole.name !== 'owner') {
+		where.user = { id: user.id };
+	}
+
+	return where;
+}
+
+/**
+ * Get a credential if it has been shared with a user.
+ */
+export async function getCredentialForUser(
+	credentialId: string,
+	user: User,
+): Promise<ICredentialsDb | null> {
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+	const sharedCredential = await Db.collections.SharedCredentials!.findOne({
+		relations: ['credentials'],
+		where: whereClause({
+			user,
+			entityType: 'credentials',
+			entityId: credentialId,
+		}),
+	});
+
+	if (!sharedCredential) return null;
+
+	return sharedCredential.credentials as ICredentialsDb;
 }

@@ -1,19 +1,19 @@
 <template>
 	<div :class="$style.container">
 		<LoadingView v-if="loading" />
-		<div id="app" :class="$style.container" v-else>
+		<div v-else id="app" :class="$style.container">
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
 			<div id="sidebar" :class="$style.sidebar">
 				<router-view name="sidebar"></router-view>
 			</div>
-			<div id="content" :class="$style.container">
+			<div id="content" :class="$style.content">
 				<router-view />
 			</div>
 			<Modals />
+			<Telemetry />
 		</div>
-		<Telemetry />
 	</div>
 </template>
 
@@ -21,6 +21,7 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
+import { HIRING_BANNER } from './constants';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
@@ -36,39 +37,66 @@ export default mixins(
 		Telemetry,
 		Modals,
 	},
+	computed: {
+		...mapGetters('settings', ['isInternalUser', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
+		...mapGetters('users', ['canCurrentUserAccessView', 'currentUser']),
+		isRootPath(): boolean {
+			return this.$route.path === '/';
+		},
+	},
 	data() {
 		return {
 			loading: true,
 		};
 	},
-	async mounted() {
-		await this.initialize();
-		this.authenticate();
-		this.$telemetry.page('Editor', this.$route.name);
-	},
-	computed: {
-		...mapGetters('settings', ['isUserManagementEnabled', 'showSetupPage']),
-		...mapGetters('users', ['canCurrentUserAccessView', 'currentUser']),
-	},
 	methods: {
-		async initialize(): Promise<void> {
+		async initSettings(): Promise<void> {
 			try {
-				await this.$store.dispatch('settings/fetchSettings');
+				await this.$store.dispatch('settings/getSettings');
 			} catch (e) {
 				this.$showToast({
-					title: 'Error connecting to n8n',
-					message: 'Could not connect to server. <a onclick="window.location.reload(false);">Refresh</a> to try again',
+					title: this.$locale.baseText('settings.errors.connectionError.title'),
+					message: this.$locale.baseText('settings.errors.connectionError.message'),
 					type: 'error',
 					duration: 0,
 				});
 
 				throw e;
 			}
-
+		},
+		async loginWithCookie(): Promise<void> {
 			try {
 				await this.$store.dispatch('users/loginWithCookie');
+			} catch (e) {}
+		},
+		async initTemplates(): Promise<void> {
+			try {
+				const templatesPromise = this.$store.dispatch('settings/testTemplatesEndpoint');
+				if (this.isRootPath) { // only delay loading to determine redirect
+					await templatesPromise;
+				}
 			} catch (e) {
 			}
+		},
+		async initialize(): Promise<void> {
+			await this.initSettings();
+			await this.loginWithCookie();
+			await this.initTemplates();
+
+			if (!this.isInternalUser && this.$route.name !== 'WorkflowDemo') {
+				console.log(HIRING_BANNER); // eslint-disable-line no-console
+			}
+		},
+		trackPage() {
+			this.$store.commit('ui/setCurrentView', this.$route.name);
+			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
+				this.$store.commit('templates/setSessionId');
+			}
+			else {
+				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
+			}
+
+			this.$telemetry.page('Editor', this.$route);
 		},
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once
@@ -78,7 +106,7 @@ export default mixins(
 					return;
 				}
 
-				this.$router.push({name: 'SetupView'});
+				this.$router.replace({ name: 'SetupView' });
 				setTimeout(() => {
 					this.$store.commit('settings/stopShowingSetupPage');
 				}, 0);
@@ -86,7 +114,7 @@ export default mixins(
 			}
 
 			if (this.$route.name === 'SetupView' && !this.isUserManagementEnabled) {
-				this.$router.push('/');
+				this.$router.replace('/');
 
 				this.loading = false;
 				return;
@@ -100,28 +128,46 @@ export default mixins(
 
 			const user = this.currentUser as IUser | null;
 			if (!user) {
-				const redirect = this.$route.query.redirect || encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.push({name: 'SigninView', query: { redirect }});
-			}
-			else {
+				const redirect =
+					this.$route.query.redirect ||
+					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+				this.$router.replace({ name: 'SigninView', query: { redirect } });
+			} else {
 				if (typeof this.$route.query.redirect === 'string') {
 					const redirect = decodeURIComponent(this.$route.query.redirect);
-					if (redirect.startsWith('/')) { // protect against phishing
-						this.$router.push(redirect);
+					if (redirect.startsWith('/')) {
+						// protect against phishing
+						this.$router.replace(redirect);
 					}
-				}
-				else {
-					this.$router.push({name: 'NodeViewNew'});
+				} else {
+					this.$router.replace({ name: 'NodeViewNew' });
 				}
 			}
 
 			this.loading = false;
 		},
 	},
+	async mounted() {
+		await this.initialize();
+		this.authenticate();
+
+		if (this.isTemplatesEnabled && this.isTemplatesEndpointReachable && this.isRootPath) {
+			this.$router.replace({ name: 'TemplatesSearchView'});
+		} else if (this.isRootPath) {
+			this.$router.replace({ name: 'NodeViewNew'});
+		}
+		else if (!this.isTemplatesEnabled && this.$route.meta && this.$route.meta.templatesEnabled) {
+			this.$router.replace({ name: 'NodeViewNew'});
+		}
+		this.loading = false;
+
+		this.trackPage();
+		this.$externalHooks().run('app.mount');
+	},
 	watch: {
-		'$route'(route) {
+		$route(route) {
 			this.authenticate();
-			this.$telemetry.page('Editor', route.name);
+			this.trackPage();
 		},
 	},
 });
@@ -132,6 +178,13 @@ export default mixins(
 	height: 100%;
 	width: 100%;
 }
+
+.content {
+	composes: container;
+	background-color: var(--color-background-light);
+	position: relative;
+}
+
 .header {
 	z-index: 10;
 	position: fixed;

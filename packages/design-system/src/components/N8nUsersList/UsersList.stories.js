@@ -33,7 +33,11 @@ UsersList.args = {
 			id: "1",
 			firstName: 'Sunny',
 			lastName: 'Side',
+			fullName: 'Sunny Side',
 			email: "sunny@n8n.io",
+			isDefaultUser: false,
+			isPendingUser: false,
+			isOwner: true,
 			globalRole: {
 				name: 'owner',
 				id: 1,
@@ -43,7 +47,11 @@ UsersList.args = {
 			id: "2",
 			firstName: 'Kobi',
 			lastName: 'Dog',
+			fullName: 'Kobi Dog',
 			email: "kobi@n8n.io",
+			isDefaultUser: false,
+			isPendingUser: false,
+			isOwner: false,
 			globalRole: {
 				name: 'member',
 				id: "2",
@@ -52,6 +60,9 @@ UsersList.args = {
 		{
 			id: "3",
 			email: "invited@n8n.io",
+			isDefaultUser: false,
+			isPendingUser: true,
+			isOwner: false,
 			globalRole: {
 				name: 'member',
 				id: "2",

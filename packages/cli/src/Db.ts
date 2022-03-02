@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-case-declarations */
@@ -17,6 +18,8 @@ import { entities } from './databases/entities';
 import { postgresMigrations } from './databases/postgresdb/migrations';
 import { mysqlMigrations } from './databases/mysqldb/migrations';
 import { sqliteMigrations } from './databases/sqlite/migrations';
+import { TEST_CONNECTION_OPTIONS } from '../test/integration/shared/constants';
+import { isTestRun } from '../test/integration/shared/utils';
 
 export const collections: IDatabaseCollections = {
 	Credentials: null,
@@ -24,6 +27,11 @@ export const collections: IDatabaseCollections = {
 	Workflow: null,
 	Webhook: null,
 	Tag: null,
+	Role: null,
+	User: null,
+	SharedCredentials: null,
+	SharedWorkflow: null,
+	Settings: null,
 };
 
 export async function init(): Promise<IDatabaseCollections> {
@@ -120,6 +128,10 @@ export async function init(): Promise<IDatabaseCollections> {
 		}
 	}
 
+	if (isTestRun) {
+		connectionOptions = TEST_CONNECTION_OPTIONS;
+	}
+
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
 		synchronize: false,
@@ -162,6 +174,12 @@ export async function init(): Promise<IDatabaseCollections> {
 	collections.Workflow = getRepository(entities.WorkflowEntity);
 	collections.Webhook = getRepository(entities.WebhookEntity);
 	collections.Tag = getRepository(entities.TagEntity);
+
+	collections.Role = getRepository(entities.Role);
+	collections.User = getRepository(entities.User);
+	collections.SharedCredentials = getRepository(entities.SharedCredentials);
+	collections.SharedWorkflow = getRepository(entities.SharedWorkflow);
+	collections.Settings = getRepository(entities.Settings);
 
 	return collections;
 }

@@ -27,7 +27,7 @@
 					:message="$locale.baseText('SMTP_TO_ADD_USERS_WARNING')"
 					:popupClass="$style.alert"
 				/>
-				<n8n-users-list :users="allUsers" @delete="onDelete" @reinvite="onReinvite" />
+				<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
 			</div>
 		</div>
 	</SettingsView>
@@ -52,7 +52,9 @@ export default mixins(showMessage).extend({
 		PageAlert,
 	},
 	async mounted() {
-		await this.$store.dispatch('users/fetchUsers');
+		if (!this.showUMSetupWarning) {
+			await this.$store.dispatch('users/fetchUsers');
+		}
 	},
 	computed: {
 		...mapGetters('users', ['allUsers', 'currentUserId', 'showUMSetupWarning']),
@@ -69,7 +71,7 @@ export default mixins(showMessage).extend({
 			const getUserById = this.$store.getters['users/getUserById'];
 			const user = getUserById(userId) as IUser | null;
 			if (user) {
-				this.$store.dispatch('ui/openDeleteUserModal', {id: userId});
+				this.$store.dispatch('ui/openDeleteUserModal', { id: userId });
 			}
 		},
 		async onReinvite(userId: string) {
