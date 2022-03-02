@@ -47,7 +47,7 @@ export function updateCurrentUser(context: IRestApiContext, params: {id: string,
 	return makeRestApiRequest(context, 'PATCH', `/me`, params as unknown as IDataObject);
 }
 
-export function updateCurrentUserPassword(context: IRestApiContext, params: {password: string, currentPassword: string}): Promise<void> {
+export function updateCurrentUserPassword(context: IRestApiContext, params: {newPassword: string, currentPassword: string}): Promise<void> {
 	return makeRestApiRequest(context, 'PATCH', `/me/password`, params);
 }
 

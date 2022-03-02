@@ -174,7 +174,7 @@ const module: Module<IUsersState, IRootState> = {
 			context.commit('addUsers', [user]);
 		},
 		async updateCurrentUserPassword(context: ActionContext<IUsersState, IRootState>, {password, currentPassword}: {password: string, currentPassword: string}) {
-			await updateCurrentUserPassword(context.rootGetters.getRestApiContext, {password, currentPassword});
+			await updateCurrentUserPassword(context.rootGetters.getRestApiContext, {newPassword: password, currentPassword});
 		},
 		async deleteUser(context: ActionContext<IUsersState, IRootState>, params: { id: string, transferId?: string}) {
 			await deleteUser(context.rootGetters.getRestApiContext, params);
