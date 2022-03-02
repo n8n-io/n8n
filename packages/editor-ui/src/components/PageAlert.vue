@@ -3,7 +3,6 @@
 </template>
 
 <script lang="ts">
-import { mapGetters } from 'vuex';
 import mixins from 'vue-typed-mixins';
 
 import { showMessage } from './mixins/showMessage';
