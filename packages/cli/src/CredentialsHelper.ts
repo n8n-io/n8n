@@ -35,6 +35,7 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 	ITaskDataConnections,
+	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -668,7 +669,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					};
 				}
 			}
-
+			Logger.error('Credential test failed', error);
 			return {
 				status: 'Error',
 				message: error.message.toString(),
