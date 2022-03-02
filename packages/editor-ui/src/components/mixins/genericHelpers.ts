@@ -77,7 +77,7 @@ export const genericHelpers = mixins(showMessage).extend({
 		async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
 			const functionName = inputParameters.shift() as string;
 			const debounceTime = inputParameters.shift() as number;
-			const trailing = inputParameters.includes(true);
+			const trailing = inputParameters.some(element => element['trailing']);
 
 			// @ts-ignore
 			if (this.debouncedFunctions[functionName] === undefined) {
