@@ -24,7 +24,7 @@ export default mixins(
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
 			title: this.$locale.baseText('SET_UP_ACCOUNT_MESSAGE'),
-			buttonText: this.$locale.baseText('FINISH_SET_UP_MESSAGE'),
+			buttonText: this.$locale.baseText('FINISH_ACCOUNT_SET_UP'),
 			inputs: [
 				{
 					name: 'firstName',
@@ -51,7 +51,7 @@ export default mixins(
 						type: 'password',
 						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
 						required: true,
-						infoText: this.$locale.baseText('PASSWORD_REQUIREMENTS_MESSAGE'),
+						infoText: this.$locale.baseText('DEFAULT_PASSWORD_REQUIREMENTS'),
 						autocomplete: 'new-password',
 					},
 				},

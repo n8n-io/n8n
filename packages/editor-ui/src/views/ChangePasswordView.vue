@@ -43,7 +43,7 @@ export default mixins(
 						type: 'password',
 						required: true,
 						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-						infoText: this.$locale.baseText('PASSWORD_REQUIREMENTS_MESSAGE'),
+						infoText: this.$locale.baseText('DEFAULT_PASSWORD_REQUIREMENTS'),
 						autocomplete: 'new-password',
 					},
 				},
@@ -100,13 +100,13 @@ export default mixins(
 
 				this.$showMessage({
 					type: 'success',
-					title: this.$locale.baseText('PASSWORD_RESET_SUCCESS'),
-					message: this.$locale.baseText('PASSWORD_RESET_SUCCESS_MESSAGE'),
+					title: this.$locale.baseText('PASSWORD_UPDATE_SUCCESS'),
+					message: this.$locale.baseText('PASSWORD_UPDATE_SUCCESS_MESSAGE'),
 				});
 
 				await this.$router.push({ name: 'SigninView' });
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('PASSWORD_RESET_ERROR'));
+				this.$showError(error, this.$locale.baseText('PASSWORD_UPDATE_ERROR'));
 			}
 			this.loading = false;
 		},

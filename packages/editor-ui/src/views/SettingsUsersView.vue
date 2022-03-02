@@ -84,7 +84,7 @@ export default mixins(showMessage).extend({
 					this.$showToast({
 						type: 'success',
 						title: this.$locale.baseText('INVITE_RESENT'),
-						message: this.$locale.baseText('EMAIL_SENT_TO_MESSAGE', { interpolate: { email: user.email } }),
+						message: this.$locale.baseText('EMAIL_SENT_TO', { interpolate: { email: user.email } }),
 					});
 				} catch (e) {
 					this.$showError(e, this.$locale.baseText('USER_INVITE_ERROR'));

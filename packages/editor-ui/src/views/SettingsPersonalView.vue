@@ -120,7 +120,7 @@ export default mixins(
 					email: form.email,
 				});
 				this.$showToast({
-					title: this.$locale.baseText('PERSONAL_SETTINGS_UPDATED_MESSAGE'),
+					title: this.$locale.baseText('PERSONAL_SETTINGS_UPDATED_SUCCESS'),
 					message: '',
 					type: 'success',
 				});

@@ -63,7 +63,7 @@ export default mixins(
 						type: 'password',
 						required: true,
 						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-						infoText: this.$locale.baseText('PASSWORD_REQUIREMENTS_MESSAGE'),
+						infoText: this.$locale.baseText('DEFAULT_PASSWORD_REQUIREMENTS'),
 						autocomplete: 'new-password',
 					},
 				},

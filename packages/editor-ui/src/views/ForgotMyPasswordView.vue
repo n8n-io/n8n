@@ -79,8 +79,8 @@ export default mixins(
 
 				this.$showMessage({
 					type: 'success',
-					title: this.$locale.baseText('RECOVERY_EMAIL_SENT_MESSAGE'),
-					message: this.$locale.baseText('CHECK_INBOX_AND_SPAM_MESSAGE'),
+					title: this.$locale.baseText('RECOVERY_EMAIL_SENT'),
+					message: this.$locale.baseText('CHECK_INBOX_AND_SPAM'),
 				});
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('SENDING_EMAIL_ERROR'));
