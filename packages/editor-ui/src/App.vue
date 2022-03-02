@@ -105,9 +105,6 @@ export default mixins(showMessage).extend({
 				}
 
 				this.$router.replace({ name: 'SetupView' });
-				setTimeout(() => {
-					this.$store.commit('settings/stopShowingSetupPage');
-				}, 0);
 				return;
 			}
 

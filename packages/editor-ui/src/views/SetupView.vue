@@ -95,6 +95,7 @@ export default mixins(
 				'Go back',
 			);
 			if (skip) {
+				this.$store.dispatch('settings/skipOwnerSetup');
 				this.$router.push({
 					name: 'NodeViewNew',
 				});

@@ -52,7 +52,7 @@ afterAll(() => {
 });
 
 test('POST /login should log user in', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const response = await authlessAgent.post('/login').send({
 		email: TEST_USER.email,
@@ -90,7 +90,7 @@ test('POST /login should log user in', async () => {
 
 test('GET /login should receive logged in user', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.get('/login');
 
@@ -124,7 +124,7 @@ test('GET /login should receive logged in user', async () => {
 
 test('POST /logout should log user out', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.post('/logout');
 

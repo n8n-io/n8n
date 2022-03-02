@@ -1,4 +1,3 @@
-import { table } from 'console';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import config = require('../../../../config');
@@ -244,7 +243,8 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 			'INSERT INTO `' +
 				tablePrefix +
 				'settings` (`key`, value, loadOnStartup) values  ' +
-				'("userManagement.isInstanceOwnerSetUp", "false", 1)',
+				'("userManagement.isInstanceOwnerSetUp", "false", 1), ' +
+				'("userManagement.skipInstanceOwnerSetup", "false", 1)',
 		);
 	}
 

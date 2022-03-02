@@ -1,5 +1,7 @@
 /* eslint-disable import/no-cycle */
 import {
+	AfterLoad,
+	AfterUpdate,
 	BeforeUpdate,
 	Column,
 	ColumnOptions,
@@ -10,7 +12,6 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
-	AfterLoad,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import config = require('../../../config');
@@ -127,7 +128,8 @@ export class User {
 	isPending: boolean;
 
 	@AfterLoad()
+	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = !!this.password;
+		this.isPending = this.password == null;
 	}
 }
