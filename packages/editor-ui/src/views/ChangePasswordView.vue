@@ -31,26 +31,26 @@ export default mixins(
 	},
 	async mounted() {
 		this.config = {
-			title: 'Change Password',
-			buttonText: 'Change Password',
-			redirectText: 'Sign in',
+			title: this.$locale.baseText('CHANGE_PASSWORD_LABEL'),
+			buttonText: this.$locale.baseText('CHANGE_PASSWORD_LABEL'),
+			redirectText: this.$locale.baseText('SIGN_IN'),
 			redirectLink: '/signin',
 			inputs: [
 				{
 					name: 'password',
 					properties: {
-						label: 'New password',
+						label: this.$locale.baseText('NEW_PASSWORD_LABEL'),
 						type: 'password',
 						required: true,
 						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-						infoText: 'At least 8 characters with 1 number and 1 uppercase',
+						infoText: this.$locale.baseText('PASSWORD_REQUIREMENTS_MESSAGE'),
 						autocomplete: 'new-password',
 					},
 				},
 				{
 					name: 'password2',
 					properties: {
-						label: 'Re-enter new password',
+						label: this.$locale.baseText('REENTER_NEW_PASSWORD'),
 						type: 'password',
 						required: true,
 						validators: {
@@ -69,21 +69,21 @@ export default mixins(
 		const userId = this.$route.query.userId;
 		try {
 			if (!token) {
-				throw new Error('Missing token');
+				throw new Error(this.$locale.baseText('MISSING_TOKEN_ERROR'));
 			}
 			if (!userId) {
-				throw new Error('Missing userId');
+				throw new Error(this.$locale.baseText('MISSING_USERID_ERROR'));
 			}
 
 			await this.$store.dispatch('users/validatePasswordToken', {token, userId});
 		} catch (e) {
-			this.$showError(e, 'Issue validating token');
+			this.$showError(e, this.$locale.baseText('TOKEN_VALIDATION_ERROR'));
 		}
 	},
 	methods: {
 		passwordsMatch(value: string) {
 			if (value !== this.password) {
-				throw new Error('Passwords must match');
+				throw new Error(this.$locale.baseText('PASSWORDS_MUST_MATCH_ERROR'));
 			}
 		},
 		onInput(e: {name: string, value: string}) {
@@ -100,13 +100,13 @@ export default mixins(
 
 				this.$showMessage({
 					type: 'success',
-					title: 'Password reset successfully',
-					message: 'You can now sign in with your new password',
+					title: this.$locale.baseText('PASSWORD_RESET_SUCCESS'),
+					message: this.$locale.baseText('PASSWORD_RESET_SUCCESS_MESSAGE'),
 				});
 
 				await this.$router.push({ name: 'SigninView' });
 			} catch (error) {
-				this.$showError(error, 'Problem changing the password', 'There was a problem while trying to change the password:');
+				this.$showError(error, this.$locale.baseText('PASSWORD_RESET_ERROR'));
 			}
 			this.loading = false;
 		},

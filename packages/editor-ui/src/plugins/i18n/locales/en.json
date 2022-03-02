@@ -1138,6 +1138,14 @@
 	"WORKFLOW_NOT_FOUND_ERROR": "Could not find workflow",
 	"404_NOT_FOUND_MESSAGE": "Oops, couldn’t find that",
 	"GO_TO_EDITOR_LABEL": "Go to editor",
+	"NEW_PASSWORD_LABEL": "New password",
+	"REENTER_NEW_PASSWORD": "Re-enter new password",
+	"MISSING_TOKEN_ERROR": "Missing token",
+	"MISSING_USERID_ERROR": "Missing user id",
+	"PASSWORDS_MUST_MATCH_ERROR": "Passwords must match",
+	"PASSWORD_RESET_SUCCESS": "Password reset successfully",
+	"PASSWORD_RESET_SUCCESS_MESSAGE": "You can now sign in with your new password",
+	"PASSWORD_RESET_ERROR": "Problem changing the password",
 	"workflowPreview": {
 		"showError": {
 			"previewError": {
