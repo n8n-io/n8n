@@ -90,10 +90,10 @@ export class Strapi implements INodeType {
 
 						for (const key of Object.keys(items[i].json)) {
 							if (columnList.includes(key)) {
-								body[key] = items[i].json[key];
+								apiVersion === 'v4'? body.data = items[i].json: body[key] = items[i].json[key];
 							}
 						}
-						responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs, undefined, headers);
+						apiVersion === 'v4'? responseData = await strapiApiRequest.call(this, 'POST', `/api/${contentType}`, body, qs, undefined, headers): responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs, undefined, headers);
 
 						returnData.push(responseData);
 					}
