@@ -91,6 +91,15 @@ export class User {
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
+		transformer: {
+			to: (answers: object) => answers,
+			from: (answers: object | string) => {
+				// Postgres stores and returns string
+				return typeof answers === 'string'
+					? (JSON.parse(answers) as IPersonalizationSurveyAnswers)
+					: answers;
+			},
+		},
 	})
 	personalizationAnswers: IPersonalizationSurveyAnswers | null;
 

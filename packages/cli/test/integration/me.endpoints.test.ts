@@ -180,9 +180,7 @@ describe('Owner shell', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-			const { personalizationAnswers: answers } = await Db.collections.User!.findOneOrFail();
-			// @ts-ignore TODO: JSON.parse() at model level
-			const storedAnswers = dbType === 'postgresdb' ? JSON.parse(answers) : answers;
+			const { personalizationAnswers: storedAnswers } = await Db.collections.User!.findOneOrFail();
 
 			expect(storedAnswers).toEqual(validPayload);
 		}
@@ -356,9 +354,7 @@ describe('Member', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-			const { personalizationAnswers: answers } = await Db.collections.User!.findOneOrFail();
-			// @ts-ignore TODO: JSON.parse() at model level
-			const storedAnswers = dbType === 'postgresdb' ? JSON.parse(answers) : answers;
+			const { personalizationAnswers: storedAnswers } = await Db.collections.User!.findOneOrFail();
 
 			expect(storedAnswers).toEqual(validPayload);
 		}
@@ -378,7 +374,6 @@ describe('Owner', () => {
 
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 	});
-
 
 	afterEach(async () => {
 		await testDb.truncate(['User'], testDbName);
