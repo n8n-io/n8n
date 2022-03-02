@@ -46,6 +46,7 @@ export class Strapi implements INodeType {
 			{
 				displayName: 'Resource',
 				name: 'resource',
+				noDataExpression: true,
 				type: 'options',
 				options: [
 					{
@@ -54,7 +55,7 @@ export class Strapi implements INodeType {
 					},
 				],
 				default: 'entry',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			...entryOperations,
 			...entryFields,
