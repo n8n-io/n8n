@@ -2,7 +2,7 @@
 	<Modal
 		:name="CHANGE_PASSWORD_MODAL_KEY"
 		@enter="onSubmit"
-		title="Change Password"
+		:title="$locale.baseText('CHANGE_PASSWORD_LABEL')"
 		:center="true"
 		width="460px"
 		:eventBus="modalBus"
@@ -17,7 +17,7 @@
 			/>
 		</template>
 		<template slot="footer">
-			<n8n-button :loading="loading" label="Change password" @click="onSubmitClick" float="right" />
+			<n8n-button :loading="loading" :label="$locale.baseText('CHANGE_PASSWORD_LABEL')" @click="onSubmitClick" float="right" />
 		</template>
 	</Modal>
 </template>
@@ -55,7 +55,7 @@ export default mixins(showMessage).extend({
 			{
 				name: 'currentPassword',
 				properties: {
-					label: 'Current Password',
+					label: this.$locale.baseText('CURRENT_PASSWORD'),
 					type: 'password',
 					required: true,
 					autocomplete: 'current-password',
@@ -64,18 +64,18 @@ export default mixins(showMessage).extend({
 			{
 				name: 'password',
 				properties: {
-					label: 'New password',
+					label: this.$locale.baseText('NEW_PASSWORD_LABEL'),
 					type: 'password',
 					required: true,
 					validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-					infoText: 'At least 8 characters with 1 number and 1 uppercase',
+					infoText: this.$locale.baseText('PASSWORD_REQUIREMENTS_MESSAGE'),
 					autocomplete: 'new-password',
 				},
 			},
 			{
 				name: 'password2',
 				properties: {
-					label: 'Re-enter new password',
+					label: this.$locale.baseText('REENTER_NEW_PASSWORD'),
 					type: 'password',
 					required: true,
 					validators: {
@@ -92,7 +92,7 @@ export default mixins(showMessage).extend({
 	methods: {
 		passwordsMatch(value: string) {
 			if (value !== this.password) {
-				throw new Error('Passwords must match');
+				throw new Error(this.$locale.baseText('PASSWORDS_MUST_MATCH_ERROR'));
 			}
 		},
 		onInput(e: {name: string, value: string}) {
@@ -107,14 +107,14 @@ export default mixins(showMessage).extend({
 
 				this.$showMessage({
 					type: 'success',
-					title: 'Password updated successfully',
-					message: 'You can now sign in with your new password',
+					title: this.$locale.baseText('PASSWORD_UPDATE_SUCCESS'),
+					message: this.$locale.baseText('PASSWORD_UPDATE_SUCCESS_MESSAGE'),
 				});
 
 				this.modalBus.$emit('close');
 
 			} catch (error) {
-				this.$showError(error, 'Problem changing the password');
+				this.$showError(error, this.$locale.baseText('PASSWORD_UPDATE_ERROR'));
 			}
 			this.loading = false;
 		},

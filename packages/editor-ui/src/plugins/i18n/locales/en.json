@@ -1138,6 +1138,7 @@
 	"WORKFLOW_NOT_FOUND_ERROR": "Could not find workflow",
 	"404_NOT_FOUND_MESSAGE": "Oops, couldn’t find that",
 	"GO_TO_EDITOR_LABEL": "Go to editor",
+	"CURRENT_PASSWORD": "Current password",
 	"NEW_PASSWORD_LABEL": "New password",
 	"REENTER_NEW_PASSWORD": "Re-enter new password",
 	"MISSING_TOKEN_ERROR": "Missing token",
@@ -1178,6 +1179,9 @@
 	"TRANSFERRED_TO_USER": "Transferred to {user}",
 	"USER_DELETE_SUCCESS": "User deleted successfully",
 	"USER_DELETE_ERROR": "Problem while deleting user",
+	"PASSWORD_UPDATE_SUCCESS": "Password updated successfully",
+	"PASSWORD_UPDATE_SUCCESS_MESSAGE": "You can now sign in with your new password",
+	"PASSWORD_UPDATE_ERROR": "Problem changing the password",
 	"workflowPreview": {
 		"showError": {
 			"previewError": {
