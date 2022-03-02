@@ -180,7 +180,7 @@ export class Strapi implements INodeType {
 
 						const entryId = this.getNodeParameter('entryId', i) as string;
 
-						responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
+						apiVersion === 'v4'? ({data:responseData}=await strapiApiRequest.call(this, 'GET', `/api/${contentType}/${entryId}`, {}, qs, undefined, headers)):responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
 
 						returnData.push(responseData);
 					}
