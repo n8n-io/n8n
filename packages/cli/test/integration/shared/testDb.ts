@@ -33,25 +33,10 @@ export async function init() {
 	}
 
 	if (dbType === 'postgresdb') {
-		const username = config.get('database.postgresdb.user');
-		const password = config.get('database.postgresdb.password');
-		const host = config.get('database.postgresdb.host');
-		const port = config.get('database.postgresdb.port');
-		const schema = config.get('database.postgresdb.schema');
-
-		await createConnection({
-			name: BOOTSTRAP_POSTGRES_CONNECTION_NAME,
-			type: 'postgres',
-			database: 'postgres', // pre-existing
-			host,
-			port,
-			username,
-			password,
-			schema,
-		});
+		const bootstrapPostgres = await createConnection(getBootstrapPostgresOptions());
 
 		const testDbName = `n8n_test_pg_${Date.now()}`;
-		await getConnection(BOOTSTRAP_POSTGRES_CONNECTION_NAME).query(`CREATE DATABASE ${testDbName};`);
+		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName};`);
 
 		await Db.init(getPostgresOptions({ name: testDbName }));
 
