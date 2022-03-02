@@ -2,7 +2,7 @@
 	<Modal
 		:name="CHANGE_PASSWORD_MODAL_KEY"
 		@enter="onSubmit"
-		:title="$locale.baseText('CHANGE_PASSWORD_LABEL')"
+		:title="$locale.baseText('CHANGE_PASSWORD')"
 		:center="true"
 		width="460px"
 		:eventBus="modalBus"
@@ -17,7 +17,7 @@
 			/>
 		</template>
 		<template slot="footer">
-			<n8n-button :loading="loading" :label="$locale.baseText('CHANGE_PASSWORD_LABEL')" @click="onSubmitClick" float="right" />
+			<n8n-button :loading="loading" :label="$locale.baseText('CHANGE_PASSWORD')" @click="onSubmitClick" float="right" />
 		</template>
 	</Modal>
 </template>
@@ -64,7 +64,7 @@ export default mixins(showMessage).extend({
 			{
 				name: 'password',
 				properties: {
-					label: this.$locale.baseText('NEW_PASSWORD_LABEL'),
+					label: this.$locale.baseText('NEW_PASSWORD'),
 					type: 'password',
 					required: true,
 					validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],

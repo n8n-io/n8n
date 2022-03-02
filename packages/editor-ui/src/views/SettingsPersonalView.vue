@@ -2,7 +2,7 @@
 	<SettingsView>
 		<div :class="$style.container">
 			<div :class="$style.header">
-				<n8n-heading size="2xlarge">{{ $locale.baseText('PERSONAL_SETTINGS_LABEL') }}</n8n-heading>
+				<n8n-heading size="2xlarge">{{ $locale.baseText('PERSONAL_SETTINGS') }}</n8n-heading>
 				<div :class="$style.user">
 					<span :class="$style.username">
 						<n8n-text  color="text-light">{{currentUser.fullName}}</n8n-text>
@@ -12,7 +12,7 @@
 			</div>
 			<div>
 				<div :class="$style.sectionHeader">
-					<n8n-heading size="large">{{ $locale.baseText('BASIC_INFORMATION_LABEL') }}</n8n-heading>
+					<n8n-heading size="large">{{ $locale.baseText('BASIC_INFORMATION') }}</n8n-heading>
 				</div>
 				<n8n-form-inputs
 					v-if="formInputs"
@@ -25,16 +25,16 @@
 			</div>
 			<div>
 				<div :class="$style.sectionHeader">
-					<n8n-heading size="large">{{ $locale.baseText('SECURITY_LABEL') }}</n8n-heading>
+					<n8n-heading size="large">{{ $locale.baseText('SECURITY') }}</n8n-heading>
 				</div>
 				<div>
 					<n8n-input-label :label="$locale.baseText('PASSWORD')">
-						<n8n-link @click="openPasswordModal">{{ $locale.baseText('CHANGE_PASSWORD_LABEL') }}</n8n-link>
+						<n8n-link @click="openPasswordModal">{{ $locale.baseText('CHANGE_PASSWORD') }}</n8n-link>
 					</n8n-input-label>
 				</div>
 			</div>
 			<div>
-				<n8n-button float="right" :label="$locale.baseText('SAVE_LABEL')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
+				<n8n-button float="right" :label="$locale.baseText('SAVE')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
 			</div>
 		</div>
 	</SettingsView>

@@ -53,15 +53,15 @@ export default mixins(
 			];
 
 			const DEFAULT_FORM_CONFIG = {
-				title: this.$locale.baseText('RECOVER_PASSWORD_LABEL'),
-				redirectText: this.$locale.baseText('RETURN_TO_SIGN_IN_LABEL'),
+				title: this.$locale.baseText('RECOVER_PASSWORD'),
+				redirectText: this.$locale.baseText('RETURN_TO_SIGN_IN'),
 				redirectLink: '/signin',
 			};
 
 			if (this.isSmtpSetup) {
 				return {
 					...DEFAULT_FORM_CONFIG,
-					buttonText: this.$locale.baseText('GET_RECOVERY_LINK_LABEL'),
+					buttonText: this.$locale.baseText('GET_RECOVERY_LINK'),
 					inputs: EMAIL_INPUTS,
 				};
 			}

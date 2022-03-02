@@ -2,12 +2,12 @@
 	<SettingsView>
 		<div :class="$style.container">
 			<div>
-				<n8n-heading size="2xlarge">{{ $locale.baseText('USERS_LABEL') }}</n8n-heading>
+				<n8n-heading size="2xlarge">{{ $locale.baseText('USERS') }}</n8n-heading>
 				<div :class="$style.buttonContainer" v-if="!showUMSetupWarning">
 						<n8n-tooltip :disabled="isSmtpSetup" placement="bottom">
 							<div slot="content" v-html="$locale.baseText('SETUP_SMTP_TO_INVITE_USERS_MESSAGE')"></div>
 							<div>
-								<n8n-button :label="$locale.baseText('INVITE_LABEL')" @click="onInvite" size="large" :disabled="!isSmtpSetup" />
+								<n8n-button :label="$locale.baseText('INVITE')" @click="onInvite" size="large" :disabled="!isSmtpSetup" />
 							</div>
 						</n8n-tooltip>
 				</div>
@@ -17,7 +17,7 @@
 					emoji="😿"
 					:heading="$locale.baseText('USER_MANAGEMENT_MISSING_WARNING')"
 					:description="$locale.baseText('SET_UP_TO_INVITE_USERS_WARNING')"
-					:buttonText="$locale.baseText('SET_UP_MY_ACCOUNT_LABEL')"
+					:buttonText="$locale.baseText('SET_UP_MY_ACCOUNT')"
 					@click="redirectToSetup"
 				/>
 			</div>
@@ -83,7 +83,7 @@ export default mixins(showMessage).extend({
 
 					this.$showToast({
 						type: 'success',
-						title: this.$locale.baseText('INVITE_RESENT_LABEL'),
+						title: this.$locale.baseText('INVITE_RESENT'),
 						message: this.$locale.baseText('EMAIL_SENT_TO_MESSAGE', { interpolate: { email: user.email } }),
 					});
 				} catch (e) {

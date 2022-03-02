@@ -31,15 +31,15 @@ export default mixins(
 	},
 	async mounted() {
 		this.config = {
-			title: this.$locale.baseText('CHANGE_PASSWORD_LABEL'),
-			buttonText: this.$locale.baseText('CHANGE_PASSWORD_LABEL'),
+			title: this.$locale.baseText('CHANGE_PASSWORD'),
+			buttonText: this.$locale.baseText('CHANGE_PASSWORD'),
 			redirectText: this.$locale.baseText('SIGN_IN'),
 			redirectLink: '/signin',
 			inputs: [
 				{
 					name: 'password',
 					properties: {
-						label: this.$locale.baseText('NEW_PASSWORD_LABEL'),
+						label: this.$locale.baseText('NEW_PASSWORD'),
 						type: 'password',
 						required: true,
 						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],

@@ -24,9 +24,9 @@ export default mixins(
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
-			title: this.$locale.baseText('SET_UP_OWNER_LABEL'),
-			buttonText: this.$locale.baseText('NEXT_LABEL'),
-			secondaryButtonText: this.$locale.baseText('SKIP_SETUP_TEMPORARILY_LABEL'),
+			title: this.$locale.baseText('SET_UP_OWNER'),
+			buttonText: this.$locale.baseText('NEXT'),
+			secondaryButtonText: this.$locale.baseText('SKIP_SETUP_TEMPORARILY'),
 			inputs: [
 				{
 					name: 'email',
@@ -92,8 +92,8 @@ export default mixins(
 				this.$locale.baseText('OWNER_ACCOUNT_BENEFITS_MESSAGE'),
 				this.$locale.baseText('SKIP_OWNER_SETUP_QUESTION'),
 				null,
-				this.$locale.baseText('SKIP_SETUP_LABEL'),
-				this.$locale.baseText('GO_BACK_LABEL'),
+				this.$locale.baseText('SKIP_SETUP'),
+				this.$locale.baseText('GO_BACK'),
 			);
 			if (skip) {
 				this.$router.push({
