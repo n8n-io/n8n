@@ -1150,6 +1150,8 @@
 	"USERS": "Users",
 	"VERSION": "Version",
 	"SETTINGS": "Settings",
+	"SIGN_OUT": "Sign out",
+	"SIGN_OUT_ERROR": "Could not sign out",
 	"workflowPreview": {
 		"showError": {
 			"previewError": {
