@@ -198,7 +198,7 @@ const router = new Router({
 			props: {
 				messageKey: '404_NOT_FOUND_MESSAGE',
 				errorCode: 404,
-				redirectTextKey: 'GO_TO_EDITOR_LABEL',
+				redirectTextKey: 'GO_TO_EDITOR',
 				redirectLink: '/',
 			},
 			meta: {
