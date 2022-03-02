@@ -16,7 +16,7 @@ beforeAll(async () => {
 	app = utils.initTestServer({ applyAuth: true, endpointGroups: ['me', 'auth', 'owner', 'users'] });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
-	utils.initLogger();
+	utils.initTestLogger();
 });
 
 afterAll(async () => {

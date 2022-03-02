@@ -29,7 +29,7 @@ beforeAll(async () => {
 		name: 'owner',
 		scope: 'global',
 	});
-	utils.initLogger();
+	utils.initTestLogger();
 });
 
 beforeEach(async () => {

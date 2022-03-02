@@ -30,7 +30,7 @@ beforeAll(async () => {
 	testDbName = initResult.testDbName;
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	utils.initLogger();
+	utils.initTestLogger();
 });
 
 afterAll(async () => {

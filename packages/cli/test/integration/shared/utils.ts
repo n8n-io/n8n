@@ -90,6 +90,10 @@ export function initTestServer({
 	return testServer.app;
 }
 
+/**
+ * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
+ * and `functionEndpoints` (legacy, namespaced inside a function).
+ */
 const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
@@ -105,18 +109,11 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 //          initializers
 // ----------------------------------
 
-// TODO !!!!!!!!!!!!!!!!!!!!!!!!!
-
-export const initLogger = () => {
-	config.set('logs.output', 'file'); // declutter console output
-	LoggerProxy.init(getLogger());
-};
-
 /**
  * Initialize a silent logger for test runs.
  */
 export function initTestLogger() {
-	config.set('logs.output', 'file');
+	config.set('logs.output', 'file'); // declutter console output
 	LoggerProxy.init(getLogger());
 }
 

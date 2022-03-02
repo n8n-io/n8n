@@ -25,7 +25,7 @@ beforeAll(async () => {
 	await testDb.truncate(['User'], testDbName);
 
 	globalOwnerRole = await getGlobalOwnerRole();
-	utils.initLogger();
+	utils.initTestLogger();
 });
 
 beforeEach(async () => {
