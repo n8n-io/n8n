@@ -109,11 +109,10 @@ export async function executeErrorWorkflow(
 			if (user.globalRole.name === 'owner') {
 				workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
 			} else {
-				const { id: userId } = user;
 				const sharedWorkflowData = await Db.collections.SharedWorkflow!.findOne({
 					where: {
 						workflow: { id: workflowId },
-						user: { id: userId },
+						user,
 					},
 					relations: ['workflow'],
 				});
