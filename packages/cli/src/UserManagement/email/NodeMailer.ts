@@ -8,8 +8,14 @@ export class NodeMailer implements UserManagementMailerImplementation {
 	private transport: Transporter;
 
 	constructor() {
+		const host = config.get('userManagement.emails.smtp.host');
+
+		if (!host) {
+			throw new Error('No SMTP host specified.');
+		}
+
 		this.transport = createTransport({
-			host: config.get('userManagement.emails.smtp.host'),
+			host,
 			port: config.get('userManagement.emails.smtp.port'),
 			secure: config.get('userManagement.emails.smtp.secure'),
 			auth: {
