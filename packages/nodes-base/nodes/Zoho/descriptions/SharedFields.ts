@@ -1,7 +1,10 @@
+import {
+	INodeProperties
+} from 'n8n-workflow';
 import { capitalizeInitial } from '../GenericFunctions';
 import { CamelCaseResource } from '../types';
 
-export const billingAddress = {
+export const billingAddress: INodeProperties = {
 	displayName: 'Billing Address',
 	name: 'Billing_Address',
 	type: 'fixedCollection',
@@ -47,7 +50,7 @@ export const billingAddress = {
 	],
 };
 
-export const shippingAddress = {
+export const shippingAddress: INodeProperties = {
 	displayName: 'Shipping Address',
 	name: 'Shipping_Address',
 	type: 'fixedCollection',
@@ -93,7 +96,7 @@ export const shippingAddress = {
 	],
 };
 
-export const mailingAddress = {
+export const mailingAddress: INodeProperties = {
 	displayName: 'Mailing Address',
 	name: 'Mailing_Address',
 	type: 'fixedCollection',
@@ -139,7 +142,7 @@ export const mailingAddress = {
 	],
 };
 
-export const otherAddress = {
+export const otherAddress: INodeProperties = {
 	displayName: 'Other Address',
 	name: 'Other_Address',
 	type: 'fixedCollection',
@@ -179,7 +182,7 @@ export const otherAddress = {
 	],
 };
 
-export const address = {
+export const address: INodeProperties = {
 	displayName: 'Address',
 	name: 'Address',
 	type: 'fixedCollection',
@@ -245,7 +248,7 @@ export const address = {
 // 	},
 // },
 
-export const productDetailsOptions = [
+export const productDetailsOptions: INodeProperties[] = [
 	{
 		displayName: 'List Price',
 		name: 'list_price',
@@ -311,7 +314,7 @@ export const productDetailsOptions = [
 	},
 ];
 
-export const makeGetAllFields = (resource: CamelCaseResource) => {
+export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[] => {
 	const loadOptionsMethod = `get${capitalizeInitial(resource)}Fields`;
 
 	return [
@@ -443,7 +446,7 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 	];
 };
 
-export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource) => {
+export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource): INodeProperties => {
 	const loadOptionsMethod = `getCustom${capitalizeInitial(resource)}Fields`;
 
 	return {

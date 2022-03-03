@@ -1,8 +1,8 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const deployOperations = [
+export const deployOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,14 +39,15 @@ export const deployOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const deployFields = [
+export const deployFields: INodeProperties[] = [
 	{
 		displayName: 'Site ID',
 		name: 'siteId',
 		required: true,
 		type: 'options',
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getSites',
 		},
@@ -69,6 +70,7 @@ export const deployFields = [
 		name: 'deployId',
 		required: true,
 		type: 'string',
+		default: '',
 		displayOptions:{
 			show: {
 				resource: [
@@ -155,4 +157,4 @@ export const deployFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

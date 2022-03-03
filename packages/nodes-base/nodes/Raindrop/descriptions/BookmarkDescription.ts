@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const bookmarkOperations = [
+export const bookmarkOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const bookmarkOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const bookmarkFields = [
+export const bookmarkFields: INodeProperties[] = [
 	// ----------------------------------
 	//       bookmark: create
 	// ----------------------------------
@@ -112,6 +112,13 @@ export const bookmarkFields = [
 				type: 'number',
 				default: 0,
 				description: 'Sort order for the bookmark. For example, to move it to first place, enter 0.',
+			},
+			{
+				displayName: 'Parse Metadata',
+				name: 'pleaseParse',
+				type: 'boolean',
+				default: false,
+				description: 'Whether Raindrop should load cover, description and HTML for the URL',
 			},
 			{
 				displayName: 'Tags',
@@ -302,6 +309,13 @@ export const bookmarkFields = [
 				description: 'For example if you want to move bookmark to the first place set this field to 0',
 			},
 			{
+				displayName: 'Parse Metadata',
+				name: 'pleaseParse',
+				type: 'boolean',
+				default: false,
+				description: 'Whether Raindrop should reload cover, description and HTML for the URL',
+			},
+			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
@@ -317,4 +331,4 @@ export const bookmarkFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

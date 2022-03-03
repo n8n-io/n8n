@@ -7,13 +7,13 @@ export default {
 		size: {
 			control: {
 				type: 'select',
-				options: ['small', 'medium', 'large'],
+				options: ['xsmall', 'small', 'medium', 'large'],
 			},
 		},
 		color: {
 			control: {
 				type: 'select',
-				options: ['primary', 'text-dark', 'text-base', 'text-light'],
+				options: ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'],
 			},
 		},
 	},

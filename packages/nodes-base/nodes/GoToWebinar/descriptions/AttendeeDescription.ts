@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const attendeeOperations = [
+export const attendeeOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -31,9 +31,9 @@ export const attendeeOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const attendeeFields = [
+export const attendeeFields: INodeProperties[] = [
 	// ----------------------------------
 	//     attendee: shared fields
 	// ----------------------------------
@@ -200,4 +200,4 @@ export const attendeeFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

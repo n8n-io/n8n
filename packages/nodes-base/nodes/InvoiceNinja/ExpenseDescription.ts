@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const expenseOperations = [
+export const expenseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const expenseOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const expenseFields = [
+export const expenseFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 expense:create                             */
 /* -------------------------------------------------------------------------- */
@@ -324,6 +324,7 @@ export const expenseFields = [
 		displayName: 'Expense ID',
 		name: 'expenseId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -343,6 +344,7 @@ export const expenseFields = [
 		displayName: 'Expense ID',
 		name: 'expenseId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -399,4 +401,4 @@ export const expenseFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

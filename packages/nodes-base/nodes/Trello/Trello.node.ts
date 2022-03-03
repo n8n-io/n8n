@@ -65,7 +65,6 @@ export class Trello implements INodeType {
 		description: 'Create, change and delete boards and cards',
 		defaults: {
 			name: 'Trello',
-			color: '#0079bf',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -41,7 +41,6 @@ export class CustomerIo implements INodeType {
 		description: 'Consume Customer.io API',
 		defaults: {
 			name: 'CustomerIo',
-			color: '#ffcd00',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

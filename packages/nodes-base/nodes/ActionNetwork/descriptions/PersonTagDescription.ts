@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const personTagOperations = [
+export const personTagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const personTagOperations = [
 		default: 'add',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const personTagFields = [
+export const personTagFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             personTag: add
 	// ----------------------------------------
@@ -103,7 +103,9 @@ export const personTagFields = [
 		description: 'ID of the tagging to remove.',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: 'tagId',
+			loadOptionsDependsOn: [
+				'tagId',
+			],
 			loadOptionsMethod: 'getTaggings',
 		},
 		required: true,
@@ -119,4 +121,4 @@ export const personTagFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

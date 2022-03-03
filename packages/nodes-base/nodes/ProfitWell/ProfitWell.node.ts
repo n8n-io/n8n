@@ -37,7 +37,6 @@ export class ProfitWell implements INodeType {
 		description: 'Consume ProfitWell API',
 		defaults: {
 			name: 'ProfitWell',
-			color: '#1e333d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

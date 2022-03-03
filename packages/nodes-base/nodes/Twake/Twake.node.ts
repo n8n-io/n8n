@@ -27,7 +27,6 @@ export class Twake implements INodeType {
 		description: 'Consume Twake API',
 		defaults: {
 			name: 'Twake',
-			color: '#7168ee',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

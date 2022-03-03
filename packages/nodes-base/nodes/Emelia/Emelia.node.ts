@@ -40,7 +40,6 @@ export class Emelia implements INodeType {
 		description: 'Consume the Emelia API',
 		defaults: {
 			name: 'Emelia',
-			color: '#e18063',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

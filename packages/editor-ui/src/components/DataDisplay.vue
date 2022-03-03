@@ -15,7 +15,7 @@
 		<transition name="fade">
 			<div v-if="nodeType && showDocumentHelp" class="doc-help-wrapper">
 						<svg id="help-logo" :href="documentationUrl" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-							<title>Node Documentation</title>
+							<title>{{ $locale.baseText('dataDisplay.nodeDocumentation') }}</title>
 							<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
 								<g transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
 									<g transform="translate(1117.000000, 825.000000)">
@@ -31,7 +31,7 @@
 						</svg>
 
 					<div class="text">
-						Need help? <a id="doc-hyperlink" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open {{nodeType.displayName}} documentation</a>
+						{{ $locale.baseText('dataDisplay.needHelp') }} <a id="doc-hyperlink" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $locale.baseText('dataDisplay.openDocumentationFor', { interpolate: { nodeTypeDisplayName: nodeType.displayName } }) }}</a>
 					</div>
 			</div>
 		</transition>
@@ -85,7 +85,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters.nodeType(this.node.type);
+				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
@@ -95,6 +95,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			if(node && !oldNode) {
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
 				this.$telemetry.track('User opened node modal', { node_type: this.nodeType ? this.nodeType.name : '', workflow_id: this.$store.getters.workflowId });
+			}
+			if (window.top) {
+				window.top.postMessage(JSON.stringify({command: (node? 'openNDV': 'closeNDV')}), '*');
 			}
 		},
 	},

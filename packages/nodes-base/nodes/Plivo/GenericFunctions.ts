@@ -9,6 +9,10 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import {
+	OptionsWithUri,
+} from 'request';
+
 /**
  * Make an API request to Plivo.
  *
@@ -32,7 +36,10 @@ export async function plivoApiRequest(
 		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
 	}
 
-	const options = {
+	const options: OptionsWithUri = {
+		headers: {
+			'user-agent': 'plivo-n8n',
+		},
 		method,
 		form: body,
 		qs,

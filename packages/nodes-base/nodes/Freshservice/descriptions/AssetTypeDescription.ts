@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const assetTypeOperations = [
+export const assetTypeOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const assetTypeOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const assetTypeFields = [
+export const assetTypeFields: INodeProperties[] = [
 	// ----------------------------------------
 	//            assetType: create
 	// ----------------------------------------
@@ -96,9 +96,7 @@ export const assetTypeFields = [
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAssetTypes',
-					],
+					loadOptionsMethod: 'getAssetTypes',
 				},
 			},
 		],
@@ -244,4 +242,4 @@ export const assetTypeFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

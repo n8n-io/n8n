@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const issueOperations = [
+export const issueOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -59,9 +59,9 @@ export const issueOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const issueFields = [
+export const issueFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                issue:create                                */
@@ -70,6 +70,7 @@ export const issueFields = [
 		displayName: 'Project',
 		name: 'project',
 		type: 'options',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -93,6 +94,7 @@ export const issueFields = [
 		displayName: 'Issue Type',
 		name: 'issueType',
 		type: 'options',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -1121,4 +1123,4 @@ export const issueFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

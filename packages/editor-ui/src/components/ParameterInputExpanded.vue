@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="parameter.displayName"
-		:tooltipText="parameter.description"
+		:label="$locale.credText().inputLabelDisplayName(parameter)"
+		:tooltipText="$locale.credText().inputLabelDescription(parameter)"
 		:required="parameter.required"
 		:showTooltip="focused"
 	>
@@ -13,6 +13,7 @@
 			:displayOptions="true"
 			:documentationUrl="documentationUrl"
 			:errorHighlight="showRequiredErrors"
+			:isForCredential="true"
 			@focus="onFocus"
 			@blur="onBlur"
 			@textInput="valueChanged"
@@ -20,20 +21,23 @@
 			inputSize="large"
 		/>
 		<div class="errors" v-if="showRequiredErrors">
-			This field is required. <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open docs</a>
+			{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }} <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $locale.baseText('parameterInputExpanded.openDocs') }}</a>
 		</div>
+		<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
 	</n8n-input-label>
 </template>
 
 <script lang="ts">
 import { IUpdateInformation } from '@/Interface';
 import ParameterInput from './ParameterInput.vue';
+import InputHint from './ParameterInputHint.vue';
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'ParameterInputExpanded',
 	components: {
 		ParameterInput,
+		InputHint,
 	},
 	props: {
 		parameter: {
@@ -93,3 +97,9 @@ export default Vue.extend({
 	},
 });
 </script>
+
+<style lang="scss" module>
+	.hint {
+		margin-top: var(--spacing-4xs);
+	}
+</style>

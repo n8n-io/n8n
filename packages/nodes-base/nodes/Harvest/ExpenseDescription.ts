@@ -6,7 +6,7 @@ const resource = [
 	'expense',
 ];
 
-export const expenseOperations = [
+export const expenseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const expenseOperations = [
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const expenseFields = [
+export const expenseFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                expense:getAll                              */
@@ -406,4 +406,4 @@ export const expenseFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

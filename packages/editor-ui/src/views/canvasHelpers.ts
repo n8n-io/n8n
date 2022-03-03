@@ -1,9 +1,10 @@
 import { getStyleTokenValue } from "@/components/helpers";
-import { START_NODE_TYPE } from "@/constants";
+import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE } from "@/constants";
 import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
 	IConnection,
+	INode,
 	ITaskData,
 	INodeExecutionData,
 	NodeInputConnections,
@@ -57,11 +58,13 @@ export const CONNECTOR_FLOWCHART_TYPE = ['N8nCustom', {
 	getEndpointOffset(endpoint: Endpoint) {
 		const indexOffset = 10; // stub offset between different endpoints of same node
 		const index = endpoint && endpoint.__meta ? endpoint.__meta.index : 0;
+		const totalEndpoints = endpoint && endpoint.__meta ? endpoint.__meta.totalEndpoints : 0;
 
 		const outputOverlay = getOverlay(endpoint, OVERLAY_OUTPUT_NAME_LABEL);
 		const labelOffset = outputOverlay && outputOverlay.label && outputOverlay.label.length > 1 ? 10 : 0;
+		const outputsOffset = totalEndpoints > 3 ? 24 : 0; // avoid intersecting plus
 
-		return index * indexOffset + labelOffset;
+		return index * indexOffset + labelOffset + outputsOffset;
 	},
 }];
 
@@ -112,23 +115,9 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	],
 ];
 
-export const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
-	[
-		'Label',
-		{
-			id: OVERLAY_DROP_NODE_ID,
-			label: 'Drop connection<br />to add node',
-			cssClass: 'drop-add-node-label',
-			location: 0.5,
-			visible: true,
-		},
-	],
-];
-
-
 export const ANCHOR_POSITIONS: {
 	[key: string]: {
-		[key: number]: string[] | number[][];
+		[key: number]: number[][];
 	}
 } = {
 	input: {
@@ -511,19 +500,32 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 		}
 
 		run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
-			if (!nodeConnections[i]) {
+			const sourceOutputIndex = i;
+
+			if (!outputMap[sourceOutputIndex]) {
+				outputMap[sourceOutputIndex] = {};
+			}
+
+			if (!outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY]) {
+				outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY] = {};
+				outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0] = {
+					total: 0,
+					iterations: 0,
+				};
+			}
+
+			const defaultOutput = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
+			defaultOutput.total += output ? output.length : 0;
+			defaultOutput.iterations += output ? 1 : 0;
+
+			if (!nodeConnections[sourceOutputIndex]) {
 				return;
 			}
 
-			nodeConnections[i]
+			nodeConnections[sourceOutputIndex]
 				.map((connection: IConnection) => {
-					const sourceOutputIndex = i;
 					const targetNodeName = connection.node;
 					const targetInputIndex = connection.index;
-
-					if (!outputMap[sourceOutputIndex]) {
-						outputMap[sourceOutputIndex] = {};
-					}
 
 					if (!outputMap[sourceOutputIndex][targetNodeName]) {
 						outputMap[sourceOutputIndex][targetNodeName] = {};
@@ -554,6 +556,13 @@ export const resetConnection = (connection: Connection) => {
 	}
 };
 
+export const getRunItemsLabel = (output: {total: number, iterations: number}): string => {
+	let label = `${output.total}`;
+	label = output.total > 1 ? `${label} items` : `${label} item`;
+	label = output.iterations > 1 ? `${label} total` : label;
+	return label;
+};
+
 export const addConnectionOutputSuccess = (connection: Connection, output: {total: number, iterations: number}) => {
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
 	if (connection.canvas) {
@@ -564,15 +573,11 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
 
-	let label = `${output.total}`;
-	label = output.total > 1 ? `${label} items` : `${label} item`;
-	label = output.iterations > 1 ? `${label} total` : label;
-
 	connection.addOverlay([
 		'Label',
 		{
 			id: OVERLAY_RUN_ITEMS_ID,
-			label: `<span>${label}</span>`,
+			label: `<span>${getRunItemsLabel(output)}</span>`,
 			cssClass: 'connection-run-items-label',
 			location: .5,
 		},
@@ -583,72 +588,32 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 };
 
 
-export const getZoomToFit = (nodes: INodeUi[]): {offset: XYPosition, zoomLevel: number} => {
+export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
+	const sidebarWidth = addComponentPadding? SIDEBAR_WIDTH: 0;
+	const headerHeight = addComponentPadding? HEADER_HEIGHT: 0;
 
 	const PADDING = NODE_SIZE * 4;
 
 	const editorWidth = window.innerWidth;
-	const diffX = maxX - minX + SIDEBAR_WIDTH + PADDING;
+	const diffX = maxX - minX + sidebarWidth + PADDING;
 	const scaleX = editorWidth / diffX;
 
 	const editorHeight = window.innerHeight;
-	const diffY = maxY - minY + HEADER_HEIGHT + PADDING;
+	const diffY = maxY - minY + headerHeight + PADDING;
 	const scaleY = editorHeight / diffY;
 
 	const zoomLevel = Math.min(scaleX, scaleY, 1);
-	let xOffset = (minX * -1) * zoomLevel + SIDEBAR_WIDTH; // find top right corner
-	xOffset += (editorWidth - SIDEBAR_WIDTH - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
+	let xOffset = (minX * -1) * zoomLevel + sidebarWidth; // find top right corner
+	xOffset += (editorWidth - sidebarWidth - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
 
-	let yOffset = (minY * -1) * zoomLevel + HEADER_HEIGHT; // find top right corner
-	yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+	let yOffset = (minY * -1) * zoomLevel + headerHeight; // find top right corner
+	yOffset += (editorHeight - headerHeight - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
 
 	return {
 		zoomLevel,
 		offset: [xOffset, yOffset],
 	};
-};
-
-export const getUniqueNodeName = (nodes: INodeUi[], originalName: string, additinalUsedNames?: string[]) => {
-	// Check if node-name is unique else find one that is
-	additinalUsedNames = additinalUsedNames || [];
-
-	// Get all the names of the current nodes
-	const nodeNames = nodes.map((node: INodeUi) => {
-		return node.name;
-	});
-
-	// Check first if the current name is already unique
-	if (!nodeNames.includes(originalName) && !additinalUsedNames.includes(originalName)) {
-		return originalName;
-	}
-
-	const nameMatch = originalName.match(/(.*\D+)(\d*)/);
-	let ignore, baseName, nameIndex, uniqueName;
-	let index = 1;
-
-	if (nameMatch === null) {
-		// Name is only a number
-		index = parseInt(originalName, 10);
-		baseName = '';
-		uniqueName = baseName + index;
-	} else {
-		// Name is string or string/number combination
-		[ignore, baseName, nameIndex] = nameMatch;
-		if (nameIndex !== '') {
-			index = parseInt(nameIndex, 10);
-		}
-		uniqueName = baseName;
-	}
-
-	while (
-		nodeNames.includes(uniqueName) ||
-		additinalUsedNames.includes(uniqueName)
-	) {
-		uniqueName = baseName + (index++);
-	}
-
-	return uniqueName;
 };
 
 export const showDropConnectionState = (connection: Connection, targetEndpoint?: Endpoint) => {
@@ -722,4 +687,24 @@ export const getOutputEndpointUUID = (nodeIndex: string, outputIndex: number) =>
 
 export const getInputEndpointUUID = (nodeIndex: string, inputIndex: number) => {
 	return `${nodeIndex}${INPUT_UUID_KEY}${inputIndex}`;
+};
+
+export const getFixedNodesList = (workflowNodes: INode[]) => {
+	const nodes = [...workflowNodes];
+	const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
+
+	const leftmostTop = getLeftmostTopNode(nodes);
+
+	const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
+	const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+
+	nodes.map((node) => {
+		node.position[0] += diffX + (hasStartNode? 0 : NODE_SIZE * 2);
+		node.position[1] += diffY;
+	});
+
+	if (!hasStartNode) {
+		nodes.push({...DEFAULT_START_NODE});
+	}
+	return nodes;
 };

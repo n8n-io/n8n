@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const videoOperations = [
+export const videoOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -49,9 +49,9 @@ export const videoOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const videoFields = [
+export const videoFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 video:upload                               */
 	/* -------------------------------------------------------------------------- */
@@ -872,4 +872,4 @@ export const videoFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

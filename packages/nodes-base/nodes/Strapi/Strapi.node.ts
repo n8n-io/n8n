@@ -33,7 +33,6 @@ export class Strapi implements INodeType {
 		description: 'Consume Strapi API',
 		defaults: {
 			name: 'Strapi',
-			color: '#725ed8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
