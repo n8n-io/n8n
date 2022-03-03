@@ -130,9 +130,6 @@ const module: Module<ICredentialsState, IRootState> = {
 			context.commit('setCredentialTypes', credentialTypes);
 		},
 		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>) => {
-			if (context.getters.allCredentials.length > 0) {
-				return;
-			}
 			const credentials = await getAllCredentials(context.rootGetters.getRestApiContext);
 			context.commit('setCredentials', credentials);
 		},
