@@ -32,12 +32,4 @@ export class GoogleAdsOAuth2Api implements ICredentialType {
 		},
 	];
 
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		// @ts-ignore
-		requestOptions.headers!['Authorization'] = `Bearer ${credentials.oauthTokenData!.access_token}`;
-		requestOptions.headers!['Content-Type'] = `application/x-www-form-urlencoded`;
-		requestOptions.headers!['developer-token'] = credentials.developerToken;
-		return requestOptions;
-	}
-
 }

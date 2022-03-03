@@ -912,18 +912,6 @@ export async function requestOAuth2(
 			newRequestOptions?.headers?.Authorization.split(' ')[1];
 	}
 	if (isN8nRequest) {
-		const tokenRefreshOptions: IDataObject = {};
-		if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
-			const body: IDataObject = {
-				client_id: credentials.clientId as string,
-				client_secret: credentials.clientSecret as string,
-			};
-			tokenRefreshOptions.body = body;
-			// Override authorization property so the credentails are not included in it
-			tokenRefreshOptions.headers = {
-				Authorization: '',
-			};
-		}
 		return this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
 			if (error.response?.status === 401) {
 				Logger.debug(
