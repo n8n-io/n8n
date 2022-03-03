@@ -1,21 +1,13 @@
 import { hashSync, genSaltSync } from 'bcryptjs';
 import express = require('express');
 import validator from 'validator';
-import { v4 as uuid } from 'uuid';
 
 import config = require('../../config');
 import * as utils from './shared/utils';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
-import { User } from '../../src/databases/entities/User';
 import { Role } from '../../src/databases/entities/Role';
-import {
-	randomValidPassword,
-	randomInvalidPassword,
-	randomEmail,
-	randomName,
-	randomString,
-} from './shared/random';
+import { randomValidPassword, randomEmail, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
 
 let app: express.Application;
@@ -180,13 +172,6 @@ describe('Owner shell', () => {
 
 describe('Member', () => {
 	beforeEach(async () => {
-		// await testDb.createUser({
-		// 	email: TEST_USER.email,
-		// 	firstName: TEST_USER.firstName,
-		// 	lastName: TEST_USER.lastName,
-		// 	password: hashSync(randomValidPassword(), genSaltSync(10)),
-		// });
-
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
 		await Db.collections.Settings!.update(
@@ -346,15 +331,6 @@ describe('Member', () => {
 
 describe('Owner', () => {
 	beforeEach(async () => {
-		// await Db.collections.User!.save({
-		// 	id: uuid(),
-		// 	email: TEST_USER.email,
-		// 	firstName: TEST_USER.firstName,
-		// 	lastName: TEST_USER.lastName,
-		// 	password: hashSync(randomValidPassword(), genSaltSync(10)),
-		// 	globalRole: globalOwnerRole,
-		// });
-
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 	});
 
