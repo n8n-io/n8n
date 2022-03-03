@@ -16,9 +16,9 @@ export const invoiceOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Return invoices',
-				value: 'returnInvoices',
-				description: 'Returns all invoices associated with a billing setup, for a given month.',
+				name: 'Search invoices',
+				value: 'searchInvoices',
+				description: 'Search for all invoices associated with a billing setup, for a given month.',
 				routing: {
 					request: {
 						method: 'GET',
@@ -27,7 +27,7 @@ export const invoiceOperations: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'returnInvoices',
+		default: 'searchInvoices',
 		description: 'The operation to perform.',
 	},
 ];
@@ -47,6 +47,9 @@ export const invoiceFields: INodeProperties[] = [
 				resource: [
 					'invoice',
 				],
+				operation: [
+					'searchInvoices',
+				],
 			},
 		},
 		default: '',
@@ -63,7 +66,7 @@ export const invoiceFields: INodeProperties[] = [
 					'invoice',
 				],
 				operation: [
-					'returnInvoices',
+					'searchInvoices',
 				],
 			},
 		},
@@ -82,7 +85,7 @@ export const invoiceFields: INodeProperties[] = [
 					'invoice',
 				],
 				operation: [
-					'returnInvoices',
+					'searchInvoices',
 				],
 			},
 		},
@@ -101,7 +104,7 @@ export const invoiceFields: INodeProperties[] = [
 					'invoice',
 				],
 				operation: [
-					'returnInvoices',
+					'searchInvoices',
 				],
 			},
 		},
