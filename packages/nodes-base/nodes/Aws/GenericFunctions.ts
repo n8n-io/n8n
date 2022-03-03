@@ -3,12 +3,12 @@ import { Request, sign } from 'aws4';
 import { OptionsWithUri } from 'request';
 import { parseString as parseXml } from 'xml2js';
 
-import {
+import {	
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IWebhookFunctions,
 	ITriggerFunctions,
+	IWebhookFunctions,
 } from 'n8n-core';
 
 import {

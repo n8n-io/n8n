@@ -1,11 +1,12 @@
 import {
+	IDataObject,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
-	NodeApiError,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
 	ITriggerResponse,
+	NodeApiError,
 	NodeOperationError
 } from 'n8n-workflow';
 
@@ -56,7 +57,7 @@ export class AwsSqsTrigger implements INodeType {
 					minValue: 1,
 				},
 				default: 1,
-				description: 'Interval value',
+				description: 'Interval value which the queue will be checked for new messages',
 			},
 			{
 				displayName: 'Unit',
@@ -87,28 +88,28 @@ export class AwsSqsTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Delete messages',
+						displayName: 'Delete Messages',
 						name: 'deleteMessages',
 						type: 'boolean',
 						default: true,
-						description: 'Delete messages after receiving them',
+						description: 'Whether to delete messages after receiving them',
 					},
 					{
-						displayName: 'Visibility timeout',
+						displayName: 'Visibility Timeout',
 						name: 'visibilityTimeout',
 						type: 'number',
-						default: '30',
-						description: 'The duration (in seconds) that the received messages are hidden from subsequent retrieve requests after being retrieved by a ReceiveMessage request',
+						default: 30,
+						description: 'The duration (in seconds) that the received messages are hidden from subsequent retrieve requests after being retrieved by a receive message request',
 					},
 					{
-						displayName: 'Max number of messages',
+						displayName: 'Max Number Of Messages',
 						name: 'maxNumberOfMessages',
 						type: 'number',
-						default: '1',
-						description: 'Maximum number of messages to return. SQS never returns more messages than this value but might return fewer',
-					}
-				]
-			}
+						default: 1,
+						description: 'Maximum number of messages to return. SQS never returns more messages than this value but might return fewer.',
+					},
+				],
+			},
 		],
 	};
 
@@ -191,14 +192,27 @@ export class AwsSqsTrigger implements INodeType {
 			try {
 				const responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}?${receiveMessageParams.join('&')}`);
 				const receiveMessageResult = responseData.ReceiveMessageResponse.ReceiveMessageResult;
+				const multipleMessagesReceived = Array.isArray(receiveMessageResult.Message);
 	
-				if (receiveMessageResult !== "") {
+				if (receiveMessageResult !== '') {
+					let returnMessages: INodeExecutionData[] = [];
+
+					if (multipleMessagesReceived) {
+						returnMessages = receiveMessageResult.Message.map((message: {}) => 
+							{
+								return {json: message};
+							},
+						);
+					} else {
+						returnMessages.push({json: receiveMessageResult.Message});
+					}
+
 					if (options.deleteMessages) {
 						const deleteMessagesParams = [
-							'Version=2012-11-05'
+							'Version=2012-11-05',
 						];
 
-						if (Array.isArray(receiveMessageResult.Message)) {
+						if (multipleMessagesReceived) {
 							deleteMessagesParams.push(`Action=DeleteMessageBatch`);
 
 							for (let i = 0; i < receiveMessageResult.Message.length; i++) {
@@ -216,11 +230,11 @@ export class AwsSqsTrigger implements INodeType {
 								`ReceiptHandle=${encodeURIComponent(receiveMessageResult.Message.ReceiptHandle)}`,
 							);
 						}
-						
+
 						await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}?${deleteMessagesParams.join('&')}`);
 					}
 
-					this.emit([this.helpers.returnJsonArray(receiveMessageResult)]);
+					this.emit([returnMessages]);
 				}
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
@@ -231,7 +245,7 @@ export class AwsSqsTrigger implements INodeType {
 
 		// Reference: https://nodejs.org/api/timers.html#timers_setinterval_callback_delay_args
 		if (intervalValue > 2147483647) {
-			throw new Error('The interval value is too large.');
+			throw new NodeApiError(this.getNode(), {message: 'The interval value is too large.'});
 		}
 
 		const intervalObj = setInterval(executeTrigger, intervalValue);
@@ -247,6 +261,6 @@ export class AwsSqsTrigger implements INodeType {
 		return {
 			closeFunction,
 			manualTriggerFunction,
-		}
+		};
 	}
 }
