@@ -43,7 +43,7 @@ import {
 	customerFields,
 	customerOperations,
 } from './descriptions';
-
+const isOnline = require('is-online');
 export class WooCommerce implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'WooCommerce',
@@ -138,7 +138,9 @@ export class WooCommerce implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-
+		isOnline().then(async online => {
+			if(online){
+					try {
 		for (let i = 0; i < length; i++) {
 
 			if (resource === 'customer') {
@@ -548,5 +550,12 @@ export class WooCommerce implements INodeType {
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
