@@ -80,7 +80,7 @@ export default mixins(
 				this.updateDisplayValue();
 				this.$emit('valueChanged', this.latestValue);
 			} else {
-				this.callDebounced('updateDisplayValue', { debounceTime: 500, trailing: false });
+				this.callDebounced('updateDisplayValue', { debounceTime: 500 });
 			}
 		},
 
