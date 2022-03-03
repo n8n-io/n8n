@@ -21,7 +21,7 @@ import {
 	toolOperations,
 	toolParameters,
 } from './ToolDescription';
-
+const isOnline = require('is-online');
 export class UProc implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'uProc',
@@ -105,6 +105,9 @@ export class UProc implements INodeType {
 		});
 
 		const requestPromises = [];
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < length; i++) {
 			try {
 				const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();
@@ -145,5 +148,12 @@ export class UProc implements INodeType {
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
