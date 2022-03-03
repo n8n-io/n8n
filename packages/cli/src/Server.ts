@@ -56,7 +56,7 @@ import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
-import { createHmac } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -364,6 +364,7 @@ class App {
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
 			this.publicApiEndpoint,
+			'/token',
 		];
 		// eslint-disable-next-line prefer-spread
 		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
@@ -472,8 +473,9 @@ class App {
 
 			// eslint-disable-next-line no-inner-declarations
 			function isTenantAllowed(decodedToken: object): boolean {
-				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '')
+				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') {
 					return true;
+				}
 
 				for (const [k, v] of Object.entries(decodedToken)) {
 					if (k === jwtNamespace) {
@@ -665,6 +667,22 @@ class App {
 		// ----------------------------------------
 		// Public API
 		// ----------------------------------------
+
+		//test routes to create/regenerate/delete token
+		//NOTE: Only works with admin role
+		//This should be within the user's management user scope
+		this.app.post('/token', async (req: express.Request, res: express.Response) => {
+			const ramdonToken = randomBytes(20).toString('hex');
+			//@ts-ignore
+			await Db.collections.User!.update({ globalRole: 1 }, { apiKey: ramdonToken });
+			return ResponseHelper.sendSuccessResponse(res, { token: ramdonToken }, true, 200);
+		});
+
+		this.app.delete('/token', async (req: express.Request, res: express.Response) => {
+			//@ts-ignore
+			await Db.collections.User!.update({ globalRole: 1 }, { apiKey: null });
+			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+		});
 
 		await publicApiv1Routes.addRoutes.call(this, this.publicApiEndpoint);
 
