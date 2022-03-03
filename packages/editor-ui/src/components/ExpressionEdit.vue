@@ -1,6 +1,6 @@
 <template>
 	<div v-if="dialogVisible" @keydown.stop>
-		<n8n-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" :title="$locale.baseText('expressionEdit.editExpression')" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" :title="$locale.baseText('expressionEdit.editExpression')" :before-close="closeDialog">
 			<el-row>
 				<el-col :span="8">
 					<div class="header-side-menu">
@@ -36,7 +36,7 @@
 				</el-col>
 			</el-row>
 
-		</n8n-dialog>
+		</el-dialog>
 	</div>
 </template>
 

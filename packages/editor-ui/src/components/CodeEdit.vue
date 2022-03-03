@@ -1,5 +1,5 @@
 <template>
-	<n8n-dialog
+	<el-dialog
 		visible
 		append-to-body
 		:close-on-click-modal="false"
@@ -10,7 +10,7 @@
 		<div class="text-editor-wrapper ignore-key-press">
 			<div ref="code" class="text-editor" @keydown.stop></div>
 		</div>
-	</n8n-dialog>
+	</el-dialog>
 </template>
 
 <script lang="ts">
