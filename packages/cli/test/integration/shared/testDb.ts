@@ -34,7 +34,18 @@ export async function init() {
 	}
 
 	if (dbType === 'postgresdb') {
-		const bootstrapPostgres = await createConnection(getBootstrapPostgresOptions());
+		let bootstrapPostgres;
+		const bootstrapPostgresOptions = getBootstrapPostgresOptions();
+
+		try {
+			bootstrapPostgres = await createConnection(bootstrapPostgresOptions);
+		} catch (error) {
+			const { username, password, host, port, schema } = bootstrapPostgresOptions;
+			console.error(
+				`ERROR: Failed to connect to Postgres default DB 'postgres'.\nPlease review your Postgres connection options:\n\thost: "${host}"\n\tusername: "${username}"\n\tpassword: "${password}"\n\tport: "${port}"\n\tschema: "${schema}"\nFix by setting correct values via environment variables:\n\texport DB_POSTGRESDB_HOST=value\n\texport DB_POSTGRESDB_USER=value\n\texport DB_POSTGRESDB_PASSWORD=value\n\texport DB_POSTGRESDB_PORT=value\n\texport DB_POSTGRESDB_SCHEMA=value`,
+			);
+			process.exit(1);
+		}
 
 		const testDbName = `n8n_test_pg_${Date.now()}`;
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName};`);
@@ -283,7 +294,7 @@ export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions 
  * Generate options for a bootstrap Postgres connection,
  * to create and drop test Postgres databases.
  */
-export const getBootstrapPostgresOptions = (): ConnectionOptions => {
+export const getBootstrapPostgresOptions = () => {
 	const username = config.get('database.postgresdb.user');
 	const password = config.get('database.postgresdb.password');
 	const host = config.get('database.postgresdb.host');
@@ -299,7 +310,7 @@ export const getBootstrapPostgresOptions = (): ConnectionOptions => {
 		username,
 		password,
 		schema,
-	};
+	} as const;
 };
 
 export const getPostgresOptions = ({ name }: { name: string }): ConnectionOptions => {
