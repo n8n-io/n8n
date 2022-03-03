@@ -748,7 +748,10 @@ async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	const axiosRequest = convertN8nRequestToAxios(requestOptions);
-	if (axiosRequest.method === 'GET') {
+	if (
+		axiosRequest.data === undefined ||
+		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
+	) {
 		delete axiosRequest.data;
 	}
 	const result = await axios(axiosRequest);
