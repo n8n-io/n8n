@@ -38,7 +38,7 @@ import {
 import {
 	omit,
 } from 'lodash';
-
+const isOnline = require('is-online');
 import * as moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
@@ -162,7 +162,9 @@ export class Wise implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 		let downloadReceipt = false;
-
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < items.length; i++) {
 
 			try {
@@ -509,5 +511,12 @@ export class Wise implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
