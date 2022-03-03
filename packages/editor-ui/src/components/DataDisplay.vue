@@ -1,5 +1,5 @@
 <template>
-	<el-dialog
+	<n8n-dialog
 		:visible="!!node"
 		:before-close="close"
 		:custom-class="`classic data-display-wrapper`"
@@ -35,7 +35,7 @@
 					</div>
 			</div>
 		</transition>
-	</el-dialog>
+	</n8n-dialog>
 </template>
 
 <script lang="ts">

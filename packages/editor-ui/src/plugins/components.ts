@@ -6,7 +6,6 @@ import Fragment from 'vue-fragment';
 import "regenerator-runtime/runtime";
 
 import Drawer from 'element-ui/lib/drawer';
-import Dialog from 'element-ui/lib/dialog';
 import Dropdown from 'element-ui/lib/dropdown';
 import DropdownMenu from 'element-ui/lib/dropdown-menu';
 import DropdownItem from 'element-ui/lib/dropdown-item';
@@ -59,6 +58,7 @@ import {
 	N8nSelect,
 	N8nSpinner,
 	N8nSquareButton,
+	N8nDialog,
 	N8nTags,
 	N8nTag,
 	N8nText,
@@ -81,6 +81,7 @@ Vue.use(N8nHeading);
 Vue.component('n8n-markdown', N8nMarkdown);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
+Vue.use(N8nDialog);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
 Vue.component('n8n-square-button', N8nSquareButton);
@@ -93,7 +94,6 @@ Vue.use(N8nOption);
 // element io
 locale.use(lang);
 
-Vue.use(Dialog);
 Vue.use(Drawer);
 Vue.use(Dropdown);
 Vue.use(DropdownMenu);

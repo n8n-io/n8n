@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<el-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" :title="$locale.baseText('about.aboutN8n')" :before-close="closeDialog">
+		<n8n-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" :title="$locale.baseText('about.aboutN8n')" :before-close="closeDialog">
 			<div>
 				<el-row>
 					<el-col :span="8" class="info-name">
@@ -33,7 +33,7 @@
 					<n8n-button @click="closeDialog" :label="$locale.baseText('about.close')" />
 				</div>
 			</div>
-		</el-dialog>
+		</n8n-dialog>
 	</span>
 </template>
 

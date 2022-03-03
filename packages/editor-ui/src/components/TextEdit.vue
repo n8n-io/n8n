@@ -1,6 +1,6 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$locale.baseText('textEdit.edit')} ${$locale.nodeText().inputLabelDisplayName(parameter, path)}`" :before-close="closeDialog">
+		<n8n-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$locale.baseText('textEdit.edit')} ${$locale.nodeText().inputLabelDisplayName(parameter, path)}`" :before-close="closeDialog">
 
 			<div class="ignore-key-press">
 				<n8n-input-label :label="$locale.nodeText().inputLabelDisplayName(parameter, path)">
@@ -10,7 +10,7 @@
 				</n8n-input-label>
 			</div>
 
-		</el-dialog>
+		</n8n-dialog>
 	</div>
 </template>
 

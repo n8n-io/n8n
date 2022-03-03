@@ -1,5 +1,5 @@
 <template>
-	<el-dialog
+	<n8n-dialog
 		:visible="visible"
 		:before-close="closeDialog"
 		:class="{'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable}"
@@ -33,7 +33,7 @@
 		<div v-if="!loading && $scopedSlots.footer" :class="$style.footer">
 			<slot name="footer" :close="closeDialog" />
 		</div>
-	</el-dialog>
+	</n8n-dialog>
 </template>
 
 <script lang="ts">

@@ -8,6 +8,7 @@ import N8nInputLabel from './N8nInputLabel';
 import N8nLoading from './N8nLoading';
 import N8nHeading from './N8nHeading';
 import N8nMarkdown from './N8nMarkdown';
+import N8nDialog from './N8nDialog';
 import N8nMenu from './N8nMenu';
 import N8nMenuItem from './N8nMenuItem';
 import N8nSelect from './N8nSelect';
@@ -32,6 +33,7 @@ export {
 	N8nHeading,
 	N8nMenu,
 	N8nMenuItem,
+	N8nDialog,
 	N8nSelect,
 	N8nSpinner,
 	N8nSquareButton,
