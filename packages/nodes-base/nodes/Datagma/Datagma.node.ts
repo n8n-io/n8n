@@ -40,11 +40,11 @@ export class Datagma implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Email',
-						value: 'email',
+						name: 'Contact',
+						value: 'contact',
 					},
 				],
-				default: 'email',
+				default: 'contact',
 				required: true,
 				description: 'Resource to consume',
 			},
@@ -55,18 +55,23 @@ export class Datagma implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'email',
+							'contact',
 						],
 					},
 				},
 				options: [
 					{
 						name: 'Find',
-						value: 'find',
+						value: 'get',
 						description: 'Find email',
 					},
+					{
+						name: 'Enrich',
+						value: 'enrich',
+						description: 'Enrich contact'
+					}
 				],
-				default: 'find',
+				default: 'enrich',
 				description: 'The operation to perform.',
 			},
 			{
@@ -77,15 +82,15 @@ export class Datagma implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'find',
+							'get',
 						],
 						resource: [
-							'email',
+							'contact',
 						],
 					},
 				},
 				default:'',
-				description:'First name',
+				description:'First name of associated person. Alternatively, use full name field.',
 			},
 			{
 				displayName: 'Last Name',
@@ -95,51 +100,33 @@ export class Datagma implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'find',
+							'get',
 						],
 						resource: [
-							'email',
+							'contact',
 						],
 					},
 				},
 				default:'',
-				description:'Last name',
-			},
-			{
-				displayName: 'Full Name',
-				name: 'fullName',
-				type: 'string',
-				required: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'find',
-						],
-						resource: [
-							'email',
-						],
-					},
-				},
-				default:'',
-				description:'Instead of input firstname, lastname. You can input full name here',
+				description:'Last name of associated person. Alternatively, use full name field.',
 			},
 			{
 				displayName: 'Company',
 				name: 'company',
 				type: 'string',
-				required: false,
+				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'find',
+							'get',
 						],
 						resource: [
-							'email',
+							'contact',
 						],
 					},
 				},
 				default:'',
-				description:'Company name',
+				description:'Company name of the associated person.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -150,78 +137,95 @@ export class Datagma implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'find',
+							'get',
 						],
 						resource: [
-							'email',
+							'contact',
 						],
 					},
 				},
 				options: [
 					{
-						displayName: 'First Name',
-						name: 'firstName',
+						displayName: 'Full Name',
+						name: 'fullName',
 						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Last Name',
-						name: 'lastName',
-						type: 'string',
-						default: '',
+						default:'',
+						description:'If first name and last name are not provided, you can specify a full name here.',
 					},
 				],
+			},
+			{
+				displayName: 'Company',
+				name: 'company',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'contact',
+						],
+					},
+				},
+				default:'',
+				description:'Company name of the associated person.',
 			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
 		let responseData;
+		const returnData = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		//Get credentials the user provided for this node
 		const credentials = await this.getCredentials('datagmaApi') as IDataObject;
 
-		if (resource === 'email') {
-			if (operation === 'find') {
-				// get email input
-				const fname = this.getNodeParameter('fname', 0) as string;
-				const lname = this.getNodeParameter('lname', 0) as string;
-				const fullName = this.getNodeParameter('fullName', 0) as string;
-				const company = this.getNodeParameter('company', 0) as string;
-				// get additional fields input
-				const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-				const data: IDataObject = {
-					fname,
-					lname,
-					fullName,
-					company,
-				};
+		for (let i = 0; i < items.length; i++) {
+			if (resource === 'contact') {
+				if (operation === 'get') {
+					// get inputs
+					const fname = this.getNodeParameter('fname', i) as string;
+					const lname = this.getNodeParameter('lname', i) as string;
+					const company = this.getNodeParameter('company', i) as string;
+					// get additional fields input
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-				Object.assign(data, additionalFields);
+					// // ?looks like merging some data here?
+					// const data: IDataObject = {
+					// 	fname,
+					// 	lname,
+					// 	company,
+					// };
 
-				//Make http request according to <https://doc.datagma.com/reference/ingressservice_findemailv2>
-				const options: OptionsWithUri = {
-					headers: {
-						'Accept': 'application/json',
-					},
-					method: 'GET',
-					qs: {
-						apiId: credentials.apiKey,
-						firstName: fname,
-						lastName: lname,
-						fullName: fullName,
-						company: company
-					},
-					uri: `https://gateway.datagma.net/api/ingress/v2/findEmail`,
-					json: true,
-				};
+					// Object.assign(data, additionalFields);
 
-				responseData = await this.helpers.request(options);
+					//Make http request according to <https://doc.datagma.com/reference>
+					const options: OptionsWithUri = {
+						headers: {
+							'Accept': 'application/json',
+						},
+						method: 'GET',
+						qs: {
+							apiId: credentials.apiKey,
+							firstName: fname,
+							lastName: lname,
+							fullName: additionalFields.fullName,
+							company: company
+						},
+						uri: `https://gateway.datagma.net/api/ingress/v2/findEmail`,
+						json: true,
+					};
+
+					responseData = await this.helpers.request(options);
+					returnData.push(responseData);
+				}
 			}
 		}
-
 		// Map data to n8n data
-		return [this.helpers.returnJsonArray(responseData)];
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
