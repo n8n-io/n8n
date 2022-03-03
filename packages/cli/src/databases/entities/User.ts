@@ -99,6 +99,9 @@ export class User {
 	})
 	globalRole: Role;
 
+	@Column({ type: String, nullable: true })
+	apiKey?: string | null;
+
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.user)
 	sharedWorkflows: SharedWorkflow[];
 
