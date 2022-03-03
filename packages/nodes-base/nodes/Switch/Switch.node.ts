@@ -431,6 +431,10 @@ export class Switch implements INodeType {
 										value: 'contains',
 									},
 									{
+										name: 'Not Contains',
+										value: 'notContains',
+									},
+									{
 										name: 'Ends With',
 										value: 'endsWith',
 									},
@@ -441,10 +445,6 @@ export class Switch implements INodeType {
 									{
 										name: 'Equal',
 										value: 'equal',
-									},
-									{
-										name: 'Not Contains',
-										value: 'notContains',
 									},
 									{
 										name: 'Not Equal',
