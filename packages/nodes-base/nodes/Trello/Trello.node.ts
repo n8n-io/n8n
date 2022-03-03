@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -51,8 +52,6 @@ import {
 	listFields,
 	listOperations,
 } from './ListDescription';
-
-interface TrelloBoard { id: string; name: string; }
 
 export class Trello implements INodeType {
 	description: INodeTypeDescription = {
@@ -143,23 +142,19 @@ export class Trello implements INodeType {
 			async getAllBoards(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
- 					const returnData: INodePropertyOptions[] = [];
-					var requestMethod = 'GET';
-					var endpoint = 'members/me/boards'; //Not sure if this needs the preceding /1/ (as in: /1/members/me/boards)
-					const responseData: Array<TrelloBoard> = await apiRequest.call(this, requestMethod, endpoint, {}, {});
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = 'members/me/boards?fields=name,id';
+				const responseData: Array<{ id: string; name: string; }> = await apiRequest.call(this, 'GET', endpoint, {}, {});
 
-					for(var index = 0 ; index < responseData.length ; index++){
-						let board: TrelloBoard = responseData[index];
-						const boardName = board['name'];
-						const boardId = board.id;
-						returnData.push({
-							name: boardName,
-							value: boardId,
-						});
-					}
-					return returnData;
+				for (const board of responseData) {
+					returnData.push({
+						name: board.name,
+						value: board.id,
+					});
 				}
-		}
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -783,7 +778,7 @@ export class Trello implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

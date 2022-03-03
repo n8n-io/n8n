@@ -312,9 +312,13 @@ export const boardFields: INodeProperties[] = [
 	//         board:delete
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board',
 		name: 'id',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getAllBoards',
+			loadOptionsDependsOn: ['resource', 'operation'],
+		},
 		default: '',
 		required: true,
 		displayOptions: {
@@ -327,18 +331,19 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to delete.',
+		description: 'Select board board to get.',
 	},
 
 	// ----------------------------------
 	//         board:get
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board',
 		name: 'id',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getAllBoards',
+			loadOptionsDependsOn: ['resource', 'operation'],
 		},
 		default: '',
 		required: true,
@@ -352,7 +357,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to get.',
+		description: 'Select board board to get.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -392,9 +397,13 @@ export const boardFields: INodeProperties[] = [
 	//         board:update
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board',
 		name: 'id',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getAllBoards',
+			loadOptionsDependsOn: ['resource', 'operation'],
+		},
 		default: '',
 		required: true,
 		displayOptions: {
@@ -407,7 +416,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to update.',
+		description: 'Select board board to get.',
 	},
 	{
 		displayName: 'Update Fields',
