@@ -12,9 +12,20 @@ import * as http from 'http';
 import * as PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
-import { BinaryDataManager, IBinaryDataConfig, UserSettings, WorkflowExecute } from 'n8n-core';
+import {
+	BinaryDataManager,
+	IBinaryDataConfig,
+	UserSettings,
+	WorkflowExecute
+} from 'n8n-core';
 
-import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
+import {
+	IExecuteResponsePromiseData,
+	INodeTypes,
+	IRun,
+	LoggerProxy,
+	Workflow
+} from 'n8n-workflow';
 
 import { FindOneOptions, getConnectionManager } from 'typeorm';
 
@@ -34,7 +45,7 @@ import {
 	NodeTypes,
 	ResponseHelper,
 	WebhookHelpers,
-	WorkflowExecuteAdditionalData,
+	WorkflowExecuteAdditionalData
 } from '../src';
 
 import { getLogger } from '../src/Logger';
@@ -96,13 +107,12 @@ export class Worker extends Command {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
 					LoggerProxy.info(
-						`Waiting for ${
-							Object.keys(Worker.runningJobs).length
-						} active executions to finish... (wait ${waitLeft} more seconds)`,
+						`Waiting for ${Object.keys(Worker.runningJobs)
+							.length} active executions to finish... (wait ${waitLeft} more seconds)`
 					);
 				}
 				// eslint-disable-next-line no-await-in-loop
-				await new Promise((resolve) => {
+				await new Promise(resolve => {
 					setTimeout(resolve, 500);
 				});
 			}
@@ -113,14 +123,20 @@ export class Worker extends Command {
 		process.exit(Worker.processExistCode);
 	}
 
-	async runJob(job: Bull.Job, nodeTypes: INodeTypes): Promise<IBullJobResponse> {
+	async runJob(
+		job: Bull.Job,
+		nodeTypes: INodeTypes
+	): Promise<IBullJobResponse> {
 		const jobData = job.data as IBullJobData;
 		const executionDb = (await Db.collections.Execution!.findOne(
-			jobData.executionId,
+			jobData.executionId
 		)) as IExecutionFlattedDb;
-		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb);
+		const currentExecutionDb = ResponseHelper.unflattenExecutionData(
+			executionDb
+		);
 		LoggerProxy.info(
-			`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`,
+			`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData
+				.id} | Execution: ${jobData.executionId})`
 		);
 
 		let { staticData } = currentExecutionDb.workflowData;
@@ -130,11 +146,12 @@ export class Worker extends Command {
 			} as FindOneOptions;
 			const workflowData = await Db.collections.Workflow!.findOne(
 				currentExecutionDb.workflowData.id,
-				findOptions,
+				findOptions
 			);
 			if (workflowData === undefined) {
 				throw new Error(
-					`The workflow with the ID "${currentExecutionDb.workflowData.id}" could not be found`,
+					`The workflow with the ID '${currentExecutionDb.workflowData
+						.id}' could not be found`
 				);
 			}
 			staticData = workflowData.staticData;
@@ -146,12 +163,16 @@ export class Worker extends Command {
 			currentExecutionDb.workflowData.settings &&
 			currentExecutionDb.workflowData.settings.executionTimeout
 		) {
-			workflowTimeout = currentExecutionDb.workflowData.settings.executionTimeout as number; // preference on workflow setting
+			workflowTimeout = currentExecutionDb.workflowData.settings
+				.executionTimeout as number; // preference on workflow setting
 		}
 
 		let executionTimeoutTimestamp: number | undefined;
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
+			workflowTimeout = Math.min(
+				workflowTimeout,
+				config.get('executions.maxTimeout') as number
+			);
 			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
 		}
 
@@ -168,21 +189,23 @@ export class Worker extends Command {
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			undefined,
-			executionTimeoutTimestamp,
+			executionTimeoutTimestamp
 		);
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
 			currentExecutionDb.mode,
 			job.data.executionId,
 			currentExecutionDb.workflowData,
-			{ retryOf: currentExecutionDb.retryOf as string },
+			{ retryOf: currentExecutionDb.retryOf as string }
 		);
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				await job.progress({
-					executionId: job.data.executionId as string,
-					response: WebhookHelpers.encodeWebhookResponse(response),
-				} as IBullWebhookResponse);
+				await job.progress(
+					{
+						executionId: job.data.executionId as string,
+						response: WebhookHelpers.encodeWebhookResponse(response),
+					} as IBullWebhookResponse
+				);
 			},
 		];
 
@@ -194,13 +217,16 @@ export class Worker extends Command {
 			workflowExecute = new WorkflowExecute(
 				additionalData,
 				currentExecutionDb.mode,
-				currentExecutionDb.data,
+				currentExecutionDb.data
 			);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			// Execute all nodes
 			// Can execute without webhook so go on
-			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode);
+			workflowExecute = new WorkflowExecute(
+				additionalData,
+				currentExecutionDb.mode
+			);
 			workflowRun = workflowExecute.run(workflow);
 		}
 
@@ -233,8 +259,10 @@ export class Worker extends Command {
 				const { flags } = this.parse(Worker);
 
 				// Start directly with the init of the database to improve startup time
-				const startDbInitPromise = Db.init().catch((error) => {
-					logger.error(`There was an error initializing DB: "${error.message}"`);
+				const startDbInitPromise = Db.init().catch(error => {
+					logger.error(
+						`There was an error initializing DB: '${error.message}'`
+					);
 
 					Worker.processExistCode = 1;
 					// @ts-ignore
@@ -267,18 +295,24 @@ export class Worker extends Command {
 				await startDbInitPromise;
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+				const redisConnectionTimeoutLimit = config.get(
+					'queue.bull.redis.timeoutThreshold'
+				);
 
 				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
-				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
+				Worker.jobQueue.process(flags.concurrency, async job =>
+					this.runJob(job, nodeTypes)
+				);
 
 				const versions = await GenericHelpers.getVersions();
 				const instanceId = await UserSettings.getInstanceId();
 
 				InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
 
-				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				const binaryDataConfig = config.get(
+					'binaryDataManager'
+				) as IBinaryDataConfig;
 				await BinaryDataManager.init(binaryDataConfig);
 
 				console.info('\nn8n worker is now ready');
@@ -314,13 +348,15 @@ export class Worker extends Command {
 							lastTimer = now;
 							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
 								logger.error(
-									`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
+									`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`
 								);
 								process.exit(1);
 							}
 						}
 						logger.warn('Redis unavailable - trying to reconnect...');
-					} else if (error.toString().includes('Error initializing Lua scripts')) {
+					} else if (
+						error.toString().includes('Error initializing Lua scripts')
+					) {
 						// This is a non-recoverable error
 						// Happens when worker starts and Redis is unavailable
 						// Even if Redis comes back online, worker will be zombie
@@ -357,7 +393,7 @@ export class Worker extends Command {
 								const error = new ResponseHelper.ResponseError(
 									'No Database connection!',
 									undefined,
-									503,
+									503
 								);
 								return ResponseHelper.sendErrorResponse(res, error);
 							}
@@ -372,7 +408,7 @@ export class Worker extends Command {
 								const error = new ResponseHelper.ResponseError(
 									'No Redis connection!',
 									undefined,
-									503,
+									503
 								);
 								return ResponseHelper.sendErrorResponse(res, error);
 							}
@@ -385,7 +421,7 @@ export class Worker extends Command {
 							LoggerProxy.debug('Health check completed successfully!');
 
 							ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
-						},
+						}
 					);
 
 					server.listen(port, () => {
@@ -395,14 +431,14 @@ export class Worker extends Command {
 					server.on('error', (error: Error & { code: string }) => {
 						if (error.code === 'EADDRINUSE') {
 							console.log(
-								`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`,
+								`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`
 							);
 							process.exit(1);
 						}
 					});
 				}
 			} catch (error) {
-				logger.error(`Worker process cannot continue. "${error.message}"`);
+				logger.error(`Worker process cannot continue. '${error.message}'`);
 
 				Worker.processExistCode = 1;
 				// @ts-ignore
