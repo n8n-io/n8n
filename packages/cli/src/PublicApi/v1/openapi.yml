@@ -14,7 +14,22 @@ externalDocs:
   description: Find out more about Swagger
   url: http://swagger.io
 servers:
-  - url: /api/v1
+  - url: '{protocol}://{domain}:{port}/{apiPath}/v1'
+    variables:
+      protocol:
+        enum:
+          - http
+          - https
+        default: https
+      domain:
+        default: localhost
+        description: Customer ID assigned by the service provider
+      port:
+        default: '5678'
+        description: Customer ID assigned by the service provider
+      apiPath:
+        default: api
+        description: Customer ID assigned by the service provider
 tags:
 - name: user
   description: Operations about user
@@ -25,7 +40,7 @@ paths:
   /user:
     get:
       x-eov-operation-id: getUsers
-      x-eov-operation-handler: routes/getUsers
+      x-eov-operation-handler: routes/User
       tags:
       - user
       summary: Retrieve all users
@@ -74,7 +89,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     post:
       x-eov-operation-id: createUsers
-      x-eov-operation-handler: routes/createUsers
+      x-eov-operation-handler: routes/User
       tags:
       - user
       summary: Invite a user
@@ -109,7 +124,7 @@ paths:
   /user/{userId}:
     get:
       x-eov-operation-id: getUser
-      x-eov-operation-handler: routes/getUser
+      x-eov-operation-handler: routes/User
       tags:
       - user
       summary: Get user by ID/Email
@@ -139,7 +154,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       x-eov-operation-id: deleteUser
-      x-eov-operation-handler: routes/deleteUser
+      x-eov-operation-handler: routes/User
       tags:
       - user
       summary: Delete user by ID/Email
