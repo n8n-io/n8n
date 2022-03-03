@@ -108,6 +108,9 @@ export class Twitter implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'directMessage') {
@@ -289,5 +292,12 @@ export class Twitter implements INodeType {
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
