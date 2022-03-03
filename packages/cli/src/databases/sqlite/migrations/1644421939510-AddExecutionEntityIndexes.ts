@@ -7,7 +7,7 @@ export class AddExecutionEntityIndexes1644421939510 implements MigrationInterfac
     public async up(queryRunner: QueryRunner): Promise<void> {
         console.log('\n\nINFO: Started migration for execution entity indexes.\n      Depending on the number of saved executions, it may take a while.\n\n');
 
-        const tablePrefix = config.get('database.tablePrefix');
+        const tablePrefix = config.getEnv('database.tablePrefix');
 
         await queryRunner.query(`DROP INDEX IF EXISTS 'IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2'`);
         await queryRunner.query(`CREATE INDEX IF NOT EXISTS 'IDX_${tablePrefix}06da892aaf92a48e7d3e400003' ON '${tablePrefix}execution_entity' ('workflowId', 'waitTill', 'id') `);
@@ -18,7 +18,7 @@ export class AddExecutionEntityIndexes1644421939510 implements MigrationInterfac
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        const tablePrefix = config.get('database.tablePrefix');
+        const tablePrefix = config.getEnv('database.tablePrefix');
 
         await queryRunner.query(`DROP INDEX IF EXISTS 'IDX_${tablePrefix}81fc04c8a17de15835713505e4'`);
         await queryRunner.query(`DROP INDEX IF EXISTS 'IDX_${tablePrefix}b94b45ce2c73ce46c54f20b5f9'`);

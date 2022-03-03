@@ -331,8 +331,8 @@ export class Worker extends Command {
 					}
 				});
 
-				if (config.get('queue.health.active')) {
-					const port = config.get('queue.health.port') as number;
+				if (config.getEnv('queue.health.active')) {
+					const port = config.getEnv('queue.health.port');
 
 					const app = express();
 					const server = http.createServer(app);
