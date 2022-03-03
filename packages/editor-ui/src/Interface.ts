@@ -842,3 +842,8 @@ export interface IBounds {
 	maxX: number;
 	maxY: number;
 }
+
+export interface IDebounce {
+	debounceTime: number;
+	trailing: boolean;
+}

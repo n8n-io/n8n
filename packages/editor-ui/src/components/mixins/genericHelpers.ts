@@ -1,5 +1,6 @@
 import { showMessage } from '@/components/mixins/showMessage';
 import { debounce } from 'lodash';
+import { IDebounce } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 
@@ -76,9 +77,8 @@ export const genericHelpers = mixins(showMessage).extend({
 
 		async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
 			const functionName = inputParameters.shift() as string;
-			const debounceTime = inputParameters.shift() as number;
-			const trailing = inputParameters.some(element => element['trailing']);
-
+			const { trailing, debounceTime }  = inputParameters.shift() as IDebounce;
+			
 			// @ts-ignore
 			if (this.debouncedFunctions[functionName] === undefined) {
 				// @ts-ignore
