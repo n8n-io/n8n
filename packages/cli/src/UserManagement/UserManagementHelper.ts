@@ -106,6 +106,11 @@ export async function checkPermissionsForExecution(
 	workflow: Workflow,
 	userId: string,
 ): Promise<boolean> {
+	const user = await getUserById(userId);
+	if (user.globalRole.name === 'owner') {
+		return true;
+	}
+
 	const credentialIds = new Set();
 	const nodeNames = Object.keys(workflow.nodes);
 	// Iterate over all nodes
