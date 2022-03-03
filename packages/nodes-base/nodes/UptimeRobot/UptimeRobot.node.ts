@@ -34,7 +34,7 @@ import {
 } from './PublicStatusPageDescription';
 
 import * as moment from 'moment-timezone';
-
+const isOnline = require('is-online');
 export class UptimeRobot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'UptimeRobot',
@@ -138,6 +138,9 @@ export class UptimeRobot implements INodeType {
 		const length = items.length;
 		let responseData;
 		const timezone = this.getTimezone();
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < length; i++) {
 			try {
 				const resource = this.getNodeParameter('resource', 0) as string;
@@ -442,5 +445,12 @@ export class UptimeRobot implements INodeType {
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
