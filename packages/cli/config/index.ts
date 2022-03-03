@@ -637,7 +637,7 @@ const config = convict({
 				sender: {
 					doc: 'How to display sender name',
 					format: String,
-					default: '"n8n rocks" <n8n@n8n.io>',
+					default: '',
 					env: 'N8N_SMTP_SENDER',
 				},
 			},

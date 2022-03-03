@@ -26,9 +26,16 @@ export class NodeMailer implements UserManagementMailerImplementation {
 	}
 
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {
+		let sender = config.get('userManagement.emails.smtp.sender');
+		const user = config.get('userManagement.emails.smtp.auth.user') as string;
+
+		if (!sender && user.includes('@')) {
+			sender = user;
+		}
+
 		try {
 			await this.transport.sendMail({
-				from: config.get('userManagement.emails.smtp.sender'),
+				from: sender,
 				to: mailData.emailRecipients,
 				subject: mailData.subject,
 				text: mailData.textOnly,
