@@ -18,7 +18,6 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 
-const dbType = config.get('database.type');
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
