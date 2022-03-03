@@ -6,7 +6,7 @@ export class OdooApi implements ICredentialType {
 	documentationUrl = 'odoo';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Site Url',
+			displayName: 'Site URL',
 			name: 'url',
 			type: 'string' as NodePropertyTypes,
 			default: '',
