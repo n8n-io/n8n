@@ -599,39 +599,39 @@ const config = convict({
 				doc: 'How to send emails',
 				format: ['', 'smtp'],
 				default: 'smtp',
-				env: 'N8N_EMAIL_MODE',
+				env: 'N8N_MODE',
 			},
 			smtp: {
 				host: {
 					doc: 'SMTP server host',
 					format: String,
 					default: '', // e.g. smtp.gmail.com
-					env: 'N8N_EMAIL_SMTP_HOST',
+					env: 'N8N_SMTP_HOST',
 				},
 				port: {
 					doc: 'SMTP Server port',
 					format: Number,
 					default: 465,
-					env: 'N8N_EMAIL_SMTP_PORT',
+					env: 'N8N_SMTP_PORT',
 				},
 				secure: {
 					doc: 'Whether or not to use SSL',
 					format: Boolean,
 					default: true,
-					env: 'N8N_EMAIL_SMTP_SSL',
+					env: 'N8N_SMTP_SSL',
 				},
 				auth: {
 					user: {
 						doc: 'SMTP Login username',
 						format: String,
 						default: 'youremail@gmail.com',
-						env: 'N8N_EMAIL_SMTP_USER',
+						env: 'N8N_SMTP_USER',
 					},
 					pass: {
 						doc: 'SMTP Login password',
 						format: String,
 						default: 'my-super-password',
-						env: 'N8N_EMAIL_SMTP_PASS',
+						env: 'N8N_SMTP_PASS',
 					},
 				},
 				sender: {
