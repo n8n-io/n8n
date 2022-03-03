@@ -114,7 +114,7 @@ export class Orbit implements INodeType {
 				for (const workspace of workspaces.data) {
 					returnData.push({
 						name: workspace.attributes.name,
-						value: workspace.id,
+						value: workspace.attributes.slug,
 					});
 				}
 				return returnData;

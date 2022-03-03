@@ -58,6 +58,7 @@ export class Telemetry {
 		this.versionCli = versionCli;
 
 		const enabled = config.getEnv('diagnostics.enabled');
+		const logLevel = config.getEnv('logs.level');
 		if (enabled) {
 			const conf = config.getEnv('diagnostics.config.backend');
 			const [key, url] = conf.split(';');
@@ -69,7 +70,7 @@ export class Telemetry {
 				return;
 			}
 
-			this.client = new TelemetryClient(key, url);
+			this.client = new TelemetryClient(key, url, { logLevel });
 
 			this.pulseIntervalReference = setInterval(async () => {
 				void this.pulse();

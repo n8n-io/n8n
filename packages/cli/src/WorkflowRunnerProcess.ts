@@ -9,6 +9,8 @@ import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } fro
 
 import {
 	ExecutionError,
+	ICredentialType,
+	ICredentialTypeData,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
@@ -88,10 +90,12 @@ export class WorkflowRunnerProcess {
 
 		let className: string;
 		let tempNode: INodeType;
+		let tempCredential: ICredentialType;
 		let filePath: string;
 
 		this.startedAt = new Date();
 
+		// Load the required nodes
 		const nodeTypesData: INodeTypeData = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const nodeTypeName of Object.keys(this.data.nodeTypeData)) {
@@ -125,9 +129,32 @@ export class WorkflowRunnerProcess {
 		const nodeTypes = NodeTypes();
 		await nodeTypes.init(nodeTypesData);
 
+		// Load the required credentials
+		const credentialsTypeData: ICredentialTypeData = {};
+		// eslint-disable-next-line no-restricted-syntax
+		for (const credentialTypeName of Object.keys(this.data.credentialsTypeData)) {
+			className = this.data.credentialsTypeData[credentialTypeName].className;
+
+			filePath = this.data.credentialsTypeData[credentialTypeName].sourcePath;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
+			const tempModule = require(filePath);
+
+			try {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+				tempCredential = new tempModule[className]() as ICredentialType;
+			} catch (error) {
+				throw new Error(`Error loading credential "${credentialTypeName}" from: "${filePath}"`);
+			}
+
+			credentialsTypeData[credentialTypeName] = {
+				type: tempCredential,
+				sourcePath: filePath,
+			};
+		}
+
 		// Init credential types the workflow uses (is needed to apply default values to credentials)
 		const credentialTypes = CredentialTypes();
-		await credentialTypes.init(inputData.credentialsTypeData);
+		await credentialTypes.init(credentialsTypeData);
 
 		// Load the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();
@@ -280,6 +307,13 @@ export class WorkflowRunnerProcess {
 			await sendToParentProcess('finishExecution', { executionId, result });
 
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
+
+			if (returnData!.error) {
+				const error = new Error(returnData!.error.message);
+				error.stack = returnData!.error.stack;
+				throw error;
+			}
+
 			return returnData!.data!.main;
 		};
 

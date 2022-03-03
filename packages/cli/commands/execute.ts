@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
-import { BinaryDataManager, UserSettings } from 'n8n-core';
+import { BinaryDataManager, UserSettings, PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
 import { INode, LoggerProxy } from 'n8n-workflow';
 
 import {
@@ -96,8 +96,9 @@ export class Execute extends Command {
 				console.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			workflowId = workflowData.id!.toString();
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			workflowId = workflowData.id ? workflowData.id.toString() : PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		}
 
 		// Wait till the database is ready
