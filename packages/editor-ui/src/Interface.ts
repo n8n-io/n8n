@@ -483,15 +483,26 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export type IPersonalizationSurveyKeys = 'codingSkill' | 'companyIndustry' | 'companySize' | 'otherCompanyIndustry' | 'otherWorkArea' | 'workArea';
+export type IPersonalizationSurveyAnswersV1 = {
+	codingSkill?: string | null;
+	companyIndustry?: string[] | null;
+	companySize?: string | null;
+	otherCompanyIndustry?: string | null;
+	otherWorkArea?: string | null;
+	workArea?: string[] | string | null;
+};
 
-export type IPersonalizationSurveyAnswers = {
-	codingSkill: string | null;
-	companyIndustry: string[];
-	companySize: string | null;
-	otherCompanyIndustry: string | null;
-	otherWorkArea: string | null;
-	workArea: string[] | string | null;
+export type IPersonalizationSurveyAnswersV2 = {
+	version: 'v2';
+	automationGoal?: string | null;
+	codingSkill?: string | null;
+	companyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	mspFocus?: string[] | null;
+	mspFocusOther?: string | null;
+	otherAutomationGoal?: string | null;
+	otherCompanyIndustryExtended?: string[] | null;
 };
 
 export interface IN8nPrompts {
@@ -883,7 +894,7 @@ export interface IUserResponse {
 		name: IRole;
 		id: string;
 	};
-	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
+	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
 	isPending: boolean;
 }
 
@@ -917,8 +928,8 @@ export type IFormInput = {
 	name: string;
 	initialValue?: string | number | boolean | null;
 	properties: {
-		label: string;
-		type?: "text" | "email" | "password" | 'select';
+		label?: string;
+		type?: "text" | "email" | "password" | 'select' | 'multi-select';
 		maxlength?: number;
 		required?: boolean;
 		showRequiredAsterisk?: boolean;
@@ -931,7 +942,8 @@ export type IFormInput = {
 		placeholder?: string;
 		options?: Array<{label: string; value: string}>;
 		autocomplete?: 'off' | 'new-password' | 'current-password' | 'given-name' | 'family-name' | 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
-	}
+	};
+	shouldDisplay?: (values: {[key: string]: unknown}) => boolean;
 };
 
 export type IFormInputs = IFormInput[];

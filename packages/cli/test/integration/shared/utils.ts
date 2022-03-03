@@ -134,12 +134,12 @@ export function initConfigFile() {
 /**
  * Create a request agent, optionally with an auth cookie.
  */
-export async function createAgent(app: express.Application, options?: { auth: true; user: User }) {
+export function createAgent(app: express.Application, options?: { auth: true; user: User }) {
 	const agent = request.agent(app);
 	agent.use(prefix(REST_PATH_SEGMENT));
 
 	if (options?.auth && options?.user) {
-		const { token } = await issueJWT(options.user);
+		const { token } = issueJWT(options.user);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 

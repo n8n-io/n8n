@@ -76,7 +76,7 @@ class Telemetry {
 	}
 
 	identify(instanceId: string, userId?: string) {
-		const traits = { instanceId };
+		const traits = { instance_id: instanceId };
 		if (userId) {
 			this.telemetry.identify(`${instanceId}#${userId}`, traits);
 		}

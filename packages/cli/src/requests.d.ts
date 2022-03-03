@@ -128,7 +128,11 @@ export declare namespace MeRequest {
 		{},
 		Pick<PublicUser, 'email' | 'firstName' | 'lastName'>
 	>;
-	export type Password = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'password'>>;
+	export type Password = AuthenticatedRequest<
+		{},
+		{},
+		{ currentPassword: string; newPassword: string }
+	>;
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
 

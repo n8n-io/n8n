@@ -59,7 +59,7 @@ afterAll(async () => {
 });
 
 test('POST /forgot-password should send password reset email', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const {
 		user,
@@ -87,7 +87,7 @@ test('POST /forgot-password should send password reset email', async () => {
 });
 
 test('POST /forgot-password should fail if emailing is not set up', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const response = await authlessAgent
 		.post('/forgot-password')
@@ -100,7 +100,7 @@ test('POST /forgot-password should fail if emailing is not set up', async () => 
 });
 
 test('POST /forgot-password should fail with invalid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -122,7 +122,7 @@ test('POST /forgot-password should fail with invalid inputs', async () => {
 });
 
 test('POST /forgot-password should fail if user is not found', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -133,7 +133,7 @@ test('POST /forgot-password should fail if user is not found', async () => {
 });
 
 test('GET /resolve-password-token should succeed with valid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
@@ -151,7 +151,7 @@ test('GET /resolve-password-token should succeed with valid inputs', async () =>
 });
 
 test('GET /resolve-password-token should fail with invalid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -167,7 +167,7 @@ test('GET /resolve-password-token should fail with invalid inputs', async () => 
 });
 
 test('GET /resolve-password-token should fail if user is not found', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -179,7 +179,7 @@ test('GET /resolve-password-token should fail if user is not found', async () =>
 });
 
 test('GET /resolve-password-token should fail if token is expired', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) - 1;
@@ -199,7 +199,7 @@ test('GET /resolve-password-token should fail if token is expired', async () => 
 });
 
 test('POST /change-password should succeed with valid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
@@ -232,7 +232,7 @@ test('POST /change-password should succeed with valid inputs', async () => {
 });
 
 test('POST /change-password should fail with invalid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
@@ -273,7 +273,7 @@ test('POST /change-password should fail with invalid inputs', async () => {
 });
 
 test('POST /change-password should fail when token has expired', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) - 1;

@@ -2,12 +2,12 @@
 	<SettingsView>
 		<div :class="$style.container">
 			<div>
-				<n8n-heading size="2xlarge">Users</n8n-heading>
+				<n8n-heading size="2xlarge">{{ $locale.baseText('USERS') }}</n8n-heading>
 				<div :class="$style.buttonContainer" v-if="!showUMSetupWarning">
 						<n8n-tooltip :disabled="isSmtpSetup" placement="bottom">
-							<div slot="content">Set up SMTP to invite users. <a href="https://docs.n8n.io/reference/user-management#smtp" target="_blank">Instructions</a></div>
+							<div slot="content" v-html="$locale.baseText('SETUP_SMTP_TO_INVITE_USERS_MESSAGE')"></div>
 							<div>
-								<n8n-button label="Invite" @click="onInvite" size="large" :disabled="!isSmtpSetup" />
+								<n8n-button :label="$locale.baseText('INVITE')" @click="onInvite" size="large" :disabled="!isSmtpSetup" />
 							</div>
 						</n8n-tooltip>
 				</div>
@@ -15,9 +15,9 @@
 			<div v-if="showUMSetupWarning" :class="$style.setupInfoContainer">
 				<n8n-action-box
 					emoji="😿"
-					heading="You’re missing out on user management"
-					description="Set up an owner account in order to invite other users. Once set up, each user will need to use a password to access this instance."
-					buttonText="Set up my owner account"
+					:heading="$locale.baseText('USER_MANAGEMENT_MISSING_WARNING')"
+					:description="$locale.baseText('SET_UP_TO_INVITE_USERS_WARNING')"
+					:buttonText="$locale.baseText('SET_UP_MY_ACCOUNT')"
 					@click="redirectToSetup"
 				/>
 			</div>
@@ -83,11 +83,11 @@ export default mixins(showMessage).extend({
 
 					this.$showToast({
 						type: 'success',
-						title: 'Invite resent',
-						message: `To ${user.email}`,
+						title: this.$locale.baseText('INVITE_RESENT'),
+						message: this.$locale.baseText('EMAIL_SENT_TO', { interpolate: { email: user.email } }),
 					});
 				} catch (e) {
-					this.$showError(e, 'Problem inviting user');
+					this.$showError(e, this.$locale.baseText('USER_INVITE_ERROR'));
 				}
 			}
 		},

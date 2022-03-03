@@ -47,7 +47,7 @@ describe('Owner shell', () => {
 
 	test('GET /me should return sanitized owner shell', async () => {
 		const ownerShell = await Db.collections.User!.findOneOrFail();
-		const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
+		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		const response = await authOwnerShellAgent.get('/me');
 
@@ -62,6 +62,7 @@ describe('Owner shell', () => {
 			globalRole,
 			password,
 			resetPasswordToken,
+			isPending,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -71,13 +72,14 @@ describe('Owner shell', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
+		expect(isPending).toBe(true);
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
 		const ownerShell = await Db.collections.User!.findOneOrFail();
-		const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
+		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 			const response = await authOwnerShellAgent.patch('/me').send(validPayload);
@@ -93,6 +95,7 @@ describe('Owner shell', () => {
 				globalRole,
 				password,
 				resetPasswordToken,
+				isPending,
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -102,6 +105,7 @@ describe('Owner shell', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(resetPasswordToken).toBeUndefined();
+			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
 
@@ -115,7 +119,7 @@ describe('Owner shell', () => {
 
 	test('PATCH /me should fail with invalid inputs', async () => {
 		const ownerShell = await Db.collections.User!.findOneOrFail();
-		const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
+		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
 			const response = await authOwnerShellAgent.patch('/me').send(invalidPayload);
@@ -130,7 +134,7 @@ describe('Owner shell', () => {
 
 	test('PATCH /me/password should succeed with valid inputs', async () => {
 		const ownerShell = await Db.collections.User!.findOneOrFail();
-		const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
+		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		const validPayloads = Array.from({ length: 3 }, () => ({
 			password: randomValidPassword(),
@@ -148,7 +152,7 @@ describe('Owner shell', () => {
 
 	test('PATCH /me/password should fail with invalid inputs', async () => {
 		const ownerShell = await Db.collections.User!.findOneOrFail();
-		const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
+		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		const invalidPayloads: Array<any> = [
 			...Array.from({ length: 3 }, () => ({ password: randomInvalidPassword() })),
@@ -171,7 +175,7 @@ describe('Owner shell', () => {
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
 		const ownerShell = await Db.collections.User!.findOneOrFail();
-		const authOwnerShellAgent = await utils.createAgent(app, { auth: true, user: ownerShell });
+		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 		const validPayloads = [SURVEY, {}];
 
@@ -221,7 +225,7 @@ describe('Member', () => {
 
 	test('GET /me should return sanitized member', async () => {
 		const member = await Db.collections.User!.findOneOrFail();
-		const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const response = await authMemberAgent.get('/me');
 
@@ -236,6 +240,7 @@ describe('Member', () => {
 			globalRole,
 			password,
 			resetPasswordToken,
+			isPending,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -245,13 +250,14 @@ describe('Member', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
+		expect(isPending).toBe(false);
 		expect(globalRole.name).toBe('member');
 		expect(globalRole.scope).toBe('global');
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
 		const member = await Db.collections.User!.findOneOrFail();
-		const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 			const response = await authMemberAgent.patch('/me').send(validPayload);
@@ -267,6 +273,7 @@ describe('Member', () => {
 				globalRole,
 				password,
 				resetPasswordToken,
+				isPending,
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -276,6 +283,7 @@ describe('Member', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(resetPasswordToken).toBeUndefined();
+			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('member');
 			expect(globalRole.scope).toBe('global');
 
@@ -289,7 +297,7 @@ describe('Member', () => {
 
 	test('PATCH /me should fail with invalid inputs', async () => {
 		const member = await Db.collections.User!.findOneOrFail();
-		const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
 			const response = await authMemberAgent.patch('/me').send(invalidPayload);
@@ -304,7 +312,7 @@ describe('Member', () => {
 
 	test('PATCH /me/password should succeed with valid inputs', async () => {
 		const member = await Db.collections.User!.findOneOrFail();
-		const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const validPayloads = Array.from({ length: 3 }, () => ({
 			password: randomValidPassword(),
@@ -322,7 +330,7 @@ describe('Member', () => {
 
 	test('PATCH /me/password should fail with invalid inputs', async () => {
 		const member = await Db.collections.User!.findOneOrFail();
-		const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const invalidPayloads: Array<any> = [
 			...Array.from({ length: 3 }, () => ({ password: randomInvalidPassword() })),
@@ -345,7 +353,7 @@ describe('Member', () => {
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
 		const member = await Db.collections.User!.findOneOrFail();
-		const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const validPayloads = [SURVEY, {}];
 
@@ -381,7 +389,7 @@ describe('Owner', () => {
 
 	test('GET /me should return sanitized owner', async () => {
 		const owner = await Db.collections.User!.findOneOrFail();
-		const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 		const response = await authOwnerAgent.get('/me');
 
@@ -396,6 +404,7 @@ describe('Owner', () => {
 			globalRole,
 			password,
 			resetPasswordToken,
+			isPending,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -405,13 +414,14 @@ describe('Owner', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
+		expect(isPending).toBe(false);
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
 		const owner = await Db.collections.User!.findOneOrFail();
-		const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 			const response = await authOwnerAgent.patch('/me').send(validPayload);
@@ -427,6 +437,7 @@ describe('Owner', () => {
 				globalRole,
 				password,
 				resetPasswordToken,
+				isPending,
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -436,6 +447,7 @@ describe('Owner', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(resetPasswordToken).toBeUndefined();
+			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
 

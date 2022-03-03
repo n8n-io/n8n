@@ -1,4 +1,4 @@
-import { IInviteResponse, IPersonalizationSurveyAnswers, IRestApiContext, IUserResponse } from '@/Interface';
+import { IInviteResponse, IPersonalizationSurveyAnswersV2, IRestApiContext, IUserResponse } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from './helpers';
 
@@ -47,7 +47,7 @@ export function updateCurrentUser(context: IRestApiContext, params: {id: string,
 	return makeRestApiRequest(context, 'PATCH', `/me`, params as unknown as IDataObject);
 }
 
-export function updateCurrentUserPassword(context: IRestApiContext, params: {password: string}): Promise<void> {
+export function updateCurrentUserPassword(context: IRestApiContext, params: {newPassword: string, currentPassword: string}): Promise<void> {
 	return makeRestApiRequest(context, 'PATCH', `/me/password`, params);
 }
 
@@ -67,6 +67,6 @@ export async function reinvite(context: IRestApiContext, {id}: {id: string}): Pr
 	await makeRestApiRequest(context, 'POST', `/users/${id}/reinvite`);
 }
 
-export async function submitPersonalizationSurvey(context: IRestApiContext, params: IPersonalizationSurveyAnswers): Promise<void> {
+export async function submitPersonalizationSurvey(context: IRestApiContext, params: IPersonalizationSurveyAnswersV2): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/me/survey', params as unknown as IDataObject);
 }

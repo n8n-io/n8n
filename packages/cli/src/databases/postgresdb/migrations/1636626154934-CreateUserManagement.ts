@@ -126,7 +126,7 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 
 		await queryRunner.query(
 			`INSERT INTO ${tablePrefix}user ("id", "globalRoleId", "personalizationAnswers") values ($1, $2, $3)`,
-			[ownerUserId, instanceOwnerRole[0].insertId, survey ?? null],
+			[ownerUserId, instanceOwnerRole[0].insertId, survey],
 		);
 
 		await queryRunner.query(
@@ -139,7 +139,7 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`INSERT INTO ${tablePrefix}settings ("key", "value", "loadOnStartup") VALUES ('userManagement.isInstanceOwnerSetUp', 'false', true)`,
+			`INSERT INTO ${tablePrefix}settings ("key", "value", "loadOnStartup") VALUES ('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)`,
 		);
 	}
 

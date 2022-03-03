@@ -1824,7 +1824,7 @@ export default mixins(
 							});
 							this.$showMessage({
 								title: 'Error',
-								message: 'Could not find workflow',
+								message: this.$locale.baseText('WORKFLOW_NOT_FOUND_ERROR'),
 								type: 'error',
 							});
 						} else {
@@ -2697,10 +2697,10 @@ export default mixins(
 							await this.importWorkflowExact(json);
 						} catch (e) {
 							if (window.top) {
-								window.top.postMessage(JSON.stringify({command: 'error', message: 'Could not import workflow'}), '*');
+								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('WORKFLOW_IMPORT_ERROR') }), '*');
 							}
 							this.$showMessage({
-								title: 'Could not import workflow',
+								title: this.$locale.baseText('WORKFLOW_IMPORT_ERROR'),
 								message: (e as Error).message,
 								type: 'error',
 							});
