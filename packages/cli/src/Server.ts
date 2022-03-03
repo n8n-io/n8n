@@ -103,9 +103,9 @@ import * as Queue from './Queue';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
+	CredentialTypes,
 	CredentialsHelper,
 	CredentialsOverwrites,
-	CredentialTypes,
 	DatabaseType,
 	Db,
 	ExternalHooks,
@@ -113,6 +113,7 @@ import {
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	ICustomRequest,
+	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionFlattedResponse,
 	IExecutionPushResponse,
@@ -121,7 +122,6 @@ import {
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IExternalHooksClass,
-	IDiagnosticInfo,
 	IN8nUISettings,
 	IPackageVersions,
 	ITagWithCountDb,
@@ -153,14 +153,15 @@ import { getCredentialTranslationPath, getNodeTranslationPath } from './Translat
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 import { userManagementRouter } from './UserManagement';
+import { publicApiv1Routes } from './PublicApi/v1';
 import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 import type {
 	CredentialRequest,
 	ExecutionRequest,
-	WorkflowRequest,
 	NodeParameterOptionsRequest,
+	WorkflowRequest,
 	OAuthRequest,
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
@@ -214,6 +215,8 @@ class App {
 
 	restEndpoint: string;
 
+	publicApiEndpoint: string;
+
 	frontendSettings: IN8nUISettings;
 
 	protocol: string;
@@ -248,6 +251,7 @@ class App {
 		this.payloadSizeMax = config.get('endpoints.payloadSizeMax') as number;
 		this.timezone = config.get('generic.timezone') as string;
 		this.restEndpoint = config.get('endpoints.rest') as string;
+		this.publicApiEndpoint = config.get('publicApiEndpoints.path') as string;
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
@@ -359,6 +363,7 @@ class App {
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
+			this.publicApiEndpoint,
 		];
 		// eslint-disable-next-line prefer-spread
 		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
@@ -529,6 +534,7 @@ class App {
 		// Get push connections
 		this.app.use(
 			async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+				console.log(1);
 				if (req.url.indexOf(`/${this.restEndpoint}/push`) === 0) {
 					if (req.query.sessionId === undefined) {
 						next(new Error('The query parameter "sessionId" is missing!'));
@@ -555,6 +561,7 @@ class App {
 
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+			console.log(2);
 			(req as ICustomRequest).parsedUrl = parseUrl(req);
 			// @ts-ignore
 			req.rawBody = Buffer.from('', 'base64');
@@ -602,7 +609,7 @@ class App {
 					{
 						from: new RegExp(
 							// eslint-disable-next-line no-useless-escape
-							`^\/(${this.restEndpoint}|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`,
+							`^\/(${this.restEndpoint}|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest}|${this.publicApiEndpoint})\/?.*$`,
 						),
 						to: (context) => {
 							return context.parsedUrl.pathname!.toString();
@@ -625,6 +632,7 @@ class App {
 		);
 
 		if (process.env.NODE_ENV !== 'production') {
+			console.log(3);
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				// Allow access also from frontend when developing
 				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
@@ -640,11 +648,12 @@ class App {
 
 		// eslint-disable-next-line consistent-return
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+			console.log(4);
 			if (Db.collections.Workflow === null) {
 				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
-
+			console.log('termine 4');
 			next();
 		});
 
@@ -652,6 +661,12 @@ class App {
 		// User Management
 		// ----------------------------------------
 		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
+
+		// ----------------------------------------
+		// Public API
+		// ----------------------------------------
+
+		await publicApiv1Routes.addRoutes.call(this, this.publicApiEndpoint);
 
 		// ----------------------------------------
 		// Healthcheck
@@ -2811,6 +2826,8 @@ class App {
 
 			// Serve the altered index.html file separately
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
+				console.log(req.url);
+				console.log('se llamo al index');
 				res.send(readIndexFile);
 			});
 

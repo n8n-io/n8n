@@ -81,6 +81,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 				return next();
 			}
 		}
+		console.log('llame user managemtn passport');
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
@@ -117,6 +118,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 
 	// middleware to refresh cookie before it expires
 	this.app.use(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+		console.log('se llamo el cookie');
 		const cookieAuth = options.jwtFromRequest(req);
 		if (cookieAuth && req.user) {
 			const cookieContents = jwt.decode(cookieAuth) as JwtPayload & { exp: number };
@@ -125,6 +127,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 				await issueCookie(res, req.user);
 			}
 		}
+		console.log('se llamo el enxt cokie')
 		next();
 	});
 

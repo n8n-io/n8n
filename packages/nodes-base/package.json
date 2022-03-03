@@ -23,7 +23,8 @@
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "nodelinter": "nodelinter",
     "watch": "tsc --watch",
-    "test": "jest"
+    "test": "jest",
+    "aja": "gulp build:publicApiSpecs"
   },
   "files": [
     "dist"
