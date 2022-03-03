@@ -624,13 +624,13 @@ const config = convict({
 					user: {
 						doc: 'SMTP Login username',
 						format: String,
-						default: 'youremail@gmail.com',
+						default: '',
 						env: 'N8N_SMTP_USER',
 					},
 					pass: {
 						doc: 'SMTP Login password',
 						format: String,
-						default: 'my-super-password',
+						default: '',
 						env: 'N8N_SMTP_PASS',
 					},
 				},

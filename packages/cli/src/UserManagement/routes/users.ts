@@ -147,6 +147,14 @@ export function usersNamespace(this: N8nApp): void {
 			// send invite email to new or not yet setup users
 			const mailer = getInstance();
 
+			try {
+				await mailer.verifyConnection();
+			} catch (error) {
+				if (error instanceof Error) {
+					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+				}
+			}
+
 			const emailingResults = await Promise.all(
 				usersPendingSetup.map(async ([email, id]) => {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -447,7 +455,17 @@ export function usersNamespace(this: N8nApp): void {
 			const baseUrl = getInstanceBaseUrl();
 			const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${reinvitee.id}`;
 
-			const result = await getInstance().invite({
+			const mailer = getInstance();
+
+			try {
+				await mailer.verifyConnection();
+			} catch (error) {
+				if (error instanceof Error) {
+					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+				}
+			}
+
+			const result = await mailer.invite({
 				email: reinvitee.email,
 				inviteAcceptUrl,
 				domain: baseUrl,

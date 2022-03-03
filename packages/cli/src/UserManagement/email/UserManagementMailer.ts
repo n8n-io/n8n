@@ -50,6 +50,12 @@ export class UserManagementMailer {
 		}
 	}
 
+	async verifyConnection(): Promise<void> {
+		if (!this.mailer) return Promise.reject();
+
+		return this.mailer.verifyConnection();
+	}
+
 	async invite(inviteEmailData: InviteEmailData): Promise<SendEmailResult> {
 		let template = await getTemplate('invite', 'invite.html');
 		template = replaceStrings(template, inviteEmailData);
