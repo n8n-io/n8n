@@ -18,7 +18,7 @@ import { meNamespace } from './me';
 import { usersNamespace } from './users';
 import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
-import { ownerNamespace } from './owner';
+import { ownerController } from './owner';
 import { isAuthExcluded, isPostUsersId, isAuthenticatedRequest } from '../UserManagementHelper';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
@@ -119,7 +119,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	});
 
 	authenticationMethods.apply(this);
-	ownerNamespace.apply(this);
+	this.app.use(`/${this.restEndpoint}`, ownerController);
 	meNamespace.apply(this);
 	passwordResetNamespace.apply(this);
 	usersNamespace.apply(this);

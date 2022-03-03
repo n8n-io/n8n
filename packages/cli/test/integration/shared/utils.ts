@@ -18,7 +18,6 @@ import { Db, ExternalHooks } from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
-import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
@@ -76,7 +75,6 @@ export function initTestServer({
 			me: meEndpoints,
 			users: usersEndpoints,
 			auth: authEndpoints,
-			owner: ownerEndpoints,
 			passwordReset: passwordResetEndpoints,
 		};
 
