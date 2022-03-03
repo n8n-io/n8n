@@ -4,7 +4,10 @@ import {
 
 } from 'n8n-workflow';
 
-import {analyticFields, analyticOperations } from './AnalyticDescription';
+import {
+	analyticsFields,
+	analyticsOperations
+} from './AnalyticsDescription';
 
 import {
 	campaignFields,
@@ -66,7 +69,7 @@ export class GoogleAds implements INodeType {
 					},
 					{
 						name: 'Analytics',
-						value: 'analytic',
+						value: 'analytics',
 					},
 				],
 				default: 'campaign',
@@ -85,8 +88,8 @@ export class GoogleAds implements INodeType {
 			//-------------------------------
 			// Analytics Operations
 			//-------------------------------
-			...analyticOperations,
-			...analyticFields,
+			...analyticsOperations,
+			...analyticsFields,
 		],
 	};
 }

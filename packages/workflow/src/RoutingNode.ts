@@ -139,7 +139,7 @@ export class RoutingNode {
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
 						// Parse the headers value as expression so that we can use complex values
-						if (key === 'headers') {
+						if (['headers', 'body'].includes(key)) {
 							for (const headerName of Object.keys(value)) {
 								value[headerName] = this.getParameterValue(
 									value[headerName],
@@ -611,7 +611,7 @@ export class RoutingNode {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					let propertyValue = (nodeProperties.routing.request as Record<string, any>)[key];
 					// If the value is an expression resolve it
-					if (key === 'headers') {
+					if (['headers', 'body'].includes(key)) {
 						for (const headerName of Object.keys(propertyValue)) {
 							propertyValue[headerName] = this.getParameterValue(
 								propertyValue[headerName],

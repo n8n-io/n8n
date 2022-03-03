@@ -25,12 +25,12 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v9/customers/" + $parameter["clientCustomerId"] + "/googleAds:search"}}',
+						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/, "")  + "/googleAds:search"}}',
 						body: {
 							query: 'SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC',
 						},
 						headers: {
-							'login-customer-id': '={{$parameter["managerCustomerId"]}}',
+							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/, "")}}',
 						},
 					},
 				},
@@ -42,22 +42,34 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v9/customers/" + $parameter["clientCustomerId"] + "/googleAds:search"}}',
+						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/, "") + "/googleAds:search"}}',
 						returnFullResponse: true,
 						body: {
-							query: '={{"SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC" + "WHERE campaign.id = " + $parameter["campaignId"]}}',
+							query: '={{"SELECT campaign.id, campaign.name FROM campaign WHERE campaign.id = " + $parameter["campaignId"].toString().replace(/-/, "") + "ORDER BY campaign.id DESC" }}',
 						},
 						headers: {
-							'login-customer-id': '={{$parameter["managerCustomerId"]}}',
+							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/, "")}}',
 						},
 					},
-
 				},
 			},
 			{
 				name: 'Custom Query',
 				value: 'customQuery',
 				description: 'Make a custom query against the campaign endpoint',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/, "") + "/googleAds:search"}}',
+						returnFullResponse: true,
+						body: {
+							query: '={{$parameter["customGQL"]}}',
+						},
+						headers: {
+							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/, "")}}',
+						},
+					},
+				},
 			},
 		],
 		default: 'getAll',

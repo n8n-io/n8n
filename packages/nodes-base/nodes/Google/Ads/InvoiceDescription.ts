@@ -22,7 +22,7 @@ export const invoiceOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"v10/customers/" + $parameter["customerId"] + "/invoices" + "?" + "issueMonth=" + $parameter["issueMonth"] + "&" + "issueYear=" + $parameter["issueYear"] + "&" + "billingSetup=" + $parameter["billingSetupId"] }}',
+						url: '={{"v10/customers/" + $parameter["customerId"].toString().replace(/-/, "") + "/invoices" + "?" + "issueMonth=" + $parameter["issueMonth"] + "&" + "issueYear=" + $parameter["issueYear"] + "&" + "billingSetup=" + $parameter["billingSetupId"] }}',
 					},
 				},
 			},

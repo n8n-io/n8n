@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const analyticOperations: INodeProperties[] = [
+export const analyticsOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const analyticOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'analytic',
+					'analytics',
 				],
 			},
 		},
@@ -22,12 +22,12 @@ export const analyticOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v9/customers/" + $parameter["clientCustomerId"] + "/googleAds:search"}}',
+						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/, "") + "/googleAds:search"}}',
 						body: {
 							query: 'SELECT metrics.average_cost, metrics.average_page_views, metrics.active_view_ctr, metrics.active_view_cpm, metrics.clicks, metrics.content_impression_share, metrics.impressions, campaign.id FROM campaign',
 						},
 						headers: {
-							'login-customer-id': '={{$parameter["managerCustomerId"]}}',
+							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/, "")}}',
 						},
 					},
 				},
@@ -38,7 +38,7 @@ export const analyticOperations: INodeProperties[] = [
 	},
 ];
 
-export const analyticFields: INodeProperties[] = [
+export const analyticsFields: INodeProperties[] = [
 	{
 		displayName: 'Manager Customer ID',
 		name: 'managerCustomerId',
@@ -48,7 +48,7 @@ export const analyticFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'analytic',
+					'analytics',
 				],
 			},
 		},
@@ -63,7 +63,7 @@ export const analyticFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'analytic',
+					'analytics',
 				],
 			},
 		},
@@ -77,7 +77,7 @@ export const analyticFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'analytic',
+					'analytics',
 				],
 			},
 		},
