@@ -51,6 +51,7 @@ export function sanitizeUser(user: User): PublicUser {
 		resetPasswordTokenExpiration,
 		createdAt,
 		updatedAt,
+		apiKey,
 		...sanitizedUser
 	} = user;
 	return sanitizedUser;
