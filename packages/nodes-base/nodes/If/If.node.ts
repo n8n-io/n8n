@@ -46,7 +46,7 @@ export class If implements INodeType {
 								displayName: 'Value 1',
 								name: 'value1',
 								type: 'boolean',
-								default: true,
+								default: false,
 								description: 'The value to compare with the second one.',
 							},
 							{
@@ -70,7 +70,7 @@ export class If implements INodeType {
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'boolean',
-								default: true,
+								default: false,
 								description: 'The value to compare with the first one.',
 							},
 						],

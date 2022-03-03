@@ -122,7 +122,7 @@ export class Switch implements INodeType {
 						],
 					},
 				},
-				default: true,
+				default: false,
 				description: 'The value to compare with the second one.',
 			},
 			{
@@ -171,7 +171,7 @@ export class Switch implements INodeType {
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'boolean',
-								default: true,
+								default: false,
 								description: 'The value to compare with the first one.',
 							},
 							{
@@ -658,31 +658,31 @@ export class Switch implements INodeType {
 
 				if (mode === 'expression') {
 					// One expression decides how to route item
-	
+
 					outputIndex = this.getNodeParameter('output', itemIndex) as number;
 					checkIndexRange(outputIndex);
-	
+
 					returnData[outputIndex].push(item);
 				} else if (mode === 'rules') {
 					// Rules decide how to route item
-	
+
 					const dataType = this.getNodeParameter('dataType', 0) as string;
-	
+
 					value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
 					if (dataType === 'dateTime') {
 						value1 = convertDateTime(value1);
 					}
-	
+
 					for (ruleData of this.getNodeParameter('rules.rules', itemIndex, []) as INodeParameters[]) {
 						// Check if the values passes
-	
+
 						value2 = ruleData.value2 as NodeParameterValue;
 						if (dataType === 'dateTime') {
 							value2 = convertDateTime(value2);
 						}
-	
+
 						compareOperationResult = compareOperationFunctions[ruleData.operation as string](value1, value2);
-	
+
 						if (compareOperationResult === true) {
 							// If rule matches add it to the correct output and continue with next item
 							checkIndexRange(ruleData.output as number);
@@ -690,7 +690,7 @@ export class Switch implements INodeType {
 							continue itemLoop;
 						}
 					}
-	
+
 					// Check if a fallback output got defined and route accordingly
 					outputIndex = this.getNodeParameter('fallbackOutput', itemIndex) as number;
 					if (outputIndex !== -1) {
