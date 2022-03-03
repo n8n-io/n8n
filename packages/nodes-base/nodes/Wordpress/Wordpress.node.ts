@@ -27,7 +27,7 @@ import {
 import {
 	IUser,
 } from './UserInterface';
-
+const isOnline = require('is-online');
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wordpress',
@@ -136,7 +136,9 @@ export class Wordpress implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-
+			isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'post') {
@@ -421,5 +423,12 @@ export class Wordpress implements INodeType {
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
