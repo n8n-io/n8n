@@ -111,6 +111,18 @@ export class I18nClass {
 			},
 
 			/**
+			 * Hint for a top-level param.
+			 */
+			hint(
+				{ name: parameterName, hint }: { name: string; hint: string; },
+			) {
+				return context.dynamicRender({
+					key: `${credentialPrefix}.${parameterName}.hint`,
+					fallback: hint,
+				});
+			},
+
+			/**
 			 * Description (tooltip text) for an input label param.
 			 */
 			inputLabelDescription(
@@ -149,16 +161,14 @@ export class I18nClass {
 			},
 
 			/**
-			 * Placeholder for a `string` or `collection` or `fixedCollection` param.
-			 * - For a `string` parameter, the placeholder is unselectable greyed-out sample text.
-			 * - For a `collection` or `fixedCollection` parameter, the placeholder is the button text.
+			 * Placeholder for a `string` param.
 			 */
 			placeholder(
-				{ name: parameterName, displayName }: { name: string; displayName: string; },
+				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
-					fallback: displayName,
+					fallback: placeholder,
 				});
 			},
 		};
@@ -202,6 +212,21 @@ export class I18nClass {
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.description`,
 					fallback: parameter.description,
+				});
+			},
+
+			/**
+			 * Hint for an input, whether top-level or nested.
+			 */
+			hint(
+				parameter: { name: string; hint: string; type: string },
+				path: string,
+			) {
+				const middleKey = deriveMiddleKey(path, parameter);
+
+				return context.dynamicRender({
+					key: `${initialKey}.${middleKey}.hint`,
+					fallback: parameter.hint,
 				});
 			},
 

@@ -1,19 +1,22 @@
 <template>
 	<div class="workflow-activator">
-		<el-switch
-			v-loading="loading"
-			element-loading-spinner="el-icon-loading"
-			:value="workflowActive"
-			@change="activeChanged"
-			:title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
-			:disabled="disabled || loading"
-			:active-color="getActiveColor"
-			inactive-color="#8899AA">
-		</el-switch>
+		<n8n-tooltip :disabled="!disabled" placement="bottom">
+			<div slot="content">{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+			<el-switch
+				v-loading="loading"
+				:value="workflowActive"
+				@change="activeChanged"
+			  :title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
+				:disabled="disabled || loading"
+				:active-color="getActiveColor"
+				inactive-color="#8899AA"
+				element-loading-spinner="el-icon-loading">
+			</el-switch>
+		</n8n-tooltip>
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
 			<n8n-tooltip placement="top">
-				<div @click="displayActivationError" slot="content">{{ $locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut') }}</div>
+				<div @click="displayActivationError" slot="content" v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"></div>
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
 			</n8n-tooltip>
 		</div>
@@ -27,12 +30,16 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import {
-	IWorkflowDataUpdate,
-} from '../Interface';
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from "vuex";
+
+import {
+	WORKFLOW_ACTIVE_MODAL_KEY,
+	LOCAL_STORAGE_ACTIVATION_FLAG,
+} from '@/constants';
+import { getActivatableTriggerNodes } from './helpers';
+
 
 export default mixins(
 	externalHooks,
@@ -45,7 +52,6 @@ export default mixins(
 		{
 			name: 'WorkflowActivator',
 			props: [
-				'disabled',
 				'workflowActive',
 				'workflowId',
 			],
@@ -74,66 +80,53 @@ export default mixins(
 					}
 					return '#13ce66';
 				},
+				isCurrentWorkflow(): boolean {
+					return this.$store.getters['workflowId'] === this.workflowId;
+				},
+				disabled(): boolean {
+					const isNewWorkflow = !this.workflowId;
+					if (isNewWorkflow || this.isCurrentWorkflow) {
+						return !this.workflowActive && !this.containsTrigger;
+					}
+
+					return false;
+				},
+				containsTrigger(): boolean {
+					const foundTriggers = getActivatableTriggerNodes(this.$store.getters.workflowTriggerNodes);
+					return foundTriggers.length > 0;
+				},
 			},
 			methods: {
 				async activeChanged (newActiveState: boolean) {
-					if (this.workflowId === undefined) {
-						this.$showMessage({
-							title: this.$locale.baseText('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.title'),
-							message: this.$locale.baseText('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.message'),
-							type: 'error',
-						});
-						return;
-					}
-
-					if (this.nodesIssuesExist === true) {
-						this.$showMessage({
-							title: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
-							message: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message'),
-							type: 'error',
-						});
-						return;
-					}
-
-					// Set that the active state should be changed
-					let data: IWorkflowDataUpdate = {};
-
-					const activeWorkflowId = this.$store.getters.workflowId;
-					if (newActiveState === true && this.workflowId === activeWorkflowId) {
-						// If the currently active workflow gets activated save the whole
-						// workflow. If that would not happen then it could be quite confusing
-						// for people because it would activate a different version of the workflow
-						// than the one they can currently see.
-						if (this.dirtyState) {
-							const importConfirm = await this.confirmMessage(
-								this.$locale.baseText('workflowActivator.confirmMessage.message'),
-								this.$locale.baseText('workflowActivator.confirmMessage.headline'),
-								'warning',
-								this.$locale.baseText('workflowActivator.confirmMessage.confirmButtonText'),
-								this.$locale.baseText('workflowActivator.confirmMessage.cancelButtonText'),
-							);
-							if (importConfirm === false) {
-								return;
-							}
-						}
-
-						// Get the current workflow data that it gets saved together with the activation
-						data = await this.getWorkflowDataToSave();
-					}
-
-					data.active = newActiveState;
-
 					this.loading = true;
 
+					if (!this.workflowId) {
+						const saved = await this.saveCurrentWorkflow();
+						if (!saved) {
+							this.loading = false;
+							return;
+						}
+					}
+
 					try {
-						await this.restApi().updateWorkflow(this.workflowId, data);
+						if (this.isCurrentWorkflow && this.nodesIssuesExist) {
+							this.$showMessage({
+								title: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
+								message: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message'),
+								type: 'error',
+							});
+
+							this.loading = false;
+							return;
+						}
+
+						await this.updateWorkflow({workflowId: this.workflowId, active: newActiveState});
 					} catch (error) {
 						const newStateName = newActiveState === true ? 'activated' : 'deactivated';
 						this.$showError(
 							error,
-							this.$locale.baseText('workflowActivator.showError.title'),
 							this.$locale.baseText(
-								'workflowActivator.showError.message',
+								'workflowActivator.showError.title',
 								{ interpolate: { newStateName } },
 							) + ':',
 						);
@@ -141,27 +134,21 @@ export default mixins(
 						return;
 					}
 
-					const currentWorkflowId = this.$store.getters.workflowId;
-					let activationEventName = 'workflow.activeChange';
-					if (currentWorkflowId === this.workflowId) {
-						// If the status of the current workflow got changed
-						// commit it specifically
-						this.$store.commit('setActive', newActiveState);
-						activationEventName = 'workflow.activeChangeCurrent';
-					}
-
-					if (newActiveState === true) {
-						this.$store.commit('setWorkflowActive', this.workflowId);
-					} else {
-						this.$store.commit('setWorkflowInactive', this.workflowId);
-					}
-
+					const activationEventName = this.isCurrentWorkflow ? 'workflow.activeChangeCurrent' : 'workflow.activeChange';
 					this.$externalHooks().run(activationEventName, { workflowId: this.workflowId, active: newActiveState });
 					this.$telemetry.track('User set workflow active status', { workflow_id: this.workflowId, is_active: newActiveState });
 
 					this.$emit('workflowActiveChanged', { id: this.workflowId, active: newActiveState });
 					this.loading = false;
-					this.$store.dispatch('settings/fetchPromptsData');
+
+					if (this.isCurrentWorkflow) {
+						if (newActiveState && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
+							this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
+						}
+						else {
+							this.$store.dispatch('settings/fetchPromptsData');
+						}
+					}
 				},
 				async displayActivationError () {
 					let errorMessage: string;
@@ -192,7 +179,8 @@ export default mixins(
 	);
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+
 .workflow-activator {
 	display: inline-block;
 }
@@ -206,4 +194,5 @@ export default mixins(
 ::v-deep .el-loading-spinner {
 	margin-top: -10px;
 }
+
 </style>

@@ -12,7 +12,7 @@
 					</n8n-heading>
 					<div class="tags-filter">
 						<TagsDropdown
-							:placeholder="$locale.baseText('workflowOpen.openWorkflow')"
+							:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
@@ -66,7 +66,7 @@ import TagsContainer from '@/components/TagsContainer.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { convertToDisplayDate } from './helpers';
-import { WORKFLOW_OPEN_MODAL_KEY } from '../constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, WORKFLOW_OPEN_MODAL_KEY } from '../constants';
 
 export default mixins(
 	genericHelpers,
@@ -112,10 +112,14 @@ export default mixins(
 				});
 		},
 	},
-	mounted() {
+	async mounted() {
 		this.filterText = '';
 		this.filterTagIds = [];
-		this.openDialog();
+
+		this.isDataLoading = true;
+		await this.loadActiveWorkflows();
+		await this.loadWorkflows();
+		this.isDataLoading = false;
 
 		Vue.nextTick(() => {
 			// Make sure that users can directly type in the filter
@@ -159,23 +163,32 @@ export default mixins(
 
 				const result = this.$store.getters.getStateIsDirty;
 				if(result) {
-					const importConfirm = await this.confirmMessage(
+					const confirmModal = await this.confirmModal(
 						this.$locale.baseText('workflowOpen.confirmMessage.message'),
 						this.$locale.baseText('workflowOpen.confirmMessage.headline'),
 						'warning',
 						this.$locale.baseText('workflowOpen.confirmMessage.confirmButtonText'),
 						this.$locale.baseText('workflowOpen.confirmMessage.cancelButtonText'),
+						true,
 					);
-					if (importConfirm === false) {
-						return;
-					} else {
-						// This is used to avoid duplicating the message
+
+					if (confirmModal === MODAL_CONFIRMED) {
+						const saved = await this.saveCurrentWorkflow({}, false);
+						if (saved) this.$store.dispatch('settings/fetchPromptsData');
+
+						this.$router.push({
+							name: 'NodeViewExisting',
+							params: { name: data.id },
+						});
+					} else if (confirmModal === MODAL_CANCEL) {
 						this.$store.commit('setStateDirty', false);
 
 						this.$router.push({
 							name: 'NodeViewExisting',
 							params: { name: data.id },
 						});
+					} else if (confirmModal === MODAL_CLOSE) {
+						return;
 					}
 				} else {
 					this.$router.push({
@@ -183,33 +196,33 @@ export default mixins(
 						params: { name: data.id },
 					});
 				}
-				this.$store.commit('ui/closeTopModal');
+				this.$store.commit('ui/closeAllModals');
 			}
 		},
-		openDialog () {
-			this.isDataLoading = true;
-			this.restApi().getWorkflows()
-				.then(
-					(data) => {
-						this.workflows = data;
-
-						this.workflows.forEach((workflowData: IWorkflowShortResponse) => {
-							workflowData.createdAt = convertToDisplayDate(workflowData.createdAt as number);
-							workflowData.updatedAt = convertToDisplayDate(workflowData.updatedAt as number);
-						});
-						this.isDataLoading = false;
-					},
-				)
-				.catch(
-					(error: Error) => {
-						this.$showError(
-							error,
-							this.$locale.baseText('workflowOpen.showError.title'),
-							this.$locale.baseText('workflowOpen.showError.message') + ':',
-						);
-						this.isDataLoading = false;
-					},
+		async loadWorkflows () {
+			try {
+				this.workflows = await this.restApi().getWorkflows();
+				this.workflows.forEach((workflowData: IWorkflowShortResponse) => {
+					workflowData.createdAt = convertToDisplayDate(workflowData.createdAt as number);
+					workflowData.updatedAt = convertToDisplayDate(workflowData.updatedAt as number);
+				});
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('workflowOpen.showError.title'),
 				);
+			}
+		},
+		async loadActiveWorkflows () {
+			try {
+				const activeWorkflows = await this.restApi().getActiveWorkflows();
+				this.$store.commit('setActiveWorkflows', activeWorkflows);
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('workflowOpen.couldNotLoadActiveWorkflows'),
+				);
+			}
 		},
 		workflowActiveChanged (data: { id: string, active: boolean }) {
 			for (const workflow of this.workflows) {

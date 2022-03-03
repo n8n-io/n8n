@@ -1,5 +1,6 @@
 import {  ActionContext, Module } from 'vuex';
 import {
+	ILogLevel,
 	IN8nPrompts,
 	IN8nUISettings,
 	IN8nValueSurveyData,
@@ -11,12 +12,15 @@ import { getPromptsData, getSettings, submitValueSurvey, submitPersonalizationSu
 import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
 import { CONTACT_PROMPT_MODAL_KEY, PERSONALIZATION_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { ITelemetrySettings } from 'n8n-workflow';
+import { testHealthEndpoint } from '@/api/templates';
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
 	state: {
 		settings: {} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
+		templatesEndpointHealthy: false,
 	},
 	getters: {
 		personalizedNodeTypes(state: ISettingsState): string[] {
@@ -29,6 +33,27 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		getPromptsData(state: ISettingsState) {
 			return state.promptsData;
+		},
+		telemetry: (state): ITelemetrySettings => {
+			return state.settings.telemetry;
+		},
+		logLevel: (state): ILogLevel => {
+			return state.settings.logLevel;
+		},
+		isTelemetryEnabled: (state) => {
+			return state.settings.telemetry && state.settings.telemetry.enabled;
+		},
+		isInternalUser: (state): boolean => {
+			return state.settings.deploymentType === 'n8n-internal';
+		},
+		isTemplatesEnabled: (state): boolean => {
+			return Boolean(state.settings.templates && state.settings.templates.enabled);
+		},
+		isTemplatesEndpointReachable: (state): boolean => {
+			return state.templatesEndpointHealthy;
+		},
+		templatesHost: (state): string  => {
+			return state.settings.templates.host;
 		},
 	},
 	mutations: {
@@ -43,6 +68,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		setPromptsData(state: ISettingsState, promptsData: IN8nPrompts) {
 			Vue.set(state, 'promptsData', promptsData);
+		},
+		setTemplatesEndpointHealthy(state: ISettingsState) {
+			state.templatesEndpointHealthy = true;
 		},
 	},
 	actions: {
@@ -66,7 +94,6 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setN8nMetadata', settings.n8nMetadata || {}, {root: true});
 			context.commit('setDefaultLocale', settings.defaultLocale, {root: true});
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
-			context.commit('setTelemetry', settings.telemetry, {root: true});
 
 			const showPersonalizationsModal = settings.personalizationSurvey && settings.personalizationSurvey.shouldShow && !settings.personalizationSurvey.answers;
 
@@ -81,7 +108,7 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setPersonalizationAnswers', results);
 		},
 		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
-			if (!context.rootGetters.isTelemetryEnabled) {
+			if (!context.getters.isTelemetryEnabled) {
 				return;
 			}
 
@@ -113,6 +140,11 @@ const module: Module<ISettingsState, IRootState> = {
 			} catch (e) {
 				return e;
 			}
+		},
+		async testTemplatesEndpoint(context: ActionContext<ISettingsState, IRootState>) {
+			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
+			await Promise.race([testHealthEndpoint(context.getters.templatesHost), timeout]);
+			context.commit('setTemplatesEndpointHealthy', true);
 		},
 	},
 };

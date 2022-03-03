@@ -63,7 +63,7 @@
 			<template>
 				<span class="activator">
 					<span>{{ $locale.baseText('workflowDetails.active') + ':' }}</span>
-					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
+					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId"/>
 				</span>
 				<SaveButton
 					:saved="!this.isDirty && !this.isNewWorkflow"
