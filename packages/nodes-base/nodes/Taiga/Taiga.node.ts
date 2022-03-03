@@ -29,7 +29,7 @@ import {
 	userStoryFields,
 	userStoryOperations,
 } from './descriptions';
-
+const isOnline = require('is-online');
 export class Taiga implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Taiga',
@@ -191,7 +191,9 @@ export class Taiga implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
 		let responseData;
-
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < items.length; i++) {
 
 			try {
@@ -548,5 +550,12 @@ export class Taiga implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
