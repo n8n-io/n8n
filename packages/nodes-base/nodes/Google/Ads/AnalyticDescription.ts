@@ -4,7 +4,7 @@ import {
 
 export const analyticOperations: INodeProperties[] = [
 	{
-		displayName: 'Analytic',
+		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		displayOptions: {
@@ -16,8 +16,8 @@ export const analyticOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Return Analytics',
-				value: 'returnAnalytics',
+				name: 'Get Analytics',
+				value: 'getAnalytics',
 				description: 'Returns analytics regarding a campaign.',
 				routing: {
 					request: {
@@ -33,7 +33,7 @@ export const analyticOperations: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'returnAnalytics',
+		default: 'getAnalytics',
 		description: 'The operation to perform.',
 	},
 ];
