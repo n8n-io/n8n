@@ -60,7 +60,7 @@ beforeEach(async () => {
 		password: INITIAL_TEST_USER.password,
 		firstName: INITIAL_TEST_USER.firstName,
 		lastName: INITIAL_TEST_USER.lastName,
-		role: globalOwnerRole,
+		globalRole: globalOwnerRole,
 	});
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);

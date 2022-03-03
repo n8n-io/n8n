@@ -35,7 +35,7 @@ beforeEach(async () => {
 		firstName: TEST_USER.firstName,
 		lastName: TEST_USER.lastName,
 		password: hashSync(TEST_USER.password, genSaltSync(10)),
-		role: globalOwnerRole,
+		globalRole: globalOwnerRole,
 	});
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
