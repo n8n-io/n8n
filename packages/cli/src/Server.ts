@@ -789,17 +789,11 @@ class App {
 				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 				void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow);
 
-				const { id, tags, ...rest } = savedWorkflow;
+				const { id, ...rest } = savedWorkflow;
 
 				return {
 					id: id.toString(),
 					...rest,
-					tags:
-						tags?.map((tag) => {
-							// @ts-ignore
-							tag.id = tag.id.toString();
-							return tag;
-						}) ?? [],
 				};
 			}),
 		);
@@ -902,17 +896,11 @@ class App {
 				}
 
 				return workflows.map((workflow) => {
-					const { id, tags, ...rest } = workflow;
+					const { id, ...rest } = workflow;
 
 					return {
 						id: id.toString(),
 						...rest,
-						tags:
-							tags?.map((tag) => {
-								// @ts-ignore
-								tag.id = tag.id.toString();
-								return tag;
-							}) ?? [],
 					};
 				});
 			}),
@@ -958,18 +946,12 @@ class App {
 				}
 
 				const {
-					workflow: { id, tags, ...rest },
+					workflow: { id, ...rest },
 				} = shared;
 
 				return {
 					id: id.toString(),
 					...rest,
-					tags:
-						tags?.map((tag) => {
-							// @ts-ignore
-							tag.id = tag.id.toString();
-							return tag;
-						}) ?? [],
 				};
 			}),
 		);
@@ -981,7 +963,7 @@ class App {
 				const { id: workflowId } = req.params;
 
 				const updateData = new WorkflowEntity();
-				const { tags: currentTags, ...rest } = req.body;
+				const { tags, ...rest } = req.body;
 				Object.assign(updateData, rest);
 
 				const shared = await Db.collections.SharedWorkflow!.findOne({
@@ -1044,12 +1026,12 @@ class App {
 
 				await Db.collections.Workflow!.update(workflowId, updateData);
 
-				if (currentTags && !config.get('workflowTagsDisabled')) {
+				if (tags && !config.get('workflowTagsDisabled')) {
 					const tablePrefix = config.get('database.tablePrefix');
 					await TagHelpers.removeRelations(workflowId, tablePrefix);
 
-					if (currentTags.length) {
-						await TagHelpers.createRelations(workflowId, currentTags, tablePrefix);
+					if (tags.length) {
+						await TagHelpers.createRelations(workflowId, tags, tablePrefix);
 					}
 				}
 
@@ -1073,9 +1055,9 @@ class App {
 					);
 				}
 
-				if (req.body.tags?.length) {
+				if (updatedWorkflow.tags.length && tags?.length) {
 					updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
-						requestOrder: req.body.tags,
+						requestOrder: tags,
 					});
 				}
 
@@ -1105,17 +1087,11 @@ class App {
 					}
 				}
 
-				const { id, tags, ...remainder } = updatedWorkflow;
+				const { id, ...remainder } = updatedWorkflow;
 
 				return {
 					id: id.toString(),
 					...remainder,
-					tags:
-						tags?.map((tag) => {
-							// @ts-ignore
-							tag.id = tag.id.toString();
-							return tag;
-						}) ?? [],
 				};
 			}),
 		);
@@ -1249,10 +1225,7 @@ class App {
 						return TagHelpers.getTagsWithCountDb(tablePrefix);
 					}
 
-					const tags = await Db.collections.Tag!.find({ select: ['id', 'name'] });
-					// @ts-ignore
-					tags.forEach((tag) => (tag.id = tag.id.toString()));
-					return tags;
+					return Db.collections.Tag!.find({ select: ['id', 'name'] });
 				},
 			),
 		);
@@ -1275,8 +1248,6 @@ class App {
 
 					await this.externalHooks.run('tag.afterCreate', [tag]);
 
-					// @ts-ignore
-					tag.id = tag.id.toString();
 					return tag;
 				},
 			),
@@ -1295,7 +1266,8 @@ class App {
 					const { id } = req.params;
 
 					const newTag = new TagEntity();
-					newTag.id = Number(id);
+					// @ts-ignore
+					newTag.id = id;
 					newTag.name = name.trim();
 
 					await this.externalHooks.run('tag.beforeUpdate', [newTag]);
@@ -1305,8 +1277,6 @@ class App {
 
 					await this.externalHooks.run('tag.afterUpdate', [tag]);
 
-					// @ts-ignore
-					tag.id = tag.id.toString();
 					return tag;
 				},
 			),

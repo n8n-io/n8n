@@ -156,9 +156,11 @@ export function usersNamespace(this: N8nApp): void {
 						inviteAcceptUrl,
 						domain: baseUrl,
 					});
-					const resp: { id: string | null; email: string; error?: string } = {
-						id,
-						email,
+					const resp: { user: { id: string | null; email: string }; error?: string } = {
+						user: {
+							id,
+							email,
+						},
 					};
 					if (!result.success) {
 						Logger.error('Failed to send email', {
@@ -169,7 +171,7 @@ export function usersNamespace(this: N8nApp): void {
 						});
 						resp.error = `Email could not be sent`;
 					}
-					return { user: resp };
+					return resp;
 				}),
 			);
 

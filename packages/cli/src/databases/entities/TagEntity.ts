@@ -5,9 +5,10 @@ import {
 	Column,
 	CreateDateColumn,
 	Entity,
+	Generated,
 	Index,
 	ManyToMany,
-	PrimaryGeneratedColumn,
+	PrimaryColumn,
 	UpdateDateColumn,
 } from 'typeorm';
 import { IsDate, IsOptional, IsString, Length } from 'class-validator';
@@ -15,6 +16,7 @@ import { IsDate, IsOptional, IsString, Length } from 'class-validator';
 import config = require('../../../config');
 import { DatabaseType } from '../../index';
 import { ITagDb } from '../../Interfaces';
+import { idStringifier } from '../utils/transformers';
 import { WorkflowEntity } from './WorkflowEntity';
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -33,7 +35,10 @@ function getTimestampSyntax() {
 
 @Entity()
 export class TagEntity implements ITagDb {
-	@PrimaryGeneratedColumn()
+	@Generated()
+	@PrimaryColumn({
+		transformer: idStringifier,
+	})
 	id: number;
 
 	@Column({ length: 24 })
