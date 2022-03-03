@@ -513,12 +513,35 @@ export class WorkflowDataProxy {
 									if (executionData[itemIndex]) {
 										return executionData[itemIndex];
 									}
-									throw new Error(
-										`No item found at index ${itemIndex}
-										 of branch ${branchIndex || 0}
-										 in run ${runIndex || that.runIndex}
-										 (for node "${nodeName}")`,
-									);
+									let errorMessage = '';
+
+									if (!branchIndex && !runIndex) {
+										errorMessage = `
+											No item found at index ${itemIndex}
+											(for node "${nodeName}")`;
+										throw new Error(errorMessage);
+									}
+									if (!branchIndex) {
+										errorMessage = `
+											No item found at index ${itemIndex}
+											in run ${runIndex || that.runIndex}
+											(for node "${nodeName}")`;
+										throw new Error(errorMessage);
+									}
+									if (!runIndex) {
+										errorMessage = `
+											No item found at index ${itemIndex}
+											of branch ${branchIndex || 0}
+											(for node "${nodeName}")`;
+										throw new Error(errorMessage);
+									}
+
+									errorMessage = `
+										No item found at index ${itemIndex}
+										of branch ${branchIndex || 0}
+										in run ${runIndex || that.runIndex}
+										(for node "${nodeName}")`;
+									throw new Error(errorMessage);
 								};
 							}
 							if (property === 'first') {
@@ -665,8 +688,8 @@ export class WorkflowDataProxy {
 			$workflow: this.workflowGetter(),
 			$thisRunIndex: this.runIndex,
 			$thisItemIndex: this.itemIndex,
-			$now: DateTime.now().toJSDate(),
-			$today: DateTime.now().toJSDate().toISOString().split('T')[0],
+			$now: DateTime.now(),
+			$today: DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
 			$jmespath: jmespathWrapper,
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			DateTime,

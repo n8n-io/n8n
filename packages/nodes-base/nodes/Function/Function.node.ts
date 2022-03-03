@@ -149,8 +149,8 @@ return items;`,
 			} else {
 				// Try to find the line number which contains the error and attach to error message
 				const stackLines = error.stack.split('\n');
-				console.log(stackLines);
 				if (stackLines.length > 0) {
+					stackLines.shift();
 					const lineParts = stackLines.find((line: string) => line.includes('Function')).split(':');
 					if (lineParts.length > 2) {
 						const lineNumber = lineParts.splice(-2, 1);
