@@ -73,7 +73,15 @@ export function meNamespace(this: N8nApp): void {
 		ResponseHelper.send(async (req: MeRequest.Password, res: express.Response) => {
 			const { currentPassword, newPassword } = req.body;
 
-			const isCurrentPwCorrect = await compare(currentPassword, req.user.password!);
+			if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+				throw new ResponseHelper.ResponseError('Invalid payload.', undefined, 400);
+			}
+
+			if (!req.user.password) {
+				throw new ResponseHelper.ResponseError('Requesting user not set up.');
+			}
+
+			const isCurrentPwCorrect = await compare(currentPassword, req.user.password);
 			if (!isCurrentPwCorrect) {
 				throw new ResponseHelper.ResponseError(
 					'Provided current password is incorrect.',

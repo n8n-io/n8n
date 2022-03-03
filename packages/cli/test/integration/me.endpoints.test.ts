@@ -129,45 +129,33 @@ describe('Owner shell', () => {
 		}
 	});
 
-	test('PATCH /me/password should succeed with valid inputs', async () => {
+	test('PATCH /me/password should fail for shell', async () => {
 		const ownerShell = await Db.collections.User!.findOneOrFail();
 		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
-		const validPayloads = Array.from({ length: 3 }, () => ({
-			password: randomValidPassword(),
-		}));
+		const validPasswordPayload = {
+			currentPassword: randomValidPassword(),
+			newPassword: randomValidPassword(),
+		};
 
-		for (const validPayload of validPayloads) {
-			const response = await authOwnerShellAgent.patch('/me/password').send(validPayload);
-			expect(response.statusCode).toBe(200);
-			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+		const payloads = [validPasswordPayload, ...INVALID_PASSWORD_PAYLOADS];
 
-			const storedOwnerShell = await Db.collections.User!.findOneOrFail();
-			expect(storedOwnerShell.password).not.toBe(validPayload.password);
-		}
-	});
-
-	test('PATCH /me/password should fail with invalid inputs', async () => {
-		const ownerShell = await Db.collections.User!.findOneOrFail();
-		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-
-		const invalidPayloads: Array<any> = [
-			...Array.from({ length: 3 }, () => ({ password: randomInvalidPassword() })),
-			{},
-			undefined,
-			'',
-		];
-
-		for (const invalidPayload of invalidPayloads) {
-			const response = await authOwnerShellAgent.patch('/me/password').send(invalidPayload);
-			expect(response.statusCode).toBe(400);
+		for (const payload of payloads) {
+			const response = await authOwnerShellAgent.patch('/me/password').send(payload);
+			expect([400, 500].includes(response.statusCode)).toBe(true);
 
 			const storedMember = await Db.collections.User!.findOneOrFail();
 
-			if (invalidPayload?.password) {
-				expect(storedMember.password).not.toBe(invalidPayload.password);
+			if (payload.newPassword) {
+				expect(storedMember.password).not.toBe(payload.newPassword);
+			}
+			if (payload.currentPassword) {
+				expect(storedMember.password).not.toBe(payload.currentPassword);
 			}
 		}
+
+		const storedOwnerShell = await Db.collections.User!.findOneOrFail();
+		expect(storedOwnerShell.password).toBeNull();
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
@@ -189,23 +177,12 @@ describe('Owner shell', () => {
 
 describe('Member', () => {
 	beforeEach(async () => {
-		const globalMemberRole = await Db.collections.Role!.findOneOrFail({
-			name: 'member',
-			scope: 'global',
-		});
-
-		const newMember = new User();
-
-		Object.assign(newMember, {
-			id: uuid(),
-			email: TEST_USER.email,
-			firstName: TEST_USER.firstName,
-			lastName: TEST_USER.lastName,
-			password: hashSync(randomValidPassword(), genSaltSync(10)),
-			globalRole: globalMemberRole,
-		});
-
-		await Db.collections.User!.save(newMember);
+		// await utils.createUser({
+		// 	email: TEST_USER.email,
+		// 	firstName: TEST_USER.firstName,
+		// 	lastName: TEST_USER.lastName,
+		// 	password: hashSync(randomValidPassword(), genSaltSync(10)),
+		// });
 
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -220,7 +197,7 @@ describe('Member', () => {
 	});
 
 	test('GET /me should return sanitized member', async () => {
-		const member = await Db.collections.User!.findOneOrFail();
+		const member = await utils.createUser();
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const response = await authMemberAgent.get('/me');
@@ -240,9 +217,9 @@ describe('Member', () => {
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
-		expect(email).toBe(TEST_USER.email);
-		expect(firstName).toBe(TEST_USER.firstName);
-		expect(lastName).toBe(TEST_USER.lastName);
+		expect(email).toBe(member.email);
+		expect(firstName).toBe(member.firstName);
+		expect(lastName).toBe(member.lastName);
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
@@ -252,7 +229,7 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const member = await Db.collections.User!.findOneOrFail();
+		const member = await utils.createUser();
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
@@ -292,7 +269,7 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me should fail with invalid inputs', async () => {
-		const member = await Db.collections.User!.findOneOrFail();
+		const member = await utils.createUser();
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
@@ -300,55 +277,54 @@ describe('Member', () => {
 			expect(response.statusCode).toBe(400);
 
 			const storedMember = await Db.collections.User!.findOneOrFail();
-			expect(storedMember.email).toBe(TEST_USER.email);
-			expect(storedMember.firstName).toBe(TEST_USER.firstName);
-			expect(storedMember.lastName).toBe(TEST_USER.lastName);
+			expect(storedMember.email).toBe(member.email);
+			expect(storedMember.firstName).toBe(member.firstName);
+			expect(storedMember.lastName).toBe(member.lastName);
 		}
 	});
 
 	test('PATCH /me/password should succeed with valid inputs', async () => {
-		const member = await Db.collections.User!.findOneOrFail();
+		const memberPassword = randomValidPassword();
+		const member = await utils.createUser({
+			password: hashSync(memberPassword, genSaltSync(10)),
+		});
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
-		const validPayloads = Array.from({ length: 3 }, () => ({
-			password: randomValidPassword(),
-		}));
+		const validPayload = {
+			currentPassword: memberPassword,
+			newPassword: randomValidPassword(),
+		};
 
-		for (const validPayload of validPayloads) {
-			const response = await authMemberAgent.patch('/me/password').send(validPayload);
-			expect(response.statusCode).toBe(200);
-			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+		const response = await authMemberAgent.patch('/me/password').send(validPayload);
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-			const storedMember = await Db.collections.User!.findOneOrFail();
-			expect(storedMember.password).not.toBe(validPayload.password);
-		}
+		const storedMember = await Db.collections.User!.findOneOrFail();
+		expect(storedMember.password).not.toBe(member.password);
+		expect(storedMember.password).not.toBe(validPayload.newPassword);
 	});
 
 	test('PATCH /me/password should fail with invalid inputs', async () => {
-		const member = await Db.collections.User!.findOneOrFail();
+		const member = await utils.createUser();
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
-		const invalidPayloads: Array<any> = [
-			...Array.from({ length: 3 }, () => ({ password: randomInvalidPassword() })),
-			{},
-			undefined,
-			'',
-		];
-
-		for (const invalidPayload of invalidPayloads) {
-			const response = await authMemberAgent.patch('/me/password').send(invalidPayload);
-			expect(response.statusCode).toBe(400);
+		for (const payload of INVALID_PASSWORD_PAYLOADS) {
+			const response = await authMemberAgent.patch('/me/password').send(payload);
+			expect([400, 500].includes(response.statusCode)).toBe(true);
 
 			const storedMember = await Db.collections.User!.findOneOrFail();
 
-			if (invalidPayload?.password) {
-				expect(storedMember.password).not.toBe(invalidPayload.password);
+			if (payload.newPassword) {
+				expect(storedMember.password).not.toBe(payload.newPassword);
+			}
+			if (payload.currentPassword) {
+				expect(storedMember.password).not.toBe(payload.currentPassword);
 			}
 		}
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
-		const member = await Db.collections.User!.findOneOrFail();
+		const member = await utils.createUser();
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const validPayloads = [SURVEY, {}];
@@ -366,14 +342,14 @@ describe('Member', () => {
 
 describe('Owner', () => {
 	beforeEach(async () => {
-		await Db.collections.User!.save({
-			id: uuid(),
-			email: TEST_USER.email,
-			firstName: TEST_USER.firstName,
-			lastName: TEST_USER.lastName,
-			password: hashSync(randomValidPassword(), genSaltSync(10)),
-			globalRole: globalOwnerRole,
-		});
+		// await Db.collections.User!.save({
+		// 	id: uuid(),
+		// 	email: TEST_USER.email,
+		// 	firstName: TEST_USER.firstName,
+		// 	lastName: TEST_USER.lastName,
+		// 	password: hashSync(randomValidPassword(), genSaltSync(10)),
+		// 	globalRole: globalOwnerRole,
+		// });
 
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 	});
@@ -383,7 +359,7 @@ describe('Owner', () => {
 	});
 
 	test('GET /me should return sanitized owner', async () => {
-		const owner = await Db.collections.User!.findOneOrFail();
+		const owner = await utils.createUser({ globalRole: globalOwnerRole });
 		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 		const response = await authOwnerAgent.get('/me');
@@ -403,9 +379,9 @@ describe('Owner', () => {
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
-		expect(email).toBe(TEST_USER.email);
-		expect(firstName).toBe(TEST_USER.firstName);
-		expect(lastName).toBe(TEST_USER.lastName);
+		expect(email).toBe(owner.email);
+		expect(firstName).toBe(owner.firstName);
+		expect(lastName).toBe(owner.lastName);
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
@@ -415,7 +391,7 @@ describe('Owner', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const owner = await Db.collections.User!.findOneOrFail();
+		const owner = await utils.createUser({ globalRole: globalOwnerRole });
 		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
@@ -527,5 +503,46 @@ const INVALID_PATCH_ME_PAYLOADS = [
 		email: randomEmail(),
 		firstName: 'John <a',
 		lastName: randomName(),
+	},
+];
+
+const INVALID_PASSWORD_PAYLOADS = [
+	{
+		currentPassword: null,
+		newPassword: randomValidPassword(),
+	},
+	{
+		currentPassword: '',
+		newPassword: randomValidPassword(),
+	},
+	{
+		currentPassword: {},
+		newPassword: randomValidPassword(),
+	},
+	{
+		currentPassword: [],
+		newPassword: randomValidPassword(),
+	},
+	{
+		currentPassword: randomValidPassword(),
+	},
+	{
+		newPassword: randomValidPassword(),
+	},
+	{
+		currentPassword: randomValidPassword(),
+		newPassword: null,
+	},
+	{
+		currentPassword: randomValidPassword(),
+		newPassword: '',
+	},
+	{
+		currentPassword: randomValidPassword(),
+		newPassword: {},
+	},
+	{
+		currentPassword: randomValidPassword(),
+		newPassword: [],
 	},
 ];
