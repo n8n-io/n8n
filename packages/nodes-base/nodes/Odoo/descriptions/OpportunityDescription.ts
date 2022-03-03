@@ -91,12 +91,12 @@ export const opportunityDescription: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-			{
-				displayName: 'Expected Closing Date',
-				name: 'date_deadline',
-				type: 'dateTime',
-				default: '',
-			},
+			// {
+			// 	displayName: 'Expected Closing Date',
+			// 	name: 'date_deadline',
+			// 	type: 'dateTime',
+			// 	default: '',
+			// },
 			{
 				displayName: 'Expected Revenue',
 				name: 'expected_revenue',
@@ -287,12 +287,12 @@ export const opportunityDescription: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-			{
-				displayName: 'Expected Closing Date',
-				name: 'date_deadline',
-				type: 'dateTime',
-				default: '',
-			},
+			// {
+			// 	displayName: 'Expected Closing Date',
+			// 	name: 'date_deadline',
+			// 	type: 'dateTime',
+			// 	default: '',
+			// },
 			{
 				displayName: 'Expected Revenue',
 				name: 'expected_revenue',

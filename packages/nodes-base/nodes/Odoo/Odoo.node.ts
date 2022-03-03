@@ -645,7 +645,6 @@ export class Odoo implements INodeType {
 							...additionalFields,
 						};
 
-						console.log(fields);
 						responseData = await odooCreate.call(
 							this,
 							db,
