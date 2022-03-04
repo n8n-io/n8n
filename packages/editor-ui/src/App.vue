@@ -124,7 +124,6 @@ export default mixins(
 			// if cannot access page and is logged in, respect signin redirect
 			if (this.$route.name === 'SigninView' && typeof this.$route.query.redirect === 'string') {
 				const redirect = decodeURIComponent(this.$route.query.redirect);
-				console.log('should redirect', redirect, this.$route.query.redirect);
 				if (redirect.startsWith('/')) { // protect against phishing
 					this.$router.replace(redirect);
 					return;
