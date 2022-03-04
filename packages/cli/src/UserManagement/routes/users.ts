@@ -41,6 +41,20 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
+			const mailer = getInstance();
+
+			try {
+				await mailer.verifyConnection();
+			} catch (error) {
+				if (error instanceof Error) {
+					throw new ResponseHelper.ResponseError(
+						`There is a problem with your SMTP setup: ${error.message}`,
+						undefined,
+						500,
+					);
+				}
+			}
+
 			if (!config.get('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because emailing was not set up',
@@ -145,15 +159,6 @@ export function usersNamespace(this: N8nApp): void {
 			const usersPendingSetup = Object.entries(createUsers).filter(([email, id]) => id && email);
 
 			// send invite email to new or not yet setup users
-			const mailer = getInstance();
-
-			try {
-				await mailer.verifyConnection();
-			} catch (error) {
-				if (error instanceof Error) {
-					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
-				}
-			}
 
 			const emailingResults = await Promise.all(
 				usersPendingSetup.map(async ([email, id]) => {
