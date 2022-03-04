@@ -28,9 +28,7 @@ export class NodeMailer implements UserManagementMailerImplementation {
 			this.transport.verify((error: Error) => {
 				if (!error) resolve();
 
-				const message = [
-					"You can't invite users, because there is a problem with your SMTP setup:",
-				];
+				const message = ['There is a problem with your SMTP setup:'];
 
 				if (!host) message.push('SMTP host not defined (N8N_SMTP_HOST}).');
 				if (!user) message.push('SMTP user not defined (N8N_SMTP_USER}).');
