@@ -36,7 +36,7 @@ import {
 	// IPhone,
 	// IAddress,
 } from './IContactInterface';
-
+const isOnline = require('is-online');
 export class Xero implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Xero',
@@ -208,6 +208,9 @@ export class Xero implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < length; i++) {
 			try {
 				const resource = this.getNodeParameter('resource', 0) as string;
@@ -684,5 +687,12 @@ export class Xero implements INodeType {
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};

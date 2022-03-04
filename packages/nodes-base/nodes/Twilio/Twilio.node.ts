@@ -12,7 +12,7 @@ import {
 import {
 	twilioApiRequest,
 } from './GenericFunctions';
-
+const isOnline = require('is-online');
 export class Twilio implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twilio',
@@ -184,7 +184,9 @@ export class Twilio implements INodeType {
 
 		let requestMethod: string;
 		let endpoint: string;
-
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				requestMethod = 'GET';
@@ -235,5 +237,12 @@ export class Twilio implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};

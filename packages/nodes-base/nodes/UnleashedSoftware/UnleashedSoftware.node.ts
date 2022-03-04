@@ -80,7 +80,9 @@ export class UnleashedSoftware implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < length; i++) {
 
 			const resource = this.getNodeParameter('resource', 0) as string;
@@ -174,5 +176,12 @@ export class UnleashedSoftware implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};

@@ -22,7 +22,7 @@
   "devDependencies": {
     "lerna": "^3.13.1",
     "rimraf": "^3.0.2",
-    "run-script-os": "^1.0.7"
+    "run-script-os": "^1.1.6"
   },
   "postcss": {}
 }

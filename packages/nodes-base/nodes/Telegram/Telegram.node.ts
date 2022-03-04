@@ -19,7 +19,7 @@ import {
 	apiRequest,
 	getPropertyName,
 } from './GenericFunctions';
-
+const isOnline = require('is-online');
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -1861,7 +1861,9 @@ export class Telegram implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const binaryData = this.getNodeParameter('binaryData', 0, false) as boolean;
-
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				// Reset all values
@@ -2229,5 +2231,12 @@ export class Telegram implements INodeType {
 		}
 
 		return this.prepareOutputData(returnData);
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};

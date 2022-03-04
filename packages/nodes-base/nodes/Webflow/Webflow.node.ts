@@ -20,7 +20,7 @@ import {
 	itemFields,
 	itemOperations,
 } from './ItemDescription';
-
+const isOnline = require('is-online');
 export class Webflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Webflow',
@@ -143,7 +143,9 @@ export class Webflow implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const returnData: IDataObject[] = [];
-
+		isOnline().then(async online => {
+				if(online){
+									try {
 		for (let i = 0; i < items.length; i++) {
 
 			try {
@@ -265,5 +267,12 @@ export class Webflow implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};

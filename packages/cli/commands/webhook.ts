@@ -21,7 +21,7 @@ import {
 	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	WebhookServer,
+	WebhookServer
 } from '../src';
 
 import { getLogger } from '../src/Logger';
@@ -65,11 +65,11 @@ export class Webhook extends Command {
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
 					LoggerProxy.info(
-						`Waiting for ${executingWorkflows.length} active executions to finish...`,
+						`Waiting for ${executingWorkflows.length} active executions to finish...`
 					);
 				}
 				// eslint-disable-next-line no-await-in-loop
-				await new Promise((resolve) => {
+				await new Promise(resolve => {
 					setTimeout(resolve, 500);
 				});
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
@@ -108,14 +108,18 @@ export class Webhook extends Command {
 				 * the wehbook processes to communicate workflow execution interruption.
 				 */
 
-				this.error('Webhook processes can only run with execution mode as queue.');
+				this.error(
+					'Webhook processes can only run with execution mode as queue.'
+				);
 			}
 
 			try {
 				// Start directly with the init of the database to improve startup time
-				const startDbInitPromise = Db.init().catch((error) => {
+				const startDbInitPromise = Db.init().catch(error => {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-					logger.error(`There was an error initializing DB: "${error.message}"`);
+					logger.error(
+						`There was an error initializing DB: '${error.message}'`
+					);
 
 					processExistCode = 1;
 					// @ts-ignore
@@ -152,7 +156,9 @@ export class Webhook extends Command {
 				const { cli } = await GenericHelpers.getVersions();
 				InternalHooksManager.init(instanceId, cli, nodeTypes);
 
-				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				const binaryDataConfig = config.get(
+					'binaryDataManager'
+				) as IBinaryDataConfig;
 				await BinaryDataManager.init(binaryDataConfig);
 
 				if (config.get('executions.mode') === 'queue') {
@@ -160,7 +166,9 @@ export class Webhook extends Command {
 					const redisPassword = config.get('queue.bull.redis.password');
 					const redisPort = config.get('queue.bull.redis.port');
 					const redisDB = config.get('queue.bull.redis.db');
-					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+					const redisConnectionTimeoutLimit = config.get(
+						'queue.bull.redis.timeoutThreshold'
+					);
 					let lastTimer = 0;
 					let cumulativeTimeout = 0;
 
@@ -178,7 +186,7 @@ export class Webhook extends Command {
 								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
 									logger.error(
 										// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-										`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
+										`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`
 									);
 									process.exit(1);
 								}
@@ -206,7 +214,7 @@ export class Webhook extends Command {
 					// to control how and when to exit.
 					const redis = new Redis(settings);
 
-					redis.on('error', (error) => {
+					redis.on('error', error => {
 						if (error.toString().includes('ECONNREFUSED') === true) {
 							logger.warn('Redis unavailable - trying to reconnect...');
 						} else {
@@ -227,7 +235,7 @@ export class Webhook extends Command {
 			} catch (error) {
 				console.error('Exiting due to error. See log message for details.');
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				logger.error(`Webhook process cannot continue. "${error.message}"`);
+				logger.error(`Webhook process cannot continue. '${error.message}'`);
 
 				processExistCode = 1;
 				// @ts-ignore

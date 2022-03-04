@@ -49,7 +49,7 @@ import {
 	listFields,
 	listOperations,
 } from './ListDescription';
-
+const isOnline = require('is-online');
 export class Trello implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Trello',
@@ -150,7 +150,9 @@ export class Trello implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 		let responseData;
-
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				requestMethod = 'GET';
@@ -763,5 +765,12 @@ export class Trello implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};

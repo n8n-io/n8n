@@ -21,7 +21,7 @@ import {
 	eventFields,
 	eventOperations,
 } from './EventDescripion';
-
+const isOnline = require('is-online');
 export class Vero implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vero',
@@ -74,6 +74,9 @@ export class Vero implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
 		let responseData;
+		isOnline().then(async online => {
+			if(online){
+					try {
 		for (let i = 0; i < length; i++) {
 			try {
 				const resource = this.getNodeParameter('resource', 0) as string;
@@ -237,5 +240,12 @@ export class Vero implements INodeType {
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};

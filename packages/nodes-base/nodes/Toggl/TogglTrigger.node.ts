@@ -10,7 +10,7 @@ import {
 
 import * as moment from 'moment';
 import { togglApiRequest } from './GenericFunctions';
-
+const isOnline = require('is-online');
 export class TogglTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Toggl Trigger',
@@ -63,17 +63,19 @@ export class TogglTrigger implements INodeType {
 		let timeEntries = [];
 		qs.start_date = webhookData.lastTimeChecked;
 		qs.end_date = moment().format();
-
-		try {
-			timeEntries = await togglApiRequest.call(this, 'GET', endpoint, {}, qs);
-			webhookData.lastTimeChecked = qs.end_date;
-		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
+		isOnline().then(async online => {
+		if(online){
+			try {
+				timeEntries = await togglApiRequest.call(this, 'GET', endpoint, {}, qs);
+				webhookData.lastTimeChecked = qs.end_date;
+			} catch (error) {
+				throw new NodeApiError(this.getNode(), error);
+			}
+			if (Array.isArray(timeEntries) && timeEntries.length !== 0) {
+				return [this.helpers.returnJsonArray(timeEntries)];
+			}
 		}
-		if (Array.isArray(timeEntries) && timeEntries.length !== 0) {
-			return [this.helpers.returnJsonArray(timeEntries)];
-		}
-
+	};
 		return null;
 	}
 
