@@ -1,6 +1,5 @@
 import { hashSync, genSaltSync } from 'bcryptjs';
 import express = require('express');
-import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
@@ -10,23 +9,27 @@ import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import { Role } from '../../src/databases/entities/Role';
 import { randomEmail, randomValidPassword, randomName } from './shared/random';
-import { getGlobalOwnerRole } from './shared/utils';
+import { getGlobalOwnerRole } from './shared/testDb';
+import * as testDb from './shared/testDb';
 
 let globalOwnerRole: Role;
 
 let app: express.Application;
+let testDbName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
-	await utils.initTestDb();
-	await utils.truncate(['User']);
+	const initResult = await testDb.init();
+	testDbName = initResult.testDbName;
+
+	await testDb.truncate(['User'], testDbName);
 
 	globalOwnerRole = await getGlobalOwnerRole();
-	utils.initLogger();
+	utils.initTestLogger();
 });
 
 beforeEach(async () => {
-	await utils.createUser({
+	await testDb.createUser({
 		id: uuid(),
 		email: TEST_USER.email,
 		firstName: TEST_USER.firstName,
@@ -44,11 +47,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate(['User']);
+	await testDb.truncate(['User'], testDbName);
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await testDb.terminate(testDbName);
 });
 
 test('POST /login should log user in', async () => {

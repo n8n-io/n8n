@@ -42,8 +42,6 @@ export async function getInstanceOwner(): Promise<User> {
 	return owner;
 }
 
-export const isEmailSetUp = Boolean(config.get('userManagement.emails.mode'));
-
 /**
  * Return the n8n instance base URL without trailing slash.
  */

@@ -1,5 +1,4 @@
 import express = require('express');
-import { getConnection } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import * as utils from './shared/utils';
@@ -13,20 +12,24 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import { Role } from '../../src/databases/entities/Role';
+import * as testDb from './shared/testDb';
 
 let app: express.Application;
 let globalOwnerRole: Role;
+let testDbName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
-	await utils.initTestDb();
-	await utils.truncate(['User']);
+	const initResult = await testDb.init();
+	testDbName = initResult.testDbName;
+
+	await testDb.truncate(['User'], testDbName);
 
 	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
 		name: 'owner',
 		scope: 'global',
 	});
-	utils.initLogger();
+	utils.initTestLogger();
 });
 
 beforeEach(async () => {
@@ -37,7 +40,7 @@ beforeEach(async () => {
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
 
-	await utils.createUser({
+	await testDb.createUser({
 		id: INITIAL_TEST_USER.id,
 		email: INITIAL_TEST_USER.email,
 		password: INITIAL_TEST_USER.password,
@@ -48,11 +51,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate(['User']);
+	await testDb.truncate(['User'], testDbName);
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await testDb.terminate(testDbName);
 });
 
 test('POST /forgot-password should send password reset email', async () => {

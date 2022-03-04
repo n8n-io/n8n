@@ -1,9 +1,8 @@
 import express = require('express');
-import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
+import { compare } from 'bcryptjs';
 
-import * as utils from './shared/utils';
 import { Db } from '../../src';
 import config = require('../../config');
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
@@ -14,13 +13,13 @@ import {
 	randomName,
 	randomInvalidPassword,
 } from './shared/random';
-import { createMemberShell, createUser } from './shared/utils';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
-import * as UMHelper from '../../src/UserManagement/UserManagementHelper';
-import { compare } from 'bcryptjs';
+import * as utils from './shared/utils';
+import * as testDb from './shared/testDb';
 
 let app: express.Application;
+let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
@@ -28,14 +27,15 @@ let credentialOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
-	await utils.initTestDb();
+	const initResult = await testDb.init();
+	testDbName = initResult.testDbName;
 
 	const [
 		fetchedGlobalOwnerRole,
 		fetchedGlobalMemberRole,
 		fetchedWorkflowOwnerRole,
 		fetchedCredentialOwnerRole,
-	] = await utils.getAllRoles();
+	] = await testDb.getAllRoles();
 
 	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
@@ -46,13 +46,15 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await utils.truncate(['User', 'Workflow', 'Credentials', 'SharedCredentials', 'SharedWorkflow']);
+	// do not combine calls - shared tables must be cleared first and separately
+	await testDb.truncate(['SharedCredentials', 'SharedWorkflow'], testDbName);
+	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
 
 	jest.isolateModules(() => {
 		jest.mock('../../config');
 	});
 
-	await createUser({
+	await testDb.createUser({
 		id: INITIAL_TEST_USER.id,
 		email: INITIAL_TEST_USER.email,
 		password: INITIAL_TEST_USER.password,
@@ -63,19 +65,17 @@ beforeEach(async () => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
-	// @ts-ignore hack because config doesn't change for helper
-	UMHelper.isEmailSetUp = false;
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await testDb.terminate(testDbName);
 });
 
 test('GET /users should return all users', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	await createUser();
+	await testDb.createUser();
 
 	const response = await authOwnerAgent.get('/users');
 
@@ -111,7 +111,7 @@ test('DELETE /users/:id should delete the user', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const userToDelete = await createUser();
+	const userToDelete = await testDb.createUser();
 
 	const newWorkflow = new WorkflowEntity();
 
@@ -119,6 +119,7 @@ test('DELETE /users/:id should delete the user', async () => {
 		name: randomName(),
 		active: false,
 		connections: {},
+		nodes: [],
 	});
 
 	const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
@@ -169,7 +170,7 @@ test('DELETE /users/:id should delete the user', async () => {
 	const workflow = await Db.collections.Workflow!.findOne(savedWorkflow.id);
 	expect(workflow).toBeUndefined(); // deleted
 
-	// TODO: also include active workflow and check whether webhook has been removed
+	// TODO: Include active workflow and check whether webhook has been removed
 
 	const credential = await Db.collections.Credentials!.findOne(savedCredential.id);
 	expect(credential).toBeUndefined(); // deleted
@@ -191,7 +192,7 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const { id: idToDelete } = await createUser();
+	const { id: idToDelete } = await testDb.createUser();
 
 	const response = await authOwnerAgent.delete(`/users/${idToDelete}`).query({
 		transferId: idToDelete,
@@ -224,6 +225,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 		name: randomName(),
 		active: false,
 		connections: {},
+		nodes: [],
 	});
 
 	const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
@@ -278,7 +280,7 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const { id: inviteeId } = await createMemberShell();
+	const { id: inviteeId } = await testDb.createMemberShell();
 
 	const response = await authOwnerAgent
 		.get('/resolve-signup-token')
@@ -300,7 +302,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const { id: inviteeId } = await createUser();
+	const { id: inviteeId } = await testDb.createUser();
 
 	const first = await authOwnerAgent
 		.get('/resolve-signup-token')
@@ -308,11 +310,12 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 
 	const second = await authOwnerAgent.get('/resolve-signup-token').query({ inviteeId });
 
-	const third = await authOwnerAgent
-		.get('/resolve-signup-token')
-		.query({ inviterId: '123', inviteeId: '456' });
+	const third = await authOwnerAgent.get('/resolve-signup-token').query({
+		inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
+		inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
+	});
 
-	// user is already setup, thus call should error
+	// user is already set up, so call should error
 	const fourth = await authOwnerAgent
 		.get('/resolve-signup-token')
 		.query({ inviterId: INITIAL_TEST_USER.id })
@@ -452,8 +455,6 @@ test('POST /users should email invites and create user shells', async () => {
 		smtp: { host, port, secure },
 	} = await utils.getSmtpTestAccount();
 
-	// @ts-ignore hack because config doesn't change for helper
-	UMHelper.isEmailSetUp = true;
 	config.set('userManagement.emails.mode', 'smtp');
 	config.set('userManagement.emails.smtp.host', host);
 	config.set('userManagement.emails.smtp.port', port);
@@ -490,8 +491,6 @@ test('POST /users should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	// @ts-ignore hack because config doesn't change for helper
-	UMHelper.isEmailSetUp = true;
 	config.set('userManagement.emails.mode', 'smtp');
 
 	const invalidPayloads = [
@@ -515,8 +514,6 @@ test('POST /users should ignore an empty payload', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	// @ts-ignore hack because config doesn't change for helper
-	UMHelper.isEmailSetUp = true;
 	config.set('userManagement.emails.mode', 'smtp');
 
 	const response = await authOwnerAgent.post('/users').send([]);

@@ -1,8 +1,8 @@
 import express = require('express');
-import { getConnection } from 'typeorm';
 import validator from 'validator';
 
 import * as utils from './shared/utils';
+import * as testDb from './shared/testDb';
 import { Db } from '../../src';
 import config = require('../../config');
 import {
@@ -13,24 +13,26 @@ import {
 } from './shared/random';
 
 let app: express.Application;
+let testDbName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
-	await utils.initTestDb();
+	const initResult = await testDb.init();
+	testDbName = initResult.testDbName;
 
-	utils.initLogger();
+	utils.initTestLogger();
 });
 
 beforeEach(async () => {
-	await utils.createOwnerShell();
+	await testDb.createOwnerShell();
 });
 
 afterEach(async () => {
-	await utils.truncate(['User']);
+	await testDb.truncate(['User'], testDbName);
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await testDb.terminate(testDbName);
 });
 
 test('POST /owner should create owner and enable isInstanceOwnerSetUp', async () => {
