@@ -9,9 +9,6 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.get('database.tablePrefix');
 
-		await queryRunner.query('SET @@GLOBAL.FOREIGN_KEY_CHECKS=1;');
-		await queryRunner.query('SET @@SESSION.FOREIGN_KEY_CHECKS=1;');
-
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}role (
 				\`id\` int NOT NULL AUTO_INCREMENT,
