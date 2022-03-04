@@ -226,8 +226,8 @@ const router = new Router({
 			props: {
 				messageKey: 'PAGE_NOT_FOUND_MESSAGE',
 				errorCode: 404,
-				redirectTextKey: 'GO_TO_EDITOR',
-				redirectPage: 'NodeViewNew',
+				redirectTextKey: 'GO_BACK',
+				redirectPage: 'Homepage',
 			},
 			meta: {
 				nodeView: true,
