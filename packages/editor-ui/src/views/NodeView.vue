@@ -729,12 +729,18 @@ export default mixins(
 					// Open workflow dialog
 					e.stopPropagation();
 					e.preventDefault();
+					if (this.isDemo) {
+						return;
+					}
 
 					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
 					e.preventDefault();
+					if (this.isDemo) {
+						return;
+					}
 
 					if (this.$router.currentRoute.name === 'NodeViewNew') {
 						this.$root.$emit('newWorkflow');
