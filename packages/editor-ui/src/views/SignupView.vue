@@ -97,7 +97,7 @@ export default mixins(
 				const inviteeId = this.$route.query.inviteeId;
 				await this.$store.dispatch('users/signup', {...values, inviterId, inviteeId});
 
-				await this.$router.push({ name: 'SigninView' });
+				await this.$router.push({ name: 'Homepage' });
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('SET_UP_ACCOUNT_ERROR'));
 			}
