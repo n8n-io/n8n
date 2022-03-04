@@ -1144,7 +1144,7 @@
 	"PASSWORD_UPDATE_SUCCESS_MESSAGE": "You can now sign in with your new password",
 	"PERSONAL": "Personal",
 	"PERSONAL_SETTINGS": "Personal Settings",
-	"PERSONAL_SETTINGS_UPDATED_SUCCESS": "Updated your details",
+	"PERSONAL_SETTINGS_UPDATED_SUCCESS": "Personal details updated",
 	"PERSONAL_SETTINGS_UPDATE_ERROR": "Problem updating your details",
 	"RECOVERY_EMAIL_SENT": "Recovery email sent",
 	"RECOVER_PASSWORD": "Recover password",
