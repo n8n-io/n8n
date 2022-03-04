@@ -34,7 +34,7 @@ export default mixins(showMessage).extend({
 		Telemetry,
 	},
 	computed: {
-		...mapGetters('settings', ['isInternalUser', 'isTemplatesEnabled', 'isTemplatesEndpointReachable']),
+		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable']),
 		isRootPath(): boolean {
 			return this.$route.path === '/';
 		},
@@ -72,7 +72,7 @@ export default mixins(showMessage).extend({
 			await this.initSettings();
 			await this.initTemplates();
 
-			if (!this.isInternalUser && this.$route.name !== 'WorkflowDemo') {
+			if (this.isHiringBannerEnabled && this.$route.name !== 'WorkflowDemo') {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
