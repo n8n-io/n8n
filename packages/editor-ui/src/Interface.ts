@@ -596,7 +596,7 @@ export interface IN8nUISettings {
 	telemetry: ITelemetrySettings;
 	defaultLocale: string;
 	logLevel: ILogLevel;
-	deploymentType: string;
+	hiringBannerEnabled: boolean;
 	templates: {
 		enabled: boolean;
 		host: string;
