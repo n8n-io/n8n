@@ -604,8 +604,8 @@ const config = convict({
 			smtp: {
 				host: {
 					doc: 'SMTP server host',
-					format: String,
-					default: '', // e.g. smtp.gmail.com
+					format: String, // e.g. smtp.gmail.com
+					default: '',
 					env: 'N8N_SMTP_HOST',
 				},
 				port: {
