@@ -28,7 +28,6 @@ export class EmeliaTrigger implements INodeType {
 		description: 'Handle Emelia campaign activity events via webhooks',
 		defaults: {
 			name: 'Emelia Trigger',
-			color: '#e18063',
 		},
 		inputs: [],
 		outputs: ['main'],

@@ -61,7 +61,6 @@ export class Zoom implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Zoom',
-			color: '#0B6CF9',
 		},
 		icon: 'file:zoom.svg',
 		inputs: ['main'],

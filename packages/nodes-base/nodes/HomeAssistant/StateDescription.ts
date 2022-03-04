@@ -43,7 +43,10 @@ export const stateFields: INodeProperties[] = [
 	{
 		displayName: 'Entity ID',
 		name: 'entityId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getAllEntities',
+		},
 		displayOptions: {
 			show: {
 				operation: [
@@ -110,7 +113,10 @@ export const stateFields: INodeProperties[] = [
 	{
 		displayName: 'Entity ID',
 		name: 'entityId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getAllEntities',
+		},
 		displayOptions: {
 			show: {
 				operation: [

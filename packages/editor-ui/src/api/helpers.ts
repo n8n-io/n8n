@@ -93,3 +93,7 @@ export async function makeRestApiRequest(context: IRestApiContext, method: Metho
 export async function get(baseURL: string, endpoint: string, params?: IDataObject, headers?: IDataObject) {
 	return await request({method: 'GET', baseURL, endpoint, headers, data: params});
 }
+
+export async function post(baseURL: string, endpoint: string, params?: IDataObject, headers?: IDataObject) {
+	return await request({method: 'POST', baseURL, endpoint, headers, data: params});
+}

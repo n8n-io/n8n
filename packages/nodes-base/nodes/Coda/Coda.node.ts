@@ -43,7 +43,6 @@ export class Coda implements INodeType {
 		description: 'Consume Coda API',
 		defaults: {
 			name: 'Coda',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

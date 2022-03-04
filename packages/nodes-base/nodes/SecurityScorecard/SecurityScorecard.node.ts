@@ -57,7 +57,6 @@ export class SecurityScorecard implements INodeType {
 		description: 'Consume SecurityScorecard API',
 		defaults: {
 			name: 'SecurityScorecard',
-			color: '#619e73',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
