@@ -223,7 +223,7 @@ export async function odooGet(
 	fieldsToReturn?: IDataObject[],
 ) {
 	try {
-		if (!parseInt(itemsID, 10)) {
+		if (!/^\d+$/.test(itemsID) || !parseInt(itemsID, 10)) {
 			throw new NodeApiError(this.getNode(), {
 				status: 'Error',
 				message: `Please specify a valid ID: ${itemsID}`,
@@ -314,6 +314,12 @@ export async function odooUpdate(
 				message: `Please specify at least one field to update`,
 			});
 		}
+		if (!/^\d+$/.test(itemsID) || !parseInt(itemsID, 10)) {
+			throw new NodeApiError(this.getNode(), {
+				status: 'Error',
+				message: `Please specify a valid ID: ${itemsID}`,
+			});
+		}
 		const body = {
 			jsonrpc: '2.0',
 			method: 'call',
@@ -350,6 +356,12 @@ export async function odooDelete(
 	url: string,
 	itemsID: string,
 ) {
+	if (!/^\d+$/.test(itemsID) || !parseInt(itemsID, 10)) {
+		throw new NodeApiError(this.getNode(), {
+			status: 'Error',
+			message: `Please specify a valid ID: ${itemsID}`,
+		});
+	}
 	try {
 		const body = {
 			jsonrpc: '2.0',
