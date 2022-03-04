@@ -28,11 +28,11 @@ export class NodeMailer implements UserManagementMailerImplementation {
 			this.transport.verify((error: Error) => {
 				if (!error) resolve();
 
-				const message = ['There is a problem with your SMTP setup:'];
+				const message = [];
 
-				if (!host) message.push('SMTP host not defined (N8N_SMTP_HOST}).');
-				if (!user) message.push('SMTP user not defined (N8N_SMTP_USER}).');
-				if (!pass) message.push('SMTP pass not defined (N8N_SMTP_PASS}).');
+				if (!host) message.push('SMTP host not defined (N8N_SMTP_HOST).');
+				if (!user) message.push('SMTP user not defined (N8N_SMTP_USER).');
+				if (!pass) message.push('SMTP pass not defined (N8N_SMTP_PASS).');
 
 				reject(new Error(message.join(' ')));
 			});
