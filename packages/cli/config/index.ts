@@ -609,7 +609,7 @@ const config = convict({
 					env: 'N8N_SMTP_HOST',
 				},
 				port: {
-					doc: 'SMTP Server port',
+					doc: 'SMTP server port',
 					format: Number,
 					default: 465,
 					env: 'N8N_SMTP_PORT',
