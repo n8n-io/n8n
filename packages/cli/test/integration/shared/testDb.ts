@@ -111,20 +111,20 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 		return testDb.query('PRAGMA foreign_keys=ON');
 	}
 
-	if (dbType === 'postgresdb') {
-		const map: { [K in keyof IDatabaseCollections]: string } = {
-			Credentials: 'credentials_entity',
-			Workflow: 'workflow_entity',
-			Execution: 'execution_entity',
-			Tag: 'tag_entity',
-			Webhook: 'webhook_entity',
-			Role: 'role',
-			User: 'user',
-			SharedCredentials: 'shared_credentials',
-			SharedWorkflow: 'shared_workflow',
-			Settings: 'settings',
-		};
+	const map: { [K in keyof IDatabaseCollections]: string } = {
+		Credentials: 'credentials_entity',
+		Workflow: 'workflow_entity',
+		Execution: 'execution_entity',
+		Tag: 'tag_entity',
+		Webhook: 'webhook_entity',
+		Role: 'role',
+		User: 'user',
+		SharedCredentials: 'shared_credentials',
+		SharedWorkflow: 'shared_workflow',
+		Settings: 'settings',
+	};
 
+	if (dbType === 'postgresdb') {
 		return Promise.all(
 			entities.map((entity) =>
 				getConnection(testDbName).query(
@@ -139,6 +139,7 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 		await Promise.all(
 			entities.map(async (entity) => {
 				await Db.collections[entity]!.delete({});
+				await getConnection(testDbName).query(`ALTER TABLE ${map[entity]} AUTO_INCREMENT = 1;`);
 			}),
 		);
 	}
