@@ -604,7 +604,7 @@ const config = convict({
 			smtp: {
 				host: {
 					doc: 'SMTP server host',
-					format: String, // e.g. smtp.gmail.com
+					format: String, // e.g. 'smtp.gmail.com'
 					default: '',
 					env: 'N8N_SMTP_HOST',
 				},
@@ -615,20 +615,20 @@ const config = convict({
 					env: 'N8N_SMTP_PORT',
 				},
 				secure: {
-					doc: 'Whether or not to use SSL',
+					doc: 'Whether or not to use SSL for SMTP',
 					format: Boolean,
 					default: true,
 					env: 'N8N_SMTP_SSL',
 				},
 				auth: {
 					user: {
-						doc: 'SMTP Login username',
-						format: String,
+						doc: 'SMTP login username',
+						format: String, // e.g.'you@gmail.com'
 						default: '',
 						env: 'N8N_SMTP_USER',
 					},
 					pass: {
-						doc: 'SMTP Login password',
+						doc: 'SMTP login password',
 						format: String,
 						default: '',
 						env: 'N8N_SMTP_PASS',
