@@ -20,6 +20,7 @@ import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
+import { answersFormatter } from '../utils/transformers';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -92,6 +93,7 @@ export class User {
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
+		transformer: answersFormatter,
 	})
 	personalizationAnswers: IPersonalizationSurveyAnswers | null;
 

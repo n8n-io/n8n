@@ -1,7 +1,4 @@
-import { ConnectionOptions } from 'typeorm';
-
 import config = require('../../../config');
-import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
 
 export const REST_PATH_SEGMENT = config.get('endpoints.rest') as Readonly<string>;
 
@@ -12,17 +9,6 @@ export const AUTHLESS_ENDPOINTS: Readonly<string[]> = [
 	config.get('endpoints.webhookWaiting') as string,
 	config.get('endpoints.webhookTest') as string,
 ];
-
-export const TEST_CONNECTION_OPTIONS: Readonly<ConnectionOptions> = {
-	type: 'sqlite',
-	database: ':memory:',
-	entityPrefix: '',
-	dropSchema: true,
-	migrations: sqliteMigrations,
-	migrationsTableName: 'migrations',
-	migrationsRun: false,
-	logging: false,
-};
 
 export const SUCCESS_RESPONSE_BODY = {
 	data: {
@@ -59,3 +45,15 @@ export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'POST /owner',
 	'POST /owner/skip-setup',
 ];
+
+/**
+ * Name of the connection used for creating and dropping a Postgres DB
+ * for each suite test run.
+ */
+export const BOOTSTRAP_POSTGRES_CONNECTION_NAME: Readonly<string> = 'n8n_bs_postgres';
+
+/**
+ * Name of the connection (and database) used for creating and dropping a MySQL DB
+ * for each suite test run.
+ */
+export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
