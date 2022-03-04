@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import { createConnection, getConnection, ConnectionOptions } from 'typeorm';
 import { Credentials, UserSettings } from 'n8n-core';
 
