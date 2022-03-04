@@ -168,13 +168,6 @@ export const usersDescription = [
 					'If user is an organisation manager or owner, should they receive emails on updates for tickets opened by other organisation users.',
 			},
 			{
-				displayName: 'Custom Fields',
-				name: 'customfield',
-				type: 'json',
-				default: '',
-				description: 'An array of custom fields values, keyed by their ID.',
-			},
-			{
 				displayName: 'Groups',
 				name: 'groups',
 				type: 'json',
@@ -305,13 +298,6 @@ export const usersDescription = [
 					'If user is an organisation manager or owner, should they receive emails on updates for tickets opened by other organisation users.',
 			},
 			{
-				displayName: 'Custom Fields',
-				name: 'customfield',
-				type: 'json',
-				default: '',
-				description: 'An array of custom fields values, keyed by their ID.',
-			},
-			{
 				displayName: 'Groups',
 				name: 'groups',
 				type: 'json',
@@ -411,13 +397,6 @@ export const usersDescription = [
 				type: 'string',
 				default: '',
 				description: 'The two letter language code, like "en".',
-			},
-			{
-				displayName: 'Custom Fields',
-				name: 'customfield',
-				type: 'json',
-				default: '',
-				description: 'An array of custom fields values, keyed by their ID.',
 			},
 			{
 				displayName: 'Start',

@@ -9,6 +9,14 @@ import { organisationsDescription } from './OrganisationsDescription';
 import { ticketsDescription } from './TicketsDescription';
 import { messageDescription } from './MessageDescription';
 
+type customFields = {
+	fields: field[];
+};
+
+type field = {
+	[id: string]: string;
+};
+
 export class Supportpal implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Supportpal',
@@ -19,7 +27,7 @@ export class Supportpal implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Supportpal REST API',
 		defaults: {
-			name: ' Supportpal',
+			name: 'Supportpal',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -120,7 +128,8 @@ export class Supportpal implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: ['create', 'update'],
+						operation: ['create', 'update', 'getAll'],
+						resource: ['user', 'organisation', 'ticket'],
 					},
 				},
 				default: {},
@@ -130,11 +139,11 @@ export class Supportpal implements INodeType {
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name',
-								name: 'name',
+								displayName: 'Field ID',
+								name: 'id',
 								type: 'string',
 								default: '',
-								description: 'Name of the field to set.',
+								description: 'ID of the field to set.',
 							},
 							{
 								displayName: 'Field Value',
@@ -175,6 +184,16 @@ export class Supportpal implements INodeType {
 
 						qs.email = this.getNodeParameter('email', i) as string;
 
+						const customFields= this.getNodeParameter('customFields', i) as customFields;
+
+						if (customFields && customFields.fields && customFields.fields.length > 0) {
+							qs.customfield = [];
+							for (const customField of customFields.fields) {
+								// @ts-ignore
+								qs.customfield[customField.id] = customField.value;
+							}
+						}
+
 						responseData = await supportpalApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = simplify.call(this, responseData, i);
 					}
@@ -186,6 +205,15 @@ export class Supportpal implements INodeType {
 						const userId = this.getNodeParameter('id', i) as string;
 						endpoint = '/api/user/user/' + userId;
 						qs = this.getNodeParameter('optionalFields', i) as IDataObject;
+
+						const customFields= this.getNodeParameter('customFields', i) as customFields;
+						if (customFields && customFields.fields && customFields.fields.length > 0) {
+							qs.customfield = [];
+							for (const customField of customFields.fields) {
+								// @ts-ignore
+								qs.customfield[customField.id] = customField.value;
+							}
+						}
 
 						responseData = await supportpalApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = simplify.call(this, responseData, i);
@@ -219,6 +247,15 @@ export class Supportpal implements INodeType {
 						endpoint = '/api/user/user';
 						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
 
+						const customFields= this.getNodeParameter('customFields', i) as customFields;
+						if (customFields && customFields.fields && customFields.fields.length > 0) {
+							qs.customfield = [];
+							for (const customField of customFields.fields) {
+								// @ts-ignore
+								qs.customfield[customField.id] = customField.value;
+							}
+						}
+
 						responseData = await supportpalApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = simplify.call(this, responseData, i);
 					}
@@ -233,6 +270,15 @@ export class Supportpal implements INodeType {
 
 						qs.name = this.getNodeParameter('name', i) as string;
 
+						const customFields= this.getNodeParameter('customFields', i) as customFields;
+						if (customFields && customFields.fields && customFields.fields.length > 0) {
+							qs.customfield = [];
+							for (const customField of customFields.fields) {
+								// @ts-ignore
+								qs.customfield[customField.id] = customField.value;
+							}
+						}
+
 						responseData = await supportpalApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = simplify.call(this, responseData, i);
 					}
@@ -244,6 +290,15 @@ export class Supportpal implements INodeType {
 						const organisationId = this.getNodeParameter('id', i) as string;
 						endpoint = '/api/user/organisation/' + organisationId;
 						qs = this.getNodeParameter('optionalFields', i) as IDataObject;
+
+						const customFields= this.getNodeParameter('customFields', i) as customFields;
+						if (customFields && customFields.fields && customFields.fields.length > 0) {
+							qs.customfield = [];
+							for (const customField of customFields.fields) {
+								// @ts-ignore
+								qs.customfield[customField.id] = customField.value;
+							}
+						}
 
 						responseData = await supportpalApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = simplify.call(this, responseData, i);
@@ -277,6 +332,15 @@ export class Supportpal implements INodeType {
 						endpoint = '/api/user/organisation';
 						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
 
+						const customFields= this.getNodeParameter('customFields', i) as customFields;
+						if (customFields && customFields.fields && customFields.fields.length > 0) {
+							qs.customfield = [];
+							for (const customField of customFields.fields) {
+								// @ts-ignore
+								qs.customfield[customField.id] = customField.value;
+							}
+						}
+
 						responseData = await supportpalApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = simplify.call(this, responseData, i);
 					}
@@ -296,6 +360,15 @@ export class Supportpal implements INodeType {
 						qs.subject = this.getNodeParameter('subject', i) as string;
 						qs.text = this.getNodeParameter('text', i) as string;
 
+						const customFields= this.getNodeParameter('customFields', i) as customFields;
+						if (customFields && customFields.fields && customFields.fields.length > 0) {
+							qs.customfield = [];
+							for (const customField of customFields.fields) {
+								// @ts-ignore
+								qs.customfield[customField.id] = customField.value;
+							}
+						}
+
 						responseData = await supportpalApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = simplify.call(this, responseData, i);
 					}
@@ -307,6 +380,15 @@ export class Supportpal implements INodeType {
 						const ticketId = this.getNodeParameter('id', i) as string;
 						endpoint = '/api/ticket/ticket/' + ticketId;
 						qs = this.getNodeParameter('optionalFields', i) as IDataObject;
+
+						const customFields= this.getNodeParameter('customFields', i) as customFields;
+						if (customFields && customFields.fields && customFields.fields.length > 0) {
+							qs.customfield = [];
+							for (const customField of customFields.fields) {
+								// @ts-ignore
+								qs.customfield[customField.id] = customField.value;
+							}
+						}
 
 						responseData = await supportpalApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = simplify.call(this, responseData, i);
@@ -339,6 +421,15 @@ export class Supportpal implements INodeType {
 						requestMethod = 'GET';
 						endpoint = '/api/ticket/ticket';
 						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
+
+						const customFields= this.getNodeParameter('customFields', i) as customFields;
+						if (customFields && customFields.fields && customFields.fields.length > 0) {
+							qs.customfield = [];
+							for (const customField of customFields.fields) {
+								// @ts-ignore
+								qs.customfield[customField.id] = customField.value;
+							}
+						}
 
 						responseData = await supportpalApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = simplify.call(this, responseData, i);

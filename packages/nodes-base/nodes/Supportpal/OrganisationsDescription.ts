@@ -68,13 +68,6 @@ export const organisationsDescription = [
 					'The brand the user is being registered to, will use the default brand if not entered.',
 			},
 			{
-				displayName: 'Custom Fields',
-				name: 'customfield',
-				type: 'json',
-				default: '',
-				description: 'An array of custom fields values, keyed by their ID.',
-			},
-			{
 				displayName: 'Country',
 				name: 'country',
 				type: 'string',
@@ -144,13 +137,6 @@ export const organisationsDescription = [
 				description: 'The name of the organisation.',
 			},
 			{
-				displayName: 'Custom Fields',
-				name: 'customfield',
-				type: 'json',
-				default: '',
-				description: 'An array of custom fields values, keyed by their ID.',
-			},
-			{
 				displayName: 'Country',
 				name: 'country',
 				type: 'string',
@@ -218,13 +204,6 @@ export const organisationsDescription = [
 				type: 'number',
 				default: 0,
 				description: 'Search for organisations by the brand they are registered to.',
-			},
-			{
-				displayName: 'Custom Fields',
-				name: 'customfield',
-				type: 'json',
-				default: '',
-				description: 'Search for organisations by their custom field values, key the array by the custom field ID.',
 			},
 			{
 				displayName: 'Start',

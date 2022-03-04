@@ -222,13 +222,6 @@ export const ticketsDescription = [
 				description: 'An array of operator IDs that are watching the new ticket.',
 			},
 			{
-				displayName: 'Custom Fields',
-				name: 'customfield',
-				type: 'json',
-				default: '',
-				description: 'An array of custom fields values, keyed by their ID.',
-			},
-			{
 				displayName: 'CC',
 				name: 'cc',
 				type: 'json',
@@ -375,14 +368,6 @@ export const ticketsDescription = [
 				type: 'number',
 				default: 0,
 				description: 'Manually set the due time on the ticket, set as a UNIX timestamp.',
-			},
-			{
-				displayName: 'Custom Fields',
-				name: 'customfield',
-				type: 'json',
-				default: '',
-				description:
-					'An array of custom fields values, keyed by their ID. (Overwrites existing custom fields).',
 			},
 			{
 				displayName: 'CC',
@@ -532,14 +517,6 @@ export const ticketsDescription = [
 				type: 'boolean',
 				default: false,
 				description: 'Fetch only internal tickets (true) or non-internal tickets (false).',
-			},
-			{
-				displayName: 'Custom Fields',
-				name: 'customfield',
-				type: 'json',
-				default: '',
-				description:
-					'Filter by custom field value, an array keyed by custom field ID with a string or custom field option ID as the value. Performs an equal or contains search depending on the custom field type.',
 			},
 			{
 				displayName: 'Start',
