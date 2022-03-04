@@ -37,7 +37,7 @@ export class MicrosoftTeams implements INodeType {
 		name: 'microsoftTeams',
 		icon: 'file:teams.svg',
 		group: ['input'],
-		version: 1,
+		version: 2,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Microsoft Teams API',
 		defaults: {
