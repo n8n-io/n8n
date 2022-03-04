@@ -208,7 +208,7 @@ export default mixins(genericHelpers).extend({
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.search = search;
-			this.callDebounced('updateSearch', 500, true);
+			this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
 
 			if (search.length === 0) {
 				this.trackSearch();
