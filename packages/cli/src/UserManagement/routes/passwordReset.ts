@@ -9,186 +9,186 @@ import validator from 'validator';
 import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { Db, ResponseHelper } from '../..';
-import { N8nApp } from '../Interfaces';
 import { validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
 import { getBaseUrl } from '../../GenericHelpers';
 import config = require('../../../config');
+import * as Db from '../../Db';
+import * as ResponseHelper from '../../ResponseHelper';
 
-export function passwordResetNamespace(this: N8nApp): void {
-	/**
-	 * Send a password reset email.
-	 *
-	 * Authless endpoint.
-	 */
-	this.app.post(
-		`/${this.restEndpoint}/forgot-password`,
-		ResponseHelper.send(async (req: PasswordResetRequest.Email) => {
-			if (config.get('userManagement.emails.mode') === '') {
-				Logger.debug('Request to send password reset email failed because emailing was not set up');
-				throw new ResponseHelper.ResponseError(
-					'Email sending must be set up in order to request a password reset email',
-					undefined,
-					500,
-				);
-			}
+export const passwordResetController = express.Router();
 
-			const { email } = req.body;
+/**
+ * Send a password reset email.
+ *
+ * Authless endpoint.
+ */
+passwordResetController.post(
+	'/',
+	ResponseHelper.send(async (req: PasswordResetRequest.Email) => {
+		if (config.get('userManagement.emails.mode') === '') {
+			Logger.debug('Request to send password reset email failed because emailing was not set up');
+			throw new ResponseHelper.ResponseError(
+				'Email sending must be set up in order to request a password reset email',
+				undefined,
+				500,
+			);
+		}
 
-			if (!email) {
-				Logger.debug(
-					'Request to send password reset email failed because of missing email in payload',
-					{ payload: req.body },
-				);
-				throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
-			}
+		const { email } = req.body;
 
-			if (!validator.isEmail(email)) {
-				Logger.debug(
-					'Request to send password reset email failed because of invalid email in payload',
-					{ invalidEmail: email },
-				);
-				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
-			}
+		if (!email) {
+			Logger.debug(
+				'Request to send password reset email failed because of missing email in payload',
+				{ payload: req.body },
+			);
+			throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
+		}
 
-			// User should just be able to reset password if one is already present
-			const user = await Db.collections.User!.findOne({ email, password: Not(IsNull()) });
+		if (!validator.isEmail(email)) {
+			Logger.debug(
+				'Request to send password reset email failed because of invalid email in payload',
+				{ invalidEmail: email },
+			);
+			throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
+		}
 
-			if (!user || !user.password) {
-				Logger.debug(
-					'Request to send password reset email failed because no user was found for the provided email',
-					{ invalidEmail: email },
-				);
-				return;
-			}
+		// User should just be able to reset password if one is already present
+		const user = await Db.collections.User!.findOne({ email, password: Not(IsNull()) });
 
-			user.resetPasswordToken = uuid();
+		if (!user || !user.password) {
+			Logger.debug(
+				'Request to send password reset email failed because no user was found for the provided email',
+				{ invalidEmail: email },
+			);
+			return;
+		}
 
-			const { id, firstName, lastName, resetPasswordToken } = user;
+		user.resetPasswordToken = uuid();
 
-			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
+		const { id, firstName, lastName, resetPasswordToken } = user;
 
-			await Db.collections.User!.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
+		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
 
-			const baseUrl = getBaseUrl();
-			const url = new URL('/change-password', baseUrl);
-			url.searchParams.append('userId', id);
-			url.searchParams.append('token', resetPasswordToken);
+		await Db.collections.User!.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
 
-			await UserManagementMailer.getInstance().passwordReset({
-				email,
-				firstName,
-				lastName,
-				passwordResetUrl: url.toString(),
-				domain: baseUrl,
-			});
+		const baseUrl = getBaseUrl();
+		const url = new URL('/change-password', baseUrl);
+		url.searchParams.append('userId', id);
+		url.searchParams.append('token', resetPasswordToken);
 
-			Logger.info('Sent password reset email successfully', { userId: user.id, email });
-		}),
-	);
+		await UserManagementMailer.getInstance().passwordReset({
+			email,
+			firstName,
+			lastName,
+			passwordResetUrl: url.toString(),
+			domain: baseUrl,
+		});
 
-	/**
-	 * Verify password reset token and user ID.
-	 *
-	 * Authless endpoint.
-	 */
-	this.app.get(
-		`/${this.restEndpoint}/resolve-password-token`,
-		ResponseHelper.send(async (req: PasswordResetRequest.Credentials) => {
-			const { token: resetPasswordToken, userId: id } = req.query;
+		Logger.info('Sent password reset email successfully', { userId: user.id, email });
+	}),
+);
 
-			if (!resetPasswordToken || !id) {
-				Logger.debug(
-					'Request to resolve password token failed because of missing password reset token or user ID in query string',
-					{
-						queryString: req.query,
-					},
-				);
-				throw new ResponseHelper.ResponseError('', undefined, 400);
-			}
+/**
+ * Verify password reset token and user ID.
+ *
+ * Authless endpoint.
+ */
+passwordResetController.get(
+	'/resolve-password-token',
+	ResponseHelper.send(async (req: PasswordResetRequest.Credentials) => {
+		const { token: resetPasswordToken, userId: id } = req.query;
 
-			// Timestamp is saved in seconds
-			const currentTimestamp = Math.floor(Date.now() / 1000);
+		if (!resetPasswordToken || !id) {
+			Logger.debug(
+				'Request to resolve password token failed because of missing password reset token or user ID in query string',
+				{
+					queryString: req.query,
+				},
+			);
+			throw new ResponseHelper.ResponseError('', undefined, 400);
+		}
 
-			const user = await Db.collections.User!.findOne({
-				id,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
-			});
+		// Timestamp is saved in seconds
+		const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			if (!user) {
-				Logger.debug(
-					'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
-					{
-						userId: id,
-						resetPasswordToken,
-					},
-				);
-				throw new ResponseHelper.ResponseError('', undefined, 404);
-			}
+		const user = await Db.collections.User!.findOne({
+			id,
+			resetPasswordToken,
+			resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+		});
 
-			Logger.info('Reset-password token resolved successfully', { userId: id });
-		}),
-	);
+		if (!user) {
+			Logger.debug(
+				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+				{
+					userId: id,
+					resetPasswordToken,
+				},
+			);
+			throw new ResponseHelper.ResponseError('', undefined, 404);
+		}
 
-	/**
-	 * Verify password reset token and user ID and update password.
-	 *
-	 * Authless endpoint.
-	 */
-	this.app.post(
-		`/${this.restEndpoint}/change-password`,
-		ResponseHelper.send(async (req: PasswordResetRequest.NewPassword, res: express.Response) => {
-			const { token: resetPasswordToken, userId, password } = req.body;
+		Logger.info('Reset-password token resolved successfully', { userId: id });
+	}),
+);
 
-			if (!resetPasswordToken || !userId || !password) {
-				Logger.debug(
-					'Request to change password failed because of missing user ID or password or reset password token in payload',
-					{
-						payload: req.body,
-					},
-				);
-				throw new ResponseHelper.ResponseError(
-					'Missing user ID or password or reset password token',
-					undefined,
-					400,
-				);
-			}
+/**
+ * Verify password reset token and user ID and update password.
+ *
+ * Authless endpoint.
+ */
+passwordResetController.post(
+	'/change-password',
+	ResponseHelper.send(async (req: PasswordResetRequest.NewPassword, res: express.Response) => {
+		const { token: resetPasswordToken, userId, password } = req.body;
 
-			const validPassword = validatePassword(password);
+		if (!resetPasswordToken || !userId || !password) {
+			Logger.debug(
+				'Request to change password failed because of missing user ID or password or reset password token in payload',
+				{
+					payload: req.body,
+				},
+			);
+			throw new ResponseHelper.ResponseError(
+				'Missing user ID or password or reset password token',
+				undefined,
+				400,
+			);
+		}
 
-			// Timestamp is saved in seconds
-			const currentTimestamp = Math.floor(Date.now() / 1000);
+		const validPassword = validatePassword(password);
 
-			const user = await Db.collections.User!.findOne({
-				id: userId,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
-			});
+		// Timestamp is saved in seconds
+		const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			if (!user) {
-				Logger.debug(
-					'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
-					{
-						userId,
-						resetPasswordToken,
-					},
-				);
-				throw new ResponseHelper.ResponseError('', undefined, 404);
-			}
+		const user = await Db.collections.User!.findOne({
+			id: userId,
+			resetPasswordToken,
+			resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+		});
 
-			await Db.collections.User!.update(userId, {
-				password: hashSync(validPassword, genSaltSync(10)),
-				resetPasswordToken: null,
-				resetPasswordTokenExpiration: null,
-			});
+		if (!user) {
+			Logger.debug(
+				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+				{
+					userId,
+					resetPasswordToken,
+				},
+			);
+			throw new ResponseHelper.ResponseError('', undefined, 404);
+		}
 
-			Logger.info('User password updated successfully', { userId });
+		await Db.collections.User!.update(userId, {
+			password: hashSync(validPassword, genSaltSync(10)),
+			resetPasswordToken: null,
+			resetPasswordTokenExpiration: null,
+		});
 
-			await issueCookie(res, user);
-		}),
-	);
-}
+		Logger.info('User password updated successfully', { userId });
+
+		await issueCookie(res, user);
+	}),
+);

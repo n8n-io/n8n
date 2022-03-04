@@ -14,11 +14,9 @@ import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
-import { Db, ExternalHooks } from '../../../src';
-import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
-import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
+import { Db, ExternalHooks, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
-import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
+
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
@@ -26,6 +24,11 @@ import { credentialsController } from '../../../src/api/credentials.api';
 import type { User } from '../../../src/databases/entities/User';
 import type { EndpointGroup, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import { ownerController } from '../../../src/UserManagement/routes/owner';
+import { meController } from '../../../src/UserManagement/routes/me';
+import { passwordResetController } from '../../../src/UserManagement/routes/passwordReset';
+import { usersController } from '../../../src/UserManagement/routes/users';
+
 
 /**
  * Initialize a test server.
@@ -63,6 +66,10 @@ export function initTestServer({
 	if (routerEndpoints.length) {
 		const map: Record<string, express.Router> = {
 			credentials: credentialsController,
+			owner: ownerController,
+			me: meController,
+			'forgot-password': passwordResetController,
+			users: usersController,
 		};
 
 		for (const group of routerEndpoints) {
@@ -72,10 +79,7 @@ export function initTestServer({
 
 	if (functionEndpoints.length) {
 		const map: Record<string, (this: N8nApp) => void> = {
-			me: meEndpoints,
-			users: usersEndpoints,
 			auth: authEndpoints,
-			passwordReset: passwordResetEndpoints,
 		};
 
 		for (const group of functionEndpoints) {
@@ -95,7 +99,7 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const functionEndpoints: string[] = [];
 
 	endpointGroups.forEach((group) =>
-		(group === 'credentials' ? routerEndpoints : functionEndpoints).push(group),
+		(group === 'auth' ? functionEndpoints : routerEndpoints).push(group),
 	);
 
 	return [routerEndpoints, functionEndpoints];

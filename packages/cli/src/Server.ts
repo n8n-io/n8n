@@ -171,6 +171,10 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { ownerController } from './UserManagement/routes/owner';
+import { meController } from './UserManagement/routes/me';
+import { passwordResetController } from './UserManagement/routes/passwordReset';
+import { usersController } from './UserManagement/routes/users';
 
 require('body-parser-xml')(bodyParser);
 
@@ -682,6 +686,10 @@ class App {
 		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
+		this.app.use(`/${this.restEndpoint}/owner`, ownerController);
+		this.app.use(`/${this.restEndpoint}/me`, meController);
+		this.app.use(`/${this.restEndpoint}/forgot-password`, passwordResetController);
+		this.app.use(`/${this.restEndpoint}/users`, usersController);
 
 		// ----------------------------------------
 		// Healthcheck

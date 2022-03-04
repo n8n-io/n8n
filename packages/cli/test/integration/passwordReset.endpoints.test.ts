@@ -19,7 +19,7 @@ let globalOwnerRole: Role;
 let testDbName = '';
 
 beforeAll(async () => {
-	app = utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
+	app = utils.initTestServer({ endpointGroups: ['forgot-password'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -144,7 +144,7 @@ test('GET /resolve-password-token should succeed with valid inputs', async () =>
 	});
 
 	const response = await authlessAgent
-		.get('/resolve-password-token')
+		.get('/forgot-password/resolve-password-token')
 		.query({ userId: INITIAL_TEST_USER.id, token: resetPasswordToken });
 
 	expect(response.statusCode).toBe(200);
@@ -155,7 +155,7 @@ test('GET /resolve-password-token should fail with invalid inputs', async () => 
 
 	config.set('userManagement.emails.mode', 'smtp');
 
-	const first = await authlessAgent.get('/resolve-password-token').query({ token: uuid() });
+	const first = await authlessAgent.get('/forgot-password/resolve-password-token').query({ token: uuid() });
 
 	const second = await authlessAgent
 		.get('/resolve-password-token')
@@ -172,7 +172,7 @@ test('GET /resolve-password-token should fail if user is not found', async () =>
 	config.set('userManagement.emails.mode', 'smtp');
 
 	const response = await authlessAgent
-		.get('/resolve-password-token')
+		.get('/forgot-password/resolve-password-token')
 		.query({ userId: INITIAL_TEST_USER.id, token: uuid() });
 
 	expect(response.statusCode).toBe(404);
@@ -192,7 +192,7 @@ test('GET /resolve-password-token should fail if token is expired', async () => 
 	config.set('userManagement.emails.mode', 'smtp');
 
 	const response = await authlessAgent
-		.get('/resolve-password-token')
+		.get('/forgot-password/resolve-password-token')
 		.query({ userId: INITIAL_TEST_USER.id, token: resetPasswordToken });
 
 	expect(response.statusCode).toBe(404);
@@ -211,7 +211,7 @@ test('POST /change-password should succeed with valid inputs', async () => {
 
 	const passwordToStore = randomValidPassword();
 
-	const response = await authlessAgent.post('/change-password').send({
+	const response = await authlessAgent.post('/forgot-password/change-password').send({
 		token: resetPasswordToken,
 		userId: INITIAL_TEST_USER.id,
 		password: passwordToStore,
@@ -264,7 +264,7 @@ test('POST /change-password should fail with invalid inputs', async () => {
 	const { password: originalHashedPassword } = await Db.collections.User!.findOneOrFail();
 
 	for (const invalidPayload of invalidPayloads) {
-		const response = await authlessAgent.post('/change-password').query(invalidPayload);
+		const response = await authlessAgent.post('/forgot-password/change-password').query(invalidPayload);
 		expect(response.statusCode).toBe(400);
 
 		const { password: fetchedHashedPassword } = await Db.collections.User!.findOneOrFail();
@@ -285,7 +285,7 @@ test('POST /change-password should fail when token has expired', async () => {
 
 	const passwordToStore = randomValidPassword();
 
-	const response = await authlessAgent.post('/change-password').send({
+	const response = await authlessAgent.post('/forgot-password/change-password').send({
 		token: resetPasswordToken,
 		userId: INITIAL_TEST_USER.id,
 		password: passwordToStore,

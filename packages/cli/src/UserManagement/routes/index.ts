@@ -14,12 +14,8 @@ import { authenticationMethods } from './auth';
 import config = require('../../../config');
 import { AUTH_COOKIE_NAME } from '../../constants';
 import { issueCookie, resolveJwtContent } from '../auth/jwt';
-import { meNamespace } from './me';
-import { usersNamespace } from './users';
-import { passwordResetNamespace } from './passwordReset';
 import { AuthenticatedRequest } from '../../requests';
-import { ownerController } from './owner';
-import { isAuthExcluded, isPostUsersId, isAuthenticatedRequest } from '../UserManagementHelper';
+import { isAuthExcluded, isPostUsersId } from '../UserManagementHelper';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	// needed for testing; not adding overhead since it directly returns if req.cookies exists
@@ -74,37 +70,6 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
-	this.app.use((req: Request | AuthenticatedRequest, res: Response, next: NextFunction) => {
-		// req.user is empty for public routes, so just proceed
-		// owner can do anything, so proceed as well
-		if (!req.user || (isAuthenticatedRequest(req) && req.user.globalRole.name === 'owner')) {
-			next();
-			return;
-		}
-		// Not owner and user exists. We now protect restricted urls.
-		const postRestrictedUrls = [`/${this.restEndpoint}/users`, `/${this.restEndpoint}/owner`];
-		const getRestrictedUrls = [`/${this.restEndpoint}/users`];
-		const trimmedUrl = req.url.endsWith('/') ? req.url.slice(0, -1) : req.url;
-		if (
-			(req.method === 'POST' && postRestrictedUrls.includes(trimmedUrl)) ||
-			(req.method === 'GET' && getRestrictedUrls.includes(trimmedUrl)) ||
-			(req.method === 'DELETE' &&
-				new RegExp(`/${restEndpoint}/users/[^/]+`, 'gm').test(trimmedUrl)) ||
-			(req.method === 'POST' &&
-				new RegExp(`/${restEndpoint}/users/[^/]+/reinvite`, 'gm').test(trimmedUrl)) ||
-			new RegExp(`/${restEndpoint}/owner/[^/]+`, 'gm').test(trimmedUrl)
-		) {
-			Logger.verbose('User attempted to access endpoint without authorization', {
-				endpoint: `${req.method} ${trimmedUrl}`,
-				userId: isAuthenticatedRequest(req) ? req.user.id : 'unknown',
-			});
-			res.status(403).json({ status: 'error', message: 'Unauthorized' });
-			return;
-		}
-
-		next();
-	});
-
 	// middleware to refresh cookie before it expires
 	this.app.use(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 		const cookieAuth = options.jwtFromRequest(req);
@@ -119,8 +84,4 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	});
 
 	authenticationMethods.apply(this);
-	this.app.use(`/${this.restEndpoint}`, ownerController);
-	meNamespace.apply(this);
-	passwordResetNamespace.apply(this);
-	usersNamespace.apply(this);
 }

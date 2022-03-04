@@ -9,15 +9,31 @@ import config = require('../../../config');
 import { validateEntity } from '../../GenericHelpers';
 import { AuthenticatedRequest, OwnerRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
-import { sanitizeUser, validatePassword } from '../UserManagementHelper';
-import { ResponseError, send } from '../../ResponseHelper';
-import { collections } from '../../Db';
+import { isAuthenticatedRequest, sanitizeUser, validatePassword } from '../UserManagementHelper';
+import * as ResponseHelper from '../../ResponseHelper';
+import * as Db from '../../Db';
 
 export const ownerController = express.Router();
 
+ownerController.use(
+	(
+		req: express.Request | AuthenticatedRequest,
+		res: express.Response,
+		next: express.NextFunction,
+	) => {
+		if (isAuthenticatedRequest(req) && req.user.globalRole.name === 'owner') {
+			next();
+			return;
+		}
+
+		// Deny everything else
+		res.status(403).json({ status: 'error', message: 'Unauthorized' });
+	},
+);
+
 ownerController.post(
-	'/owner',
-	send(async (req: OwnerRequest.Post, res: express.Response) => {
+	'/',
+	ResponseHelper.send(async (req: OwnerRequest.Post, res: express.Response) => {
 		const { email, firstName, lastName, password } = req.body;
 		const { id: userId } = req.user;
 
@@ -28,7 +44,7 @@ ownerController.post(
 					userId,
 				},
 			);
-			throw new ResponseError('Invalid request', undefined, 400);
+			throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 		}
 
 		if (!email || !validator.isEmail(email)) {
@@ -36,7 +52,7 @@ ownerController.post(
 				userId,
 				invalidEmail: email,
 			});
-			throw new ResponseError('Invalid email address', undefined, 400);
+			throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 		}
 
 		const validPassword = validatePassword(password);
@@ -46,10 +62,10 @@ ownerController.post(
 				'Request to claim instance ownership failed because of missing first name or last name in payload',
 				{ userId, payload: req.body },
 			);
-			throw new ResponseError('First and last names are mandatory', undefined, 400);
+			throw new ResponseHelper.ResponseError('First and last names are mandatory', undefined, 400);
 		}
 
-		let owner = await collections.User!.findOne(userId, {
+		let owner = await Db.collections.User!.findOne(userId, {
 			relations: ['globalRole'],
 		});
 
@@ -60,7 +76,7 @@ ownerController.post(
 					userId,
 				},
 			);
-			throw new ResponseError('Invalid request', undefined, 400);
+			throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 		}
 
 		owner = Object.assign(owner, {
@@ -72,11 +88,11 @@ ownerController.post(
 
 		await validateEntity(owner);
 
-		owner = await collections.User!.save(owner);
+		owner = await Db.collections.User!.save(owner);
 
 		Logger.info('Owner was set up successfully', { userId: req.user.id });
 
-		await collections.Settings!.update(
+		await Db.collections.Settings!.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
 			{ value: JSON.stringify(true) },
 		);
@@ -95,10 +111,10 @@ ownerController.post(
  * Persist that the instance owner setup has been skipped
  */
 ownerController.post(
-	'/owner/skip-setup',
+	'/skip-setup',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	send(async (_req: AuthenticatedRequest, _res: express.Response) => {
-		await collections.Settings!.update(
+	ResponseHelper.send(async (_req: AuthenticatedRequest, _res: express.Response) => {
+		await Db.collections.Settings!.update(
 			{ key: 'userManagement.skipInstanceOwnerSetup' },
 			{ value: JSON.stringify(true) },
 		);

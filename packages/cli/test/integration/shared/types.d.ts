@@ -13,7 +13,7 @@ export type SmtpTestAccount = {
 	};
 };
 
-type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials';
+type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'forgot-password' | 'credentials';
 
 export type CredentialPayload = {
 	name: string;

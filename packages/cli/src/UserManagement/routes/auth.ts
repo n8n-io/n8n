@@ -3,13 +3,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Request, Response } from 'express';
 import { compare } from 'bcryptjs';
-import { IDataObject } from 'n8n-workflow';
+import { In } from 'typeorm';
+import { IDataObject, LoggerProxy as Logger } from 'n8n-workflow';
 import { Db, ResponseHelper } from '../..';
 import { AUTH_COOKIE_NAME } from '../../constants';
 import { issueCookie, resolveJwt } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
+import { UserRequest } from '../../requests';
 
 export function authenticationMethods(this: N8nApp): void {
 	/**
@@ -112,6 +114,62 @@ export function authenticationMethods(this: N8nApp): void {
 			return {
 				loggedOut: true,
 			};
+		}),
+	);
+
+	/**
+	 * Validate invite token to enable invitee to set up their account.
+	 *
+	 * Authless endpoint.
+	 */
+	this.app.get(
+		`/${this.restEndpoint}/resolve-signup-token`,
+		ResponseHelper.send(async (req: UserRequest.ResolveSignUp) => {
+			const { inviterId, inviteeId } = req.query;
+
+			if (!inviterId || !inviteeId) {
+				Logger.debug(
+					'Request to resolve signup token failed because of missing user IDs in query string',
+					{ inviterId, inviteeId },
+				);
+				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
+			}
+
+			const users = await Db.collections.User!.find({ where: { id: In([inviterId, inviteeId]) } });
+
+			if (users.length !== 2) {
+				Logger.debug(
+					'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
+					{ inviterId, inviteeId },
+				);
+				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
+			}
+
+			const invitee = users.find((user) => user.id === inviteeId);
+
+			if (!invitee || invitee.password) {
+				Logger.error('Invalid invite URL - invitee already setup', {
+					inviterId,
+					inviteeId,
+				});
+				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+			}
+
+			const inviter = users.find((user) => user.id === inviterId);
+
+			if (!inviter || !inviter.email || !inviter.firstName) {
+				Logger.error(
+					'Request to resolve signup token failed because inviter does not exist or is not set up',
+					{
+						inviterId: inviter?.id,
+					},
+				);
+				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+			}
+
+			const { firstName, lastName } = inviter;
+
+			return { inviter: { firstName, lastName } };
 		}),
 	);
 }

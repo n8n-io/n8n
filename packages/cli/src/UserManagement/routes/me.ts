@@ -6,133 +6,131 @@ import express = require('express');
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { Db, ResponseHelper } from '../..';
 import { issueCookie } from '../auth/jwt';
-import { N8nApp, PublicUser } from '../Interfaces';
+import { PublicUser } from '../Interfaces';
 import { validatePassword, sanitizeUser } from '../UserManagementHelper';
 import type { AuthenticatedRequest, MeRequest } from '../../requests';
 import { validateEntity } from '../../GenericHelpers';
 import { User } from '../../databases/entities/User';
+import * as ResponseHelper from '../../ResponseHelper';
+import * as Db from '../../Db';
 
-export function meNamespace(this: N8nApp): void {
-	/**
-	 * Return the logged-in user.
-	 */
-	this.app.get(
-		`/${this.restEndpoint}/me`,
-		ResponseHelper.send(async (req: AuthenticatedRequest): Promise<PublicUser> => {
-			return sanitizeUser(req.user);
-		}),
-	);
+export const meController = express.Router();
 
-	/**
-	 * Update the logged-in user's settings, except password.
-	 */
-	this.app.patch(
-		`/${this.restEndpoint}/me`,
-		ResponseHelper.send(
-			async (req: MeRequest.Settings, res: express.Response): Promise<PublicUser> => {
-				if (!req.body.email) {
-					Logger.debug('Request to update user email failed because of missing email in payload', {
-						userId: req.user.id,
-						payload: req.body,
-					});
-					throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
-				}
+/**
+ * Return the logged-in user.
+ */
+meController.get(
+	'/',
+	ResponseHelper.send(async (req: AuthenticatedRequest): Promise<PublicUser> => {
+		return sanitizeUser(req.user);
+	}),
+);
 
-				if (!validator.isEmail(req.body.email)) {
-					Logger.debug('Request to update user email failed because of invalid email in payload', {
-						userId: req.user.id,
-						invalidEmail: req.body.email,
-					});
-					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
-				}
-
-				const newUser = new User();
-
-				Object.assign(newUser, req.user, req.body);
-
-				await validateEntity(newUser);
-
-				const user = await Db.collections.User!.save(newUser);
-
-				Logger.info('User updated successfully', { userId: user.id });
-
-				await issueCookie(res, user);
-
-				return sanitizeUser(user);
-			},
-		),
-	);
-
-	/**
-	 * Update the logged-in user's password.
-	 */
-	this.app.patch(
-		`/${this.restEndpoint}/me/password`,
-		ResponseHelper.send(async (req: MeRequest.Password, res: express.Response) => {
-			const { currentPassword, newPassword } = req.body;
-
-			if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
-				throw new ResponseHelper.ResponseError('Invalid payload.', undefined, 400);
+/**
+ * Update the logged-in user's settings, except password.
+ */
+meController.patch(
+	'/',
+	ResponseHelper.send(
+		async (req: MeRequest.Settings, res: express.Response): Promise<PublicUser> => {
+			if (!req.body.email) {
+				Logger.debug('Request to update user email failed because of missing email in payload', {
+					userId: req.user.id,
+					payload: req.body,
+				});
+				throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 			}
 
-			if (!req.user.password) {
-				throw new ResponseHelper.ResponseError('Requesting user not set up.');
+			if (!validator.isEmail(req.body.email)) {
+				Logger.debug('Request to update user email failed because of invalid email in payload', {
+					userId: req.user.id,
+					invalidEmail: req.body.email,
+				});
+				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 			}
 
-			const isCurrentPwCorrect = await compare(currentPassword, req.user.password);
-			if (!isCurrentPwCorrect) {
-				throw new ResponseHelper.ResponseError(
-					'Provided current password is incorrect.',
-					undefined,
-					400,
-				);
-			}
+			const newUser = new User();
 
-			const validPassword = validatePassword(newPassword);
+			Object.assign(newUser, req.user, req.body);
 
-			req.user.password = hashSync(validPassword, genSaltSync(10));
+			await validateEntity(newUser);
 
-			const user = await Db.collections.User!.save(req.user);
-			Logger.info('Password updated successfully', { userId: user.id });
+			const user = await Db.collections.User!.save(newUser);
+
+			Logger.info('User updated successfully', { userId: user.id });
 
 			await issueCookie(res, user);
 
-			return { success: true };
-		}),
-	);
+			return sanitizeUser(user);
+		},
+	),
+);
 
-	/**
-	 * Store the logged-in user's survey answers.
-	 */
-	this.app.post(
-		`/${this.restEndpoint}/me/survey`,
-		ResponseHelper.send(async (req: MeRequest.SurveyAnswers) => {
-			const { body: personalizationAnswers } = req;
+/**
+ * Update the logged-in user's password.
+ */
+meController.patch(
+	'/password',
+	ResponseHelper.send(async (req: MeRequest.Password, res: express.Response) => {
+		const { currentPassword, newPassword } = req.body;
 
-			if (!personalizationAnswers) {
-				Logger.debug(
-					'Request to store user personalization survey failed because of empty payload',
-					{
-						userId: req.user.id,
-					},
-				);
-				throw new ResponseHelper.ResponseError(
-					'Personalization answers are mandatory',
-					undefined,
-					400,
-				);
-			}
+		if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+			throw new ResponseHelper.ResponseError('Invalid payload.', undefined, 400);
+		}
 
-			await Db.collections.User!.save({
-				id: req.user.id,
-				personalizationAnswers,
+		if (!req.user.password) {
+			throw new ResponseHelper.ResponseError('Requesting user not set up.');
+		}
+
+		const isCurrentPwCorrect = await compare(currentPassword, req.user.password);
+		if (!isCurrentPwCorrect) {
+			throw new ResponseHelper.ResponseError(
+				'Provided current password is incorrect.',
+				undefined,
+				400,
+			);
+		}
+
+		const validPassword = validatePassword(newPassword);
+
+		req.user.password = hashSync(validPassword, genSaltSync(10));
+
+		const user = await Db.collections.User!.save(req.user);
+		Logger.info('Password updated successfully', { userId: user.id });
+
+		await issueCookie(res, user);
+
+		return { success: true };
+	}),
+);
+
+/**
+ * Store the logged-in user's survey answers.
+ */
+meController.post(
+	'/survey',
+	ResponseHelper.send(async (req: MeRequest.SurveyAnswers) => {
+		const { body: personalizationAnswers } = req;
+
+		if (!personalizationAnswers) {
+			Logger.debug('Request to store user personalization survey failed because of empty payload', {
+				userId: req.user.id,
 			});
+			throw new ResponseHelper.ResponseError(
+				'Personalization answers are mandatory',
+				undefined,
+				400,
+			);
+		}
 
-			Logger.info('User survey updated successfully', { userId: req.user.id });
+		await Db.collections.User!.save({
+			id: req.user.id,
+			personalizationAnswers,
+		});
 
-			return { success: true };
-		}),
-	);
-}
+		Logger.info('User survey updated successfully', { userId: req.user.id });
+
+		return { success: true };
+	}),
+);
