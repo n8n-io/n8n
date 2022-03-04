@@ -127,15 +127,8 @@ export default mixins(showMessage).extend({
 				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
 				cb(!!updatedTag);
 
-				const escapedName = escape(name);
-				const escapedOldName = escape(oldName);
-
 				this.$showMessage({
 					title: this.$locale.baseText('tagsManager.showMessage.onUpdate.title'),
-					message: this.$locale.baseText(
-						'tagsManager.showMessage.onUpdate.message',
-						{ interpolate: { escapedName, escapedOldName } },
-					),
 					type: "success",
 				});
 			} catch (error) {
@@ -168,13 +161,8 @@ export default mixins(showMessage).extend({
 
 				cb(deleted);
 
-				const escapedName = escape(name);
 				this.$showMessage({
 					title: this.$locale.baseText('tagsManager.showMessage.onDelete.title'),
-					message: this.$locale.baseText(
-						'tagsManager.showMessage.onDelete.message',
-						{ interpolate: { escapedName } },
-					),
 					type: "success",
 				});
 			} catch (error) {

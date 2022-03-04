@@ -291,6 +291,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.url = requestObject.url?.toString() as string;
 	}
 
+	if (requestObject.baseURL !== undefined) {
+		axiosConfig.baseURL = requestObject.baseURL?.toString() as string;
+	}
+
 	if (requestObject.method !== undefined) {
 		axiosConfig.method = requestObject.method as Method;
 	}
@@ -496,6 +500,9 @@ function digestAuthAxiosConfig(
 		const realm: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
 			.replace(/"/g, '');
+		const opaque: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1)[1]
+			.replace(/"/g, '');
 		const nonce: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
 			.replace(/"/g, '');
@@ -515,7 +522,7 @@ function digestAuthAxiosConfig(
 		const authorization =
 			`Digest username="${auth?.username as string}",realm="${realm}",` +
 			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
-			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
+			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}",opaque="${opaque}"`;
 		if (axiosConfig.headers) {
 			axiosConfig.headers.authorization = authorization;
 		} else {
