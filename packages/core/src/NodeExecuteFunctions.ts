@@ -1133,19 +1133,24 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  * if some objects contain json/binary keys and others don't, throws error 'Inconsistent item format'
  *
  * @export
- * @param {INodeExecutionData[]} items
+ * @param {INodeExecutionData[]} executionData
  * @returns {INodeExecutionData[]}
  */
-export function normalizeItemsInArray(items: INodeExecutionData[]): INodeExecutionData[] {
-	if (items.every((item) => typeof item === 'object' && 'json' in item)) return items;
+export function normalizeItemsInArray(
+	executionData: INodeExecutionData | INodeExecutionData[],
+): INodeExecutionData[] {
+	if (typeof executionData === 'object' && !Array.isArray(executionData))
+		executionData = [{ json: executionData as IDataObject }];
+	if (executionData.every((item) => typeof item === 'object' && 'json' in item))
+		return executionData;
 
-	if (items.some((item) => typeof item === 'object' && 'json' in item)) {
+	if (executionData.some((item) => typeof item === 'object' && 'json' in item)) {
 		throw new Error('Inconsistent item format');
 	}
 
-	if (items.every((item) => typeof item === 'object' && 'binary' in item)) {
+	if (executionData.every((item) => typeof item === 'object' && 'binary' in item)) {
 		const normalizedItems: INodeExecutionData[] = [];
-		items.forEach((item) => {
+		executionData.forEach((item) => {
 			const json = Object.keys(item).reduce((acc, key) => {
 				if (key === 'binary') return acc;
 				return { ...acc, [key]: item[key] };
@@ -1159,11 +1164,11 @@ export function normalizeItemsInArray(items: INodeExecutionData[]): INodeExecuti
 		return normalizedItems;
 	}
 
-	if (items.some((item) => typeof item === 'object' && 'binary' in item)) {
+	if (executionData.some((item) => typeof item === 'object' && 'binary' in item)) {
 		throw new Error('Inconsistent item format');
 	}
 
-	return items.map((item) => {
+	return executionData.map((item) => {
 		return { json: item };
 	});
 }
