@@ -1,4 +1,4 @@
-FROM node:14.15-alpine
+FROM node:16-alpine
 
 ARG N8N_VERSION
 
@@ -12,7 +12,7 @@ USER root
 
 # Install n8n and the also temporary all the packages
 # it needs to build it correctly.
-RUN apk --update add --virtual build-dependencies python build-base ca-certificates && \
+RUN apk --update add --virtual build-dependencies python3 build-base ca-certificates && \
 	npm_config_user=root npm install -g full-icu n8n@${N8N_VERSION} && \
 	apk del build-dependencies \
 	&& rm -rf /root /tmp/* /var/cache/apk/* && mkdir /root;
