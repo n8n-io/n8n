@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -61,6 +62,7 @@ export class GoogleCalendar implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Calendar',
@@ -72,7 +74,7 @@ export class GoogleCalendar implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			...calendarOperations,
 			...calendarFields,
@@ -622,7 +624,7 @@ export class GoogleCalendar implements INodeType {
 					// Return the actual reason as error
 					returnData.push(
 						{
-							error: error.message,
+							error: (error as JsonObject).message,
 						},
 					);
 					continue;
