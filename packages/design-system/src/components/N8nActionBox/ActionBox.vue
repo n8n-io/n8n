@@ -3,7 +3,7 @@
 		<span :class="$style.emoji">{{props.emoji}}</span>
 		<div :class="$style.description">
 			<component :is="$options.components.N8nHeading" size="xlarge">{{ props.heading }}</component>
-			<component :is="$options.components.N8nText" >{{ props.description }}</component>
+			<component :is="$options.components.N8nText" color="text-base">{{ props.description }}</component>
 		</div>
 		<component :is="$options.components.N8nButton" :label="props.buttonText" size="large"
 			@click="(e) => listeners.click && listeners.click(e)"

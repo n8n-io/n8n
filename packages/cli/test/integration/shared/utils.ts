@@ -7,7 +7,6 @@ import { URL } from 'url';
 import bodyParser = require('body-parser');
 import * as util from 'util';
 import { createTestAccount } from 'nodemailer';
-import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
 import { Credentials, UserSettings } from 'n8n-core';
 import { getConnection } from 'typeorm';
@@ -192,38 +191,18 @@ async function saveCredential(
 /**
  * Store a user in the DB, defaulting to a `member`.
  */
-export async function createUser(
-	{
-		id,
-		email,
-		password,
-		firstName,
-		lastName,
-		role,
-	}: {
-		id: string;
-		email: string;
-		password: string;
-		firstName: string;
-		lastName: string;
-		role?: Role;
-	} = {
-		id: uuid(),
-		email: randomEmail(),
-		password: randomValidPassword(),
-		firstName: randomName(),
-		lastName: randomName(),
-	},
-) {
-	const globalRole = role ?? (await getGlobalMemberRole());
-	return Db.collections.User!.save({
-		id,
-		email,
-		password,
-		firstName,
-		lastName,
-		globalRole,
-	});
+export async function createUser(attributes: Partial<User> = {}): Promise<User> {
+	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
+	const user = {
+		email: email ?? randomEmail(),
+		password: password ?? randomValidPassword(),
+		firstName: firstName ?? randomName(),
+		lastName: lastName ?? randomName(),
+		globalRole: globalRole ?? (await getGlobalMemberRole()),
+		...rest,
+	};
+
+	return Db.collections.User!.save(user);
 }
 
 export async function createOwnerShell(): Promise<User> {

@@ -158,7 +158,7 @@ export default mixins(showMessage).extend({
 					this.$showMessage({
 						type: 'success',
 						title: this.$locale.baseText(invitedEmails.success.length > 1 ? 'USERS_INVITED_SUCCESS' : 'USER_INVITED_SUCCESS'),
-						message: this.$locale.baseText('EMAIL_INVITES_SENT', { interpolate: { emails: invitedEmails.success.join(',') }}),
+						message: this.$locale.baseText('EMAIL_INVITES_SENT', { interpolate: { emails: invitedEmails.success.join(', ') }}),
 					});
 				}
 
@@ -167,7 +167,7 @@ export default mixins(showMessage).extend({
 						this.$showMessage({
 							type: 'error',
 							title: this.$locale.baseText(invitedEmails.error.length > 1 ? 'USERS_INVITED_ERROR': 'USER_INVITED_ERROR'),
-							message: this.$locale.baseText('EMAIL_INVITES_SENT_ERROR', { interpolate: { emails: invitedEmails.error.join(',') }}),
+							message: this.$locale.baseText('EMAIL_INVITES_SENT_ERROR', { interpolate: { emails: invitedEmails.error.join(', ') }}),
 						});
 					}, 0); // notifications stack on top of each other otherwise
 				}

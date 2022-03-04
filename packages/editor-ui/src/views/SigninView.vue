@@ -75,7 +75,7 @@ export default mixins(
 					}
 				}
 
-				this.$router.push({ name: 'NodeViewNew' });
+				this.$router.push({ name: 'Homepage' });
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('LOGIN_ERROR'));
 				this.loading = false;

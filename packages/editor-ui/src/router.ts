@@ -21,11 +21,35 @@ import { IRootState } from './Interface';
 
 Vue.use(Router);
 
+function getTemplatesRedirect(store: Store<IRootState>) {
+	const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
+	if (!isTemplatesEnabled) {
+		return {name: 'NotFoundView'};
+	}
+
+	return false;
+}
+
 const router = new Router({
 	mode: 'history',
 	// @ts-ignore
 	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
 	routes: [
+		{
+			path: '/',
+			name: 'Homepage',
+			meta: {
+				getRedirect(store: Store<IRootState>) {
+					const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
+					const isTemplatesEndpointReachable: boolean = store.getters['settings/isTemplatesEndpointReachable'];
+					if (isTemplatesEnabled && isTemplatesEndpointReachable) {
+						return {name: 'TemplatesSearchView'};
+					}
+
+					return {name: 'NodeViewNew'};
+				},
+			},
+		},
 		{
 			path: '/collections/:id',
 			name: 'TemplatesCollectionView',
@@ -43,6 +67,7 @@ const router = new Router({
 						};
 					},
 				},
+				getRedirect: getTemplatesRedirect,
 			},
 		},
 		{
@@ -66,6 +91,7 @@ const router = new Router({
 			},
 			meta: {
 				templatesEnabled: true,
+				getRedirect: getTemplatesRedirect,
 				telemetry: {
 					getProperties(route: Route, store: Store<IRootState>) {
 						return {
@@ -85,6 +111,7 @@ const router = new Router({
 			},
 			meta: {
 				templatesEnabled: true,
+				getRedirect: getTemplatesRedirect,
 				telemetry: {
 					getProperties(route: Route, store: Store<IRootState>) {
 						return {
@@ -135,6 +162,7 @@ const router = new Router({
 			},
 			meta: {
 				templatesEnabled: true,
+				getRedirect: getTemplatesRedirect,
 			},
 		},
 		{
@@ -198,8 +226,8 @@ const router = new Router({
 			props: {
 				messageKey: 'PAGE_NOT_FOUND_MESSAGE',
 				errorCode: 404,
-				redirectTextKey: 'GO_TO_EDITOR',
-				redirectPage: 'NodeViewNew',
+				redirectTextKey: 'GO_BACK',
+				redirectPage: 'Homepage',
 			},
 			meta: {
 				nodeView: true,

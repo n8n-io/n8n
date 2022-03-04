@@ -17,6 +17,11 @@ export const LOGIN_STATUS: {LoggedIn: ILogInStatus, LoggedOut: ILogInStatus} = {
 
 export const PERMISSIONS: IUserPermissions = {
 	ROUTES: {
+		Homepage: {
+			allow: {
+				loginStatus: [LOGIN_STATUS.LoggedIn],
+			},
+		},
 		ExecutionById: {
 			allow: {
 				loginStatus: [LOGIN_STATUS.LoggedIn],

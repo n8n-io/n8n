@@ -15,7 +15,7 @@
 			<div v-if="showUMSetupWarning" :class="$style.setupInfoContainer">
 				<n8n-action-box
 					emoji="😿"
-					:heading="$locale.baseText('USER_MANAGEMENT_MISSING_WARNING')"
+					:heading="$locale.baseText('SET_UP_TO_INVITE_USERS_MESSAGE')"
 					:description="$locale.baseText('SET_UP_TO_INVITE_USERS_WARNING')"
 					:buttonText="$locale.baseText('SET_UP_MY_ACCOUNT')"
 					@click="redirectToSetup"
