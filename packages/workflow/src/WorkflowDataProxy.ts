@@ -241,7 +241,7 @@ export class WorkflowDataProxy {
 			runIndex =
 				runIndex === -1 ? that.runExecutionData.resultData.runData[nodeName].length - 1 : runIndex;
 
-			if (that.runExecutionData.resultData.runData[nodeName].length < runIndex) {
+			if (that.runExecutionData.resultData.runData[nodeName].length <= runIndex) {
 				throw new Error(`Run ${runIndex} of node "${nodeName}" not found`);
 			}
 
@@ -274,7 +274,7 @@ export class WorkflowDataProxy {
 				outputIndex = 0;
 			}
 
-			if (taskData.main.length < outputIndex) {
+			if (taskData.main.length <= outputIndex) {
 				throw new Error(`Node "${nodeName}" has no branch with index ${outputIndex}.`);
 			}
 
@@ -515,20 +515,20 @@ export class WorkflowDataProxy {
 									}
 									let errorMessage = '';
 
-									if (!branchIndex && !runIndex) {
+									if (branchIndex === undefined && runIndex === undefined) {
 										errorMessage = `
 											No item found at index ${itemIndex}
 											(for node "${nodeName}")`;
 										throw new Error(errorMessage);
 									}
-									if (!branchIndex) {
+									if (branchIndex === undefined) {
 										errorMessage = `
 											No item found at index ${itemIndex}
 											in run ${runIndex || that.runIndex}
 											(for node "${nodeName}")`;
 										throw new Error(errorMessage);
 									}
-									if (!runIndex) {
+									if (runIndex === undefined) {
 										errorMessage = `
 											No item found at index ${itemIndex}
 											of branch ${branchIndex || 0}
