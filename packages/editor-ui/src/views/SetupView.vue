@@ -78,10 +78,16 @@ export default mixins(
 	methods: {
 		async onSubmit(values: {[key: string]: string}) {
 			try {
+				const forceRedirectedHere = this.$store.getters['settings/showSetupPage'];
 				this.loading = true;
 				await this.$store.dispatch('users/createOwner', values);
+				if (forceRedirectedHere) {
+					await this.$router.push({ name: 'Homepage' });
+				}
+				else {
+					await this.$router.push({ name: 'UsersSettings' });
+				}
 
-				await this.$router.push({ name: 'NodeViewNew' });
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('SETTING_UP_OWNER_ERROR'));
 			}
