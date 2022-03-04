@@ -20,6 +20,7 @@ import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
+import { answersFormatter } from '../utils/transformers';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -92,15 +93,7 @@ export class User {
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
-		transformer: {
-			to: (answers: object) => answers,
-			from: (answers: object | string) => {
-				// Postgres stores and returns string
-				return typeof answers === 'string'
-					? (JSON.parse(answers) as IPersonalizationSurveyAnswers)
-					: answers;
-			},
-		},
+		transformer: answersFormatter,
 	})
 	personalizationAnswers: IPersonalizationSurveyAnswers | null;
 
