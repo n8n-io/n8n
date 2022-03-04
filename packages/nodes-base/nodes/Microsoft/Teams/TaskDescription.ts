@@ -47,10 +47,43 @@ export const taskOperations: INodeProperties[] = [
 ];
 
 export const taskFields: INodeProperties[] = [
+	{
+		displayName: 'Group Source',
+		name: 'groupSource',
+		required: true,
+		type: 'options',
+		default: 'all',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+					'create',
+					'update',
+				],
+				resource: [
+					'task',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'All Groups',
+				value: 'all',
+				description: 'From all groups',
+			},
+			{
+				name: 'My Groups',
+				value: 'mine',
+				description: 'Only load groups that account is member of.',
+			},
+		],
+	},
+
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
+
 	{
 		displayName: 'Group ID',
 		name: 'groupId',
@@ -58,6 +91,9 @@ export const taskFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
+			loadOptionsDependsOn: [
+				'groupSource',
+			],
 		},
 		displayOptions: {
 			show: {
@@ -94,7 +130,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Plan.',
+		description: 'The plan for the task to belong to.',
 	},
 	{
 		displayName: 'Bucket ID',
@@ -118,7 +154,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Bucket.',
+		description: 'The bucket for the task to belong to.',
 	},
 	{
 		displayName: 'Title',
@@ -166,14 +202,14 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Who the task should be assigned to.',
 			},
 			{
 				displayName: 'Due Date Time',
 				name: 'dueDateTime',
 				type: 'dateTime',
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
 				displayName: 'Labels',
@@ -186,7 +222,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Labels to assign to the task',
 			},
 			{
 				displayName: 'Percent Complete',
@@ -197,7 +233,7 @@ export const taskFields: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 0,
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 		],
 	},
@@ -249,6 +285,36 @@ export const taskFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
+
+	{
+		displayName: 'Tasks For',
+		name: 'tasksFor',
+		default: 'member',
+		required: true,
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'task',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Group Member',
+				value: 'member',
+				description: 'Tasks assigned to group member',
+			},
+			{
+				name: 'Plan',
+				value: 'plan',
+				description: 'Tasks in group plan',
+			},
+		],
+	},
 	{
 		displayName: 'Group ID',
 		name: 'groupId',
@@ -256,6 +322,9 @@ export const taskFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
+			loadOptionsDependsOn: [
+				'groupSource',
+			],
 		},
 		displayOptions: {
 			show: {
@@ -288,6 +357,36 @@ export const taskFields: INodeProperties[] = [
 				],
 				resource: [
 					'task',
+				],
+				tasksFor: [
+					'member',
+				],
+			},
+		},
+		default: '',
+		description: 'Member ID',
+	},
+	{
+		displayName: 'Plan ID',
+		name: 'planId',
+		required: false,
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getPlans',
+			loadOptionsDependsOn: [
+				'groupId',
+			],
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'task',
+				],
+				tasksFor: [
+					'plan',
 				],
 			},
 		},
@@ -385,26 +484,38 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Who the task should be assigned to.',
 			},
 			{
 				displayName: 'Bucket ID',
 				name: 'bucketId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getBuckets',
+					loadOptionsDependsOn: [
+						'updateFields.planId',
+					],
+				},
 				default: '',
-				description: 'Channel name as it will appear to the user in Microsoft Teams.',
+				description: 'The bucket for the task to belong to.',
 			},
 			{
 				displayName: 'Due Date Time',
 				name: 'dueDateTime',
 				type: 'dateTime',
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
 				displayName: 'Group ID',
 				name: 'groupId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getGroups',
+					loadOptionsDependsOn: [
+						'groupSource',
+					],
+				},
 				default: '',
 				description: 'Group ID',
 			},
@@ -415,11 +526,11 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 					loadOptionsDependsOn: [
-						'planId',
+						'updateFields.planId',
 					],
 				},
 				default: [],
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Labels to assign to the task',
 			},
 			{
 				displayName: 'Percent Complete',
@@ -430,14 +541,20 @@ export const taskFields: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 0,
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 			{
 				displayName: 'Plan ID',
 				name: 'planId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getPlans',
+					loadOptionsDependsOn: [
+						'groupId',
+					],
+				},
 				default: '',
-				description: 'Channel name as it will appear to the user in Microsoft Teams.',
+				description: 'The plan for the task to belong to.',
 			},
 			{
 				displayName: 'Title',
