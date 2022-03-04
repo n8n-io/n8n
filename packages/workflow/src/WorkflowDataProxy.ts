@@ -477,14 +477,7 @@ export class WorkflowDataProxy {
 		};
 
 		const base = {
-			//------------------------------------------------------------------------------------------------
 			$: (nodeName: string) => {
-				// $(nodeName).item() // Same as pairedItem()
-				// $(nodeName).item(itemIndex?, branchIndex?, runIndex?)
-				// $(nodeName).first(branchIndex?, runIndex?)
-				// $(nodeName).last(branchIndex?, runIndex?)
-				// $(nodeName).all(branchIndex?, runIndex?)
-
 				if (!nodeName) {
 					throw new Error(`When calling $(), please specify a node`);
 				}
@@ -576,13 +569,8 @@ export class WorkflowDataProxy {
 					},
 				);
 			},
-			//------------------------------------------------------------------------------------------------
+
 			$input: new Proxy(
-				// $input.thisItem
-				// $input.item(itemIndex?)
-				// $input.first()
-				// $input.last()
-				// $input.all()
 				{},
 				{
 					get(target, property, receiver) {
@@ -632,7 +620,6 @@ export class WorkflowDataProxy {
 			),
 
 			$thisItem: that.connectionInputData[that.itemIndex],
-			//------------------------------------------------------------------------------------------------
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
 			$env: this.envGetter(),
