@@ -15,7 +15,7 @@ export default async () => {
 		);
 
 		const promises = results
-			.filter(({ db_name }) => db_name.startsWith('n8n_test_pg_'))
+			.filter(({ db_name }) => db_name.startsWith('pg_') && db_name.endsWith('_n8n_test'))
 			.map(({ db_name }) => bootstrap.query(`DROP DATABASE ${db_name};`));
 
 		await Promise.all(promises);

@@ -46,7 +46,7 @@ export async function init() {
 			process.exit(1);
 		}
 
-		const testDbName = `n8n_test_pg_${Date.now()}`;
+		const testDbName = `pg_${Date.now()}_n8n_test`;
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName};`);
 
 		await Db.init(getPostgresOptions({ name: testDbName }));
@@ -57,7 +57,7 @@ export async function init() {
 	if (dbType === 'mysqldb') {
 		const bootstrapMysql = await createConnection(getBootstrapMySqlOptions());
 
-		const testDbName = `n8n_test_mysql_${Date.now()}`;
+		const testDbName = `mysql_${Date.now()}_n8n_test`;
 		await bootstrapMysql.query(`CREATE DATABASE ${testDbName};`);
 
 		await Db.init(getMySqlOptions({ name: testDbName }));
