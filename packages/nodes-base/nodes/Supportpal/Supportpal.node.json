@@ -1,0 +1,20 @@
+{
+  "node": "n8n-nodes-base.supportpal",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "details": "Supportpal is a helpdesk application.",
+
+  "categories": ["Communication"],
+  "resources": {
+    "credentialDocumentation": [
+      {
+        "url": "https://docs.n8n.io/credentials/supportpal/"
+      }
+    ],
+    "primaryDocumentation": [
+      {
+        "url": "https://docs.n8n.io/nodes/n8n-nodes-base.supportpal/"
+      }
+    ]
+  }
+}
