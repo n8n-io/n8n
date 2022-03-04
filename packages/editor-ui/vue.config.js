@@ -1,5 +1,4 @@
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
-const webpack = require('webpack');
 
 module.exports = {
 	chainWebpack: config => {
@@ -27,7 +26,6 @@ module.exports = {
 		},
 		plugins: [
 			new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] }),
-			new webpack.NormalModuleReplacementPlugin(/element-ui[\/\\]lib[\/\\]locale[\/\\]lang[\/\\]zh-CN/, 'element-ui/lib/locale/lang/en'),
 		],
 	},
 	css: {
