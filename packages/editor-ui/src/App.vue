@@ -40,9 +40,6 @@ export default mixins(
 	computed: {
 		...mapGetters('settings', ['isInternalUser', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['canCurrentUserAccessView', 'currentUser']),
-		isRootPath(): boolean {
-			return this.$route.path === '/';
-		},
 	},
 	data() {
 		return {
@@ -70,22 +67,23 @@ export default mixins(
 			} catch (e) {}
 		},
 		async initTemplates(): Promise<void> {
+			if (!this.isTemplatesEnabled) {
+				return;
+			}
+
 			try {
-				const templatesPromise = this.$store.dispatch('settings/testTemplatesEndpoint');
-				if (this.isRootPath) { // only delay loading to determine redirect
-					await templatesPromise;
-				}
+				await this.$store.dispatch('settings/testTemplatesEndpoint');
 			} catch (e) {
+			}
+		},
+		logHiringBanner() {
+			if (!this.isInternalUser && this.$route.name !== 'WorkflowDemo') {
+				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
 		async initialize(): Promise<void> {
 			await this.initSettings();
-			await this.loginWithCookie();
-			await this.initTemplates();
-
-			if (!this.isInternalUser && this.$route.name !== 'WorkflowDemo') {
-				console.log(HIRING_BANNER); // eslint-disable-line no-console
-			}
+			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
 		trackPage() {
 			this.$store.commit('ui/setCurrentView', this.$route.name);
@@ -101,7 +99,6 @@ export default mixins(
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once
 			if (this.isUserManagementEnabled && this.showSetupPage) {
-				this.loading = false;
 				if (this.$route.name === 'SetupView') {
 					return;
 				}
@@ -110,52 +107,46 @@ export default mixins(
 				return;
 			}
 
-			if (this.$route.name === 'SetupView' && !this.isUserManagementEnabled) {
-				this.$router.replace('/');
-
-				this.loading = false;
-				return;
-			}
-
 			if (this.canCurrentUserAccessView(this.$router.currentRoute.name)) {
-				this.loading = false;
-
 				return;
 			}
 
+			// if cannot access page and not logged in, ask to sign in
 			const user = this.currentUser as IUser | null;
 			if (!user) {
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
 				this.$router.replace({ name: 'SigninView', query: { redirect } });
-			} else {
-				if (typeof this.$route.query.redirect === 'string') {
-					const redirect = decodeURIComponent(this.$route.query.redirect);
-					if (redirect.startsWith('/')) {
-						// protect against phishing
-						this.$router.replace(redirect);
-					}
-				} else {
-					this.$router.replace({ name: 'NodeViewNew' });
+				return;
+			}
+
+			// if cannot access page and is logged in, respect signin redirect
+			if (this.$route.name === 'SigninView' && typeof this.$route.query.redirect === 'string') {
+				const redirect = decodeURIComponent(this.$route.query.redirect);
+				console.log('should redirect', redirect, this.$route.query.redirect);
+				if (redirect.startsWith('/')) { // protect against phishing
+					this.$router.replace(redirect);
+					return;
 				}
 			}
 
-			this.loading = false;
+			// if cannot access page and is logged in
+			this.$router.replace({ name: 'Homepage' });
+		},
+		redirectIfNecessary() {
+			const redirect = this.$route.meta && typeof this.$route.meta.getRedirect === 'function' && this.$route.meta.getRedirect(this.$store);
+			if (redirect) {
+				this.$router.replace(redirect);
+			}
 		},
 	},
 	async mounted() {
+		this.logHiringBanner();
 		await this.initialize();
 		this.authenticate();
+		this.redirectIfNecessary();
 
-		if (this.isTemplatesEnabled && this.isTemplatesEndpointReachable && this.isRootPath) {
-			this.$router.replace({ name: 'TemplatesSearchView'});
-		} else if (this.isRootPath) {
-			this.$router.replace({ name: 'NodeViewNew'});
-		}
-		else if (!this.isTemplatesEnabled && this.$route.meta && this.$route.meta.templatesEnabled) {
-			this.$router.replace({ name: 'NodeViewNew'});
-		}
 		this.loading = false;
 
 		this.trackPage();
@@ -164,6 +155,8 @@ export default mixins(
 	watch: {
 		$route(route) {
 			this.authenticate();
+			this.redirectIfNecessary();
+
 			this.trackPage();
 		},
 	},
