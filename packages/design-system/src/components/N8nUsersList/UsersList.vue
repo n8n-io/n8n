@@ -1,9 +1,9 @@
 <template>
 	<div>
 		<div
-			v-for="user in sortedUsers"
+			v-for="(user, i) in sortedUsers"
 			:key="user.id"
-			:class="$style.itemContainer"
+			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 			<div :class="$style.badgeContainer">
@@ -124,12 +124,16 @@ export default Vue.extend({
 <style lang="scss" module>
 .itemContainer {
 	display: flex;
-	border-bottom: var(--border-base);
 	padding: var(--spacing-2xs) 0 vaR(--spacing-2xs) 0;
 
 	> *:first-child {
 		flex-grow: 1;
 	}
+}
+
+.itemWithBorder {
+	composes: itemContainer;
+	border-bottom: var(--border-base);
 }
 
 .badgeContainer {

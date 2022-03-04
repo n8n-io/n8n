@@ -80,6 +80,6 @@ export default Vue.extend({
 }
 
 .pendingBadge {
-	margin-left: var(--spacing-3xs);
+	margin-left: var(--spacing-xs);
 }
 </style>
