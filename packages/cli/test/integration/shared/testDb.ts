@@ -254,7 +254,7 @@ export function getAllRoles() {
 // ----------------------------------
 
 /**
- * Generate options to for an in-memory sqlite database connection,
+ * Generate options for an in-memory sqlite database connection,
  * one per test suite run.
  */
 export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions => {
@@ -342,7 +342,7 @@ export const getBootstrapMySqlOptions = (): ConnectionOptions => {
 };
 
 /**
- * Generate options to for a MySQL database connection,
+ * Generate options for a MySQL database connection,
  * one per test suite run.
  */
 export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions => {
