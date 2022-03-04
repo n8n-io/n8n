@@ -727,8 +727,12 @@ export default mixins(
 					this.callDebounced('cutSelectedNodes', 1000);
 				} else if (e.key === 'o' && this.isCtrlKeyPressed(e) === true) {
 					// Open workflow dialog
+					if (this.editAllowedCheck() === false) {
+						return;
+					}
 					e.stopPropagation();
 					e.preventDefault();
+					
 
 					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
