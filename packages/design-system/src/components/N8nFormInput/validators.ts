@@ -66,7 +66,7 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 					{ name: 'CONTAINS_NUMBER', config: { minimum: 1 } },
 					{ name: 'CONTAINS_UPPERCASE', config: { minimum: 1 } },
 				],
-				defaultError: 'At least 8 characters with 1 number and 1 uppercase',
+				defaultError: '8+ characters, at least 1 number and 1 capital letter',
 			},
 			{ name: 'MAX_LENGTH', config: {maximum: 64} },
 		],
