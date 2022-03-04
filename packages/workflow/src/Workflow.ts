@@ -1,3 +1,7 @@
+/* eslint-disable no-await-in-loop */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -9,10 +13,12 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
-// eslint-disable-next-line import/no-cycle
+
 import {
 	Expression,
 	IConnections,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
 	INode,
 	INodeExecuteFunctions,
@@ -34,6 +40,7 @@ import {
 	NodeHelpers,
 	NodeParameterValue,
 	ObservableObject,
+	RoutingNode,
 	WebhookSetupMethodNames,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -85,7 +92,8 @@ export class Workflow {
 		let nodeType: INodeType | undefined;
 		for (const node of parameters.nodes) {
 			this.nodes[node.name] = node;
-			nodeType = this.nodeTypes.getByName(node.type);
+
+			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType === undefined) {
 				// Go on to next node when its type is not known.
@@ -197,7 +205,7 @@ export class Workflow {
 				continue;
 			}
 
-			nodeType = this.nodeTypes.getByName(node.type);
+			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType === undefined) {
 				// Type is not known so check is not possible
@@ -227,13 +235,29 @@ export class Workflow {
 	 * @returns {(IWorfklowIssues | null)}
 	 * @memberof Workflow
 	 */
-	checkReadyForExecution(): IWorfklowIssues | null {
+	checkReadyForExecution(inputData: {
+		startNode?: string;
+		destinationNode?: string;
+	}): IWorfklowIssues | null {
 		let node: INode;
 		let nodeType: INodeType | undefined;
 		let nodeIssues: INodeIssues | null = null;
 		const workflowIssues: IWorfklowIssues = {};
 
-		for (const nodeName of Object.keys(this.nodes)) {
+		let checkNodes: string[] = [];
+		if (inputData.destinationNode) {
+			// If a destination node is given we have to check all the nodes
+			// leading up to it
+			checkNodes = this.getParentNodes(inputData.destinationNode);
+			checkNodes.push(inputData.destinationNode);
+		} else if (inputData.startNode) {
+			// If a start node is given we have to check all nodes which
+			// come after it
+			checkNodes = this.getChildNodes(inputData.startNode);
+			checkNodes.push(inputData.startNode);
+		}
+
+		for (const nodeName of checkNodes) {
 			nodeIssues = null;
 			node = this.nodes[nodeName];
 
@@ -241,7 +265,7 @@ export class Workflow {
 				continue;
 			}
 
-			nodeType = this.nodeTypes.getByName(node.type);
+			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType === undefined) {
 				// Node type is not known
@@ -342,7 +366,7 @@ export class Workflow {
 				continue;
 			}
 
-			nodeType = this.nodeTypes.getByName(node.type);
+			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType !== undefined && checkFunction(nodeType)) {
 				returnNodes.push(node);
@@ -395,8 +419,7 @@ export class Workflow {
 					const currentNameEscaped = currentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 					parameterValue = parameterValue.replace(
-						// eslint-disable-next-line no-useless-escape
-						new RegExp(`(\\$node(\.|\\["|\\[\'))${currentNameEscaped}((\.|"\\]|\'\\]))`, 'g'),
+						new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.|"\\]|'\\]))`, 'g'),
 						`$1${newName}$3`,
 					);
 				}
@@ -712,7 +735,7 @@ export class Workflow {
 		if (node === null) {
 			return undefined;
 		}
-		const nodeType = this.nodeTypes.getByName(node.type) as INodeType;
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 		if (nodeType.description.outputs.length === 1) {
 			// If the parent node has only one output, it can only be connected
 			// to that one. So no further checking is required.
@@ -787,7 +810,8 @@ export class Workflow {
 		let nodeType: INodeType;
 		for (const nodeName of nodeNames) {
 			node = this.nodes[nodeName];
-			nodeType = this.nodeTypes.getByName(node.type) as INodeType;
+
+			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 			if (nodeType.trigger !== undefined || nodeType.poll !== undefined) {
 				if (node.disabled === true) {
@@ -860,7 +884,7 @@ export class Workflow {
 		isTest?: boolean,
 	): Promise<boolean | undefined> {
 		const node = this.getNode(webhookData.node) as INode;
-		const nodeType = this.nodeTypes.getByName(node.type) as INodeType;
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 		if (nodeType.webhookMethods === undefined) {
 			return;
@@ -907,7 +931,7 @@ export class Workflow {
 	): Promise<ITriggerResponse | undefined> {
 		const triggerFunctions = getTriggerFunctions(this, node, additionalData, mode, activation);
 
-		const nodeType = this.nodeTypes.getByName(node.type);
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (nodeType === undefined) {
 			throw new Error(`The node type "${node.type}" of node "${node.name}" is not known.`);
@@ -926,10 +950,23 @@ export class Workflow {
 
 			// Add the manual trigger response which resolves when the first time data got emitted
 			triggerResponse!.manualTriggerResponse = new Promise((resolve) => {
-				// eslint-disable-next-line @typescript-eslint/no-shadow
-				triggerFunctions.emit = ((resolve) => (data: INodeExecutionData[][]) => {
-					resolve(data);
-				})(resolve);
+				triggerFunctions.emit = (
+					(resolveEmit) =>
+					(
+						data: INodeExecutionData[][],
+						responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+					) => {
+						additionalData.hooks!.hookFunctions.sendResponse = [
+							async (response: IExecuteResponsePromiseData): Promise<void> => {
+								if (responsePromise) {
+									responsePromise.resolve(response);
+								}
+							},
+						];
+
+						resolveEmit(data);
+					}
+				)(resolve);
 			});
 
 			return triggerResponse;
@@ -947,11 +984,12 @@ export class Workflow {
 	 * @returns
 	 * @memberof Workflow
 	 */
+
 	async runPoll(
 		node: INode,
 		pollFunctions: IPollFunctions,
 	): Promise<INodeExecutionData[][] | null> {
-		const nodeType = this.nodeTypes.getByName(node.type);
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (nodeType === undefined) {
 			throw new Error(`The node type "${node.type}" of node "${node.name}" is not known.`);
@@ -984,7 +1022,7 @@ export class Workflow {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 	): Promise<IWebhookResponseData> {
-		const nodeType = this.nodeTypes.getByName(node.type);
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
 			throw new Error(`The type of the webhook node "${node.name}" is not known.`);
 		} else if (nodeType.webhook === undefined) {
@@ -1036,13 +1074,17 @@ export class Workflow {
 			return undefined;
 		}
 
-		const nodeType = this.nodeTypes.getByName(node.type);
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
 			throw new Error(`Node type "${node.type}" is not known so can not run it!`);
 		}
 
 		let connectionInputData: INodeExecutionData[] = [];
-		if (nodeType.execute || nodeType.executeSingle) {
+		if (
+			nodeType.execute ||
+			nodeType.executeSingle ||
+			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
+		) {
 			// Only stop if first input is empty for execute & executeSingle runs. For all others run anyways
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
@@ -1181,6 +1223,19 @@ export class Workflow {
 		} else if (nodeType.webhook) {
 			// For webhook nodes always simply pass the data through
 			return inputData.main as INodeExecutionData[][];
+		} else {
+			// For nodes which have routing information on properties
+
+			const routingNode = new RoutingNode(
+				this,
+				node,
+				connectionInputData,
+				runExecutionData ?? null,
+				additionalData,
+				mode,
+			);
+
+			return routingNode.runNode(inputData, runIndex, nodeType, nodeExecuteFunctions);
 		}
 
 		return null;

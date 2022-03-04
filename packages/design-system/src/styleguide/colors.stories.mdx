@@ -44,7 +44,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="success">
 		{{
-			template: `<color-circles :colors="['--color-success', '--color-success-tint-1', '--color-success-tint-2']" />`,
+			template: `<color-circles :colors="['--color-success', '--color-success-tint-1', '--color-success-tint-2', '--color-success-light']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -109,7 +109,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="foreground">
 		{{
-			template: `<color-circles :colors="['--color-foreground-base', '--color-foreground-light', '--color-foreground-xlight']" />`,
+			template: `<color-circles :colors="['--color-foreground-xdark', '--color-foreground-dark', '--color-foreground-base', '--color-foreground-light', '--color-foreground-xlight']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -123,6 +123,19 @@ import ColorCircles from './ColorCircles.vue';
 	<Story name="background">
 		{{
 			template: `<color-circles :colors="['--color-background-dark', '--color-background-base', '--color-background-light', '--color-background-lighter', '--color-background-xlight']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
+
+## Canvas
+
+<Canvas>
+	<Story name="canvas">
+		{{
+			template: `<color-circles :colors="['--color-canvas-background', '--color-canvas-dot']" />`,
 			components: {
 				ColorCircles,
 			},

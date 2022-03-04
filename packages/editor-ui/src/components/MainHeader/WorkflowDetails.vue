@@ -33,7 +33,7 @@
 				@blur="onTagsBlur"
 				@update="onTagsUpdate"
 				@esc="onTagsEditEsc"
-				placeholder="Choose or create a tag"
+				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 				ref="dropdown"
 				class="tags-edit"
 			/>
@@ -46,7 +46,7 @@
 				class="add-tag clickable"
 				@click="onTagsEditEnable"
 			>
-				+ Add tag
+				+ {{ $locale.baseText('workflowDetails.addTag') }}
 			</span>
 		</div>
 		<TagsContainer
@@ -62,13 +62,13 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<span>Active:</span>
-					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
+					<span>{{ $locale.baseText('workflowDetails.active') + ':' }}</span>
+					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId"/>
 				</span>
 				<SaveButton
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
-					@click="saveCurrentWorkflow"
+					@click="onSaveButtonClick"
 				/>
 			</template>
 		</PushConnectionTracker>
@@ -135,11 +135,15 @@ export default mixins(workflowHelpers).extend({
 		isWorkflowSaving(): boolean {
 			return this.$store.getters.isActionActive("workflowSaving");
 		},
-		currentWorkflowId() {
+		currentWorkflowId(): string {
 			return this.$route.params.name;
 		},
 	},
 	methods: {
+		async onSaveButtonClick () {
+			const saved = await this.saveCurrentWorkflow();
+			if (saved) this.$store.dispatch('settings/fetchPromptsData');
+		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;
 			this.$data.isTagsEditEnabled = true;
@@ -168,6 +172,8 @@ export default mixins(workflowHelpers).extend({
 			this.$data.tagsSaving = true;
 
 			const saved = await this.saveCurrentWorkflow({ tags });
+			this.$telemetry.track('User edited workflow tags', { workflow_id: this.currentWorkflowId as string, new_tag_count: tags.length });
+
 			this.$data.tagsSaving = false;
 			if (saved) {
 				this.$data.isTagsEditEnabled = false;
@@ -191,8 +197,8 @@ export default mixins(workflowHelpers).extend({
 			const newName = name.trim();
 			if (!newName) {
 				this.$showMessage({
-					title: "Name missing",
-					message: `Please enter a name, or press 'esc' to go back to the old one.`,
+					title: this.$locale.baseText('workflowDetails.showMessage.title'),
+					message: this.$locale.baseText('workflowDetails.showMessage.message'),
 					type: "error",
 				});
 

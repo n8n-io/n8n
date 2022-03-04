@@ -1,18 +1,18 @@
 <template>
 	<span>
-		<el-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" title="About n8n" :before-close="closeDialog">
+		<el-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" :title="$locale.baseText('about.aboutN8n')" :before-close="closeDialog">
 			<div>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						n8n Version:
+						{{ $locale.baseText('about.n8nVersion') }}
 					</el-col>
 					<el-col :span="16">
-						{{versionCli}}
+						{{ versionCli }}
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						Source Code:
+						{{ $locale.baseText('about.sourceCode') }}
 					</el-col>
 					<el-col :span="16">
 						<a href="https://github.com/n8n-io/n8n" target="_blank">https://github.com/n8n-io/n8n</a>
@@ -20,15 +20,17 @@
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						License:
+						{{ $locale.baseText('about.license') }}
 					</el-col>
 					<el-col :span="16">
-						<a href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">Apache 2.0 with Commons Clause</a>
+						<a href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">
+							{{ $locale.baseText('about.apacheWithCommons20Clause') }}
+						</a>
 					</el-col>
 				</el-row>
 
 				<div class="action-buttons">
-					<n8n-button @click="closeDialog" label="Close" />
+					<n8n-button @click="closeDialog" :label="$locale.baseText('about.close')" />
 				</div>
 			</div>
 		</el-dialog>
@@ -67,6 +69,7 @@ export default mixins(
 
 <style scoped lang="scss">
 .n8n-about {
+	font-size: var(--font-size-s);
 	.el-row {
 		padding: 0.25em 0;
 	}

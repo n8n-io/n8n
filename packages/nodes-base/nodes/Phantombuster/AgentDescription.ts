@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const agentOperations = [
+export const agentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const agentOperations = [
 		default: 'launch',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const agentFields = [
+export const agentFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 agent:delete                               */
@@ -176,7 +176,7 @@ export const agentFields = [
 				],
 			},
 		},
-		description: 'By default the outpout is presented as string. If this option gets activated it<br />will resolve the data automatically.',
+		description: 'By default the outpout is presented as string. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -283,7 +283,7 @@ export const agentFields = [
 				],
 			},
 		},
-		description: 'By default the launch just include the container ID. If this option gets activated it<br />will resolve the data automatically.',
+		description: 'By default the launch just include the container ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -448,4 +448,4 @@ export const agentFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

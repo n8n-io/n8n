@@ -16,13 +16,13 @@
 			<component
 				:is="$options.components.N8nSpinner"
 				v-if="props.loading"
-				:size="props.iconSize"
+				:size="props.size"
 			/>
 			<component
 				:is="$options.components.N8nIcon"
 				v-else-if="props.icon"
 				:icon="props.icon"
-				:size="props.iconSize"
+				:size="props.size"
 			/>
 		</span>
 		<span v-if="props.label">{{ props.label }}</span>
@@ -58,7 +58,7 @@ export default {
 			type: String,
 			default: 'medium',
 			validator: (value: string): boolean =>
-				['small', 'medium', 'large'].indexOf(value) !== -1,
+				['mini', 'small', 'medium', 'large', 'xlarge'].indexOf(value) !== -1,
 		},
 		loading: {
 			type: Boolean,
@@ -69,9 +69,6 @@ export default {
 			default: false,
 		},
 		icon: {
-			type: String,
-		},
-		iconSize: {
 			type: String,
 		},
 		round: {

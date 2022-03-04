@@ -11,19 +11,21 @@ import {
 	IExecutionFlattedResponse,
 	IExecutionsListResponse,
 	IExecutionsStopData,
-	IN8nUISettings,
 	IStartRunData,
 	IWorkflowDb,
 	IWorkflowShortResponse,
 	IRestApi,
 	IWorkflowDataUpdate,
+	INodeTranslationHeaders,
 } from '@/Interface';
 import {
 	IDataObject,
+	ILoadOptions,
 	INodeCredentials,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
 } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/api/helpers';
 
@@ -77,28 +79,26 @@ export const restApi = Vue.extend({
 				stopCurrentExecution: (executionId: string): Promise<IExecutionsStopData> => {
 					return self.restApi().makeRestApiRequest('POST', `/executions-current/${executionId}/stop`);
 				},
-				getSettings: (): Promise<IN8nUISettings> => {
-					return self.restApi().makeRestApiRequest('GET', `/settings`);
+
+				getCredentialTranslation: (credentialType): Promise<object> => {
+					return self.restApi().makeRestApiRequest('GET', '/credential-translation', { credentialType });
+				},
+
+				getNodeTranslationHeaders: (): Promise<INodeTranslationHeaders> => {
+					return self.restApi().makeRestApiRequest('GET', '/node-translation-headers');
 				},
 
 				// Returns all node-types
-				getNodeTypes: (): Promise<INodeTypeDescription[]> => {
-					return self.restApi().makeRestApiRequest('GET', `/node-types`);
+				getNodeTypes: (onlyLatest = false): Promise<INodeTypeDescription[]> => {
+					return self.restApi().makeRestApiRequest('GET', `/node-types`, {onlyLatest});
 				},
 
-				getNodesInformation: (nodeList: string[]): Promise<INodeTypeDescription[]> => {
-					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeNames: nodeList});
+				getNodesInformation: (nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]> => {
+					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeInfos});
 				},
 
 				// Returns all the parameter options from the server
-				getNodeParameterOptions: (nodeType: string, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]> => {
-					const sendData = {
-						nodeType,
-						path,
-						methodName,
-						credentials,
-						currentNodeParameters,
-					};
+				getNodeParameterOptions: (sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> => {
 					return self.restApi().makeRestApiRequest('GET', '/node-parameter-options', sendData);
 				},
 
@@ -189,6 +189,11 @@ export const restApi = Vue.extend({
 				// Returns all the available timezones
 				getTimezones: (): Promise<IDataObject> => {
 					return self.restApi().makeRestApiRequest('GET', `/options/timezones`);
+				},
+
+				// Binary data
+				getBinaryBufferString: (dataPath: string): Promise<string> => {
+					return self.restApi().makeRestApiRequest('GET', `/data/${dataPath}`);
 				},
 			};
 		},

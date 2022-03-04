@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const tableRecordOperations = [
+export const tableRecordOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -38,9 +38,9 @@ export const tableRecordOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const tableRecordFields = [
+export const tableRecordFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                tableRecord:create                          */
 	/* -------------------------------------------------------------------------- */
@@ -552,4 +552,4 @@ export const tableRecordFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

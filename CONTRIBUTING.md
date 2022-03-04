@@ -49,6 +49,10 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 ### Requirements
 
+#### Node.js
+
+We suggest using the current [Node.js](https://nodejs.org/en/) LTS version (14.18.0 which includes npm 6.14.15) for development purposes.
+
 #### Build tools
 
 The packages which n8n uses depend on a few build tools:
@@ -83,7 +87,7 @@ npm install -g lerna
 
 ### Actual n8n setup
 
-> **IMPORTANT**: All the steps bellow have to get executed at least once to get the development setup up and running!
+> **IMPORTANT**: All the steps below have to get executed at least once to get the development setup up and running!
 
 Now that everything n8n requires to run is installed the actual n8n code can be
 checked out and set up:

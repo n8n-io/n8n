@@ -122,6 +122,8 @@ module.exports = {
 			'undefined',
 		],
 
+		'no-void': ['error', { 'allowAsStatement': true }],
+
 		// ----------------------------------
 		//        @typescript-eslint
 		// ----------------------------------
@@ -249,6 +251,11 @@ module.exports = {
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-misused-promises.md
 		 */
 		'@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
+
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/v4.30.0/packages/eslint-plugin/docs/rules/no-floating-promises.md
+		 */
+		'@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
 
 		/**
 		 * https://eslint.org/docs/1.0.0/rules/no-throw-literal

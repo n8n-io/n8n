@@ -12,9 +12,24 @@ import {
 } from 'typeorm';
 import { IsDate, IsOptional, IsString, Length } from 'class-validator';
 
+import config = require('../../../config');
+import { DatabaseType } from '../../index';
 import { ITagDb } from '../../Interfaces';
 import { WorkflowEntity } from './WorkflowEntity';
-import { getTimestampSyntax } from '../utils';
+
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+function getTimestampSyntax() {
+	const dbType = config.get('database.type') as DatabaseType;
+
+	const map: { [key in DatabaseType]: string } = {
+		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
+		postgresdb: 'CURRENT_TIMESTAMP(3)',
+		mysqldb: 'CURRENT_TIMESTAMP(3)',
+		mariadb: 'CURRENT_TIMESTAMP(3)',
+	};
+
+	return map[dbType];
+}
 
 @Entity()
 export class TagEntity implements ITagDb {

@@ -3,6 +3,7 @@ import {
 } from 'url';
 
 import {
+	Request,
 	sign,
 } from 'aws4';
 
@@ -44,7 +45,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const endpoint = new URL(((credentials.rekognitionEndpoint as string || '').replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`) + path);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = {headers: headers || {}, host: endpoint.host, method, path, body};
+	const signOpts = {headers: headers || {}, host: endpoint.host, method, path, body} as Request;
 
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim()});
 

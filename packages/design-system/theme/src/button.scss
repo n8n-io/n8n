@@ -83,6 +83,17 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 		--button-border-radius: 50%;
 	}
 
+	@include mixins.m(mini) {
+		--button-padding-vertical: var(--spacing-4xs);
+		--button-padding-horizontal: var(--spacing-2xs);
+		--button-font-size: var(--font-size-2xs);
+
+		@include mixins.when(circle) {
+			--button-padding-vertical: var(--spacing-4xs);
+			--button-padding-horizontal: var(--spacing-4xs);
+		}
+	}
+
 	@include mixins.m(small) {
 		--button-padding-vertical: var(--spacing-3xs);
 		--button-padding-horizontal: var(--spacing-xs);
@@ -102,6 +113,17 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 		@include mixins.when(circle) {
 			--button-padding-vertical: var(--spacing-2xs);
 			--button-padding-horizontal: var(--spacing-2xs);
+		}
+	}
+
+	@include mixins.m(xlarge) {
+		--button-padding-vertical: var(--spacing-xs);
+		--button-padding-horizontal: var(--spacing-s);
+		--button-font-size: var(--font-size-m);
+
+		@include mixins.when(circle) {
+			--button-padding-vertical: var(--spacing-xs);
+			--button-padding-horizontal: var(--spacing-xs);
 		}
 	}
 }

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const teamOperations = [
+export const teamOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -23,11 +23,11 @@ export const teamOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const teamFields = [
+export const teamFields: INodeProperties[] = [
 	// ----------------------------------
 	//        team: get
 	// ----------------------------------
 
-] as INodeProperties[];
+];

@@ -27,7 +27,6 @@ export class MailchimpTrigger implements INodeType {
 		description: 'Handle Mailchimp events via webhooks',
 		defaults: {
 			name: 'Mailchimp Trigger',
-			color: '#32325d',
 		},
 		inputs: [],
 		outputs: ['main'],

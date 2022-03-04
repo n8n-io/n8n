@@ -194,7 +194,7 @@ export class ActiveWorkflows {
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async () => {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			Logger.info(`Polling trigger initiated for workflow "${workflow.name}"`, {
+			Logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
 				workflowName: workflow.name,
 				workflowId: workflow.id,
 			});

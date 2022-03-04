@@ -6,7 +6,7 @@ import {
 	paymentAdditionalFieldsOptions
 } from './PaymentAdditionalFieldsOptions';
 
-export const paymentOperations = [
+export const paymentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -51,9 +51,9 @@ export const paymentOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const paymentFields = [
+export const paymentFields: INodeProperties[] = [
 	// ----------------------------------
 	//         payment: create
 	// ----------------------------------
@@ -396,4 +396,4 @@ export const paymentFields = [
 		},
 		options: paymentAdditionalFieldsOptions,
 	},
-] as INodeProperties[];
+];

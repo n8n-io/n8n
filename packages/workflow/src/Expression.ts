@@ -99,6 +99,24 @@ export class Expression {
 		);
 		const data = dataProxy.getDataProxy();
 
+		// Support only a subset of process properties
+		// @ts-ignore
+		data.process = {
+			arch: process.arch,
+			env: process.env,
+			platform: process.platform,
+			pid: process.pid,
+			ppid: process.ppid,
+			release: process.release,
+			version: process.pid,
+			versions: process.versions,
+		};
+
+		// @ts-ignore
+		data.document = {};
+		// @ts-ignore
+		data.constructor = {};
+
 		// Execute the expression
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call

@@ -1,5 +1,5 @@
 import { URL } from 'url';
-import { sign } from 'aws4';
+import { Request, sign } from 'aws4';
 import { OptionsWithUri } from 'request';
 import { parseString as parseXml } from 'xml2js';
 
@@ -38,7 +38,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body };
+	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
 
 

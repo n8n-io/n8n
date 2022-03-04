@@ -24,21 +24,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable import/no-dynamic-require */
+/* eslint-disable no-await-in-loop */
+
 import * as express from 'express';
 import { readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import {
-	getConnectionManager,
-	In,
-	Like,
-	FindManyOptions,
-	FindOneOptions,
-	IsNull,
-	LessThanOrEqual,
-	Not,
-} from 'typeorm';
+import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
+import * as os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as _ from 'lodash';
 import * as clientOAuth2 from 'client-oauth2';
@@ -46,35 +42,37 @@ import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
-import { createHash, createHmac } from 'crypto';
+import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
 import {
+	BinaryDataManager,
 	Credentials,
-	ICredentialTestFunctions,
+	IBinaryDataConfig,
 	LoadNodeParameterOptions,
-	NodeExecuteFunctions,
 	UserSettings,
 } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
-	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
+	INodeCredentialsDetails,
+	INodeCredentialTestRequest,
+	INodeCredentialTestResult,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeType,
 	INodeTypeDescription,
-	IRunData,
+	INodeTypeNameVersion,
+	ITelemetrySettings,
 	IWorkflowBase,
-	IWorkflowCredentials,
 	LoggerProxy,
-	NodeCredentialTestRequest,
-	NodeCredentialTestResult,
+	NodeHelpers,
+	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -117,12 +115,13 @@ import {
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IExternalHooksClass,
+	IDiagnosticInfo,
 	IN8nUISettings,
 	IPackageVersions,
 	ITagWithCountDb,
 	IWorkflowExecutionDataProcess,
 	IWorkflowResponse,
-	LoadNodesAndCredentials,
+	IPersonalizationSurveyAnswers,
 	NodeTypes,
 	Push,
 	ResponseHelper,
@@ -135,12 +134,18 @@ import {
 	WorkflowHelpers,
 	WorkflowRunner,
 } from '.';
+
 import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
+import * as PersonalizationSurvey from './PersonalizationSurvey';
+
+import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
+import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
+import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -199,6 +204,8 @@ class App {
 
 	presetCredentialsLoaded: boolean;
 
+	webhookMethods: WebhookHttpMethod[];
+
 	constructor() {
 		this.app = express();
 
@@ -236,6 +243,22 @@ class App {
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
+		const telemetrySettings: ITelemetrySettings = {
+			enabled: config.get('diagnostics.enabled') as boolean,
+		};
+
+		if (telemetrySettings.enabled) {
+			const conf = config.get('diagnostics.config.frontend') as string;
+			const [key, url] = conf.split(';');
+
+			if (!key || !url) {
+				LoggerProxy.warn('Diagnostics frontend config is invalid');
+				telemetrySettings.enabled = false;
+			}
+
+			telemetrySettings.config = { key, url };
+		}
+
 		this.frontendSettings = {
 			endpointWebhook: this.endpointWebhook,
 			endpointWebhookTest: this.endpointWebhookTest,
@@ -257,6 +280,17 @@ class App {
 				infoUrl: config.get('versionNotifications.infoUrl'),
 			},
 			instanceId: '',
+			telemetry: telemetrySettings,
+			personalizationSurvey: {
+				shouldShow: false,
+			},
+			defaultLocale: config.get('defaultLocale'),
+			logLevel: config.get('logs.level'),
+			deploymentType: config.get('deployment.type'),
+			templates: {
+				enabled: config.get('templates.enabled'),
+				host: config.get('templates.host'),
+			},
 		};
 	}
 
@@ -283,7 +317,11 @@ class App {
 
 		this.versions = await GenericHelpers.getVersions();
 		this.frontendSettings.versionCli = this.versions.cli;
-		this.frontendSettings.instanceId = (await generateInstanceId()) as string;
+
+		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+
+		this.frontendSettings.personalizationSurvey =
+			await PersonalizationSurvey.preparePersonalizationSurvey();
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -451,10 +489,13 @@ class App {
 				};
 
 				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
-					if (err) ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
-					else if (!isTenantAllowed(decoded))
+					if (err) {
+						ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
+					} else if (!isTenantAllowed(decoded)) {
 						ResponseHelper.jwtAuthAuthorizationError(res, 'Tenant not allowed');
-					else next();
+					} else {
+						next();
+					}
 				});
 			});
 		}
@@ -577,6 +618,8 @@ class App {
 
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
+			LoggerProxy.debug('Health check started!');
+
 			const connection = getConnectionManager().get();
 
 			try {
@@ -596,6 +639,8 @@ class App {
 			const responseData = {
 				status: 'ok',
 			};
+
+			LoggerProxy.debug('Health check completed successfully!');
 
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
@@ -636,6 +681,9 @@ class App {
 						});
 					}
 
+					// check credentials for old format
+					await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
+
 					await this.externalHooks.run('workflow.create', [newWorkflow]);
 
 					await WorkflowHelpers.validateWorkflow(newWorkflow);
@@ -646,6 +694,8 @@ class App {
 
 					// @ts-ignore
 					savedWorkflow.id = savedWorkflow.id.toString();
+					await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+					void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow as IWorkflowBase);
 					return savedWorkflow;
 				},
 			),
@@ -776,6 +826,9 @@ class App {
 					const { id } = req.params;
 					updateData.id = id;
 
+					// check credentials for old format
+					await WorkflowHelpers.replaceInvalidCredentials(updateData as WorkflowEntity);
+
 					await this.externalHooks.run('workflow.update', [updateData]);
 
 					const isActive = await this.activeWorkflowRunner.isActive(id);
@@ -845,12 +898,12 @@ class App {
 					}
 
 					await this.externalHooks.run('workflow.afterUpdate', [workflow]);
+					void InternalHooksManager.getInstance().onWorkflowSaved(workflow);
 
 					if (workflow.active) {
 						// When the workflow is supposed to be active add it again
 						try {
 							await this.externalHooks.run('workflow.activate', [workflow]);
-
 							await this.activeWorkflowRunner.add(id, isActive ? 'update' : 'activate');
 						} catch (error) {
 							// If workflow could not be activated set it again to inactive
@@ -882,13 +935,13 @@ class App {
 				await this.externalHooks.run('workflow.delete', [id]);
 
 				const isActive = await this.activeWorkflowRunner.isActive(id);
-
 				if (isActive) {
 					// Before deleting a workflow deactivate it
 					await this.activeWorkflowRunner.remove(id);
 				}
 
 				await Db.collections.Workflow!.delete(id);
+				void InternalHooksManager.getInstance().onWorkflowDeleted(id);
 				await this.externalHooks.run('workflow.afterDelete', [id]);
 
 				return true;
@@ -1060,7 +1113,9 @@ class App {
 			`/${this.restEndpoint}/node-parameter-options`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
-					const nodeType = req.query.nodeType as string;
+					const nodeTypeAndVersion = JSON.parse(
+						`${req.query.nodeTypeAndVersion}`,
+					) as INodeTypeNameVersion;
 					const path = req.query.path as string;
 					let credentials: INodeCredentials | undefined;
 					const currentNodeParameters = JSON.parse(
@@ -1069,22 +1124,34 @@ class App {
 					if (req.query.credentials !== undefined) {
 						credentials = JSON.parse(req.query.credentials as string);
 					}
-					const methodName = req.query.methodName as string;
 
 					const nodeTypes = NodeTypes();
 
 					// @ts-ignore
 					const loadDataInstance = new LoadNodeParameterOptions(
-						nodeType,
+						nodeTypeAndVersion,
 						nodeTypes,
 						path,
-						JSON.parse(`${req.query.currentNodeParameters}`),
+						currentNodeParameters,
 						credentials,
 					);
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
 
-					return loadDataInstance.getOptions(methodName, additionalData);
+					if (req.query.methodName) {
+						return loadDataInstance.getOptionsViaMethodName(
+							req.query.methodName as string,
+							additionalData,
+						);
+					}
+					if (req.query.loadOptions) {
+						return loadDataInstance.getOptionsViaRequestProperty(
+							JSON.parse(req.query.loadOptions as string),
+							additionalData,
+						);
+					}
+
+					return [];
 				},
 			),
 		);
@@ -1095,46 +1162,126 @@ class App {
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
 					const returnData: INodeTypeDescription[] = [];
+					const onlyLatest = req.query.onlyLatest === 'true';
 
 					const nodeTypes = NodeTypes();
-
 					const allNodes = nodeTypes.getAll();
 
-					allNodes.forEach((nodeData) => {
-						// Make a copy of the object. If we don't do this, then when
-						// The method below is called the properties are removed for good
-						// This happens because nodes are returned as reference.
-						const nodeInfo: INodeTypeDescription = { ...nodeData.description };
+					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
+						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
 						if (req.query.includeProperties !== 'true') {
 							// @ts-ignore
 							delete nodeInfo.properties;
 						}
-						returnData.push(nodeInfo);
-					});
+						return nodeInfo;
+					};
+
+					if (onlyLatest) {
+						allNodes.forEach((nodeData) => {
+							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
+							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
+							returnData.push(nodeInfo);
+						});
+					} else {
+						allNodes.forEach((nodeData) => {
+							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
+							allNodeTypes.forEach((element) => {
+								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
+								returnData.push(nodeInfo);
+							});
+						});
+					}
 
 					return returnData;
 				},
 			),
 		);
 
-		// Returns node information baesd on namese
+		this.app.get(
+			`/${this.restEndpoint}/credential-translation`,
+			ResponseHelper.send(
+				async (
+					req: express.Request & { query: { credentialType: string } },
+					res: express.Response,
+				): Promise<object | null> => {
+					const translationPath = getCredentialTranslationPath({
+						locale: this.frontendSettings.defaultLocale,
+						credentialType: req.query.credentialType,
+					});
+
+					try {
+						return require(translationPath);
+					} catch (error) {
+						return null;
+					}
+				},
+			),
+		);
+
+		// Returns node information based on node names and versions
 		this.app.post(
 			`/${this.restEndpoint}/node-types`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
-					const nodeTypes = NodeTypes();
+					const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 
-					return nodeNames
-						.map((name) => {
-							try {
-								return nodeTypes.getByName(name);
-							} catch (e) {
-								return undefined;
-							}
-						})
-						.filter((nodeData) => !!nodeData)
-						.map((nodeData) => nodeData!.description);
+					const { defaultLocale } = this.frontendSettings;
+
+					if (defaultLocale === 'en') {
+						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
+							const { description } = NodeTypes().getByNameAndVersion(name, version);
+							acc.push(description);
+							return acc;
+						}, []);
+					}
+
+					async function populateTranslation(
+						name: string,
+						version: number,
+						nodeTypes: INodeTypeDescription[],
+					) {
+						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
+						const translationPath = await getNodeTranslationPath({
+							nodeSourcePath: sourcePath,
+							longNodeType: description.name,
+							locale: defaultLocale,
+						});
+
+						try {
+							const translation = await readFile(translationPath, 'utf8');
+							description.translation = JSON.parse(translation);
+						} catch (error) {
+							// ignore - no translation exists at path
+						}
+
+						nodeTypes.push(description);
+					}
+
+					const nodeTypes: INodeTypeDescription[] = [];
+
+					const promises = nodeInfos.map(async ({ name, version }) =>
+						populateTranslation(name, version, nodeTypes),
+					);
+
+					await Promise.all(promises);
+
+					return nodeTypes;
+				},
+			),
+		);
+
+		// Returns node information based on node names and versions
+		this.app.get(
+			`/${this.restEndpoint}/node-translation-headers`,
+			ResponseHelper.send(
+				async (req: express.Request, res: express.Response): Promise<object | void> => {
+					const packagesPath = pathJoin(__dirname, '..', '..', '..');
+					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
+					try {
+						return require(headersPath);
+					} catch (error) {
+						res.status(500).send('Failed to find headers file');
+					}
 				},
 			),
 		);
@@ -1156,7 +1303,7 @@ class App {
 					}`;
 
 					const nodeTypes = NodeTypes();
-					const nodeType = nodeTypes.getByName(nodeTypeName);
+					const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
 
 					if (nodeType === undefined) {
 						res.status(404).send('The nodeType is not known.');
@@ -1274,26 +1421,9 @@ class App {
 						throw new Error('Credentials have to have a name set!');
 					}
 
-					// Check if credentials with the same name and type exist already
-					const findQuery = {
-						where: {
-							name: incomingData.name,
-							type: incomingData.type,
-						},
-					} as FindOneOptions;
-
-					const checkResult = await Db.collections.Credentials!.findOne(findQuery);
-					if (checkResult !== undefined) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with the same type and name exist already.`,
-							undefined,
-							400,
-						);
-					}
-
 					// Encrypt the data
 					const credentials = new Credentials(
-						incomingData.name,
+						{ id: null, name: incomingData.name },
 						incomingData.type,
 						incomingData.nodesAccess,
 					);
@@ -1301,10 +1431,6 @@ class App {
 					const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
 					await this.externalHooks.run('credentials.create', [newCredentialsData]);
-
-					// Add special database related data
-
-					// TODO: also add user automatically depending on who is logged in, if anybody is logged in
 
 					// Save the credentials in DB
 					const result = await Db.collections.Credentials!.save(newCredentialsData);
@@ -1321,59 +1447,25 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/credentials-test`,
 			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<NodeCredentialTestResult> => {
-					const incomingData = req.body as NodeCredentialTestRequest;
+				async (req: express.Request, res: express.Response): Promise<INodeCredentialTestResult> => {
+					const incomingData = req.body as INodeCredentialTestRequest;
+
+					const encryptionKey = await UserSettings.getEncryptionKey();
+					if (encryptionKey === undefined) {
+						return {
+							status: 'Error',
+							message: 'No encryption key got found to decrypt the credentials!',
+						};
+					}
+
+					const credentialsHelper = new CredentialsHelper(encryptionKey);
+
 					const credentialType = incomingData.credentials.type;
-
-					// Find nodes that can test this credential.
-					const nodeTypes = NodeTypes();
-					const allNodes = nodeTypes.getAll();
-
-					let foundTestFunction:
-						| ((
-								this: ICredentialTestFunctions,
-								credential: ICredentialsDecrypted,
-						  ) => Promise<NodeCredentialTestResult>)
-						| undefined;
-					const nodeThatCanTestThisCredential = allNodes.find((node) => {
-						if (
-							incomingData.nodeToTestWith &&
-							node.description.name !== incomingData.nodeToTestWith
-						) {
-							return false;
-						}
-						const credentialTestable = node.description.credentials?.find((credential) => {
-							const testFunctionSearch =
-								credential.name === credentialType && !!credential.testedBy;
-							if (testFunctionSearch) {
-								foundTestFunction = node.methods!.credentialTest![credential.testedBy!];
-							}
-							return testFunctionSearch;
-						});
-						return !!credentialTestable;
-					});
-
-					if (!nodeThatCanTestThisCredential) {
-						return Promise.resolve({
-							status: 'Error',
-							message: 'There are no nodes that can test this credential.',
-						});
-					}
-
-					if (foundTestFunction === undefined) {
-						return Promise.resolve({
-							status: 'Error',
-							message: 'No testing function found for this credential.',
-						});
-					}
-
-					const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
-
-					const output = await foundTestFunction.call(
-						credentialTestFunctions,
+					return credentialsHelper.testCredentials(
+						credentialType,
 						incomingData.credentials,
+						incomingData.nodeToTestWith,
 					);
-					return Promise.resolve(output);
 				},
 			),
 		);
@@ -1398,24 +1490,6 @@ class App {
 						}
 					}
 
-					// Check if credentials with the same name and type exist already
-					const findQuery = {
-						where: {
-							id: Not(id),
-							name: incomingData.name,
-							type: incomingData.type,
-						},
-					} as FindOneOptions;
-
-					const checkResult = await Db.collections.Credentials!.findOne(findQuery);
-					if (checkResult !== undefined) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with the same type and name exist already.`,
-							undefined,
-							400,
-						);
-					}
-
 					const encryptionKey = await UserSettings.getEncryptionKey();
 					if (encryptionKey === undefined) {
 						throw new Error('No encryption key got found to encrypt the credentials!');
@@ -1432,7 +1506,7 @@ class App {
 					}
 
 					const currentlySavedCredentials = new Credentials(
-						result.name,
+						result as INodeCredentialsDetails,
 						result.type,
 						result.nodesAccess,
 						result.data,
@@ -1447,7 +1521,7 @@ class App {
 
 					// Encrypt the data
 					const credentials = new Credentials(
-						incomingData.name,
+						{ id, name: incomingData.name },
 						incomingData.type,
 						incomingData.nodesAccess,
 					);
@@ -1516,7 +1590,7 @@ class App {
 						}
 
 						const credentials = new Credentials(
-							result.name,
+							result as INodeCredentialsDetails,
 							result.type,
 							result.nodesAccess,
 							result.data,
@@ -1538,12 +1612,13 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse[]> => {
 					const findQuery = {} as FindManyOptions;
 					if (req.query.filter) {
-						findQuery.where = JSON.parse(req.query.filter as string);
-						if ((findQuery.where! as IDataObject).id !== undefined) {
+						findQuery.where = JSON.parse(req.query.filter as string) as IDataObject;
+						if (findQuery.where.id !== undefined) {
 							// No idea if multiple where parameters make db search
 							// slower but to be sure that that is not the case we
 							// remove all unnecessary fields in case the id is defined.
-							findQuery.where = { id: (findQuery.where! as IDataObject).id };
+							// @ts-ignore
+							findQuery.where = { id: findQuery.where.id };
 						}
 					}
 
@@ -1660,7 +1735,7 @@ class App {
 				const mode: WorkflowExecuteMode = 'internal';
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-					result.name,
+					result as INodeCredentialsDetails,
 					result.type,
 					mode,
 					true,
@@ -1719,7 +1794,11 @@ class App {
 				}`;
 
 				// Encrypt the data
-				const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+				const credentials = new Credentials(
+					result as INodeCredentialsDetails,
+					result.type,
+					result.nodesAccess,
+				);
 
 				credentials.setData(decryptedDataOriginal, encryptionKey);
 				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
@@ -1773,16 +1852,10 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					// Decrypt the currently saved credentials
-					const workflowCredentials: IWorkflowCredentials = {
-						[result.type]: {
-							[result.name]: result as ICredentialsEncrypted,
-						},
-					};
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						result.name,
+						result as INodeCredentialsDetails,
 						result.type,
 						mode,
 						true,
@@ -1821,7 +1894,11 @@ class App {
 
 					decryptedDataOriginal.oauthTokenData = oauthTokenJson;
 
-					const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+					const credentials = new Credentials(
+						result as INodeCredentialsDetails,
+						result.type,
+						result.nodesAccess,
+					);
 					credentials.setData(decryptedDataOriginal, encryptionKey);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
@@ -1866,7 +1943,7 @@ class App {
 				const mode: WorkflowExecuteMode = 'internal';
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-					result.name,
+					result as INodeCredentialsDetails,
 					result.type,
 					mode,
 					true,
@@ -1903,7 +1980,11 @@ class App {
 				const oAuthObj = new clientOAuth2(oAuthOptions);
 
 				// Encrypt the data
-				const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+				const credentials = new Credentials(
+					result as INodeCredentialsDetails,
+					result.type,
+					result.nodesAccess,
+				);
 				decryptedDataOriginal.csrfSecret = csrfSecret;
 
 				credentials.setData(decryptedDataOriginal, encryptionKey);
@@ -1989,17 +2070,10 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					// Decrypt the currently saved credentials
-					const workflowCredentials: IWorkflowCredentials = {
-						[result.type]: {
-							[result.name]: result as ICredentialsEncrypted,
-						},
-					};
-
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						result.name,
+						result as INodeCredentialsDetails,
 						result.type,
 						mode,
 						true,
@@ -2081,7 +2155,11 @@ class App {
 
 					_.unset(decryptedDataOriginal, 'csrfSecret');
 
-					const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+					const credentials = new Credentials(
+						result as INodeCredentialsDetails,
+						result.type,
+						result.nodesAccess,
+					);
 					credentials.setData(decryptedDataOriginal, encryptionKey);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
@@ -2355,12 +2433,27 @@ class App {
 					const filters = {
 						startedAt: LessThanOrEqual(deleteData.deleteBefore),
 					};
+
 					if (deleteData.filters !== undefined) {
 						Object.assign(filters, deleteData.filters);
 					}
 
+					const execs = await Db.collections.Execution!.find({ ...filters, select: ['id'] });
+
+					await Promise.all(
+						execs.map(async (item) =>
+							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(item.id.toString()),
+						),
+					);
+
 					await Db.collections.Execution!.delete(filters);
 				} else if (deleteData.ids !== undefined) {
+					await Promise.all(
+						deleteData.ids.map(async (id) =>
+							BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(id),
+						),
+					);
+
 					// Deletes all executions with the given ids
 					await Db.collections.Execution!.delete(deleteData.ids);
 				} else {
@@ -2557,6 +2650,23 @@ class App {
 		);
 
 		// ----------------------------------------
+		// Binary data
+		// ----------------------------------------
+
+		// Returns binary buffer
+		this.app.get(
+			`/${this.restEndpoint}/data/:path`,
+			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+				const dataPath = req.params.path;
+				return BinaryDataManager.getInstance()
+					.retrieveBinaryDataByIdentifier(dataPath)
+					.then((buffer: Buffer) => {
+						return buffer.toString('base64');
+					});
+			}),
+		);
+
+		// ----------------------------------------
 		// Settings
 		// ----------------------------------------
 
@@ -2571,6 +2681,31 @@ class App {
 		);
 
 		// ----------------------------------------
+		// User Survey
+		// ----------------------------------------
+
+		// Process personalization survey responses
+		this.app.post(
+			`/${this.restEndpoint}/user-survey`,
+			async (req: express.Request, res: express.Response) => {
+				if (!this.frontendSettings.personalizationSurvey.shouldShow) {
+					ResponseHelper.sendErrorResponse(
+						res,
+						new ResponseHelper.ResponseError('User survey already submitted', undefined, 400),
+						false,
+					);
+				}
+
+				const answers = req.body as IPersonalizationSurveyAnswers;
+				await PersonalizationSurvey.writeSurveyToDisk(answers);
+				this.frontendSettings.personalizationSurvey.shouldShow = false;
+				this.frontendSettings.personalizationSurvey.answers = answers;
+				ResponseHelper.sendSuccessResponse(res, undefined, true, 200);
+				void InternalHooksManager.getInstance().onPersonalizationSurveySubmitted(answers);
+			},
+		);
+
+		// ----------------------------------------
 		// Webhooks
 		// ----------------------------------------
 
@@ -2578,8 +2713,8 @@ class App {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
 
-		// HEAD webhook requests (test for UI)
-		this.app.head(
+		// Register all webhook requests (test for UI)
+		this.app.all(
 			`/${this.endpointWebhookTest}/*`,
 			async (req: express.Request, res: express.Response) => {
 				// Cut away the "/webhook-test/" to get the registred part of the url
@@ -2587,9 +2722,36 @@ class App {
 					this.endpointWebhookTest.length + 2,
 				);
 
+				const method = req.method.toUpperCase() as WebhookHttpMethod;
+
+				if (method === 'OPTIONS') {
+					let allowedMethods: string[];
+					try {
+						allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
+						allowedMethods.push('OPTIONS');
+
+						// Add custom "Allow" header to satisfy OPTIONS response.
+						res.append('Allow', allowedMethods);
+					} catch (error) {
+						ResponseHelper.sendErrorResponse(res, error);
+						return;
+					}
+
+					ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+					return;
+				}
+
+				if (!WEBHOOK_METHODS.includes(method)) {
+					ResponseHelper.sendErrorResponse(
+						res,
+						new Error(`The method ${method} is not supported.`),
+					);
+					return;
+				}
+
 				let response;
 				try {
-					response = await this.testWebhooks.callTestWebhook('HEAD', requestUrl, req, res);
+					response = await this.testWebhooks.callTestWebhook(method, requestUrl, req, res);
 				} catch (error) {
 					ResponseHelper.sendErrorResponse(res, error);
 					return;
@@ -2600,84 +2762,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-			},
-		);
-
-		// HEAD webhook requests (test for UI)
-		this.app.options(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
 				);
-
-				let allowedMethods: string[];
-				try {
-					allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
-					allowedMethods.push('OPTIONS');
-
-					// Add custom "Allow" header to satisfy OPTIONS response.
-					res.append('Allow', allowedMethods);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-			},
-		);
-
-		// GET webhook requests (test for UI)
-		this.app.get(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let response;
-				try {
-					response = await this.testWebhooks.callTestWebhook('GET', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-			},
-		);
-
-		// POST webhook requests (test for UI)
-		this.app.post(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let response;
-				try {
-					response = await this.testWebhooks.callTestWebhook('POST', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 			},
 		);
 
@@ -2699,15 +2790,9 @@ class App {
 							return;
 						}
 
-						const loadNodesAndCredentials = LoadNodesAndCredentials();
-
 						const credentialsOverwrites = CredentialsOverwrites();
 
 						await credentialsOverwrites.init(body);
-
-						const credentialTypes = CredentialTypes();
-
-						await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 						this.presetCredentialsLoaded = true;
 
@@ -2719,36 +2804,38 @@ class App {
 			);
 		}
 
-		// Read the index file and replace the path placeholder
-		const editorUiPath = require.resolve('n8n-editor-ui');
-		const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
-		const n8nPath = config.get('path');
+		if (config.get('endpoints.disableUi') !== true) {
+			// Read the index file and replace the path placeholder
+			const editorUiPath = require.resolve('n8n-editor-ui');
+			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
+			const n8nPath = config.get('path');
 
-		let readIndexFile = readFileSync(filePath, 'utf8');
-		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
-		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
+			let readIndexFile = readFileSync(filePath, 'utf8');
+			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
-		// Serve the altered index.html file separately
-		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
-			res.send(readIndexFile);
-		});
+			// Serve the altered index.html file separately
+			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
+				res.send(readIndexFile);
+			});
 
-		// Serve the website
+			// Serve the website
+			this.app.use(
+				'/',
+				express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
+					index: 'index.html',
+					setHeaders: (res, path) => {
+						if (res.req && res.req.url === '/index.html') {
+							// Set last modified date manually to n8n start time so
+							// that it hopefully refreshes the page when a new version
+							// got used
+							res.setHeader('Last-Modified', startTime);
+						}
+					},
+				}),
+			);
+		}
 		const startTime = new Date().toUTCString();
-		this.app.use(
-			'/',
-			express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
-				index: 'index.html',
-				setHeaders: (res, path) => {
-					if (res.req && res.req.url === '/index.html') {
-						// Set last modified date manually to n8n start time so
-						// that it hopefully refreshes the page when a new version
-						// got used
-						res.setHeader('Last-Modified', startTime);
-					}
-				},
-			}),
-		);
 	}
 }
 
@@ -2778,7 +2865,68 @@ export async function start(): Promise<void> {
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 
+		const defaultLocale = config.get('defaultLocale');
+
+		if (defaultLocale !== 'en') {
+			console.log(`Locale: ${defaultLocale}`);
+		}
+
 		await app.externalHooks.run('n8n.ready', [app]);
+		const cpus = os.cpus();
+		const binarDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+		const diagnosticInfo: IDiagnosticInfo = {
+			basicAuthActive: config.get('security.basicAuth.active') as boolean,
+			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
+			disableProductionWebhooksOnMainProcess:
+				config.get('endpoints.disableProductionWebhooksOnMainProcess') === true,
+			notificationsEnabled: config.get('versionNotifications.enabled') === true,
+			versionCli: versions.cli,
+			systemInfo: {
+				os: {
+					type: os.type(),
+					version: os.version(),
+				},
+				memory: os.totalmem() / 1024,
+				cpus: {
+					count: cpus.length,
+					model: cpus[0].model,
+					speed: cpus[0].speed,
+				},
+			},
+			executionVariables: {
+				executions_process: config.get('executions.process'),
+				executions_mode: config.get('executions.mode'),
+				executions_timeout: config.get('executions.timeout'),
+				executions_timeout_max: config.get('executions.maxTimeout'),
+				executions_data_save_on_error: config.get('executions.saveDataOnError'),
+				executions_data_save_on_success: config.get('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.get('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.get('executions.saveDataManualExecutions'),
+				executions_data_prune: config.get('executions.pruneData'),
+				executions_data_max_age: config.get('executions.pruneDataMaxAge'),
+				executions_data_prune_timeout: config.get('executions.pruneDataTimeout'),
+			},
+			deploymentType: config.get('deployment.type'),
+			binaryDataMode: binarDataConfig.mode,
+		};
+
+		void Db.collections
+			.Workflow!.findOne({
+				select: ['createdAt'],
+				order: { createdAt: 'ASC' },
+			})
+			.then(async (workflow) =>
+				InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
+			);
+	});
+
+	server.on('error', (error: Error & { code: string }) => {
+		if (error.code === 'EADDRINUSE') {
+			console.log(
+				`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
+			);
+			process.exit(1);
+		}
 	});
 }
 
@@ -2816,15 +2964,4 @@ async function getExecutionsCount(
 
 	const count = await Db.collections.Execution!.count(countFilter);
 	return { count, estimate: false };
-}
-
-async function generateInstanceId() {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-	const hash = encryptionKey
-		? createHash('sha256')
-				.update(encryptionKey.slice(Math.round(encryptionKey.length / 2)))
-				.digest('hex')
-		: undefined;
-
-	return hash;
 }

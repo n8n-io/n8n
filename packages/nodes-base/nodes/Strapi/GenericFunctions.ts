@@ -25,6 +25,9 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 			qs,
 			uri: uri || `${credentials.url}${resource}`,
 			json: true,
+			qsStringifyOptions: {
+				arrayFormat: 'indice',
+			},
 		};
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);

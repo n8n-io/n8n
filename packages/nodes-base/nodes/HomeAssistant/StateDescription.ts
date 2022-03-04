@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const stateOperations = [
+export const stateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,16 +34,19 @@ export const stateOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const stateFields = [
+export const stateFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                state:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Entity ID',
 		name: 'entityId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getAllEntities',
+		},
 		displayOptions: {
 			show: {
 				operation: [
@@ -110,7 +113,10 @@ export const stateFields = [
 	{
 		displayName: 'Entity ID',
 		name: 'entityId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getAllEntities',
+		},
 		displayOptions: {
 			show: {
 				operation: [
@@ -184,4 +190,4 @@ export const stateFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

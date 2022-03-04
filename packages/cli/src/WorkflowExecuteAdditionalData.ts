@@ -14,7 +14,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable func-names */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -48,6 +48,7 @@ import {
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
+	InternalHooksManager,
 	IPushDataExecutionFinished,
 	IWorkflowBase,
 	IWorkflowExecuteProcess,
@@ -480,8 +481,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
 						// Data is always saved, so we remove from database
-						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 						await Db.collections.Execution!.delete(this.executionId);
+						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(
+							this.executionId,
+						);
+
 						return;
 					}
 
@@ -508,12 +512,16 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 									this.workflowData,
 									fullRunData,
 									this.mode,
-									undefined,
+									this.executionId,
 									this.retryOf,
 								);
 							}
 							// Data is always saved, so we remove from database
 							await Db.collections.Execution!.delete(this.executionId);
+							await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(
+								this.executionId,
+							);
+
 							return;
 						}
 					}
@@ -584,7 +592,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							this.workflowData,
 							fullRunData,
 							this.mode,
-							undefined,
+							this.executionId,
 							this.retryOf,
 						);
 					}
@@ -634,7 +642,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							this.workflowData,
 							fullRunData,
 							this.mode,
-							undefined,
+							this.executionId,
 							this.retryOf,
 						);
 					}
@@ -675,7 +683,13 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						});
 					}
 				} catch (error) {
-					executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+					executeErrorWorkflow(
+						this.workflowData,
+						fullRunData,
+						this.mode,
+						this.executionId,
+						this.retryOf,
+					);
 				}
 			},
 		],
@@ -829,6 +843,8 @@ export async function executeWorkflow(
 			workflowData,
 			{ parentProcessMode: additionalData.hooks!.mode },
 		);
+		additionalDataIntegrated.executionId = executionId;
+
 		// Make sure we pass on the original executeWorkflow function we received
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
@@ -902,7 +918,8 @@ export async function executeWorkflow(
 		};
 	}
 
-	await externalHooks.run('workflow.postExecute', [data, workflowData]);
+	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
+	void InternalHooksManager.getInstance().onWorkflowPostExecute(executionId, workflowData, data);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully
@@ -922,7 +939,7 @@ export async function executeWorkflow(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sendMessageToUI(source: string, message: any) {
+export function sendMessageToUI(source: string, messages: any[]) {
 	if (this.sessionId === undefined) {
 		return;
 	}
@@ -934,7 +951,7 @@ export function sendMessageToUI(source: string, message: any) {
 			'sendConsoleMessage',
 			{
 				source: `Node: "${source}"`,
-				message,
+				messages,
 			},
 			this.sessionId,
 		);

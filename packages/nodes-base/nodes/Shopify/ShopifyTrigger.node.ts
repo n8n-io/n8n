@@ -29,7 +29,6 @@ export class ShopifyTrigger implements INodeType {
 		description: 'Handle Shopify events via webhooks',
 		defaults: {
 			name: 'Shopify Trigger',
-			color: '#559922',
 		},
 		inputs: [],
 		outputs: ['main'],

@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const viewOperations = [
+export const viewOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -52,9 +52,9 @@ export const viewOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const viewFields = [
+export const viewFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                   view:get                                 */
@@ -277,18 +277,14 @@ export const viewFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Query used to filter returned rows, specified as <column_id_or_name>:<value>. <br/>
-				If you'd like to use a column name instead of an ID, you must quote it (e.g., "My Column":123).<br/>
-				Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
+				description: `Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you'd like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
 			},
 			{
 				displayName: 'Use Column Names',
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: `Use column names instead of column IDs in the returned output.</br>
-				This is generally discouraged as it is fragile. If columns are renamed,</br>
-				code using original names may throw errors.`,
+				description: `Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.`,
 			},
 			{
 				displayName: 'ValueFormat',
@@ -333,8 +329,7 @@ export const viewFields = [
 						value: 'natural',
 					},
 				],
-				description: `Specifies the sort order of the rows returned.<br />
-				If left unspecified, rows are returned by creation time ascending.`,
+				description: `Specifies the sort order of the rows returned. If left unspecified, rows are returned by creation time ascending.`,
 			},
 		],
 	},
@@ -711,4 +706,4 @@ export const viewFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const accountOperations = [
+export const accountOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -59,9 +59,9 @@ export const accountOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const accountFields = [
+export const accountFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                account:create                              */
@@ -145,6 +145,13 @@ export const accountFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Account Number',
+				name: 'accountNumber',
+				type: 'string',
+				default: '',
+				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
+			},
 			{
 				displayName: 'Account Source',
 				name: 'accountSource',
@@ -270,7 +277,7 @@ export const accountFields = [
 			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
-				type: 'integer',
+				type: 'number',
 				default: '',
 				description: 'Number of employees',
 			},
@@ -304,6 +311,7 @@ export const accountFields = [
 				displayName: 'SicDesc',
 				name: 'sicDesc',
 				type: 'string',
+				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -409,6 +417,13 @@ export const accountFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Account Number',
+				name: 'accountNumber',
+				type: 'string',
+				default: '',
+				description: 'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
+			},
 			{
 				displayName: 'Account Source',
 				name: 'accountSource',
@@ -577,7 +592,7 @@ export const accountFields = [
 			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
-				type: 'integer',
+				type: 'number',
 				default: '',
 				description: 'Number of employees',
 			},
@@ -592,6 +607,7 @@ export const accountFields = [
 				displayName: 'SicDesc',
 				name: 'sicDesc',
 				type: 'string',
+				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -905,4 +921,4 @@ export const accountFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

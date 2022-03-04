@@ -51,7 +51,6 @@ export class Stripe implements INodeType {
 		description: 'Consume the Stripe API',
 		defaults: {
 			name: 'Stripe',
-			color: '#6772e5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -255,7 +254,7 @@ export class Stripe implements INodeType {
 						//          charge: getAll
 						// ----------------------------------
 
-						responseData = await handleListing.call(this, resource);
+						responseData = await handleListing.call(this, resource, i);
 
 					} else if (operation === 'update') {
 
@@ -313,7 +312,7 @@ export class Stripe implements INodeType {
 						//          coupon: getAll
 						// ----------------------------------
 
-						responseData = await handleListing.call(this, resource);
+						responseData = await handleListing.call(this, resource, i);
 
 					}
 
@@ -374,7 +373,7 @@ export class Stripe implements INodeType {
 							qs.email = filters.email;
 						}
 
-						responseData = await handleListing.call(this, resource, qs);
+						responseData = await handleListing.call(this, resource, i, qs);
 
 					} else if (operation === 'update') {
 

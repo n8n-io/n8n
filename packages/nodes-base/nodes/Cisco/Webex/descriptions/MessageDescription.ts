@@ -6,7 +6,7 @@ import {
 	getActionInheritedProperties, getInputTextProperties, getTextBlockProperties,
 } from '../GenericFunctions';
 
-export const messageOperations = [
+export const messageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const messageOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const messageFields = [
+export const messageFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             message: create
 	// ----------------------------------------
@@ -210,6 +210,7 @@ export const messageFields = [
 				displayName: 'Attachments',
 				name: 'attachmentsUi',
 				type: 'fixedCollection',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -654,4 +655,4 @@ export const messageFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

@@ -1,5 +1,11 @@
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+const webpack = require('webpack');
+
 module.exports = {
-	chainWebpack: config => config.resolve.symlinks(false),
+	chainWebpack: config => {
+		config.resolve.symlinks(false);
+		// config.plugins.delete("prefetch"); // enable when language package grows
+	},
 	// transpileDependencies: [
 	//   // 'node_modules/quill'
 	//   /\/node_modules\/quill\//
@@ -8,11 +14,21 @@ module.exports = {
 		webpackBundleAnalyzer: {
 			openAnalyzer: false,
 		},
+		i18n: {
+			locale: "en",
+			fallbackLocale: "en",
+			localeDir: "./src/i18n/locales",
+			enableInSFC: false,
+		},
 	},
 	configureWebpack: {
 		devServer: {
 			disableHostCheck: true,
 		},
+		plugins: [
+			new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] }),
+			new webpack.NormalModuleReplacementPlugin(/element-ui[\/\\]lib[\/\\]locale[\/\\]lang[\/\\]zh-CN/, 'element-ui/lib/locale/lang/en'),
+		],
 	},
 	css: {
 		loaderOptions: {

@@ -43,7 +43,6 @@ export class Tapfiliate implements INodeType {
 		description: 'Consume Tapfiliate API',
 		defaults: {
 			name: 'Tapfiliate',
-			color: '#4a8de8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

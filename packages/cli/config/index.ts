@@ -22,6 +22,26 @@ const config = convict({
 			default: '',
 			env: 'DB_TABLE_PREFIX',
 		},
+		logging: {
+			enabled: {
+				doc: 'Typeorm logging enabled flag.',
+				format: 'Boolean',
+				default: false,
+				env: 'DB_LOGGING_ENABLED',
+			},
+			options: {
+				doc: 'Logging level options, default is "error". Possible values: query,error,schema,warn,info,log. To enable all logging, specify "all"',
+				format: String,
+				default: 'error',
+				env: 'DB_LOGGING_OPTIONS',
+			},
+			maxQueryExecutionTime: {
+				doc: 'Maximum number of milliseconds query should be executed before logger logs a warning. Set 0 to disable long running query warning',
+				format: Number,
+				default: 1000,
+				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
+			},
+		},
 		postgresdb: {
 			database: {
 				doc: 'PostgresDB Database',
@@ -270,6 +290,20 @@ const config = convict({
 	},
 
 	queue: {
+		health: {
+			active: {
+				doc: 'If health checks should be enabled',
+				format: 'Boolean',
+				default: false,
+				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
+			},
+			port: {
+				doc: 'Port to serve health check on if activated',
+				format: Number,
+				default: 5678,
+				env: 'QUEUE_HEALTH_CHECK_PORT',
+			},
+		},
 		bull: {
 			prefix: {
 				doc: 'Prefix for all queue keys',
@@ -507,6 +541,12 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
 			doc: 'Path for test-webhook endpoint',
 		},
+		disableUi: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_DISABLE_UI',
+			doc: 'Disable N8N UI (Frontend).',
+		},
 		disableProductionWebhooksOnMainProcess: {
 			format: Boolean,
 			default: false,
@@ -648,6 +688,101 @@ const config = convict({
 			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
 			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
 		},
+	},
+
+	templates: {
+		enabled: {
+			doc: 'Whether templates feature is enabled to load workflow templates.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_TEMPLATES_ENABLED',
+		},
+		host: {
+			doc: 'Endpoint host to retrieve workflow templates from endpoints.',
+			format: String,
+			default: 'https://api.n8n.io/',
+			env: 'N8N_TEMPLATES_HOST',
+		},
+	},
+
+	binaryDataManager: {
+		availableModes: {
+			format: String,
+			default: 'filesystem',
+			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
+			doc: 'Available modes of binary data storage, as comma separated strings',
+		},
+		mode: {
+			format: String,
+			default: 'default',
+			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
+			doc: 'Storage mode for binary data, default | filesystem',
+		},
+		localStoragePath: {
+			format: String,
+			default: path.join(core.UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			env: 'N8N_BINARY_DATA_STORAGE_PATH',
+			doc: 'Path for binary data storage in "filesystem" mode',
+		},
+		binaryDataTTL: {
+			format: Number,
+			default: 60,
+			env: 'N8N_BINARY_DATA_TTL',
+			doc: 'TTL for binary data of unsaved executions in minutes',
+		},
+		persistedBinaryDataTTL: {
+			format: Number,
+			default: 1440,
+			env: 'N8N_PERSISTED_BINARY_DATA_TTL',
+			doc: 'TTL for persisted binary data in minutes (binary data gets deleted if not persisted before TTL expires)',
+		},
+	},
+
+	deployment: {
+		type: {
+			format: String,
+			default: 'default',
+			env: 'N8N_DEPLOYMENT_TYPE',
+		},
+	},
+
+	personalization: {
+		enabled: {
+			doc: 'Whether personalization is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_PERSONALIZATION_ENABLED',
+		},
+	},
+
+	diagnostics: {
+		enabled: {
+			doc: 'Whether diagnostic mode is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_DIAGNOSTICS_ENABLED',
+		},
+		config: {
+			frontend: {
+				doc: 'Diagnostics config for frontend.',
+				format: String,
+				default: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
+				env: 'N8N_DIAGNOSTICS_CONFIG_FRONTEND',
+			},
+			backend: {
+				doc: 'Diagnostics config for backend.',
+				format: String,
+				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io/v1/batch',
+				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
+			},
+		},
+	},
+
+	defaultLocale: {
+		doc: 'Default locale for the UI',
+		format: String,
+		default: 'en',
+		env: 'N8N_DEFAULT_LOCALE',
 	},
 });
 

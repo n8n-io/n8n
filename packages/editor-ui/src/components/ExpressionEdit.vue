@@ -1,14 +1,14 @@
 <template>
 	<div v-if="dialogVisible" @keydown.stop>
-		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" title="Edit Expression" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" :title="$locale.baseText('expressionEdit.editExpression')" :before-close="closeDialog">
 			<el-row>
 				<el-col :span="8">
 					<div class="header-side-menu">
 						<div class="headline">
-							Edit Expression
+							{{ $locale.baseText('expressionEdit.editExpression') }}
 						</div>
 						<div class="sub-headline">
-							Variable Selector
+							{{ $locale.baseText('expressionEdit.variableSelector') }}
 						</div>
 					</div>
 
@@ -19,7 +19,7 @@
 				<el-col :span="16" class="right-side">
 					<div class="expression-editor-wrapper">
 						<div class="editor-description">
-							Expression
+							{{ $locale.baseText('expressionEdit.expression') }}
 						</div>
 						<div class="expression-editor">
 							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
@@ -28,7 +28,7 @@
 
 					<div class="expression-result-wrapper">
 						<div class="editor-description">
-							Result
+							{{ $locale.baseText('expressionEdit.result') }}
 						</div>
 						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
 					</div>
@@ -97,9 +97,7 @@ export default mixins(
 		},
 
 		itemSelected (eventData: IVariableItemSelected) {
-			// User inserted item from Expression Editor variable selector
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
-
 			this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
 		},
 	},
@@ -110,6 +108,10 @@ export default mixins(
 
 			const resolvedExpressionValue = this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue() || undefined;  // tslint:disable-line:no-any
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
+
+			if (!newValue) {
+				this.$telemetry.track('User closed Expression Editor', { empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value, workflow_id: this.$store.getters.workflowId });
+			}
 		},
 	},
 });
@@ -141,6 +143,7 @@ export default mixins(
 
 	.el-dialog__body {
 		padding: 0;
+		font-size: var(--font-size-s);
 	}
 
 	.right-side {

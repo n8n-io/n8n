@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const customerOperations = [
+export const customerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const customerOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const customerFields = [
+export const customerFields: INodeProperties[] = [
 	// ----------------------------------
 	//       customer: create
 	// ----------------------------------
@@ -199,6 +199,7 @@ export const customerFields = [
 				displayName: 'Shipping',
 				name: 'shipping',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Shipping information for the customer',
 				typeOptions: {
 					multipleValues: true,
@@ -514,6 +515,7 @@ export const customerFields = [
 				displayName: 'Metadata',
 				name: 'metadata',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Metadata Item',
 				description: 'Set of key-value pairs to attach to the customer to create',
 				typeOptions: {
@@ -646,4 +648,4 @@ export const customerFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

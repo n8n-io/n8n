@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const incidentOperations = [
+export const incidentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -38,9 +38,9 @@ export const incidentOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const incidentFields = [
+export const incidentFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                incident:create                          */
 	/* -------------------------------------------------------------------------- */
@@ -186,7 +186,7 @@ export const incidentFields = [
 				options: [
 					{
 						name: 'Low',
-						value: 1,
+						value: 3,
 					},
 					{
 						name: 'Medium',
@@ -194,7 +194,7 @@ export const incidentFields = [
 					},
 					{
 						name: 'High',
-						value: 3,
+						value: 1,
 					},
 				],
 				default: '',
@@ -240,7 +240,7 @@ export const incidentFields = [
 				options: [
 					{
 						name: 'Low',
-						value: 1,
+						value: 3,
 					},
 					{
 						name: 'Medium',
@@ -248,7 +248,7 @@ export const incidentFields = [
 					},
 					{
 						name: 'High',
-						value: 3,
+						value: 1,
 					},
 				],
 				default: '',
@@ -590,7 +590,7 @@ export const incidentFields = [
 				options: [
 					{
 						name: 'Low',
-						value: 1,
+						value: 3,
 					},
 					{
 						name: 'Medium',
@@ -598,7 +598,7 @@ export const incidentFields = [
 					},
 					{
 						name: 'High',
-						value: 3,
+						value: 1,
 					},
 				],
 				default: '',
@@ -654,7 +654,7 @@ export const incidentFields = [
 				options: [
 					{
 						name: 'Low',
-						value: 1,
+						value: 3,
 					},
 					{
 						name: 'Medium',
@@ -662,7 +662,7 @@ export const incidentFields = [
 					},
 					{
 						name: 'High',
-						value: 3,
+						value: 1,
 					},
 				],
 				default: '',
@@ -670,4 +670,4 @@ export const incidentFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

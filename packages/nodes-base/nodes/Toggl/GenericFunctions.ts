@@ -25,7 +25,7 @@ export async function togglApiRequest(this: ITriggerFunctions | IPollFunctions |
 		headers: headerWithAuthentication,
 		method,
 		qs: query,
-		uri: uri || `https://www.toggl.com/api/v8${resource}`,
+		uri: uri || `https://api.track.toggl.com/api/v8${resource}`,
 		body,
 		json: true,
 	};

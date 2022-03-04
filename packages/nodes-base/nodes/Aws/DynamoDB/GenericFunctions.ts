@@ -45,9 +45,10 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
 	const options = sign({
+		// @ts-ignore
 		uri: endpoint,
 		service,
-		region: credentials.region,
+		region: credentials.region as string,
 		method,
 		path: '/',
 		headers: { ...headers },
