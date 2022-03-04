@@ -135,7 +135,7 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('An error occurred during user creation');
 			}
 
-			Logger.info('Created user shells successfully', { userId: req.user.id });
+			Logger.info('Created user shell(s) successfully', { userId: req.user.id });
 			Logger.verbose(total > 1 ? `${total} user shells created` : `1 user shell created`, {
 				userShells: createUsers,
 			});
