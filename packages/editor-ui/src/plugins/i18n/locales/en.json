@@ -1129,7 +1129,7 @@
 	"MISSING_INVITE_TOKEN_ERROR": "Missing invite token",
 	"MISSING_TOKEN_ERROR": "Missing token",
 	"MISSING_USERID_ERROR": "Missing user ID",
-	"NEW_EMAILS_TO_INVITE": "New user email address(es)",
+	"NEW_EMAILS_TO_INVITE": "New user email addresses",
 	"NEW_PASSWORD": "New password",
 	"NEXT": "Next",
 	"NO_SMTP_TO_SEND_EMAIL_WARNING": "Please contact your admin. n8n isn’t set up to send email right now.",
