@@ -732,7 +732,6 @@ export default mixins(
 					}
 					e.stopPropagation();
 					e.preventDefault();
-					
 
 					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
