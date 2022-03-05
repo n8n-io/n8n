@@ -367,6 +367,10 @@ export class Datagma implements INodeType {
 		const returnData = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+
+        //Predefined constants
+        const source = 'n8n'
+
 		//Get credentials the user provided for this node
 		const credentials = await this.getCredentials('datagmaApi') as IDataObject;
 
@@ -400,7 +404,8 @@ export class Datagma implements INodeType {
 							firstName: fname,
 							lastName: lname,
 							fullName: additionalFields.fullName,
-							company: company
+							company: company,
+                            source: source,
 						},
 						uri: `https://gateway.datagma.net/api/ingress/v2/findEmail`,
 						json: true,
@@ -456,7 +461,7 @@ export class Datagma implements INodeType {
 							maxEmployeesReturn: additionalFields.maxEmployeesReturn,
 							employeeCountry: additionalFields.employeeCountry,
 							debug: additionalFields.debug,
-
+                            source: source,
 						},
 						uri: `https://gateway.datagma.net/api/ingress/v2/full`,
 						json: true,
