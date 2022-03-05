@@ -1,6 +1,11 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,} from 'n8n-workflow';
 
 import { supportpalApiRequest, simplify } from './GenericFunctions';
 import { usersDescription } from './UsersDescription';
@@ -117,46 +122,51 @@ export class Supportpal implements INodeType {
 			...ticketsDescription,
 			...messageDescription,
 			...reportDescription,
-			{
-				displayName: 'Custom Fields',
-				name: 'customFields',
-				placeholder: 'Add Custom Field',
-				description: 'Adds a custom field to set the value of.',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				displayOptions: {
-					show: {
-						operation: ['create', 'update', 'getAll'],
-						resource: ['user', 'organisation', 'ticket'],
-					},
-				},
-				default: {},
-				options: [
-					{
-						name: 'fields',
-						displayName: 'Field',
-						values: [
-							{
-								displayName: 'Field ID',
-								name: 'id',
-								type: 'string',
-								default: '',
-								description: 'ID of the field to set.',
-							},
-							{
-								displayName: 'Field Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value of the field to set.',
-							},
-						],
-					},
-				],
-			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getUserCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const users = await supportpalApiRequest.call(this, 'GET', '/api/user/customfield');
+				for (const user of users.data) {
+					const userName = user.id + ": " + user.name;
+					const userId = user.id;
+					returnData.push({
+						name: userName,
+						value: userId,
+					});
+				}
+				return returnData;
+			},
+			async getOrganisationCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const organisations = await supportpalApiRequest.call(this, 'GET', '/api/user/organisationcustomfield');
+				for (const organisation of organisations.data) {
+					const organisationName = organisation.id + ": " + organisation.name;
+					const organisationId = organisation.id;
+					returnData.push({
+						name: organisationName,
+						value: organisationId,
+					});
+				}
+				return returnData;
+			},
+			async getTicketCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const tickets = await supportpalApiRequest.call(this, 'GET', '/api/ticket/customfield');
+				for (const ticket of tickets.data) {
+					const ticketName = ticket.id + ": " + ticket.name;
+					const ticketId = ticket.id;
+					returnData.push({
+						name: ticketName,
+						value: ticketId,
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

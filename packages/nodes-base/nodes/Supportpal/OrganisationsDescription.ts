@@ -239,4 +239,46 @@ export const organisationsDescription = [
 			},
 		],
 	},
+	{
+		displayName: 'Custom Fields',
+		name: 'customFields',
+		placeholder: 'Add Custom Field',
+		description: 'Adds a custom field to set the value of.',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				operation: ['create', 'update', 'getAll'],
+				resource: ['organisation'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'fields',
+				displayName: 'Field',
+				values: [
+					{
+						displayName: 'Field ID',
+						name: 'id',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganisationCustomFields',
+						},
+						type: 'options',
+						default: '',
+						description: 'ID of the field to set.',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value of the field to set.',
+					},
+				],
+			},
+		],
+	},
 ] as INodeProperties[];
