@@ -10,6 +10,7 @@ export class OdooApi implements ICredentialType {
 			name: 'url',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			placeholder: 'https://my-organization.odoo.com',
 			required: true,
 		},
 		{
@@ -17,6 +18,7 @@ export class OdooApi implements ICredentialType {
 			name: 'username',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			placeholder: 'user@email.com',
 			required: true,
 		},
 		{

@@ -251,7 +251,7 @@ export class Odoo implements INodeType {
 
 				const options: OptionsWithUri = {
 					headers: {
-						'User-Agent': 'https://n8n.io',
+						'User-Agent': 'n8n',
 						Connection: 'keep-alive',
 						Accept: '*/*',
 						'Content-Type': 'application/json',

@@ -117,7 +117,7 @@ export async function odooJSONRPCRequest(
 	try {
 		const options: OptionsWithUri = {
 			headers: {
-				'User-Agent': 'https://n8n.io',
+				'User-Agent': 'n8n',
 				Connection: 'keep-alive',
 				Accept: '*/*',
 				'Content-Type': 'application/json',
@@ -339,8 +339,8 @@ export async function odooUpdate(
 			id: Math.floor(Math.random() * 100),
 		};
 
-		const result = await odooJSONRPCRequest.call(this, body, url);
-		return { success: true };
+		await odooJSONRPCRequest.call(this, body, url);
+		return { id: itemsID };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -381,7 +381,7 @@ export async function odooDelete(
 			id: Math.floor(Math.random() * 100),
 		};
 
-		const result = await odooJSONRPCRequest.call(this, body, url);
+		await odooJSONRPCRequest.call(this, body, url);
 		return { success: true };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
