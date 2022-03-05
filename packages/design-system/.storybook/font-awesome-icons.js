@@ -17,6 +17,8 @@ import {
 	faCheck,
 	faChevronDown,
 	faChevronUp,
+	faChevronLeft,
+	faChevronRight,
 	faCode,
 	faCodeBranch,
 	faCog,
@@ -100,6 +102,8 @@ library.add(faCalendar);
 library.add(faCheck);
 library.add(faChevronDown);
 library.add(faChevronUp);
+library.add(faChevronLeft);
+library.add(faChevronRight);
 library.add(faCode);
 library.add(faCodeBranch);
 library.add(faCog);
