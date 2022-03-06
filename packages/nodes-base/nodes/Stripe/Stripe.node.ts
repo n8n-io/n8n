@@ -39,7 +39,7 @@ import {
 	tokenFields,
 	tokenOperations,
 } from './descriptions';
-
+const isOnline = require('is-online');
 export class Stripe implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stripe',
@@ -141,7 +141,9 @@ export class Stripe implements INodeType {
 
 		let responseData;
 		const returnData: IDataObject[] = [];
-
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < items.length; i++) {
 
 			try {
@@ -501,5 +503,12 @@ export class Stripe implements INodeType {
 
 		return [this.helpers.returnJsonArray(returnData)];
 
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
