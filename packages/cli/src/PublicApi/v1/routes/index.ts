@@ -7,16 +7,11 @@ import { Db, ResponseHelper } from '../../..';
 
 import { sanitizeUser } from '../../../UserManagement/UserManagementHelper';
 
+import { OpenAPIV3 } from 'express-openapi-validator/dist/framework/types';
 export interface N8nApp {
 	app: Application;
 }
 export function addRoutes(this: N8nApp, publicApiEndpoint: string): void {
-
-	// console.log('se llamo esta vegra');
-
-	// console.log(path.join(__dirname));
-
-	// console.log(path.join(__dirname, '..' ,`openapi.yml`));
 
 	this.app.use(`/${publicApiEndpoint}/v1`,
 		OpenApiValidator.middleware({
@@ -26,17 +21,22 @@ export function addRoutes(this: N8nApp, publicApiEndpoint: string): void {
 			validateApiSpec: true,
 			validateSecurity: {
 				handlers: {
-					ApiKeyAuth: async (req, scopes, schema) => {
-						//@ts-ignore
-						const apiKey = req.headers[schema?.name.toLowerCase()];
-						//@ts-ignore
-						const user = await Db.collections.User!.findOne({ apiKey });
-						
-						if (user === undefined) {
+					ApiKeyAuth: async (req, scopes, schema: OpenAPIV3.ApiKeySecurityScheme) => {
+
+						const apiKey = req.headers[schema.name.toLowerCase()];
+
+						const user = await Db.collections.User!.find({
+							where: {
+								apiKey,
+							},
+							relations: ['globalRole'],
+						});
+
+						if (!user.length) {
 							return false;
 						}
 
-						req.user = sanitizeUser(user);
+						req.user = sanitizeUser(user[0]);
 
 						return true;
 					},
@@ -47,6 +47,8 @@ export function addRoutes(this: N8nApp, publicApiEndpoint: string): void {
 
 	//@ts-ignore
 	this.app.use((err, req, res, next) => {
+		console.log(err);
+
 		// format error
 		res.status(err.status || 500).json({
 			message: err.message,

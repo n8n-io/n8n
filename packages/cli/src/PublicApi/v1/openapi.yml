@@ -31,13 +31,13 @@ servers:
         default: api
         description: Customer ID assigned by the service provider
 tags:
-- name: user
+- name: users
   description: Operations about user
   externalDocs:
     description: Find out more about our store
     url: http://swagger.io
 paths:
-  /user:
+  /users:
     get:
       x-eov-operation-id: getUsers
       x-eov-operation-handler: routes/User
@@ -46,15 +46,16 @@ paths:
       summary: Retrieve all users
       description: Retrieve all users from your instance. Only available for the instance owner.
       parameters:
-      - name: select
-        in: query
-        required: false
-        style: form
-        explode: true
-        schema:
-          type: string
-          description: Comma-separted list of the properties to return. Use a to return all properties. Dot notation be use for nested properties
-          example: email,firstName
+      # - name: select
+      #   in: query
+      #   required: false
+      #   style: form
+      #   explode: false
+      #   allowReserved: true
+      #   schema:
+      #     type: string
+      #     description: Comma-separted list of the properties to return. Use a to return all properties. Dot notation be use for nested properties
+      #     example: email,firstName
       - name: limit
         in: query
         description: The maximum number of items to return
@@ -121,7 +122,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InputValidationError'
-  /user/{userId}:
+  /users/{id}:
     get:
       x-eov-operation-id: getUser
       x-eov-operation-handler: routes/User
@@ -131,7 +132,7 @@ paths:
       description: Retrieve a user from your instance. Only available for the instance owner.
       operationId: getUser
       parameters:
-      - name: userId
+      - name: id
         in: path
         description: The ID or email of the user
         required: true
@@ -161,7 +162,7 @@ paths:
       description: Deletes a user from your instance. Only available for the instance owner.
       operationId: deleteUser
       parameters:
-      - name: userId
+      - name: id
         in: path
         description: The name that needs to be deleted
         required: true

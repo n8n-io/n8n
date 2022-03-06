@@ -10,6 +10,7 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
+	AfterLoad,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import config = require('../../../config');
