@@ -108,7 +108,7 @@ export async function wiseApiRequest(
 			throw new NodeApiError(this.getNode(), {message: 'SCA request failed, check your private key is valid'});
 		}
 	} else {
-		throw new NodeApiError(this.getNode(), {headers: response.headers, body: response.body},);
+		throw new NodeApiError(this.getNode(), { ...response, message: response.statusMessage });
 	}
 }
 
