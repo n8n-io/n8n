@@ -39,7 +39,7 @@ export function logMigrationStart(migrationName: string): void {
 	if (disableLogging) return;
 	const logger = getLogger();
 	if (!logFinishTimeout) {
-		logger.info('Migrations in progress, please do NOT stop the process.');
+		logger.warn('Migrations in progress, please do NOT stop the process.');
 	}
 	logger.debug(`Starting migration ${migrationName}`);
 	clearTimeout(logFinishTimeout);
@@ -50,6 +50,6 @@ export function logMigrationEnd(migrationName: string): void {
 	const logger = getLogger();
 	logger.debug(`Finished migration ${migrationName}`);
 	logFinishTimeout = setTimeout(() => {
-		logger.info('Migrations finished.');
+		logger.warn('Migrations finished.');
 	}, 100);
 }
