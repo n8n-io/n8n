@@ -25,7 +25,7 @@ import {
 import {
 	randomBytes,
 } from 'crypto';
-
+const isOnline = require('is-online');
 export class WufooTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wufoo Trigger',
@@ -157,7 +157,9 @@ export class WufooTrigger implements INodeType {
 		const onlyAnswers = this.getNodeParameter('onlyAnswers') as boolean;
 		const entries: IDataObject = {};
 		let returnObject: IDataObject = {};
-
+		isOnline().then(async online => {
+		if(online){
+							try {
 		if (req.body.HandshakeKey !== webhookData.handshakeKey) {
 			return {};
 		}
@@ -243,5 +245,12 @@ export class WufooTrigger implements INodeType {
 				],
 			};
 		}
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
