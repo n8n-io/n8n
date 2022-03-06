@@ -1,12 +1,18 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import config = require('../../../../config');
-import { loadSurveyFromDisk } from '../../utils/migrationHelpers';
+import {
+	loadSurveyFromDisk,
+	logMigrationEnd,
+	logMigrationStart,
+} from '../../utils/migrationHelpers';
 
 export class CreateUserManagement1636626154932 implements MigrationInterface {
 	name = 'CreateUserManagement1636626154932';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
+		logMigrationStart(this.name);
+
 		const tablePrefix = config.get('database.tablePrefix');
 
 		await queryRunner.query(
@@ -97,6 +103,8 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 			INSERT INTO "${tablePrefix}settings" (key, value, loadOnStartup) values
 			('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)
 		`);
+
+		logMigrationEnd(this.name);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {

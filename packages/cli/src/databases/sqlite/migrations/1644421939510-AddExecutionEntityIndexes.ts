@@ -1,10 +1,12 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
+import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 
 export class AddExecutionEntityIndexes1644421939510 implements MigrationInterface {
 	name = 'AddExecutionEntityIndexes1644421939510';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
+		logMigrationStart(this.name);
 		const tablePrefix = config.get('database.tablePrefix');
 
 		await queryRunner.query(`DROP INDEX IF EXISTS 'IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2'`);
@@ -23,6 +25,7 @@ export class AddExecutionEntityIndexes1644421939510 implements MigrationInterfac
 		await queryRunner.query(
 			`CREATE INDEX IF NOT EXISTS 'IDX_${tablePrefix}81fc04c8a17de15835713505e4' ON '${tablePrefix}execution_entity' ('workflowId', 'id') `,
 		);
+		logMigrationEnd(this.name);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
