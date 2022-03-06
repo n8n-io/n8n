@@ -745,11 +745,11 @@ export class SurveyMonkeyTrigger implements INodeType {
 			});
 				}catch(error) {
 								if (error.response) {
-															console.log(`Error : ${error.response}`);
+																throw new NodeOperationError(this.getNode(), error);
 									}
 								}
 				} else {
-								console.log('we have a network problem');
+							throw new NodeOperationError(this.getNode(), error);
 			}
 		};
 		});
