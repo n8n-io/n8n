@@ -512,7 +512,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 		return new Promise((resolve, reject) => {
 			const data: Buffer[] = [];
-
+			isOnline().then(async online => {
+			if(online){
+							try {
 			req.on('data', (chunk) => {
 				data.push(chunk);
 			});
@@ -741,6 +743,15 @@ export class SurveyMonkeyTrigger implements INodeType {
 			req.on('error', (error) => {
 				throw new NodeOperationError(this.getNode(), error);
 			});
+				}catch(error) {
+								if (error.response) {
+															console.log(`Error : ${error.response}`);
+									}
+								}
+				} else {
+								console.log('we have a network problem');
+			}
+		};
 		});
 	}
 }
