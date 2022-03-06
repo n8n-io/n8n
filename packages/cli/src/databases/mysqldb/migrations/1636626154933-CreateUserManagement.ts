@@ -109,10 +109,6 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 			`ALTER TABLE ${tablePrefix}workflow_entity DROP INDEX IDX_${tablePrefix}943d8f922be094eb507cb9a7f9`,
 		);
 
-		await queryRunner.query(
-			`CREATE INDEX IDX_${tablePrefix}xeendlvptc5jy4hbol17b5xery ON ${tablePrefix}execution_entity (\`workflowId\`)`,
-		);
-
 		// Insert initial roles
 		await queryRunner.query(
 			`INSERT INTO ${tablePrefix}role (name, scope) VALUES ("owner", "global");`,
@@ -164,10 +160,6 @@ export class CreateUserManagement1636626154933 implements MigrationInterface {
 
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_entity ADD UNIQUE INDEX \`IDX_${tablePrefix}943d8f922be094eb507cb9a7f9\` (\`name\`)`,
-		);
-
-		await queryRunner.query(
-			`DROP INDEX \`IDX_${tablePrefix}xeendlvptc5jy4hbol17b5xery\` ON ${tablePrefix}execution_entity`,
 		);
 
 		await queryRunner.query(`DROP TABLE "${tablePrefix}shared_credentials"`);
