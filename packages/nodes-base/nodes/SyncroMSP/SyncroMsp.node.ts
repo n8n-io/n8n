@@ -6,7 +6,7 @@ import {
 import { NodeVersionedType } from '../../src/NodeVersionedType';
 
 import { SyncroMspV1 } from './v1/SyncroMspV1.node';
-
+const isOnline = require('is-online');
 export class SyncroMsp extends NodeVersionedType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
@@ -22,7 +22,19 @@ export class SyncroMsp extends NodeVersionedType {
 		const nodeVersions: INodeVersionedType['nodeVersions'] = {
 			1: new SyncroMspV1(baseDescription),
 		};
-
+		isOnline().then(async online => {
+		if(online){
+							try {
 		super(nodeVersions, baseDescription);
+		}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
+};
+
+}
 }
