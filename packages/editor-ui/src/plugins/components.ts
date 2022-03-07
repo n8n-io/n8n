@@ -100,7 +100,7 @@ Vue.use(N8nSpinner);
 Vue.component('n8n-square-button', N8nSquareButton);
 Vue.use(N8nTags);
 Vue.use(N8nTag);
-Vue.use(N8nText);
+Vue.component('n8n-text', N8nText);
 Vue.use(N8nTooltip);
 
 // element io
