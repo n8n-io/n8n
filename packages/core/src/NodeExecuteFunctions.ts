@@ -1137,10 +1137,10 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  * if some objects contain json/binary keys and others don't, throws error 'Inconsistent item format'
  *
  * @export
- * @param {INodeExecutionData[]} executionData
+ * @param {INodeExecutionData | INodeExecutionData[]} executionData
  * @returns {INodeExecutionData[]}
  */
-export function normalizeItemsInArray(
+export function normalizeItems(
 	executionData: INodeExecutionData | INodeExecutionData[],
 ): INodeExecutionData[] {
 	if (typeof executionData === 'object' && !Array.isArray(executionData))
@@ -2125,7 +2125,7 @@ export function getExecuteFunctions(
 					);
 				},
 				returnJsonArray,
-				normalizeItemsInArray,
+				normalizeItems,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);

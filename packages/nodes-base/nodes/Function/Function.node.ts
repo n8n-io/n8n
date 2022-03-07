@@ -119,7 +119,7 @@ return items;`,
 		try {
 			// Execute the function code
 			items = (await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname));
-			items = this.helpers.normalizeItemsInArray(items);
+			items = this.helpers.normalizeItems(items);
 
 			// Do very basic validation of the data
 			if (items === undefined) {
