@@ -1,5 +1,24 @@
-import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY } from '@/constants';
+import {
+	changePassword,
+	deleteUser,
+	getCurrentUser,
+	getUsers,
+	inviteUsers,
+	login,
+	loginCurrentUser,
+	logout,
+	reinvite,
+	sendForgotPasswordEmail,
+	setupOwner,
+	signup,
+	submitPersonalizationSurvey,
+	skipOwnerSetup,
+	updateCurrentUser,
+	updateCurrentUserPassword,
+	validatePasswordToken,
+	validateSignupToken,
+} from '@/api/users';
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
 import {
@@ -203,6 +222,12 @@ const module: Module<IUsersState, IRootState> = {
 			if (surveyEnabled && currentUser && !currentUser.personalizationAnswers) {
 				context.dispatch('ui/openModal', PERSONALIZATION_MODAL_KEY, {root: true});
 			}
+		},
+		async skipOwnerSetup(context: ActionContext<IUsersState, IRootState>) {
+			try {
+				context.commit('settings/stopShowingSetupPage', null, { root: true });
+				await skipOwnerSetup(context.rootGetters.getRestApiContext);
+			} catch (error) {}
 		},
 	},
 };

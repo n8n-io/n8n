@@ -17,8 +17,3 @@ export async function submitContactInfo(instanceId: string, userId: string, emai
 export async function submitValueSurvey(instanceId: string, userId: string, params: IN8nValueSurveyData): Promise<IN8nPrompts> {
 	return await post(N8N_IO_BASE_URL, '/value-survey', params, {'n8n-instance-id': instanceId, 'n8n-user-id': userId});
 }
-
-export function submitSkipOwnerSetup(context: IRestApiContext): Promise<void> {
-	return makeRestApiRequest(context, 'POST', '/owner/skip-setup');
-}
-
