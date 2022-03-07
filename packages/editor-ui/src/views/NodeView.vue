@@ -683,13 +683,13 @@ export default mixins(
 				}
 
 				if (e.key === 'd') {
-					this.callDebounced('deactivateSelectedNode', 350);
+					this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
 
 				} else if (e.key === 'Delete' || e.key === 'Backspace') {
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('deleteSelectedNodes', 500);
+					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 
 				} else if (e.key === 'Tab') {
 					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
@@ -701,7 +701,7 @@ export default mixins(
 				} else if (e.key === 'F2' && !this.isReadOnly) {
 					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode !== null) {
-						this.callDebounced('renameNodePrompt', 1500, lastSelectedNode.name);
+						this.callDebounced('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
 					}
 				} else if ((e.key === '=' || e.key === '+') && !this.isCtrlKeyPressed(e)) {
 					this.zoomIn();
@@ -716,25 +716,31 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectAllNodes', 1000);
+					this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
-					this.callDebounced('copySelectedNodes', 1000);
+					this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
 					// Cut nodes
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('cutSelectedNodes', 1000);
+					this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
 				} else if (e.key === 'o' && this.isCtrlKeyPressed(e) === true) {
 					// Open workflow dialog
 					e.stopPropagation();
 					e.preventDefault();
+					if (this.isDemo) {
+						return;
+					}
 
 					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
 					e.preventDefault();
+					if (this.isDemo) {
+						return;
+					}
 
 					if (this.$router.currentRoute.name === 'NodeViewNew') {
 						this.$root.$emit('newWorkflow');
@@ -755,7 +761,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('onSaveKeyboardShortcut', 1000);
+					this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 });
 				} else if (e.key === 'Enter') {
 					// Activate the last selected node
 					const lastSelectedNode = this.lastSelectedNode;
@@ -768,7 +774,7 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectDownstreamNodes', 1000);
+					this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
 				} else if (e.key === 'ArrowRight') {
 					// Set child node active
 					const lastSelectedNode = this.lastSelectedNode;
@@ -782,13 +788,13 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('nodeSelectedByName', 100, connections.main[0][0].node, false, true);
+					this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
 				} else if (e.key === 'ArrowLeft' && e.shiftKey === true) {
 					// Select all downstream nodes
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectUpstreamNodes', 1000);
+					this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
 				} else if (e.key === 'ArrowLeft') {
 					// Set parent node active
 					const lastSelectedNode = this.lastSelectedNode;
@@ -808,7 +814,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('nodeSelectedByName', 100, connections.main[0][0].node, false, true);
+					this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
 				} else if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
 					// Set sibling node as active
 
@@ -866,7 +872,7 @@ export default mixins(
 					}
 
 					if (nextSelectNode !== null) {
-						this.callDebounced('nodeSelectedByName', 100, nextSelectNode, false, true);
+						this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, nextSelectNode, false, true);
 					}
 				}
 			},

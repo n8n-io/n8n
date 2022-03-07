@@ -627,7 +627,7 @@ export interface IN8nUISettings {
 	defaultLocale: string;
 	workflowTagsDisabled: boolean;
 	logLevel: ILogLevel;
-	deploymentType: string;
+	hiringBannerEnabled: boolean;
 	templates: {
 		enabled: boolean;
 		host: string;
@@ -796,6 +796,7 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
+	fetchedAllCredentials: boolean;
 }
 
 export interface ITagsState {

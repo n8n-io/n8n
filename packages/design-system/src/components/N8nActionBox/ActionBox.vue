@@ -1,9 +1,8 @@
 <template functional>
 	<div :class="$style.container">
-		<span :class="$style.emoji">{{props.emoji}}</span>
 		<div :class="$style.description">
-			<component :is="$options.components.N8nHeading" size="xlarge">{{ props.heading }}</component>
-			<component :is="$options.components.N8nText" color="text-base">{{ props.description }}</component>
+			<component :is="$options.components.N8nHeading" size="xlarge" align="center">{{ props.heading }}</component>
+			<slot></slot>
 		</div>
 		<component :is="$options.components.N8nButton" :label="props.buttonText" size="large"
 			@click="(e) => listeners.click && listeners.click(e)"
@@ -19,13 +18,7 @@ import N8nText from '../N8nText';
 export default {
 	name: 'n8n-action-box',
 	props: {
-		emoji: {
-			type: String,
-		},
 		heading: {
-			type: String,
-		},
-		description: {
 			type: String,
 		},
 		buttonText: {
@@ -61,7 +54,6 @@ export default {
 .description {
 	display: flex;
 	flex-direction: column;
-	text-align: center;
 
 	> *:first-child {
 		margin-bottom: var(--spacing-2xs);

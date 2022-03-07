@@ -72,7 +72,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		async onSubmit(values: {[key: string]: string}) {
+		async onSubmit(values: {email: string}) {
 			try {
 				this.loading = true;
 				await this.$store.dispatch('users/sendForgotPasswordEmail', values);
@@ -80,10 +80,14 @@ export default mixins(
 				this.$showMessage({
 					type: 'success',
 					title: this.$locale.baseText('RECOVERY_EMAIL_SENT'),
-					message: this.$locale.baseText('CHECK_INBOX_AND_SPAM'),
+					message: this.$locale.baseText('EMAIL_SENT_IF_EXISTS', {interpolate: {email: values.email}}),
 				});
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('SENDING_EMAIL_ERROR'));
+				this.$showMessage({
+					type: 'error',
+					title: this.$locale.baseText('SENDING_EMAIL_ERROR'),
+					message: this.$locale.baseText('SMTP_ERROR_CONTACT_ADMINISTRATOR'),
+				});
 			}
 			this.loading = false;
 		},

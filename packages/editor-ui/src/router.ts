@@ -211,12 +211,22 @@ const router = new Router({
 			components: {
 				default: SettingsUsersView,
 			},
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
 		},
 		{
 			path: '/settings/personal',
 			name: 'PersonalSettings',
 			components: {
 				default: SettingsPersonalView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
 			},
 		},
 		{
