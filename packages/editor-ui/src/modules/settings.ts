@@ -56,8 +56,8 @@ const module: Module<ISettingsState, IRootState> = {
 		areTagsEnabled: (state) => {
 			return state.settings.workflowTagsDisabled !== undefined ? !state.settings.workflowTagsDisabled : true;
 		},
-		isInternalUser: (state): boolean => {
-			return state.settings.deploymentType === 'n8n-internal';
+		isHiringBannerEnabled: (state): boolean => {
+			return state.settings.hiringBannerEnabled;
 		},
 		isTemplatesEnabled: (state): boolean => {
 			return Boolean(state.settings.templates && state.settings.templates.enabled);

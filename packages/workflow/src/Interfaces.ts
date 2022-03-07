@@ -420,6 +420,7 @@ export interface IHttpRequestOptions {
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
+	ignoreHttpStatusErrors?: boolean;
 	proxy?: {
 		host: string;
 		port: number;

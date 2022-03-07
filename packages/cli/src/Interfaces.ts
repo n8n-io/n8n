@@ -434,7 +434,7 @@ export interface IN8nUISettings {
 	userManagement: IUserManagementSettings;
 	workflowTagsDisabled: boolean;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
-	deploymentType: string;
+	hiringBannerEnabled: boolean;
 	templates: {
 		enabled: boolean;
 		host: string;

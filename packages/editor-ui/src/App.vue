@@ -38,7 +38,7 @@ export default mixins(
 		Modals,
 	},
 	computed: {
-		...mapGetters('settings', ['isInternalUser', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
+		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['canCurrentUserAccessView', 'currentUser']),
 	},
 	data() {
@@ -77,7 +77,7 @@ export default mixins(
 			}
 		},
 		logHiringBanner() {
-			if (!this.isInternalUser && this.$route.name !== 'WorkflowDemo') {
+			if (!this.isHiringBannerEnabled && this.$route.name !== 'WorkflowDemo') {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
