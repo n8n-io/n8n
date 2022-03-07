@@ -98,14 +98,14 @@
 						</h3>
 
 						<div class="text">
-							{{ $locale.baseText(
+							<span v-html="$locale.baseText(
 								'runData.theNodeContains',
 								{
 									interpolate: {
 										numberOfKb: parseInt(dataSize/1024).toLocaleString()
 									}
 								}
-							)}}
+							)"></span>
 						</div>
 
 						<n8n-button
