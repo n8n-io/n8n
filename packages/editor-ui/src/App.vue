@@ -94,7 +94,7 @@ export default mixins(
 				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
 			}
 
-			this.$telemetry.page('Editor', this.$route);
+			this.$telemetry.page(this.$route);
 		},
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once

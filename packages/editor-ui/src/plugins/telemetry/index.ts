@@ -37,7 +37,7 @@ interface IUserNodesPanelSession {
 
 class Telemetry {
 
-	private pageEventQueue: Array<{category: string, route: Route}>;
+	private pageEventQueue: Array<{route: Route}>;
 	private previousPath: string;
 	private store: Store<IRootState> | null;
 
@@ -92,7 +92,7 @@ class Telemetry {
 		}
 	}
 
-	page(category: string, route: Route) {
+	page(route: Route) {
 		if (this.telemetry)	{
 			if (route.path === this.previousPath) { // avoid duplicate requests query is changed for example on search page
 				return;
@@ -104,11 +104,12 @@ class Telemetry {
 			if (this.store && route.meta && route.meta.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route, this.store);
 			}
+
+			const category = (route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
 			this.telemetry.page(category, pageName, properties);
 		}
 		else {
 			this.pageEventQueue.push({
-				category,
 				route,
 			});
 		}
@@ -117,8 +118,8 @@ class Telemetry {
 	flushPageEvents() {
 		const queue = this.pageEventQueue;
 		this.pageEventQueue = [];
-		queue.forEach(({category, route}) => {
-			this.page(category, route);
+		queue.forEach(({route}) => {
+			this.page(route);
 		});
 	}
 
