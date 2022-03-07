@@ -6,7 +6,6 @@ import { In, IsNull, Not } from 'typeorm';
 import express = require('express');
 import { PublicUser } from './Interfaces';
 import { Db, GenericHelpers, ResponseHelper } from '..';
-import config = require('../../config');
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
 import { Role } from '../databases/entities/Role';
 import { AuthenticatedRequest } from '../requests';

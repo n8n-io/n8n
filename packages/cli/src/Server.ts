@@ -322,7 +322,7 @@ class App {
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
 			logLevel: config.get('logs.level'),
-			deploymentType: config.get('deployment.type'),
+			hiringBannerEnabled: config.get('hiringBanner.enabled'),
 			templates: {
 				enabled: config.get('templates.enabled'),
 				host: config.get('templates.host'),

@@ -38,7 +38,7 @@ export default mixins(
 		Modals,
 	},
 	computed: {
-		...mapGetters('settings', ['isInternalUser', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
+		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['canCurrentUserAccessView', 'currentUser']),
 	},
 	data() {
@@ -77,7 +77,7 @@ export default mixins(
 			}
 		},
 		logHiringBanner() {
-			if (!this.isInternalUser && this.$route.name !== 'WorkflowDemo') {
+			if (!this.isHiringBannerEnabled && this.$route.name !== 'WorkflowDemo') {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
@@ -94,7 +94,7 @@ export default mixins(
 				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
 			}
 
-			this.$telemetry.page('Editor', this.$route);
+			this.$telemetry.page(this.$route);
 		},
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once

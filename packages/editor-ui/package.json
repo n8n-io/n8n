@@ -63,7 +63,6 @@
     "babel-eslint": "^10.0.1",
     "cross-env": "^7.0.2",
     "dateformat": "^3.0.3",
-    "element-ui": "~2.15.7",
     "eslint": "^7.32.0",
     "eslint-plugin-import": "^2.23.4",
     "eslint-plugin-vue": "^7.16.0",

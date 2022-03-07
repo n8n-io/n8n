@@ -86,7 +86,11 @@ export default mixins(
 					),
 				});
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('SENDING_EMAIL_ERROR'));
+				this.$showMessage({
+					type: 'error',
+					title: this.$locale.baseText('SENDING_EMAIL_ERROR'),
+					message: this.$locale.baseText('SMTP_ERROR_CONTACT_ADMINISTRATOR'),
+				});
 			}
 			this.loading = false;
 		},

@@ -243,7 +243,7 @@
 			"theWorkflowExecutionFailed": "The workflow execution failed.",
 			"theWorkflowExecutionFailedButTheRetryWasSuccessful": "The workflow execution failed but the retry {entryRetrySuccessId} was successful.",
 			"theWorkflowExecutionIsProbablyStillRunning": "The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ",
-			"theWorkflowExecutionWasARetryOfAndFailed": "The workflow execution was a retry of {entryRetryOf} and failed.<br />New retries have to be,started from the original execution.",
+			"theWorkflowExecutionWasARetryOfAndFailed": "The workflow execution was a retry of {entryRetryOf} and failed.<br />New retries have to be started from the original execution.",
 			"theWorkflowExecutionWasARetryOfAndItWasSuccessful": "The workflow execution was a retry of {entryRetryOf} and it was successful.",
 			"theWorkflowExecutionWasSuccessful": "The worklow execution was successful.",
 			"theWorkflowIsCurrentlyExecuting": "The worklow is currently executing.",
@@ -444,7 +444,7 @@
 		"time": "Time"
 	},
 	"nodeBase": {
-		"clickToAddNodeOrDragToConnect": "Click to add node<br>or drag to connect"
+		"clickToAddNodeOrDragToConnect": "Click to add node<br />or drag to connect"
 	},
 	"nodeSettings": {
 		"alwaysOutputData": {
@@ -704,7 +704,7 @@
 		"customerIntegrations": "Customer integrations",
 		"customerSupport": "Customer support",
 		"financeOrAccounting": "Finance / Accounting",
-		"product": "Product (e.g fast prototyping)",
+		"product": "Product (e.g. fast prototyping)",
 		"salesAndMarketing": "Sales and Marketing",
 		"notSureYet": "Not sure yet",
 		"specifyYourAutomationGoal": "Please specify your automation goal"
@@ -924,7 +924,7 @@
 		"breakingChanges": "Breaking changes",
 		"released": "Released",
 		"securityUpdate": "Security update",
-		"thisVersionHasASecurityIssue": "This version has a security issue.<br/>It is listed here for completeness.",
+		"thisVersionHasASecurityIssue": "This version has a security issue.<br />It is listed here for completeness.",
 		"unknown": "unknown",
 		"version": "Version"
 	},
@@ -1109,6 +1109,7 @@
 	"EMAIL_INVITES_SENT": "An invite email was sent to {emails}",
 	"EMAIL_INVITES_SENT_ERROR": "Could not invite {emails}",
 	"EMAIL_SENT_TO": "Email sent to {email}",
+	"EMAIL_SENT_IF_EXISTS": "We’ve emailed {email} (if there’s a matching account)",
 	"ERROR": "Error",
 	"FINISH_ACCOUNT_SETUP": "Finish account setup",
 	"FIRST_NAME": "First name",
@@ -1161,8 +1162,9 @@
 	"SET_UP_ACCOUNT": "Set up your account",
 	"SET_UP_MY_ACCOUNT": "Set up my owner account",
 	"SET_UP_OWNER": "Set up owner account",
-	"SET_UP_TO_INVITE_USERS_MESSAGE": "Set up an owner account to invite users.",
-	"SET_UP_TO_INVITE_USERS_WARNING": "Once set up, each user will need to use a password to access n8n.",
+	"SET_UP_TO_INVITE_USERS": "To invite users, set up your own account",
+	"SET_UP_TO_INVITE_USERS_WARNING": "Invited users won’t be able to see workflows and credentials of other users. (As the owner of n8n, you will be able to see them though) <a href=\"https://docs.n8n.io/reference/user-management\" target=\"_blank\">More info</a>",
+	"SET_UP_SMTP_TO_COMPLETE_SETUP": "You will need details of an <a href=\"https://docs.n8n.io/reference/user-management#smtp\" target=\"_blank\">SMTP server</a> to complete the setup.",
 	"SIGN_IN": "Sign in",
 	"SIGN_OUT": "Sign out",
 	"SIGN_OUT_ERROR": "Could not sign out",
@@ -1170,6 +1172,7 @@
 	"SKIP_OWNER_SETUP_QUESTION": "Skip owner account setup?",
 	"SKIP_SETUP": "Skip setup",
 	"SKIP_SETUP_TEMPORARILY": "Skip setup for now",
+	"SMTP_ERROR_CONTACT_ADMINISTRATOR": "Please contact your administrator (problem with your SMTP setup)",
 	"SMTP_TO_ADD_USERS_WARNING": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management#smtp\">Instructions</a>",
 	"TOKEN_VALIDATION_ERROR": "Issue validating invite token",
 	"TRANSFERRED_TO_USER": "Transferred to {user}",
@@ -1181,7 +1184,7 @@
 	"USER_DELETE_SUCCESS": "User deleted",
 	"USER_INVITED_ERROR": "User could not be invited",
 	"USER_INVITED_SUCCESS": "User invited",
-	"USER_INVITE_ERROR": "Problem inviting user",
+	"USER_REINVITE_ERROR": "Could not reinvite user",
 	"USER_TO_TRANSFER_TO": "User to transfer to",
 	"VERSION": "Version",
 	"WORKFLOW_IMPORT_ERROR": "Could not import workflow",

@@ -14,12 +14,17 @@
 			</div>
 			<div v-if="showUMSetupWarning" :class="$style.setupInfoContainer">
 				<n8n-action-box
-					emoji="😿"
-					:heading="$locale.baseText('SET_UP_TO_INVITE_USERS_MESSAGE')"
-					:description="$locale.baseText('SET_UP_TO_INVITE_USERS_WARNING')"
+					:heading="$locale.baseText('SET_UP_TO_INVITE_USERS')"
 					:buttonText="$locale.baseText('SET_UP_MY_ACCOUNT')"
 					@click="redirectToSetup"
-				/>
+				>
+					<n8n-text color="text-base">
+						<ul>
+							<li v-html="$locale.baseText('SET_UP_TO_INVITE_USERS_WARNING')"></li>
+							<li v-html="$locale.baseText('SET_UP_SMTP_TO_COMPLETE_SETUP')"></li>
+						</ul>
+					</n8n-text>
+				</n8n-action-box>
 			</div>
 			<div :class="$style.usersContainer" v-else>
 				<PageAlert
@@ -87,7 +92,7 @@ export default mixins(showMessage).extend({
 						message: this.$locale.baseText('EMAIL_SENT_TO', { interpolate: { email: user.email } }),
 					});
 				} catch (e) {
-					this.$showError(e, this.$locale.baseText('USER_INVITE_ERROR'));
+					this.$showError(e, this.$locale.baseText('USER_REINVITE_ERROR'));
 				}
 			}
 		},
