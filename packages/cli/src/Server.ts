@@ -1072,7 +1072,7 @@ class App {
 
 				await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
 				// @ts-ignore
-				void InternalHooksManager.getInstance().onWorkflowSaved(updatedWorkflow as IWorkflowBase);
+				void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updatedWorkflow);
 
 				if (updatedWorkflow.active) {
 					// When the workflow is supposed to be active add it again
