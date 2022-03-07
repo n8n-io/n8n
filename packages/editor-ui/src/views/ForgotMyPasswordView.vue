@@ -47,7 +47,7 @@ export default mixins(
 					name: 'no-smtp-warning',
 					properties: {
 						label: this.$locale.baseText('NO_SMTP_TO_SEND_EMAIL_WARNING'),
-						type: 'text',
+						type: 'label',
 					},
 				},
 			];
