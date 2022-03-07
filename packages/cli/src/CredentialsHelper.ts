@@ -669,7 +669,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					};
 				}
 			}
-			Logger.info('Credential test failed', error);
+			Logger.debug('Credential test failed', error);
 			return {
 				status: 'Error',
 				message: error.message.toString(),

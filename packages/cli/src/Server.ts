@@ -922,7 +922,7 @@ class App {
 				});
 
 				if (!shared) {
-					LoggerProxy.error('User attempted to access a workflow without permissions', {
+					LoggerProxy.info('User attempted to access a workflow without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});
@@ -1107,7 +1107,7 @@ class App {
 				});
 
 				if (!shared) {
-					LoggerProxy.error('User attempted to delete a workflow without permissions', {
+					LoggerProxy.info('User attempted to delete a workflow without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});
@@ -1576,7 +1576,7 @@ class App {
 				});
 
 				if (!shared) {
-					LoggerProxy.error('User attempted to access workflow errors without permissions', {
+					LoggerProxy.info('User attempted to access workflow errors without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});
@@ -1794,10 +1794,13 @@ class App {
 							undefined,
 							503,
 						);
-						LoggerProxy.warn('OAuth1 callback failed because of insufficient parameters received', {
-							userId: req.user.id,
-							credentialId,
-						});
+						LoggerProxy.error(
+							'OAuth1 callback failed because of insufficient parameters received',
+							{
+								userId: req.user.id,
+								credentialId,
+							},
+						);
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
@@ -1922,7 +1925,7 @@ class App {
 				const credential = await getCredentialForUser(credentialId, req.user);
 
 				if (!credential) {
-					LoggerProxy.warn('Failed to authorize OAuth2 due to lack of permissions', {
+					LoggerProxy.error('Failed to authorize OAuth2 due to lack of permissions', {
 						userId: req.user.id,
 						credentialId,
 					});
@@ -2059,7 +2062,7 @@ class App {
 					const credential = await getCredentialForUser(state.cid, req.user);
 
 					if (!credential) {
-						LoggerProxy.warn('OAuth2 callback failed because of insufficient permissions', {
+						LoggerProxy.error('OAuth2 callback failed because of insufficient permissions', {
 							userId: req.user.id,
 							credentialId: state.cid,
 						});
@@ -2152,7 +2155,7 @@ class App {
 					}
 
 					if (oauthToken === undefined) {
-						LoggerProxy.warn('OAuth2 callback failed: unable to get access tokens', {
+						LoggerProxy.error('OAuth2 callback failed: unable to get access tokens', {
 							userId: req.user.id,
 							credentialId: state.cid,
 						});
@@ -2186,7 +2189,7 @@ class App {
 					newCredentialsData.updatedAt = this.getCurrentDate();
 					// Save the credentials in DB
 					await Db.collections.Credentials!.update(state.cid, newCredentialsData);
-					LoggerProxy.warn('OAuth2 callback successful for new credential', {
+					LoggerProxy.verbose('OAuth2 callback successful for new credential', {
 						userId: req.user.id,
 						credentialId: state.cid,
 					});
