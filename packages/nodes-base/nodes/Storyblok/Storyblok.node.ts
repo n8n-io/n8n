@@ -28,7 +28,7 @@ import {
 } from './StoryManagementDescription';
 
 import { v4 as uuidv4 } from 'uuid';
-
+const isOnline = require('is-online');
 export class Storyblok implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Storyblok',
@@ -185,6 +185,9 @@ export class Storyblok implements INodeType {
 		const source = this.getNodeParameter('source', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
@@ -337,5 +340,12 @@ export class Storyblok implements INodeType {
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
