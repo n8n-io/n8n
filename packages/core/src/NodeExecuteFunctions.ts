@@ -744,6 +744,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		axiosRequest.headers['User-Agent'] = 'n8n';
 	}
 
+	if (n8nRequest.ignoreHttpStatusErrors) {
+		axiosRequest.validateStatus = () => true;
+	}
+
 	return axiosRequest;
 }
 

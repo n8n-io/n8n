@@ -29,15 +29,14 @@
     "@fortawesome/fontawesome-svg-core": "1.x",
     "@fortawesome/free-solid-svg-icons": "5.x",
     "@fortawesome/vue-fontawesome": "2.x",
-    "core-js": "3.x",
-    "element-ui": "2.15.x"
+    "core-js": "3.x"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
     "@fortawesome/free-solid-svg-icons": "^5.15.3",
     "@fortawesome/vue-fontawesome": "^2.0.2",
     "core-js": "^3.6.5",
-    "element-ui": "2.15.x",
+    "element-ui": "~2.15.7",
     "storybook-addon-themes": "^6.1.0",
     "vue": "^2.6.11",
     "vue-class-component": "^7.2.3",
