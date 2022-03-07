@@ -19,10 +19,37 @@ export class NodeMailer implements UserManagementMailerImplementation {
 		});
 	}
 
+	async verifyConnection(): Promise<void> {
+		const host = config.get('userManagement.emails.smtp.host') as string;
+		const user = config.get('userManagement.emails.smtp.auth.user') as string;
+		const pass = config.get('userManagement.emails.smtp.auth.pass') as string;
+
+		return new Promise((resolve, reject) => {
+			this.transport.verify((error: Error) => {
+				if (!error) resolve();
+
+				const message = [];
+
+				if (!host) message.push('SMTP host not defined (N8N_SMTP_HOST).');
+				if (!user) message.push('SMTP user not defined (N8N_SMTP_USER).');
+				if (!pass) message.push('SMTP pass not defined (N8N_SMTP_PASS).');
+
+				reject(new Error(message.join(' ')));
+			});
+		});
+	}
+
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {
+		let sender = config.get('userManagement.emails.smtp.sender');
+		const user = config.get('userManagement.emails.smtp.auth.user') as string;
+
+		if (!sender && user.includes('@')) {
+			sender = user;
+		}
+
 		try {
 			await this.transport.sendMail({
-				from: config.get('userManagement.emails.smtp.sender'),
+				from: sender,
 				to: mailData.emailRecipients,
 				subject: mailData.subject,
 				text: mailData.textOnly,

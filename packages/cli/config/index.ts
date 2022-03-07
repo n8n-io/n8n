@@ -598,47 +598,47 @@ const config = convict({
 			mode: {
 				doc: 'How to send emails',
 				format: ['', 'smtp'],
-				default: '',
-				env: 'N8N_UM_EMAIL_MODE',
+				default: 'smtp',
+				env: 'N8N_MODE',
 			},
 			smtp: {
 				host: {
 					doc: 'SMTP server host',
-					format: String,
-					default: 'smtp.gmail.com',
-					env: 'N8N_UM_EMAIL_SMTP_HOST',
+					format: String, // e.g. 'smtp.gmail.com'
+					default: '',
+					env: 'N8N_SMTP_HOST',
 				},
 				port: {
-					doc: 'SMTP Server port',
+					doc: 'SMTP server port',
 					format: Number,
 					default: 465,
-					env: 'N8N_UM_EMAIL_SMTP_PORT',
+					env: 'N8N_SMTP_PORT',
 				},
 				secure: {
-					doc: 'Whether or not to use SSL',
+					doc: 'Whether or not to use SSL for SMTP',
 					format: Boolean,
 					default: true,
-					env: 'N8N_UM_EMAIL_SMTP_SSL',
+					env: 'N8N_SMTP_SSL',
 				},
 				auth: {
 					user: {
-						doc: 'SMTP Login username',
-						format: String,
-						default: 'youremail@gmail.com',
-						env: 'N8N_UM_EMAIL_SMTP_USER',
+						doc: 'SMTP login username',
+						format: String, // e.g.'you@gmail.com'
+						default: '',
+						env: 'N8N_SMTP_USER',
 					},
 					pass: {
-						doc: 'SMTP Login password',
+						doc: 'SMTP login password',
 						format: String,
-						default: 'my-super-password',
-						env: 'N8N_UM_EMAIL_SMTP_PASS',
+						default: '',
+						env: 'N8N_SMTP_PASS',
 					},
 				},
 				sender: {
 					doc: 'How to display sender name',
 					format: String,
-					default: '"n8n rocks" <n8n@n8n.io>',
-					env: 'N8N_UM_EMAIL_SMTP_SENDER',
+					default: '',
+					env: 'N8N_SMTP_SENDER',
 				},
 			},
 			templates: {

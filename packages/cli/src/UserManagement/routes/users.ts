@@ -14,7 +14,7 @@ import { getInstanceBaseUrl, sanitizeUser, validatePassword } from '../UserManag
 import { User } from '../../databases/entities/User';
 import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
-import { getInstance } from '../email/UserManagementMailer';
+import * as UserManagementMailer from '../email/UserManagementMailer';
 
 import config = require('../../../config');
 import { issueCookie } from '../auth/jwt';
@@ -35,6 +35,19 @@ export function usersNamespace(this: N8nApp): void {
 					undefined,
 					500,
 				);
+			}
+
+			let mailer: UserManagementMailer.UserManagementMailer | undefined;
+			try {
+				mailer = await UserManagementMailer.getInstance();
+			} catch (error) {
+				if (error instanceof Error) {
+					throw new ResponseHelper.ResponseError(
+						`There is a problem with your SMTP setup: ${error.message}`,
+						undefined,
+						500,
+					);
+				}
 			}
 
 			if (!config.get('userManagement.isInstanceOwnerSetUp')) {
@@ -131,7 +144,7 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('An error occurred during user creation');
 			}
 
-			Logger.info('Created user shells successfully', { userId: req.user.id });
+			Logger.info('Created user shell(s) successfully', { userId: req.user.id });
 			Logger.verbose(total > 1 ? `${total} user shells created` : `1 user shell created`, {
 				userShells: createUsers,
 			});
@@ -141,13 +154,12 @@ export function usersNamespace(this: N8nApp): void {
 			const usersPendingSetup = Object.entries(createUsers).filter(([email, id]) => id && email);
 
 			// send invite email to new or not yet setup users
-			const mailer = getInstance();
 
 			const emailingResults = await Promise.all(
 				usersPendingSetup.map(async ([email, id]) => {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${id}`;
-					const result = await mailer.invite({
+					const result = await mailer?.invite({
 						email,
 						inviteAcceptUrl,
 						domain: baseUrl,
@@ -158,7 +170,7 @@ export function usersNamespace(this: N8nApp): void {
 							email,
 						},
 					};
-					if (!result.success) {
+					if (!result?.success) {
 						Logger.error('Failed to send email', {
 							userId: req.user.id,
 							inviteAcceptUrl,
@@ -455,13 +467,22 @@ export function usersNamespace(this: N8nApp): void {
 			const baseUrl = getInstanceBaseUrl();
 			const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${reinvitee.id}`;
 
-			const result = await getInstance().invite({
+			let mailer: UserManagementMailer.UserManagementMailer | undefined;
+			try {
+				mailer = await UserManagementMailer.getInstance();
+			} catch (error) {
+				if (error instanceof Error) {
+					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+				}
+			}
+
+			const result = await mailer?.invite({
 				email: reinvitee.email,
 				inviteAcceptUrl,
 				domain: baseUrl,
 			});
 
-			if (!result.success) {
+			if (!result?.success) {
 				Logger.error('Failed to send email', {
 					email: reinvitee.email,
 					inviteAcceptUrl,
