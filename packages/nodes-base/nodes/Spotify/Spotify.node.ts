@@ -17,7 +17,7 @@ import {
 import {
 	isoCountryCodes
 } from './IsoCountryCodes';
-
+const isOnline = require('is-online');
 export class Spotify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Spotify',
@@ -898,7 +898,9 @@ export class Spotify implements INodeType {
 		body = {};
 		qs = {};
 		returnAll = false;
-
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'player') {
@@ -1436,13 +1438,12 @@ export class Spotify implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
-
-
-
-
-
-
-
-
+};
