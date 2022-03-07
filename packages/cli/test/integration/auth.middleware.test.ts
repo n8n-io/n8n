@@ -1,6 +1,5 @@
 import express = require('express');
 import * as request from 'supertest';
-import { getConnection } from 'typeorm';
 import {
 	REST_PATH_SEGMENT,
 	ROUTES_REQUIRING_AUTHORIZATION,
@@ -8,17 +7,24 @@ import {
 } from './shared/constants';
 
 import * as utils from './shared/utils';
+import * as testDb from './shared/testDb';
 
 let app: express.Application;
+let testDbName = '';
 
 beforeAll(async () => {
-	app = utils.initTestServer({ applyAuth: true, endpointGroups: ['me', 'auth', 'owner', 'users'] });
-	await utils.initTestDb();
-	utils.initLogger();
+	app = utils.initTestServer({
+		applyAuth: true,
+		endpointGroups: ['me', 'auth', 'owner', 'users'],
+	});
+	const initResult = await testDb.init();
+	testDbName = initResult.testDbName;
+	utils.initTestLogger();
+	utils.initTestTelemetry();
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await testDb.terminate(testDbName);
 });
 
 ROUTES_REQUIRING_AUTHENTICATION.concat(ROUTES_REQUIRING_AUTHORIZATION).forEach((route) => {
@@ -35,8 +41,8 @@ ROUTES_REQUIRING_AUTHORIZATION.forEach(async (route) => {
 	const [method, endpoint] = getMethodAndEndpoint(route);
 
 	test(`${route} should return 403 Forbidden for member`, async () => {
-		const member = await utils.createUser();
-		const authMemberAgent = await utils.createAgent(app, { auth: true, user: member });
+		const member = await testDb.createUser();
+		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 		const response = await authMemberAgent[method](endpoint);
 		if (response.statusCode === 500) {
 			console.log(response);

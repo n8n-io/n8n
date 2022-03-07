@@ -1,12 +1,18 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import config = require('../../../../config');
-import { loadSurveyFromDisk } from '../../utils/migrationHelpers';
+import {
+	loadSurveyFromDisk,
+	logMigrationEnd,
+	logMigrationStart,
+} from '../../utils/migrationHelpers';
 
 export class CreateUserManagement1636626154932 implements MigrationInterface {
 	name = 'CreateUserManagement1636626154932';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
+		logMigrationStart(this.name);
+
 		const tablePrefix = config.get('database.tablePrefix');
 
 		await queryRunner.query(
@@ -40,10 +46,6 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		);
 
 		await queryRunner.query(`DROP INDEX IF EXISTS "IDX_${tablePrefix}943d8f922be094eb507cb9a7f9"`);
-
-		await queryRunner.query(
-			`CREATE INDEX "IDX_${tablePrefix}xeendlvptc5jy4hbol17b5xery" ON "${tablePrefix}execution_entity" ("workflowId")`,
-		);
 
 		// Insert initial roles
 		await queryRunner.query(`
@@ -80,7 +82,7 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 			INSERT INTO "${tablePrefix}user" (id, globalRoleId, personalizationAnswers) values
 			(?, ?, ?)
 		`,
-			[ownerUserId, instanceOwnerRole[0].insertId, survey ?? null],
+			[ownerUserId, instanceOwnerRole[0].insertId, survey],
 		);
 
 		await queryRunner.query(`
@@ -95,8 +97,10 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}settings" (key, value, loadOnStartup) values
-			('userManagement.isInstanceOwnerSetUp', 'false', true)
+			('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)
 		`);
+
+		logMigrationEnd(this.name);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
@@ -104,7 +108,6 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "IDX_${tablePrefix}943d8f922be094eb507cb9a7f9" ON "${tablePrefix}workflow_entity" ("name") `,
 		);
-		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}xeendlvptc5jy4hbol17b5xery"`);
 
 		await queryRunner.query(`DROP TABLE "${tablePrefix}shared_credentials"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}shared_workflow"`);

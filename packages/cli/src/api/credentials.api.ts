@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import express = require('express');
-import { getConnection, In } from 'typeorm';
+import { In } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
 import { INodeCredentialTestResult, LoggerProxy as Logger } from 'n8n-workflow';
 
@@ -15,8 +15,8 @@ import {
 	ICredentialsDb,
 	ICredentialsResponse,
 	whereClause,
+	ResponseHelper,
 } from '..';
-import * as ResponseHelper from '../ResponseHelper';
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
@@ -167,7 +167,7 @@ credentialsController.post(
 			scope: 'credential',
 		});
 
-		const { id, ...rest } = await getConnection().transaction(async (transactionManager) => {
+		const { id, ...rest } = await Db.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
 
 			savedCredential.data = newCredential.data;

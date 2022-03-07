@@ -66,5 +66,6 @@ export default {
 .empty {
 	border-radius: 50%;
 	background-color: var(--color-foreground-dark);
+	opacity: .3;
 }
 </style>

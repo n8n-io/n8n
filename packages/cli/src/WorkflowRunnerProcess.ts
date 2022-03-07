@@ -311,6 +311,7 @@ export class WorkflowRunnerProcess {
 					executionId,
 					workflowData,
 					result,
+					additionalData.userId,
 				);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];

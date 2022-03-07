@@ -5,24 +5,24 @@
 				<i :class="$style.icon">
 					<font-awesome-icon icon="arrow-left" />
 				</i>
-				<n8n-heading slot="title" size="large" :bold="true">Settings</n8n-heading>
+				<n8n-heading slot="title" size="large" :bold="true">{{ $locale.baseText('SETTINGS') }}</n8n-heading>
 			</div>
 			<n8n-menu-item index="/settings/personal" v-if="canAccessUsersView('PersonalSettings')" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-circle" />
 				</i>
-				<span slot="title">Personal</span>
+				<span slot="title">{{ $locale.baseText('PERSONAL') }}</span>
 			</n8n-menu-item>
 			<n8n-menu-item index="/settings/users" v-if="canAccessUsersView('UsersSettings')" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-friends" />
 				</i>
-				<span slot="title">Users</span>
+				<span slot="title">{{ $locale.baseText('USERS') }}</span>
 			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">
 			<n8n-link @click="onVersionClick" size="small">
-				Version {{versionCli}}
+				{{ $locale.baseText('VERSION') }} {{ versionCli }}
 			</n8n-link>
 		</div>
 	</div>
@@ -48,7 +48,7 @@ export default Vue.extend({
 			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 		},
 		onReturn() {
-			this.$router.push({name: 'NodeViewNew'});
+			this.$router.push({name: 'Homepage'});
 		},
 	},
 });

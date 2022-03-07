@@ -3,8 +3,8 @@ import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
 import {
-	IInviteResponse,
 	IPermissions,
+	IInviteResponse,
 	IPersonalizationSurveyAnswersV2,
 	IRootState,
 	IUser,
@@ -13,7 +13,7 @@ import {
 } from '../Interface';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from './userHelpers';
 
-const isDefaultUser = (user: IUserResponse | null) => Boolean(user && !user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
+const isDefaultUser = (user: IUserResponse | null) => Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
 
 const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
 
@@ -147,6 +147,7 @@ const module: Module<IUsersState, IRootState> = {
 			if (user) {
 				context.commit('addUsers', [user]);
 				context.commit('setCurrentUserId', user.id);
+				context.commit('settings/stopShowingSetupPage', null, { root: true });
 			}
 		},
 		async validateSignupToken(context: ActionContext<IUsersState, IRootState>, params: {inviteeId: string, inviterId: string}): Promise<{ inviter: { firstName: string, lastName: string } }> {
@@ -172,8 +173,8 @@ const module: Module<IUsersState, IRootState> = {
 			const user = await updateCurrentUser(context.rootGetters.getRestApiContext, params);
 			context.commit('addUsers', [user]);
 		},
-		async updateCurrentUserPassword(context: ActionContext<IUsersState, IRootState>, params: {password: string}) {
-			await updateCurrentUserPassword(context.rootGetters.getRestApiContext, {password: params.password});
+		async updateCurrentUserPassword(context: ActionContext<IUsersState, IRootState>, {password, currentPassword}: {password: string, currentPassword: string}) {
+			await updateCurrentUserPassword(context.rootGetters.getRestApiContext, {newPassword: password, currentPassword});
 		},
 		async deleteUser(context: ActionContext<IUsersState, IRootState>, params: { id: string, transferId?: string}) {
 			await deleteUser(context.rootGetters.getRestApiContext, params);
@@ -185,7 +186,7 @@ const module: Module<IUsersState, IRootState> = {
 		},
 		async inviteUsers(context: ActionContext<IUsersState, IRootState>, params: Array<{email: string}>): Promise<IInviteResponse[]> {
 			const users = await inviteUsers(context.rootGetters.getRestApiContext, params);
-			context.commit('addUsers', users.map(({user}) => user));
+			context.commit('addUsers', users.map(({user}) => ({ isPending: true, ...user })));
 			return users;
 		},
 		async reinviteUser(context: ActionContext<IUsersState, IRootState>, params: {id: string}) {

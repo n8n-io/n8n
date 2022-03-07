@@ -7,7 +7,7 @@ import {
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getPromptsData, submitValueSurvey, submitContactInfo, getSettings } from '../api/settings';
+import { getPromptsData, submitValueSurvey, submitContactInfo, getSettings, submitSkipOwnerSetup } from '../api/settings';
 import Vue from 'vue';
 import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
@@ -56,8 +56,8 @@ const module: Module<ISettingsState, IRootState> = {
 		areTagsEnabled: (state) => {
 			return state.settings.workflowTagsDisabled !== undefined ? !state.settings.workflowTagsDisabled : true;
 		},
-		isInternalUser: (state): boolean => {
-			return state.settings.deploymentType === 'n8n-internal';
+		isHiringBannerEnabled: (state): boolean => {
+			return state.settings.hiringBannerEnabled;
 		},
 		isTemplatesEnabled: (state): boolean => {
 			return Boolean(state.settings.templates && state.settings.templates.enabled);
@@ -147,6 +147,12 @@ const module: Module<ISettingsState, IRootState> = {
 			} catch (e) {
 				return e;
 			}
+		},
+		async skipOwnerSetup(context: ActionContext<ISettingsState, IRootState>) {
+			try {
+				context.commit('stopShowingSetupPage');
+				await submitSkipOwnerSetup(context.rootGetters.getRestApiContext);
+			} catch (error) {}
 		},
 		async testTemplatesEndpoint(context: ActionContext<ISettingsState, IRootState>) {
 			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));

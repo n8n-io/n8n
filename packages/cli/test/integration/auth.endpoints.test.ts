@@ -1,6 +1,5 @@
 import { hashSync, genSaltSync } from 'bcryptjs';
 import express = require('express');
-import { getConnection } from 'typeorm';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
@@ -10,29 +9,34 @@ import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import { Role } from '../../src/databases/entities/Role';
 import { randomEmail, randomValidPassword, randomName } from './shared/random';
-import { getGlobalOwnerRole } from './shared/utils';
+import { getGlobalOwnerRole } from './shared/testDb';
+import * as testDb from './shared/testDb';
 
 let globalOwnerRole: Role;
 
 let app: express.Application;
+let testDbName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
-	await utils.initTestDb();
-	await utils.truncate(['User']);
+	const initResult = await testDb.init();
+	testDbName = initResult.testDbName;
+
+	await testDb.truncate(['User'], testDbName);
 
 	globalOwnerRole = await getGlobalOwnerRole();
-	utils.initLogger();
+	utils.initTestLogger();
+	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {
-	await utils.createUser({
+	await testDb.createUser({
 		id: uuid(),
 		email: TEST_USER.email,
 		firstName: TEST_USER.firstName,
 		lastName: TEST_USER.lastName,
 		password: hashSync(TEST_USER.password, genSaltSync(10)),
-		role: globalOwnerRole,
+		globalRole: globalOwnerRole,
 	});
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
@@ -44,15 +48,15 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await utils.truncate(['User']);
+	await testDb.truncate(['User'], testDbName);
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await testDb.terminate(testDbName);
 });
 
 test('POST /login should log user in', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const response = await authlessAgent.post('/login').send({
 		email: TEST_USER.email,
@@ -90,7 +94,7 @@ test('POST /login should log user in', async () => {
 
 test('GET /login should receive logged in user', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.get('/login');
 
@@ -124,7 +128,7 @@ test('GET /login should receive logged in user', async () => {
 
 test('POST /logout should log user out', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
-	const authOwnerAgent = await utils.createAgent(app, { auth: true, user: owner });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.post('/logout');
 

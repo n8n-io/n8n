@@ -1,5 +1,7 @@
 /* eslint-disable import/no-cycle */
 import {
+	AfterLoad,
+	AfterUpdate,
 	BeforeUpdate,
 	Column,
 	ColumnOptions,
@@ -10,7 +12,6 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
-	AfterLoad,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import config = require('../../../config');
@@ -19,6 +20,7 @@ import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
+import { answersFormatter } from '../utils/transformers';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -91,6 +93,7 @@ export class User {
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
+		transformer: answersFormatter,
 	})
 	personalizationAnswers: IPersonalizationSurveyAnswers | null;
 
@@ -127,7 +130,8 @@ export class User {
 	isPending: boolean;
 
 	@AfterLoad()
+	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = !!this.password;
+		this.isPending = this.password == null;
 	}
 }

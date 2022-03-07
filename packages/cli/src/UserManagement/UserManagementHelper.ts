@@ -6,7 +6,6 @@ import { In, IsNull, Not } from 'typeorm';
 import express = require('express');
 import { PublicUser } from './Interfaces';
 import { Db, GenericHelpers, ResponseHelper } from '..';
-import config = require('../../config');
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
 import { Role } from '../databases/entities/Role';
 import { AuthenticatedRequest } from '../requests';
@@ -42,8 +41,6 @@ export async function getInstanceOwner(): Promise<User> {
 	return owner;
 }
 
-export const isEmailSetUp = Boolean(config.get('userManagement.emails.mode'));
-
 /**
  * Return the n8n instance base URL without trailing slash.
  */
@@ -63,12 +60,31 @@ export function validatePassword(password?: string): string {
 		throw new ResponseHelper.ResponseError('Password is mandatory', undefined, 400);
 	}
 
-	if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
-		throw new ResponseHelper.ResponseError(
-			`Password must be ${MIN_PASSWORD_LENGTH} to ${MAX_PASSWORD_LENGTH} characters long`,
-			undefined,
-			400,
-		);
+	const hasInvalidLength =
+		password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH;
+
+	const hasNoNumber = !/\d/.test(password);
+
+	const hasNoUppercase = !/[A-Z]/.test(password);
+
+	if (hasInvalidLength || hasNoNumber || hasNoUppercase) {
+		const message: string[] = [];
+
+		if (hasInvalidLength) {
+			message.push(
+				`Password must be ${MIN_PASSWORD_LENGTH} to ${MAX_PASSWORD_LENGTH} characters long.`,
+			);
+		}
+
+		if (hasNoNumber) {
+			message.push('Password must contain at least 1 number.');
+		}
+
+		if (hasNoUppercase) {
+			message.push('Password must contain at least 1 uppercase letter.');
+		}
+
+		throw new ResponseHelper.ResponseError(message.join(' '), undefined, 400);
 	}
 
 	return password;
@@ -138,6 +154,13 @@ export async function checkPermissionsForExecution(
 
 	if (ids.length === 0) {
 		// If the workflow does not use any credentials, then we're fine
+		return true;
+	}
+	// If this check happens on top, we may get
+	// unitialized db errors.
+	// Db is certainly initialized if workflow uses credentials.
+	const user = await getUserById(userId);
+	if (user.globalRole.name === 'owner') {
 		return true;
 	}
 

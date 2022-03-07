@@ -2,7 +2,7 @@
 	<Modal
 		:name="INVITE_USER_MODAL_KEY"
 		@enter="onSubmit"
-		title="Invite new users"
+		:title="$locale.baseText('INVITE_NEW_USERS')"
 		:center="true"
 		width="460px"
 		:eventBus="modalBus"
@@ -29,7 +29,7 @@ import mixins from "vue-typed-mixins";
 import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
-import { IFormInputs, IInviteResponse, IUserResponse } from "@/Interface";
+import { IFormInputs, IInviteResponse } from "@/Interface";
 import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from "@/constants";
 import { ROLE } from "@/modules/userHelpers";
 
@@ -70,7 +70,7 @@ export default mixins(showMessage).extend({
 			{
 				name: 'emails',
 				properties: {
-					label: 'New user email address(es)',
+					label: this.$locale.baseText('NEW_EMAILS_TO_INVITE'),
 					required: true,
 					validationRules: [{name: 'VALID_EMAILS'}],
 					validators: {
@@ -85,13 +85,13 @@ export default mixins(showMessage).extend({
 				name: 'role',
 				initialValue: 'member',
 				properties: {
-					label: 'Role',
+					label: this.$locale.baseText('ROLE'),
 					required: true,
 					type: 'select',
 					options: [
 						{
 							value: ROLE.Member,
-							label: 'Member',
+							label: this.$locale.baseText('MEMBER_ROLE'),
 						},
 					],
 				},
@@ -104,22 +104,22 @@ export default mixins(showMessage).extend({
 		},
 		buttonLabel(): string {
 			if (this.emailsCount > 1) {
-				return `Invite ${this.emailsCount} users`;
+				return this.$locale.baseText('INVITE_X_USER', { interpolate: { count: this.emailsCount }});
 			}
 
-			return 'Invite user';
+			return this.$locale.baseText('INVITE_USER');
 		},
 		enabledButton(): boolean {
 			return this.emailsCount >= 1;
 		},
 	},
 	methods: {
-		validateEmails: (value: string) => {
+		validateEmails(value: string) {
 			value.split(',').forEach((email: string) => {
 				const parsed = getEmail(email);
 
 				if (!!parsed.trim() && !VALID_EMAIL_REGEX.test(String(parsed).trim().toLowerCase())) {
-					throw new Error(`"${parsed.trim()}" is not a valid email`);
+					throw new Error(this.$locale.baseText('INVALID_EMAIL_ERROR', { interpolate: { email: parsed }}));
 				}
 			});
 		},
@@ -137,7 +137,7 @@ export default mixins(showMessage).extend({
 					.filter((invite) => !!invite.email);
 
 				if (emails.length === 0) {
-					throw new Error('No users to invite');
+					throw new Error(this.$locale.baseText('NO_USERS_TO_INVITE'));
 				}
 
 				const invited: IInviteResponse[] = await this.$store.dispatch('users/inviteUsers', emails);
@@ -157,25 +157,25 @@ export default mixins(showMessage).extend({
 				if (invitedEmails.success.length) {
 					this.$showMessage({
 						type: 'success',
-						title: `User${invitedEmails.success.length > 1 ? 's' : ''} invited successfully`,
-						message: `An invite email was sent to ${invitedEmails.success.join(',')}`,
+						title: this.$locale.baseText(invitedEmails.success.length > 1 ? 'USERS_INVITED_SUCCESS' : 'USER_INVITED_SUCCESS'),
+						message: this.$locale.baseText('EMAIL_INVITES_SENT', { interpolate: { emails: invitedEmails.success.join(', ') }}),
 					});
 				}
 
 				if (invitedEmails.error.length) {
 					setTimeout(() => {
-						this.$showMessage({ // notifications stack on top of each other otherwise
+						this.$showMessage({
 							type: 'error',
-							title: `User${invitedEmails.error.length > 1 ? 's' : ''} could not be invited`,
-							message: `Could not invite ${invitedEmails.error.join(',')}`,
+							title: this.$locale.baseText(invitedEmails.error.length > 1 ? 'USERS_INVITED_ERROR': 'USER_INVITED_ERROR'),
+							message: this.$locale.baseText('EMAIL_INVITES_SENT_ERROR', { interpolate: { emails: invitedEmails.error.join(', ') }}),
 						});
-					}, 0);
+					}, 0); // notifications stack on top of each other otherwise
 				}
 
 				this.modalBus.$emit('close');
 
 			} catch (error) {
-				this.$showError(error, 'Problem while inviting users');
+				this.$showError(error, this.$locale.baseText('USERS_INVITED_ERROR'));
 			}
 			this.loading = false;
 		},

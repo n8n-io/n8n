@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.165.0",
+  "version": "0.165.1",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -29,7 +29,10 @@
     "start": "run-script-os",
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
-    "test": "jest",
+    "test": "npm run test:sqlite",
+    "test:sqlite": "export DB_TYPE=sqlite && jest",
+    "test:postgres": "export DB_TYPE=postgresdb && jest",
+    "test:mysql": "export DB_TYPE=mysqldb && jest",
     "watch": "tsc --watch",
     "typeorm": "ts-node ../../node_modules/typeorm/cli.js"
   },
@@ -122,7 +125,7 @@
     "lodash.merge": "^4.6.2",
     "mysql2": "~2.3.0",
     "n8n-core": "~0.106.0",
-    "n8n-editor-ui": "~0.132.0",
+    "n8n-editor-ui": "~0.132.1",
     "n8n-nodes-base": "~0.163.0",
     "n8n-workflow": "~0.88.0",
     "nodemailer": "^6.7.1",

@@ -208,7 +208,7 @@ export default mixins(genericHelpers).extend({
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.search = search;
-			this.callDebounced('updateSearch', 500, true);
+			this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
 
 			if (search.length === 0) {
 				this.trackSearch();
@@ -342,6 +342,7 @@ export default mixins(genericHelpers).extend({
 		setPageTitle('n8n - Templates');
 		this.loadCategories();
 		this.loadWorkflowsAndCollections(true);
+		this.$store.dispatch('users/showPersonalizationSurvey');
 	},
 	async created() {
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {

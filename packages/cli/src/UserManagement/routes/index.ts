@@ -81,9 +81,8 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			next();
 			return;
 		}
-
 		// Not owner and user exists. We now protect restricted urls.
-		const postRestrictedUrls = [`/${this.restEndpoint}/users`];
+		const postRestrictedUrls = [`/${this.restEndpoint}/users`, `/${this.restEndpoint}/owner`];
 		const getRestrictedUrls = [`/${this.restEndpoint}/users`];
 		const trimmedUrl = req.url.endsWith('/') ? req.url.slice(0, -1) : req.url;
 		if (
@@ -92,7 +91,8 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			(req.method === 'DELETE' &&
 				new RegExp(`/${restEndpoint}/users/[^/]+`, 'gm').test(trimmedUrl)) ||
 			(req.method === 'POST' &&
-				new RegExp(`/${restEndpoint}/users/[^/]+/reinvite`, 'gm').test(trimmedUrl))
+				new RegExp(`/${restEndpoint}/users/[^/]+/reinvite`, 'gm').test(trimmedUrl)) ||
+			new RegExp(`/${restEndpoint}/owner/[^/]+`, 'gm').test(trimmedUrl)
 		) {
 			Logger.verbose('User attempted to access endpoint without authorization', {
 				endpoint: `${req.method} ${trimmedUrl}`,

@@ -98,7 +98,11 @@ export default Vue.extend({
 		onSubmit() {
 			this.showValidationWarnings = true;
 			if (this.isReadyToSubmit) {
-				this.$emit('submit', this.values);
+				const toSubmit = this.filteredInputs.reduce((accu, input: IFormInput) => {
+					accu[input.name] = this.values[input.name];
+					return accu;
+				}, {});
+				this.$emit('submit', toSubmit);
 			}
 		},
 	},

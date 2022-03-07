@@ -19,4 +19,6 @@ module.exports = {
 			isolatedModules: true
 		}
 	},
+	globalTeardown: '<rootDir>/test/teardown.ts',
+	setupFiles: ['<rootDir>/test/setup.ts'],
 }

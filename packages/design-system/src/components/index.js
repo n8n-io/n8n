@@ -1,3 +1,36 @@
+import Drawer from 'element-ui/lib/drawer';
+import Dialog from 'element-ui/lib/dialog';
+import Dropdown from 'element-ui/lib/dropdown';
+import DropdownMenu from 'element-ui/lib/dropdown-menu';
+import DropdownItem from 'element-ui/lib/dropdown-item';
+import Submenu from 'element-ui/lib/submenu';
+import Radio from 'element-ui/lib/radio';
+import RadioGroup from 'element-ui/lib/radio-group';
+import RadioButton from 'element-ui/lib/radio-button';
+import Checkbox from 'element-ui/lib/checkbox';
+import Switch from 'element-ui/lib/switch';
+import Select from 'element-ui/lib/select';
+import Option from 'element-ui/lib/option';
+import OptionGroup from 'element-ui/lib/option-group';
+import ButtonGroup from 'element-ui/lib/button-group';
+import Table from 'element-ui/lib/table';
+import TableColumn from 'element-ui/lib/table-column';
+import DatePicker from 'element-ui/lib/date-picker';
+import Tabs from 'element-ui/lib/tabs';
+import TabPane from 'element-ui/lib/tab-pane';
+import Tag from 'element-ui/lib/tag';
+import Row from 'element-ui/lib/row';
+import Col from 'element-ui/lib/col';
+import Badge from 'element-ui/lib/badge';
+import Card from 'element-ui/lib/card';
+import ColorPicker from 'element-ui/lib/color-picker';
+import Container from 'element-ui/lib/container';
+import Loading from 'element-ui/lib/loading';
+import MessageBox from 'element-ui/lib/message-box';
+import Message from 'element-ui/lib/message';
+import Notification from 'element-ui/lib/notification';
+import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
+
 import N8nActionBox from './N8nActionBox';
 import N8nActionToggle from './N8nActionToggle';
 import N8nAvatar from './N8nAvatar';
@@ -29,6 +62,10 @@ import N8nTooltip from './N8nTooltip';
 import N8nUsersList from './N8nUsersList';
 import N8nUserSelect from './N8nUserSelect';
 
+import lang from 'element-ui/lib/locale/lang/en';
+import locale from 'element-ui/lib/locale';
+locale.use(lang);
+
 export {
 	N8nActionBox,
 	N8nActionToggle,
@@ -45,11 +82,11 @@ export {
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
+	N8nLink,
 	N8nLoading,
 	N8nMarkdown,
 	N8nMenu,
 	N8nMenuItem,
-	N8nLink,
 	N8nOption,
 	N8nSelect,
 	N8nSpinner,
@@ -60,4 +97,37 @@ export {
 	N8nTooltip,
 	N8nUsersList,
 	N8nUserSelect,
+
+	Dialog,
+	Drawer,
+	Dropdown,
+	DropdownMenu,
+	DropdownItem,
+	Submenu,
+	Radio,
+	RadioGroup,
+	RadioButton,
+	Checkbox,
+	Switch,
+	Select,
+	Option,
+	OptionGroup,
+	ButtonGroup,
+	Table,
+	TableColumn,
+	DatePicker,
+	Tabs,
+	TabPane,
+	Tag,
+	Row,
+	Col,
+	Badge,
+	Card,
+	ColorPicker,
+	Container,
+	Loading,
+	MessageBox,
+	Message,
+	Notification,
+	CollapseTransition,
 };

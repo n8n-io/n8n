@@ -231,8 +231,6 @@ class App {
 
 	presetCredentialsLoaded: boolean;
 
-	isUserManagementEnabled: boolean;
-
 	webhookMethods: WebhookHttpMethod[];
 
 	constructor() {
@@ -270,11 +268,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
 
-		// TODO UM: remove this flag
-		this.isUserManagementEnabled = !config.get('userManagement.disabled');
-
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
-
 		const telemetrySettings: ITelemetrySettings = {
 			enabled: config.get('diagnostics.enabled') as boolean,
 		};
@@ -320,12 +314,15 @@ class App {
 				enabled:
 					config.get('userManagement.disabled') === false ||
 					config.get('userManagement.isInstanceOwnerSetUp') === true,
-				// showSetupOnFirstLoad: config.get('userManagement.disabled') === false, // && config.get('userManagement.skipOwnerSetup') === true
+				showSetupOnFirstLoad:
+					config.get('userManagement.disabled') === false &&
+					config.get('userManagement.isInstanceOwnerSetUp') === false &&
+					config.get('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
 			logLevel: config.get('logs.level'),
-			deploymentType: config.get('deployment.type'),
+			hiringBannerEnabled: config.get('hiringBanner.enabled'),
 			templates: {
 				enabled: config.get('templates.enabled'),
 				host: config.get('templates.host'),
@@ -341,6 +338,24 @@ class App {
 	 */
 	getCurrentDate(): Date {
 		return new Date();
+	}
+
+	/**
+	 * Returns the current settings for the frontend
+	 */
+	getSettingsForFrontend(): IN8nUISettings {
+		// refresh user management status
+		Object.assign(this.frontendSettings.userManagement, {
+			enabled:
+				config.get('userManagement.disabled') === false ||
+				config.get('userManagement.isInstanceOwnerSetUp') === true,
+			showSetupOnFirstLoad:
+				config.get('userManagement.disabled') === false &&
+				config.get('userManagement.isInstanceOwnerSetUp') === false &&
+				config.get('userManagement.skipInstanceOwnerSetup') === false,
+		});
+
+		return this.frontendSettings;
 	}
 
 	async config(): Promise<void> {
@@ -773,11 +788,14 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow);
+				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow);
 
 				const { id, ...rest } = savedWorkflow;
 
-				return { id: id.toString(), ...rest };
+				return {
+					id: id.toString(),
+					...rest,
+				};
 			}),
 		);
 
@@ -879,12 +897,11 @@ class App {
 				}
 
 				return workflows.map((workflow) => {
-					const { id, tags, ...rest } = workflow;
+					const { id, ...rest } = workflow;
 
 					return {
 						id: id.toString(),
 						...rest,
-						tags: tags?.map(({ id, ...rest }) => ({ id: id.toString(), ...rest })) ?? [],
 					};
 				});
 			}),
@@ -934,13 +951,12 @@ class App {
 				}
 
 				const {
-					workflow: { id, tags, ...rest },
+					workflow: { id, ...rest },
 				} = shared;
 
 				return {
 					id: id.toString(),
 					...rest,
-					tags: tags?.map(({ id, ...rest }) => ({ id: id.toString(), ...rest })) ?? [],
 				};
 			}),
 		);
@@ -1048,9 +1064,9 @@ class App {
 					);
 				}
 
-				if (req.body.tags?.length) {
+				if (updatedWorkflow.tags.length && tags?.length) {
 					updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
-						requestOrder: req.body.tags,
+						requestOrder: tags,
 					});
 				}
 
@@ -1125,7 +1141,7 @@ class App {
 
 				await Db.collections.Workflow!.delete(workflowId);
 
-				void InternalHooksManager.getInstance().onWorkflowDeleted(workflowId);
+				void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId);
 				await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 				return true;
@@ -1222,10 +1238,7 @@ class App {
 						return TagHelpers.getTagsWithCountDb(tablePrefix);
 					}
 
-					const tags = await Db.collections.Tag!.find({ select: ['id', 'name'] });
-					// @ts-ignore
-					tags.forEach((tag) => (tag.id = tag.id.toString()));
-					return tags;
+					return Db.collections.Tag!.find({ select: ['id', 'name'] });
 				},
 			),
 		);
@@ -1248,8 +1261,6 @@ class App {
 
 					await this.externalHooks.run('tag.afterCreate', [tag]);
 
-					// @ts-ignore
-					tag.id = tag.id.toString();
 					return tag;
 				},
 			),
@@ -1268,7 +1279,8 @@ class App {
 					const { id } = req.params;
 
 					const newTag = new TagEntity();
-					newTag.id = Number(id);
+					// @ts-ignore
+					newTag.id = id;
 					newTag.name = name.trim();
 
 					await this.externalHooks.run('tag.beforeUpdate', [newTag]);
@@ -1278,8 +1290,6 @@ class App {
 
 					await this.externalHooks.run('tag.afterUpdate', [tag]);
 
-					// @ts-ignore
-					tag.id = tag.id.toString();
 					return tag;
 				},
 			),
@@ -1294,7 +1304,7 @@ class App {
 						throw new ResponseHelper.ResponseError('Workflow tags are disabled');
 					}
 					if (
-						config.get('userManagement.hasOwner') === true &&
+						config.get('userManagement.isInstanceOwnerSetUp') === true &&
 						req.user.globalRole.name !== 'owner'
 					) {
 						throw new ResponseHelper.ResponseError(
@@ -2804,12 +2814,12 @@ class App {
 		// Settings
 		// ----------------------------------------
 
-		// Returns the settings which are needed in the UI
+		// Returns the current settings for the UI
 		this.app.get(
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					return this.frontendSettings;
+					return this.getSettingsForFrontend();
 				},
 			),
 		);
@@ -3017,6 +3027,10 @@ export async function start(): Promise<void> {
 			},
 			deploymentType: config.get('deployment.type'),
 			binaryDataMode: binarDataConfig.mode,
+			n8n_multi_user_allowed:
+				config.get('userManagement.disabled') === false ||
+				config.get('userManagement.hasOwner') === true,
+			smtp_set_up: config.get('userManagement.emails.mode') === 'smtp',
 		};
 
 		void Db.collections
