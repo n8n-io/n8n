@@ -175,7 +175,12 @@ export function usersNamespace(this: N8nApp): void {
 							email,
 						},
 					};
-					if (!result?.success) {
+					if (result?.success) {
+						void InternalHooksManager.getInstance().onUserTransactionalEmail({
+							user_id: id!,
+							message_type: 'New user invite',
+						});
+					} else {
 						Logger.error('Failed to send email', {
 							userId: req.user.id,
 							inviteAcceptUrl,
@@ -183,11 +188,6 @@ export function usersNamespace(this: N8nApp): void {
 							email,
 						});
 						resp.error = `Email could not be sent`;
-					} else {
-						void InternalHooksManager.getInstance().onUserTransactionalEmail({
-							user_id: id!,
-							message_type: 'New user invite',
-						});
 					}
 					return resp;
 				}),
@@ -440,7 +440,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const telemetryData: ITelemetryUserDeletionData = {
 				user_id: req.user.id,
-				target_user_old_status: userToDelete.password ? 'active' : 'invited',
+				target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
 				target_user_id: idToDelete,
 			};
 

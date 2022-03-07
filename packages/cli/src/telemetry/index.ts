@@ -126,7 +126,6 @@ export class Telemetry {
 			) {
 				// errored exec
 				void this.track('Workflow execution errored', properties);
-				// TODO UM: check if user id must be provided above. Owner ID?
 
 				if (properties.is_manual) {
 					firstExecKey = 'first_manual_error';

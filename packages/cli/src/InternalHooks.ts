@@ -4,7 +4,6 @@ import { IDataObject, INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
 import {
 	IDiagnosticInfo,
 	IInternalHooksClass,
-	IPersonalizationSurveyAnswers,
 	ITelemetryUserDeletionData,
 	IWorkflowBase,
 	IWorkflowDb,
@@ -50,7 +49,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 	async onPersonalizationSurveySubmitted(
 		userId: string,
-		answers: IPersonalizationSurveyAnswers,
+		answers: Record<string, string>,
 	): Promise<void> {
 		return this.telemetry.track('User responded to personalization questions', {
 			user_id: userId,

@@ -351,10 +351,7 @@ export interface IInternalHooksClass {
 		diagnosticInfo: IDiagnosticInfo,
 		firstWorkflowCreatedAt?: Date,
 	): Promise<unknown[]>;
-	onPersonalizationSurveySubmitted(
-		userId: string,
-		answers: IPersonalizationSurveyAnswers,
-	): Promise<void>;
+	onPersonalizationSurveySubmitted(userId: string, answers: Record<string, string>): Promise<void>;
 	onWorkflowCreated(userId: string, workflow: IWorkflowBase): Promise<void>;
 	onWorkflowDeleted(userId: string, workflowId: string): Promise<void>;
 	onWorkflowSaved(userId: string, workflow: IWorkflowBase): Promise<void>;
