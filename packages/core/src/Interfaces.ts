@@ -62,7 +62,7 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
-		normalizeItemsInArray(items: INodeExecutionData[]): INodeExecutionData[];
+		normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
