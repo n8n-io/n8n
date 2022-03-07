@@ -50,6 +50,12 @@ export class UserManagementMailer {
 		}
 	}
 
+	async verifyConnection(): Promise<void> {
+		if (!this.mailer) return Promise.reject();
+
+		return this.mailer.verifyConnection();
+	}
+
 	async invite(inviteEmailData: InviteEmailData): Promise<SendEmailResult> {
 		let template = await getTemplate('invite', 'invite.html');
 		template = replaceStrings(template, inviteEmailData);
@@ -83,9 +89,10 @@ export class UserManagementMailer {
 
 let mailerInstance: UserManagementMailer | undefined;
 
-export function getInstance(): UserManagementMailer {
+export async function getInstance(): Promise<UserManagementMailer> {
 	if (mailerInstance === undefined) {
 		mailerInstance = new UserManagementMailer();
+		await mailerInstance.verifyConnection();
 	}
 	return mailerInstance;
 }

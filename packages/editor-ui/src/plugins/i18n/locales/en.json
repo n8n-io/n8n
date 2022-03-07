@@ -131,7 +131,8 @@
 		},
 		"type": "Type",
 		"updated": "Updated",
-		"yourSavedCredentials": "Your saved credentials"
+		"yourSavedCredentials": "Your saved credentials",
+		"errorLoadingCredentials": "Error loading credentials"
 	},
 	"dataDisplay": {
 		"needHelp": "Need help?",
@@ -242,7 +243,7 @@
 			"theWorkflowExecutionFailed": "The workflow execution failed.",
 			"theWorkflowExecutionFailedButTheRetryWasSuccessful": "The workflow execution failed but the retry {entryRetrySuccessId} was successful.",
 			"theWorkflowExecutionIsProbablyStillRunning": "The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ",
-			"theWorkflowExecutionWasARetryOfAndFailed": "The workflow execution was a retry of {entryRetryOf} and failed.<br />New retries have to be,started from the original execution.",
+			"theWorkflowExecutionWasARetryOfAndFailed": "The workflow execution was a retry of {entryRetryOf} and failed.<br />New retries have to be started from the original execution.",
 			"theWorkflowExecutionWasARetryOfAndItWasSuccessful": "The workflow execution was a retry of {entryRetryOf} and it was successful.",
 			"theWorkflowExecutionWasSuccessful": "The worklow execution was successful.",
 			"theWorkflowIsCurrentlyExecuting": "The worklow is currently executing.",
@@ -289,10 +290,10 @@
 				"message": "Are you sure that you want to delete '{workflowName}'?"
 			},
 			"workflowNew": {
-				"cancelButtonText": "",
-				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Switch workflows without saving?",
-				"message": "When you switch workflows without saving, your current changes will be lost."
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
 			}
 		},
 		"credentials": "Credentials",
@@ -309,6 +310,7 @@
 		"importFromFile": "Import from File",
 		"importFromUrl": "Import from URL",
 		"new": "New",
+		"newTemplate": "New from template",
 		"open": "Open",
 		"prompt": {
 			"cancel": "@:reusableBaseText.cancel",
@@ -342,6 +344,7 @@
 				"title": "Execution stopped"
 			}
 		},
+		"templates": "Templates",
 		"workflows": "Workflows"
 	},
 	"multipleParameter": {
@@ -441,7 +444,7 @@
 		"time": "Time"
 	},
 	"nodeBase": {
-		"clickToAddNodeOrDragToConnect": "Click to add node<br>or drag to connect"
+		"clickToAddNodeOrDragToConnect": "Click to add node<br />or drag to connect"
 	},
 	"nodeSettings": {
 		"alwaysOutputData": {
@@ -488,16 +491,16 @@
 		"addNode": "Add node",
 		"confirmMessage": {
 			"beforeRouteLeave": {
-				"cancelButtonText": "",
-				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Switch workflows without saving?",
-				"message": "When you switch workflows without saving, your current changes will be lost."
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
 			},
 			"initView": {
-				"cancelButtonText": "",
-				"confirmButtonText": "Yes, switch workflows and forget changes",
-				"headline": "Switch workflows without saving?",
-				"message": "When you switch workflows without saving, your current changes will be lost."
+				"cancelButtonText": "Leave without saving",
+				"confirmButtonText": "Save",
+				"headline": "Save changes before leaving?",
+				"message": "If you don't save, you will lose your changes."
 			},
 			"receivedCopyPasteData": {
 				"cancelButtonText": "",
@@ -620,7 +623,8 @@
 		"refreshList": "Refresh List",
 		"removeExpression": "Remove Expression",
 		"resetValue": "Reset Value",
-		"selectDateAndTime": "Select date and time"
+		"selectDateAndTime": "Select date and time",
+		"select": "Select"
 	},
 	"parameterInputExpanded": {
 		"openDocs": "Open docs",
@@ -636,33 +640,50 @@
 		"continue": "Continue",
 		"customizeN8n": "Customize n8n to you",
 		"eCommerce": "eCommerce",
-		"errorWhileSubmittingResults": "Error submitting results",
+		"errorWhileSubmittingResults": "Error while submitting results",
 		"executiveTeam": "Executive team",
-		"finance": "Finance",
+		"financeOrInsurance": "Finance / Insurance",
 		"getStarted": "Get started",
 		"government": "Government",
 		"healthcare": "Healthcare",
 		"howAreYourCodingSkills": "How are your coding skills?",
 		"howBigIsYourCompany": "How big is your company?",
 		"hr": "HR",
+		"it": "IT",
 		"iCanCodeSomeUsefulThingsBut": "2. I can code some useful things, but I spend a lot of time stuck",
 		"iCanDoAlmostAnythingIWant": "5. I can do almost anything I want, easily (pro coder)",
 		"iCanFigureMostThingsOut": "4. I can figure most things out",
 		"iGetStuckTooQuicklyToAchieveMuch": "1. I get stuck too quickly to achieve much",
 		"iKnowEnoughToBeDangerousBut": "3. I know enough to be dangerous, but I'm no expert",
 		"imNotUsingN8nForWork": "I'm not using n8n for work",
+		"individualConsumers": "Customers are individual consumers",
+		"smallBusinesses": "Customers are small businesses (under 20 employees)",
+		"mediumBusinesses": "Customers are medium businesses (20-499 employees)",
+		"largeBusinesses": "Customers are large businesses (500+ employees)",
+		"whatKindOfCustomersDoYouServe": "What kind of customers do you serve?",
+		"cloudInfrastructure": "Cloud infrastructure",
+		"itSupport": "IT support",
+		"networkingOrCommunication": "Networking / Communication",
 		"itEngineering": "IT / Engineering",
 		"legal": "Legal",
 		"lessThan20People": "Less than 20 people",
 		"lookOutForThingsMarked": "Look out for things marked with a ✨. They are personalized to make n8n more relevant to you.",
 		"marketing": "Marketing",
+		"media": "Media",
+		"manufacturing": "Manufacturing",
+		"managedServiceProvider": "Managed service provider",
+		"digitalAgencyOrConsultant": "Digital agency/consultant",
+		"automationAgencyOrConsultant": "Automation agency/consultant",
 		"neverCoded": "0. Never coded",
 		"operations": "Operations",
 		"otherPleaseSpecify": "Other (please specify)",
+		"other": "Other",
 		"people": "people",
 		"proCoder": "Pro coder",
-		"product": "Product",
+		"physicalRetailOrServices": "Physical retail or services",
+		"realEstateOrConstruction": "Real estate / Construction",
 		"saas": "SaaS",
+		"education": "Education",
 		"salesBizDev": "Sales / Bizdev",
 		"salesBusinessDevelopment": "Sales / Business Development",
 		"security": "Security",
@@ -671,10 +692,22 @@
 		"specifyYourWorkArea": "Specify your work area",
 		"support": "Support",
 		"systemsIntegration": "Systems Integration",
+		"systemsIntegrator": "Systems Integrator",
 		"thanks": "Thanks!",
+		"telecoms": "Telecoms",
 		"theseQuestionsHelpUs": "These questions help us tailor n8n to you",
 		"whichIndustriesIsYourCompanyIn": "Which industries is your company in?",
-		"whichAreasDoYouMainlyWorkIn": "Which areas do you mainly work in?"
+		"whatBestDescribesYourCompany": "What best describes your company?",
+		"whatDoesYourCompanyFocusOn": "Which services does your company focus on?",
+		"pleaseSpecifyYourCompanyFocus": "Please specify your company focus",
+		"whatAreYouLookingToAutomate": "What are you looking to automate?",
+		"customerIntegrations": "Customer integrations",
+		"customerSupport": "Customer support",
+		"financeOrAccounting": "Finance / Accounting",
+		"product": "Product (e.g. fast prototyping)",
+		"salesAndMarketing": "Sales and Marketing",
+		"notSureYet": "Not sure yet",
+		"specifyYourAutomationGoal": "Please specify your automation goal"
 	},
 	"pushConnection": {
 		"showMessage": {
@@ -729,6 +762,14 @@
 		"save": "@:reusableBaseText.save",
 		"saved": "Saved",
 		"saving": "Saving"
+	},
+	"settings": {
+		"errors": {
+			"connectionError": {
+				"title": "Error connecting to n8n",
+				"message": "Could not connect to server. <a onclick='window.location.reload(false);'>Refresh</a> to try again"
+			}
+		}
 	},
 	"showMessage": {
 		"cancel": "@:reusableBaseText.cancel",
@@ -796,6 +837,38 @@
 		},
 		"notBeingUsed": "Not being used"
 	},
+	"template": {
+		"buttons": {
+			"goBackButton": "Go back",
+			"useThisWorkflowButton": "Use this workflow"
+		},
+		"details": {
+			"appsInTheWorkflow": "Apps in this workflow",
+			"appsInTheCollection": "This collection features",
+			"by": "by",
+			"categories": "Categories",
+			"created": "Created",
+			"details": "Details",
+			"times": "times",
+			"viewed": "Viewed"
+		}
+	},
+	"templates": {
+		"allCategories": "All Categories",
+		"categoriesHeading": "Categories",
+		"collection": "Collection",
+		"collections": "Collections",
+		"collectionsNotFound": "Collection could not be found",
+		"endResult": "Share your own useful workflows through your <a href='https://n8n.io/dashboard' target='_blank'>n8n.io account</a>",
+		"heading": "Workflow templates",
+		"newButton": "New blank workflow",
+		"noSearchResults": "Nothing found. Try adjusting your search to see more.",
+		"searchPlaceholder": "Search workflows",
+		"workflow": "Workflow",
+		"workflows": "Workflows",
+		"workflowsNotFound": "Workflow could not be found",
+		"connectionWarning": "⚠️ There was a problem fetching workflow templates. Check your internet connection."
+	},
 	"textEdit": {
 		"edit": "Edit"
 	},
@@ -851,7 +924,7 @@
 		"breakingChanges": "Breaking changes",
 		"released": "Released",
 		"securityUpdate": "Security update",
-		"thisVersionHasASecurityIssue": "This version has a security issue.<br/>It is listed here for completeness.",
+		"thisVersionHasASecurityIssue": "This version has a security issue.<br />It is listed here for completeness.",
 		"unknown": "unknown",
 		"version": "Version"
 	},
@@ -899,10 +972,10 @@
 	"workflowOpen": {
 		"active": "Active",
 		"confirmMessage": {
-			"cancelButtonText": "",
-			"confirmButtonText": "Yes, switch workflows and forget changes",
-			"headline": "Switch workflows without saving?",
-			"message": "If you do this, your current changes will be lost."
+			"cancelButtonText": "Leave without saving",
+			"confirmButtonText": "Save",
+			"headline": "Save changes before leaving?",
+			"message": "If you don't save, you will lose your changes."
 		},
 		"created": "Created",
 		"name": "@:reusableBaseText.name",
@@ -916,7 +989,8 @@
 			"message": "This is the current workflow",
 			"title": "Workflow already open"
 		},
-		"updated": "Updated"
+		"updated": "Updated",
+		"couldNotLoadActiveWorkflows": "Could not load active workflows"
 	},
 	"workflowRun": {
 		"noActiveConnectionToTheServer": "Lost connection to the server",
@@ -1011,5 +1085,108 @@
 		"yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
 		"gotIt": "Got it"
 	},
-	"SMTP_TO_ADD_USERS_WARNING": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management#smtp\">Instructions</a>"
+	"workflowPreview": {
+		"showError": {
+			"previewError": {
+				"message": "Unable to preview workflow",
+				"title": "Preview error"
+			},
+			"missingWorkflow": "Missing workflow",
+			"arrayEmpty": "Must have an array of nodes"
+		}
+	},
+	"BASIC_INFORMATION": "Basic Information",
+	"CHANGE_PASSWORD": "Change Password",
+	"CONFIRM_DATA_HANDLING_AFTER_DELETION": "What should we do with their data?",
+	"CONFIRM_USER_DELETION": "Are you sure you want to delete this invited user?",
+	"CURRENT_PASSWORD": "Current password",
+	"DELETE": "Delete",
+	"DELETE_CONFIRMATION_MESSAGE": "Type “delete all data” to confirm",
+	"DELETE_CONFIRMATION_TEXT": "delete all data",
+	"DELETE_USER": "Delete {user}",
+	"DELETE_WORKFLOWS_AND_CREDENTIALS": "Delete their workflows and credentials",
+	"EMAIL": "Email",
+	"EMAIL_INVITES_SENT": "An invite email was sent to {emails}",
+	"EMAIL_INVITES_SENT_ERROR": "Could not invite {emails}",
+	"EMAIL_SENT_TO": "Email sent to {email}",
+	"EMAIL_SENT_IF_EXISTS": "We’ve emailed {email} (if there’s a matching account)",
+	"ERROR": "Error",
+	"FINISH_ACCOUNT_SETUP": "Finish account setup",
+	"FIRST_NAME": "First name",
+	"FORGOT_MY_PASSWORD": "Forgot my password",
+	"FORGOT_PASSWORD_SUCCESS_MESSAGE": "We’ve emailed {email} (if there’s a matching account)",
+	"GET_RECOVERY_LINK": "Email me a recovery link",
+	"GO_BACK": "Go back",
+	"INVALID_EMAIL_ERROR": "{email} is not a valid email",
+	"INVITE": "Invite",
+	"INVITE_NEW_USERS": "Invite new users",
+	"INVITE_RESENT": "Invite resent",
+	"INVITE_USER": "Invite user",
+	"INVITE_X_USER": "Invite {count} user",
+	"LAST_NAME": "Last name",
+	"LOADING": "Loading",
+	"LOGIN_ERROR": "Problem logging in",
+	"MEMBER_ROLE": "Member",
+	"MISSING_INVITE_TOKEN_ERROR": "Missing invite token",
+	"MISSING_TOKEN_ERROR": "Missing token",
+	"MISSING_USERID_ERROR": "Missing user ID",
+	"NEW_EMAILS_TO_INVITE": "New user email addresses",
+	"NEW_PASSWORD": "New password",
+	"NEXT": "Next",
+	"NO_SMTP_TO_SEND_EMAIL_WARNING": "Please contact your admin. n8n isn’t set up to send email right now.",
+	"NO_USERS_TO_INVITE": "No users to invite",
+	"OWNER_ACCOUNT_BENEFITS_MESSAGE": "Setting up an owner account allows you to invite others, and prevents people using n8n without an account",
+	"PASSWORD": "Password",
+	"PASSWORDS_MUST_MATCH_ERROR": "Passwords must match",
+	"DEFAULT_PASSWORD_REQUIREMENTS": "8+ characters, at least 1 number and 1 capital letter",
+	"PAGE_NOT_FOUND_MESSAGE": "Oops, couldn’t find that",
+	"PASSWORD_UPDATE_ERROR": "Problem changing the password",
+	"PASSWORD_UPDATE_SUCCESS": "Password updated",
+	"PASSWORD_UPDATE_SUCCESS_MESSAGE": "You can now sign in with your new password",
+	"PERSONAL": "Personal",
+	"PERSONAL_SETTINGS": "Personal Settings",
+	"PERSONAL_SETTINGS_UPDATED_SUCCESS": "Personal details updated",
+	"PERSONAL_SETTINGS_UPDATE_ERROR": "Problem updating your details",
+	"RECOVERY_EMAIL_SENT": "Recovery email sent",
+	"RECOVER_PASSWORD": "Recover password",
+	"REENTER_NEW_PASSWORD": "Re-enter new password",
+	"RETURN_TO_SIGN_IN": "Back to sign in",
+	"ROLE": "Role",
+	"SAVE": "Save",
+	"SECURITY": "Security",
+	"SENDING_EMAIL_ERROR": "Problem sending email",
+	"SETTINGS": "Settings",
+	"SETTING_UP_OWNER_ERROR": "Problem setting up owner",
+	"SETUP_SMTP_TO_INVITE_USERS_MESSAGE": "Set up SMTP to invite users. <a href=\"https://docs.n8n.io/reference/user-management#smtp\" target=\"_blank\">Instructions</a>",
+	"SET_UP_ACCOUNT_ERROR": "Problem setting up your account",
+	"SET_UP_ACCOUNT": "Set up your account",
+	"SET_UP_MY_ACCOUNT": "Set up my owner account",
+	"SET_UP_OWNER": "Set up owner account",
+	"SET_UP_TO_INVITE_USERS": "To invite users, set up your own account",
+	"SET_UP_TO_INVITE_USERS_WARNING": "Invited users won’t be able to see workflows and credentials of other users. (As the owner of n8n, you will be able to see them though) <a href=\"https://docs.n8n.io/reference/user-management\" target=\"_blank\">More info</a>",
+	"SET_UP_SMTP_TO_COMPLETE_SETUP": "You will need details of an <a href=\"https://docs.n8n.io/reference/user-management#smtp\" target=\"_blank\">SMTP server</a> to complete the setup.",
+	"SIGN_IN": "Sign in",
+	"SIGN_OUT": "Sign out",
+	"SIGN_OUT_ERROR": "Could not sign out",
+	"SIGN_UP_INVITER_INFO": "{firstName} {lastName} has invited you to n8n",
+	"SKIP_OWNER_SETUP_QUESTION": "Skip owner account setup?",
+	"SKIP_SETUP": "Skip setup",
+	"SKIP_SETUP_TEMPORARILY": "Skip setup for now",
+	"SMTP_ERROR_CONTACT_ADMINISTRATOR": "Please contact your administrator (problem with your SMTP setup)",
+	"SMTP_TO_ADD_USERS_WARNING": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management#smtp\">Instructions</a>",
+	"TOKEN_VALIDATION_ERROR": "Issue validating invite token",
+	"TRANSFERRED_TO_USER": "Transferred to {user}",
+	"TRANSFER_WORKFLOWS_AND_CREDENTIALS": "Transfer their workflows and credentials to another user",
+	"USERS": "Users",
+	"USERS_INVITED_ERROR": "Could not invite users",
+	"USERS_INVITED_SUCCESS": "Users invited",
+	"USER_DELETE_ERROR": "Problem while deleting user",
+	"USER_DELETE_SUCCESS": "User deleted",
+	"USER_INVITED_ERROR": "User could not be invited",
+	"USER_INVITED_SUCCESS": "User invited",
+	"USER_REINVITE_ERROR": "Could not reinvite user",
+	"USER_TO_TRANSFER_TO": "User to transfer to",
+	"VERSION": "Version",
+	"WORKFLOW_IMPORT_ERROR": "Could not import workflow",
+	"WORKFLOW_NOT_FOUND_ERROR": "Could not find workflow"
 }

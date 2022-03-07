@@ -7,9 +7,8 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import config = require('../../../config');
-import { User } from '../../databases/entities/User';
 import { validateEntity } from '../../GenericHelpers';
-import { OwnerRequest } from '../../requests';
+import { AuthenticatedRequest, OwnerRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
 import { sanitizeUser, validatePassword } from '../UserManagementHelper';
@@ -57,34 +56,39 @@ export function ownerNamespace(this: N8nApp): void {
 				);
 			}
 
-			const globalRole = await Db.collections.Role!.findOneOrFail({
-				name: 'owner',
-				scope: 'global',
+			let owner = await Db.collections.User!.findOne(userId, {
+				relations: ['globalRole'],
 			});
 
-			const newUser = new User();
+			if (!owner || (owner.globalRole.scope === 'global' && owner.globalRole.name !== 'owner')) {
+				Logger.debug(
+					'Request to claim instance ownership failed because user shell does not exist or has wrong role!',
+					{
+						userId,
+					},
+				);
+				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+			}
 
-			Object.assign(newUser, {
+			owner = Object.assign(owner, {
 				email,
 				firstName,
 				lastName,
 				password: hashSync(validPassword, genSaltSync(10)),
-				globalRole,
-				id: userId,
 			});
 
-			await validateEntity(newUser);
+			await validateEntity(owner);
 
-			const owner = await Db.collections.User!.save(newUser);
+			owner = await Db.collections.User!.save(owner);
 
-			Logger.info('Owner updated successfully', { userId: req.user.id });
-
-			config.set('userManagement.isInstanceOwnerSetUp', true);
+			Logger.info('Owner was set up successfully', { userId: req.user.id });
 
 			await Db.collections.Settings!.update(
 				{ key: 'userManagement.isInstanceOwnerSetUp' },
 				{ value: JSON.stringify(true) },
 			);
+
+			config.set('userManagement.isInstanceOwnerSetUp', true);
 
 			Logger.debug('Setting isInstanceOwnerSetUp updated successfully', { userId: req.user.id });
 
@@ -95,6 +99,24 @@ export function ownerNamespace(this: N8nApp): void {
 			});
 
 			return sanitizeUser(owner);
+		}),
+	);
+
+	/**
+	 * Persist that the instance owner setup has been skipped
+	 */
+	this.app.post(
+		`/${this.restEndpoint}/owner/skip-setup`,
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		ResponseHelper.send(async (_req: AuthenticatedRequest, _res: express.Response) => {
+			await Db.collections.Settings!.update(
+				{ key: 'userManagement.skipInstanceOwnerSetup' },
+				{ value: JSON.stringify(true) },
+			);
+
+			config.set('userManagement.skipInstanceOwnerSetup', true);
+
+			return { success: true };
 		}),
 	);
 }

@@ -14,35 +14,6 @@ import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { mapGetters } from 'vuex';
 
-const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [
-	{
-		name: 'email',
-		properties: {
-			label: 'Email',
-			type: 'email',
-			required: true,
-			validationRules: [{name: 'VALID_EMAIL'}],
-			autocomplete: 'email',
-		},
-	},
-];
-
-const NO_SMTP_INPUTS: IFormBoxConfig['inputs'] = [
-	{
-		name: 'no-smtp-warning',
-		properties: {
-			label: 'Please contact your admin. n8n isn’t set up to send email right now.',
-			type: 'text',
-		},
-	},
-];
-
-const DEFAULT_FORM_CONFIG = {
-	title: 'Recover password',
-	redirectText: 'Back to sign in',
-	redirectLink: '/signin',
-};
-
 export default mixins(
 	showMessage,
 ).extend({
@@ -58,10 +29,39 @@ export default mixins(
 	computed: {
 		...mapGetters('settings', ['isSmtpSetup']),
 		formConfig(): IFormBoxConfig {
+			const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [
+				{
+					name: 'email',
+					properties: {
+						label: this.$locale.baseText('EMAIL'),
+						type: 'email',
+						required: true,
+						validationRules: [{name: 'VALID_EMAIL'}],
+						autocomplete: 'email',
+					},
+				},
+			];
+
+			const NO_SMTP_INPUTS: IFormBoxConfig['inputs'] = [
+				{
+					name: 'no-smtp-warning',
+					properties: {
+						label: this.$locale.baseText('NO_SMTP_TO_SEND_EMAIL_WARNING'),
+						type: 'text',
+					},
+				},
+			];
+
+			const DEFAULT_FORM_CONFIG = {
+				title: this.$locale.baseText('RECOVER_PASSWORD'),
+				redirectText: this.$locale.baseText('RETURN_TO_SIGN_IN'),
+				redirectLink: '/signin',
+			};
+
 			if (this.isSmtpSetup) {
 				return {
 					...DEFAULT_FORM_CONFIG,
-					buttonText: 'Email me a recovery link',
+					buttonText: this.$locale.baseText('GET_RECOVERY_LINK'),
 					inputs: EMAIL_INPUTS,
 				};
 			}
@@ -72,18 +72,25 @@ export default mixins(
 		},
 	},
 	methods: {
-		async onSubmit(values: {[key: string]: string}) {
+		async onSubmit(values: { email: string }) {
 			try {
 				this.loading = true;
 				await this.$store.dispatch('users/sendForgotPasswordEmail', values);
 
 				this.$showMessage({
 					type: 'success',
-					title: 'Recovery email sent',
-					message: 'Please check your inbox (and perhaps your spam folder)',
+					title: this.$locale.baseText('RECOVERY_EMAIL_SENT'),
+					message: this.$locale.baseText(
+						'FORGOT_PASSWORD_SUCCESS_MESSAGE',
+						{ interpolate: { email: values.email }},
+					),
 				});
 			} catch (error) {
-				this.$showError(error, 'Problem sending email', 'There was a problem while trying to send the email:');
+				this.$showMessage({
+					type: 'error',
+					title: this.$locale.baseText('SENDING_EMAIL_ERROR'),
+					message: this.$locale.baseText('SMTP_ERROR_CONTACT_ADMINISTRATOR'),
+				});
 			}
 			this.loading = false;
 		},

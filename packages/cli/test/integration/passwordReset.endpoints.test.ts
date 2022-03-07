@@ -1,5 +1,4 @@
 import express = require('express');
-import { getConnection } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import * as utils from './shared/utils';
@@ -13,14 +12,18 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import { Role } from '../../src/databases/entities/Role';
+import * as testDb from './shared/testDb';
 
 let app: express.Application;
 let globalOwnerRole: Role;
+let testDbName = '';
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
-	await utils.initTestDb();
-	await utils.truncate(['User']);
+	const initResult = await testDb.init();
+	testDbName = initResult.testDbName;
+
+	await testDb.truncate(['User'], testDbName);
 
 	globalOwnerRole = await Db.collections.Role!.findOneOrFail({
 		name: 'owner',
@@ -28,7 +31,7 @@ beforeAll(async () => {
 	});
 
 	utils.initTestTelemetry();
-	utils.initLogger();
+	utils.initTestLogger();
 });
 
 beforeEach(async () => {
@@ -39,26 +42,26 @@ beforeEach(async () => {
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
 
-	await utils.createUser({
+	await testDb.createUser({
 		id: INITIAL_TEST_USER.id,
 		email: INITIAL_TEST_USER.email,
 		password: INITIAL_TEST_USER.password,
 		firstName: INITIAL_TEST_USER.firstName,
 		lastName: INITIAL_TEST_USER.lastName,
-		role: globalOwnerRole,
+		globalRole: globalOwnerRole,
 	});
 });
 
 afterEach(async () => {
-	await utils.truncate(['User']);
+	await testDb.truncate(['User'], testDbName);
 });
 
-afterAll(() => {
-	return getConnection().close();
+afterAll(async () => {
+	await testDb.terminate(testDbName);
 });
 
 test('POST /forgot-password should send password reset email', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const {
 		user,
@@ -86,7 +89,7 @@ test('POST /forgot-password should send password reset email', async () => {
 });
 
 test('POST /forgot-password should fail if emailing is not set up', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const response = await authlessAgent
 		.post('/forgot-password')
@@ -99,7 +102,7 @@ test('POST /forgot-password should fail if emailing is not set up', async () => 
 });
 
 test('POST /forgot-password should fail with invalid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -121,7 +124,7 @@ test('POST /forgot-password should fail with invalid inputs', async () => {
 });
 
 test('POST /forgot-password should fail if user is not found', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -132,7 +135,7 @@ test('POST /forgot-password should fail if user is not found', async () => {
 });
 
 test('GET /resolve-password-token should succeed with valid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
@@ -150,7 +153,7 @@ test('GET /resolve-password-token should succeed with valid inputs', async () =>
 });
 
 test('GET /resolve-password-token should fail with invalid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -166,7 +169,7 @@ test('GET /resolve-password-token should fail with invalid inputs', async () => 
 });
 
 test('GET /resolve-password-token should fail if user is not found', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -178,7 +181,7 @@ test('GET /resolve-password-token should fail if user is not found', async () =>
 });
 
 test('GET /resolve-password-token should fail if token is expired', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) - 1;
@@ -198,7 +201,7 @@ test('GET /resolve-password-token should fail if token is expired', async () => 
 });
 
 test('POST /change-password should succeed with valid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
@@ -231,7 +234,7 @@ test('POST /change-password should succeed with valid inputs', async () => {
 });
 
 test('POST /change-password should fail with invalid inputs', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
@@ -272,7 +275,7 @@ test('POST /change-password should fail with invalid inputs', async () => {
 });
 
 test('POST /change-password should fail when token has expired', async () => {
-	const authlessAgent = await utils.createAgent(app);
+	const authlessAgent = utils.createAgent(app);
 
 	const resetPasswordToken = uuid();
 	const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) - 1;

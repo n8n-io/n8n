@@ -86,8 +86,12 @@ const module: Module<IUiState, IRootState> = {
 		modalStack: [],
 		sidebarMenuCollapsed: true,
 		isPageLoading: true,
+		currentView: '',
 	},
 	getters: {
+		areExpressionsDisabled(state: IUiState) {
+			return state.currentView === 'WorkflowDemo';
+		},
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
 		},
@@ -134,6 +138,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		toggleSidebarMenuCollapse: (state: IUiState) => {
 			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;
+		},
+		setCurrentView: (state: IUiState, currentView: string) => {
+			state.currentView = currentView;
 		},
 	},
 	actions: {

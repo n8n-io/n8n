@@ -1,5 +1,4 @@
 import Vue from 'vue';
-import Router from 'vue-router';
 
 import ChangePasswordView from './views/ChangePasswordView.vue';
 import ErrorView from './views/ErrorView.vue';
@@ -12,8 +11,24 @@ import SettingsUsersView from './views/SettingsUsersView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
+import Router, { Route } from 'vue-router';
+
+import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
+import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
+import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
+import { Store } from 'vuex';
+import { IRootState } from './Interface';
 
 Vue.use(Router);
+
+function getTemplatesRedirect(store: Store<IRootState>) {
+	const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
+	if (!isTemplatesEnabled) {
+		return {name: 'NotFoundView'};
+	}
+
+	return false;
+}
 
 const router = new Router({
 	mode: 'history',
@@ -21,12 +36,89 @@ const router = new Router({
 	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
 	routes: [
 		{
+			path: '/',
+			name: 'Homepage',
+			meta: {
+				getRedirect(store: Store<IRootState>) {
+					const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
+					const isTemplatesEndpointReachable: boolean = store.getters['settings/isTemplatesEndpointReachable'];
+					if (isTemplatesEnabled && isTemplatesEndpointReachable) {
+						return {name: 'TemplatesSearchView'};
+					}
+
+					return {name: 'NodeViewNew'};
+				},
+			},
+		},
+		{
+			path: '/collections/:id',
+			name: 'TemplatesCollectionView',
+			components: {
+				default: TemplatesCollectionView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				templatesEnabled: true,
+				telemetry: {
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							collection_id: route.params.id,
+							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+						};
+					},
+				},
+				getRedirect: getTemplatesRedirect,
+			},
+		},
+		{
 			path: '/execution/:id',
 			name: 'ExecutionById',
 			components: {
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				nodeView: true,
+			},
+		},
+		{
+			path: '/templates/:id',
+			name: 'TemplatesWorkflowView',
+			components: {
+				default: TemplatesWorkflowView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				templatesEnabled: true,
+				getRedirect: getTemplatesRedirect,
+				telemetry: {
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							template_id: route.params.id,
+							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+						};
+					},
+				},
+			},
+		},
+		{
+			path: '/templates/',
+			name: 'TemplatesSearchView',
+			components: {
+				default: TemplatesSearchView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				templatesEnabled: true,
+				getRedirect: getTemplatesRedirect,
+				telemetry: {
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+						};
+					},
+				},
 			},
 		},
 		{
@@ -37,6 +129,9 @@ const router = new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
+			meta: {
+				nodeView: true,
+			},
 		},
 		{
 			path: '/workflow/:name',
@@ -46,10 +141,9 @@ const router = new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
-		},
-		{
-			path: '/',
-			redirect: '/workflow',
+			meta: {
+				nodeView: true,
+			},
 		},
 		{
 			path: '/workflows/demo',
@@ -65,6 +159,10 @@ const router = new Router({
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				templatesEnabled: true,
+				getRedirect: getTemplatesRedirect,
 			},
 		},
 		{
@@ -113,6 +211,11 @@ const router = new Router({
 			components: {
 				default: SettingsUsersView,
 			},
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
 		},
 		{
 			path: '/settings/personal',
@@ -120,16 +223,27 @@ const router = new Router({
 			components: {
 				default: SettingsPersonalView,
 			},
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
 		},
 		{
 			path: '*',
 			name: 'NotFoundView',
 			component: ErrorView,
 			props: {
-				message: 'Oops, couldn’t find that',
+				messageKey: 'PAGE_NOT_FOUND_MESSAGE',
 				errorCode: 404,
-				redirectText: 'Go to editor',
-				redirectLink: '/',
+				redirectTextKey: 'GO_BACK',
+				redirectPage: 'Homepage',
+			},
+			meta: {
+				nodeView: true,
+				telemetry: {
+					disabled: true,
+				},
 			},
 		},
 	],

@@ -11,7 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import { User } from './databases/entities/User';
-import type { IExecutionDeleteFilter, IPersonalizationSurveyAnswers, IWorkflowDb } from '.';
+import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthlessRequest<
@@ -135,8 +135,12 @@ export declare namespace MeRequest {
 		{},
 		Pick<PublicUser, 'email' | 'firstName' | 'lastName'>
 	>;
-	export type Password = AuthenticatedRequest<{}, {}, Pick<PublicUser, 'password'>>;
-	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswers>;
+	export type Password = AuthenticatedRequest<
+		{},
+		{},
+		{ currentPassword: string; newPassword: string }
+	>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
 
 // ----------------------------------

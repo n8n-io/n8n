@@ -78,13 +78,24 @@ export function passwordResetNamespace(this: N8nApp): void {
 			url.searchParams.append('userId', id);
 			url.searchParams.append('token', resetPasswordToken);
 
-			await UserManagementMailer.getInstance().passwordReset({
-				email,
-				firstName,
-				lastName,
-				passwordResetUrl: url.toString(),
-				domain: baseUrl,
-			});
+			try {
+				const mailer = await UserManagementMailer.getInstance();
+				await mailer.passwordReset({
+					email,
+					firstName,
+					lastName,
+					passwordResetUrl: url.toString(),
+					domain: baseUrl,
+				});
+			} catch (error) {
+				if (error instanceof Error) {
+					throw new ResponseHelper.ResponseError(
+						`Please contact your administrator: ${error.message}`,
+						undefined,
+						500,
+					);
+				}
+			}
 
 			Logger.info('Sent password reset email successfully', { userId: user.id, email });
 			void InternalHooksManager.getInstance().onUserTransactionalEmail({

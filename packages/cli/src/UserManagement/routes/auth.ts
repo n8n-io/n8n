@@ -73,7 +73,7 @@ export function authenticationMethods(this: N8nApp): void {
 					user = await resolveJwt(cookieContents);
 					return sanitizeUser(user);
 				} catch (error) {
-					throw new Error('Invalid login information');
+					res.clearCookie(AUTH_COOKIE_NAME);
 				}
 			}
 

@@ -3,17 +3,19 @@
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot"></slot>
 			<n8n-select
-				v-else-if="type === 'select'"
+				v-else-if="type === 'select' || type === 'multi-select'"
 				:value="value"
+				:placeholder="placeholder"
+				:multiple="type === 'multi-select'"
+				@change="onInput"
+				@focus="onFocus"
+				@blur="onBlur"
 			>
 				<n8n-option
 					v-for="option in (options || [])"
 					:key="option.value"
 					:value="option.value"
 					:label="option.label"
-					@change="onInput"
-					@focus="onFocus"
-					@blur="onBlur"
 				/>
 			</n8n-select>
 			<n8n-input
@@ -72,7 +74,6 @@ export default Vue.extend({
 	},
 	props: {
 		value: {
-			type: String,
 		},
 		label: {
 			type: String,

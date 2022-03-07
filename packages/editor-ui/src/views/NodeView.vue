@@ -114,7 +114,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PERSONALIZATION_MODAL_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -239,20 +239,27 @@ export default mixins(
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;
 			if(result) {
-				const importConfirm = await this.confirmMessage(
+				const confirmModal = await this.confirmModal(
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.message'),
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.headline'),
 					'warning',
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText'),
 					this.$locale.baseText('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText'),
+					true,
 				);
-				if (importConfirm === false) {
-					next(false);
-				} else {
-					// Prevent other popups from displaying
+
+				if (confirmModal === MODAL_CONFIRMED) {
+					const saved = await this.saveCurrentWorkflow({}, false);
+					if (saved) this.$store.dispatch('settings/fetchPromptsData');
 					this.$store.commit('setStateDirty', false);
 					next();
+				} else if (confirmModal === MODAL_CANCEL) {
+					this.$store.commit('setStateDirty', false);
+					next();
+				} else if (confirmModal === MODAL_CLOSE) {
+					next(false);
 				}
+
 			} else {
 				next();
 			}
@@ -344,6 +351,7 @@ export default mixins(
 			};
 		},
 		beforeDestroy () {
+			this.resetWorkspace();
 			// Make sure the event listeners get removed again else we
 			// could add up with them registred multiple times
 			document.removeEventListener('keydown', this.keyDown);
@@ -527,7 +535,7 @@ export default mixins(
 				let data: IWorkflowTemplate | undefined;
 				try {
 					this.$externalHooks().run('template.requested', { templateId });
-					data = await this.$store.dispatch('workflows/getWorkflowTemplate', templateId);
+					data = await this.$store.dispatch('templates/getWorkflowTemplate', templateId);
 
 					if (!data) {
 						throw new Error(
@@ -537,22 +545,16 @@ export default mixins(
 							),
 						);
 					}
-
-					data.workflow.nodes.forEach((node) => {
-						if (!this.$store.getters.nodeType(node.type, node.typeVersion)) {
-							throw new Error(`The ${this.$locale.shortNodeType(node.type)} node is not supported`);
-						}
-					});
 				} catch (error) {
 					this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
-					this.$router.push({ name: 'NodeViewNew' });
+					this.$router.replace({ name: 'NodeViewNew' });
 					return;
 				}
 
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
 
 				this.blankRedirect = true;
-				this.$router.push({ name: 'NodeViewNew', query: { templateId } });
+				this.$router.replace({ name: 'NodeViewNew', query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
@@ -681,13 +683,13 @@ export default mixins(
 				}
 
 				if (e.key === 'd') {
-					this.callDebounced('deactivateSelectedNode', 350);
+					this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
 
 				} else if (e.key === 'Delete' || e.key === 'Backspace') {
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('deleteSelectedNodes', 500);
+					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 
 				} else if (e.key === 'Tab') {
 					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
@@ -699,7 +701,7 @@ export default mixins(
 				} else if (e.key === 'F2' && !this.isReadOnly) {
 					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode !== null) {
-						this.callDebounced('renameNodePrompt', 1500, lastSelectedNode.name);
+						this.callDebounced('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
 					}
 				} else if ((e.key === '=' || e.key === '+') && !this.isCtrlKeyPressed(e)) {
 					this.zoomIn();
@@ -714,25 +716,31 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectAllNodes', 1000);
+					this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
-					this.callDebounced('copySelectedNodes', 1000);
+					this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
 					// Cut nodes
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('cutSelectedNodes', 1000);
+					this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
 				} else if (e.key === 'o' && this.isCtrlKeyPressed(e) === true) {
 					// Open workflow dialog
 					e.stopPropagation();
 					e.preventDefault();
+					if (this.isDemo) {
+						return;
+					}
 
 					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
 					e.preventDefault();
+					if (this.isDemo) {
+						return;
+					}
 
 					if (this.$router.currentRoute.name === 'NodeViewNew') {
 						this.$root.$emit('newWorkflow');
@@ -753,7 +761,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('onSaveKeyboardShortcut', 1000);
+					this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 });
 				} else if (e.key === 'Enter') {
 					// Activate the last selected node
 					const lastSelectedNode = this.lastSelectedNode;
@@ -766,7 +774,7 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectDownstreamNodes', 1000);
+					this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
 				} else if (e.key === 'ArrowRight') {
 					// Set child node active
 					const lastSelectedNode = this.lastSelectedNode;
@@ -780,13 +788,13 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('nodeSelectedByName', 100, connections.main[0][0].node, false, true);
+					this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
 				} else if (e.key === 'ArrowLeft' && e.shiftKey === true) {
 					// Select all downstream nodes
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectUpstreamNodes', 1000);
+					this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
 				} else if (e.key === 'ArrowLeft') {
 					// Set parent node active
 					const lastSelectedNode = this.lastSelectedNode;
@@ -806,7 +814,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('nodeSelectedByName', 100, connections.main[0][0].node, false, true);
+					this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
 				} else if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
 					// Set sibling node as active
 
@@ -864,7 +872,7 @@ export default mixins(
 					}
 
 					if (nextSelectNode !== null) {
-						this.callDebounced('nodeSelectedByName', 100, nextSelectNode, false, true);
+						this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, nextSelectNode, false, true);
 					}
 				}
 			},
@@ -952,8 +960,11 @@ export default mixins(
 			},
 
 			cutSelectedNodes () {
-				this.copySelectedNodes(true);
-				this.deleteSelectedNodes();
+				const deleteCopiedNodes = !this.isReadOnly;
+				this.copySelectedNodes(deleteCopiedNodes);
+				if (deleteCopiedNodes) {
+					this.deleteSelectedNodes();
+				}
 			},
 
 			copySelectedNodes (isCut: boolean) {
@@ -1000,6 +1011,9 @@ export default mixins(
 			setZoomLevel (zoomLevel: number) {
 				this.nodeViewScale = zoomLevel; // important for background
 				const element = this.instance.getContainer() as HTMLElement;
+				if (!element) {
+					return;
+				}
 
 				// https://docs.jsplumbtoolkit.com/community/current/articles/zooming.html
 				const prependProperties = ['webkit', 'moz', 'ms', 'o'];
@@ -1786,14 +1800,19 @@ export default mixins(
 
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
-						const importConfirm = await this.confirmMessage(
+						const confirmModal = await this.confirmModal(
 							this.$locale.baseText('nodeView.confirmMessage.initView.message'),
 							this.$locale.baseText('nodeView.confirmMessage.initView.headline'),
 							'warning',
 							this.$locale.baseText('nodeView.confirmMessage.initView.confirmButtonText'),
 							this.$locale.baseText('nodeView.confirmMessage.initView.cancelButtonText'),
+							true,
 						);
-						if (importConfirm === false) {
+
+						if (confirmModal === MODAL_CONFIRMED) {
+							const saved = await this.saveCurrentWorkflow();
+							if (saved) this.$store.dispatch('settings/fetchPromptsData');
+						} else if (confirmModal === MODAL_CLOSE) {
 							return Promise.resolve();
 						}
 					}
@@ -1811,7 +1830,7 @@ export default mixins(
 							});
 							this.$showMessage({
 								title: 'Error',
-								message: 'Could not find workflow',
+								message: this.$locale.baseText('WORKFLOW_NOT_FOUND_ERROR'),
 								type: 'error',
 							});
 						} else {
@@ -2256,14 +2275,13 @@ export default mixins(
 			deleteEveryEndpoint () {
 				// Check as it does not exist on first load
 				if (this.instance) {
-					const nodes = this.$store.getters.allNodes as INodeUi[];
 					try {
+						const nodes = this.$store.getters.allNodes as INodeUi[];
 						// @ts-ignore
 						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
-					} catch (e) {
-					}
 
-					this.instance.deleteEveryEndpoint();
+						this.instance.deleteEveryEndpoint();
+					} catch (e) {}
 				}
 			},
 			matchCredentials(node: INodeUi) {
@@ -2377,7 +2395,11 @@ export default mixins(
 					for (const sourceNode of Object.keys(connections)) {
 						for (const type of Object.keys(connections[sourceNode])) {
 							for (let sourceIndex = 0; sourceIndex < connections[sourceNode][type].length; sourceIndex++) {
-								connections[sourceNode][type][sourceIndex].forEach((
+								const outwardConnections = connections[sourceNode][type][sourceIndex];
+								if (!outwardConnections) {
+									continue;
+								}
+								outwardConnections.forEach((
 									targetData,
 								) => {
 									connectionData = [
@@ -2673,11 +2695,7 @@ export default mixins(
 					this.stopLoading();
 				}
 			},
-		},
-
-
-		async mounted () {
-			window.addEventListener('message', async (message) => {
+			async onPostMessageReceived(message: MessageEvent) {
 				try {
 					const json = JSON.parse(message.data);
 					if (json && json.command === 'openWorkflow') {
@@ -2685,10 +2703,10 @@ export default mixins(
 							await this.importWorkflowExact(json);
 						} catch (e) {
 							if (window.top) {
-								window.top.postMessage(JSON.stringify({command: 'error', message: 'Could not import workflow'}), '*');
+								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('WORKFLOW_IMPORT_ERROR') }), '*');
 							}
 							this.$showMessage({
-								title: 'Could not import workflow',
+								title: this.$locale.baseText('WORKFLOW_IMPORT_ERROR'),
 								message: (e as Error).message,
 								type: 'error',
 							});
@@ -2696,20 +2714,24 @@ export default mixins(
 					}
 				} catch (e) {
 				}
-			});
-
-			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
+			},
+			async onImportWorkflowDataEvent(data: IDataObject) {
 				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
-			});
-
-			this.$root.$on('newWorkflow', this.newWorkflow);
-
-			this.$root.$on('importWorkflowUrl', async (data: IDataObject) => {
+			},
+			async onImportWorkflowUrlEvent(data: IDataObject) {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
 				if (workflowData !== undefined) {
 					await this.importWorkflowData(workflowData);
 				}
-			});
+			},
+		},
+
+		async mounted () {
+			this.$titleReset();
+			window.addEventListener('message', this.onPostMessageReceived);
+			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
+			this.$root.$on('newWorkflow', this.newWorkflow);
+			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 
 			this.startLoading();
 
@@ -2768,6 +2790,10 @@ export default mixins(
 		destroyed () {
 			this.resetWorkspace();
 			this.$store.commit('setStateDirty', false);
+			window.removeEventListener('message', this.onPostMessageReceived);
+			this.$root.$off('newWorkflow', this.newWorkflow);
+			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
+			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		},
 	});
 </script>
@@ -2840,6 +2866,7 @@ export default mixins(
 }
 
 .node-view-background {
+	background-color: var(--color-canvas-background);
 	position: absolute;
 	width: 10000px;
 	height: 10000px;

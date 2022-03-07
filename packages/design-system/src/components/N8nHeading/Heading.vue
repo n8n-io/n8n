@@ -25,6 +25,10 @@ export default {
 			type: String,
 			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'].includes(value),
 		},
+		align: {
+			type: String,
+			validator: (value: string): boolean => ['right', 'left', 'center'].includes(value),
+		},
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {
@@ -34,6 +38,9 @@ export default {
 			const styles = {} as any;
 			if (props.color) {
 				styles.color = `var(--color-${props.color})`;
+			}
+			if (props.align) {
+				styles['text-align'] = props.align;
 			}
 			return styles;
 		},

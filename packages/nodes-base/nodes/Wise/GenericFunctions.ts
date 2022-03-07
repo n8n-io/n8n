@@ -1,49 +1,53 @@
 import {
+	createSign,
+} from 'crypto';
+
+import {
 	IExecuteFunctions,
 	IHookFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
-
-import {
-	OptionsWithUri,
-} from 'request';
 
 /**
  * Make an authenticated API request to Wise.
  */
 export async function wiseApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD' | 'PATCH',
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-	const { apiToken, environment } = await this.getCredentials('wiseApi') as {
+	const { apiToken, environment, privateKey } = await this.getCredentials('wiseApi') as {
 		apiToken: string,
 		environment: 'live' | 'test',
+		privateKey?: string,
 	};
 
 	const rootUrl = environment === 'live'
 		? 'https://api.transferwise.com/'
 		: 'https://api.sandbox.transferwise.tech/';
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			'Authorization': `Bearer ${apiToken}`,
 		},
 		method,
-		uri: `${rootUrl}${endpoint}`,
+		url: `${rootUrl}${endpoint}`,
 		qs,
 		body,
 		json: true,
+		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
 	};
 
 	if (!Object.keys(body).length) {
@@ -58,10 +62,53 @@ export async function wiseApiRequest(
 		Object.assign(options, option);
 	}
 
+	let response;
 	try {
-		return await this.helpers.request!(options);
+		response = await this.helpers.httpRequest!(options);
 	} catch (error) {
+		delete error.config;
 		throw new NodeApiError(this.getNode(), error);
+	}
+
+	if (response.statusCode === 200) {
+		return response.body;
+	}
+
+	// Request requires SCA approval
+	if (response.statusCode === 403 && response.headers['x-2fa-approval']) {
+		if (!privateKey) {
+			throw new NodeApiError(this.getNode(), {
+				message: 'This request requires Strong Customer Authentication (SCA). Please add a key pair to your account and n8n credentials. See https://api-docs.transferwise.com/#strong-customer-authentication-personal-token',
+				headers: response.headers,
+				body: response.body,
+			});
+		}
+		// Sign the x-2fa-approval
+		const oneTimeToken = response.headers['x-2fa-approval'] as string;
+		const signerObject = createSign('RSA-SHA256').update(oneTimeToken);
+		try {
+			const signature = signerObject.sign(
+				privateKey,
+				'base64',
+			);
+			delete option.ignoreHttpStatusErrors;
+			options.headers = {
+				...options.headers,
+				'X-Signature': signature,
+				'x-2fa-approval': oneTimeToken,
+			};
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), {message: 'Error signing SCA request, check your private key', ...error});
+		}
+		// Retry the request with signed token
+		try {
+			response = await this.helpers.httpRequest!(options);
+			return response.body;
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), {message: 'SCA request failed, check your private key is valid'});
+		}
+	} else {
+		throw new NodeApiError(this.getNode(), { ...response, message: response.statusMessage });
 	}
 }
 
@@ -113,8 +160,12 @@ export type Profile = {
 };
 
 export type Recipient = {
+	active: boolean,
 	id: number,
-	accountHolderName: string
+	accountHolderName: string,
+	country: string | null,
+	currency: string,
+	type: string,
 };
 
 export type StatementAdditionalFields = {

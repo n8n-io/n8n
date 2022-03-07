@@ -4,17 +4,17 @@
 		<div :class="$style.message">
 			<div>
 				<n8n-heading size="2xlarge">
-					{{message}}
+					{{ $locale.baseText(messageKey) }}
 				</n8n-heading>
 			</div>
 			<div>
 				<n8n-text size="large" v-if="errorCode">
-					{{errorCode}} error
+					{{errorCode}} {{ $locale.baseText('ERROR') }}
 				</n8n-text>
 			</div>
 		</div>
 		<n8n-button
-			:label="redirectText"
+			:label="$locale.baseText(redirectTextKey)"
 			@click="onButtonClick"
 		/>
 	</div>
@@ -24,25 +24,25 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: 'ErroView',
+	name: 'ErrorView',
 	props: {
-		message: {
+		messageKey: {
 			type: String,
 			required: true,
 		},
 		errorCode: {
 			type: Number,
 		},
-		redirectText: {
+		redirectTextKey: {
 			type: String,
 		},
-		redirectLink: {
+		redirectPage: {
 			type: String,
 		},
 	},
 	methods: {
 		onButtonClick() {
-			this.$router.push(this.redirectLink);
+			this.$router.push({ name: this.redirectPage });
 		},
 	},
 });

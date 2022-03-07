@@ -461,6 +461,11 @@ export interface IN8nUISettings {
 	userManagement: IUserManagementSettings;
 	workflowTagsDisabled: boolean;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
+	hiringBannerEnabled: boolean;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {
