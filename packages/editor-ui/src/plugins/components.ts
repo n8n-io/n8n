@@ -45,7 +45,6 @@ import {
 	N8nActionBox,
 	N8nAvatar,
 	N8nActionToggle,
-	N8nIconButton,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
