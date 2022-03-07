@@ -14,7 +14,7 @@
 			</div>
 			<div v-if="showUMSetupWarning" :class="$style.setupInfoContainer">
 				<n8n-action-box
-					:heading="$locale.baseText('SET_UP_TO_INVITE_USERS_MESSAGE')"
+					:heading="$locale.baseText('SET_UP_TO_INVITE_USERS')"
 					:buttonText="$locale.baseText('SET_UP_MY_ACCOUNT')"
 					@click="redirectToSetup"
 				>

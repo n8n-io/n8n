@@ -1162,7 +1162,7 @@
 	"SET_UP_ACCOUNT": "Set up your account",
 	"SET_UP_MY_ACCOUNT": "Set up my owner account",
 	"SET_UP_OWNER": "Set up owner account",
-	"SET_UP_TO_INVITE_USERS_MESSAGE": "To invite users, set up your own account",
+	"SET_UP_TO_INVITE_USERS": "To invite users, set up your own account",
 	"SET_UP_TO_INVITE_USERS_WARNING": "Invited users won’t be able to see workflows and credentials of other users. (As the owner of n8n, you will be able to see them though) <a href=\"https://docs.n8n.io/reference/user-management\" target=\"_blank\">More info</a>",
 	"SET_UP_SMTP_TO_COMPLETE_SETUP": "You will need details of an <a href=\"https://docs.n8n.io/reference/user-management#smtp\" target=\"_blank\">SMTP server</a> to complete the setup.",
 	"SIGN_IN": "Sign in",
