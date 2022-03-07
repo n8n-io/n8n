@@ -21,6 +21,7 @@ beforeAll(async () => {
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	utils.initTestLogger();
+	utils.initTestTelemetry();
 });
 
 afterAll(async () => {

@@ -7,7 +7,7 @@ import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { Db, ResponseHelper } from '../..';
+import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { UserRequest } from '../../requests';
 import { getInstanceBaseUrl, sanitizeUser, validatePassword } from '../UserManagementHelper';
@@ -139,6 +139,11 @@ export function usersNamespace(this: N8nApp): void {
 						}),
 					);
 				});
+
+				void InternalHooksManager.getInstance().onUserInvite({
+					user_id: req.user.id,
+					target_user_id: Object.values(createUsers) as string[],
+				});
 			} catch (error) {
 				Logger.error('Failed to create user shells', { userShells: createUsers });
 				throw new ResponseHelper.ResponseError('An error occurred during user creation');
@@ -170,7 +175,12 @@ export function usersNamespace(this: N8nApp): void {
 							email,
 						},
 					};
-					if (!result?.success) {
+					if (result?.success) {
+						void InternalHooksManager.getInstance().onUserTransactionalEmail({
+							user_id: id!,
+							message_type: 'New user invite',
+						});
+					} else {
 						Logger.error('Failed to send email', {
 							userId: req.user.id,
 							inviteAcceptUrl,
@@ -254,6 +264,10 @@ export function usersNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 			}
 
+			void InternalHooksManager.getInstance().onUserInviteEmailClick({
+				user_id: inviteeId,
+			});
+
 			const { firstName, lastName } = inviter;
 
 			return { inviter: { firstName, lastName } };
@@ -319,6 +333,10 @@ export function usersNamespace(this: N8nApp): void {
 			const updatedUser = await Db.collections.User!.save(invitee);
 
 			await issueCookie(res, updatedUser);
+
+			void InternalHooksManager.getInstance().onUserSignup({
+				user_id: invitee.id,
+			});
 
 			return sanitizeUser(updatedUser);
 		}),
@@ -420,6 +438,20 @@ export function usersNamespace(this: N8nApp): void {
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
 
+			const telemetryData: ITelemetryUserDeletionData = {
+				user_id: req.user.id,
+				target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
+				target_user_id: idToDelete,
+			};
+
+			telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
+
+			if (transferId) {
+				telemetryData.migration_user_id = transferId;
+			}
+
+			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData);
+
 			return { success: true };
 		}),
 	);
@@ -494,6 +526,16 @@ export function usersNamespace(this: N8nApp): void {
 					500,
 				);
 			}
+
+			void InternalHooksManager.getInstance().onUserReinvite({
+				user_id: req.user.id,
+				target_user_id: reinvitee.id,
+			});
+
+			void InternalHooksManager.getInstance().onUserTransactionalEmail({
+				user_id: reinvitee.id,
+				message_type: 'Resend invite',
+			});
 
 			return { success: true };
 		}),

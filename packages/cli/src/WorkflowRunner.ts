@@ -178,6 +178,7 @@ export class WorkflowRunner {
 					executionId!,
 					data.workflowData,
 					executionData,
+					data.userId,
 				);
 			})
 			.catch((error) => {

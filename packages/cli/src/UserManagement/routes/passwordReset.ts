@@ -9,7 +9,7 @@ import validator from 'validator';
 import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { Db, ResponseHelper } from '../..';
+import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
 import { validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
@@ -98,6 +98,14 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			Logger.info('Sent password reset email successfully', { userId: user.id, email });
+			void InternalHooksManager.getInstance().onUserTransactionalEmail({
+				user_id: id,
+				message_type: 'Reset password',
+			});
+
+			void InternalHooksManager.getInstance().onUserPasswordResetRequestClick({
+				user_id: id,
+			});
 		}),
 	);
 
@@ -142,6 +150,9 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			Logger.info('Reset-password token resolved successfully', { userId: id });
+			void InternalHooksManager.getInstance().onUserPasswordResetEmailClick({
+				user_id: id,
+			});
 		}),
 	);
 

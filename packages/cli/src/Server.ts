@@ -787,7 +787,7 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow);
+				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow);
 
 				const { id, ...rest } = savedWorkflow;
 
@@ -1128,7 +1128,7 @@ class App {
 
 				await Db.collections.Workflow!.delete(workflowId);
 
-				void InternalHooksManager.getInstance().onWorkflowDeleted(workflowId);
+				void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId);
 				await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 				return true;
@@ -2925,6 +2925,10 @@ export async function start(): Promise<void> {
 			},
 			deploymentType: config.get('deployment.type'),
 			binaryDataMode: binarDataConfig.mode,
+			n8n_multi_user_allowed:
+				config.get('userManagement.disabled') === false ||
+				config.get('userManagement.hasOwner') === true,
+			smtp_set_up: config.get('userManagement.emails.mode') === 'smtp',
 		};
 
 		void Db.collections

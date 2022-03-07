@@ -29,6 +29,8 @@ beforeAll(async () => {
 		name: 'owner',
 		scope: 'global',
 	});
+
+	utils.initTestTelemetry();
 	utils.initTestLogger();
 });
 

@@ -7,14 +7,14 @@ import { URL } from 'url';
 import bodyParser = require('body-parser');
 import * as util from 'util';
 import { createTestAccount } from 'nodemailer';
-import { LoggerProxy } from 'n8n-workflow';
+import { INodeTypes, LoggerProxy } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
 
 import config = require('../../../config');
 import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
-import { Db, ExternalHooks } from '../../../src';
+import { Db, ExternalHooks, InternalHooksManager } from '../../../src';
 import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
@@ -25,6 +25,7 @@ import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
 
 import type { User } from '../../../src/databases/entities/User';
+import { Telemetry } from '../../../src/telemetry';
 import type { EndpointGroup, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 
@@ -86,6 +87,14 @@ export function initTestServer({
 	}
 
 	return testServer.app;
+}
+
+export function initTestTelemetry() {
+	const mockNodeTypes = { nodeTypes: {} } as INodeTypes;
+
+	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
+
+	jest.spyOn(Telemetry.prototype, 'track').mockResolvedValue();
 }
 
 /**
