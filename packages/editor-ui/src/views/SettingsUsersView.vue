@@ -92,7 +92,7 @@ export default mixins(showMessage).extend({
 						message: this.$locale.baseText('EMAIL_SENT_TO', { interpolate: { email: user.email } }),
 					});
 				} catch (e) {
-					this.$showError(e, this.$locale.baseText('USER_INVITE_ERROR'));
+					this.$showError(e, this.$locale.baseText('USER_REINVITE_ERROR'));
 				}
 			}
 		},
