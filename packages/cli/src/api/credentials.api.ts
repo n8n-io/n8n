@@ -6,7 +6,8 @@
 import express = require('express');
 import { In } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
-import { INodeCredentialTestResult, LoggerProxy as Logger } from 'n8n-workflow';
+import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '../Logger';
 
 import {
 	CredentialsHelper,
@@ -27,6 +28,18 @@ import config = require('../../config');
 import { externalHooks } from '../Server';
 
 export const credentialsController = express.Router();
+
+/**
+ * Initialize Logger if needed
+ */
+credentialsController.use((req, res, next) => {
+	try {
+		LoggerProxy.getInstance();
+	} catch (error) {
+		LoggerProxy.init(getLogger());
+	}
+	next();
+});
 
 /**
  * GET /credentials
@@ -63,7 +76,7 @@ credentialsController.get(
 				});
 			}
 		} catch (error) {
-			Logger.error('Request to list credentials failed', error);
+			LoggerProxy.error('Request to list credentials failed', error);
 			throw error;
 		}
 
@@ -184,7 +197,7 @@ credentialsController.post(
 
 			return savedCredential;
 		});
-		Logger.verbose('New credential created', {
+		LoggerProxy.verbose('New credential created', {
 			credentialId: newCredential.id,
 			ownerId: req.user.id,
 		});
@@ -210,7 +223,7 @@ credentialsController.delete(
 		});
 
 		if (!shared) {
-			Logger.info('Attempt to delete credential blocked due to lack of permissions', {
+			LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
 			});
@@ -252,7 +265,7 @@ credentialsController.patch(
 		});
 
 		if (!shared) {
-			Logger.info('Attempt to update credential blocked due to lack of permissions', {
+			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
 			});
@@ -333,7 +346,7 @@ credentialsController.patch(
 		// Remove the encrypted data as it is not needed in the frontend
 		const { id, data, ...rest } = responseData;
 
-		Logger.verbose('Credential updated', { credentialId });
+		LoggerProxy.verbose('Credential updated', { credentialId });
 
 		return {
 			id: id.toString(),
