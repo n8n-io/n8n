@@ -23,11 +23,10 @@ import { SharedWorkflow } from '../../../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
 
 export = {
-	createUsers: async (req: express.Request, res: express.Response) => {
+	createUsers: async (req: UserRequest.Invite, res: express.Response) => {
 
 		//validate wheather smtp server was defined and the instance has an owner
 
-		//@ts-ignore
 		if (req.user.globalRole.name !== 'owner') {
 			res.json({
 				message: 'Only owner has access to this endpoint',
@@ -95,15 +94,6 @@ export = {
 	},
 	deleteUser: async (req: UserRequest.Delete, res: express.Response) => {
 
-		const condition = {
-			email: req.params.id,
-		} as IDataObject;
-
-		if (uuidValidate(req.params.id)) {
-			delete condition.email;
-			condition['id'] = req.params.id;
-		}
-
 		if (req.user.globalRole.name !== 'owner') {
 			res.json({
 				message: 'Only owner has access to this endpoint',
@@ -134,7 +124,8 @@ export = {
 			where: [
 				{ id: In([transferId, idToDelete]) },
 				{ email: Equal(emailToDelete) },
-			]});
+			],
+		});
 
 		if (!users.length || (transferId && users.length !== 2)) {
 			throw new ResponseHelper.ResponseError(
@@ -194,26 +185,22 @@ export = {
 			await transactionManager.delete(User, { id: userToDelete.id });
 		});
 
-		return { success: true };	
+		return { success: true };
 	},
-	getUser: async (req: express.Request, res: express.Response) => {
-		//@ts-ignore
+	getUser: async (req: UserRequest.Get, res: express.Response) => {
+
 		if (req.user.globalRole.name !== 'owner') {
 			res.json({
 				message: 'Only owner has access to this endpoint',
 			}).status(401);
 		}
 
-		const condition = {
-			email: req.params.id,
-		} as IDataObject;
-
-		if (uuidValidate(req.params.id)) {
-			delete condition.email;
-			condition['id'] = req.params.id;
-		}
-
-		const user = await Db.collections.User!.findOne(condition);
+		const user = await Db.collections.User!.findOne({
+			where: [
+				{ id: req.user.id },
+				{ email: req.user.email },
+			],
+		});
 
 		if (user === undefined) {
 			return res.status(404).send();
@@ -221,10 +208,10 @@ export = {
 
 		return res.json(user);
 	},
-	getUsers: async (req: express.Request, res: express.Response) => {
+	getUsers: async (req: UserRequest.Get, res: express.Response) => {
 		let offset = 0;
 		let limit = parseInt(req.query.limit as string, 10) || 10;
-		
+
 		if (req.query.cursor) {
 			const cursor = req.query.cursor as string;
 			({ offset, limit } = decodeCursor(cursor));
@@ -235,17 +222,17 @@ export = {
 			.createQueryBuilder()
 			.leftJoinAndSelect('User.globalRole', 'Role')
 			.select(getUserBaseSelectableProperties()
-			.map(property => `User.${property}`))
+				.map(property => `User.${property}`))
 			.addSelect('Role.id')
 			.limit(limit)
 			.offset(offset);
 
 		// tslint:disable-next-line: prefer-const
 		let [users, count] = await query.getManyAndCount();
-		
+
 		//TODO: Do this at the db level
 		users = addFinshedSetupProperty(users);
-	
+
 		res.json({
 			users,
 			nextCursor: getNextCursor(offset, limit, count),

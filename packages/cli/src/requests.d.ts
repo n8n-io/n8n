@@ -175,6 +175,8 @@ export declare namespace UserRequest {
 
 	export type Delete = AuthenticatedRequest<{ id: string, email: string }, {}, {}, { transferId?: string }>;
 
+	export type Get = AuthenticatedRequest<{ id: string, email: string }, {}, {}, { limit: string, cursor: string }>;
+	
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
 	export type Update = AuthenticatedRequest<

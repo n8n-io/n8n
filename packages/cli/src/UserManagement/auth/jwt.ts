@@ -56,6 +56,7 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 }
 
 export async function resolveJwt(token: string): Promise<User> {
+	console.log(config.get('userManagement.jwtSecret'));
 	const jwtPayload = jwt.verify(token, config.get('userManagement.jwtSecret')) as JwtPayload;
 	return resolveJwtContent(jwtPayload);
 }

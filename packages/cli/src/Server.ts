@@ -536,7 +536,6 @@ class App {
 		// Get push connections
 		this.app.use(
 			async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-				console.log(1);
 				if (req.url.indexOf(`/${this.restEndpoint}/push`) === 0) {
 					if (req.query.sessionId === undefined) {
 						next(new Error('The query parameter "sessionId" is missing!'));
@@ -547,6 +546,7 @@ class App {
 						const authCookie = req.headers.cookie?.replace('n8n-auth=', '') ?? '';
 						await resolveJwt(authCookie);
 					} catch (error) {
+						console.log(error);
 						res.status(401).send('Unauthorized');
 						return;
 					}
