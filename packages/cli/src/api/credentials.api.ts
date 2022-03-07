@@ -6,7 +6,8 @@
 import express = require('express');
 import { In } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
-import { INodeCredentialTestResult } from 'n8n-workflow';
+import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '../Logger';
 
 import {
 	CredentialsHelper,
@@ -29,6 +30,18 @@ import { externalHooks } from '../Server';
 export const credentialsController = express.Router();
 
 /**
+ * Initialize Logger if needed
+ */
+credentialsController.use((req, res, next) => {
+	try {
+		LoggerProxy.getInstance();
+	} catch (error) {
+		LoggerProxy.init(getLogger());
+	}
+	next();
+});
+
+/**
  * GET /credentials
  */
 credentialsController.get(
@@ -38,28 +51,33 @@ credentialsController.get(
 
 		const filter = req.query.filter ? (JSON.parse(req.query.filter) as Record<string, string>) : {};
 
-		if (req.user.globalRole.name === 'owner') {
-			credentials = await Db.collections.Credentials!.find({
-				select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
-				where: filter,
-			});
-		} else {
-			const shared = await Db.collections.SharedCredentials!.find({
-				where: whereClause({
-					user: req.user,
-					entityType: 'credentials',
-				}),
-			});
+		try {
+			if (req.user.globalRole.name === 'owner') {
+				credentials = await Db.collections.Credentials!.find({
+					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
+					where: filter,
+				});
+			} else {
+				const shared = await Db.collections.SharedCredentials!.find({
+					where: whereClause({
+						user: req.user,
+						entityType: 'credentials',
+					}),
+				});
 
-			if (!shared.length) return [];
+				if (!shared.length) return [];
 
-			credentials = await Db.collections.Credentials!.find({
-				select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
-				where: {
-					id: In(shared.map(({ credentialId }) => credentialId)),
-					...filter,
-				},
-			});
+				credentials = await Db.collections.Credentials!.find({
+					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
+					where: {
+						id: In(shared.map(({ credentialId }) => credentialId)),
+						...filter,
+					},
+				});
+			}
+		} catch (error) {
+			LoggerProxy.error('Request to list credentials failed', error);
+			throw error;
 		}
 
 		return credentials.map((credential) => {
@@ -179,7 +197,10 @@ credentialsController.post(
 
 			return savedCredential;
 		});
-
+		LoggerProxy.verbose('New credential created', {
+			credentialId: newCredential.id,
+			ownerId: req.user.id,
+		});
 		return { id: id.toString(), ...rest };
 	}),
 );
@@ -202,6 +223,10 @@ credentialsController.delete(
 		});
 
 		if (!shared) {
+			LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
+				credentialId,
+				userId: req.user.id,
+			});
 			throw new ResponseHelper.ResponseError(
 				`Credential with ID "${credentialId}" could not be found to be deleted.`,
 				undefined,
@@ -240,6 +265,10 @@ credentialsController.patch(
 		});
 
 		if (!shared) {
+			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
+				credentialId,
+				userId: req.user.id,
+			});
 			throw new ResponseHelper.ResponseError(
 				`Credential with ID "${credentialId}" could not be found to be updated.`,
 				undefined,
@@ -316,6 +345,8 @@ credentialsController.patch(
 
 		// Remove the encrypted data as it is not needed in the frontend
 		const { id, data, ...rest } = responseData;
+
+		LoggerProxy.verbose('Credential updated', { credentialId });
 
 		return {
 			id: id.toString(),
