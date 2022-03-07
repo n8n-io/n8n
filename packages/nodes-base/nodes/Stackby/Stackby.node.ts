@@ -15,7 +15,7 @@ import {
 	apiRequestAllItems,
 	IRecord,
 } from './GenericFunction';
-
+const isOnline = require('is-online');
 export class Stackby implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stackby',
@@ -193,6 +193,9 @@ export class Stackby implements INodeType {
 		let responseData;
 		const qs: IDataObject = {};
 		const operation = this.getNodeParameter('operation', 0) as string;
+		isOnline().then(async online => {
+		if(online){
+							try {
 		if (operation === 'read') {
 			for (let i = 0; i < length; i++) {
 				try {
@@ -307,5 +310,12 @@ export class Stackby implements INodeType {
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
