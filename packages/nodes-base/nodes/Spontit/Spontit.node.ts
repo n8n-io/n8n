@@ -18,7 +18,7 @@ import {
 } from './PushDescription';
 
 import * as moment from 'moment';
-
+const isOnline = require('is-online');
 export class Spontit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Spontit',
@@ -65,6 +65,9 @@ export class Spontit implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		isOnline().then(async online => {
+		if(online){
+							try {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'push') {
@@ -118,5 +121,12 @@ export class Spontit implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
+	}catch(error) {
+						if (error.response) {
+													console.log(`Error : ${error.response}`);
+							}
+						}
+		} else {
+						console.log('we have a network problem');
 	}
-}
+};
