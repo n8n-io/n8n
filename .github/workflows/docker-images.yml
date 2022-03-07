@@ -28,7 +28,7 @@ jobs:
         context: ./docker/images/n8n
         build-args: |
           N8N_VERSION=${{steps.vars.outputs.tag}}
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         push: true
         tags: |
           ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}
@@ -39,7 +39,7 @@ jobs:
         context: ./docker/images/n8n-debian
         build-args: |
           N8N_VERSION=${{ steps.vars.outputs.tag }}
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         push: true
         tags: |
           ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}-debian
