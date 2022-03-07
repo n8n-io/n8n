@@ -122,11 +122,6 @@ export async function checkPermissionsForExecution(
 	workflow: Workflow,
 	userId: string,
 ): Promise<boolean> {
-	const user = await getUserById(userId);
-	if (user.globalRole.name === 'owner') {
-		return true;
-	}
-
 	const credentialIds = new Set();
 	const nodeNames = Object.keys(workflow.nodes);
 	// Iterate over all nodes
@@ -159,6 +154,13 @@ export async function checkPermissionsForExecution(
 
 	if (ids.length === 0) {
 		// If the workflow does not use any credentials, then we're fine
+		return true;
+	}
+	// If this check happens on top, we may get
+	// unitialized db errors.
+	// Db is certainly initialized if workflow uses credentials.
+	const user = await getUserById(userId);
+	if (user.globalRole.name === 'owner') {
 		return true;
 	}
 
