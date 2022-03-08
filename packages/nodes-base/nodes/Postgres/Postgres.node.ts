@@ -18,10 +18,9 @@ export class Postgres implements INodeType {
 		icon: 'file:postgres.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in Postgres.',
+		description: 'Get, add and update data in Postgres',
 		defaults: {
 			name: 'Postgres',
-			color: '#336791',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -65,7 +64,7 @@ export class Postgres implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -119,7 +118,7 @@ export class Postgres implements INodeType {
 				default: '',
 				placeholder: 'id:int,name:text,description',
 				description:
-					'Comma separated list of the properties which should used as columns for the new rows.<br>You can use type casting with colons (:) like id:int.',
+					'Comma separated list of the properties which should used as columns for the new rows. You can use type casting with colons (:) like id:int.',
 			},
 
 			// ----------------------------------
@@ -176,7 +175,7 @@ export class Postgres implements INodeType {
 				default: '',
 				placeholder: 'name:text,description',
 				description:
-					'Comma separated list of the properties which should used as columns for rows to update.<br>You can use type casting with colons (:) like id:int.',
+					'Comma separated list of the properties which should used as columns for rows to update. You can use type casting with colons (:) like id:int.',
 			},
 
 			// ----------------------------------
@@ -226,11 +225,7 @@ export class Postgres implements INodeType {
 							},
 						],
 						default: 'multiple',
-						description: [
-							'The way queries should be sent to database.',
-							'Can be used in conjunction with <b>Continue on Fail</b>.',
-							'See the docs for more examples',
-						].join('<br>'),
+						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
 					},
 					{
 						displayName: 'Query Parameters',
@@ -253,7 +248,7 @@ export class Postgres implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('postgres');
+		const credentials = await this.getCredentials('postgres');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

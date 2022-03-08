@@ -30,10 +30,9 @@ export class Strapi implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Strapi API.',
+		description: 'Consume Strapi API',
 		defaults: {
 			name: 'Strapi',
-			color: '#725ed8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -75,117 +74,116 @@ export class Strapi implements INodeType {
 		const { jwt } = await getToken.call(this);
 
 		headers.Authorization = `Bearer ${jwt}`;
+		for (let i = 0; i < length; i++) {
+			try {
+				if (resource === 'entry') {
+					if (operation === 'create') {
 
-		if (resource === 'entry') {
-			if (operation === 'create') {
-				for (let i = 0; i < length; i++) {
+						const body: IDataObject = {};
 
-					const body: IDataObject = {};
+						const contentType = this.getNodeParameter('contentType', i) as string;
 
-					const contentType = this.getNodeParameter('contentType', i) as string;
+						const columns = this.getNodeParameter('columns', i) as string;
 
-					const columns = this.getNodeParameter('columns', i) as string;
+						const columnList = columns.split(',').map(column => column.trim());
 
-					const columnList = columns.split(',').map(column => column.trim());
-
-					for (const key of Object.keys(items[i].json)) {
-						if (columnList.includes(key)) {
-							body[key] = items[i].json[key];
+						for (const key of Object.keys(items[i].json)) {
+							if (columnList.includes(key)) {
+								body[key] = items[i].json[key];
+							}
 						}
-					}
-					responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs, undefined, headers);
+						responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs, undefined, headers);
 
-					returnData.push(responseData);
-				}
-			}
-
-			if (operation === 'delete') {
-				for (let i = 0; i < length; i++) {
-					const contentType = this.getNodeParameter('contentType', i) as string;
-
-					const entryId = this.getNodeParameter('entryId', i) as string;
-
-					responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
-
-					returnData.push(responseData);
-				}
-			}
-
-			if (operation === 'getAll') {
-				for (let i = 0; i < length; i++) {
-
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					const contentType = this.getNodeParameter('contentType', i) as string;
-
-					const options = this.getNodeParameter('options', i) as IDataObject;
-
-					if (options.sort && (options.sort as string[]).length !== 0) {
-						const sortFields = options.sort as string[];
-						qs._sort = sortFields.join(',');
+						returnData.push(responseData);
 					}
 
-					if (options.where) {
-						const query = validateJSON(options.where as string);
-						if (query !== undefined) {
-							qs._where = query;
+					if (operation === 'delete') {
+						const contentType = this.getNodeParameter('contentType', i) as string;
+
+						const entryId = this.getNodeParameter('entryId', i) as string;
+
+						responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
+
+						returnData.push(responseData);
+					}
+
+					if (operation === 'getAll') {
+
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const contentType = this.getNodeParameter('contentType', i) as string;
+
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						if (options.sort && (options.sort as string[]).length !== 0) {
+							const sortFields = options.sort as string[];
+							qs._sort = sortFields.join(',');
+						}
+
+						if (options.where) {
+							const query = validateJSON(options.where as string);
+							if (query !== undefined) {
+								qs._where = query;
+							} else {
+								throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
+							}
+						}
+
+						if (options.publicationState) {
+							qs._publicationState = options.publicationState as string;
+						}
+
+						if (returnAll) {
+							responseData = await strapiApiRequestAllItems.call(this, 'GET', `/${contentType}`, {}, qs, headers);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
+							qs._limit = this.getNodeParameter('limit', i) as number;
+
+							responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}`, {}, qs, undefined, headers);
 						}
+						returnData.push.apply(returnData, responseData);
 					}
 
-					if (options.publicationState) {
-						qs._publicationState = options.publicationState as string;
+					if (operation === 'get') {
+
+						const contentType = this.getNodeParameter('contentType', i) as string;
+
+						const entryId = this.getNodeParameter('entryId', i) as string;
+
+						responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
+
+						returnData.push(responseData);
 					}
 
-					if (returnAll) {
-						responseData = await strapiApiRequestAllItems.call(this, 'GET', `/${contentType}`, {}, qs, headers);
-					} else {
-						qs._limit = this.getNodeParameter('limit', i) as number;
+					if (operation === 'update') {
 
-						responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}`, {}, qs, undefined, headers);
-					}
-					returnData.push.apply(returnData, responseData);
-				}
-			}
+						const body: IDataObject = {};
 
-			if (operation === 'get') {
-				for (let i = 0; i < length; i++) {
+						const contentType = this.getNodeParameter('contentType', i) as string;
 
-					const contentType = this.getNodeParameter('contentType', i) as string;
+						const columns = this.getNodeParameter('columns', i) as string;
 
-					const entryId = this.getNodeParameter('entryId', i) as string;
+						const updateKey = this.getNodeParameter('updateKey', i) as string;
 
-					responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
+						const columnList = columns.split(',').map(column => column.trim());
 
-					returnData.push(responseData);
-				}
-			}
+						const entryId = items[i].json[updateKey];
 
-			if (operation === 'update') {
-				for (let i = 0; i < length; i++) {
-
-					const body: IDataObject = {};
-
-					const contentType = this.getNodeParameter('contentType', i) as string;
-
-					const columns = this.getNodeParameter('columns', i) as string;
-
-					const updateKey = this.getNodeParameter('updateKey', i) as string;
-
-					const columnList = columns.split(',').map(column => column.trim());
-
-					const entryId = items[i].json[updateKey];
-
-					for (const key of Object.keys(items[i].json)) {
-						if (columnList.includes(key)) {
-							body[key] = items[i].json[key];
+						for (const key of Object.keys(items[i].json)) {
+							if (columnList.includes(key)) {
+								body[key] = items[i].json[key];
+							}
 						}
-					}
-					responseData = await strapiApiRequest.call(this, 'PUT', `/${contentType}/${entryId}`, body, qs, undefined, headers);
+						responseData = await strapiApiRequest.call(this, 'PUT', `/${contentType}/${entryId}`, body, qs, undefined, headers);
 
-					returnData.push(responseData);
+						returnData.push(responseData);
+					}
 				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

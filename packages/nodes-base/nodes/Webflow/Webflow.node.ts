@@ -32,7 +32,6 @@ export class Webflow implements INodeType {
 		description: 'Consume the Webflow API',
 		defaults: {
 			name: 'Webflow',
-			color: '#245bf8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -147,114 +146,122 @@ export class Webflow implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
-			if (resource === 'item') {
+			try {
+				if (resource === 'item') {
 
-				// *********************************************************************
-				//                             item
-				// *********************************************************************
+					// *********************************************************************
+					//                             item
+					// *********************************************************************
 
-				// https://developers.webflow.com/#item-model
+					// https://developers.webflow.com/#item-model
 
-				if (operation === 'create') {
+					if (operation === 'create') {
 
-					// ----------------------------------
-					//         item: create
-					// ----------------------------------
+						// ----------------------------------
+						//         item: create
+						// ----------------------------------
 
-					// https://developers.webflow.com/#create-new-collection-item
+						// https://developers.webflow.com/#create-new-collection-item
 
-					const collectionId = this.getNodeParameter('collectionId', i) as string;
+						const collectionId = this.getNodeParameter('collectionId', i) as string;
 
-					const properties = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
+						const properties = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
 
-					const live = this.getNodeParameter('live', i) as boolean;
+						const live = this.getNodeParameter('live', i) as boolean;
 
-					const fields = {} as IDataObject;
+						const fields = {} as IDataObject;
 
-					properties.forEach(data => (fields[data.fieldId as string] = data.fieldValue));
+						properties.forEach(data => (fields[data.fieldId as string] = data.fieldValue));
 
-					const body: IDataObject = {
-						fields,
-					};
+						const body: IDataObject = {
+							fields,
+						};
 
-					responseData = await webflowApiRequest.call(this, 'POST', `/collections/${collectionId}/items`, body, { live });
+						responseData = await webflowApiRequest.call(this, 'POST', `/collections/${collectionId}/items`, body, { live });
 
-				} else if (operation === 'delete') {
+					} else if (operation === 'delete') {
 
-					// ----------------------------------
-					//         item: delete
-					// ----------------------------------
+						// ----------------------------------
+						//         item: delete
+						// ----------------------------------
 
-					// https://developers.webflow.com/#remove-collection-item
+						// https://developers.webflow.com/#remove-collection-item
 
-					const collectionId = this.getNodeParameter('collectionId', i) as string;
-					const itemId = this.getNodeParameter('itemId', i) as string;
-					responseData = await webflowApiRequest.call(this, 'DELETE', `/collections/${collectionId}/items/${itemId}`);
+						const collectionId = this.getNodeParameter('collectionId', i) as string;
+						const itemId = this.getNodeParameter('itemId', i) as string;
+						responseData = await webflowApiRequest.call(this, 'DELETE', `/collections/${collectionId}/items/${itemId}`);
 
-				} else if (operation === 'get') {
+					} else if (operation === 'get') {
 
-					// ----------------------------------
-					//         item: get
-					// ----------------------------------
+						// ----------------------------------
+						//         item: get
+						// ----------------------------------
 
-					// https://developers.webflow.com/#get-single-item
+						// https://developers.webflow.com/#get-single-item
 
-					const collectionId = this.getNodeParameter('collectionId', i) as string;
-					const itemId = this.getNodeParameter('itemId', i) as string;
-					responseData = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}/items/${itemId}`);
-					responseData = responseData.items;
-
-				} else if (operation === 'getAll') {
-
-					// ----------------------------------
-					//         item: getAll
-					// ----------------------------------
-
-					// https://developers.webflow.com/#get-all-items-for-a-collection
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-					const collectionId = this.getNodeParameter('collectionId', i) as string;
-					const qs: IDataObject = {};
-
-					if (returnAll === true) {
-						responseData = await webflowApiRequestAllItems.call(this, 'GET', `/collections/${collectionId}/items`, {}, qs);
-					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
-						responseData = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}/items`, {}, qs);
+						const collectionId = this.getNodeParameter('collectionId', i) as string;
+						const itemId = this.getNodeParameter('itemId', i) as string;
+						responseData = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}/items/${itemId}`);
 						responseData = responseData.items;
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------
+						//         item: getAll
+						// ----------------------------------
+
+						// https://developers.webflow.com/#get-all-items-for-a-collection
+
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const collectionId = this.getNodeParameter('collectionId', i) as string;
+						const qs: IDataObject = {};
+
+						if (returnAll === true) {
+							responseData = await webflowApiRequestAllItems.call(this, 'GET', `/collections/${collectionId}/items`, {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', 0) as number;
+							responseData = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}/items`, {}, qs);
+							responseData = responseData.items;
+						}
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------
+						//         item: update
+						// ----------------------------------
+
+						// https://developers.webflow.com/#update-collection-item
+
+						const collectionId = this.getNodeParameter('collectionId', i) as string;
+
+						const itemId = this.getNodeParameter('itemId', i) as string;
+
+						const properties = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
+
+						const live = this.getNodeParameter('live', i) as boolean;
+
+						const fields = {} as IDataObject;
+
+						properties.forEach(data => (fields[data.fieldId as string] = data.fieldValue));
+
+						const body: IDataObject = {
+							fields,
+						};
+
+						responseData = await webflowApiRequest.call(this, 'PUT', `/collections/${collectionId}/items/${itemId}`, body, { live });
 					}
-
-				} else if (operation === 'update') {
-
-					// ----------------------------------
-					//         item: update
-					// ----------------------------------
-
-					// https://developers.webflow.com/#update-collection-item
-
-					const collectionId = this.getNodeParameter('collectionId', i) as string;
-
-					const itemId = this.getNodeParameter('itemId', i) as string;
-
-					const properties = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
-
-					const live = this.getNodeParameter('live', i) as boolean;
-
-					const fields = {} as IDataObject;
-
-					properties.forEach(data => (fields[data.fieldId as string] = data.fieldValue));
-
-					const body: IDataObject = {
-						fields,
-					};
-
-					responseData = await webflowApiRequest.call(this, 'PUT', `/collections/${collectionId}/items/${itemId}`, body, { live });
 				}
-			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+				Array.isArray(responseData)
+					? returnData.push(...responseData)
+					: returnData.push(responseData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
+			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

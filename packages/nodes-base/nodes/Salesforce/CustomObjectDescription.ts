@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const customObjectOperations = [
+export const customObjectOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -49,9 +49,9 @@ export const customObjectOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const customObjectFields = [
+export const customObjectFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                customObject:create                         */
@@ -512,4 +512,67 @@ export const customObjectFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+					'upsert',
+				],
+				resource: [
+					'customObject',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+					loadOptionsDependsOn: [
+						'customObject',
+					],
+				},
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'customObject',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+					loadOptionsDependsOn: [
+						'customObject',
+					],
+				},
+				default: '',
+			},
+		],
+	},
+];

@@ -24,7 +24,6 @@ export class OpenThesaurus implements INodeType {
 		description: 'Get synonmns for German words using the OpenThesaurus API',
 		defaults: {
 			name: 'OpenThesaurus',
-			color: '#00ade8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -84,7 +83,7 @@ export class OpenThesaurus implements INodeType {
 						name: 'similar',
 						type: 'boolean',
 						default: false,
-						description: 'This also returns up to five similarly written words for each answer.</br> This is useful to be able to make a suggestion to the user in the event of a possible typing error.',
+						description: 'This also returns up to five similarly written words for each answer. This is useful to be able to make a suggestion to the user in the event of a possible typing error.',
 					},
 					{
 						displayName: 'Starts With',
@@ -105,7 +104,7 @@ export class OpenThesaurus implements INodeType {
 						name: 'substringFromResults',
 						type: 'number',
 						default: 0,
-						description: 'Specifies from which entry the partial word hits are to be returned.</br> Only works together with substring = true.',
+						description: 'Specifies from which entry the partial word hits are to be returned. Only works together with substring = true.',
 					},
 					{
 						displayName: 'Substring Max Results',
@@ -115,7 +114,7 @@ export class OpenThesaurus implements INodeType {
 							maxValue: 250,
 						},
 						default: 10,
-						description: 'Specifies how many partial word hits should be returned in total.</br> Only works together with substring = true.',
+						description: 'Specifies how many partial word hits should be returned in total. Only works together with substring = true.',
 					},
 					{
 						displayName: 'Subsynsets',
@@ -145,21 +144,29 @@ export class OpenThesaurus implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			if (operation === 'getSynonyms') {
-				const text = this.getNodeParameter('text', i) as string;
-				const options = this.getNodeParameter('options', i) as IDataObject;
+			try {
+				if (operation === 'getSynonyms') {
+					const text = this.getNodeParameter('text', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
-				qs.q = text;
+					qs.q = text;
 
-				Object.assign(qs, options);
+					Object.assign(qs, options);
 
-				responseData = await openThesaurusApiRequest.call(this, 'GET', `/synonyme/search`, {}, qs);
-				responseData = responseData.synsets;
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+					responseData = await openThesaurusApiRequest.call(this, 'GET', `/synonyme/search`, {}, qs);
+					responseData = responseData.synsets;
+				}
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

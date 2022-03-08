@@ -77,7 +77,6 @@ export class Harvest implements INodeType {
 		description: 'Access data on Harvest',
 		defaults: {
 			name: 'Harvest',
-			color: '#e7863f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -245,706 +244,714 @@ export class Harvest implements INodeType {
 		let qs: IDataObject;
 
 		for (let i = 0; i < items.length; i++) {
-			body = {};
-			qs = {};
+			try {
+				body = {};
+				qs = {};
 
-			if (resource === 'timeEntry') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
+				if (resource === 'timeEntry') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
 
-					requestMethod = 'GET';
-					const id = this.getNodeParameter('id', i) as string;
+						requestMethod = 'GET';
+						const id = this.getNodeParameter('id', i) as string;
 
-					endpoint = `time_entries/${id}`;
+						endpoint = `time_entries/${id}`;
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
 
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-					const responseData: IDataObject[] = await getAllResource.call(this, 'time_entries', i);
-					returnData.push.apply(returnData, responseData);
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+						const responseData: IDataObject[] = await getAllResource.call(this, 'time_entries', i);
+						returnData.push.apply(returnData, responseData);
 
-				} else if (operation === 'createByStartEnd') {
-					// ----------------------------------
-					//         createByStartEnd
-					// ----------------------------------
+					} else if (operation === 'createByStartEnd') {
+						// ----------------------------------
+						//         createByStartEnd
+						// ----------------------------------
 
-					requestMethod = 'POST';
-					endpoint = 'time_entries';
+						requestMethod = 'POST';
+						endpoint = 'time_entries';
 
-					body.project_id = this.getNodeParameter('projectId', i) as string;
-					body.task_id = this.getNodeParameter('taskId', i) as string;
-					body.spent_date = this.getNodeParameter('spentDate', i) as string;
+						body.project_id = this.getNodeParameter('projectId', i) as string;
+						body.task_id = this.getNodeParameter('taskId', i) as string;
+						body.spent_date = this.getNodeParameter('spentDate', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
 
-				} else if (operation === 'createByDuration') {
-					// ----------------------------------
-					//         createByDuration
-					// ----------------------------------
+					} else if (operation === 'createByDuration') {
+						// ----------------------------------
+						//         createByDuration
+						// ----------------------------------
 
-					requestMethod = 'POST';
-					endpoint = 'time_entries';
+						requestMethod = 'POST';
+						endpoint = 'time_entries';
 
-					body.project_id = this.getNodeParameter('projectId', i) as string;
-					body.task_id = this.getNodeParameter('taskId', i) as string;
-					body.spent_date = this.getNodeParameter('spentDate', i) as string;
+						body.project_id = this.getNodeParameter('projectId', i) as string;
+						body.task_id = this.getNodeParameter('taskId', i) as string;
+						body.spent_date = this.getNodeParameter('spentDate', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
 
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
 
-					requestMethod = 'DELETE';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `time_entries/${id}`;
+						requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `time_entries/${id}`;
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-				} else if (operation === 'deleteExternal') {
-					// ----------------------------------
-					//         deleteExternal
-					// ----------------------------------
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} else if (operation === 'deleteExternal') {
+						// ----------------------------------
+						//         deleteExternal
+						// ----------------------------------
 
-					requestMethod = 'DELETE';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `time_entries/${id}/external_reference`;
+						requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `time_entries/${id}/external_reference`;
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
 
-				} else if (operation === 'restartTime') {
-					// ----------------------------------
-					//         restartTime
-					// ----------------------------------
+					} else if (operation === 'restartTime') {
+						// ----------------------------------
+						//         restartTime
+						// ----------------------------------
 
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `time_entries/${id}/restart`;
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `time_entries/${id}/restart`;
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
 
-				} else if (operation === 'stopTime') {
-					// ----------------------------------
-					//         stopTime
-					// ----------------------------------
+					} else if (operation === 'stopTime') {
+						// ----------------------------------
+						//         stopTime
+						// ----------------------------------
 
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `time_entries/${id}/stop`;
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `time_entries/${id}/stop`;
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
 
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
 
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `time_entries/${id}`;
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `time_entries/${id}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					Object.assign(body, updateFields);
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
+						Object.assign(body, updateFields);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
 
-				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
-				}
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					}
 
-			} else if (resource === 'client') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
+				} else if (resource === 'client') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
 
-					requestMethod = 'GET';
-					const id = this.getNodeParameter('id', i) as string;
+						requestMethod = 'GET';
+						const id = this.getNodeParameter('id', i) as string;
 
-					endpoint = `clients/${id}`;
+						endpoint = `clients/${id}`;
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
 
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
 
-					const responseData: IDataObject[] = await getAllResource.call(this, 'clients', i);
-					returnData.push.apply(returnData, responseData);
+						const responseData: IDataObject[] = await getAllResource.call(this, 'clients', i);
+						returnData.push.apply(returnData, responseData);
 
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
 
-					requestMethod = 'POST';
-					endpoint = 'clients';
+						requestMethod = 'POST';
+						endpoint = 'clients';
 
-					body.name = this.getNodeParameter('name', i) as string;
+						body.name = this.getNodeParameter('name', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
 
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
 
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `clients/${id}`;
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `clients/${id}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(qs, updateFields);
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(qs, updateFields);
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
 
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
 
-					requestMethod = 'DELETE';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `clients/${id}`;
+						requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `clients/${id}`;
 
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} else {
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					}
+				} else if (resource === 'project') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const id = this.getNodeParameter('id', i) as string;
+
+						endpoint = `projects/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						const responseData: IDataObject[] = await getAllResource.call(this, 'projects', i);
+						returnData.push.apply(returnData, responseData);
+
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = 'projects';
+
+						body.client_id = this.getNodeParameter('clientId', i) as string;
+						body.name = this.getNodeParameter('name', i) as string;
+						body.is_billable = this.getNodeParameter('isBillable', i) as string;
+						body.bill_by = this.getNodeParameter('billBy', i) as string;
+						body.budget_by = this.getNodeParameter('budgetBy', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `projects/${id}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						Object.assign(body, updateFields);
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `projects/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} else {
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					}
+				} else if (resource === 'user') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const id = this.getNodeParameter('id', i) as string;
+
+						endpoint = `users/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						const responseData: IDataObject[] = await getAllResource.call(this, 'users', i);
+						returnData.push.apply(returnData, responseData);
+
+					} else if (operation === 'me') {
+						// ----------------------------------
+						//         me
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `users/me`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = 'users';
+
+						body.first_name = this.getNodeParameter('firstName', i) as string;
+						body.last_name = this.getNodeParameter('lastName', i) as string;
+						body.email = this.getNodeParameter('email', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `users/${id}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(qs, updateFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `users/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} else {
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					}
+				} else if (resource === 'contact') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const id = this.getNodeParameter('id', i) as string;
+
+						endpoint = `contacts/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						const responseData: IDataObject[] = await getAllResource.call(this, 'contacts', i);
+						returnData.push.apply(returnData, responseData);
+
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = 'contacts';
+
+						body.client_id = this.getNodeParameter('clientId', i) as string;
+						body.first_name = this.getNodeParameter('firstName', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `contacts/${id}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(qs, updateFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `contacts/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} else {
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					}
+				} else if (resource === 'company') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						endpoint = `company`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+
+					} else {
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					}
+				} else if (resource === 'task') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const id = this.getNodeParameter('id', i) as string;
+
+						endpoint = `tasks/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						const responseData: IDataObject[] = await getAllResource.call(this, 'tasks', i);
+						returnData.push.apply(returnData, responseData);
+
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = 'tasks';
+
+						body.name = this.getNodeParameter('name', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `tasks/${id}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(qs, updateFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `tasks/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} else {
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					}
+				} else if (resource === 'invoice') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const id = this.getNodeParameter('id', i) as string;
+
+						endpoint = `invoices/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						const responseData: IDataObject[] = await getAllResource.call(this, 'invoices', i);
+						returnData.push.apply(returnData, responseData);
+
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = 'invoices';
+
+						body.client_id = this.getNodeParameter('clientId', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `invoices/${id}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(qs, updateFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `invoices/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} else {
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					}
+				} else if (resource === 'expense') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const id = this.getNodeParameter('id', i) as string;
+
+						endpoint = `expenses/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						const responseData: IDataObject[] = await getAllResource.call(this, 'expenses', i);
+						returnData.push.apply(returnData, responseData);
+
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = 'expenses';
+
+						body.project_id = this.getNodeParameter('projectId', i) as string;
+						body.expense_category_id = this.getNodeParameter('expenseCategoryId', i) as string;
+						body.spent_date = this.getNodeParameter('spentDate', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `expenses/${id}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(qs, updateFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `expenses/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} else {
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					}
+				} else if (resource === 'estimate') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const id = this.getNodeParameter('id', i) as string;
+
+						endpoint = `estimates/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						const responseData: IDataObject[] = await getAllResource.call(this, 'estimates', i);
+						returnData.push.apply(returnData, responseData);
+
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = 'estimates';
+
+						body.client_id = this.getNodeParameter('clientId', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PATCH';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `estimates/${id}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(qs, updateFields);
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+						returnData.push(responseData);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `estimates/${id}`;
+
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} else {
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
-			} else if (resource === 'project') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					const id = this.getNodeParameter('id', i) as string;
-
-					endpoint = `projects/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					const responseData: IDataObject[] = await getAllResource.call(this, 'projects', i);
-					returnData.push.apply(returnData, responseData);
-
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = 'projects';
-
-					body.client_id = this.getNodeParameter('clientId', i) as string;
-					body.name = this.getNodeParameter('name', i) as string;
-					body.is_billable = this.getNodeParameter('isBillable', i) as string;
-					body.bill_by = this.getNodeParameter('billBy', i) as string;
-					body.budget_by = this.getNodeParameter('budgetBy', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `projects/${id}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					Object.assign(body, updateFields);
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `projects/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
-			} else if (resource === 'user') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					const id = this.getNodeParameter('id', i) as string;
-
-					endpoint = `users/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					const responseData: IDataObject[] = await getAllResource.call(this, 'users', i);
-					returnData.push.apply(returnData, responseData);
-
-				} else if (operation === 'me') {
-					// ----------------------------------
-					//         me
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					endpoint = `users/me`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = 'users';
-
-					body.first_name = this.getNodeParameter('firstName', i) as string;
-					body.last_name = this.getNodeParameter('lastName', i) as string;
-					body.email = this.getNodeParameter('email', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `users/${id}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(qs, updateFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `users/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-				}
-			} else if (resource === 'contact') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					const id = this.getNodeParameter('id', i) as string;
-
-					endpoint = `contacts/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					const responseData: IDataObject[] = await getAllResource.call(this, 'contacts', i);
-					returnData.push.apply(returnData, responseData);
-
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = 'contacts';
-
-					body.client_id = this.getNodeParameter('clientId', i) as string;
-					body.first_name = this.getNodeParameter('firstName', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `contacts/${id}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(qs, updateFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `contacts/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-				}
-			} else if (resource === 'company') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					endpoint = `company`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-
-				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-				}
-			} else if (resource === 'task') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					const id = this.getNodeParameter('id', i) as string;
-
-					endpoint = `tasks/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					const responseData: IDataObject[] = await getAllResource.call(this, 'tasks', i);
-					returnData.push.apply(returnData, responseData);
-
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = 'tasks';
-
-					body.name = this.getNodeParameter('name', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `tasks/${id}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(qs, updateFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `tasks/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-				}
-			} else if (resource === 'invoice') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					const id = this.getNodeParameter('id', i) as string;
-
-					endpoint = `invoices/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					const responseData: IDataObject[] = await getAllResource.call(this, 'invoices', i);
-					returnData.push.apply(returnData, responseData);
-
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = 'invoices';
-
-					body.client_id = this.getNodeParameter('clientId', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `invoices/${id}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(qs, updateFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `invoices/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-				}
-			} else if (resource === 'expense') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					const id = this.getNodeParameter('id', i) as string;
-
-					endpoint = `expenses/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					const responseData: IDataObject[] = await getAllResource.call(this, 'expenses', i);
-					returnData.push.apply(returnData, responseData);
-
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = 'expenses';
-
-					body.project_id = this.getNodeParameter('projectId', i) as string;
-					body.expense_category_id = this.getNodeParameter('expenseCategoryId', i) as string;
-					body.spent_date = this.getNodeParameter('spentDate', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `expenses/${id}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(qs, updateFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `expenses/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-				}
-			} else if (resource === 'estimate') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					const id = this.getNodeParameter('id', i) as string;
-
-					endpoint = `estimates/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					const responseData: IDataObject[] = await getAllResource.call(this, 'estimates', i);
-					returnData.push.apply(returnData, responseData);
-
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = 'estimates';
-
-					body.client_id = this.getNodeParameter('clientId', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-
-					requestMethod = 'PATCH';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `estimates/${id}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(qs, updateFields);
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
-					returnData.push(responseData);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-					const id = this.getNodeParameter('id', i) as string;
-					endpoint = `estimates/${id}`;
-
-					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-					returnData.push(responseData);
-				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-				}
-			} else {
-				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+				throw error;
 			}
 		}
 

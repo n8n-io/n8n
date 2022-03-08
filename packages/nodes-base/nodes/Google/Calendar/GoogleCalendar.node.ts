@@ -44,10 +44,9 @@ export class GoogleCalendar implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Google Calendar API.',
+		description: 'Consume Google Calendar API',
 		defaults: {
 			name: 'Google Calendar',
-			color: '#3E87E4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -606,6 +605,12 @@ export class GoogleCalendar implements INodeType {
 						);
 					}
 				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
+				}
 			} catch (error) {
 				if (this.continueOnFail() !== true) {
 					throw error;
@@ -618,12 +623,6 @@ export class GoogleCalendar implements INodeType {
 					);
 					continue;
 				}
-			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

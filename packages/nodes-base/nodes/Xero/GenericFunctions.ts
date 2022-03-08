@@ -26,7 +26,6 @@ export async function xeroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 	try {
 		if (body.organizationId) {
 			options.headers = { ...options.headers, 'Xero-tenant-id': body.organizationId };
-			delete body.organizationId;
 		}
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);

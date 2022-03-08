@@ -6,7 +6,7 @@ import {
 
 export class StripeApi implements ICredentialType {
 	name = 'stripeApi';
-	displayName = 'Stripe Api';
+	displayName = 'Stripe API';
 	documentationUrl = 'stripe';
 	properties: INodeProperties[] = [
 		// The credentials to get from user and save encrypted.

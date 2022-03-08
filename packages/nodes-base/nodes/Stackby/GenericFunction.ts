@@ -24,7 +24,7 @@ import {
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('stackbyApi') as IDataObject;
+	const credentials = await this.getCredentials('stackbyApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {

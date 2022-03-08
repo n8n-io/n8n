@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const collectionOperations = [
+export const collectionOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -32,9 +32,9 @@ export const collectionOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const collectionFields = [
+export const collectionFields: INodeProperties[] = [
 	{
 		displayName: 'Collection',
 		name: 'collection',
@@ -133,7 +133,7 @@ export const collectionFields = [
 					alwaysOpenEditWindow: true,
 				},
 				placeholder: '{"name": "Jim"}',
-				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html" target="_blank">Mongolite format</a>.',
+				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>.',
 			},
 			{
 				displayName: 'Language',
@@ -170,7 +170,7 @@ export const collectionFields = [
 				type: 'json',
 				default: '',
 				placeholder: '{"price": -1}',
-				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html" target="_blank">Mongolite format</a>.',
+				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>.',
 			},
 		],
 	},
@@ -285,4 +285,4 @@ export const collectionFields = [
 		],
 		description: 'Entry data to send.',
 	},
-] as INodeProperties[];
+];

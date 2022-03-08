@@ -486,8 +486,9 @@ export class GoogleSheet {
 		inputData.forEach((item) => {
 			rowData = [];
 			keyColumnOrder.forEach((key) => {
-				if (item.hasOwnProperty(key) && item[key]) {
-					rowData.push(item[key]!.toString());
+				const data = item[key];
+				if (item.hasOwnProperty(key) && data !== null && typeof data !== 'undefined') {
+					rowData.push(data.toString());
 				} else {
 					rowData.push('');
 				}

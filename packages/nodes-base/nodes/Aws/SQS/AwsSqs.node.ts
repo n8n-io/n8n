@@ -37,7 +37,6 @@ export class AwsSqs implements INodeType {
 		description: 'Sends messages to AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
-			color: '#FF9900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -316,84 +315,92 @@ export class AwsSqs implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-			const queueUrl = this.getNodeParameter('queue', i) as string;
-			const queuePath = new URL(queueUrl).pathname;
-
-			const params = [
-				'Version=2012-11-05',
-				`Action=${pascalCase(operation)}`,
-			];
-
-			const options = this.getNodeParameter('options', i, {}) as IDataObject;
-			const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
-
-			const message = sendInputData ? JSON.stringify(items[i].json) : this.getNodeParameter('message', i) as string;
-			params.push(`MessageBody=${message}`);
-
-			if (options.delaySeconds) {
-				params.push(`DelaySeconds=${options.delaySeconds}`);
-			}
-
-			const queueType = this.getNodeParameter('queueType', i, {}) as string;
-			if (queueType === 'fifo') {
-				const messageDeduplicationId = this.getNodeParameter('options.messageDeduplicationId', i, '') as string;
-				if (messageDeduplicationId) {
-					params.push(`MessageDeduplicationId=${messageDeduplicationId}`);
-				}
-
-				const messageGroupId = this.getNodeParameter('messageGroupId', i) as string;
-				if (messageGroupId) {
-					params.push(`MessageGroupId=${messageGroupId}`);
-				}
-			}
-
-			let attributeCount = 0;
-			// Add string values
-			(this.getNodeParameter('options.messageAttributes.string', i, []) as INodeParameters[]).forEach((attribute) => {
-				attributeCount++;
-				params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
-				params.push(`MessageAttribute.${attributeCount}.Value.StringValue=${attribute.value}`);
-				params.push(`MessageAttribute.${attributeCount}.Value.DataType=String`);
-			});
-
-			// Add binary values
-			(this.getNodeParameter('options.messageAttributes.binary', i, []) as INodeParameters[]).forEach((attribute) => {
-				attributeCount++;
-				const dataPropertyName = attribute.dataPropertyName as string;
-				const item = items[i];
-
-				if (item.binary === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No binary data set. So message attribute cannot be added!');
-				}
-
-				if (item.binary[dataPropertyName] === undefined) {
-					throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
-				}
-
-				const binaryData = item.binary[dataPropertyName].data;
-
-				params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
-				params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData}`);
-				params.push(`MessageAttribute.${attributeCount}.Value.DataType=Binary`);
-			});
-
-			// Add number values
-			(this.getNodeParameter('options.messageAttributes.number', i, []) as INodeParameters[]).forEach((attribute) => {
-				attributeCount++;
-				params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
-				params.push(`MessageAttribute.${attributeCount}.Value.StringValue=${attribute.value}`);
-				params.push(`MessageAttribute.${attributeCount}.Value.DataType=Number`);
-			});
-
-			let responseData;
 			try {
-				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}?${params.join('&')}`);
-			} catch (error) {
-				throw new NodeApiError(this.getNode(), error);
-			}
+				const queueUrl = this.getNodeParameter('queue', i) as string;
+				const queuePath = new URL(queueUrl).pathname;
 
-			const result = responseData.SendMessageResponse.SendMessageResult;
-			returnData.push(result as IDataObject);
+				const params = [
+					'Version=2012-11-05',
+					`Action=${pascalCase(operation)}`,
+				];
+
+				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
+
+				const message = sendInputData ? JSON.stringify(items[i].json) : this.getNodeParameter('message', i) as string;
+				params.push(`MessageBody=${message}`);
+
+				if (options.delaySeconds) {
+					params.push(`DelaySeconds=${options.delaySeconds}`);
+				}
+
+				const queueType = this.getNodeParameter('queueType', i, {}) as string;
+				if (queueType === 'fifo') {
+					const messageDeduplicationId = this.getNodeParameter('options.messageDeduplicationId', i, '') as string;
+					if (messageDeduplicationId) {
+						params.push(`MessageDeduplicationId=${messageDeduplicationId}`);
+					}
+
+					const messageGroupId = this.getNodeParameter('messageGroupId', i) as string;
+					if (messageGroupId) {
+						params.push(`MessageGroupId=${messageGroupId}`);
+					}
+				}
+
+				let attributeCount = 0;
+				// Add string values
+				(this.getNodeParameter('options.messageAttributes.string', i, []) as INodeParameters[]).forEach((attribute) => {
+					attributeCount++;
+					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
+					params.push(`MessageAttribute.${attributeCount}.Value.StringValue=${attribute.value}`);
+					params.push(`MessageAttribute.${attributeCount}.Value.DataType=String`);
+				});
+
+				// Add binary values
+				(this.getNodeParameter('options.messageAttributes.binary', i, []) as INodeParameters[]).forEach((attribute) => {
+					attributeCount++;
+					const dataPropertyName = attribute.dataPropertyName as string;
+					const item = items[i];
+
+					if (item.binary === undefined) {
+						throw new NodeOperationError(this.getNode(), 'No binary data set. So message attribute cannot be added!');
+					}
+
+					if (item.binary[dataPropertyName] === undefined) {
+						throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
+					}
+
+					const binaryData = item.binary[dataPropertyName].data;
+
+					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
+					params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData}`);
+					params.push(`MessageAttribute.${attributeCount}.Value.DataType=Binary`);
+				});
+
+				// Add number values
+				(this.getNodeParameter('options.messageAttributes.number', i, []) as INodeParameters[]).forEach((attribute) => {
+					attributeCount++;
+					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
+					params.push(`MessageAttribute.${attributeCount}.Value.StringValue=${attribute.value}`);
+					params.push(`MessageAttribute.${attributeCount}.Value.DataType=Number`);
+				});
+
+				let responseData;
+				try {
+					responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}?${params.join('&')}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
+				}
+
+				const result = responseData.SendMessageResponse.SendMessageResult;
+				returnData.push(result as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.description });
+					continue;
+				}
+				throw error;
+			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

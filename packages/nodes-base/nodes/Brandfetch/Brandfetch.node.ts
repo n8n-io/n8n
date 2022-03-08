@@ -24,7 +24,6 @@ export class Brandfetch implements INodeType {
 		description: 'Consume Brandfetch API',
 		defaults: {
 			name: 'Brandfetch',
-			color: '#1f1f1f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -95,7 +94,7 @@ export class Brandfetch implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to<br />write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file.',
 			},
 			{
 				displayName: 'Image Type',
@@ -167,97 +166,105 @@ export class Brandfetch implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const responseData = [];
 		for (let i = 0; i < length; i++) {
-			if (operation === 'logo') {
-				const domain = this.getNodeParameter('domain', i) as string;
-				const download = this.getNodeParameter('download', i) as boolean;
+			try {
+				if (operation === 'logo') {
+					const domain = this.getNodeParameter('domain', i) as string;
+					const download = this.getNodeParameter('download', i) as boolean;
 
-				const body: IDataObject = {
-					domain,
-				};
-
-				const response = await brandfetchApiRequest.call(this, 'POST', `/logo`, body);
-
-				if (download === true) {
-
-					const imageTypes = this.getNodeParameter('imageTypes', i) as string[];
-
-					const imageFormats = this.getNodeParameter('imageFormats', i) as string[];
-
-					const newItem: INodeExecutionData = {
-						json: {},
-						binary: {},
+					const body: IDataObject = {
+						domain,
 					};
 
-					if (items[i].binary !== undefined) {
-						// Create a shallow copy of the binary data so that the old
-						// data references which do not get changed still stay behind
-						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
-					}
+					const response = await brandfetchApiRequest.call(this, 'POST', `/logo`, body);
 
-					newItem.json = response.response;
+					if (download === true) {
 
-					for (const imageType of imageTypes) {
-						for (const imageFormat of imageFormats) {
+						const imageTypes = this.getNodeParameter('imageTypes', i) as string[];
 
-							const url = response.response[imageType][(imageFormat === 'png') ? 'image' : imageFormat] as string;
+						const imageFormats = this.getNodeParameter('imageFormats', i) as string[];
 
-							if (url !== null) {
-								const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, url, { json: false, encoding: null });
+						const newItem: INodeExecutionData = {
+							json: {},
+							binary: {},
+						};
 
-								newItem.binary![`${imageType}_${imageFormat}`] = await this.helpers.prepareBinaryData(data, `${imageType}_${domain}.${imageFormat}`);
+						if (items[i].binary !== undefined) {
+							// Create a shallow copy of the binary data so that the old
+							// data references which do not get changed still stay behind
+							// but the incoming data does not get changed.
+							Object.assign(newItem.binary, items[i].binary);
+						}
 
+						newItem.json = response.response;
+
+						for (const imageType of imageTypes) {
+							for (const imageFormat of imageFormats) {
+
+								const url = response.response[imageType][(imageFormat === 'png') ? 'image' : imageFormat] as string;
+
+								if (url !== null) {
+									const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, url, { json: false, encoding: null });
+
+									newItem.binary![`${imageType}_${imageFormat}`] = await this.helpers.prepareBinaryData(data, `${imageType}_${domain}.${imageFormat}`);
+
+									items[i] = newItem;
+								}
 								items[i] = newItem;
 							}
-							items[i] = newItem;
 						}
+						if (Object.keys(items[i].binary!).length === 0) {
+							delete items[i].binary;
+						}
+					} else {
+						responseData.push(response.response);
 					}
-					if (Object.keys(items[i].binary!).length === 0) {
-						delete items[i].binary;
-					}
-				} else {
+				}
+				if (operation === 'color') {
+					const domain = this.getNodeParameter('domain', i) as string;
+
+					const body: IDataObject = {
+						domain,
+					};
+
+					const response = await brandfetchApiRequest.call(this, 'POST', `/color`, body);
 					responseData.push(response.response);
 				}
-			}
-			if (operation === 'color') {
-				const domain = this.getNodeParameter('domain', i) as string;
+				if (operation === 'font') {
+					const domain = this.getNodeParameter('domain', i) as string;
 
-				const body: IDataObject = {
-					domain,
-				};
+					const body: IDataObject = {
+						domain,
+					};
 
-				const response = await brandfetchApiRequest.call(this, 'POST', `/color`, body);
-				responseData.push(response.response);
-			}
-			if (operation === 'font') {
-				const domain = this.getNodeParameter('domain', i) as string;
+					const response = await brandfetchApiRequest.call(this, 'POST', `/font`, body);
+					responseData.push(response.response);
+				}
+				if (operation === 'company') {
+					const domain = this.getNodeParameter('domain', i) as string;
 
-				const body: IDataObject = {
-					domain,
-				};
+					const body: IDataObject = {
+						domain,
+					};
 
-				const response = await brandfetchApiRequest.call(this, 'POST', `/font`, body);
-				responseData.push(response.response);
-			}
-			if (operation === 'company') {
-				const domain = this.getNodeParameter('domain', i) as string;
+					const response = await brandfetchApiRequest.call(this, 'POST', `/company`, body);
+					responseData.push(response.response);
+				}
+				if (operation === 'industry') {
+					const domain = this.getNodeParameter('domain', i) as string;
 
-				const body: IDataObject = {
-					domain,
-				};
+					const body: IDataObject = {
+						domain,
+					};
 
-				const response = await brandfetchApiRequest.call(this, 'POST', `/company`, body);
-				responseData.push(response.response);
-			}
-			if (operation === 'industry') {
-				const domain = this.getNodeParameter('domain', i) as string;
-
-				const body: IDataObject = {
-					domain,
-				};
-
-				const response = await brandfetchApiRequest.call(this, 'POST', `/industry`, body);
-				responseData.push.apply(responseData, response.response);
+					const response = await brandfetchApiRequest.call(this, 'POST', `/industry`, body);
+					responseData.push.apply(responseData, response.response);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					responseData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 

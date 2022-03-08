@@ -24,7 +24,6 @@ export class Peekalink implements INodeType {
 		description: 'Consume the Peekalink API',
 		defaults: {
 			name: 'Peekalink',
-			color: '#00ade8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -74,26 +73,34 @@ export class Peekalink implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			if (operation === 'isAvailable') {
-				const url = this.getNodeParameter('url', i) as string;
-				const body: IDataObject = {
-					link: url,
-				};
+			try {
+				if (operation === 'isAvailable') {
+					const url = this.getNodeParameter('url', i) as string;
+					const body: IDataObject = {
+						link: url,
+					};
 
-				responseData = await peekalinkApiRequest.call(this, 'POST', `/is-available/`, body);
-			}
-			if (operation === 'preview') {
-				const url = this.getNodeParameter('url', i) as string;
-				const body: IDataObject = {
-					link: url,
-				};
+					responseData = await peekalinkApiRequest.call(this, 'POST', `/is-available/`, body);
+				}
+				if (operation === 'preview') {
+					const url = this.getNodeParameter('url', i) as string;
+					const body: IDataObject = {
+						link: url,
+					};
 
-				responseData = await peekalinkApiRequest.call(this, 'POST', `/`, body);
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+					responseData = await peekalinkApiRequest.call(this, 'POST', `/`, body);
+				}
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

@@ -1,16 +1,12 @@
 <template>
 	<span>
 		<div class="push-connection-lost primary-color" v-if="!pushConnectionActive">
-			<el-tooltip placement="bottom-end" effect="light">
-				<div slot="content">
-					Cannot connect to server.<br />
-					It is either down or you have a connection issue. <br />
-					It should reconnect automatically once the issue is resolved.
-				</div>
+			<n8n-tooltip placement="bottom-end" >
+				<div slot="content" v-html="$locale.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
 				<span>
-					<font-awesome-icon icon="exclamation-triangle" />&nbsp; Connection lost
+					<font-awesome-icon icon="exclamation-triangle" />&nbsp; {{ $locale.baseText('pushConnectionTracker.connectionLost') }}
 				</span>
-			</el-tooltip>
+			</n8n-tooltip>
 		</div>
 		<slot v-else />
 	</span>

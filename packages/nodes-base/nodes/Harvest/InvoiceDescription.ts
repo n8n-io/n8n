@@ -6,7 +6,7 @@ const resource = [
 	'invoice',
 ];
 
-export const invoiceOperations = [
+export const invoiceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const invoiceOperations = [
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const invoiceFields = [
+export const invoiceFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                invoice:getAll                              */
@@ -483,4 +483,4 @@ export const invoiceFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

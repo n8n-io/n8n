@@ -49,7 +49,6 @@ export class Salesmate implements INodeType {
 		description: 'Consume Salesmate API',
 		defaults: {
 			name: 'Salesmate',
-			color: '#004ef6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

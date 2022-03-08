@@ -29,7 +29,6 @@ export class RealtimeDatabase implements INodeType {
 		description: 'Interact with Google Firebase - Realtime Database API',
 		defaults: {
 			name: 'Google Cloud Realtime Database',
-			color: '#ffcb2d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -150,49 +149,56 @@ export class RealtimeDatabase implements INodeType {
 		}
 
 		for (let i = 0; i < length; i++) {
-			const projectId = this.getNodeParameter('projectId', i) as string;
-			let method = 'GET', attributes = '';
-			const document: IDataObject = {};
-			if (operation === 'create') {
-				method = 'PUT';
-				attributes = this.getNodeParameter('attributes', i) as string;
-			} else if (operation === 'delete') {
-				method = 'DELETE';
-			} else if (operation === 'get') {
-				method = 'GET';
-			} else if (operation === 'push') {
-				method = 'POST';
-				attributes = this.getNodeParameter('attributes', i) as string;
-			} else if (operation === 'update') {
-				method = 'PATCH';
-				attributes = this.getNodeParameter('attributes', i) as string;
-			}
-
-			if (attributes) {
-				const attributeList = attributes.split(',').map(el => el.trim());
-				attributeList.map((attribute: string) => {
-					if (items[i].json.hasOwnProperty(attribute)) {
-						document[attribute] = items[i].json[attribute];
-					}
-				});
-			}
-
-			responseData = await googleApiRequest.call(
-				this,
-				projectId,
-				method,
-				this.getNodeParameter('path', i) as string,
-				document,
-			);
-
-			if (responseData === null) {
-				if (operation === 'get') {
-					throw new NodeApiError(this.getNode(), responseData, { message: `Requested entity was not found.` });
-				} else if (method === 'DELETE') {
-					responseData = { success: true };
+			try {
+				const projectId = this.getNodeParameter('projectId', i) as string;
+				let method = 'GET', attributes = '';
+				const document: IDataObject = {};
+				if (operation === 'create') {
+					method = 'PUT';
+					attributes = this.getNodeParameter('attributes', i) as string;
+				} else if (operation === 'delete') {
+					method = 'DELETE';
+				} else if (operation === 'get') {
+					method = 'GET';
+				} else if (operation === 'push') {
+					method = 'POST';
+					attributes = this.getNodeParameter('attributes', i) as string;
+				} else if (operation === 'update') {
+					method = 'PATCH';
+					attributes = this.getNodeParameter('attributes', i) as string;
 				}
-			}
 
+				if (attributes) {
+					const attributeList = attributes.split(',').map(el => el.trim());
+					attributeList.map((attribute: string) => {
+						if (items[i].json.hasOwnProperty(attribute)) {
+							document[attribute] = items[i].json[attribute];
+						}
+					});
+				}
+
+				responseData = await googleApiRequest.call(
+					this,
+					projectId,
+					method,
+					this.getNodeParameter('path', i) as string,
+					document,
+				);
+
+				if (responseData === null) {
+					if (operation === 'get') {
+						throw new NodeApiError(this.getNode(), responseData, { message: `Requested entity was not found.` });
+					} else if (method === 'DELETE') {
+						responseData = { success: true };
+					}
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
+			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else if (typeof responseData === 'string' || typeof responseData === 'number') {

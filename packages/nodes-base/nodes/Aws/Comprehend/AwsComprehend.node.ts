@@ -24,7 +24,6 @@ export class AwsComprehend implements INodeType {
 		description: 'Sends data to Amazon Comprehend',
 		defaults: {
 			name: 'AWS Comprehend',
-			color: '#5aa08d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -158,7 +157,7 @@ export class AwsComprehend implements INodeType {
 				description: 'The text to send.',
 			},
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify Response',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -172,7 +171,7 @@ export class AwsComprehend implements INodeType {
 					},
 				},
 				default: true,
-				description: 'When set to true a simplify version of the response will be used else the raw data.',
+				description: 'Return a simplified version of the response instead of the raw data.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -213,63 +212,71 @@ export class AwsComprehend implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'text') {
-				//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectDominantLanguage.html
-				if (operation === 'detectDominantLanguage') {
-					const text = this.getNodeParameter('text', i) as string;
-					const simple = this.getNodeParameter('simple', i) as boolean;
+			try {
+				if (resource === 'text') {
+					//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectDominantLanguage.html
+					if (operation === 'detectDominantLanguage') {
+						const text = this.getNodeParameter('text', i) as string;
+						const simple = this.getNodeParameter('simple', i) as boolean;
 
-					const body: IDataObject = {
-						Text: text,
-					};
-					const action = 'Comprehend_20171127.DetectDominantLanguage';
-					responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						const body: IDataObject = {
+							Text: text,
+						};
+						const action = 'Comprehend_20171127.DetectDominantLanguage';
+						responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
 
-					if (simple === true) {
-						responseData = responseData.Languages.reduce((accumulator: { [key: string]: number }, currentValue: IDataObject) => {
-							accumulator[currentValue.LanguageCode as string] = currentValue.Score as number;
-							return accumulator;
-						}, {});
+						if (simple === true) {
+							responseData = responseData.Languages.reduce((accumulator: { [key: string]: number }, currentValue: IDataObject) => {
+								accumulator[currentValue.LanguageCode as string] = currentValue.Score as number;
+								return accumulator;
+							}, {});
+						}
+					}
+
+					//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectSentiment.html
+					if (operation === 'detectSentiment') {
+						const action = 'Comprehend_20171127.DetectSentiment';
+						const text = this.getNodeParameter('text', i) as string;
+						const languageCode = this.getNodeParameter('languageCode', i) as string;
+						const body: IDataObject = {
+							Text: text,
+							LanguageCode: languageCode,
+						};
+						responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+					}
+
+					//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html
+					if (operation === 'detectEntities') {
+						const action = 'Comprehend_20171127.DetectEntities';
+						const text = this.getNodeParameter('text', i) as string;
+						const languageCode = this.getNodeParameter('languageCode', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const body: IDataObject = {
+							Text: text,
+							LanguageCode: languageCode,
+						};
+
+						if (additionalFields.endpointArn) {
+							body.EndpointArn = additionalFields.endpointArn;
+						}
+
+						responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						responseData = responseData.Entities;
 					}
 				}
 
-				//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectSentiment.html
-				if (operation === 'detectSentiment') {
-					const action = 'Comprehend_20171127.DetectSentiment';
-					const text = this.getNodeParameter('text', i) as string;
-					const languageCode = this.getNodeParameter('languageCode', i) as string;
-					const body: IDataObject = {
-						Text: text,
-						LanguageCode: languageCode,
-					};
-					responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
 				}
-
-				//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html
-				if (operation === 'detectEntities') {
-					const action = 'Comprehend_20171127.DetectEntities';
-					const text = this.getNodeParameter('text', i) as string;
-					const languageCode = this.getNodeParameter('languageCode', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					const body: IDataObject = {
-						Text: text,
-						LanguageCode: languageCode,
-					};
-
-					if (additionalFields.endpointArn) {
-						body.EndpointArn = additionalFields.endpointArn;
-					}
-
-					responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
-					responseData = responseData.Entities;
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
-			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

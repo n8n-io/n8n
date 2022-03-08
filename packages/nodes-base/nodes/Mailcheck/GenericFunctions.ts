@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 export async function mailCheckApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('mailcheckApi') as IDataObject;
+	const credentials = await this.getCredentials('mailcheckApi') as IDataObject;
 
 	let options: OptionsWithUri = {
 		headers: {

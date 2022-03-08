@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const videoCategoryOperations = [
+export const videoCategoryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -25,9 +25,9 @@ export const videoCategoryOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const videoCategoryFields = [
+export const videoCategoryFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 videoCategory:getAll                       */
 	/* -------------------------------------------------------------------------- */
@@ -92,4 +92,4 @@ export const videoCategoryFields = [
 		default: 25,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

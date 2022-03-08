@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const alertContactOperations = [
+export const alertContactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const alertContactOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const alertContactFields = [
+export const alertContactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                alertContact:create                         */
 	/* -------------------------------------------------------------------------- */
@@ -297,4 +297,4 @@ export const alertContactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

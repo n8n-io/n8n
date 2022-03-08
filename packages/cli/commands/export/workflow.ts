@@ -1,26 +1,13 @@
-import {
-	Command,
-	flags,
-} from '@oclif/command';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable no-console */
+import { Command, flags } from '@oclif/command';
 
-import {
-	IDataObject
-} from 'n8n-workflow';
-
-import {
-	Db,
-} from '../../src';
-
-import { 
-	getLogger,
-} from '../../src/Logger';
-
-import {
-	LoggerProxy,
-} from 'n8n-workflow';
+import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { getLogger } from '../../src/Logger';
+import { Db } from '../../src';
 
 export class ExportWorkflowsCommand extends Command {
 	static description = 'Export workflows';
@@ -38,7 +25,8 @@ export class ExportWorkflowsCommand extends Command {
 			description: 'Export all workflows',
 		}),
 		backup: flags.boolean({
-			description: 'Sets --all --pretty --separate for simple backups. Only --output has to be set additionally.',
+			description:
+				'Sets --all --pretty --separate for simple backups. Only --output has to be set additionally.',
 		}),
 		id: flags.string({
 			description: 'The ID of the workflow to export',
@@ -51,14 +39,17 @@ export class ExportWorkflowsCommand extends Command {
 			description: 'Format the output in an easier to read fashion',
 		}),
 		separate: flags.boolean({
-			description: 'Exports one file per workflow (useful for versioning). Must inform a directory via --output.',
+			description:
+				'Exports one file per workflow (useful for versioning). Must inform a directory via --output.',
 		}),
 	};
 
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExportWorkflowsCommand);
 
 		if (flags.backup) {
@@ -93,7 +84,9 @@ export class ExportWorkflowsCommand extends Command {
 					fs.mkdirSync(flags.output, { recursive: true });
 				}
 			} catch (e) {
-				console.error('Aborting execution as a filesystem error has been encountered while creating the output directory. See log messages for details.');
+				console.error(
+					'Aborting execution as a filesystem error has been encountered while creating the output directory. See log messages for details.',
+				);
 				logger.error('\nFILESYSTEM ERROR');
 				logger.info('====================================');
 				logger.error(e.message);
@@ -117,6 +110,7 @@ export class ExportWorkflowsCommand extends Command {
 				findQuery.id = flags.id;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const workflows = await Db.collections.Workflow!.find(findQuery);
 
 			if (workflows.length === 0) {
@@ -124,18 +118,27 @@ export class ExportWorkflowsCommand extends Command {
 			}
 
 			if (flags.separate) {
-				let fileContents: string, i: number;
+				let fileContents: string;
+				let i: number;
 				for (i = 0; i < workflows.length; i++) {
 					fileContents = JSON.stringify(workflows[i], null, flags.pretty ? 2 : undefined);
-					const filename = (flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) + workflows[i].id + '.json';
+					const filename = `${
+						// eslint-disable-next-line @typescript-eslint/restrict-plus-operands, @typescript-eslint/no-non-null-assertion
+						(flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) +
+						workflows[i].id
+					}.json`;
 					fs.writeFileSync(filename, fileContents);
 				}
 				console.info(`Successfully exported ${i} workflows.`);
 			} else {
 				const fileContents = JSON.stringify(workflows, null, flags.pretty ? 2 : undefined);
 				if (flags.output) {
-					fs.writeFileSync(flags.output!, fileContents);
-					console.info(`Successfully exported ${workflows.length} ${workflows.length === 1 ? 'workflow.' : 'workflows.'}`);
+					fs.writeFileSync(flags.output, fileContents);
+					console.info(
+						`Successfully exported ${workflows.length} ${
+							workflows.length === 1 ? 'workflow.' : 'workflows.'
+						}`,
+					);
 				} else {
 					console.info(fileContents);
 				}

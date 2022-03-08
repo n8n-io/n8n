@@ -7,6 +7,7 @@ function broadcast(componentName: string, eventName: string, params: any) { // t
 
 		if (name === componentName) {
 			// @ts-ignore
+			// eslint-disable-next-line prefer-spread
 			child.$emit.apply(child, [eventName].concat(params));
 		} else {
 			// @ts-ignore
@@ -30,6 +31,7 @@ export default Vue.extend({
 			}
 			if (parent) {
 				// @ts-ignore
+				// eslint-disable-next-line prefer-spread
 				parent.$emit.apply(parent, [eventName].concat(params));
 			}
 		},

@@ -24,7 +24,7 @@ export async function erpNextApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	const credentials = this.getCredentials('erpNextApi') as ERPNextApiCredentials;
+	const credentials = await this.getCredentials('erpNextApi') as ERPNextApiCredentials;
 	const baseUrl = getBaseUrl(credentials);
 
 	if (credentials === undefined) {
@@ -89,7 +89,7 @@ export async function erpNextApiRequestAllItems(
 		returnData.push.apply(returnData, responseData[propertyName]);
 		query!.limit_start += query!.limit_page_length - 1;
 	} while (
-		responseData.data.length > 0
+		responseData.data && responseData.data.length > 0
 	);
 
 	return returnData;

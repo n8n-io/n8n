@@ -32,10 +32,9 @@ export class GoogleBigQuery implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Google BigQuery API.',
+		description: 'Consume Google BigQuery API',
 		defaults: {
 			name: 'Google BigQuery',
-			color: '#3E87E4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

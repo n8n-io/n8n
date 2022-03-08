@@ -10,6 +10,7 @@ export class GoogleOAuth2Api implements ICredentialType {
 	];
 	displayName = 'Google OAuth2 API';
 	documentationUrl = 'google';
+	icon = 'file:Google.svg';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Authorization URL',
