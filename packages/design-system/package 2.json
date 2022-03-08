@@ -1,0 +1,25 @@
+{
+	"name": "n8n-design-system",
+	"version": "0.12.0",
+	"license": "SEE LICENSE IN LICENSE.md",
+	"homepage": "https://n8n.io",
+	"author": {
+		"name": "Mutasem Aldmour",
+		"email": "mutasem@n8n.io"
+	},
+	"main": "src/main.js",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/n8n-io/n8n.git"
+	},
+	"peerDependencies": {
+		"@fortawesome/fontawesome-svg-core": "1.x",
+		"@fortawesome/free-solid-svg-icons": "5.x",
+		"@fortawesome/vue-fontawesome": "2.x",
+		"core-js": "3.x",
+		"element-ui": "2.15.x"
+	},
+	"devDependencies": {
+		"element-ui": "2.15.x"
+	}
+}
