@@ -70,62 +70,7 @@ export class SlackOAuth2Api implements ICredentialType {
 			name: 'useBotToken',
 			type: 'boolean',
 			default: false,
-			description: `Weather to use the bot's access token or user's access token`,
+			description: `Whether to use the bot's access token or user's access token`,
 		},
 	];
 }
-
-// export class SlackOAuth2Api implements ICredentialType {
-// 	name = 'slackOAuth2Api';
-// 	extends = [
-// 		'oAuth2Api',
-// 	];
-// 	displayName = 'Slack OAuth2 API';
-// 	documentationUrl = 'slack';
-// 	properties: INodeProperties[] = [
-// 		{
-// 			displayName: 'Token Type',
-// 			name: 'authQueryParameters',
-// 			type: 'options',
-// 			options: [
-// 				{
-// 					name: 'Bot Token',
-// 					value: `scope=${scopes.join(',')}`,
-// 					description: 'Authorize as a bot',
-// 				},
-// 				{
-// 					name: 'User Token',
-// 					value: `user_scope=${userScopes.join(' ')}`,
-// 					description: 'Authorize as an user',
-// 				},
-// 			],
-// 			default: `user_scope=${userScopes.join(' ')}`,
-// 			description: 'Bot Token is recommended.',
-// 		},
-// 		{
-// 			displayName: 'Authorization URL',
-// 			name: 'authUrl',
-// 			type: 'hidden',
-// 			default: 'https://slack.com/oauth/v2/authorize',
-// 		},
-// 		{
-// 			displayName: 'Access Token URL',
-// 			name: 'accessTokenUrl',
-// 			type: 'hidden',
-// 			default: 'https://slack.com/api/oauth.v2.access',
-// 		},
-// 		//https://api.slack.com/scopes
-// 		{
-// 			displayName: 'Scope',
-// 			name: 'scope',
-// 			type: 'hidden',
-// 			default: 'chat:write',
-// 		},
-// 		{
-// 			displayName: 'Authentication',
-// 			name: 'authentication',
-// 			type: 'hidden',
-// 			default: 'body',
-// 		},
-// 	];
-// }
