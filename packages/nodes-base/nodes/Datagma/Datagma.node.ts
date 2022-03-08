@@ -12,7 +12,6 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
-import { databaseFields } from '../Notion/DatabaseDescription';
 
 export class Datagma implements INodeType {
 	description: INodeTypeDescription = {
@@ -75,6 +74,9 @@ export class Datagma implements INodeType {
 				default: 'enrich',
 				description: 'The operation to perform.',
 			},
+			// ----------------------------------
+			//         find email
+			// ----------------------------------
 			{
 				displayName: 'First Name',
 				name: 'fname',
@@ -155,9 +157,9 @@ export class Datagma implements INodeType {
 					},
 				],
 			},
-
-
-			// enrich section
+			// ----------------------------------
+			//         enrich
+			// ----------------------------------
 			{
 				displayName: 'Data',
 				name: 'data',
@@ -368,10 +370,10 @@ export class Datagma implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-        //Predefined constants
+        // predefined constants
         const source = 'n8n'
 
-		//Get credentials the user provided for this node
+		// get credentials the user provided for this node
 		const credentials = await this.getCredentials('datagmaApi') as IDataObject;
 
 		for (let i = 0; i < items.length; i++) {
@@ -384,16 +386,7 @@ export class Datagma implements INodeType {
 					// get additional fields input
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					// // ?looks like merging some data here?
-					// const data: IDataObject = {
-					// 	fname,
-					// 	lname,
-					// 	company,
-					// };
-
-					// Object.assign(data, additionalFields);
-
-					//Make http request according to <https://doc.datagma.com/reference>
+					// make http request according to <https://doc.datagma.com/reference>
 					const options: OptionsWithUri = {
 						headers: {
 							'Accept': 'application/json',
@@ -426,16 +419,7 @@ export class Datagma implements INodeType {
 					// get additional fields input
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					// // ?looks like merging some data here?
-					// const data: IDataObject = {
-					// 	fname,
-					// 	lname,
-					// 	company,
-					// };
-
-					// Object.assign(data, additionalFields);
-
-					//Make http request according to <https://doc.datagma.com/reference>
+					// make http request according to <https://doc.datagma.com/reference>
 					const options: OptionsWithUri = {
 						headers: {
 							'Accept': 'application/json',
@@ -472,7 +456,7 @@ export class Datagma implements INodeType {
 				}
 			}
 		}
-		// Map data to n8n data
+		// map data to n8n data
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
