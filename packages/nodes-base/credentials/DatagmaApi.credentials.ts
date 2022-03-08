@@ -6,7 +6,7 @@ import {
 export class DatagmaApi implements ICredentialType {
 	name = 'datagmaApi';
 	displayName = 'Datagma API';
-	documentationUrl = 'https://doc.datagma.com/reference';
+	documentationUrl = 'datagma';
 	properties = [
 			{
 					displayName: 'API Key',
