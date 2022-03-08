@@ -49,9 +49,11 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 			response = await this.helpers.request(options);
 		} else {
 
+			const { useBotToken } = this.getCredentials('slackOAuth2Api') as { useBotToken: boolean };
+
 			const oAuth2Options: IOAuth2Options = {
 				tokenType: 'Bearer',
-				property: 'authed_user.access_token',
+				property: (useBotToken) ? 'access_token' : 'authed_user.access_token',
 			};
 			//@ts-ignore
 			response = await this.helpers.requestOAuth2.call(this, 'slackOAuth2Api', options, oAuth2Options);
