@@ -10,7 +10,12 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { UserRequest } from '../../requests';
-import { getInstanceBaseUrl, sanitizeUser, validatePassword } from '../UserManagementHelper';
+import {
+	getInstanceBaseUrl,
+	isEmailSetUp,
+	sanitizeUser,
+	validatePassword,
+} from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
@@ -464,9 +469,7 @@ export function usersNamespace(this: N8nApp): void {
 		ResponseHelper.send(async (req: UserRequest.Reinvite) => {
 			const { id: idToReinvite } = req.params;
 
-			const isEmailSetUp = config.get('userManagement.emails.mode') as '' | 'smtp';
-
-			if (!isEmailSetUp) {
+			if (!isEmailSetUp()) {
 				Logger.error('Request to reinvite a user failed because email sending was not set up');
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',

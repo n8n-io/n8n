@@ -9,6 +9,7 @@ import { Db, GenericHelpers, ResponseHelper } from '..';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
 import { Role } from '../databases/entities/Role';
 import { AuthenticatedRequest } from '../requests';
+import config = require('../../config');
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
 	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
@@ -17,6 +18,15 @@ export async function getWorkflowOwner(workflowId: string | number): Promise<Use
 	});
 
 	return sharedWorkflow.user;
+}
+
+export function isEmailSetUp(): boolean {
+	const smtp = config.get('userManagement.emails.mode') === 'smtp';
+	const host = !!config.get('userManagement.emails.smtp.host');
+	const user = !!config.get('userManagement.emails.smtp.auth.user');
+	const pass = !!config.get('userManagement.emails.smtp.auth.pass');
+
+	return smtp && host && user && pass;
 }
 
 async function getInstanceOwnerRole(): Promise<Role> {
