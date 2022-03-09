@@ -1,6 +1,6 @@
 <template>
   <div
-	  :class="$style.sticky"
+    :class="$style.sticky"
     :style="styles"
     @dblclick="changeMode"
   >
