@@ -26,7 +26,10 @@ export class NodeMailer implements UserManagementMailerImplementation {
 
 		return new Promise((resolve, reject) => {
 			this.transport.verify((error: Error) => {
-				if (!error) resolve();
+				if (!error) {
+					resolve();
+					return;
+				}
 
 				const message = [];
 
