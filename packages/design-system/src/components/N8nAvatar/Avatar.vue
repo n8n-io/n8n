@@ -1,10 +1,10 @@
 <template functional>
 	<span :class="$style.container">
 		<component
-			v-if="props.name"
+			v-if="props.firstName"
 			:is="$options.components.Avatar"
 			:size="$options.methods.getSize(props.size)"
-			:name="props.name"
+			:name="props.firstName + ' ' + props.lastName"
 			variant="marble"
 			:colors="$options.methods.getColors(props.colors)"
 		/>
@@ -13,6 +13,7 @@
 			:class="$style.empty"
 			:style="$options.methods.getBlankStyles(props.size)">
 		</div>
+		<span v-if="props.firstName" :class="$style.initials">{{$options.methods.getInitials(props)}}</span>
 	</span>
 </template>
 
@@ -28,7 +29,10 @@ const sizes: {[size: string]: number} = {
 export default {
 	name: 'n8n-avatar',
 	props: {
-		name: {
+		firstName: {
+			type: String,
+		},
+		lastName: {
 			type: String,
 		},
 		size: {
@@ -43,6 +47,9 @@ export default {
 		Avatar,
 	},
 	methods: {
+		getInitials({firstName, lastName}) {
+			return firstName.charAt(0) + lastName.charAt(0);
+		},
 		getBlankStyles(size): {height: string, width: string} {
 			const px = sizes[size];
 			return { height: `${px}px`, width: `${px}px` };
@@ -60,12 +67,23 @@ export default {
 
 <style lang="scss" module>
 .container {
+	position: relative;
 	display: inline-flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .empty {
 	border-radius: 50%;
 	background-color: var(--color-foreground-dark);
 	opacity: .3;
+}
+
+.initials {
+	position: absolute;
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text-xlight);
+	text-shadow: 0px 1px 6px rgba(25, 11, 9, 0.2);
 }
 </style>
