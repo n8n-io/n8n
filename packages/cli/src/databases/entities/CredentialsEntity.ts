@@ -37,7 +37,7 @@ function getTimestampSyntax() {
 	const dbType = config.get('database.type') as DatabaseType;
 
 	const map: { [key in DatabaseType]: string } = {
-		sqlite: 'STRFTIME(\'%Y-%m-%d %H:%M:%f\', \'NOW\')',
+		sqlite: `STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
 		postgresdb: 'CURRENT_TIMESTAMP(3)',
 		mysqldb: 'CURRENT_TIMESTAMP(3)',
 		mariadb: 'CURRENT_TIMESTAMP(3)',
