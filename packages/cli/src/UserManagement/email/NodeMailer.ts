@@ -34,7 +34,7 @@ export class NodeMailer implements UserManagementMailerImplementation {
 				if (!user) message.push('SMTP user not defined (N8N_SMTP_USER).');
 				if (!pass) message.push('SMTP pass not defined (N8N_SMTP_PASS).');
 
-				reject(new Error(message.join(' ')));
+				reject(new Error(message.length ? message.join(' ') : error.message));
 			});
 		});
 	}
