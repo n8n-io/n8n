@@ -171,6 +171,7 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { isEmailSetUp } from './UserManagement/UserManagementHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -318,7 +319,7 @@ class App {
 					config.get('userManagement.disabled') === false &&
 					config.get('userManagement.isInstanceOwnerSetUp') === false &&
 					config.get('userManagement.skipInstanceOwnerSetup') === false,
-				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
+				smtpSetup: isEmailSetUp(),
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
 			logLevel: config.get('logs.level'),
@@ -3029,7 +3030,7 @@ export async function start(): Promise<void> {
 			binaryDataMode: binarDataConfig.mode,
 			n8n_multi_user_allowed:
 				config.get('userManagement.disabled') === false ||
-				config.get('userManagement.hasOwner') === true,
+				config.get('userManagement.isInstanceOwnerSetUp') === true,
 			smtp_set_up: config.get('userManagement.emails.mode') === 'smtp',
 		};
 
