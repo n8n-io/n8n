@@ -72,6 +72,7 @@ import {
 	IWorkflowBase,
 	LoggerProxy,
 	NodeHelpers,
+	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -144,6 +145,7 @@ import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
+import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -201,6 +203,8 @@ class App {
 	payloadSizeMax: number;
 
 	presetCredentialsLoaded: boolean;
+
+	webhookMethods: WebhookHttpMethod[];
 
 	constructor() {
 		this.app = express();
@@ -282,6 +286,11 @@ class App {
 			},
 			defaultLocale: config.get('defaultLocale'),
 			logLevel: config.get('logs.level'),
+			hiringBannerEnabled: config.get('hiringBanner.enabled'),
+			templates: {
+				enabled: config.get('templates.enabled'),
+				host: config.get('templates.host'),
+			},
 		};
 	}
 
@@ -2704,107 +2713,45 @@ class App {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
 
-		// HEAD webhook requests (test for UI)
-		this.app.head(
+		// Register all webhook requests (test for UI)
+		this.app.all(
 			`/${this.endpointWebhookTest}/*`,
 			async (req: express.Request, res: express.Response) => {
 				// Cut away the "/webhook-test/" to get the registred part of the url
 				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 					this.endpointWebhookTest.length + 2,
 				);
+
+				const method = req.method.toUpperCase() as WebhookHttpMethod;
+
+				if (method === 'OPTIONS') {
+					let allowedMethods: string[];
+					try {
+						allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
+						allowedMethods.push('OPTIONS');
+
+						// Add custom "Allow" header to satisfy OPTIONS response.
+						res.append('Allow', allowedMethods);
+					} catch (error) {
+						ResponseHelper.sendErrorResponse(res, error);
+						return;
+					}
+
+					ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+					return;
+				}
+
+				if (!WEBHOOK_METHODS.includes(method)) {
+					ResponseHelper.sendErrorResponse(
+						res,
+						new Error(`The method ${method} is not supported.`),
+					);
+					return;
+				}
 
 				let response;
 				try {
-					response = await this.testWebhooks.callTestWebhook('HEAD', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
-			},
-		);
-
-		// HEAD webhook requests (test for UI)
-		this.app.options(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let allowedMethods: string[];
-				try {
-					allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
-					allowedMethods.push('OPTIONS');
-
-					// Add custom "Allow" header to satisfy OPTIONS response.
-					res.append('Allow', allowedMethods);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-			},
-		);
-
-		// GET webhook requests (test for UI)
-		this.app.get(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let response;
-				try {
-					response = await this.testWebhooks.callTestWebhook('GET', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
-			},
-		);
-
-		// POST webhook requests (test for UI)
-		this.app.post(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				let response;
-				try {
-					response = await this.testWebhooks.callTestWebhook('POST', requestUrl, req, res);
+					response = await this.testWebhooks.callTestWebhook(method, requestUrl, req, res);
 				} catch (error) {
 					ResponseHelper.sendErrorResponse(res, error);
 					return;

@@ -291,6 +291,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.url = requestObject.url?.toString() as string;
 	}
 
+	if (requestObject.baseURL !== undefined) {
+		axiosConfig.baseURL = requestObject.baseURL?.toString() as string;
+	}
+
 	if (requestObject.method !== undefined) {
 		axiosConfig.method = requestObject.method as Method;
 	}
@@ -496,6 +500,9 @@ function digestAuthAxiosConfig(
 		const realm: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
 			.replace(/"/g, '');
+		const opaque: string = authDetails
+			.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1)[1]
+			.replace(/"/g, '');
 		const nonce: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
 			.replace(/"/g, '');
@@ -515,7 +522,7 @@ function digestAuthAxiosConfig(
 		const authorization =
 			`Digest username="${auth?.username as string}",realm="${realm}",` +
 			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
-			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
+			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}",opaque="${opaque}"`;
 		if (axiosConfig.headers) {
 			axiosConfig.headers.authorization = authorization;
 		} else {
@@ -735,6 +742,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	// header and the json flag. Header should take precedence.
 	if (!userAgentHeader) {
 		axiosRequest.headers['User-Agent'] = 'n8n';
+	}
+
+	if (n8nRequest.ignoreHttpStatusErrors) {
+		axiosRequest.validateStatus = () => true;
 	}
 
 	return axiosRequest;
@@ -1119,6 +1130,51 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	});
 
 	return returnData;
+}
+
+/**
+ * Automatically put the objects under a 'json' key and don't error,
+ * if some objects contain json/binary keys and others don't, throws error 'Inconsistent item format'
+ *
+ * @export
+ * @param {INodeExecutionData | INodeExecutionData[]} executionData
+ * @returns {INodeExecutionData[]}
+ */
+export function normalizeItems(
+	executionData: INodeExecutionData | INodeExecutionData[],
+): INodeExecutionData[] {
+	if (typeof executionData === 'object' && !Array.isArray(executionData))
+		executionData = [{ json: executionData as IDataObject }];
+	if (executionData.every((item) => typeof item === 'object' && 'json' in item))
+		return executionData;
+
+	if (executionData.some((item) => typeof item === 'object' && 'json' in item)) {
+		throw new Error('Inconsistent item format');
+	}
+
+	if (executionData.every((item) => typeof item === 'object' && 'binary' in item)) {
+		const normalizedItems: INodeExecutionData[] = [];
+		executionData.forEach((item) => {
+			const json = Object.keys(item).reduce((acc, key) => {
+				if (key === 'binary') return acc;
+				return { ...acc, [key]: item[key] };
+			}, {});
+
+			normalizedItems.push({
+				json,
+				binary: item.binary,
+			});
+		});
+		return normalizedItems;
+	}
+
+	if (executionData.some((item) => typeof item === 'object' && 'binary' in item)) {
+		throw new Error('Inconsistent item format');
+	}
+
+	return executionData.map((item) => {
+		return { json: item };
+	});
 }
 
 // TODO: Move up later
@@ -2069,6 +2125,7 @@ export function getExecuteFunctions(
 					);
 				},
 				returnJsonArray,
+				normalizeItems,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);
