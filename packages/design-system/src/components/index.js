@@ -12,6 +12,7 @@ import N8nMenu from './N8nMenu';
 import N8nMenuItem from './N8nMenuItem';
 import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
+import N8nSticky from './N8nSticky';
 import N8nSquareButton from './N8nSquareButton';
 import N8nTags from './N8nTags';
 import N8nTag from './N8nTag';
@@ -34,6 +35,7 @@ export {
 	N8nMenuItem,
 	N8nSelect,
 	N8nSpinner,
+	N8nSticky,
 	N8nSquareButton,
 	N8nTags,
 	N8nTag,

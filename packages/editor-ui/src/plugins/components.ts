@@ -58,6 +58,7 @@ import {
 	N8nMenuItem,
 	N8nSelect,
 	N8nSpinner,
+	N8nSticky,
 	N8nSquareButton,
 	N8nTags,
 	N8nTag,
@@ -83,6 +84,7 @@ Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
+Vue.use(N8nSticky);
 Vue.component('n8n-square-button', N8nSquareButton);
 Vue.use(N8nTags);
 Vue.use(N8nTag);
