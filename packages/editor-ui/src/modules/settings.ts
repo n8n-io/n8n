@@ -13,12 +13,14 @@ import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
 import { CONTACT_PROMPT_MODAL_KEY, PERSONALIZATION_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
+import { testHealthEndpoint } from '@/api/templates';
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
 	state: {
 		settings: {} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
+		templatesEndpointHealthy: false,
 	},
 	getters: {
 		personalizedNodeTypes(state: ISettingsState): string[] {
@@ -41,6 +43,18 @@ const module: Module<ISettingsState, IRootState> = {
 		isTelemetryEnabled: (state) => {
 			return state.settings.telemetry && state.settings.telemetry.enabled;
 		},
+		isHiringBannerEnabled: (state): boolean => {
+			return state.settings.hiringBannerEnabled;
+		},
+		isTemplatesEnabled: (state): boolean => {
+			return Boolean(state.settings.templates && state.settings.templates.enabled);
+		},
+		isTemplatesEndpointReachable: (state): boolean => {
+			return state.templatesEndpointHealthy;
+		},
+		templatesHost: (state): string  => {
+			return state.settings.templates.host;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
@@ -54,6 +68,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		setPromptsData(state: ISettingsState, promptsData: IN8nPrompts) {
 			Vue.set(state, 'promptsData', promptsData);
+		},
+		setTemplatesEndpointHealthy(state: ISettingsState) {
+			state.templatesEndpointHealthy = true;
 		},
 	},
 	actions: {
@@ -123,6 +140,11 @@ const module: Module<ISettingsState, IRootState> = {
 			} catch (e) {
 				return e;
 			}
+		},
+		async testTemplatesEndpoint(context: ActionContext<ISettingsState, IRootState>) {
+			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
+			await Promise.race([testHealthEndpoint(context.getters.templatesHost), timeout]);
+			context.commit('setTemplatesEndpointHealthy', true);
 		},
 	},
 };

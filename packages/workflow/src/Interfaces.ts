@@ -420,6 +420,7 @@ export interface IHttpRequestOptions {
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
+	ignoreHttpStatusErrors?: boolean;
 	proxy?: {
 		host: string;
 		port: number;
@@ -1178,7 +1179,7 @@ export interface IWorkflowMetadata {
 	active: boolean;
 }
 
-export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS';
+export type WebhookHttpMethod = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT' | 'OPTIONS';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
@@ -1186,14 +1187,13 @@ export interface IWebhookResponseData {
 	noWebhookResponse?: boolean;
 }
 
-export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary';
+export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
 export type WebhookResponseMode = 'onReceived' | 'lastNode';
 
 export interface INodeTypes {
 	nodeTypes: INodeTypeData;
 	init(nodeTypes?: INodeTypeData): Promise<void>;
 	getAll(): Array<INodeType | INodeVersionedType>;
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
