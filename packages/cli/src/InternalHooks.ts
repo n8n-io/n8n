@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 import { BinaryDataManager } from 'n8n-core';
 import { IDataObject, INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
+import { snakeCase } from 'change-case';
 import {
 	IDiagnosticInfo,
 	IInternalHooksClass,
@@ -51,15 +52,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 		userId: string,
 		answers: Record<string, string>,
 	): Promise<void> {
-		return this.telemetry.track('User responded to personalization questions', {
-			user_id: userId,
-			company_size: answers.companySize,
-			coding_skill: answers.codingSkill,
-			work_area: answers.workArea,
-			other_work_area: answers.otherWorkArea,
-			company_industry: answers.companyIndustry,
-			other_company_industry: answers.otherCompanyIndustry,
+		const camelCaseKeys = Object.keys(answers);
+		const personalizationSurveyData = { user_id: userId } as Record<string, string | string[]>;
+		camelCaseKeys.forEach((camelCaseKey) => {
+			personalizationSurveyData[snakeCase(camelCaseKey)] = answers[camelCaseKey];
 		});
+
+		return this.telemetry.track(
+			'User responded to personalization questions',
+			personalizationSurveyData,
+		);
 	}
 
 	async onWorkflowCreated(userId: string, workflow: IWorkflowBase): Promise<void> {
