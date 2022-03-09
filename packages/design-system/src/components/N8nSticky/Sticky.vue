@@ -88,8 +88,8 @@ export default {
   min-height: 80px;
   overflow-y: auto;
   padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl);
-  background-color: #FFF6D7;
-  border: 1px solid #F2DDA6;
+  background-color: var(--color-sticky-default-background);
+  border: 1px solid var(--color-sticky-default-border);
   border-radius: var(--border-radius-large);
 }
 </style>
