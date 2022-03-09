@@ -188,31 +188,21 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 			// NOTE: this needs to follow redirects (possibly across domains), while keeping Authorization headers
 			// The Axios client will not propagate the Authorization header on redirects (see https://github.com/axios/axios/issues/3607), so we need to follow ourselves...
 			let response = null;
-			let attachmentUrl = attachment[options.version as string] || attachment.download_url;
+			let attachmentUrl = attachment[options.version as string] || attachment.download_url as string;
 			let final = false, redir = 0;
 
-			// const axiosOptions = {
-			// 	url: attachmentUrl,
-			// 	method: 'GET',
-			// 	headers: {
-			// 		'Authorization': `Token ${credentials.token}`,
-			// 	},
-			// 	maxRedirects: 0,
-			// 	validateStatus: () => true,
-			// 	encoding: 'arraybuffer',
-			// };
-
-			const client = axios.create({
+			const axiosOptions: IHttpRequestOptions = {
+				url: attachmentUrl,
+				method: 'GET',
 				headers: {
-					'Authorization': 'Token ' + credentials.token,
+					'Authorization': `Token ${credentials.token}`,
 				},
-				validateStatus: () => true,
-				maxRedirects: 0,
-				responseType: 'arraybuffer',
-			});
+				ignoreHttpStatusErrors: true,
+				encoding: 'arraybuffer',
+			};
 
 			while (!final && redir < 5) {
-				response = await client.get(attachmentUrl);
+				response = await this.helpers.httpRequest(axiosOptions);
 				if (response && response.headers.location) {
 					// Follow redirect
 					attachmentUrl = response.headers.location;
