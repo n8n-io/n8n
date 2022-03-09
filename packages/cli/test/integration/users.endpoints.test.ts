@@ -64,6 +64,7 @@ beforeEach(async () => {
 		globalRole: globalOwnerRole,
 	});
 
+	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
 });
@@ -440,6 +441,17 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 test('POST /users should fail if emailing is not set up', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+
+	const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
+
+	expect(response.statusCode).toBe(500);
+});
+
+test('POST /users should fail if user management is disabled', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+
+	config.set('userManagement.disabled', true);
 
 	const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
 

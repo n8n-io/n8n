@@ -55,9 +55,17 @@ export function usersNamespace(this: N8nApp): void {
 				}
 			}
 
+			// TODO: this should be checked in the middleware rather than here
+			if (config.get('userManagement.disabled')) {
+				Logger.debug(
+					'Request to send email invite(s) to user(s) failed because user management is disabled',
+				);
+				throw new ResponseHelper.ResponseError('User management is disabled');
+			}
+
 			if (!config.get('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
-					'Request to send email invite(s) to user(s) failed because emailing was not set up',
+					'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 				);
 				throw new ResponseHelper.ResponseError(
 					'You must set up your own account before inviting others',
