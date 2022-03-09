@@ -171,12 +171,22 @@ const router = new Router({
 			components: {
 				default: SigninView,
 			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
+			},
 		},
 		{
 			path: '/signup',
 			name: 'SignupView',
 			components: {
 				default: SignupView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
 			},
 		},
 		{
@@ -185,6 +195,11 @@ const router = new Router({
 			components: {
 				default: SetupView,
 			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
+			},
 		},
 		{
 			path: '/forgot-password',
@@ -192,12 +207,22 @@ const router = new Router({
 			components: {
 				default: ForgotMyPasswordView,
 			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
+			},
 		},
 		{
 			path: '/change-password',
 			name: 'ChangePasswordView',
 			components: {
 				default: ChangePasswordView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
 			},
 		},
 		{
