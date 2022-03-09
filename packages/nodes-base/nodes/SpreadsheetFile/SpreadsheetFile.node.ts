@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -279,7 +276,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: '',
-						description: 'The range to read from the table.<br />If set to a number it will be the starting row.<br />If set to string it will be used as A1-style bounded range.',
+						description: 'The range to read from the table. If set to a number it will be the starting row. If set to string it will be used as A1-style bounded range.',
 					},
 					{
 						displayName: 'Sheet Name',
@@ -346,7 +343,7 @@ export class SpreadsheetFile implements INodeType {
 					}
 
 					// Read the binary spreadsheet data
-					const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+					const binaryData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					let workbook;
 					if (options.readAsString === true) {
 						workbook = xlsxRead(binaryData.toString(), { type: 'string', raw: options.rawData as boolean });

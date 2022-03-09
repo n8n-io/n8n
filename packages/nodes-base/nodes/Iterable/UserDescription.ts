@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const userOperations = [
 		default: 'upsert',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                user:upsert                                 */
@@ -161,9 +161,7 @@ export const userFields = [
 				name: 'mergeNestedObjects',
 				type: 'boolean',
 				default: false,
-				description: `Merge top level objects instead of overwriting (default: false).<br>
-				e.g. if user profile has data: {mySettings:{mobile:true}} and change contact field has data: {mySettings:{email:true}},<br>
-				the resulting profile: {mySettings:{mobile:true,email:true}}`,
+				description: `Merge top level objects instead of overwriting (default: false), e.g. if user profile has data: {mySettings:{mobile:true}} and change contact field has data: {mySettings:{email:true}}, the resulting profile: {mySettings:{mobile:true,email:true}}`,
 			},
 		],
 	},
@@ -315,4 +313,4 @@ export const userFields = [
 		default: '',
 		description: 'Email for a particular user',
 	},
-] as INodeProperties[];
+];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const lightOperations = [
+export const lightOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -33,15 +33,15 @@ export const lightOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an light',
+				description: 'Update a light',
 			},
 		],
 		default: 'update',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const lightFields = [
+export const lightFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 light:delete                               */
@@ -258,8 +258,7 @@ export const lightFields = [
 				type: 'string',
 				default: '',
 				placeholder: '0.64394,0.33069',
-				description: `The x and y coordinates of a color in CIE color space.</br>
-				The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1`,
+				description: `The x and y coordinates of a color in CIE color space. The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1`,
 			},
 			{
 				displayName: 'Coordinates Increments',
@@ -342,4 +341,4 @@ export const lightFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

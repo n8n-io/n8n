@@ -11,6 +11,7 @@ import {
 
 import {
 	IDataObject,
+	INodeProperties,
 	INodePropertyOptions,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -67,7 +68,7 @@ export async function magentoApiRequestAllItems(this: IHookFunctions | ILoadOpti
 	return returnData;
 }
 
-export function getAddressesUi() {
+export function getAddressesUi(): INodeProperties {
 	return {
 		displayName: 'Addresses',
 		name: 'addresses',
@@ -175,14 +176,14 @@ export function getAddressesUi() {
 						name: 'default_billing',
 						type: 'boolean',
 						default: false,
-						descrition: 'Weather this address is default billing address',
+						description: 'Weather this address is default billing address',
 					},
 					{
 						displayName: 'Default Shipping',
 						name: 'default_shipping',
 						type: 'boolean',
 						default: false,
-						descrition: 'Weather this address is default shipping address',
+						description: 'Weather this address is default shipping address',
 					},
 				],
 			},
@@ -205,7 +206,7 @@ export function adjustAddresses(addresses: [{ street: string, [key: string]: str
 	return _addresses;
 }
 
-export function getSearchFilters(resource: string, filterableAttributeFunction: string, sortableAttributeFunction: string) {
+export function getSearchFilters(resource: string, filterableAttributeFunction: string, sortableAttributeFunction: string): INodeProperties[] {
 	return [
 		{
 			displayName: 'Filter',
@@ -417,7 +418,7 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 	];
 }
 
-function getConditionTypeFields() {
+function getConditionTypeFields(): INodeProperties {
 	return {
 		displayName: 'Condition Type',
 		name: 'condition_type',
@@ -479,7 +480,7 @@ function getConditionTypeFields() {
 	};
 }
 
-function getConditions(attributeFunction: string) {
+function getConditions(attributeFunction: string): INodeProperties[] {
 	return [
 		{
 			displayName: 'Field',
@@ -552,7 +553,7 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	return result;
 }
 
-export function getCustomerOptionalFields() {
+export function getCustomerOptionalFields(): INodeProperties[] {
 	return [
 		getAddressesUi(),
 		{
@@ -717,7 +718,7 @@ export function getCustomerOptionalFields() {
 	];
 }
 
-export function getProductOptionalFields() {
+export function getProductOptionalFields(): INodeProperties[] {
 	return [
 		{
 			displayName: 'Attribute Set Name/ID',

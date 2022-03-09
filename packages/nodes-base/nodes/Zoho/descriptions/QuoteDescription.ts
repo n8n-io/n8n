@@ -11,7 +11,7 @@ import {
 	shippingAddress,
 } from './SharedFields';
 
-export const quoteOperations = [
+export const quoteOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -58,9 +58,9 @@ export const quoteOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const quoteFields = [
+export const quoteFields: INodeProperties[] = [
 	// ----------------------------------------
 	//            quote: create
 	// ----------------------------------------
@@ -456,4 +456,4 @@ export const quoteFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

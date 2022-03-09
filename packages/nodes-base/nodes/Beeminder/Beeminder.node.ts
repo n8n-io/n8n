@@ -36,7 +36,6 @@ export class Beeminder implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Beeminder',
-			color: '#FFCB06',
 		},
 		icon: 'file:beeminder.png',
 		inputs: ['main'],

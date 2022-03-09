@@ -31,9 +31,9 @@ import Vue from "vue";
 import { ITag, ITagRow } from "@/Interface";
 import TagsTableHeader from "@/components/TagsManager/TagsView/TagsTableHeader.vue";
 import TagsTable from "@/components/TagsManager/TagsView/TagsTable.vue";
+import mixins from "vue-typed-mixins";
 
 const matches = (name: string, filter: string) => name.toLowerCase().trim().includes(filter.toLowerCase().trim());
-const getUsage = (count: number | undefined) => count && count > 0 ? `${count} workflow${count > 1 ? "s" : ""}` : 'Not being used';
 
 export default Vue.extend({
 	components: { TagsTableHeader, TagsTable },
@@ -55,6 +55,18 @@ export default Vue.extend({
 			return (this.$props.tags || []).length === 0 || this.$data.createEnabled;
 		},
 		rows(): ITagRow[] {
+			const getUsage = (count: number | undefined) => count && count > 0
+				? this.$locale.baseText(
+					count > 1 ?
+						'tagsView.inUse.plural' : 'tagsView.inUse.singular',
+					{
+						interpolate: {
+							count: count.toString(),
+						},
+					},
+				)
+				: this.$locale.baseText('tagsView.notBeingUsed');
+
 			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
 			const tagRows = (this.$props.tags || [])
 				.filter((tag: ITag) => this.stickyIds.has(tag.id) || matches(tag.name, this.$data.search))
@@ -102,7 +114,7 @@ export default Vue.extend({
 					this.stickyIds.add(this.updateId);
 					this.disableUpdate();
 				}
-			}; 
+			};
 
 			this.$emit("update", this.updateId, name, onUpdate);
 		},

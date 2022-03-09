@@ -23,7 +23,6 @@ export class Redis implements INodeType {
 		description: 'Get, send and update data in Redis',
 		defaults: {
 			name: 'Redis',
-			color: '#0033AA',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -90,7 +89,7 @@ export class Redis implements INodeType {
 				},
 				default: 'propertyName',
 				required: true,
-				description: 'Name of the property to write received data to.<br />Supports dot-notation.<br />Example: "data.person[0].name"',
+				description: 'Name of the property to write received data to. Supports dot-notation. Example: "data.person[0].name"',
 			},
 			{
 				displayName: 'Key',
@@ -183,9 +182,7 @@ export class Redis implements INodeType {
 						name: 'dotNotation',
 						type: 'boolean',
 						default: true,
-						description: `By default does dot-notation get used in property names.<br />
-						This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<br />
-						If that is not intended this can be deactivated, it will then set { "a.b": value } instead.
+						description: `<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>
 						`,
 					},
 				],
@@ -510,6 +507,7 @@ export class Redis implements INodeType {
 			});
 
 			client.on('ready', async (err: Error | null) => {
+				client.select(credentials.database as number);
 				try {
 					if (operation === 'info') {
 						const clientInfo = util.promisify(client.info).bind(client);

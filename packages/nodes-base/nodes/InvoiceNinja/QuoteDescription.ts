@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const quoteOperations = [
+export const quoteOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const quoteOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const quoteFields = [
+export const quoteFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 quote:create                               */
 /* -------------------------------------------------------------------------- */
@@ -316,6 +316,7 @@ export const quoteFields = [
 		displayName: 'Quote ID',
 		name: 'quoteId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -335,6 +336,7 @@ export const quoteFields = [
 		displayName: 'Quote ID',
 		name: 'quoteId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -354,6 +356,7 @@ export const quoteFields = [
 		displayName: 'Quote ID',
 		name: 'quoteId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -478,4 +481,4 @@ export const quoteFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

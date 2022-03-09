@@ -92,6 +92,12 @@ export class WorkflowDataProxy {
 
 					return Reflect.ownKeys(target);
 				},
+				getOwnPropertyDescriptor(k) {
+					return {
+						enumerable: true,
+						configurable: true,
+					};
+				},
 				get(target, name, receiver) {
 					// eslint-disable-next-line no-param-reassign
 					name = name.toString();
@@ -142,6 +148,12 @@ export class WorkflowDataProxy {
 			ownKeys(target) {
 				return Reflect.ownKeys(target);
 			},
+			getOwnPropertyDescriptor(k) {
+				return {
+					enumerable: true,
+					configurable: true,
+				};
+			},
 			get(target, name, receiver) {
 				name = name.toString();
 
@@ -159,7 +171,7 @@ export class WorkflowDataProxy {
 				} else {
 					if (!node.parameters.hasOwnProperty(name)) {
 						// Parameter does not exist on node
-						throw new Error(`Could not find parameter "${name}" on node "${nodeName}"`);
+						return undefined;
 					}
 
 					returnValue = node.parameters[name];
@@ -287,7 +299,7 @@ export class WorkflowDataProxy {
 		const node = this.workflow.nodes[nodeName];
 
 		if (!node) {
-			throw new Error(`The node "${nodeName}" does not exist!`);
+			return undefined;
 		}
 
 		return new Proxy(
@@ -385,6 +397,15 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				ownKeys(target) {
+					return allowedValues;
+				},
+				getOwnPropertyDescriptor(k) {
+					return {
+						enumerable: true,
+						configurable: true,
+					};
+				},
 				get(target, name, receiver) {
 					if (!allowedValues.includes(name.toString())) {
 						throw new Error(`The key "${name.toString()}" is not supported!`);

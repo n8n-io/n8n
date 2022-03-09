@@ -29,6 +29,16 @@
 				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
 			},
 			{
+				"label": "Create a toxic language detector for Telegram in 4 step",
+				"icon": "🤬",
+				"url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/"
+			},
+			{
+				"label": "6 e-commerce workflows to power up your Shopify s",
+				"icon": "store",
+				"url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
+			},
+			{
 				"label": "How to build a low-code, self-hosted URL shortener in 3 steps",
 				"icon": "🔗",
 				"url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/"
@@ -39,6 +49,11 @@
 				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
 			},
 			{
+				"label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+				"icon": "👥",
+				"url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+			},
+			{
 				"label": "5 tasks you can automate with the new Notion API ",
 				"icon": "⚡️",
 				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
@@ -47,6 +62,16 @@
 				"label": "15 Google apps you can combine and automate to increase productivity",
 				"icon": "💡",
 				"url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
+			},
+			{
+				"label": "How to automatically manage contributions to open-source projects",
+				"icon": "🏷️",
+				"url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/"
+			},
+			{
+				"label": "How uProc scraped a multi-page website with a low-code workflow",
+				"icon": " 🕸️",
+				"url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/"
 			},
 			{
 				"label": "5 workflow automations for Mattermost that we love at n8n",
@@ -64,9 +89,18 @@
 				"url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/"
 			},
 			{
+				"label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI",
+				"icon": "🎡",
+				"url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/"
+			},
+			{
 				"label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin",
 				"icon": "🎖",
 				"url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	},

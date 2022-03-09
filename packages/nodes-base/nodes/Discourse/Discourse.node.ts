@@ -58,7 +58,6 @@ export class Discourse implements INodeType {
 		description: 'Consume Discourse API',
 		defaults: {
 			name: 'Discourse',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -387,7 +386,6 @@ export class Discourse implements INodeType {
 				// 		if (simple === true) {
 				// 			const response = [];
 				// 			for (const key of Object.keys(responseData)) {
-				// 				console.log(key)
 				// 				for (const data of responseData[key]) {
 				// 					response.push(Object.assign(data, { __type: key }));
 				// 				}

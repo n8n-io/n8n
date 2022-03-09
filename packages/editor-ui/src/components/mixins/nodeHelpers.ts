@@ -148,7 +148,7 @@ export const nodeHelpers = mixins(
 			// Updates the parameter-issues of the node
 			updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
 				if (nodeType === undefined) {
-					nodeType = this.$store.getters.nodeType(node.type);
+					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
 				}
 
 				if (nodeType === null) {
@@ -179,7 +179,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (nodeType === undefined) {
-					nodeType = this.$store.getters.nodeType(node.type);
+					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
 				}
 
 				if (nodeType === null || nodeType!.credentials === undefined) {
@@ -342,6 +342,8 @@ export const nodeHelpers = mixins(
 							disabled: !node.disabled,
 						},
 					};
+
+					this.$telemetry.track('User set node enabled status', { node_type: node.type, is_enabled: node.disabled, workflow_id: this.$store.getters.workflowId });
 
 					this.$store.commit('updateNodeProperties', updateInformation);
 					this.$store.commit('clearNodeExecutionData', node.name);

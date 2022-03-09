@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const leadOpeations = [
+export const leadOpeations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const leadOpeations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const leadFields = [
+export const leadFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 lead:delete                                */
@@ -82,6 +82,7 @@ export const leadFields = [
 		displayName: 'Value',
 		name: 'value',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -513,4 +514,4 @@ export const leadFields = [
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
-] as INodeProperties[];
+];

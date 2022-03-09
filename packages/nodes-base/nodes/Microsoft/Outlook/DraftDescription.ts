@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const draftOperations = [
+export const draftOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const draftOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const draftFields = [
+export const draftFields: INodeProperties[] = [
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
@@ -222,7 +222,7 @@ export const draftFields = [
 			{
 				displayName: 'From',
 				name: 'from',
-				description: 'The owner of the mailbox which the message is sent.<br>Must correspond to the actual mailbox used.',
+				description: 'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
 				type: 'string',
 				default: '',
 			},
@@ -301,4 +301,4 @@ export const draftFields = [
 
 
 
-] as INodeProperties[];
+];

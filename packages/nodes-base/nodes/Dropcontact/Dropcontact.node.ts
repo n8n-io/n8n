@@ -7,11 +7,11 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -30,7 +30,6 @@ export class Dropcontact implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Dropcontact',
-			color: '#0ABA9F',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -243,8 +242,7 @@ export class Dropcontact implements INodeType {
 						name: 'siren',
 						type: 'boolean',
 						default: false,
-						description: `Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader.</br>
-						Only applies to french companies`,
+						description: `Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader. Only applies to french companies`,
 					},
 					{
 						displayName: 'Language',
@@ -270,7 +268,7 @@ export class Dropcontact implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async dropcontactApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async dropcontactApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
