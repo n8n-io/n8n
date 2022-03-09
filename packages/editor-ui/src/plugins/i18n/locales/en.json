@@ -1175,7 +1175,7 @@
 	"SMTP_ERROR_CONTACT_ADMINISTRATOR": "Please contact your administrator (problem with your SMTP setup)",
 	"SMTP_TO_ADD_USERS_WARNING": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management#smtp\">Instructions</a>",
 	"TOKEN_VALIDATION_ERROR": "Issue validating invite token",
-	"TRANSFERRED_TO_USER": "Transferred to {user}",
+	"TRANSFERRED_TO_USER": "Data transferred to {user}",
 	"TRANSFER_WORKFLOWS_AND_CREDENTIALS": "Transfer their workflows and credentials to another user",
 	"USERS": "Users",
 	"USERS_INVITED_ERROR": "Could not invite users",
