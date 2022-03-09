@@ -254,7 +254,11 @@ export function usersNamespace(this: N8nApp): void {
 					inviterId,
 					inviteeId,
 				});
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+				throw new ResponseHelper.ResponseError(
+					'Invalid invite link, it probably expired.',
+					undefined,
+					400,
+				);
 			}
 
 			const inviter = users.find((user) => user.id === inviterId);
