@@ -33,7 +33,7 @@ export class StrapiApi implements ICredentialType {
 		{
 			displayName: 'API Version',
 			name: 'apiVersion',
-			default: '',
+			default: 'v3',
 			type: 'options',
 			description: 'The version of api to be used',
 			options: [

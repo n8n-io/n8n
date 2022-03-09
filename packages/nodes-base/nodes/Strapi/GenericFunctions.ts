@@ -23,7 +23,7 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 			method,
 			body,
 			qs,
-			uri: uri || `${credentials.url}${resource}`,
+			uri: uri || credentials.apiVersion === 'v4' ? `${credentials.url}/api${resource}` : `${credentials.url}${resource}`,
 			json: true,
 			qsStringifyOptions: {
 				arrayFormat: 'indice',
@@ -46,8 +46,6 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('strapiApi') as IDataObject;
 	let options = {} as OptionsWithUri;
-
-	if(credentials.apiVersion === 'v4') {
 		options = {
 			headers: {
 				'content-type': `application/json`,
@@ -57,23 +55,9 @@ export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions |
 				identifier: credentials.email,
 				password: credentials.password,
 			},
-			uri: `${credentials.url}/api/auth/local`,
+			uri: credentials.apiVersion === 'v4' ? `${credentials.url}/api/auth/local`:`${credentials.url}/auth/local`,
 			json: true,
 		};
-	} else {
-			options = {
-				headers: {
-					'content-type': `application/json`,
-				},
-				method: 'POST',
-				uri: `${credentials.url}/auth/local`,
-				body: {
-					identifier: credentials.email,
-					password: credentials.password,
-				},
-				json: true,
-			};
-		}
 	return this.helpers.request!(options);
 }
 

@@ -79,33 +79,18 @@ export class Strapi implements INodeType {
 				const credentials = await credential.data as IDataObject;
 				let options = {} as OptionsWithUri;
 
-				if(credentials.apiVersion === 'v4') {
-					options = {
-						headers: {
-							'content-type': `application/json`,
-						},
-						method: 'POST',
-						body: {
-							identifier: credentials.email,
-							password: credentials.password,
-						},
-						uri: `${credentials.url}/api/auth/local`,
-						json: true,
-					};
-				} else {
-						options = {
-							headers: {
-								'content-type': `application/json`,
-							},
-							method: 'POST',
-							uri: `${credentials.url}/auth/local`,
-							body: {
-								identifier: credentials.email,
-								password: credentials.password,
-							},
-							json: true,
-						};
-					}
+				options = {
+					headers: {
+						'content-type': `application/json`,
+					},
+					method: 'POST',
+					body: {
+						identifier: credentials.email,
+						password: credentials.password,
+					},
+					uri: credentials.apiVersion === 'v4' ? `${credentials.url}/api/auth/local`:`${credentials.url}/auth/local`,
+					json: true,
+				};
 					try {
 						await this.helpers.request(options);
 						return {
@@ -154,7 +139,7 @@ export class Strapi implements INodeType {
 								apiVersion === 'v4'? body.data = items[i].json: body[key] = items[i].json[key];
 							}
 						}
-						apiVersion === 'v4'? responseData = await strapiApiRequest.call(this, 'POST', `/api/${contentType}`, body, qs, undefined, headers): responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs, undefined, headers);
+						responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs, undefined, headers);
 
 						returnData.push(responseData);
 					}
@@ -164,7 +149,7 @@ export class Strapi implements INodeType {
 
 						const entryId = this.getNodeParameter('entryId', i) as string;
 
-						apiVersion === 'v4'? ({data:responseData} = await strapiApiRequest.call(this, 'DELETE', `/api/${contentType}/${entryId}`, {}, qs, undefined, headers)):responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
+						responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
 
 						returnData.push(responseData);
 					}
@@ -239,9 +224,8 @@ export class Strapi implements INodeType {
 
 						const entryId = this.getNodeParameter('entryId', i) as string;
 
-						apiVersion === 'v4'? ({data:responseData}=await strapiApiRequest.call(this, 'GET', `/api/${contentType}/${entryId}`, {}, qs, undefined, headers)):responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
-
-						returnData.push(responseData);
+						responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
+						apiVersion === 'v4'? returnData.push(responseData.data): returnData.push(responseData);
 					}
 
 					if (operation === 'update') {
@@ -263,9 +247,10 @@ export class Strapi implements INodeType {
 								apiVersion === 'v4'? body.data = items[i].json:body[key] = items[i].json[key];
 							}
 						}
-						apiVersion === 'v4'? ({data:responseData} = await strapiApiRequest.call(this, 'PUT', `/api/${contentType}/${entryId}`, body, qs, undefined, headers)): responseData = await strapiApiRequest.call(this, 'PUT', `/${contentType}/${entryId}`, body, qs, undefined, headers);
 
-						returnData.push(responseData);
+						responseData = await strapiApiRequest.call(this, 'PUT', `/${contentType}/${entryId}`, body, qs, undefined, headers);
+						apiVersion === 'v4'? returnData.push(responseData.data): returnData.push(responseData);
+
 					}
 				}
 			} catch (error) {
