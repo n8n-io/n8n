@@ -3029,7 +3029,7 @@ export async function start(): Promise<void> {
 			binaryDataMode: binarDataConfig.mode,
 			n8n_multi_user_allowed:
 				config.get('userManagement.disabled') === false ||
-				config.get('userManagement.hasOwner') === true,
+				config.get('userManagement.isInstanceOwnerSetUp') === true,
 			smtp_set_up: config.get('userManagement.emails.mode') === 'smtp',
 		};
 
