@@ -14,10 +14,10 @@ export class AddExecutionEntityIndexes1644422880309 implements MigrationInterfac
 		}
 
 		await queryRunner.query(
-			`DROP INDEX "${schema}"."IDX_${tablePrefixPure}c4d999a5e90784e8caccf5589d"`,
+			`DROP INDEX "${schema}".IDX_${tablePrefixPure}c4d999a5e90784e8caccf5589d`,
 		);
 		await queryRunner.query(
-			`DROP INDEX "${schema}"."IDX_${tablePrefixPure}ca4a71b47f28ac6ea88293a8e2"`,
+			`DROP INDEX "${schema}".IDX_${tablePrefixPure}ca4a71b47f28ac6ea88293a8e2`,
 		);
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefixPure}33228da131bb1112247cf52a42" ON ${tablePrefix}execution_entity ("stoppedAt") `,
