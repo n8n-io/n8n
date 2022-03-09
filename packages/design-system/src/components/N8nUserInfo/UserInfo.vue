@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<div :class="$style.avatarContainer">
-			<n8n-avatar :name="fullName" />
+			<n8n-avatar :firstName="firstName" :lastName="lastName" />
 		</div>
 
 		<div v-if="isPendingUser" :class="$style.pendingUser">
@@ -10,7 +10,7 @@
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
-				<n8n-text :bold="true">{{fullName}} {{isCurrentUser ? '(you)' : ''}}</n8n-text>
+				<n8n-text :bold="true">{{firstName}} {{lastName}} {{isCurrentUser ? '(you)' : ''}}</n8n-text>
 			</div>
 			<div>
 				<n8n-text size="small" color="text-light">{{email}}</n8n-text>
@@ -34,7 +34,10 @@ export default Vue.extend({
 		N8nBadge,
 	},
 	props: {
-		fullName: {
+		firstName: {
+			type: String,
+		},
+		lastName: {
 			type: String,
 		},
 		email: {

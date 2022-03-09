@@ -75,6 +75,7 @@ export default mixins(
 			this.inviter = invite.inviter as {firstName: string, lastName: string};
 		} catch (e) {
 			this.$showError(e, this.$locale.baseText('TOKEN_VALIDATION_ERROR'));
+			this.$router.replace({name: 'SigninView'});
 		}
 	},
 	computed: {
