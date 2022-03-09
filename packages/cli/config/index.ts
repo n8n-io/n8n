@@ -599,7 +599,7 @@ const config = convict({
 				doc: 'How to send emails',
 				format: ['', 'smtp'],
 				default: 'smtp',
-				env: 'N8N_MODE',
+				env: 'N8N_EMAIL_MODE',
 			},
 			smtp: {
 				host: {
