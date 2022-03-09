@@ -1122,7 +1122,7 @@
 	"INVITE_NEW_USERS": "Invite new users",
 	"INVITE_RESENT": "Invite resent",
 	"INVITE_USER": "Invite user",
-	"INVITE_X_USER": "Invite {count} user",
+	"INVITE_X_USER": "Invite {count} users",
 	"LAST_NAME": "Last name",
 	"LOADING": "Loading",
 	"LOGIN_ERROR": "Problem logging in",
