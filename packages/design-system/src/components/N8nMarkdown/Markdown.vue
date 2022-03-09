@@ -1,6 +1,10 @@
 <template>
-	<div>
-		<div v-if="!loading" ref="editor" :class="theme === 'markdown' ? $style.markdown : $style.sticky" v-html="htmlContent" />
+  <div>
+    <div 
+      v-if="!loading" 
+      ref="editor" 
+      :class="theme === 'markdown' ? $style.markdown : $style.sticky" v-html="htmlContent" 
+    />
 		<div v-else :class="$style.markdown">
 			<div v-for="(block, index) in loadingBlocks"
 				:key="index">
@@ -219,49 +223,49 @@ export default {
 }
 
 .sticky {
-	color: var(--color-text-dark);
+  color: var(--color-text-dark);
 
-	h1, h2, h3, h4 {
-		margin-bottom: var(--spacing-2xs);
-		font-weight: var(--font-weight-bold);
-	}
+  h1, h2, h3, h4 {
+    margin-bottom: var(--spacing-2xs);
+    font-weight: var(--font-weight-bold);
+  }
 
-	h1 {
-		font-size: 36px;
-		line-height: var(--font-line-height-xloose);
-	}
+  h1 {
+    font-size: 36px;
+    line-height: var(--font-line-height-xloose);
+  }
 
-	h2 {
-		font-size: 24px;
-		line-height: var(--font-line-height-loose);
-	}
+  h2 {
+    font-size: 24px;
+    line-height: var(--font-line-height-loose);
+  }
 
-	h3 {
-		font-size: var(--font-size-m);
-		line-height: var(--font-line-height-regular);
-	}
+  h3 {
+    font-size: var(--font-size-m);
+    line-height: var(--font-line-height-regular);
+  }
 
-	p {
-		margin-bottom: var(--spacing-2xs);
-		font-size: var(--font-size-s);
-		font-weight: var(--font-weight-regular);
-		line-height: var(--font-line-height-loose);
-	}
+  p {
+    margin-bottom: var(--spacing-2xs);
+    font-size: var(--font-size-s);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--font-line-height-loose);
+  }
 
-	ul, ol {
-		margin-bottom: var(--spacing-2xs);
-		padding-left: var(--spacing-m);
+  ul, ol {
+    margin-bottom: var(--spacing-2xs);
+    padding-left: var(--spacing-m);
 
-		li {
-			margin-top: 0.25em;
-			font-size: var(--font-size-s);
-			font-weight: var(--font-weight-regular);
-			line-height: var(--font-line-height-regular);
-		}
-	}
+    li {
+      margin-top: 0.25em;
+      font-size: var(--font-size-s);
+      font-weight: var(--font-weight-regular);
+      line-height: var(--font-line-height-regular);
+    }
+  }
 }
 
 .spacer {
-	margin: var(--spacing-2xl);
+ margin: var(--spacing-2xl);
 }
 </style>
