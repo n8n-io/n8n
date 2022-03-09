@@ -79,6 +79,7 @@ export default mixins(showMessage).extend({
 						},
 					},
 					placeholder: 'name1@email.com, name2@email.com, ...',
+					capitalize: true,
 				},
 			},
 			{
@@ -94,6 +95,7 @@ export default mixins(showMessage).extend({
 							label: this.$locale.baseText('MEMBER_ROLE'),
 						},
 					],
+					capitalize: true,
 				},
 			},
 		];

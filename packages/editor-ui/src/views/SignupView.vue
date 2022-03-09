@@ -33,6 +33,7 @@ export default mixins(
 						maxlength: 32,
 						required: true,
 						autocomplete: 'given-name',
+						capitalize: true,
 					},
 				},
 				{
@@ -42,6 +43,7 @@ export default mixins(
 						maxlength: 32,
 						required: true,
 						autocomplete: 'family-name',
+						capitalize: true,
 					},
 				},
 				{
@@ -53,6 +55,7 @@ export default mixins(
 						required: true,
 						infoText: this.$locale.baseText('DEFAULT_PASSWORD_REQUIREMENTS'),
 						autocomplete: 'new-password',
+						capitalize: true,
 					},
 				},
 			],

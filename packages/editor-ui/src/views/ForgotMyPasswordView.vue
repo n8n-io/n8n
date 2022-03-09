@@ -38,6 +38,7 @@ export default mixins(
 						required: true,
 						validationRules: [{name: 'VALID_EMAIL'}],
 						autocomplete: 'email',
+						capitalize: true,
 					},
 				},
 			];
