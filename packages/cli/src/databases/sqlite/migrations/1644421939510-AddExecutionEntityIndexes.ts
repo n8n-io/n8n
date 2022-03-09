@@ -9,7 +9,10 @@ export class AddExecutionEntityIndexes1644421939510 implements MigrationInterfac
 		logMigrationStart(this.name);
 		const tablePrefix = config.get('database.tablePrefix');
 
+		await queryRunner.query(`DROP INDEX IF EXISTS 'IDX_${tablePrefix}c4d999a5e90784e8caccf5589d'`);
+
 		await queryRunner.query(`DROP INDEX 'IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2'`);
+
 		await queryRunner.query(
 			`CREATE INDEX 'IDX_${tablePrefix}06da892aaf92a48e7d3e400003' ON '${tablePrefix}execution_entity' ('workflowId', 'waitTill', 'id') `,
 		);
@@ -38,6 +41,9 @@ export class AddExecutionEntityIndexes1644421939510 implements MigrationInterfac
 		await queryRunner.query(`DROP INDEX 'IDX_${tablePrefix}06da892aaf92a48e7d3e400003'`);
 		await queryRunner.query(
 			`CREATE INDEX 'IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2' ON '${tablePrefix}execution_entity' ('waitTill') `,
+		);
+		await queryRunner.query(
+			`CREATE INDEX IF NOT EXISTS 'IDX_${tablePrefix}c4d999a5e90784e8caccf5589d' ON '${tablePrefix}execution_entity' ('workflowId') `,
 		);
 	}
 }
