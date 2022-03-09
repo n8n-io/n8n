@@ -1,7 +1,7 @@
 <template functional>
 	<div :class="{[$style.inputLabelContainer]: !props.labelHoverableOnly}">
-		<div :class="{[$style.inputLabel]: props.labelHoverableOnly, [$options.methods.getLabelClass(props, $style)]: true}">
-			<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size" :compact="!props.underline">
+		<div :class="$options.methods.getLabelClass(props, $style)">
+			<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size" :compact="!props.underline" :capitalize="props.capitalize">
 				{{ props.label }}
 				<component :is="$options.components.N8nText" color="primary" :bold="props.bold" :size="props.size" v-if="props.required">*</component>
 			</component>
@@ -60,6 +60,10 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		capitalize: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	methods: {
 		addTargetBlank,
@@ -68,11 +72,19 @@ export default {
 				return '';
 			}
 
+			const classes = [];
 			if (props.underline) {
-				return $style[`label-${props.size}-underline`];
+				classes.push($style[`label-${props.size}-underline`]);
+			}
+			else {
+				classes.push($style[`label-${props.size}`]);
 			}
 
-			return $style[`label-${props.size}`];
+			if (props.labelHoverableOnly) {
+				classes.push($style.inputLabel);
+			}
+
+			return classes;
 		},
 	},
 };

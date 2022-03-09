@@ -37,6 +37,7 @@ export default mixins(
 						showRequiredAsterisk: false,
 						validateOnBlur: false,
 						autocomplete: 'email',
+						capitalize: true,
 					},
 				},
 				{
@@ -48,6 +49,7 @@ export default mixins(
 						showRequiredAsterisk: false,
 						validateOnBlur: false,
 						autocomplete: 'current-password',
+						capitalize: true,
 					},
 				},
 			],
