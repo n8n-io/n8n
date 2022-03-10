@@ -1,13 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
-
 import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
-import {
-	addressFields,
-	addressOperations,
-	OnOfficeAddressReadAdditionalFields,
-} from './AddressDescription';
+import { addressFields, addressOperations } from './descriptions/AddressDescription';
+import { OnOfficeAddressReadAdditionalFields } from './descriptions/CommonReadDescription';
+import { estateFields, estateOperations } from './descriptions/EstateDescription';
 import { createFilterParameter, onOfficeApiAction } from './GenericFunctions';
 
 export class OnOffice implements INodeType {
@@ -18,6 +13,7 @@ export class OnOffice implements INodeType {
 		group: ['transform'],
 		version: 1,
 		description: 'Consume OnOffice API',
+		documentationUrl: 'https://apidoc.onoffice.de/',
 		defaults: {
 			name: 'OnOffice',
 			color: '#80a9d7',
@@ -37,8 +33,8 @@ export class OnOffice implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Estates',
-						value: 'estates',
+						name: 'Estate',
+						value: 'estate',
 					},
 					{
 						name: 'Address',
@@ -52,6 +48,9 @@ export class OnOffice implements INodeType {
 
 			...addressOperations,
 			...addressFields,
+
+			...estateOperations,
+			...estateFields,
 		],
 	};
 
@@ -82,6 +81,10 @@ export class OnOffice implements INodeType {
 					formatoutput: additionalFields.formatOutput,
 					outputlanguage: additionalFields.language,
 					countryIsoCodeType: additionalFields.countryIsoCodeType || undefined,
+					estatelanguage: additionalFields.estateLanguage,
+					addestatelanguage: additionalFields.addEstateLanguage,
+					addMainLangId: additionalFields.addMainLangId,
+					georangesearch: additionalFields.geoRangeSearch,
 				};
 
 				if (resource === 'address') {

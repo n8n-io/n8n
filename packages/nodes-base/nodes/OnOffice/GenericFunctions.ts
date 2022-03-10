@@ -12,7 +12,7 @@ import {
 import { OptionsWithUri } from 'request';
 
 import { createHash } from 'crypto';
-import { OnOfficeFilterConfiguration } from './AddressDescription';
+import { OnOfficeFilterConfiguration } from './descriptions/CommonReadDescription';
 
 type OnOfficeAction = 'get' | 'read';
 type OnOfficeActionId = `urn:onoffice-de-ns:smart:2.5:smartml:action:${'get' | 'read'}`;
