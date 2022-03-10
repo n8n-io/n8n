@@ -411,6 +411,12 @@ const config = convict({
 		env: 'N8N_SSL_CERT',
 		doc: 'SSL Cert for HTTPS Protocol',
 	},
+	externalUrl: {
+		format: String,
+		default: '',
+		env: 'N8N_EXTERNAL_URL',
+		doc: 'Public URL where your instance can be reached. Used by emails sent from n8n.',
+	},
 
 	security: {
 		excludeEndpoints: {

@@ -11,11 +11,10 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
-import { validatePassword } from '../UserManagementHelper';
+import { getInstanceBaseUrl, validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
-import { getBaseUrl } from '../../GenericHelpers';
 import config = require('../../../config');
 
 export function passwordResetNamespace(this: N8nApp): void {
@@ -73,7 +72,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			await Db.collections.User!.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
 
-			const baseUrl = getBaseUrl();
+			const baseUrl = getInstanceBaseUrl();
 			const url = new URL('/change-password', baseUrl);
 			url.searchParams.append('userId', id);
 			url.searchParams.append('token', resetPasswordToken);
