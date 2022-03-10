@@ -8,10 +8,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -193,7 +193,12 @@ export class Github implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single issue.',
+						description: 'Get the data of a single file.',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'List contents of a folder.',
 					},
 				],
 				default: 'create',
@@ -413,9 +418,37 @@ export class Github implements INodeType {
 							'file',
 						],
 					},
+					hide: {
+						operation: [
+							'list',
+						],
+					},
 				},
 				placeholder: 'docs/README.md',
 				description: 'The file path of the file. Has to contain the full path.',
+			},
+
+			// ----------------------------------
+			//         file:list
+			// ----------------------------------
+			{
+				displayName: 'Path',
+				name: 'filePath',
+				type: 'string',
+				default: '',
+				required: false,
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+						operation: [
+							'list',
+						],
+					},
+				},
+				placeholder: 'docs/',
+				description: 'The path of the folder to list.',
 			},
 
 			// ----------------------------------
@@ -628,7 +661,34 @@ export class Github implements INodeType {
 				description: 'Name of the binary property in which to save the binary data of the received file.',
 			},
 
-
+			{
+				displayName: 'Additional Parameters',
+				name: 'additionalParameters',
+				placeholder: 'Add Parameter',
+				description: 'Additional fields to add.',
+				type: 'collection',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Reference',
+						name: 'reference',
+						type: 'string',
+						default: '',
+						placeholder: 'master',
+						description: 'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         issue
@@ -1705,7 +1765,7 @@ export class Github implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async githubApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async githubApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 				const baseUrl = credentials!.server as string || 'https://api.github.com/user';
 
@@ -1774,6 +1834,7 @@ export class Github implements INodeType {
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
 		const overwriteDataOperationsArray = [
+			'file:list',
 			'repository:getIssues',
 			'repository:listPopularPaths',
 			'repository:listReferrers',
@@ -1891,11 +1952,15 @@ export class Github implements INodeType {
 						body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
 
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-					} else if (operation === 'get') {
+					} else if (operation === 'get' || operation === 'list') {
 						requestMethod = 'GET';
 
 						const filePath = this.getNodeParameter('filePath', i) as string;
+						const additionalParameters = this.getNodeParameter('additionalParameters', i) as IDataObject;
 
+						if (additionalParameters.reference) {
+							qs.ref = additionalParameters.reference;
+						}
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
 					}
 				} else if (resource === 'issue') {
@@ -2182,6 +2247,9 @@ export class Github implements INodeType {
 					const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i);
 
 					if (asBinaryProperty === true) {
+						if (Array.isArray(responseData)) {
+							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.');
+						}
 						// Add the returned data to the item as binary property
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 

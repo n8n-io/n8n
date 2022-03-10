@@ -12,13 +12,16 @@ let stickyNotificationQueue: ElNotificationComponent[] = [];
 
 export const showMessage = mixins(externalHooks).extend({
 	methods: {
-		$showMessage(messageData: ElNotificationOptions, track = true) {
+		$showMessage(
+			messageData: Omit<ElNotificationOptions, 'message'> & { message?: string },
+			track = true,
+		) {
 			messageData.dangerouslyUseHTMLString = true;
 			if (messageData.position === undefined) {
 				messageData.position = 'bottom-right';
 			}
 
-			const notification = this.$notify(messageData);
+			const notification = this.$notify(messageData as ElNotificationOptions);
 
 			if (messageData.duration === 0) {
 				stickyNotificationQueue.push(notification);
@@ -144,6 +147,23 @@ export const showMessage = mixins(externalHooks).extend({
 				return true;
 			} catch (e) {
 				return false;
+			}
+		},
+
+		async confirmModal (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string, showClose = false): Promise<string> {
+			try {
+				const options: ElMessageBoxOptions  = {
+					confirmButtonText: confirmButtonText || this.$locale.baseText('showMessage.ok'),
+					cancelButtonText: cancelButtonText || this.$locale.baseText('showMessage.cancel'),
+					dangerouslyUseHTMLString: true,
+					showClose,
+					...(type && { type }),
+				};
+
+				await this.$confirm(message, headline, options);
+				return 'confirmed';
+			} catch (e) {
+				return e as string;
 			}
 		},
 

@@ -106,7 +106,7 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			const activeNodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;
 			}

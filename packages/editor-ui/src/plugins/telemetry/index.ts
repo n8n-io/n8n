@@ -3,7 +3,9 @@ import {
 	ITelemetrySettings,
 	IDataObject,
 } from 'n8n-workflow';
-import { INodeCreateElement } from "@/Interface";
+import { ILogLevel, INodeCreateElement, IRootState } from "@/Interface";
+import { Route } from "vue-router";
+import { Store } from "vuex";
 
 declare module 'vue/types/vue' {
 	interface Vue {
@@ -35,6 +37,10 @@ interface IUserNodesPanelSession {
 
 class Telemetry {
 
+	private pageEventQueue: Array<{category: string, route: Route}>;
+	private previousPath: string;
+	private store: Store<IRootState> | null;
+
 	private get telemetry() {
 		// @ts-ignore
 		return window.rudderanalytics;
@@ -49,14 +55,23 @@ class Telemetry {
 		},
 	};
 
-	init(options: ITelemetrySettings, instanceId: string) {
+	constructor() {
+		this.pageEventQueue = [];
+		this.previousPath = '';
+		this.store = null;
+	}
+
+	init(options: ITelemetrySettings, props: {instanceId: string, logLevel?: ILogLevel, store: Store<IRootState>}) {
 		if (options.enabled && !this.telemetry) {
 			if(!options.config) {
 				return;
 			}
 
-			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false });
-			this.telemetry.identify(instanceId);
+			this.store = props.store;
+			const logging = props.logLevel === 'debug' ? { logLevel: 'DEBUG'} : {};
+			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false, ...logging});
+			this.telemetry.identify(props.instanceId);
+			this.flushPageEvents();
 		}
 	}
 
@@ -66,10 +81,34 @@ class Telemetry {
 		}
 	}
 
-	page(category?: string, name?: string | undefined | null) {
+	page(category: string, route: Route) {
 		if (this.telemetry)	{
-			this.telemetry.page(category, name);
+			if (route.path === this.previousPath) { // avoid duplicate requests query is changed for example on search page
+				return;
+			}
+			this.previousPath = route.path;
+
+			const pageName = route.name;
+			let properties: {[key: string]: string} = {};
+			if (this.store && route.meta && route.meta.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
+				properties = route.meta.telemetry.getProperties(route, this.store);
+			}
+			this.telemetry.page(category, pageName, properties);
 		}
+		else {
+			this.pageEventQueue.push({
+				category,
+				route,
+			});
+		}
+	}
+
+	flushPageEvents() {
+		const queue = this.pageEventQueue;
+		this.pageEventQueue = [];
+		queue.forEach(({category, route}) => {
+			this.page(category, route);
+		});
 	}
 
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
