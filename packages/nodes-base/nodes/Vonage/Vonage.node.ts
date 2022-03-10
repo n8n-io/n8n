@@ -12,7 +12,7 @@ import {
 import {
 	vonageApiRequest,
 } from './GenericFunctions';
-
+const isOnline = require('is-online');
 export class Vonage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vonage',
@@ -420,96 +420,103 @@ export class Vonage implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
-		let responseData;
+		// tslint:disable-next-line:no-any
+		let responseData:any;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		for (let i = 0; i < length; i++) {
-			try {
-				if (resource === 'sms') {
+		isOnline().then(async (online:boolean) => {
+			if (online) {
+				try {
+					for (let i = 0; i < length; i++) {
+						try {
+							if (resource === 'sms') {
+								if (operation === 'send') {
+									const from = this.getNodeParameter('from', i) as string;
 
-					if (operation === 'send') {
+									const to = this.getNodeParameter('to', i) as string;
 
-						const from = this.getNodeParameter('from', i) as string;
+									const type = this.getNodeParameter('type', i, 'text') as string;
 
-						const to = this.getNodeParameter('to', i) as string;
+									const body: IDataObject = { from, to, type };
 
-						const type = this.getNodeParameter('type', i, 'text') as string;
+									if (type === 'text' || type === 'unicode') {
+										const message = this.getNodeParameter('message', i) as string;
 
-						const body: IDataObject = {
-							from,
-							to,
-							type,
-						};
+										body.text = message;
+									}
 
-						if (type === 'text' || type === 'unicode') {
-							const message = this.getNodeParameter('message', i) as string;
+									if (type === 'binary') {
+										const data = this.getNodeParameter('body', i) as string;
 
-							body.text = message;
+										const udh = this.getNodeParameter('udh', i) as string;
+
+										body.udh = udh;
+
+										body.body = data;
+									}
+
+									if (type === 'wappush') {
+										const title = this.getNodeParameter('title', i) as string;
+
+										const url = this.getNodeParameter('url', i) as string;
+
+										const validity = this.getNodeParameter('validity', i) as number;
+
+										body.title = title;
+
+										body.url = url;
+
+										body.validity = validity * 60000;
+									}
+
+									if (type === 'vcard') {
+										const vcard = this.getNodeParameter('vcard', i) as string;
+
+										body.vcard = vcard;
+									}
+
+									if (type === 'vcal') {
+										const vcal = this.getNodeParameter('vcal', i) as string;
+
+										body.vcal = vcal;
+									}
+
+									const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+									Object.assign(body, additionalFields);
+
+									if (body.ttl) {
+										// transform minutes to milliseconds
+										body.ttl = (body.ttl as number) * 60000;
+									}
+
+									responseData = await vonageApiRequest.call(this, 'POST', '/sms/json', body);
+
+									responseData = responseData.messages;
+								}
+							}
+						} catch (error) {
+							if (this.continueOnFail()) {
+								returnData.push({ error: error.message });
+								continue;
+							}
+							throw error;
 						}
-
-						if (type === 'binary') {
-							const data = this.getNodeParameter('body', i) as string;
-
-							const udh = this.getNodeParameter('udh', i) as string;
-
-							body.udh = udh;
-
-							body.body = data;
+						if (Array.isArray(responseData)) {
+							returnData.push.apply(returnData, responseData as IDataObject[]);
+						} else if (responseData !== undefined) {
+							returnData.push(responseData as IDataObject);
 						}
-
-						if (type === 'wappush') {
-							const title = this.getNodeParameter('title', i) as string;
-
-							const url = this.getNodeParameter('url', i) as string;
-
-							const validity = this.getNodeParameter('validity', i) as number;
-
-							body.title = title;
-
-							body.url = url;
-
-							body.validity = validity * 60000;
-						}
-
-						if (type === 'vcard') {
-							const vcard = this.getNodeParameter('vcard', i) as string;
-
-							body.vcard = vcard;
-						}
-
-						if (type === 'vcal') {
-							const vcal = this.getNodeParameter('vcal', i) as string;
-
-							body.vcal = vcal;
-						}
-
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						Object.assign(body, additionalFields);
-
-						if (body.ttl) {
-							// transform minutes to milliseconds
-							body.ttl = (body.ttl as number) * 60000;
-						}
-
-						responseData = await vonageApiRequest.call(this, 'POST', '/sms/json', body);
-
-						responseData = responseData.messages;
+					}
+					return [this.helpers.returnJsonArray(returnData)];
+				} catch (error) {
+					if (error.response) {
+						console.log(`Error : ${error.response}`);
 					}
 				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
-					continue;
-				}
-				throw error;
+			} else {
+				console.log('we have a network problem');
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
-			}
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+		});
 	}
 }

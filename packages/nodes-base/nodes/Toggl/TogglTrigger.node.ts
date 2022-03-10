@@ -63,7 +63,7 @@ export class TogglTrigger implements INodeType {
 		let timeEntries = [];
 		qs.start_date = webhookData.lastTimeChecked;
 		qs.end_date = moment().format();
-		isOnline().then(async online => {
+		isOnline().then(async (online:boolean) => {
 		if(online){
 			try {
 				timeEntries = await togglApiRequest.call(this, 'GET', endpoint, {}, qs);
@@ -75,7 +75,7 @@ export class TogglTrigger implements INodeType {
 				return [this.helpers.returnJsonArray(timeEntries)];
 			}
 		}
-	};
+	});
 		return null;
 	}
 

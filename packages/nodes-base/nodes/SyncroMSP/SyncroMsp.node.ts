@@ -1,7 +1,4 @@
-import {
-	INodeTypeBaseDescription,
-	INodeVersionedType,
-} from 'n8n-workflow';
+import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
 
 import { NodeVersionedType } from '../../src/NodeVersionedType';
 
@@ -22,19 +19,18 @@ export class SyncroMsp extends NodeVersionedType {
 		const nodeVersions: INodeVersionedType['nodeVersions'] = {
 			1: new SyncroMspV1(baseDescription),
 		};
-		isOnline().then(async online => {
-		if(online){
-							try {
-		super(nodeVersions, baseDescription);
-		}catch(error) {
-						if (error.response) {
-													console.log(`Error : ${error.response}`);
-							}
-						}
-		} else {
-						console.log('we have a network problem');
+		isOnline().then(async (online: boolean) => {
+			if (online) {
+				try {
+					super(nodeVersions, baseDescription);
+				} catch (error) {
+					if (error.response) {
+						console.log(`Error : ${error.response}`);
+					}
+				}
+			} else {
+				console.log('we have a network problem');
+			}
+		});
 	}
-};
-
-}
 }

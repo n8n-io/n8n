@@ -148,11 +148,13 @@ export class Zulip implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
-		let responseData;
+		// tslint:disable-next-line:no-any
+		let responseData:any;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		isOnline().then(async online => {
+
+		isOnline().then(async (online:boolean) => {
 		if(online){
 				try {
 						for (let i = 0; i < length; i++) {
@@ -472,6 +474,8 @@ export class Zulip implements INodeType {
 							}
 						}
 		} else {
-						console.log('we have a network problem');
+							console.log('we have a network problem');
 		}
-};
+	});
+	}
+}

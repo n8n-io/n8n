@@ -314,8 +314,9 @@ export class Zendesk implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
-		let responseData;
-		isOnline().then(async online => {
+		// tslint:disable-next-line:no-any
+		let responseData:any;
+		isOnline().then(async (online:boolean) => {
 		if(online){
 							try {
 		for (let i = 0; i < length; i++) {
@@ -752,5 +753,7 @@ export class Zendesk implements INodeType {
 						}
 		} else {
 						console.log('we have a network problem');
+		}
+	});
 	}
-};
+}

@@ -74,7 +74,8 @@ export class UProc implements INodeType {
 						displayName: 'Data Webhook',
 						name: 'dataWebhook',
 						type: 'string',
-						description: 'URL to send tool response when tool has resolved your request',
+						description:
+							'URL to send tool response when tool has resolved your request',
 						default: '',
 					},
 				],
@@ -85,11 +86,14 @@ export class UProc implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = (items.length as unknown) as number;
 		let responseData;
 		const group = this.getNodeParameter('group', 0) as string;
 		const tool = this.getNodeParameter('tool', 0) as string;
-		const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
+		const additionalOptions = this.getNodeParameter(
+			'additionalOptions',
+			0,
+		) as IDataObject;
 
 		const dataWebhook = additionalOptions.dataWebhook as string;
 
@@ -97,63 +101,77 @@ export class UProc implements INodeType {
 			[key: string]: any; // tslint:disable-line:no-any
 		}
 
-		const fields = toolParameters.filter((field) => {
-			return field && field.displayOptions && field.displayOptions.show && field.displayOptions.show.group && field.displayOptions.show.tool &&
-				field.displayOptions.show.group.indexOf(group) !== -1 && field.displayOptions.show.tool.indexOf(tool) !== -1;
-		}).map((field) => {
-			return field.name;
-		});
+		const fields = toolParameters
+			.filter(field => {
+				return (
+					field &&
+					field.displayOptions &&
+					field.displayOptions.show &&
+					field.displayOptions.show.group &&
+					field.displayOptions.show.tool &&
+					field.displayOptions.show.group.indexOf(group) !== -1 &&
+					field.displayOptions.show.tool.indexOf(tool) !== -1
+				);
+			})
+			.map(field => {
+				return field.name;
+			});
 
 		const requestPromises = [];
-		isOnline().then(async online => {
-		if(online){
-							try {
-		for (let i = 0; i < length; i++) {
-			try {
-				const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();
-				const body: LooseObject = {
-					processor: toolKey,
-					params: {},
-				};
+		isOnline().then(async (online:boolean) => {
+			if (online) {
+				try {
+					for (let i = 0; i < length; i++) {
+						try {
+							const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();
+							const body: LooseObject = {
+								processor: toolKey,
+								params: {},
+							};
 
-				fields.forEach((field) => {
-					if (field && field.length) {
-						const data = this.getNodeParameter(field, i) as string;
-						body.params[field] = data + '';
-					}
-				});
+							fields.forEach(field => {
+								if (field && field.length) {
+									const data = this.getNodeParameter(field, i) as string;
+									body.params[field] = data + '';
+								}
+							});
 
-				if (dataWebhook && dataWebhook.length) {
-					body.callback = {};
-				}
-
-				if (dataWebhook && dataWebhook.length) {
-					body.callback.data = dataWebhook;
-				}
-
-				//Change to multiple requests
-				responseData = await uprocApiRequest.call(this, 'POST', body);
-
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
-					continue;
-				}
-				throw error;
-			}
-		}
-		return [this.helpers.returnJsonArray(returnData)];
-	}catch(error) {
-						if (error.response) {
-													console.log(`Error : ${error.response}`);
+							if (dataWebhook && dataWebhook.length) {
+								body.callback = {};
 							}
+
+							if (dataWebhook && dataWebhook.length) {
+								body.callback.data = dataWebhook;
+							}
+
+							//Change to multiple requests
+							responseData = await uprocApiRequest.call(this, 'POST', body);
+
+							if (Array.isArray(responseData)) {
+								returnData.push.apply(
+									returnData,
+									responseData as IDataObject[],
+								);
+							} else {
+								returnData.push(responseData as IDataObject);
+							}
+						} catch (error) {
+							if (this.continueOnFail()) {
+								returnData.push({ error: error.message });
+								continue;
+							}
+							throw error;
 						}
-		} else {
-						console.log('we have a network problem');
+					}
+					return [this.helpers.returnJsonArray(returnData)];
+				} catch (error) {
+					if (error.response) {
+						console.log(`Error : ${error.response}`);
+					}
+				}
+			} else {
+				console.log('we have a network problem');
+			}
+		});
 	}
-};
+}

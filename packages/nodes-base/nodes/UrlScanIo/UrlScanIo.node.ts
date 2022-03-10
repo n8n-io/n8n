@@ -108,8 +108,9 @@ export class UrlScanIo implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as 'scan';
 		const operation = this.getNodeParameter('operation', 0) as 'perform' | 'get' | 'getAll';
 
-		let responseData;
-		isOnline().then(async online => {
+		// tslint:disable-next-line:no-any
+		let responseData:any;
+		isOnline().then(async (online:boolean) => {
 		if(online){
 							try {
 		for (let i = 0; i < items.length; i++) {
@@ -209,12 +210,15 @@ export class UrlScanIo implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
-	}catch(error) {
-						if (error.response) {
-													console.log(`Error : ${error.response}`);
-							}
-						}
-		} else {
-						console.log('we have a network problem');
+	}catch (error) {
+					if (error.response) {
+						console.log(`Error : ${error.response}`);
+					}
+				}
+			} else {
+				console.log('we have a network problem');
+			}
+		});
 	}
-};
+}
+

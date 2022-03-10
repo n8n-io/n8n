@@ -512,7 +512,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 		return new Promise((resolve, reject) => {
 			const data: Buffer[] = [];
-			isOnline().then(async online => {
+			isOnline().then(async (online:boolean) => {
 			if(online){
 							try {
 			req.on('data', (chunk) => {
@@ -751,7 +751,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				} else {
 							throw new NodeOperationError(this.getNode(), error);
 			}
-		};
+		});
 		});
 	}
 }

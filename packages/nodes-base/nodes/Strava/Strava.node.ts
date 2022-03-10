@@ -68,125 +68,189 @@ export class Strava implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		isOnline().then(async online => {
-		if(online){
-							try {
-		for (let i = 0; i < length; i++) {
+		isOnline().then(async (online:boolean) => {
+			if (online) {
+				try {
+					for (let i = 0; i < length; i++) {
+						try {
+							if (resource === 'activity') {
+								//https://developers.strava.com/docs/reference/#api-Activities-createActivity
+								if (operation === 'create') {
+									const name = this.getNodeParameter('name', i) as string;
 
-			try {
-				if (resource === 'activity') {
-					//https://developers.strava.com/docs/reference/#api-Activities-createActivity
-					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+									const type = this.getNodeParameter('type', i) as string;
 
-						const type = this.getNodeParameter('type', i) as string;
+									const startDate = this.getNodeParameter(
+										'startDate',
+										i,
+									) as string;
 
-						const startDate = this.getNodeParameter('startDate', i) as string;
+									const elapsedTime = this.getNodeParameter(
+										'elapsedTime',
+										i,
+									) as number;
 
-						const elapsedTime = this.getNodeParameter('elapsedTime', i) as number;
+									const additionalFields = this.getNodeParameter(
+										'additionalFields',
+										i,
+									) as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+									if (additionalFields.trainer === true) {
+										additionalFields.trainer = 1;
+									}
 
-						if (additionalFields.trainer === true) {
-							additionalFields.trainer = 1;
-						}
+									if (additionalFields.commute === true) {
+										additionalFields.commute = 1;
+									}
 
-						if (additionalFields.commute === true) {
-							additionalFields.commute = 1;
-						}
+									const body: IDataObject = {
+										name,
+										type,
+										start_date_local: moment(startDate).toISOString(),
+										elapsed_time: elapsedTime,
+									};
 
-						const body: IDataObject = {
-							name,
-							type,
-							start_date_local: moment(startDate).toISOString(),
-							elapsed_time: elapsedTime,
-						};
+									Object.assign(body, additionalFields);
 
-						Object.assign(body, additionalFields);
+									responseData = await stravaApiRequest.call(
+										this,
+										'POST',
+										'/activities',
+										body,
+									);
+								}
+								//https://developers.strava.com/docs/reference/#api-Activities-getActivityById
+								if (operation === 'get') {
+									const activityId = this.getNodeParameter(
+										'activityId',
+										i,
+									) as string;
 
-						responseData = await stravaApiRequest.call(this, 'POST', '/activities', body);
-					}
-					//https://developers.strava.com/docs/reference/#api-Activities-getActivityById
-					if (operation === 'get') {
-						const activityId = this.getNodeParameter('activityId', i) as string;
+									responseData = await stravaApiRequest.call(
+										this,
+										'GET',
+										`/activities/${activityId}`,
+									);
+								}
+								if (
+									['getLaps', 'getZones', 'getKudos', 'getComments'].includes(
+										operation,
+									)
+								) {
+									const path: IDataObject = {
+										getComments: 'comments',
+										getZones: 'zones',
+										getKudos: 'kudos',
+										getLaps: 'laps',
+									};
 
-						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}`);
-					}
-					if (['getLaps', 'getZones', 'getKudos', 'getComments'].includes(operation)) {
+									const activityId = this.getNodeParameter(
+										'activityId',
+										i,
+									) as string;
 
-						const path: IDataObject = {
-							'getComments': 'comments',
-							'getZones': 'zones',
-							'getKudos': 'kudos',
-							'getLaps': 'laps',
-						};
+									const returnAll = this.getNodeParameter(
+										'returnAll',
+										i,
+									) as boolean;
 
-						const activityId = this.getNodeParameter('activityId', i) as string;
+									responseData = await stravaApiRequest.call(
+										this,
+										'GET',
+										`/activities/${activityId}/${path[operation]}`,
+									);
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+									if (returnAll === false) {
+										const limit = this.getNodeParameter('limit', i) as number;
+										responseData = responseData.splice(0, limit);
+									}
+								}
+								//https://developers.mailerlite.com/reference#subscribers
+								if (operation === 'getAll') {
+									const returnAll = this.getNodeParameter(
+										'returnAll',
+										i,
+									) as boolean;
 
-						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}/${path[operation]}`);
+									if (returnAll) {
+										responseData = await stravaApiRequestAllItems.call(
+											this,
+											'GET',
+											`/activities`,
+											{},
+											qs,
+										);
+									} else {
+										qs.per_page = this.getNodeParameter('limit', i) as number;
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = responseData.splice(0, limit);
-						}
-					}
-					//https://developers.mailerlite.com/reference#subscribers
-					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+										responseData = await stravaApiRequest.call(
+											this,
+											'GET',
+											`/activities`,
+											{},
+											qs,
+										);
+									}
+								}
+								//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
+								if (operation === 'update') {
+									const activityId = this.getNodeParameter(
+										'activityId',
+										i,
+									) as string;
 
-						if (returnAll) {
+									const updateFields = this.getNodeParameter(
+										'updateFields',
+										i,
+									) as IDataObject;
 
-							responseData = await stravaApiRequestAllItems.call(this, 'GET', `/activities`, {}, qs);
-						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+									if (updateFields.trainer === true) {
+										updateFields.trainer = 1;
+									}
 
-							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
-						}
-					}
-					//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
-					if (operation === 'update') {
-						const activityId = this.getNodeParameter('activityId', i) as string;
+									if (updateFields.commute === true) {
+										updateFields.commute = 1;
+									}
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+									const body: IDataObject = {};
 
-						if (updateFields.trainer === true) {
-							updateFields.trainer = 1;
-						}
+									Object.assign(body, updateFields);
 
-						if (updateFields.commute === true) {
-							updateFields.commute = 1;
-						}
-
-						const body: IDataObject = {};
-
-						Object.assign(body, updateFields);
-
-						responseData = await stravaApiRequest.call(this, 'PUT', `/activities/${activityId}`, body);
-					}
-				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
-					continue;
-				}
-				throw error;
-			}
-		}
-
-		return [this.helpers.returnJsonArray(returnData)];
-	}catch(error) {
-						if (error.response) {
-													console.log(`Error : ${error.response}`);
+									responseData = await stravaApiRequest.call(
+										this,
+										'PUT',
+										`/activities/${activityId}`,
+										body,
+									);
+								}
 							}
+							if (Array.isArray(responseData)) {
+								returnData.push.apply(
+									returnData,
+									responseData as IDataObject[],
+								);
+							} else if (responseData !== undefined) {
+								returnData.push(responseData as IDataObject);
+							}
+						} catch (error) {
+							if (this.continueOnFail()) {
+								returnData.push({ error: error.message });
+								continue;
+							}
+							throw error;
 						}
-		} else {
-						console.log('we have a network problem');
+					}
+
+					return [this.helpers.returnJsonArray(returnData)];
+				} catch (error) {
+					if (error.response) {
+						console.log(`Error : ${error.response}`);
+					}
+				}
+			} else {
+				console.log('we have a network problem');
+			}
+		});
 	}
-};
+}
+

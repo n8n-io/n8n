@@ -54,9 +54,7 @@ export class Twilio implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
+						resource: ['sms'],
 					},
 				},
 				options: [
@@ -69,7 +67,6 @@ export class Twilio implements INodeType {
 				default: 'send',
 				description: 'The operation to perform.',
 			},
-
 
 			// ----------------------------------
 			//         sms
@@ -87,12 +84,8 @@ export class Twilio implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'The number from which to send the message',
@@ -106,12 +99,8 @@ export class Twilio implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'The number to which to send the message',
@@ -123,12 +112,8 @@ export class Twilio implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'If the message should be send to WhatsApp',
@@ -141,12 +126,8 @@ export class Twilio implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'The message to send',
@@ -163,7 +144,8 @@ export class Twilio implements INodeType {
 						name: 'statusCallback',
 						type: 'string',
 						default: '',
-						description: 'Status Callbacks allow you to receive events related to the REST resources managed by Twilio: Rooms, Recordings and Compositions',
+						description:
+							'Status Callbacks allow you to receive events related to the REST resources managed by Twilio: Rooms, Recordings and Compositions',
 					},
 				],
 			},
@@ -184,65 +166,86 @@ export class Twilio implements INodeType {
 
 		let requestMethod: string;
 		let endpoint: string;
-		isOnline().then(async online => {
-		if(online){
-							try {
-		for (let i = 0; i < items.length; i++) {
-			try {
-				requestMethod = 'GET';
-				endpoint = '';
-				body = {};
-				qs = {};
+		isOnline().then(async (online:boolean) => {
+			if (online) {
+				try {
+					for (let i = 0; i < items.length; i++) {
+						try {
+							requestMethod = 'GET';
+							endpoint = '';
+							body = {};
+							qs = {};
 
-				resource = this.getNodeParameter('resource', i) as string;
-				operation = this.getNodeParameter('operation', i) as string;
+							resource = this.getNodeParameter('resource', i) as string;
+							operation = this.getNodeParameter('operation', i) as string;
 
-				if (resource === 'sms') {
-					if (operation === 'send') {
-						// ----------------------------------
-						//         sms:send
-						// ----------------------------------
+							if (resource === 'sms') {
+								if (operation === 'send') {
+									// ----------------------------------
+									//         sms:send
+									// ----------------------------------
 
-						requestMethod = 'POST';
-						endpoint = '/Messages.json';
+									requestMethod = 'POST';
+									endpoint = '/Messages.json';
 
-						body.From = this.getNodeParameter('from', i) as string;
-						body.To = this.getNodeParameter('to', i) as string;
-						body.Body = this.getNodeParameter('message', i) as string;
-						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
+									body.From = this.getNodeParameter('from', i) as string;
+									body.To = this.getNodeParameter('to', i) as string;
+									body.Body = this.getNodeParameter('message', i) as string;
+									body.StatusCallback = this.getNodeParameter(
+										'options.statusCallback',
+										i,
+										'',
+									) as string;
 
-						const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
+									const toWhatsapp = this.getNodeParameter(
+										'toWhatsapp',
+										i,
+									) as boolean;
 
-						if (toWhatsapp === true) {
-							body.From = `whatsapp:${body.From}`;
-							body.To = `whatsapp:${body.To}`;
-						}
-					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
-					}
-				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-				}
-
-				const responseData = await twilioApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-				returnData.push(responseData as IDataObject);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
-					continue;
-				}
-				throw error;
-			}
-		}
-
-		return [this.helpers.returnJsonArray(returnData)];
-	}catch(error) {
-						if (error.response) {
-													console.log(`Error : ${error.response}`);
+									if (toWhatsapp === true) {
+										body.From = `whatsapp:${body.From}`;
+										body.To = `whatsapp:${body.To}`;
+									}
+								} else {
+									throw new NodeOperationError(
+										this.getNode(),
+										`The operation "${operation}" is not known!`,
+									);
+								}
+							} else {
+								throw new NodeOperationError(
+									this.getNode(),
+									`The resource "${resource}" is not known!`,
+								);
 							}
+
+							const responseData = await twilioApiRequest.call(
+								this,
+								requestMethod,
+								endpoint,
+								body,
+								qs,
+							);
+
+							returnData.push(responseData as IDataObject);
+						} catch (error) {
+							if (this.continueOnFail()) {
+								returnData.push({ error: error.message });
+								continue;
+							}
+							throw error;
 						}
-		} else {
-						console.log('we have a network problem');
+					}
+
+					return [this.helpers.returnJsonArray(returnData)];
+				} catch (error) {
+					if (error.response) {
+						console.log(`Error : ${error.response}`);
+					}
+				}
+			} else {
+				console.log('we have a network problem');
+			}
+		});
 	}
-};
+}
