@@ -17,10 +17,24 @@ import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import { Store } from 'vuex';
-import { IRootState } from './Interface';
+import { IPermissions, IRootState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
+import { RouteConfigSingleView } from 'vue-router/types/router';
 
 Vue.use(Router);
+
+interface IRouteConfig extends RouteConfigSingleView {
+	meta: {
+		nodeView?: boolean;
+		templatesEnabled?: boolean;
+		getRedirect?: (store: Store<IRootState>) => {name: string} | false;
+		permissions: IPermissions;
+		telemetry?: {
+			disabled?: true;
+			getProperties: (route: Route, store: Store<IRootState>) => object;
+		};
+	};
+};
 
 function getTemplatesRedirect(store: Store<IRootState>) {
 	const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
@@ -368,7 +382,7 @@ const router = new Router({
 				},
 			},
 		},
-	],
+	] as IRouteConfig[],
 });
 
 export default router;
