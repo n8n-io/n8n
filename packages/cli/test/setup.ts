@@ -14,10 +14,11 @@ if (dbType === 'mysqldb') {
 	const password = config.get('database.mysqldb.password');
 	const host = config.get('database.mysqldb.host');
 
-	const passwordSegment = password ? `-p ${password}` : '';
+	const passwordSegment = password ? `-p${password}` : '';
 
 	(async () => {
 		try {
+			jest.setTimeout(30000); // 30 seconds for DB initialization
 			await exec(
 				`echo "CREATE DATABASE IF NOT EXISTS ${BOOTSTRAP_MYSQL_CONNECTION_NAME}" | mysql -h ${host} -u ${username} ${passwordSegment}; USE ${BOOTSTRAP_MYSQL_CONNECTION_NAME};`,
 			);
