@@ -79,7 +79,7 @@ export class DataApi implements INodeType {
 			const valueMetadataId = this.getNodeParameter('valueMetadataId', i);
 			const qs: IDataObject = this.getNodeParameter('additionalFields', i) as IDataObject;
 			
-			let endpoint = "";
+			let endpoint = '';
 
 			switch (operation) {
 				case 'getValuesAsByte': endpoint = `/values/byte/${valueMetadataId}`; break;
