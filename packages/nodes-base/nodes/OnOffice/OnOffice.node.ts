@@ -61,8 +61,8 @@ export class OnOffice implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'address') {
 				if (operation === 'read') {
-					const result = await onOfficeApiAction(this, 'read', 'address', {
-						data: ['phonev'],
+					const result = await onOfficeApiAction.call(this, 'read', 'address', {
+						data: ['phone'],
 						listlimit: 5,
 					});
 
@@ -70,7 +70,10 @@ export class OnOffice implements INodeType {
 				}
 			}
 		}
+
+		const result = returnData.flat() as unknown as IDataObject[];
+
 		// Map data to n8n data structure
-		return [this.helpers.returnJsonArray(returnData)];
+		return [this.helpers.returnJsonArray(result)];
 	}
 }
