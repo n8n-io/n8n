@@ -20,6 +20,7 @@ import { Store } from 'vuex';
 import { IPermissions, IRootState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
+import { VIEWS } from './constants';
 
 Vue.use(Router);
 
@@ -52,7 +53,7 @@ const router = new Router({
 	routes: [
 		{
 			path: '/',
-			name: 'Homepage',
+			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect(store: Store<IRootState>) {
 					const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
@@ -72,7 +73,7 @@ const router = new Router({
 		},
 		{
 			path: '/collections/:id',
-			name: 'TemplatesCollectionView',
+			name: VIEWS.COLLECTION,
 			components: {
 				default: TemplatesCollectionView,
 				sidebar: MainSidebar,
@@ -97,7 +98,7 @@ const router = new Router({
 		},
 		{
 			path: '/execution/:id',
-			name: 'ExecutionById',
+			name: VIEWS.EXECUTION,
 			components: {
 				default: NodeView,
 				header: MainHeader,
@@ -114,7 +115,7 @@ const router = new Router({
 		},
 		{
 			path: '/templates/:id',
-			name: 'TemplatesWorkflowView',
+			name: VIEWS.WORKFLOW_TEMPLATE,
 			components: {
 				default: TemplatesWorkflowView,
 				sidebar: MainSidebar,
@@ -139,7 +140,7 @@ const router = new Router({
 		},
 		{
 			path: '/templates/',
-			name: 'TemplatesSearchView',
+			name: VIEWS.TEMPLATES,
 			components: {
 				default: TemplatesSearchView,
 				sidebar: MainSidebar,
@@ -163,7 +164,7 @@ const router = new Router({
 		},
 		{
 			path: '/workflow',
-			name: 'NodeViewNew',
+			name: VIEWS.NEW_WORKFLOW,
 			components: {
 				default: NodeView,
 				header: MainHeader,
@@ -180,7 +181,7 @@ const router = new Router({
 		},
 		{
 			path: '/workflow/:name',
-			name: 'NodeViewExisting',
+			name: VIEWS.EXISTING_WORKFLOW,
 			components: {
 				default: NodeView,
 				header: MainHeader,
@@ -197,7 +198,7 @@ const router = new Router({
 		},
 		{
 			path: '/workflows/demo',
-			name: 'WorkflowDemo',
+			name: VIEWS.DEMO,
 			components: {
 				default: NodeView,
 			},
@@ -211,7 +212,7 @@ const router = new Router({
 		},
 		{
 			path: '/workflows/templates/:id',
-			name: 'WorkflowTemplate',
+			name: VIEWS.TEMPLATE_IMPORT,
 			components: {
 				default: NodeView,
 				header: MainHeader,
@@ -229,7 +230,7 @@ const router = new Router({
 		},
 		{
 			path: '/signin',
-			name: 'SigninView',
+			name: VIEWS.SIGNIN,
 			components: {
 				default: SigninView,
 			},
@@ -246,7 +247,7 @@ const router = new Router({
 		},
 		{
 			path: '/signup',
-			name: 'SignupView',
+			name: VIEWS.SIGNUP,
 			components: {
 				default: SignupView,
 			},
@@ -263,7 +264,7 @@ const router = new Router({
 		},
 		{
 			path: '/setup',
-			name: 'SetupView',
+			name: VIEWS.SETUP,
 			components: {
 				default: SetupView,
 			},
@@ -283,7 +284,7 @@ const router = new Router({
 		},
 		{
 			path: '/forgot-password',
-			name: 'ForgotMyPasswordView',
+			name: VIEWS.FORGOT_PASSWORD,
 			components: {
 				default: ForgotMyPasswordView,
 			},
@@ -300,7 +301,7 @@ const router = new Router({
 		},
 		{
 			path: '/change-password',
-			name: 'ChangePasswordView',
+			name: VIEWS.CHANGE_PASSWORD,
 			components: {
 				default: ChangePasswordView,
 			},
@@ -317,12 +318,11 @@ const router = new Router({
 		},
 		{
 			path: '/settings',
-			name: 'SettingsRedirect',
 			redirect: '/settings/personal',
 		},
 		{
 			path: '/settings/users',
-			name: 'UsersSettings',
+			name: VIEWS.USERS_SETTINGS,
 			components: {
 				default: SettingsUsersView,
 			},
@@ -342,7 +342,7 @@ const router = new Router({
 		},
 		{
 			path: '/settings/personal',
-			name: 'PersonalSettings',
+			name: VIEWS.PERSONAL_SETTINGS,
 			components: {
 				default: SettingsPersonalView,
 			},
@@ -362,7 +362,7 @@ const router = new Router({
 		},
 		{
 			path: '*',
-			name: 'NotFoundView',
+			name: VIEWS.NOT_FOUND,
 			component: ErrorView,
 			props: {
 				messageKey: 'PAGE_NOT_FOUND_MESSAGE',
