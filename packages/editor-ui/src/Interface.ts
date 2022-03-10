@@ -930,7 +930,7 @@ export type IFormInput = {
 	initialValue?: string | number | boolean | null;
 	properties: {
 		label?: string;
-		type?: 'text' | 'email' | 'password' | 'select' | 'multi-select' | 'label';
+		type?: 'text' | 'email' | 'password' | 'select' | 'multi-select' | 'info';
 		maxlength?: number;
 		required?: boolean;
 		showRequiredAsterisk?: boolean;
