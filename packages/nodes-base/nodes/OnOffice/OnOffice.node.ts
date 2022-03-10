@@ -87,8 +87,8 @@ export class OnOffice implements INodeType {
 					georangesearch: additionalFields.geoRangeSearch,
 				};
 
-				if (resource === 'address') {
-					const result = await onOfficeApiAction.call(this, 'read', 'address', parameters);
+				if (resource === 'address' || resource === 'estate') {
+					const result = await onOfficeApiAction.call(this, 'read', resource, parameters);
 
 					returnData.push(result);
 				}

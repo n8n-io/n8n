@@ -7,6 +7,7 @@ import {
 	IWebhookFunctions,
 	JsonObject,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -16,7 +17,7 @@ import { OnOfficeFilterConfiguration } from './descriptions/CommonReadDescriptio
 
 type OnOfficeAction = 'get' | 'read';
 type OnOfficeActionId = `urn:onoffice-de-ns:smart:2.5:smartml:action:${'get' | 'read'}`;
-type OnOfficeResource = 'estates' | 'address';
+type OnOfficeResource = 'estate' | 'address';
 
 interface OnOfficeResponseRecord {
 	id: string;
@@ -60,7 +61,7 @@ interface SuccessStatus {
 
 interface OnOfficeResponseSuccess {
 	status: { code: 200 } & SuccessStatus;
-	response: { results: OnOfficeActionResponseSuccess[] };
+	response: { results: OnOfficeActionResponse[] };
 }
 interface OnOfficeResponseNoAuth {
 	status: { code: 400 | 401 } & ErrorStatus;
@@ -95,6 +96,24 @@ const assertSuccessfulResponse: (
 	}
 };
 
+const assertSuccessfulActionResponses: (
+	actions: OnOfficeActionResponse[],
+	node: INode,
+) => asserts actions is OnOfficeActionResponseSuccess[] = (actions, node) => {
+	actions.forEach((action) => {
+		if (action.status.errorcode !== 0) {
+			throw new NodeApiError(node, action as unknown as JsonObject, {
+				httpCode: '500',
+				description: action.status.message,
+				message: 'The service failed to process your request',
+			});
+		}
+	});
+	if (actions.length === 0) {
+		throw new NodeOperationError(node, 'The server did not send a response for any action');
+	}
+};
+
 export async function onOfficeApiAction(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	actionType: OnOfficeAction,
@@ -111,11 +130,13 @@ export async function onOfficeApiAction(
 	const timestamp = Math.floor(Date.now() / 1000) + '';
 	const actionid = `urn:onoffice-de-ns:smart:2.5:smartml:action:${actionType}`;
 
+	const sortedParameters = Object.fromEntries(Object.entries(parameters).sort());
+
 	const hmac = MD5(
 		apiSecret +
 			MD5(
 				`${JSON.stringify(
-					parameters,
+					sortedParameters,
 				)},${apiToken},${actionid},${identifier},${resourceid},${apiSecret},${timestamp},${resourceType}`,
 			),
 	);
@@ -125,7 +146,7 @@ export async function onOfficeApiAction(
 		identifier,
 		resourcetype,
 		resourceid,
-		parameters,
+		parameters: sortedParameters,
 		timestamp,
 		hmac,
 	};
@@ -154,7 +175,13 @@ export async function onOfficeApiAction(
 
 	assertSuccessfulResponse(responseData, this.getNode());
 
-	const results = responseData.response.results[0].data.records;
+	const actionResponses = responseData.response.results;
+
+	assertSuccessfulActionResponses(actionResponses, this.getNode());
+
+	console.log(JSON.stringify(responseData));
+
+	const results = actionResponses[0].data.records;
 	return results;
 }
 
@@ -186,4 +213,6 @@ export const createFilterParameter = (filterConfig?: OnOfficeFilterConfiguration
 				})),
 			]),
 		);
+
+	return filter;
 };
