@@ -216,6 +216,7 @@ import {
 	WORKFLOW_OPEN_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 } from '@/constants';
+import { userHelpers } from './mixins/userHelpers';
 
 export default mixins(
 	genericHelpers,
@@ -224,6 +225,7 @@ export default mixins(
 	titleChange,
 	workflowHelpers,
 	workflowRun,
+	userHelpers,
 )
 	.extend({
 		name: 'MainSidebar',
@@ -249,13 +251,15 @@ export default mixins(
 				'nextVersions',
 			]),
 			...mapGetters('users', [
-				'canUserAccessSettings',
 				'canUserAccessSidebarUserInfo',
 				'currentUser',
 			]),
 			...mapGetters('settings', [
 				'isTemplatesEnabled',
 			]),
+			canUserAccessSettings(): boolean {
+				return this.canUserAccessRouteByName('PersonalSettings') || this.canUserAccessRouteByName('UsersSettings');
+			},
 			helpMenuItems (): object[] {
 				return [
 					{

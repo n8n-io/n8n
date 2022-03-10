@@ -93,16 +93,6 @@ const module: Module<IUsersState, IRootState> = {
 		currentUser(state: IUsersState): IUser | null {
 			return state.currentUserId ? state.users[state.currentUserId] : null;
 		},
-		canCurrentUserAccessView(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return (viewName: string): boolean => {
-				const authorize: IPermissions | null = PERMISSIONS.ROUTES[viewName];
-				if (!authorize) {
-					return false;
-				}
-
-				return isAuthorized(authorize, getters);
-			};
-		},
 		getUserById(state: IUsersState): (userId: string) => IUser | null {
 			return (userId: string): IUser | null => state.users[userId];
 		},
@@ -112,14 +102,8 @@ const module: Module<IUsersState, IRootState> = {
 		canUserAccessSidebarUserInfo(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, getters);
 		},
-		canUserAccessSettings(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.ROUTES.SettingsRedirect, getters);
-		},
 		showUMSetupWarning(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, getters);
-		},
-		isUMEnabled(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any): boolean { // tslint:disable-line:no-any
-			return rootGetters['settings/isUserManagementEnabled'];
 		},
 		personalizedNodeTypes(state: IUsersState, getters: any): string[] { // tslint:disable-line:no-any
 			const user = getters.currentUser as IUser | null;

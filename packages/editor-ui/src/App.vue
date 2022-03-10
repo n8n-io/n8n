@@ -27,9 +27,11 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
 import { mapGetters } from 'vuex';
+import { userHelpers } from './components/mixins/userHelpers';
 
 export default mixins(
 	showMessage,
+	userHelpers,
 ).extend({
 	name: 'App',
 	components: {
@@ -39,7 +41,7 @@ export default mixins(
 	},
 	computed: {
 		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
-		...mapGetters('users', ['canCurrentUserAccessView', 'currentUser']),
+		...mapGetters('users', ['currentUser']),
 	},
 	data() {
 		return {
@@ -107,7 +109,7 @@ export default mixins(
 				return;
 			}
 
-			if (this.canCurrentUserAccessView(this.$router.currentRoute.name)) {
+			if (this.canUserAccessCurrentRoute()) {
 				return;
 			}
 

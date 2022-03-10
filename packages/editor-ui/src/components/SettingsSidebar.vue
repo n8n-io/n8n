@@ -29,20 +29,21 @@
 </template>
 
 <script lang="ts">
-import { ABOUT_MODAL_KEY } from '@/constants';
-import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
+import { ABOUT_MODAL_KEY } from '@/constants';
+import { userHelpers } from './mixins/userHelpers';
 
-export default Vue.extend({
+export default mixins(
+	userHelpers,
+).extend({
 	name: 'SettingsSidebar',
 	computed: {
 		...mapGetters('settings', ['versionCli']),
 	},
 	methods: {
 		canAccessUsersView(viewName: string): boolean {
-			const isAuthorized = this.$store.getters['users/canCurrentUserAccessView'];
-
-			return isAuthorized(viewName);
+			return this.canUserAccessRouteByName(viewName);
 		},
 		onVersionClick() {
 			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);

@@ -18,6 +18,7 @@ import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import { Store } from 'vuex';
 import { IRootState } from './Interface';
+import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 
 Vue.use(Router);
 
@@ -48,6 +49,11 @@ const router = new Router({
 
 					return {name: 'NodeViewNew'};
 				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
 			},
 		},
 		{
@@ -68,6 +74,11 @@ const router = new Router({
 					},
 				},
 				getRedirect: getTemplatesRedirect,
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
 			},
 		},
 		{
@@ -80,6 +91,11 @@ const router = new Router({
 			},
 			meta: {
 				nodeView: true,
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
 			},
 		},
 		{
@@ -98,6 +114,11 @@ const router = new Router({
 							template_id: route.params.id,
 							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
 						};
+					},
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
 					},
 				},
 			},
@@ -119,6 +140,11 @@ const router = new Router({
 						};
 					},
 				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
 			},
 		},
 		{
@@ -131,6 +157,11 @@ const router = new Router({
 			},
 			meta: {
 				nodeView: true,
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
 			},
 		},
 		{
@@ -143,6 +174,11 @@ const router = new Router({
 			},
 			meta: {
 				nodeView: true,
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
 			},
 		},
 		{
@@ -150,6 +186,13 @@ const router = new Router({
 			name: 'WorkflowDemo',
 			components: {
 				default: NodeView,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
 			},
 		},
 		{
@@ -163,6 +206,11 @@ const router = new Router({
 			meta: {
 				templatesEnabled: true,
 				getRedirect: getTemplatesRedirect,
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
 			},
 		},
 		{
@@ -174,6 +222,11 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'auth',
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedOut],
+					},
 				},
 			},
 		},
@@ -187,6 +240,11 @@ const router = new Router({
 				telemetry: {
 					pageCategory: 'auth',
 				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedOut],
+					},
+				},
 			},
 		},
 		{
@@ -198,6 +256,14 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'auth',
+				},
+				permissions: {
+					allow: {
+						role: [ROLE.Default],
+					},
+					deny: {
+						um: false,
+					},
 				},
 			},
 		},
@@ -211,6 +277,11 @@ const router = new Router({
 				telemetry: {
 					pageCategory: 'auth',
 				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedOut],
+					},
+				},
 			},
 		},
 		{
@@ -222,6 +293,11 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'auth',
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedOut],
+					},
 				},
 			},
 		},
@@ -240,6 +316,14 @@ const router = new Router({
 				telemetry: {
 					pageCategory: 'settings',
 				},
+				permissions: {
+					allow: {
+						role: [ROLE.Default, ROLE.Owner],
+					},
+					deny: {
+						um: false,
+					},
+				},
 			},
 		},
 		{
@@ -251,6 +335,14 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+					deny: {
+						role: [ROLE.Default],
+					},
 				},
 			},
 		},
@@ -268,6 +360,11 @@ const router = new Router({
 				nodeView: true,
 				telemetry: {
 					disabled: true,
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
+					},
 				},
 			},
 		},
