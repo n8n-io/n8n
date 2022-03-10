@@ -60,6 +60,7 @@ export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoa
 		returnData.push.apply(returnData, responseData.body);
 	} while (
 		responseData.headers['x-wp-totalpages'] !== undefined &&
+		responseData.headers['x-wp-totalpages'] !== '0' &&
 		parseInt(responseData.headers['x-wp-totalpages'], 10) !== query.page
 	);
 
