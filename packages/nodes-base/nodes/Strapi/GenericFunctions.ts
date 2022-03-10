@@ -48,7 +48,7 @@ export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions |
 	let options = {} as OptionsWithUri;
 		options = {
 			headers: {
-				'content-type': `application/json`,
+				'content-type': 'application/json',
 			},
 			method: 'POST',
 			body: {
@@ -67,12 +67,12 @@ export async function strapiApiRequestAllItems(this: IHookFunctions | ILoadOptio
 	const {apiVersion} = await this.getCredentials('strapiApi') as IDataObject;
 
 	let responseData;
-	if(apiVersion === 'v4') {
-		query["pagination[pageSize]"] = 20;
-		query["pagination[page]"] = 0;
+	if (apiVersion === 'v4') {
+		query['pagination[pageSize]'] = 20;
+		query['pagination[page]'] = 0;
 		do {
 			({data:responseData} = await strapiApiRequest.call(this, method, resource, body, query, undefined, headers));
-			query["pagination[page]"] += query["pagination[pageSize]"];
+			query['pagination[page]'] += query['pagination[pageSize]'];
 			returnData.push.apply(returnData, responseData);
 		} while (
 			responseData.length !== 0

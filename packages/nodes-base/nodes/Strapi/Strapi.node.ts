@@ -7,17 +7,14 @@ import {
 } from 'request';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
-	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
-	ICredentialsDecrypted,
-	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -73,7 +70,7 @@ export class Strapi implements INodeType {
 		],
 	};
 
-	methods ={
+	methods = {
 		credentialTest: {
 			async strapiApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = await credential.data as IDataObject;
@@ -103,9 +100,9 @@ export class Strapi implements INodeType {
 							message: `Auth settings are not valid: ${error}`,
 						};
 					}
-			}
-		}
-	}
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -162,9 +159,9 @@ export class Strapi implements INodeType {
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						if(apiVersion === 'v4') {
+						if (apiVersion === 'v4') {
 							// Sort Option
-							if(options.sort && (options.sort as string[]).length !== 0) {
+							if (options.sort && (options.sort as string[]).length !== 0) {
 								const sortFields = options.sort as string[];
 								qs.sort = sortFields.join(',');
 							}
@@ -185,7 +182,7 @@ export class Strapi implements INodeType {
 							if (returnAll) {
 								responseData = await strapiApiRequestAllItems.call(this, 'GET', `/api/${contentType}`, {}, qs, headers);
 							} else {
-								qs["pagination[pageSize]"] = this.getNodeParameter('limit', i) as number;
+								qs['pagination[pageSize]'] = this.getNodeParameter('limit', i) as number;
 								({ data:responseData } = await strapiApiRequest.call(this, 'GET', `/api/${contentType}`, {}, qs, undefined, headers));
 							}
 						} else {
