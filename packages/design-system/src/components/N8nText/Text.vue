@@ -30,18 +30,14 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
-		capitalize: {
-			type: Boolean,
-			default: false,
-		},
 		tag: {
 			type: String,
 			default: 'span',
 		},
 	},
 	methods: {
-		getClasses(props: {size: string, bold: boolean, capitalize: boolean}, $style: any) {
-			return {[$style[props.size]]: true, [$style.bold]: props.bold, [$style.regular]: !props.bold, [$style.capitalize]: props.capitalize};
+		getClasses(props: {size: string, bold: boolean}, $style: any) {
+			return {[$style[props.size]]: true, [$style.bold]: props.bold, [$style.regular]: !props.bold};
 		},
 		getStyles(props: {color: string, align: string, compact: false}) {
 			const styles = {} as any;
@@ -92,10 +88,6 @@ export default Vue.extend({
 .xsmall {
 	font-size: var(--font-size-3xs);
 	line-height: var(--font-line-height-compact);
-}
-
-.capitalize {
-	text-transform: capitalize;
 }
 
 </style>
