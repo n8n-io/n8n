@@ -304,8 +304,8 @@
 		"help": "Help",
 		"helpMenuItems": {
 			"documentation": "Documentation",
-			"forum": "Forum",
-			"workflows": "Workflows"
+			"course": "Course",
+			"forum": "Forum"
 		},
 		"importFromFile": "Import from File",
 		"importFromUrl": "Import from URL",

@@ -253,8 +253,8 @@ export default mixins(
 						type: 'link',
 						properties: {
 							href: 'https://n8n.io/workflows',
-							title: this.$locale.baseText('mainSidebar.helpMenuItems.workflows'),
-							icon: 'network-wired',
+							title: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
+							icon: 'graduation-cap',
 							newWindow: true,
 						},
 					},
