@@ -88,6 +88,10 @@ export function passwordResetNamespace(this: N8nApp): void {
 					domain: baseUrl,
 				});
 			} catch (error) {
+				void InternalHooksManager.getInstance().onEmailFailed({
+					user_id: user.id,
+					message_type: 'Reset password',
+				});
 				if (error instanceof Error) {
 					throw new ResponseHelper.ResponseError(
 						`Please contact your administrator: ${error.message}`,

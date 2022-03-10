@@ -194,6 +194,10 @@ export function usersNamespace(this: N8nApp): void {
 							message_type: 'New user invite',
 						});
 					} else {
+						void InternalHooksManager.getInstance().onEmailFailed({
+							user_id: req.user.id,
+							message_type: 'New user invite',
+						});
 						Logger.error('Failed to send email', {
 							userId: req.user.id,
 							inviteAcceptUrl,
@@ -526,6 +530,10 @@ export function usersNamespace(this: N8nApp): void {
 			});
 
 			if (!result?.success) {
+				void InternalHooksManager.getInstance().onEmailFailed({
+					user_id: req.user.id,
+					message_type: 'Resend invite',
+				});
 				Logger.error('Failed to send email', {
 					email: reinvitee.email,
 					inviteAcceptUrl,

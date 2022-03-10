@@ -262,4 +262,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onUserSignup(userSignupData: { user_id: string }): Promise<void> {
 		return this.telemetry.track('User signed up', userSignupData);
 	}
+
+	async onEmailFailed(failedEmailData: {
+		user_id: string;
+		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+	}): Promise<void> {
+		return this.telemetry.track(
+			'Instance failed to send transactional email to user',
+			failedEmailData,
+		);
+	}
 }
