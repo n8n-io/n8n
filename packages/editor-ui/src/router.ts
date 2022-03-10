@@ -40,7 +40,7 @@ interface IRouteConfig extends RouteConfigSingleView {
 function getTemplatesRedirect(store: Store<IRootState>) {
 	const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
 	if (!isTemplatesEnabled) {
-		return {name: 'NotFoundView'};
+		return {name: VIEWS.NOT_FOUND};
 	}
 
 	return false;
@@ -59,10 +59,10 @@ const router = new Router({
 					const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
 					const isTemplatesEndpointReachable: boolean = store.getters['settings/isTemplatesEndpointReachable'];
 					if (isTemplatesEnabled && isTemplatesEndpointReachable) {
-						return {name: 'TemplatesSearchView'};
+						return { name: VIEWS.TEMPLATES };
 					}
 
-					return {name: 'NodeViewNew'};
+					return { name: VIEWS.NEW_WORKFLOW };
 				},
 				permissions: {
 					allow: {
@@ -115,7 +115,7 @@ const router = new Router({
 		},
 		{
 			path: '/templates/:id',
-			name: VIEWS.WORKFLOW_TEMPLATE,
+			name: VIEWS.TEMPLATE,
 			components: {
 				default: TemplatesWorkflowView,
 				sidebar: MainSidebar,
@@ -181,7 +181,7 @@ const router = new Router({
 		},
 		{
 			path: '/workflow/:name',
-			name: VIEWS.EXISTING_WORKFLOW,
+			name: VIEWS.WORKFLOW,
 			components: {
 				default: NodeView,
 				header: MainHeader,
@@ -368,7 +368,7 @@ const router = new Router({
 				messageKey: 'PAGE_NOT_FOUND_MESSAGE',
 				errorCode: 404,
 				redirectTextKey: 'GO_BACK',
-				redirectPage: 'Homepage',
+				redirectPage: VIEWS.HOMEPAGE,
 			},
 			meta: {
 				nodeView: true,

@@ -17,6 +17,7 @@ import { pushConnection } from '@/components/mixins/pushConnection';
 
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
+import { VIEWS } from '@/constants';
 
 export default mixins(
 	pushConnection,
@@ -32,7 +33,7 @@ export default mixins(
 				'sidebarMenuCollapsed',
 			]),
 			isExecutionPage (): boolean {
-				return ['ExecutionById'].includes(this.$route.name as string);
+				return this.$route.name === VIEWS.EXECUTION;
 			},
 		},
 		async mounted() {

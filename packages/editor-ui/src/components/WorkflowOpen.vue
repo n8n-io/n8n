@@ -67,7 +67,7 @@ import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { convertToDisplayDate } from './helpers';
 import { mapGetters } from 'vuex';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, WORKFLOW_OPEN_MODAL_KEY } from '../constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, VIEWS, WORKFLOW_OPEN_MODAL_KEY } from '../constants';
 
 export default mixins(
 	genericHelpers,
@@ -146,7 +146,7 @@ export default mixins(
 				const currentWorkflowId = this.$store.getters.workflowId;
 
 				if (e.metaKey || e.ctrlKey) {
-					const route = this.$router.resolve({name: 'NodeViewExisting', params: {name: data.id}});
+					const route = this.$router.resolve({name: VIEWS.WORKFLOW, params: {name: data.id}});
 					window.open(route.href, '_blank');
 
 					return;
@@ -179,14 +179,14 @@ export default mixins(
 						if (saved) this.$store.dispatch('settings/fetchPromptsData');
 
 						this.$router.push({
-							name: 'NodeViewExisting',
+							name: VIEWS.WORKFLOW,
 							params: { name: data.id },
 						});
 					} else if (confirmModal === MODAL_CANCEL) {
 						this.$store.commit('setStateDirty', false);
 
 						this.$router.push({
-							name: 'NodeViewExisting',
+							name: VIEWS.WORKFLOW,
 							params: { name: data.id },
 						});
 					} else if (confirmModal === MODAL_CLOSE) {
@@ -194,7 +194,7 @@ export default mixins(
 					}
 				} else {
 					this.$router.push({
-						name: 'NodeViewExisting',
+						name: VIEWS.WORKFLOW,
 						params: { name: data.id },
 					});
 				}

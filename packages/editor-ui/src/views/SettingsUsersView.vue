@@ -40,7 +40,7 @@
 </template>
 
 <script lang="ts">
-import { INVITE_USER_MODAL_KEY } from '@/constants';
+import { INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 import { mapGetters } from 'vuex';
 
 import SettingsView from './SettingsView.vue';
@@ -68,7 +68,7 @@ export default mixins(showMessage).extend({
 	},
 	methods: {
 		redirectToSetup() {
-			this.$router.push({name: 'SetupView'});
+			this.$router.push({name: VIEWS.SETUP});
 		},
 		onInvite() {
 			this.$store.dispatch('ui/openModal', INVITE_USER_MODAL_KEY);

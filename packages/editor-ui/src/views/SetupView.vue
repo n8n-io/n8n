@@ -13,6 +13,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
+import { VIEWS } from '@/constants';
 
 
 export default mixins(
@@ -86,10 +87,10 @@ export default mixins(
 				this.loading = true;
 				await this.$store.dispatch('users/createOwner', values);
 				if (forceRedirectedHere) {
-					await this.$router.push({ name: 'Homepage' });
+					await this.$router.push({ name: VIEWS.HOMEPAGE });
 				}
 				else {
-					await this.$router.push({ name: 'UsersSettings' });
+					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 				}
 
 			} catch (error) {
@@ -108,7 +109,7 @@ export default mixins(
 			if (skip) {
 				this.$store.dispatch('users/skipOwnerSetup');
 				this.$router.push({
-					name: 'Homepage',
+					name: VIEWS.HOMEPAGE,
 				});
 			}
 		},

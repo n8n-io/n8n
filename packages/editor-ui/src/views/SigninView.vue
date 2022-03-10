@@ -12,6 +12,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
+import { VIEWS } from '@/constants';
 
 export default mixins(
 	showMessage,
@@ -77,7 +78,7 @@ export default mixins(
 					}
 				}
 
-				this.$router.push({ name: 'Homepage' });
+				this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('LOGIN_ERROR'));
 				this.loading = false;

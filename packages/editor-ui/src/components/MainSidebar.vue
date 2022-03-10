@@ -215,6 +215,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_OPEN_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
+	VIEWS,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 
@@ -258,7 +259,7 @@ export default mixins(
 				'isTemplatesEnabled',
 			]),
 			canUserAccessSettings(): boolean {
-				return this.canUserAccessRouteByName('PersonalSettings') || this.canUserAccessRouteByName('UsersSettings');
+				return this.canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS) || this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS);
 			},
 			helpMenuItems (): object[] {
 				return [
@@ -320,10 +321,7 @@ export default mixins(
 				return this.$store.getters.executionWaitingForWebhook;
 			},
 			isExecutionPage (): boolean {
-				if (['ExecutionById'].includes(this.$route.name as string)) {
-					return true;
-				}
-				return false;
+				return this.$route.name === VIEWS.EXECUTION;
 			},
 			isWorkflowActive (): boolean {
 				return this.$store.getters.isActive;
@@ -359,14 +357,14 @@ export default mixins(
 					this.onLogout();
 				}
 				else {
-					this.$router.push({name: 'PersonalSettings'});
+					this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
 				}
 			},
 			async onLogout() {
 				try {
 					await this.$store.dispatch('users/logout');
 
-					const route = this.$router.resolve({ name: 'SigninView' });
+					const route = this.$router.resolve({ name: VIEWS.SIGNIN });
 					window.open(route.href, '_self');
 				} catch (e) {
 					this.$showError(e, this.$locale.baseText('SIGN_OUT_ERROR'));
@@ -409,7 +407,7 @@ export default mixins(
 			async openWorkflow (workflowId: string) {
 				// Change to other workflow
 				this.$router.push({
-					name: 'NodeViewExisting',
+					name: VIEWS.WORKFLOW,
 					params: { name: workflowId },
 				});
 
@@ -495,7 +493,7 @@ export default mixins(
 						type: 'success',
 					});
 
-					this.$router.push({ name: 'NodeViewNew' });
+					this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				} else if (key === 'workflow-download') {
 					const workflowData = await this.getWorkflowDataToSave();
 
@@ -525,7 +523,7 @@ export default mixins(
 				} else if (key === 'workflow-settings') {
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 				} else if (key === 'user') {
-					this.$router.push({name: 'PersonalSettings'});
+					this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
 				} else if (key === 'workflow-new') {
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
@@ -542,10 +540,10 @@ export default mixins(
 							const saved = await this.saveCurrentWorkflow({}, false);
 							if (saved) this.$store.dispatch('settings/fetchPromptsData');
 
-							if (this.$router.currentRoute.name === 'NodeViewNew') {
+							if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 								this.$root.$emit('newWorkflow');
 							} else {
-								this.$router.push({ name: 'NodeViewNew' });
+								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 							}
 
 							this.$showMessage({
@@ -554,10 +552,10 @@ export default mixins(
 							});
 						} else if (confirmModal === MODAL_CANCEL) {
 							this.$store.commit('setStateDirty', false);
-							if (this.$router.currentRoute.name === 'NodeViewNew') {
+							if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 								this.$root.$emit('newWorkflow');
 							} else {
-								this.$router.push({ name: 'NodeViewNew' });
+								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 							}
 
 							this.$showMessage({
@@ -568,8 +566,8 @@ export default mixins(
 							return;
 						}
 					} else {
-						if (this.$router.currentRoute.name !== 'NodeViewNew') {
-							this.$router.push({ name: 'NodeViewNew' });
+						if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
+							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 						}
 
 						this.$showMessage({
@@ -579,8 +577,8 @@ export default mixins(
 					}
 					this.$titleReset();
 				} else if (key === 'templates' || key === 'template-new') {
-					if (this.$router.currentRoute.name !== 'TemplatesSearchView') {
-						this.$router.push({ name: 'TemplatesSearchView' });
+					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
+						this.$router.push({ name: VIEWS.TEMPLATES });
 					}
 				} else if (key === 'credentials-open') {
 					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
