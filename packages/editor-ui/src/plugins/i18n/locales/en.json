@@ -303,8 +303,8 @@
 		"executions": "Executions",
 		"help": "Help",
 		"helpMenuItems": {
-			"documentation": "Documentation",
 			"course": "Course",
+			"documentation": "Documentation",
 			"forum": "Forum"
 		},
 		"importFromFile": "Import from File",
