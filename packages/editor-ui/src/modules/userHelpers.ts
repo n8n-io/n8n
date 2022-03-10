@@ -3,8 +3,6 @@ import { CALENDLY_TRIGGER_NODE_TYPE, CLEARBIT_NODE_TYPE, COMPANY_SIZE_1000_OR_MO
 import { IPermissions, IPersonalizationSurveyAnswersV1, IPersonalizationSurveyAnswersV2, IRootState, IUser } from '@/Interface';
 
 import { ILogInStatus, IRole, IUserPermissions } from "@/Interface";
-import VueRouter, { Route } from 'vue-router';
-import { Store } from 'vuex';
 
 export const ROLE: {Owner: IRole, Member: IRole, Default: IRole} = {
 	Owner: 'owner',

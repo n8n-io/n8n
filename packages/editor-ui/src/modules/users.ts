@@ -96,14 +96,23 @@ const module: Module<IUsersState, IRootState> = {
 		getUserById(state: IUsersState): (userId: string) => IUser | null {
 			return (userId: string): IUser | null => state.users[userId];
 		},
-		canUserDeleteTags(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, getters);
+		canUserDeleteTags(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
+			const currentUser = getters.currentUser;
+			const isUMEnabled = rootGetters['settings/isUserManagementEnabled'];
+
+			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, { currentUser, isUMEnabled });
 		},
-		canUserAccessSidebarUserInfo(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, getters);
+		canUserAccessSidebarUserInfo(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
+			const currentUser = getters.currentUser;
+			const isUMEnabled = rootGetters['settings/isUserManagementEnabled'];
+
+			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, { currentUser, isUMEnabled });
 		},
-		showUMSetupWarning(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, getters);
+		showUMSetupWarning(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
+			const currentUser = getters.currentUser;
+			const isUMEnabled = rootGetters['settings/isUserManagementEnabled'];
+
+			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, { currentUser, isUMEnabled });
 		},
 		personalizedNodeTypes(state: IUsersState, getters: any): string[] { // tslint:disable-line:no-any
 			const user = getters.currentUser as IUser | null;
