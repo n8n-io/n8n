@@ -47,7 +47,6 @@ export class Autopilot implements INodeType {
 		description: 'Consume Autopilot API',
 		defaults: {
 			name: 'Autopilot',
-			color: '#6ad7b9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -30,7 +30,6 @@ export class ApiTemplateIo implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'APITemplate.io',
-			color: '#c0c0c0',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

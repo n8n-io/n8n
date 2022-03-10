@@ -33,7 +33,6 @@ export class UProc implements INodeType {
 		description: 'Consume uProc API',
 		defaults: {
 			name: 'uProc',
-			color: '#219ef9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -75,7 +74,7 @@ export class UProc implements INodeType {
 						displayName: 'Data Webhook',
 						name: 'dataWebhook',
 						type: 'string',
-						description: 'URL to send tool response when tool has resolved your request. You can create your own webhook at en <a href="https://beeceptor.com">Beeceptor</a>, <a href="https://www.integromat.com/">Integromat</a>, <a href="https://zapier.com/">Zapier</a> or <a href="https://n8n.io/">n8n</a>',
+						description: 'URL to send tool response when tool has resolved your request',
 						default: '',
 					},
 				],

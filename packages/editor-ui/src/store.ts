@@ -12,7 +12,6 @@ import {
 	INodeIssueData,
 	INodeTypeDescription,
 	IRunData,
-	ITelemetrySettings,
 	ITaskData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
@@ -38,6 +37,7 @@ import settings from './modules/settings';
 import ui from './modules/ui';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
+import templates from './modules/templates';
 
 Vue.use(Vuex);
 
@@ -46,8 +46,10 @@ const state: IRootState = {
 	activeWorkflows: [],
 	activeActions: [],
 	activeNode: null,
+	activeCredentialType: null,
 	// @ts-ignore
 	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
+	defaultLocale: 'en',
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
 	executionId: null,
@@ -87,13 +89,13 @@ const state: IRootState = {
 	},
 	sidebarMenuItems: [],
 	instanceId: '',
-	telemetry: null,
 };
 
 const modules = {
 	credentials,
 	tags,
 	settings,
+	templates,
 	workflows,
 	versions,
 	ui,
@@ -543,17 +545,20 @@ export const store = new Vuex.Store({
 		setInstanceId(state, instanceId: string) {
 			Vue.set(state, 'instanceId', instanceId);
 		},
-		setTelemetry(state, telemetry: ITelemetrySettings) {
-			Vue.set(state, 'telemetry', telemetry);
-		},
 		setOauthCallbackUrls(state, urls: IDataObject) {
 			Vue.set(state, 'oauthCallbackUrls', urls);
 		},
 		setN8nMetadata(state, metadata: IDataObject) {
 			Vue.set(state, 'n8nMetadata', metadata);
 		},
+		setDefaultLocale(state, locale: string) {
+			Vue.set(state, 'defaultLocale', locale);
+		},
 		setActiveNode (state, nodeName: string) {
 			state.activeNode = nodeName;
+		},
+		setActiveCredentialType (state, activeCredentialType: string) {
+			state.activeCredentialType = activeCredentialType;
 		},
 
 		setLastSelectedNode (state, nodeName: string) {
@@ -639,6 +644,9 @@ export const store = new Vuex.Store({
 		},
 	},
 	getters: {
+		activeCredentialType: (state): string | null => {
+			return state.activeCredentialType;
+		},
 
 		isActionActive: (state) => (action: string): boolean => {
 			return state.activeActions.includes(action);
@@ -646,10 +654,6 @@ export const store = new Vuex.Store({
 
 		isNewWorkflow: (state) => {
 			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
-		},
-
-		isTelemetryEnabled: (state) => {
-			return state.telemetry && state.telemetry.enabled;
 		},
 
 		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
@@ -719,14 +723,14 @@ export const store = new Vuex.Store({
 		versionCli: (state): string => {
 			return state.versionCli;
 		},
-		telemetry: (state): ITelemetrySettings | null => {
-			return state.telemetry;
-		},
 		oauthCallbackUrls: (state): object => {
 			return state.oauthCallbackUrls;
 		},
 		n8nMetadata: (state): object => {
 			return state.n8nMetadata;
+		},
+		defaultLocale: (state): string => {
+			return state.defaultLocale;
 		},
 
 		// Push Connection
@@ -744,9 +748,11 @@ export const store = new Vuex.Store({
 
 		workflowTriggerNodes: (state, getters) => {
 			return state.workflow.nodes.filter(node => {
-				return getters.nodeType(node.type).group.includes('trigger');
+				const nodeType = getters.nodeType(node.type, node.typeVersion);
+				return nodeType && nodeType.group.includes('trigger');
 			});
 		},
+
 		// Node-Index
 		getNodeIndex: (state) => (nodeName: string): number => {
 			return state.nodeIndex.indexOf(nodeName);
@@ -812,6 +818,21 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
+
+		/**
+		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
+		 */
+		nativelyNumberSuffixedDefaults: (_, getters): string[] => {
+			const { allNodeTypes } = getters as {
+				allNodeTypes: Array<INodeTypeDescription & { defaults: { name: string } }>;
+			};
+
+			return allNodeTypes.reduce<string[]>((acc, cur) => {
+				if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
+				return acc;
+			}, []);
+		},
+
 		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
 				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);

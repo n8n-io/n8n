@@ -25,7 +25,6 @@ export class FlowTrigger implements INodeType {
 		description: 'Handle Flow events via webhooks',
 		defaults: {
 			name: 'Flow Trigger',
-			color: '#559922',
 		},
 		inputs: [],
 		outputs: ['main'],

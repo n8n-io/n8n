@@ -58,7 +58,6 @@ export class ActionNetwork implements INodeType {
 		description: 'Consume the Action Network API',
 		defaults: {
 			name: 'Action Network',
-			color: '#9dd3ed',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

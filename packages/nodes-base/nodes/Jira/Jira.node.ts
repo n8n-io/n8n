@@ -13,11 +13,11 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -66,7 +66,6 @@ export class Jira implements INodeType {
 		description: 'Consume Jira Software API',
 		defaults: {
 			name: 'Jira',
-			color: '#4185f7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -155,7 +154,7 @@ export class Jira implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async jiraSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async jiraSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 				const data = Buffer.from(`${credentials!.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
 

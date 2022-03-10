@@ -8,10 +8,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -33,7 +33,6 @@ export class AwsTextract implements INodeType {
 		description: 'Sends data to Amazon Textract',
 		defaults: {
 			name: 'AWS Textract',
-			color: '#5aa08d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -92,7 +91,7 @@ export class AwsTextract implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async awsTextractApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async awsTextractApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject, 'sts');
 				} catch (error) {

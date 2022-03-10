@@ -39,7 +39,6 @@ export class Wordpress implements INodeType {
 		description: 'Consume Wordpress API',
 		defaults: {
 			name: 'Wordpress',
-			color: '#016087',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

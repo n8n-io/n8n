@@ -5,7 +5,6 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
-	ICredentialType,
 	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -57,7 +56,10 @@ export interface ICustomRequest extends Request {
 }
 
 export interface ICredentialsTypeData {
-	[key: string]: ICredentialType;
+	[key: string]: {
+		className: string;
+		sourcePath: string;
+	};
 }
 
 export interface ICredentialsOverwrite {
@@ -310,6 +312,7 @@ export interface IDiagnosticInfo {
 		[key: string]: string | number | undefined;
 	};
 	deploymentType: string;
+	binaryDataMode: string;
 }
 
 export interface IInternalHooksClass {
@@ -322,7 +325,11 @@ export interface IInternalHooksClass {
 	onWorkflowCreated(workflow: IWorkflowBase): Promise<void>;
 	onWorkflowDeleted(workflowId: string): Promise<void>;
 	onWorkflowSaved(workflow: IWorkflowBase): Promise<void>;
-	onWorkflowPostExecute(workflow: IWorkflowBase, runData?: IRun): Promise<void>;
+	onWorkflowPostExecute(
+		executionId: string,
+		workflow: IWorkflowBase,
+		runData?: IRun,
+	): Promise<void>;
 }
 
 export interface IN8nConfig {
@@ -403,6 +410,13 @@ export interface IN8nUISettings {
 	instanceId: string;
 	telemetry: ITelemetrySettings;
 	personalizationSurvey: IPersonalizationSurvey;
+	defaultLocale: string;
+	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose';
+	hiringBannerEnabled: boolean;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {

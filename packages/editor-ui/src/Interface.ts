@@ -1,12 +1,12 @@
 
 import {
+	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
-	GenericValue,
-	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	ILoadOptions,
 	INode,
 	INodeCredentials,
 	INodeIssues,
@@ -19,6 +19,7 @@ import {
 	IRunData,
 	ITaskData,
 	ITelemetrySettings,
+	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -163,9 +164,11 @@ export interface IRestApi {
 	getPastExecutions(filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
+	getCredentialTranslation(credentialType: string): Promise<object>;
+	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
 	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
+	getNodeParameterOptions(sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> ;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -178,6 +181,16 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
+	getBinaryBufferString(dataPath: string): Promise<string>;
+}
+
+export interface INodeTranslationHeaders {
+	data: {
+		[key: string]: {
+			displayName: string;
+			description: string;
+		},
+	};
 }
 
 export interface IBinaryDisplayData {
@@ -240,7 +253,7 @@ export interface IWorkflowDataUpdate {
 }
 
 export interface IWorkflowTemplate {
-	id: string;
+	id: number;
 	name: string;
 	workflow: {
 		nodes: INodeUi[];
@@ -501,6 +514,64 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
+export interface ITemplatesCollection {
+	id: number;
+	name: string;
+	nodes: ITemplatesNode[];
+	workflows: Array<{id: number}>;
+}
+
+interface ITemplatesImage {
+	id: number;
+	url: string;
+}
+
+interface ITemplatesCollectionExtended extends ITemplatesCollection {
+	description: string | null;
+	image: ITemplatesImage[];
+	categories: ITemplatesCategory[];
+	createdAt: string;
+}
+
+export interface ITemplatesCollectionFull extends ITemplatesCollectionExtended {
+	full: true;
+}
+
+export interface ITemplatesCollectionResponse extends ITemplatesCollectionExtended {
+	workflows: ITemplatesWorkflow[];
+}
+
+export interface ITemplatesWorkflow {
+	id: number;
+	createdAt: string;
+	name: string;
+	nodes: ITemplatesNode[];
+	totalViews: number;
+	user: {
+		username: string;
+	};
+}
+
+export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflowTemplate {
+	description: string | null;
+	image: ITemplatesImage[];
+	categories: ITemplatesCategory[];
+}
+
+export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
+	full: true;
+}
+
+export interface ITemplatesQuery {
+	categories: number[];
+	search: string;
+}
+
+export interface ITemplatesCategory {
+	id: number;
+	name: string;
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -523,6 +594,13 @@ export interface IN8nUISettings {
 	instanceId: string;
 	personalizationSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
+	defaultLocale: string;
+	logLevel: ILogLevel;
+	hiringBannerEnabled: boolean;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -629,13 +707,21 @@ export interface IVersionNode {
 		icon?: string;
 		fileBuffer?: string;
 	};
+	typeVersion?: number;
 }
+
+export interface ITemplatesNode extends IVersionNode {
+	categories?: ITemplatesCategory[];
+}
+
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
 	activeActions: string[];
+	activeCredentialType: string | null;
 	activeNode: string | null;
 	baseUrl: string;
+	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;
@@ -665,7 +751,6 @@ export interface IRootState {
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
-	telemetry: ITelemetrySettings | null;
 }
 
 export interface ICredentialTypeMap {
@@ -679,6 +764,7 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
+	fetchedAllCredentials: boolean;
 }
 
 export interface ITagsState {
@@ -701,11 +787,35 @@ export interface IUiState {
 		[key: string]: IModalState;
 	};
 	isPageLoading: boolean;
+	currentView: string;
 }
+
+export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
+	templatesEndpointHealthy: boolean;
+}
+
+export interface ITemplateState {
+	categories: {[id: string]: ITemplatesCategory};
+	collections: {[id: string]: ITemplatesCollection};
+	workflows: {[id: string]: ITemplatesWorkflow};
+	workflowSearches: {
+		[search: string]: {
+			workflowIds: string[];
+			totalWorkflows: number;
+			loadingMore?: boolean;
+		}
+	};
+	collectionSearches: {
+		[search: string]: {
+			collectionIds: string[];
+		}
+	};
+	currentSessionId: string;
+	previousSessionId: string;
 }
 
 export interface IVersionsState {

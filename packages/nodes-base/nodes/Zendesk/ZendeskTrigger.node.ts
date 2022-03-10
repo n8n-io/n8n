@@ -39,7 +39,6 @@ export class ZendeskTrigger implements INodeType {
 		description: 'Handle Zendesk events via webhooks',
 		defaults: {
 			name: 'Zendesk Trigger',
-			color: '#13353c',
 		},
 		inputs: [],
 		outputs: ['main'],
