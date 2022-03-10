@@ -35,7 +35,7 @@ interface IRouteConfig extends RouteConfigSingleView {
 			getProperties: (route: Route, store: Store<IRootState>) => object;
 		};
 	};
-};
+}
 
 function getTemplatesRedirect(store: Store<IRootState>) {
 	const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
