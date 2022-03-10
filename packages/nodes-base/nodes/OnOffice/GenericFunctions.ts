@@ -17,7 +17,7 @@ import { OnOfficeFilterConfiguration } from './descriptions/CommonReadDescriptio
 
 type OnOfficeAction = 'get' | 'read';
 type OnOfficeActionId = `urn:onoffice-de-ns:smart:2.5:smartml:action:${'get' | 'read'}`;
-type OnOfficeResource = 'estate' | 'address';
+type OnOfficeResource = 'estate' | 'address' | 'fields';
 
 interface OnOfficeResponseRecord {
 	id: string;
@@ -132,11 +132,14 @@ export async function onOfficeApiAction(
 
 	const sortedParameters = Object.fromEntries(Object.entries(parameters).sort());
 
+	console.log('Parameters: ', JSON.stringify(sortedParameters));
+
 	const hmac = MD5(
 		apiSecret +
 			MD5(
-				`${JSON.stringify(
-					sortedParameters,
+				`${JSON.stringify(sortedParameters).replace(
+					'/',
+					'\\/',
 				)},${apiToken},${actionid},${identifier},${resourceid},${apiSecret},${timestamp},${resourceType}`,
 			),
 	);

@@ -34,12 +34,26 @@ export const addressOperations: INodeProperties[] = [
 ];
 
 export const addressFields: INodeProperties[] = [
-	/* -------------------------------------------------------------------------- */
-	/*                                address:read                                */
-	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Data',
+		displayName: 'Data fields',
 		name: 'data',
+		type: 'string',
+		required: true,
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: [],
+		displayOptions: {
+			show: {
+				resource: ['address'],
+				operation: ['read'],
+			},
+		},
+		description: 'The data fields to fetch',
+	},
+	{
+		displayName: 'Special data fields',
+		name: 'specialData',
 		type: 'multiOptions',
 		displayOptions: {
 			show: {
@@ -90,7 +104,7 @@ export const addressFields: INodeProperties[] = [
 			},
 		],
 		default: [],
-		description: 'The data fields to fetch',
+		description: 'Some data fields have special meaning. Select the fields you want to include.',
 	},
 	{
 		displayName: 'Additional Fields',

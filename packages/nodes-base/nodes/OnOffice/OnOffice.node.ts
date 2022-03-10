@@ -3,6 +3,10 @@ import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from
 import { addressFields, addressOperations } from './descriptions/AddressDescription';
 import { OnOfficeAddressReadAdditionalFields } from './descriptions/CommonReadDescription';
 import { estateFields, estateOperations } from './descriptions/EstateDescription';
+import {
+	fieldConfigurationFields,
+	fieldConfigurationOperations,
+} from './descriptions/FieldConfigurationDescription';
 import { createFilterParameter, onOfficeApiAction } from './GenericFunctions';
 
 export class OnOffice implements INodeType {
@@ -40,6 +44,10 @@ export class OnOffice implements INodeType {
 						name: 'Address',
 						value: 'address',
 					},
+					{
+						name: 'Field Configuration',
+						value: 'fields',
+					},
 				],
 				default: 'address',
 				required: true,
@@ -51,6 +59,9 @@ export class OnOffice implements INodeType {
 
 			...estateOperations,
 			...estateFields,
+
+			...fieldConfigurationOperations,
+			...fieldConfigurationFields,
 		],
 	};
 
@@ -64,13 +75,18 @@ export class OnOffice implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			if (operation === 'read') {
+				const dataFields = [
+					...(this.getNodeParameter('data', i) as string[]),
+					...(this.getNodeParameter('specialData', i) as string[]),
+				];
+
 				const additionalFields = this.getNodeParameter(
 					'additionalFields',
 					i,
 				) as OnOfficeAddressReadAdditionalFields;
 
 				const parameters = {
-					data: this.getNodeParameter('data', i) as string[],
+					data: dataFields,
 					recordids: additionalFields.recordIds,
 					filterid: additionalFields.filterId,
 					filter: createFilterParameter(additionalFields.filters),
@@ -89,6 +105,26 @@ export class OnOffice implements INodeType {
 
 				if (resource === 'address' || resource === 'estate') {
 					const result = await onOfficeApiAction.call(this, 'read', resource, parameters);
+
+					returnData.push(result);
+				}
+			}
+			if (operation === 'get') {
+				if (resource === 'fields') {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const parameters = {
+						modules: this.getNodeParameter('modules', i) as string[],
+						labels: additionalFields.labels,
+						language: additionalFields.language,
+						fieldList: additionalFields.fieldList,
+						showOnlyInactive: additionalFields.showOnlyInactive,
+						listlimit: additionalFields.limit,
+						realDataTypes: additionalFields.realDataTypes,
+						showFieldMeasureFormat: additionalFields.showFieldMeasureFormat,
+					};
+
+					const result = await onOfficeApiAction.call(this, 'get', resource, parameters);
 
 					returnData.push(result);
 				}
