@@ -426,7 +426,7 @@ const SURVEY = [
 	'otherWorkArea',
 	'workArea',
 ].reduce<Record<string, string>>((acc, cur) => {
-	return (acc[cur] = randomString(1, 10)), acc;
+	return (acc[cur] = randomString(2, 10)), acc;
 }, {});
 
 const VALID_PATCH_ME_PAYLOADS = [

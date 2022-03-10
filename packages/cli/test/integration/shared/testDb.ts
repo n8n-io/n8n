@@ -25,7 +25,7 @@ export async function init() {
 
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
-		const testDbName = `n8n_test_sqlite_${randomString(6, 9)}_${Date.now()}`;
+		const testDbName = `n8n_test_sqlite_${randomString(6, 10)}_${Date.now()}`;
 		await Db.init(getSqliteOptions({ name: testDbName }));
 		await getConnection(testDbName).runMigrations({ transaction: 'none' });
 
@@ -46,7 +46,7 @@ export async function init() {
 			process.exit(1);
 		}
 
-		const testDbName = `pg_${randomString(6, 9)}_${Date.now()}_n8n_test`;
+		const testDbName = `pg_${randomString(6, 10)}_${Date.now()}_n8n_test`;
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName};`);
 
 		await Db.init(getPostgresOptions({ name: testDbName }));
@@ -57,7 +57,7 @@ export async function init() {
 	if (dbType === 'mysqldb') {
 		const bootstrapMysql = await createConnection(getBootstrapMySqlOptions());
 
-		const testDbName = `mysql_${randomString(6, 9)}_${Date.now()}_n8n_test`;
+		const testDbName = `mysql_${randomString(6, 10)}_${Date.now()}_n8n_test`;
 		await bootstrapMysql.query(`CREATE DATABASE ${testDbName};`);
 
 		await Db.init(getMySqlOptions({ name: testDbName }));

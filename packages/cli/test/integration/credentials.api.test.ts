@@ -516,24 +516,24 @@ const credentialPayload = () => ({
 	name: randomName(),
 	type: randomName(),
 	nodesAccess: [{ nodeType: randomName() }],
-	data: { accessToken: randomString(5, 15) },
+	data: { accessToken: randomString(6, 16) },
 });
 
 const INVALID_PAYLOADS = [
 	{
 		type: randomName(),
 		nodesAccess: [{ nodeType: randomName() }],
-		data: { accessToken: randomString(5, 15) },
+		data: { accessToken: randomString(6, 16) },
 	},
 	{
 		name: randomName(),
 		nodesAccess: [{ nodeType: randomName() }],
-		data: { accessToken: randomString(5, 15) },
+		data: { accessToken: randomString(6, 16) },
 	},
 	{
 		name: randomName(),
 		type: randomName(),
-		data: { accessToken: randomString(5, 15) },
+		data: { accessToken: randomString(6, 16) },
 	},
 	{
 		name: randomName(),
