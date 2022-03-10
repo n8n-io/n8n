@@ -5,24 +5,24 @@
 				<i :class="$style.icon">
 					<font-awesome-icon icon="arrow-left" />
 				</i>
-				<n8n-heading slot="title" size="large" :bold="true">{{ $locale.baseText('SETTINGS') }}</n8n-heading>
+				<n8n-heading slot="title" size="large" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
 			</div>
 			<n8n-menu-item index="/settings/personal" v-if="canAccessPersonalSettings()" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-circle" />
 				</i>
-				<span slot="title">{{ $locale.baseText('PERSONAL') }}</span>
+				<span slot="title">{{ $locale.baseText('settings.personal') }}</span>
 			</n8n-menu-item>
 			<n8n-menu-item index="/settings/users" v-if="canAccessUsersSettings()" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-friends" />
 				</i>
-				<span slot="title">{{ $locale.baseText('USERS') }}</span>
+				<span slot="title">{{ $locale.baseText('settings.users') }}</span>
 			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">
 			<n8n-link @click="onVersionClick" size="small">
-				{{ $locale.baseText('VERSION') }} {{ versionCli }}
+				{{ $locale.baseText('settings.version') }} {{ versionCli }}
 			</n8n-link>
 		</div>
 	</div>

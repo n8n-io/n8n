@@ -25,14 +25,14 @@ export default mixins(
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
-			title: this.$locale.baseText('SET_UP_OWNER'),
-			buttonText: this.$locale.baseText('NEXT'),
-			secondaryButtonText: this.$locale.baseText('SKIP_SETUP_TEMPORARILY'),
+			title: this.$locale.baseText('settings.setup.setupOwner'),
+			buttonText: this.$locale.baseText('auth.setup.next'),
+			secondaryButtonText: this.$locale.baseText('settings.setup.skipSetupTemporarily'),
 			inputs: [
 				{
 					name: 'email',
 					properties: {
-						label: this.$locale.baseText('EMAIL'),
+						label: this.$locale.baseText('auth.email'),
 						type: 'email',
 						required: true,
 						validationRules: [{ name: 'VALID_EMAIL' }],
@@ -43,7 +43,7 @@ export default mixins(
 				{
 					name: 'firstName',
 					properties: {
-						label: this.$locale.baseText('FIRST_NAME'),
+						label: this.$locale.baseText('auth.firstName'),
 						maxlength: 32,
 						required: true,
 						autocomplete: 'given-name',
@@ -53,7 +53,7 @@ export default mixins(
 				{
 					name: 'lastName',
 					properties: {
-						label: this.$locale.baseText('LAST_NAME'),
+						label: this.$locale.baseText('auth.lastName'),
 						maxlength: 32,
 						required: true,
 						autocomplete: 'family-name',
@@ -63,11 +63,11 @@ export default mixins(
 				{
 					name: 'password',
 					properties: {
-						label: this.$locale.baseText('PASSWORD'),
+						label: this.$locale.baseText('auth.password'),
 						type: 'password',
 						required: true,
 						validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
-						infoText: this.$locale.baseText('DEFAULT_PASSWORD_REQUIREMENTS'),
+						infoText: this.$locale.baseText('auth.defaultPasswordRequirements'),
 						autocomplete: 'new-password',
 						capitalize: true,
 					},
@@ -94,17 +94,17 @@ export default mixins(
 				}
 
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('SETTING_UP_OWNER_ERROR'));
+				this.$showError(error, this.$locale.baseText('auth.setup.settingUpOwnerError'));
 			}
 			this.loading = false;
 		},
 		async onSkip() {
 			const skip = await this.confirmMessage(
-				this.$locale.baseText('OWNER_ACCOUNT_BENEFITS_MESSAGE'),
-				this.$locale.baseText('SKIP_OWNER_SETUP_QUESTION'),
+				this.$locale.baseText('auth.setup.ownerAccountBenefits'),
+				this.$locale.baseText('settings.setup.skipOwnerSetupQuestion'),
 				null,
-				this.$locale.baseText('SKIP_SETUP'),
-				this.$locale.baseText('GO_BACK'),
+				this.$locale.baseText('settings.setup.skipSetup'),
+				this.$locale.baseText('settings.goBack'),
 			);
 			if (skip) {
 				this.$store.dispatch('users/skipOwnerSetup');

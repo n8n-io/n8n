@@ -365,9 +365,9 @@ const router = new Router({
 			name: VIEWS.NOT_FOUND,
 			component: ErrorView,
 			props: {
-				messageKey: 'PAGE_NOT_FOUND_MESSAGE',
+				messageKey: 'error.pageNotFound',
 				errorCode: 404,
-				redirectTextKey: 'GO_BACK',
+				redirectTextKey: 'error.goBack',
 				redirectPage: VIEWS.HOMEPAGE,
 			},
 			meta: {

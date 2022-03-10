@@ -33,7 +33,7 @@ export default mixins(
 				{
 					name: 'email',
 					properties: {
-						label: this.$locale.baseText('EMAIL'),
+						label: this.$locale.baseText('auth.email'),
 						type: 'email',
 						required: true,
 						validationRules: [{name: 'VALID_EMAIL'}],
@@ -47,22 +47,22 @@ export default mixins(
 				{
 					name: 'no-smtp-warning',
 					properties: {
-						label: this.$locale.baseText('NO_SMTP_TO_SEND_EMAIL_WARNING'),
+						label: this.$locale.baseText('forgotPassword.noSMTPToSendEmailWarning'),
 						type: 'info',
 					},
 				},
 			];
 
 			const DEFAULT_FORM_CONFIG = {
-				title: this.$locale.baseText('RECOVER_PASSWORD'),
-				redirectText: this.$locale.baseText('RETURN_TO_SIGN_IN'),
+				title: this.$locale.baseText('forgotPassword.recoverPassword'),
+				redirectText: this.$locale.baseText('forgotPassword.returnToSignIn'),
 				redirectLink: '/signin',
 			};
 
 			if (this.isSmtpSetup) {
 				return {
 					...DEFAULT_FORM_CONFIG,
-					buttonText: this.$locale.baseText('GET_RECOVERY_LINK'),
+					buttonText: this.$locale.baseText('forgotPassword.getRecoveryLink'),
 					inputs: EMAIL_INPUTS,
 				};
 			}
@@ -80,17 +80,17 @@ export default mixins(
 
 				this.$showMessage({
 					type: 'success',
-					title: this.$locale.baseText('RECOVERY_EMAIL_SENT'),
+					title: this.$locale.baseText('forgotPassword.recoveryEmailSent'),
 					message: this.$locale.baseText(
-						'EMAIL_SENT_IF_EXISTS',
+						'forgotPassword.emailSentIfExists',
 						{ interpolate: { email: values.email }},
 					),
 				});
 			} catch (error) {
 				this.$showMessage({
 					type: 'error',
-					title: this.$locale.baseText('SENDING_EMAIL_ERROR'),
-					message: this.$locale.baseText('SMTP_ERROR_CONTACT_ADMINISTRATOR'),
+					title: this.$locale.baseText('forgotPassword.sendingEmailError'),
+					message: this.$locale.baseText('forgotPassword.smtpErrorContactAdministrator'),
 				});
 			}
 			this.loading = false;

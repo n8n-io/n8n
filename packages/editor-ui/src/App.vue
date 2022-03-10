@@ -54,8 +54,8 @@ export default mixins(
 				await this.$store.dispatch('settings/getSettings');
 			} catch (e) {
 				this.$showToast({
-					title: this.$locale.baseText('settings.errors.connectionError.title'),
-					message: this.$locale.baseText('settings.errors.connectionError.message'),
+					title: this.$locale.baseText('startupError'),
+					message: this.$locale.baseText('startupError.message'),
 					type: 'error',
 					duration: 0,
 				});

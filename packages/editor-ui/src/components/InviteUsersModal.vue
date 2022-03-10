@@ -2,7 +2,7 @@
 	<Modal
 		:name="INVITE_USER_MODAL_KEY"
 		@enter="onSubmit"
-		:title="$locale.baseText('INVITE_NEW_USERS')"
+		:title="$locale.baseText('settings.users.inviteNewUsers')"
 		:center="true"
 		width="460px"
 		:eventBus="modalBus"
@@ -70,7 +70,7 @@ export default mixins(showMessage).extend({
 			{
 				name: 'emails',
 				properties: {
-					label: this.$locale.baseText('NEW_EMAILS_TO_INVITE'),
+					label: this.$locale.baseText('settings.users.newEmailsToInvite'),
 					required: true,
 					validationRules: [{name: 'VALID_EMAILS'}],
 					validators: {
@@ -86,13 +86,13 @@ export default mixins(showMessage).extend({
 				name: 'role',
 				initialValue: 'member',
 				properties: {
-					label: this.$locale.baseText('ROLE'),
+					label: this.$locale.baseText('auth.role'),
 					required: true,
 					type: 'select',
 					options: [
 						{
 							value: ROLE.Member,
-							label: this.$locale.baseText('MEMBER_ROLE'),
+							label: this.$locale.baseText('auth.roles.member'),
 						},
 					],
 					capitalize: true,
@@ -106,10 +106,10 @@ export default mixins(showMessage).extend({
 		},
 		buttonLabel(): string {
 			if (this.emailsCount > 1) {
-				return this.$locale.baseText('INVITE_X_USER', { interpolate: { count: this.emailsCount }});
+				return this.$locale.baseText('settings.users.inviteXUser', { interpolate: { count: this.emailsCount }});
 			}
 
-			return this.$locale.baseText('INVITE_USER');
+			return this.$locale.baseText('settings.users.inviteUser');
 		},
 		enabledButton(): boolean {
 			return this.emailsCount >= 1;
@@ -121,7 +121,7 @@ export default mixins(showMessage).extend({
 				const parsed = getEmail(email);
 
 				if (!!parsed.trim() && !VALID_EMAIL_REGEX.test(String(parsed).trim().toLowerCase())) {
-					throw new Error(this.$locale.baseText('INVALID_EMAIL_ERROR', { interpolate: { email: parsed }}));
+					throw new Error(this.$locale.baseText('settings.users.invalidEmail.error', { interpolate: { email: parsed }}));
 				}
 			});
 		},
@@ -139,7 +139,7 @@ export default mixins(showMessage).extend({
 					.filter((invite) => !!invite.email);
 
 				if (emails.length === 0) {
-					throw new Error(this.$locale.baseText('NO_USERS_TO_INVITE'));
+					throw new Error(this.$locale.baseText('settings.users.noUsersToInvite'));
 				}
 
 				const invited: IInviteResponse[] = await this.$store.dispatch('users/inviteUsers', emails);
@@ -159,8 +159,8 @@ export default mixins(showMessage).extend({
 				if (invitedEmails.success.length) {
 					this.$showMessage({
 						type: 'success',
-						title: this.$locale.baseText(invitedEmails.success.length > 1 ? 'USERS_INVITED_SUCCESS' : 'USER_INVITED_SUCCESS'),
-						message: this.$locale.baseText('EMAIL_INVITES_SENT', { interpolate: { emails: invitedEmails.success.join(', ') }}),
+						title: this.$locale.baseText(invitedEmails.success.length > 1 ? 'settings.users.usersInvited' : 'settings.users.userInvited'),
+						message: this.$locale.baseText('settings.users.emailInvitesSent', { interpolate: { emails: invitedEmails.success.join(', ') }}),
 					});
 				}
 
@@ -168,8 +168,8 @@ export default mixins(showMessage).extend({
 					setTimeout(() => {
 						this.$showMessage({
 							type: 'error',
-							title: this.$locale.baseText(invitedEmails.error.length > 1 ? 'USERS_INVITED_ERROR': 'USER_INVITED_ERROR'),
-							message: this.$locale.baseText('EMAIL_INVITES_SENT_ERROR', { interpolate: { emails: invitedEmails.error.join(', ') }}),
+							title: this.$locale.baseText(invitedEmails.error.length > 1 ? 'settings.users.usersInvitedError': 'settings.users.userInvitedError'),
+							message: this.$locale.baseText('settings.users.emailInvitesSentError', { interpolate: { emails: invitedEmails.error.join(', ') }}),
 						});
 					}, 0); // notifications stack on top of each other otherwise
 				}
@@ -177,7 +177,7 @@ export default mixins(showMessage).extend({
 				this.modalBus.$emit('close');
 
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('USERS_INVITED_ERROR'));
+				this.$showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
 			}
 			this.loading = false;
 		},

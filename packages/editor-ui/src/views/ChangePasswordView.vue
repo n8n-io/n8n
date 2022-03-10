@@ -32,19 +32,19 @@ export default mixins(
 	},
 	async mounted() {
 		this.config = {
-			title: this.$locale.baseText('CHANGE_PASSWORD'),
-			buttonText: this.$locale.baseText('CHANGE_PASSWORD'),
-			redirectText: this.$locale.baseText('SIGN_IN'),
+			title: this.$locale.baseText('auth.changePassword'),
+			buttonText: this.$locale.baseText('auth.changePassword'),
+			redirectText: this.$locale.baseText('auth.signin'),
 			redirectLink: '/signin',
 			inputs: [
 				{
 					name: 'password',
 					properties: {
-						label: this.$locale.baseText('NEW_PASSWORD'),
+						label: this.$locale.baseText('auth.newPassword'),
 						type: 'password',
 						required: true,
 						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-						infoText: this.$locale.baseText('DEFAULT_PASSWORD_REQUIREMENTS'),
+						infoText: this.$locale.baseText('auth.defaultPasswordRequirements'),
 						autocomplete: 'new-password',
 						capitalize: true,
 					},
@@ -52,7 +52,7 @@ export default mixins(
 				{
 					name: 'password2',
 					properties: {
-						label: this.$locale.baseText('REENTER_NEW_PASSWORD'),
+						label: this.$locale.baseText('auth.changePassword.reenterNewPassword'),
 						type: 'password',
 						required: true,
 						validators: {
@@ -72,21 +72,21 @@ export default mixins(
 		const userId = this.$route.query.userId;
 		try {
 			if (!token) {
-				throw new Error(this.$locale.baseText('MISSING_TOKEN_ERROR'));
+				throw new Error(this.$locale.baseText('auth.changePassword.missingTokenError'));
 			}
 			if (!userId) {
-				throw new Error(this.$locale.baseText('MISSING_USERID_ERROR'));
+				throw new Error(this.$locale.baseText('auth.changePassword.missingUserIdError'));
 			}
 
 			await this.$store.dispatch('users/validatePasswordToken', {token, userId});
 		} catch (e) {
-			this.$showError(e, this.$locale.baseText('TOKEN_VALIDATION_ERROR'));
+			this.$showError(e, this.$locale.baseText('auth.changePassword.tokenValidationError'));
 		}
 	},
 	methods: {
 		passwordsMatch(value: string) {
 			if (value !== this.password) {
-				throw new Error(this.$locale.baseText('PASSWORDS_MUST_MATCH_ERROR'));
+				throw new Error(this.$locale.baseText('auth.changePassword.passwordsMustMatchError'));
 			}
 		},
 		onInput(e: {name: string, value: string}) {
@@ -103,13 +103,13 @@ export default mixins(
 
 				this.$showMessage({
 					type: 'success',
-					title: this.$locale.baseText('PASSWORD_UPDATE_SUCCESS'),
-					message: this.$locale.baseText('PASSWORD_UPDATE_SUCCESS_MESSAGE'),
+					title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
+					message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
 				});
 
 				await this.$router.push({ name: VIEWS.SIGNIN });
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('PASSWORD_UPDATE_ERROR'));
+				this.$showError(error, this.$locale.baseText('auth.changePassword.error'));
 			}
 			this.loading = false;
 		},

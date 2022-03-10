@@ -2,28 +2,28 @@
 	<SettingsView>
 		<div :class="$style.container">
 			<div>
-				<n8n-heading size="2xlarge">{{ $locale.baseText('USERS') }}</n8n-heading>
+				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.users') }}</n8n-heading>
 				<div :class="$style.buttonContainer" v-if="!showUMSetupWarning">
 						<n8n-tooltip :disabled="isSmtpSetup" placement="bottom">
-							<div slot="content" v-html="$locale.baseText('SETUP_SMTP_TO_INVITE_USERS_MESSAGE')"></div>
+							<div slot="content" v-html="$locale.baseText('settings.users.setupSMTPToInviteUsers')"></div>
 							<div>
-								<n8n-button :label="$locale.baseText('INVITE')" @click="onInvite" size="large" :disabled="!isSmtpSetup" />
+								<n8n-button :label="$locale.baseText('settings.users.invite')" @click="onInvite" size="large" :disabled="!isSmtpSetup" />
 							</div>
 						</n8n-tooltip>
 				</div>
 			</div>
 			<div v-if="showUMSetupWarning" :class="$style.setupInfoContainer">
 				<n8n-action-box
-					:heading="$locale.baseText('SET_UP_TO_INVITE_USERS')"
-					:buttonText="$locale.baseText('SET_UP_MY_ACCOUNT')"
-					:description="$locale.baseText('SET_UP_TO_INVITE_USERS_INFO')"
+					:heading="$locale.baseText('settings.users.setupToInviteUsers')"
+					:buttonText="$locale.baseText('settings.users.setupMyAccount')"
+					:description="$locale.baseText('settings.users.setupToInviteUsersInfo')"
 					@click="redirectToSetup"
 				/>
 			</div>
 			<div :class="$style.usersContainer" v-else>
 				<PageAlert
 					v-if="!isSmtpSetup"
-					:message="$locale.baseText('SMTP_TO_ADD_USERS_WARNING')"
+					:message="$locale.baseText('settings.users.smtpToAddUsersWarning')"
 					:popupClass="$style.alert"
 				/>
 				<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
@@ -82,11 +82,11 @@ export default mixins(showMessage).extend({
 
 					this.$showToast({
 						type: 'success',
-						title: this.$locale.baseText('INVITE_RESENT'),
-						message: this.$locale.baseText('EMAIL_SENT_TO', { interpolate: { email: user.email } }),
+						title: this.$locale.baseText('settings.users.inviteResent'),
+						message: this.$locale.baseText('settings.users.emailSentTo', { interpolate: { email: user.email } }),
 					});
 				} catch (e) {
-					this.$showError(e, this.$locale.baseText('USER_REINVITE_ERROR'));
+					this.$showError(e, this.$locale.baseText('settings.users.userReinviteError'));
 				}
 			}
 		},
