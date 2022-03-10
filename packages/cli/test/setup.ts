@@ -14,7 +14,7 @@ if (dbType === 'mysqldb') {
 	const password = config.get('database.mysqldb.password');
 	const host = config.get('database.mysqldb.host');
 
-	const passwordSegment = password ? `-p${password}` : '';
+	const passwordSegment = password ? `-p ${password}` : '';
 
 	(async () => {
 		try {

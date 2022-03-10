@@ -24,6 +24,7 @@ beforeAll(async () => {
 
 	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
 	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {

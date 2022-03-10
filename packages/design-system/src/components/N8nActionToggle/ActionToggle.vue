@@ -59,6 +59,7 @@ export default {
 }
 
 .button {
+	cursor: pointer;
 	padding: var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
 	color: var(--color-text-dark);

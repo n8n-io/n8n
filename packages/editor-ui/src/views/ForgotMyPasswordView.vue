@@ -38,6 +38,7 @@ export default mixins(
 						required: true,
 						validationRules: [{name: 'VALID_EMAIL'}],
 						autocomplete: 'email',
+						capitalize: true,
 					},
 				},
 			];
@@ -72,7 +73,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		async onSubmit(values: {email: string}) {
+		async onSubmit(values: { email: string }) {
 			try {
 				this.loading = true;
 				await this.$store.dispatch('users/sendForgotPasswordEmail', values);
@@ -80,7 +81,10 @@ export default mixins(
 				this.$showMessage({
 					type: 'success',
 					title: this.$locale.baseText('RECOVERY_EMAIL_SENT'),
-					message: this.$locale.baseText('EMAIL_SENT_IF_EXISTS', {interpolate: {email: values.email}}),
+					message: this.$locale.baseText(
+						'EMAIL_SENT_IF_EXISTS',
+						{ interpolate: { email: values.email }},
+					),
 				});
 			} catch (error) {
 				this.$showMessage({

@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<div :class="$style.description">
 			<component :is="$options.components.N8nHeading" size="xlarge" align="center">{{ props.heading }}</component>
-			<slot></slot>
+			<n8n-text color="text-base"><span v-html="props.description"></span></n8n-text>
 		</div>
 		<component :is="$options.components.N8nButton" :label="props.buttonText" size="large"
 			@click="(e) => listeners.click && listeners.click(e)"
@@ -22,6 +22,9 @@ export default {
 			type: String,
 		},
 		buttonText: {
+			type: String,
+		},
+		description: {
 			type: String,
 		},
 	},
@@ -56,7 +59,7 @@ export default {
 	flex-direction: column;
 
 	> *:first-child {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing-xs);
 	}
 }
 </style>

@@ -38,15 +38,14 @@ export class Reset extends Command {
 			});
 
 			await Db.collections.SharedWorkflow!.update(
-				{ user: Not(owner) },
-				{ user: { ...owner, globalRole: ownerWorkflowRole } },
+				{ user: { id: Not(owner.id) }, role: ownerWorkflowRole },
+				{ user: owner },
 			);
 
 			await Db.collections.SharedCredentials!.update(
-				{ user: Not(owner) },
-				{ user: { ...owner, globalRole: ownerCredentialRole } },
+				{ user: { id: Not(owner.id) }, role: ownerCredentialRole },
+				{ user: owner },
 			);
-
 			await Db.collections.User!.delete({ id: Not(owner.id) });
 			await Db.collections.User!.save(Object.assign(owner, this.defaultUserProps));
 

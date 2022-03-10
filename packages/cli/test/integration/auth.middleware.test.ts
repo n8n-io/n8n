@@ -20,6 +20,7 @@ beforeAll(async () => {
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 	utils.initTestLogger();
+	utils.initTestTelemetry();
 });
 
 afterAll(async () => {

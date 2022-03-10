@@ -943,6 +943,7 @@ export type IFormInput = {
 		placeholder?: string;
 		options?: Array<{label: string; value: string}>;
 		autocomplete?: 'off' | 'new-password' | 'current-password' | 'given-name' | 'family-name' | 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
+		capitalize?: boolean;
 	};
 	shouldDisplay?: (values: {[key: string]: unknown}) => boolean;
 };

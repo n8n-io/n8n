@@ -171,6 +171,7 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { isEmailSetUp } from './UserManagement/UserManagementHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -318,7 +319,7 @@ class App {
 					config.get('userManagement.disabled') === false &&
 					config.get('userManagement.isInstanceOwnerSetUp') === false &&
 					config.get('userManagement.skipInstanceOwnerSetup') === false,
-				smtpSetup: config.get('userManagement.emails.mode') === 'smtp',
+				smtpSetup: isEmailSetUp(),
 			},
 			workflowTagsDisabled: config.get('workflowTagsDisabled'),
 			logLevel: config.get('logs.level'),
@@ -777,6 +778,7 @@ class App {
 				});
 
 				if (!savedWorkflow) {
+					LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
 					throw new ResponseHelper.ResponseError('Failed to save workflow');
 				}
 
@@ -787,7 +789,7 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow);
+				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow);
 
 				const { id, ...rest } = savedWorkflow;
 
@@ -938,6 +940,10 @@ class App {
 				});
 
 				if (!shared) {
+					LoggerProxy.info('User attempted to access a workflow without permissions', {
+						workflowId,
+						userId: req.user.id,
+					});
 					throw new ResponseHelper.ResponseError(
 						`Workflow with ID "${workflowId}" could not be found.`,
 						undefined,
@@ -976,6 +982,10 @@ class App {
 				});
 
 				if (!shared) {
+					LoggerProxy.info('User attempted to update a workflow without permissions', {
+						workflowId,
+						userId: req.user.id,
+					});
 					throw new ResponseHelper.ResponseError(
 						`Workflow with ID "${workflowId}" could not be found to be updated.`,
 						undefined,
@@ -1063,7 +1073,7 @@ class App {
 
 				await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
 				// @ts-ignore
-				void InternalHooksManager.getInstance().onWorkflowSaved(updatedWorkflow as IWorkflowBase);
+				void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updatedWorkflow);
 
 				if (updatedWorkflow.active) {
 					// When the workflow is supposed to be active add it again
@@ -1114,6 +1124,10 @@ class App {
 				});
 
 				if (!shared) {
+					LoggerProxy.info('User attempted to delete a workflow without permissions', {
+						workflowId,
+						userId: req.user.id,
+					});
 					throw new ResponseHelper.ResponseError(
 						`Workflow with ID "${workflowId}" could not be found to be deleted.`,
 						undefined,
@@ -1128,7 +1142,7 @@ class App {
 
 				await Db.collections.Workflow!.delete(workflowId);
 
-				void InternalHooksManager.getInstance().onWorkflowDeleted(workflowId);
+				void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId);
 				await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 				return true;
@@ -1573,6 +1587,11 @@ class App {
 				});
 
 				if (!shared) {
+					LoggerProxy.info('User attempted to access workflow errors without permissions', {
+						workflowId,
+						userId: req.user.id,
+					});
+
 					throw new ResponseHelper.ResponseError(
 						`Workflow with ID "${workflowId}" could not be found.`,
 						undefined,
@@ -1653,6 +1672,7 @@ class App {
 				const { id: credentialId } = req.query;
 
 				if (!credentialId) {
+					LoggerProxy.error('OAuth1 credential authorization failed due to missing credential ID');
 					throw new ResponseHelper.ResponseError(
 						'Required credential ID is missing',
 						undefined,
@@ -1663,6 +1683,10 @@ class App {
 				const credential = await getCredentialForUser(credentialId, req.user);
 
 				if (!credential) {
+					LoggerProxy.error(
+						'OAuth1 credential authorization failed because the current user does not have the correct permissions',
+						{ userId: req.user.id },
+					);
 					throw new ResponseHelper.ResponseError(
 						RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
 						undefined,
@@ -1757,6 +1781,11 @@ class App {
 				// Update the credentials in DB
 				await Db.collections.Credentials!.update(credentialId, newCredentialsData);
 
+				LoggerProxy.verbose('OAuth1 authorization successful for new credential', {
+					userId: req.user.id,
+					credentialId,
+				});
+
 				return returnUri;
 			}),
 		);
@@ -1776,12 +1805,23 @@ class App {
 							undefined,
 							503,
 						);
+						LoggerProxy.error(
+							'OAuth1 callback failed because of insufficient parameters received',
+							{
+								userId: req.user.id,
+								credentialId,
+							},
+						);
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
 					const credential = await getCredentialForUser(credentialId, req.user);
 
 					if (!credential) {
+						LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
+							userId: req.user.id,
+							credentialId,
+						});
 						const errorResponse = new ResponseHelper.ResponseError(
 							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
 							undefined,
@@ -1829,6 +1869,10 @@ class App {
 					try {
 						oauthToken = await requestPromise(options);
 					} catch (error) {
+						LoggerProxy.error('Unable to fetch tokens for OAuth1 callback', {
+							userId: req.user.id,
+							credentialId,
+						});
 						const errorResponse = new ResponseHelper.ResponseError(
 							'Unable to get access tokens!',
 							undefined,
@@ -1855,8 +1899,16 @@ class App {
 					// Save the credentials in DB
 					await Db.collections.Credentials!.update(credentialId, newCredentialsData);
 
+					LoggerProxy.verbose('OAuth1 callback successful for new credential', {
+						userId: req.user.id,
+						credentialId,
+					});
 					res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
 				} catch (error) {
+					LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
+						userId: req.user.id,
+						credentialId: req.query.cid,
+					});
 					// Error response
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
@@ -1884,6 +1936,10 @@ class App {
 				const credential = await getCredentialForUser(credentialId, req.user);
 
 				if (!credential) {
+					LoggerProxy.error('Failed to authorize OAuth2 due to lack of permissions', {
+						userId: req.user.id,
+						credentialId,
+					});
 					throw new ResponseHelper.ResponseError(
 						RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
 						undefined,
@@ -1971,6 +2027,10 @@ class App {
 					returnUri += `&${authQueryParameters}`;
 				}
 
+				LoggerProxy.verbose('OAuth2 authentication successful for new credential', {
+					userId: req.user.id,
+					credentialId,
+				});
 				return returnUri;
 			}),
 		);
@@ -2013,6 +2073,10 @@ class App {
 					const credential = await getCredentialForUser(state.cid, req.user);
 
 					if (!credential) {
+						LoggerProxy.error('OAuth2 callback failed because of insufficient permissions', {
+							userId: req.user.id,
+							credentialId: state.cid,
+						});
 						const errorResponse = new ResponseHelper.ResponseError(
 							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
 							undefined,
@@ -2051,6 +2115,10 @@ class App {
 						decryptedDataOriginal.csrfSecret === undefined ||
 						!token.verify(decryptedDataOriginal.csrfSecret as string, state.token)
 					) {
+						LoggerProxy.debug('OAuth2 callback state is invalid', {
+							userId: req.user.id,
+							credentialId: state.cid,
+						});
 						const errorResponse = new ResponseHelper.ResponseError(
 							'The OAuth2 callback state is invalid!',
 							undefined,
@@ -2098,6 +2166,10 @@ class App {
 					}
 
 					if (oauthToken === undefined) {
+						LoggerProxy.error('OAuth2 callback failed: unable to get access tokens', {
+							userId: req.user.id,
+							credentialId: state.cid,
+						});
 						const errorResponse = new ResponseHelper.ResponseError(
 							'Unable to get access tokens!',
 							undefined,
@@ -2128,6 +2200,10 @@ class App {
 					newCredentialsData.updatedAt = this.getCurrentDate();
 					// Save the credentials in DB
 					await Db.collections.Credentials!.update(state.cid, newCredentialsData);
+					LoggerProxy.verbose('OAuth2 callback successful for new credential', {
+						userId: req.user.id,
+						credentialId: state.cid,
+					});
 
 					res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
 				} catch (error) {
@@ -2277,7 +2353,16 @@ class App {
 						},
 					});
 
-					if (!execution) return undefined;
+					if (!execution) {
+						LoggerProxy.info(
+							'Attempt to read execution was blocked due to insufficient permissions',
+							{
+								userId: req.user.id,
+								executionId,
+							},
+						);
+						return undefined;
+					}
 
 					if (req.query.unflattedResponse === 'true') {
 						return ResponseHelper.unflattenExecutionData(execution);
@@ -2312,6 +2397,13 @@ class App {
 				});
 
 				if (!execution) {
+					LoggerProxy.info(
+						'Attempt to retry an execution was blocked due to insufficient permissions',
+						{
+							userId: req.user.id,
+							executionId,
+						},
+					);
 					throw new ResponseHelper.ResponseError(
 						`The execution with the ID "${executionId}" does not exist.`,
 						404,
@@ -2387,6 +2479,11 @@ class App {
 						// Find the data of the last executed node in the new workflow
 						const node = workflowInstance.getNode(stack.node.name);
 						if (node === null) {
+							LoggerProxy.error('Failed to retry an execution because a node could not be found', {
+								userId: req.user.id,
+								executionId,
+								nodeName: stack.node.name,
+							});
 							throw new Error(
 								`Could not find the node "${stack.node.name}" in workflow. It probably got deleted or renamed. Without it the workflow can sadly not be retried.`,
 							);
@@ -2468,7 +2565,13 @@ class App {
 						},
 					});
 
-					if (!executions.length) return;
+					if (!executions.length) {
+						LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
+							userId: req.user.id,
+							executionIds: ids,
+						});
+						return;
+					}
 
 					const idsToDelete = executions.map(({ id }) => id.toString());
 
@@ -2925,6 +3028,10 @@ export async function start(): Promise<void> {
 			},
 			deploymentType: config.get('deployment.type'),
 			binaryDataMode: binarDataConfig.mode,
+			n8n_multi_user_allowed:
+				config.get('userManagement.disabled') === false ||
+				config.get('userManagement.isInstanceOwnerSetUp') === true,
+			smtp_set_up: config.get('userManagement.emails.mode') === 'smtp',
 		};
 
 		void Db.collections

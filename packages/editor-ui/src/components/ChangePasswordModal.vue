@@ -59,6 +59,7 @@ export default mixins(showMessage).extend({
 					type: 'password',
 					required: true,
 					autocomplete: 'current-password',
+					capitalize: true,
 				},
 			},
 			{
@@ -70,6 +71,7 @@ export default mixins(showMessage).extend({
 					validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
 					infoText: this.$locale.baseText('DEFAULT_PASSWORD_REQUIREMENTS'),
 					autocomplete: 'new-password',
+					capitalize: true,
 				},
 			},
 			{
@@ -85,6 +87,7 @@ export default mixins(showMessage).extend({
 					},
 					validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
 					autocomplete: 'new-password',
+					capitalize: true,
 				},
 			},
 		];

@@ -333,6 +333,16 @@ export interface IDiagnosticInfo {
 	};
 	deploymentType: string;
 	binaryDataMode: string;
+	n8n_multi_user_allowed: boolean;
+	smtp_set_up: boolean;
+}
+
+export interface ITelemetryUserDeletionData {
+	user_id: string;
+	target_user_old_status: 'active' | 'invited';
+	migration_strategy?: 'transfer_data' | 'delete_data';
+	target_user_id?: string;
+	migration_user_id?: string;
 }
 
 export interface IInternalHooksClass {
@@ -341,15 +351,29 @@ export interface IInternalHooksClass {
 		diagnosticInfo: IDiagnosticInfo,
 		firstWorkflowCreatedAt?: Date,
 	): Promise<unknown[]>;
-	onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void>;
-	onWorkflowCreated(workflow: IWorkflowBase): Promise<void>;
-	onWorkflowDeleted(workflowId: string): Promise<void>;
-	onWorkflowSaved(workflow: IWorkflowBase): Promise<void>;
+	onPersonalizationSurveySubmitted(userId: string, answers: Record<string, string>): Promise<void>;
+	onWorkflowCreated(userId: string, workflow: IWorkflowBase): Promise<void>;
+	onWorkflowDeleted(userId: string, workflowId: string): Promise<void>;
+	onWorkflowSaved(userId: string, workflow: IWorkflowBase): Promise<void>;
 	onWorkflowPostExecute(
 		executionId: string,
 		workflow: IWorkflowBase,
 		runData?: IRun,
+		userId?: string,
 	): Promise<void>;
+	onUserDeletion(userId: string, userDeletionData: ITelemetryUserDeletionData): Promise<void>;
+	onUserInvite(userInviteData: { user_id: string; target_user_id: string[] }): Promise<void>;
+	onUserReinvite(userReinviteData: { user_id: string; target_user_id: string }): Promise<void>;
+	onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void>;
+	onUserInviteEmailClick(userInviteClickData: { user_id: string }): Promise<void>;
+	onUserPasswordResetEmailClick(userPasswordResetData: { user_id: string }): Promise<void>;
+	onUserTransactionalEmail(userTransactionalEmailData: {
+		user_id: string;
+		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+	}): Promise<void>;
+	onUserPasswordResetRequestClick(userPasswordResetData: { user_id: string }): Promise<void>;
+	onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }): Promise<void>;
+	onUserSignup(userSignupData: { user_id: string }): Promise<void>;
 }
 
 export interface IN8nConfig {

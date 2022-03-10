@@ -7,14 +7,19 @@ import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { Db, ResponseHelper } from '../..';
+import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { UserRequest } from '../../requests';
-import { getInstanceBaseUrl, sanitizeUser, validatePassword } from '../UserManagementHelper';
+import {
+	getInstanceBaseUrl,
+	isEmailSetUp,
+	sanitizeUser,
+	validatePassword,
+} from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../databases/entities/SharedCredentials';
-import { getInstance } from '../email/UserManagementMailer';
+import * as UserManagementMailer from '../email/UserManagementMailer';
 
 import config = require('../../../config');
 import { issueCookie } from '../auth/jwt';
@@ -37,9 +42,30 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
+			let mailer: UserManagementMailer.UserManagementMailer | undefined;
+			try {
+				mailer = await UserManagementMailer.getInstance();
+			} catch (error) {
+				if (error instanceof Error) {
+					throw new ResponseHelper.ResponseError(
+						`There is a problem with your SMTP setup: ${error.message}`,
+						undefined,
+						500,
+					);
+				}
+			}
+
+			// TODO: this should be checked in the middleware rather than here
+			if (config.get('userManagement.disabled')) {
+				Logger.debug(
+					'Request to send email invite(s) to user(s) failed because user management is disabled',
+				);
+				throw new ResponseHelper.ResponseError('User management is disabled');
+			}
+
 			if (!config.get('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
-					'Request to send email invite(s) to user(s) failed because emailing was not set up',
+					'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 				);
 				throw new ResponseHelper.ResponseError(
 					'You must set up your own account before inviting others',
@@ -126,12 +152,17 @@ export function usersNamespace(this: N8nApp): void {
 						}),
 					);
 				});
+
+				void InternalHooksManager.getInstance().onUserInvite({
+					user_id: req.user.id,
+					target_user_id: Object.values(createUsers) as string[],
+				});
 			} catch (error) {
 				Logger.error('Failed to create user shells', { userShells: createUsers });
 				throw new ResponseHelper.ResponseError('An error occurred during user creation');
 			}
 
-			Logger.info('Created user shells successfully', { userId: req.user.id });
+			Logger.info('Created user shell(s) successfully', { userId: req.user.id });
 			Logger.verbose(total > 1 ? `${total} user shells created` : `1 user shell created`, {
 				userShells: createUsers,
 			});
@@ -141,13 +172,12 @@ export function usersNamespace(this: N8nApp): void {
 			const usersPendingSetup = Object.entries(createUsers).filter(([email, id]) => id && email);
 
 			// send invite email to new or not yet setup users
-			const mailer = getInstance();
 
 			const emailingResults = await Promise.all(
 				usersPendingSetup.map(async ([email, id]) => {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${id}`;
-					const result = await mailer.invite({
+					const result = await mailer?.invite({
 						email,
 						inviteAcceptUrl,
 						domain: baseUrl,
@@ -158,7 +188,12 @@ export function usersNamespace(this: N8nApp): void {
 							email,
 						},
 					};
-					if (!result.success) {
+					if (result?.success) {
+						void InternalHooksManager.getInstance().onUserTransactionalEmail({
+							user_id: id!,
+							message_type: 'New user invite',
+						});
+					} else {
 						Logger.error('Failed to send email', {
 							userId: req.user.id,
 							inviteAcceptUrl,
@@ -227,7 +262,11 @@ export function usersNamespace(this: N8nApp): void {
 					inviterId,
 					inviteeId,
 				});
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+				throw new ResponseHelper.ResponseError(
+					'Invalid invite link, it probably expired.',
+					undefined,
+					400,
+				);
 			}
 
 			const inviter = users.find((user) => user.id === inviterId);
@@ -241,6 +280,10 @@ export function usersNamespace(this: N8nApp): void {
 				);
 				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
 			}
+
+			void InternalHooksManager.getInstance().onUserInviteEmailClick({
+				user_id: inviteeId,
+			});
 
 			const { firstName, lastName } = inviter;
 
@@ -307,6 +350,10 @@ export function usersNamespace(this: N8nApp): void {
 			const updatedUser = await Db.collections.User!.save(invitee);
 
 			await issueCookie(res, updatedUser);
+
+			void InternalHooksManager.getInstance().onUserSignup({
+				user_id: invitee.id,
+			});
 
 			return sanitizeUser(updatedUser);
 		}),
@@ -408,6 +455,20 @@ export function usersNamespace(this: N8nApp): void {
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
 
+			const telemetryData: ITelemetryUserDeletionData = {
+				user_id: req.user.id,
+				target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
+				target_user_id: idToDelete,
+			};
+
+			telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
+
+			if (transferId) {
+				telemetryData.migration_user_id = transferId;
+			}
+
+			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData);
+
 			return { success: true };
 		}),
 	);
@@ -420,9 +481,7 @@ export function usersNamespace(this: N8nApp): void {
 		ResponseHelper.send(async (req: UserRequest.Reinvite) => {
 			const { id: idToReinvite } = req.params;
 
-			const isEmailSetUp = config.get('userManagement.emails.mode') as '' | 'smtp';
-
-			if (!isEmailSetUp) {
+			if (!isEmailSetUp()) {
 				Logger.error('Request to reinvite a user failed because email sending was not set up');
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to invite other users',
@@ -455,13 +514,22 @@ export function usersNamespace(this: N8nApp): void {
 			const baseUrl = getInstanceBaseUrl();
 			const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${reinvitee.id}`;
 
-			const result = await getInstance().invite({
+			let mailer: UserManagementMailer.UserManagementMailer | undefined;
+			try {
+				mailer = await UserManagementMailer.getInstance();
+			} catch (error) {
+				if (error instanceof Error) {
+					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+				}
+			}
+
+			const result = await mailer?.invite({
 				email: reinvitee.email,
 				inviteAcceptUrl,
 				domain: baseUrl,
 			});
 
-			if (!result.success) {
+			if (!result?.success) {
 				Logger.error('Failed to send email', {
 					email: reinvitee.email,
 					inviteAcceptUrl,
@@ -473,6 +541,16 @@ export function usersNamespace(this: N8nApp): void {
 					500,
 				);
 			}
+
+			void InternalHooksManager.getInstance().onUserReinvite({
+				user_id: req.user.id,
+				target_user_id: reinvitee.id,
+			});
+
+			void InternalHooksManager.getInstance().onUserTransactionalEmail({
+				user_id: reinvitee.id,
+				message_type: 'Resend invite',
+			});
 
 			return { success: true };
 		}),

@@ -1,5 +1,6 @@
 export interface UserManagementMailerImplementation {
 	sendMail: (mailData: MailData) => Promise<SendEmailResult>;
+	verifyConnection: () => Promise<void>;
 }
 
 export type InviteEmailData = {

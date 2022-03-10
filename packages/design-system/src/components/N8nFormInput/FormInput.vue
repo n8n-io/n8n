@@ -1,5 +1,5 @@
 <template>
-	<n8n-input-label :label="label" :tooltipText="tooltipText" :required="required && showRequiredAsterisk">
+	<n8n-input-label :label="label" :tooltipText="tooltipText" :required="required && showRequiredAsterisk" :capitalize="capitalize">
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot"></slot>
 			<n8n-select
@@ -126,6 +126,9 @@ export default Vue.extend({
 		},
 		autocomplete: {
 			type: String,
+		},
+		capitalize: {
+			type: Boolean,
 		},
 	},
 	mounted() {

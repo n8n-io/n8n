@@ -487,19 +487,14 @@ export class ActiveWorkflowRunner {
 					);
 				}
 
-				let errorMessage = '';
-
 				// if it's a workflow from the the insert
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'QueryFailedError') {
-					errorMessage = `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
+					error.message = `The URL path that "${webhook.node}" node uses is already taken. Please change it to something else.`;
 				} else if (error.detail) {
 					// it's a error runnig the webhook methods (checkExists, create)
-					errorMessage = error.detail;
-				} else {
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					errorMessage = error.message;
+					error.message = error.detail;
 				}
 
 				throw error;

@@ -9,6 +9,7 @@ import { Db, GenericHelpers, ResponseHelper } from '..';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
 import { Role } from '../databases/entities/Role';
 import { AuthenticatedRequest } from '../requests';
+import config = require('../../config');
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
 	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
@@ -17,6 +18,15 @@ export async function getWorkflowOwner(workflowId: string | number): Promise<Use
 	});
 
 	return sharedWorkflow.user;
+}
+
+export function isEmailSetUp(): boolean {
+	const smtp = config.get('userManagement.emails.mode') === 'smtp';
+	const host = !!config.get('userManagement.emails.smtp.host');
+	const user = !!config.get('userManagement.emails.smtp.auth.user');
+	const pass = !!config.get('userManagement.emails.smtp.auth.pass');
+
+	return smtp && host && user && pass;
 }
 
 async function getInstanceOwnerRole(): Promise<Role> {
@@ -122,11 +132,6 @@ export async function checkPermissionsForExecution(
 	workflow: Workflow,
 	userId: string,
 ): Promise<boolean> {
-	const user = await getUserById(userId);
-	if (user.globalRole.name === 'owner') {
-		return true;
-	}
-
 	const credentialIds = new Set();
 	const nodeNames = Object.keys(workflow.nodes);
 	// Iterate over all nodes
@@ -159,6 +164,13 @@ export async function checkPermissionsForExecution(
 
 	if (ids.length === 0) {
 		// If the workflow does not use any credentials, then we're fine
+		return true;
+	}
+	// If this check happens on top, we may get
+	// unitialized db errors.
+	// Db is certainly initialized if workflow uses credentials.
+	const user = await getUserById(userId);
+	if (user.globalRole.name === 'owner') {
 		return true;
 	}
 

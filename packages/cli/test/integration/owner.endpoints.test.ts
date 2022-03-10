@@ -21,6 +21,7 @@ beforeAll(async () => {
 	testDbName = initResult.testDbName;
 
 	utils.initTestLogger();
+	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {
