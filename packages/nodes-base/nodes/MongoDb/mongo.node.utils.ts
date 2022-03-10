@@ -115,15 +115,15 @@ export function getItemCopy(
  * @param {Date} val the date value
  * @returns
  */
-function setDateField(insertItem: Object, str: string, val: Date) {
-	const path = str.split(".") || [];
+function setDateField(insertItem: IDataObject, str: string, val: Date) {
+	const path = str.split('.') || [];
 	while (path.length > 1){
-		const item = path.shift();
-		if (undefined != item) {
-			insertItem = insertItem[item];
+		const item = path.shift() as string;
+		if (item !== undefined) {
+			insertItem = insertItem[item] as IDataObject;
 		}
 	}
-	return insertItem[path.shift()] = val;
+	return insertItem[path.shift() as string] = val;
 }
 
 /**
@@ -132,21 +132,21 @@ function setDateField(insertItem: Object, str: string, val: Date) {
  * @param {string} str the path to get value
  * @returns
  */
-function getDateField(insertItem: Object, str: string) {
-	const path = str.split(".") || [];
-	for (var i = 0; i < path.length; i++){
-		insertItem = insertItem[path[i]];
+function getDateField(insertItem: IDataObject, str: string) {
+	const path = str.split('.') || [];
+	for (let i = 0; i < path.length; i++){
+		insertItem = insertItem[path[i]] as IDataObject;
 	}
 	return insertItem;
 }
 
 export function handleDateFields(insertItems: IDataObject[], fields: string) {
-	const dateFields = (fields as string).split(',');
+	const dateFields = fields.split(',');
 	for (let i = 0; i < insertItems.length; i++) {
 		for(const dateField of dateFields){
-			let dateValue = getDateField(insertItems[i], dateField);
-			if (undefined != dateValue){
-				setDateField(insertItems[i], dateField, new Date(dateValue as string));
+			const dateValue = getDateField(insertItems[i], dateField);
+			if (undefined !== dateValue){
+				setDateField(insertItems[i], dateField, new Date(dateValue as unknown as string));
 			}
 		}
 	}
