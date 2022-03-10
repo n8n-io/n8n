@@ -61,7 +61,7 @@ export class CredentialsEntity implements ICredentialsDb {
 
 	@Index()
 	@Column({
-		length: 32,
+		length: 128,
 	})
 	type: string;
 
