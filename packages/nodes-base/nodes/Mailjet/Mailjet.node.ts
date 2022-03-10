@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
 import {
@@ -69,6 +70,7 @@ export class Mailjet implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Email',
@@ -80,7 +82,7 @@ export class Mailjet implements INodeType {
 					},
 				],
 				default: 'email',
-				description: 'Resource to consume.',
+				description: 'Resource to consume',
 			},
 			...emailOperations,
 			...emailFields,
@@ -126,7 +128,13 @@ export class Mailjet implements INodeType {
 						const subject = this.getNodeParameter('subject', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
-						const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
+						let variables;
+						const variablesAsJson = this.getNodeParameter('variablesAsJson', i) as boolean;
+						if (variablesAsJson) {
+							variables = this.getNodeParameter('variablesUi', i) as string;
+						} else {
+							variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
+						}
 
 						const body: IMessage = {
 							From: {
@@ -145,10 +153,15 @@ export class Mailjet implements INodeType {
 							});
 						}
 						if (variables) {
-							for (const variable of variables) {
-								body.Variables![variable.name as string] = variable.value;
+							if (variablesAsJson) {
+								Object.assign(body.Variables!, JSON.parse(variables as string));
+							}	else {
+								for (const variable of variables as IDataObject[]) {
+									body.Variables![variable.name as string] = variable.value;
+								}
 							}
 						}
+						console.log(body.Variables);
 						if (htmlBody) {
 							body.HTMLPart = htmlBody;
 						}
@@ -201,10 +214,15 @@ export class Mailjet implements INodeType {
 						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 						const templateId = parseInt(this.getNodeParameter('templateId', i) as string, 10);
 						const subject = this.getNodeParameter('subject', i) as string;
-						const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
-						const variablesJson = this.getNodeParameter('variables', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
+						let variables;
+						const variablesAsJson = this.getNodeParameter('variablesAsJson', i) as boolean;
+						if (variablesAsJson) {
+							variables = this.getNodeParameter('variablesUi', i) as string;
+						} else {
+							variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
+						}
 
 						const body: IMessage = {
 							From: {
@@ -223,15 +241,13 @@ export class Mailjet implements INodeType {
 								Email: email,
 							});
 						}
-
-						if (variablesJson) {
-							const v = JSON.parse(variablesJson);
-							Object.assign(body.Variables!, v);
-						}
-
 						if (variables) {
-							for (const variable of variables) {
-								body.Variables![variable.name as string] = variable.value;
+							if (variablesAsJson) {
+								Object.assign(body.Variables!, JSON.parse(variables as string));
+							}	else {
+								for (const variable of variables as IDataObject[]) {
+									body.Variables![variable.name as string] = variable.value;
+								}
 							}
 						}
 						if (additionalFields.bccEmail) {
@@ -296,7 +312,7 @@ export class Mailjet implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

@@ -5,6 +5,7 @@ export const emailOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +26,7 @@ export const emailOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'The operation to perform.',
+		description: 'Choose the operation to perform',
 	},
 ];
 
@@ -78,7 +79,7 @@ export const emailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'My subject line',
-		description: 'Subject line of the email.',
+		description: 'Subject line of the email',
 	},
 	{
 		displayName: 'Text',
@@ -98,7 +99,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Plain text message of email.',
+		description: 'Plain text message of email',
 	},
 	{
 		displayName: 'HTML',
@@ -118,7 +119,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'HTML text message of email.',
+		description: 'HTML text message of email',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -197,7 +198,7 @@ export const emailFields: INodeProperties[] = [
 						description: 'Enable tracking for this message',
 					},
 				],
-				description: 'Enable or disable open tracking on this message.',
+				description: 'Enable or disable open tracking on this message',
 				default: 'account_default',
 			},
 			{
@@ -221,10 +222,46 @@ export const emailFields: INodeProperties[] = [
 						description: 'Enable tracking for this message',
 					},
 				],
-				description: 'Enable or disable open tracking on this message.',
+				description: 'Enable or disable open tracking on this message',
 				default: 'account_default',
 			},
 		],
+	},
+	{
+		displayName: 'Use JSON for variables',
+		name: 'variablesAsJson',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Variables',
+		name: 'variablesUi',
+		type: 'json',
+		default: '',
+		description: 'Variables in JSON format',
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				],
+				variablesAsJson: [
+					true,
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Variables',
@@ -240,6 +277,9 @@ export const emailFields: INodeProperties[] = [
 				],
 				operation: [
 					'send',
+				],
+				variablesAsJson: [
+					false,
 				],
 			},
 		},
@@ -348,14 +388,14 @@ export const emailFields: INodeProperties[] = [
 				displayName: 'Bcc Email',
 				name: 'bccEmail',
 				type: 'string',
-				description: 'BCC Recipients of the email separated by ,.',
+				description: 'BCC Recipients of the email separated by ,',
 				default: '',
 			},
 			{
 				displayName: 'Cc Email',
 				name: 'ccEmail',
 				type: 'string',
-				description: 'Cc recipients of the email separated by ,.',
+				description: 'Cc recipients of the email separated by ,',
 				default: '',
 			},
 			{
@@ -384,26 +424,62 @@ export const emailFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Track Opens',
-				name: 'trackOpens',
-				type: 'string',
-				description: 'Enable or disable open tracking on this message.',
-				default: '',
-			},
-			{
-				displayName: 'Track Clicks',
-				name: 'trackClicks',
-				type: 'string',
-				description: 'Enable or disable open tracking on this message.',
-				default: '',
-			},
-			{
 				displayName: 'Template Language',
 				name: 'templateLanguage',
 				type: 'boolean',
 				default: false,
 			},
+			{
+				displayName: 'Track Clicks',
+				name: 'trackClicks',
+				type: 'string',
+				description: 'Enable or disable open tracking on this message',
+				default: '',
+			},
+			{
+				displayName: 'Track Opens',
+				name: 'trackOpens',
+				type: 'string',
+				description: 'Enable or disable open tracking on this message',
+				default: '',
+			},
 		],
+	},
+	{
+		displayName: 'Use JSON for variables',
+		name: 'variablesAsJson',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'sendTemplate',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Variables',
+		name: 'variablesUi',
+		type: 'json',
+		default: '',
+		description: 'Variables in JSON format',
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'sendTemplate',
+				],
+				variablesAsJson: [
+					true,
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Variables',
@@ -419,6 +495,9 @@ export const emailFields: INodeProperties[] = [
 				],
 				operation: [
 					'sendTemplate',
+				],
+				variablesAsJson: [
+					false,
 				],
 			},
 		},
@@ -445,11 +524,4 @@ export const emailFields: INodeProperties[] = [
 			},
 		],
 	},
-    {
-      displayName: 'Variables (JSON)',
-      name: 'variables',
-      type: 'json',
-      default: '',
-      description: "Template variables in JSON"
-    }
 ];
