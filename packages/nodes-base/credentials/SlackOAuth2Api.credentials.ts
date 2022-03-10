@@ -9,13 +9,17 @@ const scopes = [
 	'files:read',
 	'files:write',
 	'groups:read',
+	'groups:write',
 	'im:read',
+	'im:write',
 	'mpim:read',
+	'mpim:write',
 	'reactions:read',
 	'reactions:write',
 	'usergroups:write',
 	'usergroups:read',
 	'users.profile:read',
+	'users:read',
 ];
 
 const userScopes = [
@@ -70,7 +74,7 @@ export class SlackOAuth2Api implements ICredentialType {
 			type: 'boolean',
 			default: false,
 			description: `Whether to use the bot's access token or user's access token`,
-			hint: `While using bot's access token you wouldn't be able to update user profile or do operations with stars resource!`,
+			hint: `While using bot's access token you wouldn't be able to create channel, update user profile, do operations with stars resource!`,
 		},
 	];
 }
