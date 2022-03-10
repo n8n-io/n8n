@@ -12,6 +12,7 @@ import {
 import { OptionsWithUri } from 'request';
 
 import { createHash } from 'crypto';
+import { OnOfficeFilterConfiguration } from './AddressDescription';
 
 type OnOfficeAction = 'get' | 'read';
 type OnOfficeActionId = `urn:onoffice-de-ns:smart:2.5:smartml:action:${'get' | 'read'}`;
@@ -156,3 +157,33 @@ export async function onOfficeApiAction(
 	const results = responseData.response.results[0].data.records;
 	return results;
 }
+
+export const createFilterParameter = (filterConfig?: OnOfficeFilterConfiguration) => {
+	const filterOperatorMap = {
+		is: 'is',
+		or: 'or',
+		equal: '=',
+		greater: '>',
+		less: '<',
+		greaterequal: '>=',
+		lessequal: '<=',
+		notequal: '<>',
+		between: 'between',
+		like: 'like',
+		notlike: 'not like',
+		in: 'in',
+		notin: 'not in',
+	};
+
+	const filter =
+		filterConfig &&
+		Object.fromEntries(
+			filterConfig.filter.map((filter) => [
+				filter.field,
+				filter.operations.operation.map(({ operator, value }) => ({
+					op: filterOperatorMap[operator],
+					val: value,
+				})),
+			]),
+		);
+};

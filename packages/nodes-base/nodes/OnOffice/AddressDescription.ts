@@ -1,5 +1,39 @@
 import { INodeProperties } from 'n8n-workflow';
 
+type FilterOperator =
+	| 'is'
+	| 'or'
+	| 'equal'
+	| 'greater'
+	| 'less'
+	| 'greaterequal'
+	| 'lessequal'
+	| 'notequal'
+	| 'between'
+	| 'like'
+	| 'notlike'
+	| 'in'
+	| 'notin';
+
+export type OnOfficeFilterConfiguration = {
+	filter: Array<{
+		field: string;
+		operations: { operation: Array<{ operator: FilterOperator; value: string }> };
+	}>;
+};
+export interface OnOfficeAddressReadAdditionalFields {
+	recordIds?: string[];
+	filterId?: number;
+	filters?: OnOfficeFilterConfiguration;
+	limit?: number;
+	offset?: number;
+	sortBy?: string;
+	order?: 'ASC' | 'DESC';
+	formatOutput?: boolean;
+	language?: 'DEU';
+	countryIsoCodeType?: '' | 'ISO-3166-2' | 'ISO-3166-3';
+}
+
 export const addressOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -105,8 +139,8 @@ export const addressFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'RecordIds',
-				name: 'recordids',
+				displayName: 'Record IDs',
+				name: 'recordIds',
 				type: 'string',
 				typeOptions: {
 					multipleValues: true,
@@ -115,8 +149,8 @@ export const addressFields: INodeProperties[] = [
 				description: 'Can be used if one or more than one record should be read, but not all',
 			},
 			{
-				displayName: 'FilterId',
-				name: 'filterid',
+				displayName: 'Filter ID',
+				name: 'filterId',
 				type: 'number',
 				typeOptions: {
 					minValue: 0,
@@ -130,7 +164,7 @@ export const addressFields: INodeProperties[] = [
 				name: 'filters',
 				placeholder: 'Add Filter on new field',
 				type: 'fixedCollection',
-				default: [],
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -144,7 +178,7 @@ export const addressFields: INodeProperties[] = [
 								displayName: 'Field',
 								name: 'field',
 								type: 'string',
-								default: 'Email',
+								default: '',
 								description:
 									'The field to filter by. The special fields listed above such as phone, email, defaultmail etc. cannot be queried by filter, but "Email" and "Telefon1" will work.',
 							},
@@ -153,7 +187,7 @@ export const addressFields: INodeProperties[] = [
 								name: 'operations',
 								placeholder: 'Add operation',
 								type: 'fixedCollection',
-								default: '',
+								default: {},
 								typeOptions: {
 									multipleValues: true,
 								},
@@ -285,8 +319,8 @@ export const addressFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'List limit',
-				name: 'listlimit',
+				displayName: 'Limit',
+				name: 'limit',
 				type: 'number',
 				typeOptions: {
 					minValue: 0,
@@ -294,11 +328,11 @@ export const addressFields: INodeProperties[] = [
 					numberPrecision: 0,
 				},
 				default: 20,
-				description: 'Maximum number of addresses in the list',
+				description: 'Maximum number of records in the list',
 			},
 			{
 				displayName: 'List offset',
-				name: 'listoffset',
+				name: 'offset',
 				type: 'number',
 				typeOptions: {
 					minValue: 0,
@@ -310,21 +344,14 @@ export const addressFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Sort by',
-				name: 'sortby',
-				type: 'options',
-				options: [
-					{
-						name: 'placeholder',
-						value: 'placeholder',
-						description: 'TODO: Retrieve fields',
-					},
-				],
+				name: 'sortBy',
+				type: 'string',
 				default: '',
 				description: 'Field to sort by.',
 			},
 			{
-				displayName: 'Sort order',
-				name: 'sortorder',
+				displayName: 'Order',
+				name: 'order',
 				type: 'options',
 				options: [
 					{
@@ -342,7 +369,7 @@ export const addressFields: INodeProperties[] = [
 			{
 				//TODO: Figure out what this does
 				displayName: 'Format output',
-				name: 'formatoutput',
+				name: 'formatOutput',
 				type: 'boolean',
 				default: false,
 				description: 'Enable formatted output',
@@ -350,7 +377,7 @@ export const addressFields: INodeProperties[] = [
 			{
 				//TODO: Figure out what this does
 				displayName: 'Language',
-				name: 'outputlanguage',
+				name: 'language',
 				type: 'string',
 				default: '',
 				description: 'Output language',

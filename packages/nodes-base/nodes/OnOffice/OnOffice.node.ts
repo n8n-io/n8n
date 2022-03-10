@@ -3,8 +3,12 @@ import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
-import { addressFields, addressOperations } from './AddressDescription';
-import { onOfficeApiAction } from './GenericFunctions';
+import {
+	addressFields,
+	addressOperations,
+	OnOfficeAddressReadAdditionalFields,
+} from './AddressDescription';
+import { createFilterParameter, onOfficeApiAction } from './GenericFunctions';
 
 export class OnOffice implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,16 +59,33 @@ export class OnOffice implements INodeType {
 		const items = this.getInputData();
 
 		const returnData = [];
+
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'address') {
-				if (operation === 'read') {
-					const result = await onOfficeApiAction.call(this, 'read', 'address', {
-						data: ['phone'],
-						listlimit: 5,
-					});
+			if (operation === 'read') {
+				const additionalFields = this.getNodeParameter(
+					'additionalFields',
+					i,
+				) as OnOfficeAddressReadAdditionalFields;
+
+				const parameters = {
+					data: this.getNodeParameter('data', i) as string[],
+					recordids: additionalFields.recordIds,
+					filterid: additionalFields.filterId,
+					filter: createFilterParameter(additionalFields.filters),
+					listlimit: additionalFields.limit,
+					listoffset: additionalFields.offset,
+					sortby: additionalFields.sortBy,
+					sortorder: additionalFields.order,
+					formatoutput: additionalFields.formatOutput,
+					outputlanguage: additionalFields.language,
+					countryIsoCodeType: additionalFields.countryIsoCodeType || undefined,
+				};
+
+				if (resource === 'address') {
+					const result = await onOfficeApiAction.call(this, 'read', 'address', parameters);
 
 					returnData.push(result);
 				}
