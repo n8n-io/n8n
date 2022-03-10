@@ -1114,7 +1114,6 @@
 	"FINISH_ACCOUNT_SETUP": "Finish account setup",
 	"FIRST_NAME": "First Name",
 	"FORGOT_MY_PASSWORD": "Forgot my password",
-	"FORGOT_PASSWORD_SUCCESS_MESSAGE": "We’ve emailed {email} (if there’s a matching account)",
 	"GET_RECOVERY_LINK": "Email me a recovery link",
 	"GO_BACK": "Go back",
 	"INVALID_EMAIL_ERROR": "{email} is not a valid email",
