@@ -121,7 +121,7 @@ export default mixins(showMessage).extend({
 				const parsed = getEmail(email);
 
 				if (!!parsed.trim() && !VALID_EMAIL_REGEX.test(String(parsed).trim().toLowerCase())) {
-					throw new Error(this.$locale.baseText('settings.users.invalidEmail.error', { interpolate: { email: parsed }}));
+					throw new Error(this.$locale.baseText('settings.users.invalidEmailError', { interpolate: { email: parsed }}));
 				}
 			});
 		},

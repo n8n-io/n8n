@@ -1157,7 +1157,7 @@
 	"settings.users.emailInvitesSent": "An invite email was sent to {emails}",
 	"settings.users.emailInvitesSentError": "Could not invite {emails}",
 	"settings.users.emailSentTo": "Email sent to {email}",
-	"settings.users.invalidEmail.error": "{email} is not a valid email",
+	"settings.users.invalidEmailError": "{email} is not a valid email",
 	"settings.users.invite": "Invite",
 	"settings.users.inviteNewUsers": "Invite new users",
 	"settings.users.inviteResent": "Invite resent",
