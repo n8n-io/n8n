@@ -180,10 +180,8 @@ export class Start extends Command {
 					// For a key off every other letter from encryption key
 					// CAREFUL: do not change this or it breaks all existing tokens.
 					let baseKey = '';
-					for (let i = 0; i < encryptionKey.length; i++) {
-						if (i % 2 === 0) {
-							baseKey += encryptionKey[i];
-						}
+					for (let i = 0; i < encryptionKey.length; i += 2) {
+						baseKey += encryptionKey[i];
 					}
 					config.set(
 						'userManagement.jwtSecret',
