@@ -1,5 +1,5 @@
 <template>
-	<span></span>
+	<fragment></fragment>
 </template>
 
 <script lang="ts">

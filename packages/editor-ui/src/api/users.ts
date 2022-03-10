@@ -22,6 +22,10 @@ export function setupOwner(context: IRestApiContext, params: { firstName: string
 	return makeRestApiRequest(context, 'POST', '/owner', params as unknown as IDataObject);
 }
 
+export function skipOwnerSetup(context: IRestApiContext): Promise<void> {
+	return makeRestApiRequest(context, 'POST', '/owner/skip-setup');
+}
+
 export function validateSignupToken(context: IRestApiContext, params: {inviterId: string; inviteeId: string}): Promise<{inviter: {firstName: string, lastName: string}}> {
 	return makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
 }

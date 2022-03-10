@@ -48,7 +48,7 @@ export default mixins(
 					name: 'no-smtp-warning',
 					properties: {
 						label: this.$locale.baseText('NO_SMTP_TO_SEND_EMAIL_WARNING'),
-						type: 'text',
+						type: 'info',
 					},
 				},
 			];
@@ -82,7 +82,7 @@ export default mixins(
 					type: 'success',
 					title: this.$locale.baseText('RECOVERY_EMAIL_SENT'),
 					message: this.$locale.baseText(
-						'FORGOT_PASSWORD_SUCCESS_MESSAGE',
+						'EMAIL_SENT_IF_EXISTS',
 						{ interpolate: { email: values.email }},
 					),
 				});

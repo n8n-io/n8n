@@ -8,7 +8,7 @@
 					v-for="(input) in filteredInputs"
 					:key="input.name"
 				>
-					<n8n-text color="text-base" v-if="input.properties.type === 'text'" tag="div" align="center">
+					<n8n-text color="text-base" v-if="input.properties.type === 'info'" tag="div" align="center">
 						{{input.properties.label}}
 					</n8n-text>
 					<n8n-form-input

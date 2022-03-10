@@ -21,15 +21,17 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER } from './constants';
+import { HIRING_BANNER, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
 import { mapGetters } from 'vuex';
+import { userHelpers } from './components/mixins/userHelpers';
 
 export default mixins(
 	showMessage,
+	userHelpers,
 ).extend({
 	name: 'App',
 	components: {
@@ -39,7 +41,7 @@ export default mixins(
 	},
 	computed: {
 		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
-		...mapGetters('users', ['canCurrentUserAccessView', 'currentUser']),
+		...mapGetters('users', ['currentUser']),
 	},
 	data() {
 		return {
@@ -77,7 +79,7 @@ export default mixins(
 			}
 		},
 		logHiringBanner() {
-			if (!this.isHiringBannerEnabled && this.$route.name !== 'WorkflowDemo') {
+			if (!this.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
@@ -99,15 +101,15 @@ export default mixins(
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once
 			if (this.isUserManagementEnabled && this.showSetupPage) {
-				if (this.$route.name === 'SetupView') {
+				if (this.$route.name === VIEWS.SETUP) {
 					return;
 				}
 
-				this.$router.replace({ name: 'SetupView' });
+				this.$router.replace({ name: VIEWS.SETUP });
 				return;
 			}
 
-			if (this.canCurrentUserAccessView(this.$router.currentRoute.name)) {
+			if (this.canUserAccessCurrentRoute()) {
 				return;
 			}
 
@@ -117,12 +119,12 @@ export default mixins(
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.replace({ name: 'SigninView', query: { redirect } });
+				this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
 				return;
 			}
 
 			// if cannot access page and is logged in, respect signin redirect
-			if (this.$route.name === 'SigninView' && typeof this.$route.query.redirect === 'string') {
+			if (this.$route.name === VIEWS.SIGNIN && typeof this.$route.query.redirect === 'string') {
 				const redirect = decodeURIComponent(this.$route.query.redirect);
 				if (redirect.startsWith('/')) { // protect against phishing
 					this.$router.replace(redirect);
@@ -131,7 +133,7 @@ export default mixins(
 			}
 
 			// if cannot access page and is logged in
-			this.$router.replace({ name: 'Homepage' });
+			this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		redirectIfNecessary() {
 			const redirect = this.$route.meta && typeof this.$route.meta.getRedirect === 'function' && this.$route.meta.getRedirect(this.$store);

@@ -215,3 +215,23 @@ export const TEMPLATES_NODES_FILTER = [
 	'n8n-nodes-base.start',
 	'n8n-nodes-base.respondToWebhook',
 ];
+
+export enum VIEWS {
+	HOMEPAGE = "Homepage",
+	COLLECTION = "TemplatesCollectionView",
+	EXECUTION = "ExecutionById",
+	TEMPLATE = "TemplatesWorkflowView",
+	TEMPLATES = "TemplatesSearchView",
+	NEW_WORKFLOW = "NodeViewNew",
+	WORKFLOW = "NodeViewExisting",
+	DEMO = "WorkflowDemo",
+	TEMPLATE_IMPORT = "WorkflowTemplate",
+	SIGNIN = "SigninView",
+	SIGNUP = "SignupView",
+	SETUP = "SetupView",
+	FORGOT_PASSWORD = "ForgotMyPasswordView",
+	CHANGE_PASSWORD = "ChangePasswordView",
+	USERS_SETTINGS = "UsersSettings",
+	PERSONAL_SETTINGS = "PersonalSettings",
+	NOT_FOUND = "NotFoundView",
+}

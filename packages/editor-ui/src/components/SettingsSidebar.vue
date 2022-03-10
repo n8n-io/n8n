@@ -7,13 +7,13 @@
 				</i>
 				<n8n-heading slot="title" size="large" :bold="true">{{ $locale.baseText('SETTINGS') }}</n8n-heading>
 			</div>
-			<n8n-menu-item index="/settings/personal" v-if="canAccessUsersView('PersonalSettings')" :class="$style.tab">
+			<n8n-menu-item index="/settings/personal" v-if="canAccessPersonalSettings()" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-circle" />
 				</i>
 				<span slot="title">{{ $locale.baseText('PERSONAL') }}</span>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/users" v-if="canAccessUsersView('UsersSettings')" :class="$style.tab">
+			<n8n-menu-item index="/settings/users" v-if="canAccessUsersSettings()" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="user-friends" />
 				</i>
@@ -29,26 +29,30 @@
 </template>
 
 <script lang="ts">
-import { ABOUT_MODAL_KEY } from '@/constants';
-import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
+import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
+import { userHelpers } from './mixins/userHelpers';
 
-export default Vue.extend({
+export default mixins(
+	userHelpers,
+).extend({
 	name: 'SettingsSidebar',
 	computed: {
 		...mapGetters('settings', ['versionCli']),
 	},
 	methods: {
-		canAccessUsersView(viewName: string): boolean {
-			const isAuthorized = this.$store.getters['users/canCurrentUserAccessView'];
-
-			return isAuthorized(viewName);
+		canAccessPersonalSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS);
+		},
+		canAccessUsersSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS);
 		},
 		onVersionClick() {
 			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 		},
 		onReturn() {
-			this.$router.push({name: 'Homepage'});
+			this.$router.push({name: VIEWS.HOMEPAGE});
 		},
 	},
 });

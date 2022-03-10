@@ -13,6 +13,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
+import { VIEWS } from '@/constants';
 
 export default mixins(
 	showMessage,
@@ -78,7 +79,7 @@ export default mixins(
 			this.inviter = invite.inviter as {firstName: string, lastName: string};
 		} catch (e) {
 			this.$showError(e, this.$locale.baseText('TOKEN_VALIDATION_ERROR'));
-			this.$router.replace({name: 'SigninView'});
+			this.$router.replace({name: VIEWS.SIGNIN});
 		}
 	},
 	computed: {
@@ -101,7 +102,7 @@ export default mixins(
 				const inviteeId = this.$route.query.inviteeId;
 				await this.$store.dispatch('users/signup', {...values, inviterId, inviteeId});
 
-				await this.$router.push({ name: 'Homepage' });
+				await this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('SET_UP_ACCOUNT_ERROR'));
 			}

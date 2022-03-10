@@ -14,6 +14,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
+import { VIEWS } from '@/constants';
 
 export default mixins(
 	showMessage,
@@ -106,7 +107,7 @@ export default mixins(
 					message: this.$locale.baseText('PASSWORD_UPDATE_SUCCESS_MESSAGE'),
 				});
 
-				await this.$router.push({ name: 'SigninView' });
+				await this.$router.push({ name: VIEWS.SIGNIN });
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('PASSWORD_UPDATE_ERROR'));
 			}

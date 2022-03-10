@@ -16,6 +16,7 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	VIEWS,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -90,7 +91,7 @@ const module: Module<IUiState, IRootState> = {
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
-			return state.currentView === 'WorkflowDemo';
+			return state.currentView === VIEWS.DEMO;
 		},
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;

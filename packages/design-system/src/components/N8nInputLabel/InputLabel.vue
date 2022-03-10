@@ -1,7 +1,7 @@
 <template functional>
 	<div :class="{[$style.inputLabelContainer]: !props.labelHoverableOnly}">
 		<div :class="$options.methods.getLabelClass(props, $style)">
-			<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size" :compact="!props.underline" :capitalize="props.capitalize">
+			<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size" :compact="!props.underline">
 				{{ props.label }}
 				<component :is="$options.components.N8nText" color="primary" :bold="props.bold" :size="props.size" v-if="props.required">*</component>
 			</component>
@@ -57,10 +57,6 @@ export default {
 			type: Boolean,
 		},
 		labelHoverableOnly: {
-			type: Boolean,
-			default: false,
-		},
-		capitalize: {
 			type: Boolean,
 			default: false,
 		},

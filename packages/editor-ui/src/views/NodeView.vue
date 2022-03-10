@@ -114,7 +114,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -282,7 +282,7 @@ export default mixins(
 				return this.$store.getters.executionWaitingForWebhook;
 			},
 			isDemo (): boolean {
-				return this.$route.name === 'WorkflowDemo';
+				return this.$route.name === VIEWS.DEMO;
 			},
 			lastSelectedNode (): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
@@ -547,14 +547,14 @@ export default mixins(
 					}
 				} catch (error) {
 					this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
-					this.$router.replace({ name: 'NodeViewNew' });
+					this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 					return;
 				}
 
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
 
 				this.blankRedirect = true;
-				this.$router.replace({ name: 'NodeViewNew', query: { templateId } });
+				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
@@ -742,10 +742,10 @@ export default mixins(
 						return;
 					}
 
-					if (this.$router.currentRoute.name === 'NodeViewNew') {
+					if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 						this.$root.$emit('newWorkflow');
 					} else {
-						this.$router.push({ name: 'NodeViewNew' });
+						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					}
 
 					this.$showMessage({
@@ -1788,11 +1788,11 @@ export default mixins(
 				if (this.blankRedirect) {
 					this.blankRedirect = false;
 				}
-				else if (this.$route.name === 'WorkflowTemplate') {
+				else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
 					const templateId = this.$route.params.id;
 					await this.openWorkflowTemplate(templateId);
 				}
-				else if (this.$route.name === 'ExecutionById') {
+				else if (this.$route.name === VIEWS.EXECUTION) {
 					// Load an execution
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
@@ -1826,7 +1826,7 @@ export default mixins(
 						const workflow = await this.restApi().getWorkflow(workflowId);
 						if (!workflow) {
 							this.$router.push({
-								name: "NodeViewNew",
+								name: VIEWS.NEW_WORKFLOW,
 							});
 							this.$showMessage({
 								title: 'Error',

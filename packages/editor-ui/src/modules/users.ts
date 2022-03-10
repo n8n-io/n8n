@@ -1,5 +1,24 @@
-import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY } from '@/constants';
+import {
+	changePassword,
+	deleteUser,
+	getCurrentUser,
+	getUsers,
+	inviteUsers,
+	login,
+	loginCurrentUser,
+	logout,
+	reinvite,
+	sendForgotPasswordEmail,
+	setupOwner,
+	signup,
+	submitPersonalizationSurvey,
+	skipOwnerSetup,
+	updateCurrentUser,
+	updateCurrentUserPassword,
+	validatePasswordToken,
+	validateSignupToken,
+} from '@/api/users';
 import Vue from 'vue';
 import {  ActionContext, Module } from 'vuex';
 import {
@@ -74,33 +93,26 @@ const module: Module<IUsersState, IRootState> = {
 		currentUser(state: IUsersState): IUser | null {
 			return state.currentUserId ? state.users[state.currentUserId] : null;
 		},
-		canCurrentUserAccessView(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return (viewName: string): boolean => {
-				const authorize: IPermissions | null = PERMISSIONS.ROUTES[viewName];
-				if (!authorize) {
-					return false;
-				}
-
-				return isAuthorized(authorize, getters);
-			};
-		},
 		getUserById(state: IUsersState): (userId: string) => IUser | null {
 			return (userId: string): IUser | null => state.users[userId];
 		},
-		canUserDeleteTags(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, getters);
+		canUserDeleteTags(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
+			const currentUser = getters.currentUser;
+			const isUMEnabled = rootGetters['settings/isUserManagementEnabled'];
+
+			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, { currentUser, isUMEnabled });
 		},
-		canUserAccessSidebarUserInfo(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, getters);
+		canUserAccessSidebarUserInfo(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
+			const currentUser = getters.currentUser;
+			const isUMEnabled = rootGetters['settings/isUserManagementEnabled'];
+
+			return isAuthorized(PERMISSIONS.PRIMARY_MENU.CAN_ACCESS_USER_INFO, { currentUser, isUMEnabled });
 		},
-		canUserAccessSettings(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.ROUTES.SettingsRedirect, getters);
-		},
-		showUMSetupWarning(state: IUsersState, getters: any) { // tslint:disable-line:no-any
-			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, getters);
-		},
-		isUMEnabled(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any): boolean { // tslint:disable-line:no-any
-			return rootGetters['settings/isUserManagementEnabled'];
+		showUMSetupWarning(state: IUsersState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
+			const currentUser = getters.currentUser;
+			const isUMEnabled = rootGetters['settings/isUserManagementEnabled'];
+
+			return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, { currentUser, isUMEnabled });
 		},
 		personalizedNodeTypes(state: IUsersState, getters: any): string[] { // tslint:disable-line:no-any
 			const user = getters.currentUser as IUser | null;
@@ -203,6 +215,12 @@ const module: Module<IUsersState, IRootState> = {
 			if (surveyEnabled && currentUser && !currentUser.personalizationAnswers) {
 				context.dispatch('ui/openModal', PERSONALIZATION_MODAL_KEY, {root: true});
 			}
+		},
+		async skipOwnerSetup(context: ActionContext<IUsersState, IRootState>) {
+			try {
+				context.commit('settings/stopShowingSetupPage', null, { root: true });
+				await skipOwnerSetup(context.rootGetters.getRestApiContext);
+			} catch (error) {}
 		},
 	},
 };

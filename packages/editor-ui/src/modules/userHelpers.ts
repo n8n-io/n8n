@@ -1,6 +1,6 @@
 
 import { CALENDLY_TRIGGER_NODE_TYPE, CLEARBIT_NODE_TYPE, COMPANY_SIZE_1000_OR_MORE, COMPANY_SIZE_500_999, CRON_NODE_TYPE, ELASTIC_SECURITY_NODE_TYPE, EMAIL_SEND_NODE_TYPE, EXECUTE_COMMAND_NODE_TYPE, FINANCE_WORK_AREA, FUNCTION_NODE_TYPE, GITHUB_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, ITEM_LISTS_NODE_TYPE, IT_ENGINEERING_WORK_AREA, JIRA_TRIGGER_NODE_TYPE, MICROSOFT_EXCEL_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE, PAGERDUTY_NODE_TYPE, PRODUCT_WORK_AREA, QUICKBOOKS_NODE_TYPE, SALESFORCE_NODE_TYPE, SALES_BUSINESSDEV_WORK_AREA, SECURITY_WORK_AREA, SEGMENT_NODE_TYPE, SET_NODE_TYPE, SLACK_NODE_TYPE, SPREADSHEET_FILE_NODE_TYPE, SWITCH_NODE_TYPE, WEBHOOK_NODE_TYPE, XERO_NODE_TYPE, COMPANY_SIZE_KEY, WORK_AREA_KEY, CODING_SKILL_KEY, COMPANY_TYPE_KEY, ECOMMERCE_COMPANY_TYPE, MSP_COMPANY_TYPE, PERSONAL_COMPANY_TYPE, AUTOMATION_GOAL_KEY, OTHER_AUTOMATION_GOAL, NOT_SURE_YET_GOAL, CUSTOMER_INTEGRATIONS_GOAL, CUSTOMER_SUPPORT_GOAL, FINANCE_ACCOUNTING_GOAL, ZENDESK_TRIGGER_NODE_TYPE, WOOCOMMERCE_TRIGGER_NODE_TYPE, SALES_MARKETING_GOAL, HUBSPOT_TRIGGER_NODE_TYPE, HR_GOAL, WORKABLE_TRIGGER_NODE_TYPE, OPERATIONS_GOAL, PRODUCT_GOAL, NOTION_TRIGGER_NODE_TYPE, SECURITY_GOAL, THE_HIVE_TRIGGER_NODE_TYPE, ZENDESK_NODE_TYPE, SERVICENOW_NODE_TYPE, JIRA_NODE_TYPE, BAMBOO_HR_NODE_TYPE, GOOGLE_SHEETS_NODE_TYPE } from '@/constants';
-import { IPermissions, IPersonalizationSurveyAnswersV1, IPersonalizationSurveyAnswersV2, IUser } from '@/Interface';
+import { IPermissions, IPersonalizationSurveyAnswersV1, IPersonalizationSurveyAnswersV2, IRootState, IUser } from '@/Interface';
 
 import { ILogInStatus, IRole, IUserPermissions } from "@/Interface";
 
@@ -16,110 +16,6 @@ export const LOGIN_STATUS: {LoggedIn: ILogInStatus, LoggedOut: ILogInStatus} = {
 };
 
 export const PERMISSIONS: IUserPermissions = {
-	ROUTES: {
-		Homepage: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-		},
-		ExecutionById: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-		},
-		NodeViewNew: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-		},
-		NodeViewExisting: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-		},
-		WorkflowTemplate: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-		},
-		SigninView: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedOut],
-			},
-		},
-		SignupView: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedOut],
-			},
-		},
-		SetupView: {
-			allow: {
-				role: [ROLE.Default],
-			},
-			deny: {
-				um: false,
-			},
-		},
-		ForgotMyPasswordView: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedOut],
-			},
-		},
-		ChangePasswordView: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedOut],
-			},
-		},
-		SettingsRedirect: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-			deny: {
-				um: false,
-			},
-		},
-		TemplatesCollectionView: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-		},
-		TemplatesSearchView: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-		},
-		TemplatesWorkflowView: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-		},
-		UsersSettings: {
-			allow: {
-				role: [ROLE.Default, ROLE.Owner],
-			},
-			deny: {
-				um: false,
-			},
-		},
-		PersonalSettings: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-			deny: {
-				role: [ROLE.Default],
-			},
-		},
-		NotFoundView: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
-			},
-		},
-		WorkflowDemo: {
-			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
-			},
-		},
-	},
 	TAGS: {
 		CAN_DELETE_TAGS: {
 			allow: {
@@ -145,7 +41,6 @@ export const PERMISSIONS: IUserPermissions = {
 		},
 	},
 };
-
 
 export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {currentUser: IUser | null, isUMEnabled: boolean}): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
