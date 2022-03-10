@@ -64,20 +64,24 @@ export default {
   methods: {
     changeMode() {
       if (!this.readOnly)
+
+      if (this.isEditable) {
+        this.$emit('unfocus', this.isEditable);
+      }
       this.isEditable =! this.isEditable;
     },
-    onBlur() {
-      this.$emit('blur');
+    onBlur(value) {
+      this.$emit('blur', value);
     },
     onChange(value: string) {
       this.$emit('change', value);
     },
-    onFocus() {
-      this.$emit('focus');
+    onFocus(value) {
+      this.$emit('focus', value);
     },
     onInput(value: string) {
       this.$emit('input', value);
-    }
+    },
   }
 };
 </script>

@@ -1,4 +1,4 @@
-import {action} from '@storybook/addon-actions';
+import {action, actions} from '@storybook/addon-actions';
 import N8nSticky from './Sticky.vue';
 
 export default {
@@ -33,6 +33,7 @@ const methods = {
   onChange: action('change'),
   onFocus: action('focus'),
   onInput: action('input'),
+  onUnfocus: action('unfocus'),
 };
 
 const Template = (args, { argTypes }) => ({
@@ -41,7 +42,7 @@ const Template = (args, { argTypes }) => ({
     N8nSticky,
   },
   template:
-    '<n8n-sticky v-bind="$props"  @blur="onBlur" @change="onChange" @focus="onFocus" @input="onInput"></n8n-sticky>',
+    '<n8n-sticky v-bind="$props"  @blur="onBlur" @change="onChange" @focus="onFocus" @input="onInput" @unfocus="onUnfocus"></n8n-sticky>',
   methods,
 });
 
