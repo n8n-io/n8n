@@ -18,14 +18,7 @@
 					:buttonText="$locale.baseText('SET_UP_MY_ACCOUNT')"
 					:description="$locale.baseText('SET_UP_TO_INVITE_USERS_INFO')"
 					@click="redirectToSetup"
-				>
-					<n8n-text color="text-base">
-						<ul>
-							<li v-html="$locale.baseText('SET_UP_TO_INVITE_USERS_WARNING')"></li>
-							<li v-html="$locale.baseText('SET_UP_SMTP_TO_COMPLETE_SETUP')"></li>
-						</ul>
-					</n8n-text>
-				</n8n-action-box>
+				/>
 			</div>
 			<div :class="$style.usersContainer" v-else>
 				<PageAlert
