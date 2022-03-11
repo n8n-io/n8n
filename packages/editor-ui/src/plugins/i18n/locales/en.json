@@ -1180,6 +1180,7 @@
 	"settings.users.userToTransferTo": "User to transfer to",
 	"settings.users.usersInvited": "Users invited",
 	"settings.users.usersInvitedError": "Could not invite users",
+	"settings.users.usersEmailedError": "Couldn't send invite email",
 	"settings.version": "Version",
 	"startupError": "Error connecting to n8n",
 	"startupError.message": "Could not connect to server. <a onclick='window.location.reload(false);'>Refresh</a> to try again"

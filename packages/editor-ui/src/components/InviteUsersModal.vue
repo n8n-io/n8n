@@ -179,7 +179,7 @@ export default mixins(showMessage).extend({
 					setTimeout(() => {
 						this.$showMessage({
 							type: 'error',
-							title: this.$locale.baseText(invitedEmails.error.length > 1 ? 'settings.users.usersInvitedError': 'settings.users.userInvitedError'),
+							title: this.$locale.baseText('settings.users.usersEmailedError'),
 							message: this.$locale.baseText('settings.users.emailInvitesSentError', { interpolate: { emails: invitedEmails.error.join(', ') }}),
 						});
 					}, 0); // notifications stack on top of each other otherwise
