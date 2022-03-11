@@ -420,7 +420,7 @@ class App {
 					// Skip basic auth for a few listed endpoints or when instance owner has been setup
 					if (
 						authIgnoreRegex.exec(req.url) ||
-						config.get('userManagement.isInstanceOwnerSetUp') === true
+						config.get('userManagement.isInstanceOwnerSetUp')
 					) {
 						return next();
 					}
