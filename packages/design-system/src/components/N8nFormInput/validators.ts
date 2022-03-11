@@ -8,54 +8,85 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 	REQUIRED: {
 		validate: (value: string | number | boolean | null | undefined) => {
 			if (typeof value === 'string' && !!value.trim()) {
-				return;
+				return false;
 			}
 
 			if (typeof value === 'number' || typeof value === 'boolean') {
-				return;
+				return false;
 			}
-			throw new Error('This field is required');
+
+			return {
+				messageKey: 'formInput.validator.fieldRequired',
+			};
 		},
 	},
 	MIN_LENGTH: {
-		validate: (value: string, config: { minimum: number }) => {
-			if (value.length < config.minimum) {
-				throw new Error(`Must be at least ${config.minimum} characters`);
+		validate: (value:  string | number | boolean | null | undefined, config: { minimum: number }) => {
+			if (typeof value === 'string' && value.length < config.minimum) {
+				return {
+					messageKey: 'formInput.validator.minCharactersRequired',
+					options: config,
+				};
 			}
+
+			return false;
 		},
 	},
 	MAX_LENGTH: {
-		validate: (value: string, config: { maximum: number }) => {
-			if (value.length > config.maximum) {
-			 throw new Error(`Must be at most ${config.maximum} characters`);
+		validate: (value:  string | number | boolean | null | undefined, config: { maximum: number }) => {
+			if (typeof value === 'string' && value.length > config.maximum) {
+				return {
+					messageKey: 'formInput.validator.maxCharactersRequired',
+					options: config,
+				};
 			}
+
+			return false;
 		},
 	},
 	CONTAINS_NUMBER: {
-		validate: (value: string, config: { minimum: number }) => {
-			const numberCount = (value.match(/\d/g) || []).length;
-
-			if (numberCount < config.minimum) {
-				throw new Error(`Must have at least ${config.minimum} number${config.minimum > 1 ? 's' : ''}`);
+		validate: (value:  string | number | boolean | null | undefined, config: { minimum: number }) => {
+			if (typeof value !== 'string') {
+				return false;
 			}
+
+			const numberCount = (value.match(/\d/g) || []).length;
+			if (numberCount < config.minimum) {
+				return {
+					messageKey: 'formInput.validator.numbersRequired',
+					options: config,
+				};
+			}
+
+			return false;
 		},
 	},
 	VALID_EMAIL: {
-		validate: (value: string) => {
+		validate: (value:  string | number | boolean | null | undefined) => {
 			if (!emailRegex.test(String(value).trim().toLowerCase())) {
-				throw new Error('Must be a valid email');
+				return {
+					messageKey: 'formInput.validator.validEmailRequired',
+				};
 			}
+
+			return false;
 		},
 	},
 	CONTAINS_UPPERCASE: {
-		validate: (value: string, config: { minimum: number }) => {
-			const uppercaseCount = (value.match(/[A-Z]/g) || []).length;
-
-			if (uppercaseCount < config.minimum) {
-				throw new Error(`Must have at least ${config.minimum} uppercase character${
-					config.minimum > 1 ? 's' : ''
-				}`);
+		validate: (value:  string | number | boolean | null | undefined, config: { minimum: number }) => {
+			if (typeof value !== 'string') {
+				return false;
 			}
+
+			const uppercaseCount = (value.match(/[A-Z]/g) || []).length;
+			if (uppercaseCount < config.minimum) {
+				return {
+					messageKey: 'formInput.validator.uppercaseCharsRequired',
+					options: config,
+				};
+			}
+
+			return false;
 		},
 	},
 	DEFAULT_PASSWORD_RULES: {
@@ -66,7 +97,9 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 					{ name: 'CONTAINS_NUMBER', config: { minimum: 1 } },
 					{ name: 'CONTAINS_UPPERCASE', config: { minimum: 1 } },
 				],
-				defaultError: '8+ characters, at least 1 number and 1 capital letter',
+				defaultError: {
+					messageKey: 'formInput.validator.defaultPasswordRequirements',
+				},
 			},
 			{ name: 'MAX_LENGTH', config: {maximum: 64} },
 		],
@@ -78,7 +111,7 @@ export const getValidationError = (
 	validators: { [key: string]: IValidator | RuleGroup },
 	validator: IValidator | RuleGroup,
 	config?: any, // tslint:disable-line:no-any
-): string | null => {
+): ReturnType<IValidator['validate']> => {
 	if (validator.hasOwnProperty('rules')) {
 		const rules = (validator as RuleGroup).rules;
 		for (let i = 0; i < rules.length; i++) {
@@ -107,22 +140,19 @@ export const getValidationError = (
 					validators[rule.name] as IValidator,
 					rule.config,
 				);
-				if (error) {
-					return (validator as RuleGroup).defaultError || error;
+				if (error && (validator as RuleGroup).defaultError !== undefined) {
+					// @ts-ignore
+					return validator.defaultError;
+				} else if (error) {
+					return error;
 				}
 			}
 		}
 	} else if (
 		validator.hasOwnProperty('validate')
 	) {
-		try {
-			(validator as IValidator).validate(value, config);
-		} catch (e: unknown) {
-			if (e instanceof Error) {
-				return e.message;
-			}
-		}
+		return (validator as IValidator).validate(value, config);
 	}
 
-	return null;
+	return false;
 };

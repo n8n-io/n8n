@@ -7,7 +7,7 @@
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 			<div :class="$style.badgeContainer">
-				<n8n-badge v-if="user.isOwner" theme="secondary">Owner</n8n-badge>
+				<n8n-badge v-if="user.isOwner" theme="secondary">{{ t('nds.auth.roles.owner') }}</n8n-badge>
 				<n8n-action-toggle
 					v-if="!user.isOwner"
 					placement="bottom"
@@ -28,8 +28,10 @@ import N8nIcon from '../N8nIcon';
 import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
 import N8nUserInfo from '../N8nUserInfo';
+import Locale from '../../mixins/locale';
+import mixins from 'vue-typed-mixins';
 
-export default Vue.extend({
+export default mixins(Locale).extend({
 	name: 'n8n-users-list',
 	components: {
 		N8nActionToggle,
@@ -86,12 +88,12 @@ export default Vue.extend({
 	methods: {
 		getActions(user: IUser) {
 			const DELETE = {
-				label: 'Delete user',
+				label: this.t('nds.usersList.deleteUser'),
 				value: 'delete',
 			};
 
 			const REINVITE = {
-				label: 'Resend invite',
+				label: this.t('nds.usersList.reinviteUser'),
 				value: 'reinvite',
 			};
 

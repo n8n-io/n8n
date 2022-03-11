@@ -3,12 +3,11 @@
 		:value="value"
 		:filterable="true"
 		:filterMethod="setFilter"
-		:placeholder="placeholder"
+		:placeholder="t('nds.userSelect.selectUser')"
 		:default-first-option="true"
 		:popper-append-to-body="true"
 		:popper-class="$style.limitPopperWidth"
-		:noMatchText="noMatchText"
-		:noDataText="noDataText"
+		:noDataText="t('nds.userSelect.noMatchingUsers')"
 		@change="onChange"
 		@blur="onBlur"
 		@focus="onFocus"
@@ -31,8 +30,10 @@ import N8nUserInfo from '../N8nUserInfo';
 import { IUser } from '../../Interface';
 import ElSelect from 'element-ui/lib/select';
 import ElOption from 'element-ui/lib/option';
+import Locale from '../../mixins/locale';
+import mixins from 'vue-typed-mixins';
 
-export default Vue.extend({
+export default mixins(Locale).extend({
 	name: 'n8n-user-select',
 	components: {
 		N8nUserInfo,
@@ -56,18 +57,6 @@ export default Vue.extend({
 				return [];
 			},
 			validator: (ids: string[]) => !ids.find((id) => typeof id !== 'string'),
-		},
-		placeholder: {
-			type: String,
-			default: 'Select user',
-		},
-		noMatchText: {
-			type: String,
-			default: 'No matches found',
-		},
-		noDataText: {
-			type: String,
-			default: 'No users',
 		},
 		currentUserId: {
 			type: String,

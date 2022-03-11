@@ -24,13 +24,13 @@ export default mixins(
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
-			title: this.$locale.baseText('SET_UP_ACCOUNT'),
-			buttonText: this.$locale.baseText('FINISH_ACCOUNT_SETUP'),
+			title: this.$locale.baseText('auth.signup.setupYourAccount'),
+			buttonText: this.$locale.baseText('auth.signup.finishAccountSetup'),
 			inputs: [
 				{
 					name: 'firstName',
 					properties: {
-						label: this.$locale.baseText('FIRST_NAME'),
+						label: this.$locale.baseText('auth.firstName'),
 						maxlength: 32,
 						required: true,
 						autocomplete: 'given-name',
@@ -40,7 +40,7 @@ export default mixins(
 				{
 					name: 'lastName',
 					properties: {
-						label: this.$locale.baseText('LAST_NAME'),
+						label: this.$locale.baseText('auth.lastName'),
 						maxlength: 32,
 						required: true,
 						autocomplete: 'family-name',
@@ -50,11 +50,11 @@ export default mixins(
 				{
 					name: 'password',
 					properties: {
-						label: this.$locale.baseText('PASSWORD'),
+						label: this.$locale.baseText('auth.password'),
 						type: 'password',
 						validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
 						required: true,
-						infoText: this.$locale.baseText('DEFAULT_PASSWORD_REQUIREMENTS'),
+						infoText: this.$locale.baseText('auth.defaultPasswordRequirements'),
 						autocomplete: 'new-password',
 						capitalize: true,
 					},
@@ -72,13 +72,13 @@ export default mixins(
 		const inviteeId = this.$route.query.inviteeId;
 		try {
 			if (!inviterId || !inviteeId) {
-				throw new Error(this.$locale.baseText('MISSING_INVITE_TOKEN_ERROR'));
+				throw new Error(this.$locale.baseText('auth.signup.missingTokenError'));
 			}
 
 			const invite = await this.$store.dispatch('users/validateSignupToken', { inviterId, inviteeId});
 			this.inviter = invite.inviter as {firstName: string, lastName: string};
 		} catch (e) {
-			this.$showError(e, this.$locale.baseText('TOKEN_VALIDATION_ERROR'));
+			this.$showError(e, this.$locale.baseText('auth.signup.tokenValidationError'));
 			this.$router.replace({name: VIEWS.SIGNIN});
 		}
 	},
@@ -89,7 +89,7 @@ export default mixins(
 			}
 
 			return this.$locale.baseText(
-				'SIGN_UP_INVITER_INFO',
+				'settings.signup.signUpInviterInfo',
 				{ interpolate: { firstName: this.inviter.firstName, lastName: this.inviter.lastName }},
 			);
 		},
@@ -104,7 +104,7 @@ export default mixins(
 
 				await this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('SET_UP_ACCOUNT_ERROR'));
+				this.$showError(error, this.$locale.baseText('auth.signup.setupYourAccountError'));
 			}
 			this.loading = false;
 		},

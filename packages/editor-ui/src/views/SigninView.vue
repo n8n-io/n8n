@@ -23,15 +23,15 @@ export default mixins(
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
-			title: this.$locale.baseText('SIGN_IN'),
-			buttonText: this.$locale.baseText('SIGN_IN'),
-			redirectText: this.$locale.baseText('FORGOT_MY_PASSWORD'),
+			title: this.$locale.baseText('auth.signin'),
+			buttonText: this.$locale.baseText('auth.signin'),
+			redirectText: this.$locale.baseText('forgotPassword'),
 			redirectLink: '/forgot-password',
 			inputs: [
 				{
 					name: 'email',
 					properties: {
-						label: this.$locale.baseText('EMAIL'),
+						label: this.$locale.baseText('auth.email'),
 						type: 'email',
 						required: true,
 						validationRules: [{ name: 'VALID_EMAIL' }],
@@ -44,7 +44,7 @@ export default mixins(
 				{
 					name: 'password',
 					properties: {
-						label: this.$locale.baseText('PASSWORD'),
+						label: this.$locale.baseText('auth.password'),
 						type: 'password',
 						required: true,
 						showRequiredAsterisk: false,
@@ -80,7 +80,7 @@ export default mixins(
 
 				this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('LOGIN_ERROR'));
+				this.$showError(error, this.$locale.baseText('auth.signin.error'));
 				this.loading = false;
 			}
 		},

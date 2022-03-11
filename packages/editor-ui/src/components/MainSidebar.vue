@@ -117,7 +117,7 @@
 
 				<n8n-menu-item index="settings" v-if="canUserAccessSettings && currentUser">
 					<font-awesome-icon icon="cog"/>&nbsp;
-					<span slot="title" class="item-title-root">{{ $locale.baseText('SETTINGS') }}</span>
+					<span slot="title" class="item-title-root">{{ $locale.baseText('settings') }}</span>
 				</n8n-menu-item>
 
 				<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
@@ -158,12 +158,12 @@
 							<el-dropdown-item
 								command="settings"
 							>
-								{{ $locale.baseText('SETTINGS') }}
+								{{ $locale.baseText('settings') }}
 							</el-dropdown-item>
 							<el-dropdown-item
 								command="logout"
 							>
-								{{ $locale.baseText('SIGN_OUT') }}
+								{{ $locale.baseText('auth.signout') }}
 							</el-dropdown-item>
 						</el-dropdown-menu>
 					</el-dropdown>
@@ -367,7 +367,7 @@ export default mixins(
 					const route = this.$router.resolve({ name: VIEWS.SIGNIN });
 					window.open(route.href, '_self');
 				} catch (e) {
-					this.$showError(e, this.$locale.baseText('SIGN_OUT_ERROR'));
+					this.$showError(e, this.$locale.baseText('auth.signout.error'));
 				}
 			},
 			toggleCollapse () {

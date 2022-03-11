@@ -2,7 +2,7 @@
 	<Modal
 		:name="CHANGE_PASSWORD_MODAL_KEY"
 		@enter="onSubmit"
-		:title="$locale.baseText('CHANGE_PASSWORD')"
+		:title="$locale.baseText('auth.changePassword')"
 		:center="true"
 		width="460px"
 		:eventBus="modalBus"
@@ -17,7 +17,7 @@
 			/>
 		</template>
 		<template slot="footer">
-			<n8n-button :loading="loading" :label="$locale.baseText('CHANGE_PASSWORD')" @click="onSubmitClick" float="right" />
+			<n8n-button :loading="loading" :label="$locale.baseText('auth.changePassword')" @click="onSubmitClick" float="right" />
 		</template>
 	</Modal>
 </template>
@@ -55,7 +55,7 @@ export default mixins(showMessage).extend({
 			{
 				name: 'currentPassword',
 				properties: {
-					label: this.$locale.baseText('CURRENT_PASSWORD'),
+					label: this.$locale.baseText('auth.changePassword.currentPassword'),
 					type: 'password',
 					required: true,
 					autocomplete: 'current-password',
@@ -65,11 +65,11 @@ export default mixins(showMessage).extend({
 			{
 				name: 'password',
 				properties: {
-					label: this.$locale.baseText('NEW_PASSWORD'),
+					label: this.$locale.baseText('auth.newPassword'),
 					type: 'password',
 					required: true,
 					validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-					infoText: this.$locale.baseText('DEFAULT_PASSWORD_REQUIREMENTS'),
+					infoText: this.$locale.baseText('auth.defaultPasswordRequirements'),
 					autocomplete: 'new-password',
 					capitalize: true,
 				},
@@ -77,7 +77,7 @@ export default mixins(showMessage).extend({
 			{
 				name: 'password2',
 				properties: {
-					label: this.$locale.baseText('REENTER_NEW_PASSWORD'),
+					label: this.$locale.baseText('auth.changePassword.reenterNewPassword'),
 					type: 'password',
 					required: true,
 					validators: {
@@ -93,10 +93,18 @@ export default mixins(showMessage).extend({
 		];
 	},
 	methods: {
-		passwordsMatch(value: string) {
-			if (value !== this.password) {
-				throw new Error(this.$locale.baseText('PASSWORDS_MUST_MATCH_ERROR'));
+		passwordsMatch(value: string | number | boolean | null | undefined) {
+			if (typeof value !== 'string') {
+				return false;
 			}
+
+			if (value !== this.password) {
+				return {
+					messageKey: 'auth.changePassword.passwordsMustMatchError',
+				};
+			}
+
+			return false;
 		},
 		onInput(e: {name: string, value: string}) {
 			if (e.name === 'password') {
@@ -110,14 +118,14 @@ export default mixins(showMessage).extend({
 
 				this.$showMessage({
 					type: 'success',
-					title: this.$locale.baseText('PASSWORD_UPDATE_SUCCESS'),
-					message: this.$locale.baseText('PASSWORD_UPDATE_SUCCESS_MESSAGE'),
+					title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
+					message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
 				});
 
 				this.modalBus.$emit('close');
 
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('PASSWORD_UPDATE_ERROR'));
+				this.$showError(error, this.$locale.baseText('auth.changePassword.error'));
 			}
 			this.loading = false;
 		},

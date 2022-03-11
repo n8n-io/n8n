@@ -10,7 +10,7 @@
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
-				<n8n-text :bold="true">{{firstName}} {{lastName}} {{isCurrentUser ? '(you)' : ''}}</n8n-text>
+				<n8n-text :bold="true">{{firstName}} {{lastName}} {{isCurrentUser ? this.t('nds.userInfo.you') : ''}}</n8n-text>
 			</div>
 			<div>
 				<n8n-text size="small" color="text-light">{{email}}</n8n-text>
@@ -25,8 +25,10 @@ import Vue from 'vue';
 import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
+import Locale from '../../mixins/locale';
+import mixins from 'vue-typed-mixins';
 
-export default Vue.extend({
+export default mixins(Locale).extend({
 	name: 'n8n-users-info',
 	components: {
 		N8nAvatar,

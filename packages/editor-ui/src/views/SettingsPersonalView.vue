@@ -2,7 +2,7 @@
 	<SettingsView>
 		<div :class="$style.container">
 			<div :class="$style.header">
-				<n8n-heading size="2xlarge">{{ $locale.baseText('PERSONAL_SETTINGS') }}</n8n-heading>
+				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.personal.personalSettings') }}</n8n-heading>
 				<div :class="$style.user">
 					<span :class="$style.username">
 						<n8n-text  color="text-light">{{currentUser.fullName}}</n8n-text>
@@ -12,7 +12,7 @@
 			</div>
 			<div>
 				<div :class="$style.sectionHeader">
-					<n8n-heading size="large">{{ $locale.baseText('BASIC_INFORMATION') }}</n8n-heading>
+					<n8n-heading size="large">{{ $locale.baseText('settings.personal.basicInformation') }}</n8n-heading>
 				</div>
 				<n8n-form-inputs
 					v-if="formInputs"
@@ -25,16 +25,16 @@
 			</div>
 			<div>
 				<div :class="$style.sectionHeader">
-					<n8n-heading size="large">{{ $locale.baseText('SECURITY') }}</n8n-heading>
+					<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
 				</div>
 				<div>
-					<n8n-input-label :label="$locale.baseText('PASSWORD')">
-						<n8n-link @click="openPasswordModal">{{ $locale.baseText('CHANGE_PASSWORD') }}</n8n-link>
+					<n8n-input-label :label="$locale.baseText('auth.password')">
+						<n8n-link @click="openPasswordModal">{{ $locale.baseText('auth.changePassword') }}</n8n-link>
 					</n8n-input-label>
 				</div>
 			</div>
 			<div>
-				<n8n-button float="right" :label="$locale.baseText('SAVE')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
+				<n8n-button float="right" :label="$locale.baseText('settings.personal.save')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
 			</div>
 		</div>
 	</SettingsView>
@@ -70,7 +70,7 @@ export default mixins(
 				name: 'firstName',
 				initialValue: this.currentUser.firstName,
 				properties: {
-					label: this.$locale.baseText('FIRST_NAME'),
+					label: this.$locale.baseText('auth.firstName'),
 					maxlength: 32,
 					required: true,
 					autocomplete: 'given-name',
@@ -81,7 +81,7 @@ export default mixins(
 				name: 'lastName',
 				initialValue: this.currentUser.lastName,
 				properties: {
-					label: this.$locale.baseText('LAST_NAME'),
+					label: this.$locale.baseText('auth.lastName'),
 					maxlength: 32,
 					required: true,
 					autocomplete: 'family-name',
@@ -92,7 +92,7 @@ export default mixins(
 				name: 'email',
 				initialValue: this.currentUser.email,
 				properties: {
-					label: this.$locale.baseText('EMAIL'),
+					label: this.$locale.baseText('auth.email'),
 					type: 'email',
 					required: true,
 					validationRules: [{name: 'VALID_EMAIL'}],
@@ -123,14 +123,14 @@ export default mixins(
 					email: form.email,
 				});
 				this.$showToast({
-					title: this.$locale.baseText('PERSONAL_SETTINGS_UPDATED_SUCCESS'),
+					title: this.$locale.baseText('settings.personal.personalSettingsUpdated'),
 					message: '',
 					type: 'success',
 				});
 				this.hasAnyChanges = false;
 			}
 			catch (e) {
-				this.$showError(e, this.$locale.baseText('PERSONAL_SETTINGS_UPDATE_ERROR'));
+				this.$showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
 			}
 		},
 		onSaveClick() {

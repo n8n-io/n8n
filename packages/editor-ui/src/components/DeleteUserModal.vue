@@ -10,15 +10,15 @@
 		<template slot="content">
 			<div>
 				<div v-if="isPending">
-					<n8n-text color="text-base">{{ $locale.baseText('CONFIRM_USER_DELETION') }}</n8n-text>
+					<n8n-text color="text-base">{{ $locale.baseText('settings.users.confirmUserDeletion') }}</n8n-text>
 				</div>
 				<div :class="$style.content" v-else>
-					<div><n8n-text color="text-base">{{ $locale.baseText('CONFIRM_DATA_HANDLING_AFTER_DELETION') }}</n8n-text></div>
+					<div><n8n-text color="text-base">{{ $locale.baseText('settings.users.confirmDataHandlingAfterDeletion') }}</n8n-text></div>
 					<el-radio :value="operation" label="transfer" @change="() => setOperation('transfer')">
-						<n8n-text color="text-dark">{{ $locale.baseText('TRANSFER_WORKFLOWS_AND_CREDENTIALS') }}</n8n-text>
+						<n8n-text color="text-dark">{{ $locale.baseText('settings.users.transferWorkflowsAndCredentials') }}</n8n-text>
 					</el-radio>
 					<div :class="$style.optionInput" v-if="operation === 'transfer'">
-						<n8n-input-label :label="$locale.baseText('USER_TO_TRANSFER_TO')">
+						<n8n-input-label :label="$locale.baseText('settings.users.userToTransferTo')">
 							<n8n-user-select
 								:users="allUsers"
 								:value="transferId"
@@ -29,18 +29,18 @@
 						</n8n-input-label>
 					</div>
 					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
-						<n8n-text color="text-dark">{{ $locale.baseText('DELETE_WORKFLOWS_AND_CREDENTIALS') }}</n8n-text>
+						<n8n-text color="text-dark">{{ $locale.baseText('settings.users.deleteWorkflowsAndCredentials') }}</n8n-text>
 					</el-radio>
 					<div :class="$style.optionInput" v-if="operation === 'delete'">
-						<n8n-input-label :label="$locale.baseText('DELETE_CONFIRMATION_MESSAGE')">
-							<n8n-input :value="deleteConfirmText" :placeholder="$locale.baseText('DELETE_CONFIRMATION_TEXT')" @input="setConfirmText" />
+						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
+							<n8n-input :value="deleteConfirmText" :placeholder="$locale.baseText('settings.users.deleteConfirmationText')" @input="setConfirmText" />
 						</n8n-input-label>
 					</div>
 				</div>
 			</div>
 		</template>
 		<template slot="footer">
-			<n8n-button :loading="loading" :disabled="!enabled" :label="$locale.baseText('DELETE')" @click="onSubmit" float="right" />
+			<n8n-button :loading="loading" :disabled="!enabled" :label="$locale.baseText('settings.users.delete')" @click="onSubmit" float="right" />
 		</template>
 	</Modal>
 </template>
@@ -91,13 +91,13 @@ export default mixins(showMessage).extend({
 		},
 		title(): string {
 			const user = this.userToDelete && (this.userToDelete.fullName || this.userToDelete.email);
-			return this.$locale.baseText('DELETE_USER', { interpolate: { user }});
+			return this.$locale.baseText('settings.users.deleteUser', { interpolate: { user }});
 		},
 		enabled(): boolean {
 			if (this.isPending) {
 				return true;
 			}
-			if (this.operation === 'delete' && this.deleteConfirmText === this.$locale.baseText('DELETE_CONFIRMATION_TEXT')) {
+			if (this.operation === 'delete' && this.deleteConfirmText === this.$locale.baseText('settings.users.deleteConfirmationText')) {
 				return true;
 			}
 
@@ -138,19 +138,19 @@ export default mixins(showMessage).extend({
 				if (this.transferId) {
 					const getUserById = this.$store.getters['users/getUserById'];
 					const transferUser: IUser = getUserById(this.transferId);
-					message = this.$locale.baseText('TRANSFERRED_TO_USER', { interpolate: { user: transferUser.fullName }});
+					message = this.$locale.baseText('settings.users.transferredToUser', { interpolate: { user: transferUser.fullName }});
 				}
 
 				this.$showMessage({
 					type: 'success',
-					title: this.$locale.baseText('USER_DELETE_SUCCESS'),
+					title: this.$locale.baseText('settings.users.userDeleted'),
 					message,
 				});
 
 				this.modalBus.$emit('close');
 
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('USER_DELETE_ERROR'));
+				this.$showError(error, this.$locale.baseText('settings.users.userDeletedError'));
 			}
 			this.loading = false;
 		},

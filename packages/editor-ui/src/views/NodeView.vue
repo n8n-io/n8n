@@ -1830,7 +1830,7 @@ export default mixins(
 							});
 							this.$showMessage({
 								title: 'Error',
-								message: this.$locale.baseText('WORKFLOW_NOT_FOUND_ERROR'),
+								message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
 								type: 'error',
 							});
 						} else {
@@ -2703,10 +2703,10 @@ export default mixins(
 							await this.importWorkflowExact(json);
 						} catch (e) {
 							if (window.top) {
-								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('WORKFLOW_IMPORT_ERROR') }), '*');
+								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('openWorkflow.workflowImportError') }), '*');
 							}
 							this.$showMessage({
-								title: this.$locale.baseText('WORKFLOW_IMPORT_ERROR'),
+								title: this.$locale.baseText('openWorkflow.workflowImportError'),
 								message: (e as Error).message,
 								type: 'error',
 							});
