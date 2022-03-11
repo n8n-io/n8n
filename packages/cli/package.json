@@ -106,7 +106,7 @@
     "flatted": "^3.2.4",
     "google-timezones-json": "^1.0.2",
     "inquirer": "^7.0.1",
-    "json-diff": "^0.5.4",
+    "json-diff": "^0.7.1",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "~1.12.1",
     "localtunnel": "^2.0.0",
