@@ -72,11 +72,11 @@ export const nodeDescription: INodeTypeDescription = {
 		//         aggregate
 		// ----------------------------------
 		{
-			displayName: 'Aggregate Query (JSON format)',
+			displayName: 'Query',
 			name: 'query',
 			type: 'json',
 			typeOptions: {
-				rows: 5,
+				alwaysOpenEditWindow: true,
 			},
 			displayOptions: {
 				show: {
@@ -85,10 +85,11 @@ export const nodeDescription: INodeTypeDescription = {
 					],
 				},
 			},
-			default: '{}',
+			default: '',
 			placeholder: `[{ "$match": { "$gt": "1950-01-01" }, ... }]`,
+			hint: 'Learn more about aggregation pipeline <a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/">here</a>',
 			required: true,
-			description: 'MongoDB Aggregate query.',
+			description: 'MongoDB aggregation pipeline query in JSON format',
 		},
 
 		// ----------------------------------
