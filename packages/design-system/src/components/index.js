@@ -62,9 +62,7 @@ import N8nTooltip from './N8nTooltip';
 import N8nUsersList from './N8nUsersList';
 import N8nUserSelect from './N8nUserSelect';
 
-import lang from 'element-ui/lib/locale/lang/en';
-import locale from 'element-ui/lib/locale';
-locale.use(lang);
+import locale from '../locale';
 
 export {
 	N8nActionBox,
@@ -130,4 +128,6 @@ export {
 	Message,
 	Notification,
 	CollapseTransition,
+
+	locale,
 };

@@ -58,7 +58,10 @@ import N8nInputLabel from '../N8nInputLabel';
 import { getValidationError, VALIDATORS } from './validators';
 import { Rule, RuleGroup, IValidator } from "../../../../editor-ui/src/Interface";
 
-export default Vue.extend({
+import Locale from '../../mixins/locale';
+import mixins from 'vue-typed-mixins';
+
+export default mixins(Locale).extend({
 	name: 'n8n-form-input',
 	components: {
 		N8nInput,
@@ -133,7 +136,12 @@ export default Vue.extend({
 	},
 	computed: {
 		validationError(): string | null {
-			return this.getValidationError();
+			const error = this.getValidationError();
+			if (error) {
+				return this.t(error.messageKey, error.options);
+			}
+
+			return null;
 		},
 		hasDefaultSlot(): boolean {
 			return !!this.$slots.default;
@@ -146,7 +154,7 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		getValidationError(): string | null {
+		getValidationError(): ReturnType<IValidator['validate']>  {
 			const rules = (this.validationRules || []) as (Rule | RuleGroup)[];
 			const validators = {
 				...VALIDATORS,

@@ -116,14 +116,25 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		validateEmails(value: string) {
-			value.split(',').forEach((email: string) => {
+		validateEmails(value: string | number | boolean | null | undefined) {
+			if (typeof value !== 'string') {
+				return false;
+			}
+
+			const emails = value.split(',');
+			for (let i = 0; i < emails.length; i++) {
+				const email = emails[i];
 				const parsed = getEmail(email);
 
 				if (!!parsed.trim() && !VALID_EMAIL_REGEX.test(String(parsed).trim().toLowerCase())) {
-					throw new Error(this.$locale.baseText('settings.users.invalidEmailError', { interpolate: { email: parsed }}));
+					return {
+						messageKey: 'settings.users.invalidEmailError',
+						options: { interpolate: { email: parsed }},
+					};
 				}
-			});
+			}
+
+			return false;
 		},
 		onInput(e: {name: string, value: string}) {
 			if (e.name === 'emails') {

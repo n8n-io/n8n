@@ -84,10 +84,18 @@ export default mixins(
 		}
 	},
 	methods: {
-		passwordsMatch(value: string) {
-			if (value !== this.password) {
-				throw new Error(this.$locale.baseText('auth.changePassword.passwordsMustMatchError'));
+		passwordsMatch(value: string | number | boolean | null | undefined) {
+			if (typeof value !== 'string') {
+				return false;
 			}
+
+			if (value !== this.password) {
+				return {
+					messageKey: 'auth.changePassword.passwordsMustMatchError',
+				};
+			}
+
+			return false;
 		},
 		onInput(e: {name: string, value: string}) {
 			if (e.name === 'password') {
