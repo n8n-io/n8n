@@ -10,10 +10,14 @@ import {
 	normalize,
 	insertOptionsAndValues,
 } from "./utils";
+import {
+	locale,
+} from 'n8n-design-system';
 
 const englishBaseText = require('./locales/en');
 
 Vue.use(VueI18n);
+locale.use('en', englishBaseText);
 
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
 	const i18n = new I18nClass(store);
