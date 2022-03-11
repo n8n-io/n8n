@@ -746,6 +746,15 @@ const config = convict({
 		},
 	},
 
+	hiringBanner: {
+		enabled: {
+			doc: 'Whether hiring banner in browser console is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_HIRING_BANNER_ENABLED',
+		},
+	},
+
 	personalization: {
 		enabled: {
 			doc: 'Whether personalization is enabled.',
