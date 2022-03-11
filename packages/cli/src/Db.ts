@@ -99,7 +99,6 @@ export async function init(
 					migrations: postgresMigrations,
 					migrationsRun: true,
 					migrationsTableName: `${entityPrefix}migrations`,
-					uuidExtension: 'pgcrypto',
 					ssl,
 				};
 

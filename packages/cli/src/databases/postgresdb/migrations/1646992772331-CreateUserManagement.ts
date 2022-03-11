@@ -14,8 +14,6 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
-		await queryRunner.query('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
-
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}role (
 				"id" serial NOT NULL,
@@ -30,7 +28,7 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}user (
-				"id" UUID NOT NULL DEFAULT gen_random_uuid(),
+				"id" UUID NOT NULL DEFAULT uuid_in(overlay(overlay(md5(random()::text || ':' || clock_timestamp()::text) placing '4' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring),
 				"email" VARCHAR(255),
 				"firstName" VARCHAR(32),
 				"lastName" VARCHAR(32),

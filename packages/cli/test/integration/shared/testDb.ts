@@ -314,7 +314,6 @@ export const getPostgresOptions = ({ name }: { name: string }): ConnectionOption
 		migrations: postgresMigrations,
 		migrationsRun: true,
 		migrationsTableName: 'migrations',
-		uuidExtension: 'pgcrypto',
 		entities: Object.values(entities),
 		synchronize: false,
 		logging: false,
