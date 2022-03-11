@@ -48,7 +48,7 @@ export function usersNamespace(this: N8nApp): void {
 			} catch (error) {
 				if (error instanceof Error) {
 					throw new ResponseHelper.ResponseError(
-						`There is a problem with your SMTP setup: ${error.message}`,
+						`There is a problem with your SMTP setup! ${error.message}`,
 						undefined,
 						500,
 					);

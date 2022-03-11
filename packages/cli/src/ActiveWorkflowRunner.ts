@@ -107,7 +107,7 @@ export class ActiveWorkflowRunner {
 					});
 					console.log(`     => Started`);
 				} catch (error) {
-					console.log(`     => ERROR: Workflow could not be activated:`);
+					console.log(`     => ERROR: Workflow could not be activated`);
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					console.log(`               ${error.message}`);
 					Logger.error(`Unable to initialize workflow "${workflowData.name}" (startup)`, {
@@ -491,7 +491,7 @@ export class ActiveWorkflowRunner {
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'QueryFailedError') {
-					error.message = `The URL path that "${webhook.node}" node uses is already taken. Please change it to something else.`;
+					error.message = `The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`;
 				} else if (error.detail) {
 					// it's a error runnig the webhook methods (checkExists, create)
 					error.message = error.detail;
