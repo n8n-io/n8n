@@ -9,7 +9,14 @@ ElementLocale.use(ElementLang);
 const format = Format(Vue);
 let lang = defaultLang;
 
+let i18nHandler;
+
 export const t = function(path, options) {
+	if (typeof i18nHandler === 'function') {
+		const value = i18nHandler.apply(this, arguments);
+		if (value !== null && value !== undefined && value !== path) return value;
+	}
+
 	// only support flat keys
 	if (lang[path] !== undefined) {
 		return format(lang[path], options);
@@ -18,17 +25,11 @@ export const t = function(path, options) {
 	return '';
 };
 
-function override(current, overides = {}) {
-	return {
-		...current,
-		...overides,
-	};
-}
+export const use = function(l) {
 
-export const use = function(l, overrides) {
 	try {
 		const ndsLang = require(`./lang/${l}`);
-		lang = override(ndsLang.default, overrides);
+		lang = ndsLang.default;
 
 		const elLang = require(`element-ui/lib/locale/lang/${l}`);;
 		ElementLocale.use(elLang);
@@ -36,4 +37,8 @@ export const use = function(l, overrides) {
 	}
 };
 
-export default { use, t };
+export const i18n = function(fn) {
+	i18nHandler = fn || i18nHandler;
+};
+
+export default { use, t, i18n };

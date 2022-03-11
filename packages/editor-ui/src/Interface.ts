@@ -918,7 +918,7 @@ export type Rule = { name: string; config?: any}; // tslint:disable-line:no-any
 
 export type RuleGroup = {
 	rules: Array<Rule | RuleGroup>;
-	defaultError?: {messageKey: string, options?: any}; // tslint-disable-line:no-any
+	defaultError?: {messageKey: string, options?: any}; // tslint:disable-line:no-any
 };
 
 export type IValidator = {
