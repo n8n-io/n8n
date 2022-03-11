@@ -171,7 +171,7 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
-import { isEmailSetUp } from './UserManagement/UserManagementHelper';
+import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -296,6 +296,7 @@ class App {
 			maxExecutionTimeout: this.maxExecutionTimeout,
 			timezone: this.timezone,
 			urlBaseWebhook,
+			urlBaseEditor: getInstanceBaseUrl(),
 			versionCli: '',
 			oauthCallbackUrls: {
 				oauth1: `${urlBaseWebhook}${this.restEndpoint}/oauth1-credential/callback`,
@@ -417,7 +418,11 @@ class App {
 
 			this.app.use(
 				async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-					if (authIgnoreRegex.exec(req.url)) {
+					// Skip basic auth for a few listed endpoints or when instance owner has been setup
+					if (
+						authIgnoreRegex.exec(req.url) ||
+						config.get('userManagement.isInstanceOwnerSetUp')
+					) {
 						return next();
 					}
 					const realm = 'n8n - Editor UI';

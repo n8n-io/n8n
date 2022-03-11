@@ -3,8 +3,8 @@ import { v4 as uuid } from 'uuid';
 import config = require('../../../../config');
 import { loadSurveyFromDisk } from '../../utils/migrationHelpers';
 
-export class CreateUserManagement1636626154934 implements MigrationInterface {
-	name = 'CreateUserManagement1636626154934';
+export class CreateUserManagement1646992772331 implements MigrationInterface {
+	name = 'CreateUserManagement1646992772331';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		let tablePrefix = config.get('database.tablePrefix');
@@ -13,6 +13,8 @@ export class CreateUserManagement1636626154934 implements MigrationInterface {
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+
+		await queryRunner.query('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
 
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}role (
