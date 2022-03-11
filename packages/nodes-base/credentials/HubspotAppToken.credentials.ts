@@ -9,7 +9,7 @@ export class HubspotAppToken implements ICredentialType {
 	documentationUrl = 'hubspot';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'App Token',
+			displayName: 'APP Token',
 			name: 'appToken',
 			type: 'string',
 			default: '',
