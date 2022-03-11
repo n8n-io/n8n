@@ -55,7 +55,8 @@ export async function getInstanceOwner(): Promise<User> {
  * Return the n8n instance base URL without trailing slash.
  */
 export function getInstanceBaseUrl(): string {
-	const baseUrl = GenericHelpers.getBaseUrl();
+	const editorBaseUrl = config.get('editorBaseUrl');
+	const baseUrl = editorBaseUrl ? editorBaseUrl + config.get('path') : GenericHelpers.getBaseUrl();
 	return baseUrl.endsWith('/') ? baseUrl.slice(0, baseUrl.length - 1) : baseUrl;
 }
 
