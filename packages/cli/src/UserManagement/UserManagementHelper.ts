@@ -56,7 +56,8 @@ export async function getInstanceOwner(): Promise<User> {
  */
 export function getInstanceBaseUrl(): string {
 	const editorBaseUrl = config.get('editorBaseUrl');
-	return editorBaseUrl ? editorBaseUrl + config.get('path') : GenericHelpers.getBaseUrl();
+	const baseUrl = editorBaseUrl ? editorBaseUrl + config.get('path') : GenericHelpers.getBaseUrl();
+	return baseUrl.endsWith('/') ? baseUrl.slice(0, baseUrl.length - 1) : baseUrl;
 }
 
 export async function isInstanceOwnerSetup(): Promise<boolean> {

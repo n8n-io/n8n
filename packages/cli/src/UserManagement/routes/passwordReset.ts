@@ -73,7 +73,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			await Db.collections.User!.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
 
 			const baseUrl = getInstanceBaseUrl();
-			const url = new URL(`${baseUrl}change-password`);
+			const url = new URL(`${baseUrl}/change-password`);
 			url.searchParams.append('userId', id);
 			url.searchParams.append('token', resetPasswordToken);
 
