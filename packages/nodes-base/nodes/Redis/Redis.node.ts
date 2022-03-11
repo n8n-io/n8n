@@ -395,7 +395,7 @@ export class Redis implements INodeType {
 			},
 			{
 				displayName: 'Data',
-				name: 'data',
+				name: 'messageData',
 				type: 'string',
 				displayOptions: {
 					show: {
@@ -405,7 +405,7 @@ export class Redis implements INodeType {
 					},
 				},
 				typeOptions: {
-					rows: 10,
+					alwaysOpenEditWindow: true,
 				},
 				default: '',
 				required: true,
@@ -532,7 +532,7 @@ export class Redis implements INodeType {
 			const redisOptions: redis.ClientOpts = {
 				host: credentials.host as string,
 				port: credentials.port as number,
-				db: credentials.database as number
+				db: credentials.database as number,
 			};
 
 			if (credentials.password) {
@@ -630,13 +630,10 @@ export class Redis implements INodeType {
 								}
 								returnItems.push({json: {[keyIncr]: incrementVal}});
 							} else if (operation === 'publish'){
-								const channel = this.getNodeParameter('channel',itemIndex) as string;
-								let data = this.getNodeParameter('data',itemIndex) as any;
+								const channel = this.getNodeParameter('channel', itemIndex) as string;
+								const messageData = this.getNodeParameter('messageData', itemIndex) as string;
 								const clientPublish = util.promisify(client.publish).bind(client);
-								if(data instanceof Object){
-									data = JSON.stringify(data)
-								}
-								await clientPublish(channel, data);
+								await clientPublish(channel, messageData);
 								returnItems.push(items[itemIndex]);
 							}
 						}

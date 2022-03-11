@@ -38,7 +38,7 @@ export class RedisTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: `Channels to subscribe to, multiple can be defined with comma. Wildcard character(*) are supported.`,
+				description: `Channels to subscribe to, multiple can be defined with comma. Wildcard character(*) are supported`,
 			},
 			{
 				displayName: 'Options',
@@ -52,14 +52,14 @@ export class RedisTrigger implements INodeType {
 						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
-						description: 'Try to parse the message to an object.',
+						description: 'Try to parse the message to an object',
 					},
 					{
 						displayName: 'Only Message',
 						name: 'onlyMessage',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the message property.',
+						description: 'Returns only the message property',
 					},
 				],
 			},
@@ -77,7 +77,7 @@ export class RedisTrigger implements INodeType {
 		const redisOptions: redis.ClientOpts = {
 			host: credentials.host as string,
 			port: credentials.port as number,
-			db: credentials.database as number
+			db: credentials.database as number,
 		};
 
 		if (credentials.password) {
@@ -103,23 +103,23 @@ export class RedisTrigger implements INodeType {
 					for (const channel of channels) {
 						client.psubscribe(channel);
 					}
-					client.on("pmessage", (pattern: string, channel: string, message: string) => {
+					client.on('pmessage', (pattern: string, channel: string, message: string) => {
 						let result: IDataObject = {};
-						message = message.toString() as string;
+						message = message.toString();
 						if (options.jsonParseBody) {
 							try {
-								message = JSON.parse(message.toString());
+								message = JSON.parse(message);
 							} catch (err) { }
 						}
 						result.channel = channel;
 						result.message = message;
 						if (options.onlyMessage) {
 							//@ts-ignore
-							result = [message as string];
+							result = [message];
 						}
 						self.emit([self.helpers.returnJsonArray(result)]);
 						resolve(true);
-					})
+					});
 				});
 
 				client.on('error', (error) => {
