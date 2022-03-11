@@ -1,80 +1,19 @@
-import {
-	ICredentialDataDecryptedObject,
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	INode,
-	IWebhookFunctions,
-	JsonObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { INode, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
 import { createHash } from 'crypto';
-import { OnOfficeFilterConfiguration } from './descriptions/CommonReadDescription';
+import {
+	OnOfficeAction,
+	OnOfficeActionResponse,
+	OnOfficeActionResponseSuccess,
+	OnOfficeReadFilterConfiguration,
+	OnOfficeResource,
+	OnOfficeResponse,
+	OnOfficeResponseSuccess,
+} from './interfaces';
 
-type OnOfficeAction = 'get' | 'read';
-type OnOfficeActionId = `urn:onoffice-de-ns:smart:2.5:smartml:action:${'get' | 'read'}`;
-type OnOfficeResource = 'estate' | 'address' | 'fields';
-
-interface OnOfficeResponseRecord {
-	id: string;
-	type: OnOfficeResource;
-	elements: Record<string, unknown> | Array<Record<string, unknown>>;
-}
-
-interface OnOfficeActionResponseBase {
-	actionId: OnOfficeActionId;
-	resourceId: string;
-	resourceType: OnOfficeResource;
-	cachable: boolean;
-	identifier: string;
-}
-
-interface OnOfficeActionResponseError extends OnOfficeActionResponseBase {
-	cachable: false;
-	data: never[];
-	status: ErrorStatus;
-}
-
-interface OnOfficeActionResponseSuccess extends OnOfficeActionResponseBase {
-	data: {
-		meta: Record<string, unknown>;
-		records: OnOfficeResponseRecord[];
-	};
-	status: SuccessStatus;
-}
-
-type OnOfficeActionResponse = OnOfficeActionResponseError | OnOfficeActionResponseSuccess;
-
-interface ErrorStatus {
-	errorcode: number;
-	message?: string;
-}
-
-interface SuccessStatus {
-	errorcode: 0;
-	message?: string;
-}
-
-interface OnOfficeResponseSuccess {
-	status: { code: 200 } & SuccessStatus;
-	response: { results: OnOfficeActionResponse[] };
-}
-interface OnOfficeResponseNoAuth {
-	status: { code: 400 | 401 } & ErrorStatus;
-	response: { results: OnOfficeActionResponseError[] };
-}
-interface OnOfficeResponseError {
-	status: { code: 500 } & ErrorStatus;
-	response: { results: OnOfficeActionResponse[] };
-}
-
-type OnOfficeResponse = OnOfficeResponseSuccess | OnOfficeResponseNoAuth | OnOfficeResponseError;
-
-const MD5 = (str: string) => {
+const md5 = (str: string) => {
 	return createHash('md5').update(str).digest('hex');
 };
 
@@ -114,17 +53,18 @@ const assertSuccessfulActionResponses: (
 	}
 };
 
-export async function onOfficeApiAction(
-	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+type requestType = (uriOrObject: any) => Promise<any>;
+
+export const onOfficeApiAction = async (
+	node: INode,
+	request: requestType,
+	apiSecret: string,
+	apiToken: string,
 	actionType: OnOfficeAction,
 	resourceType: OnOfficeResource,
 	parameters: Record<string, unknown>,
 	resourceid = '',
-) {
-	const credentials = (await this.getCredentials('onOfficeApi')) as ICredentialDataDecryptedObject;
-
-	const apiSecret = credentials.apiSecret as string;
-	const apiToken = credentials.apiToken as string;
+) => {
 	const identifier = '';
 	const resourcetype = resourceType;
 	const timestamp = Math.floor(Date.now() / 1000) + '';
@@ -134,9 +74,9 @@ export async function onOfficeApiAction(
 
 	console.log('Parameters: ', JSON.stringify(sortedParameters));
 
-	const hmac = MD5(
+	const hmac = md5(
 		apiSecret +
-			MD5(
+			md5(
 				`${JSON.stringify(sortedParameters).replace(
 					'/',
 					'\\/',
@@ -172,23 +112,23 @@ export async function onOfficeApiAction(
 		json: true,
 	};
 
-	const responseData = (await this.helpers.request?.(options).catch((error: JsonObject) => {
-		throw new NodeApiError(this.getNode(), error);
+	const responseData = (await request(options).catch((error: JsonObject) => {
+		throw new NodeApiError(node, error);
 	})) as OnOfficeResponse;
 
-	assertSuccessfulResponse(responseData, this.getNode());
+	assertSuccessfulResponse(responseData, node);
 
 	const actionResponses = responseData.response.results;
 
-	assertSuccessfulActionResponses(actionResponses, this.getNode());
+	assertSuccessfulActionResponses(actionResponses, node);
 
 	console.log(JSON.stringify(responseData));
 
 	const results = actionResponses[0].data.records;
 	return results;
-}
+};
 
-export const createFilterParameter = (filterConfig?: OnOfficeFilterConfiguration) => {
+export const createFilterParameter = (filterConfig?: OnOfficeReadFilterConfiguration) => {
 	const filterOperatorMap = {
 		is: 'is',
 		or: 'or',

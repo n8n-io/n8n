@@ -1,7 +1,13 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { addressFields, addressOperations } from './descriptions/AddressDescription';
-import { OnOfficeAddressReadAdditionalFields } from './descriptions/CommonReadDescription';
+import { OnOfficeReadAdditionalFields } from './interfaces';
 import { estateFields, estateOperations } from './descriptions/EstateDescription';
 import {
 	fieldConfigurationFields,
@@ -67,11 +73,19 @@ export class OnOffice implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const request = this.helpers.request;
 
 		const returnData = [];
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+
+		const credentials = (await this.getCredentials(
+			'onOfficeApi',
+		)) as ICredentialDataDecryptedObject;
+
+		const apiSecret = credentials.apiSecret as string;
+		const apiToken = credentials.apiToken as string;
 
 		for (let i = 0; i < items.length; i++) {
 			if (operation === 'read') {
@@ -83,7 +97,7 @@ export class OnOffice implements INodeType {
 				const additionalFields = this.getNodeParameter(
 					'additionalFields',
 					i,
-				) as OnOfficeAddressReadAdditionalFields;
+				) as OnOfficeReadAdditionalFields;
 
 				const parameters = {
 					data: dataFields,
@@ -104,7 +118,15 @@ export class OnOffice implements INodeType {
 				};
 
 				if (resource === 'address' || resource === 'estate') {
-					const result = await onOfficeApiAction.call(this, 'read', resource, parameters);
+					const result = await onOfficeApiAction(
+						this.getNode(),
+						request,
+						apiSecret,
+						apiToken,
+						'read',
+						resource,
+						parameters,
+					);
 
 					returnData.push(result);
 				}
@@ -124,7 +146,15 @@ export class OnOffice implements INodeType {
 						showFieldMeasureFormat: additionalFields.showFieldMeasureFormat,
 					};
 
-					const result = await onOfficeApiAction.call(this, 'get', resource, parameters);
+					const result = await onOfficeApiAction(
+						this.getNode(),
+						request,
+						apiSecret,
+						apiToken,
+						'get',
+						resource,
+						parameters,
+					);
 
 					returnData.push(result);
 				}

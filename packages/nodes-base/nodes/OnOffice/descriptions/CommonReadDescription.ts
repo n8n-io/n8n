@@ -1,44 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
 
-type FilterOperator =
-	| 'is'
-	| 'or'
-	| 'equal'
-	| 'greater'
-	| 'less'
-	| 'greaterequal'
-	| 'lessequal'
-	| 'notequal'
-	| 'between'
-	| 'like'
-	| 'notlike'
-	| 'in'
-	| 'notin';
-
-export type OnOfficeFilterConfiguration = {
-	filter: Array<{
-		field: string;
-		operations: { operation: Array<{ operator: FilterOperator; value: string }> };
-	}>;
-};
-
-export interface OnOfficeAddressReadAdditionalFields {
-	recordIds?: string[];
-	filterId?: number;
-	filters?: OnOfficeFilterConfiguration;
-	limit?: number;
-	offset?: number;
-	sortBy?: string;
-	order?: 'ASC' | 'DESC';
-	formatOutput?: boolean;
-	language?: 'DEU';
-	countryIsoCodeType?: '' | 'ISO-3166-2' | 'ISO-3166-3';
-	estateLanguage?: string;
-	addEstateLanguage?: boolean;
-	addMainLangId?: boolean;
-	geoRangeSearch?: { country: string; radius: number; zip?: number };
-}
-
 export const commonReadDescription: INodeProperties[] = [
 	{
 		displayName: 'Filters',
