@@ -7,8 +7,8 @@ import {
 	logMigrationStart,
 } from '../../utils/migrationHelpers';
 
-export class CreateUserManagement1636626154932 implements MigrationInterface {
-	name = 'CreateUserManagement1636626154932';
+export class CreateUserManagement1646992772331 implements MigrationInterface {
+	name = 'CreateUserManagement1646992772331';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
