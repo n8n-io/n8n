@@ -3,8 +3,8 @@ import {
 } from 'n8n-core';
 
 import {
-	ILoadOptionsFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -126,8 +126,15 @@ export class SeaTableTrigger implements INodeType {
 		if (this.getMode() === 'manual') {
 			rows = await seaTableApiRequest.call(this, ctx, 'POST', endpoint, { sql: `SELECT * FROM ${tableName} LIMIT 1` }) as IRowResponse;
 		} else {
-			rows = await seaTableApiRequest.call(this, ctx, 'POST', endpoint,
-				{ sql: `SELECT * FROM ${tableName} WHERE ${filterField} BETWEEN "${moment(startDate).tz(timezone).format('YYYY-MM-D HH:mm:ss')}" AND "${moment(endDate).tz(timezone).format('YYYY-MM-D HH:mm:ss')}"` }) as IRowResponse;
+			rows = (await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {
+				sql: `SELECT * FROM ${tableName}
+					WHERE ${filterField} BETWEEN "${moment(startDate)
+					.tz(timezone)
+					.format('YYYY-MM-D HH:mm:ss')}"
+					AND "${moment(endDate)
+					.tz(timezone)
+					.format('YYYY-MM-D HH:mm:ss')}"`,
+			})) as IRowResponse;
 		}
 
 		let response;
