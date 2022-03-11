@@ -1,7 +1,9 @@
 <template functional>
 	<div :class="$style.container">
-		<div :class="$style.description">
+		<div :class="$style.heading">
 			<component :is="$options.components.N8nHeading" size="xlarge" align="center">{{ props.heading }}</component>
+		</div>
+		<div :class="$style.description">
 			<n8n-text color="text-base"><span v-html="props.description"></span></n8n-text>
 		</div>
 		<component :is="$options.components.N8nButton" :label="props.buttonText" size="large"
@@ -54,12 +56,11 @@ export default {
 	font-size: 40px;
 }
 
-.description {
-	display: flex;
-	flex-direction: column;
+.heading {
+	margin-bottom: var(--spacing-l);
+}
 
-	> *:first-child {
-		margin-bottom: var(--spacing-xs);
-	}
+.description {
+	margin-bottom: var(--spacing-xl);
 }
 </style>

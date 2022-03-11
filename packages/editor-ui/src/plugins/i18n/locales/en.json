@@ -1168,7 +1168,7 @@
 	"settings.users.setupMyAccount": "Set up my owner account",
 	"settings.users.setupSMTPToInviteUsers": "Set up SMTP to invite users. <a href=\"https://docs.n8n.io/reference/user-management.html#step-one-smtp\" target=\"_blank\">Instructions</a>",
 	"settings.users.setupToInviteUsers": "To invite users, set up your own account",
-	"settings.users.setupToInviteUsersInfo": "Invited users won’t be able to see workflows and credentials of other users. <a href=\"https://docs.n8n.io/reference/user-management.html\" target=\"_blank\">More info</a> <br /> You will need details of an <a href=\"https://docs.n8n.io/reference/user-management.html#step-one-smtp\" target=\"_blank\">SMTP server</a> to complete the setup.",
+	"settings.users.setupToInviteUsersInfo": "Invited users won’t be able to see workflows and credentials of other users. <a href=\"https://docs.n8n.io/reference/user-management.html\" target=\"_blank\">More info</a> <br /> <br /> You will need details of an <a href=\"https://docs.n8n.io/reference/user-management.html#step-one-smtp\" target=\"_blank\">SMTP server</a> to complete the setup.",
 	"settings.users.smtpToAddUsersWarning": "Set up SMTP before adding users (so that n8n can send them invitation emails). <a target=\"_blank\" href=\"https://docs.n8n.io/reference/user-management.html#step-one-smtp\">Instructions</a>",
 	"settings.users.transferWorkflowsAndCredentials": "Transfer their workflows and credentials to another user",
 	"settings.users.transferredToUser": "Data transferred to {user}",
@@ -1180,6 +1180,7 @@
 	"settings.users.userToTransferTo": "User to transfer to",
 	"settings.users.usersInvited": "Users invited",
 	"settings.users.usersInvitedError": "Could not invite users",
+	"settings.users.usersEmailedError": "Couldn't send invite email",
 	"settings.version": "Version",
 	"startupError": "Error connecting to n8n",
 	"startupError.message": "Could not connect to server. <a onclick='window.location.reload(false);'>Refresh</a> to try again"

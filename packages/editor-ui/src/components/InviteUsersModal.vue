@@ -35,7 +35,6 @@ import { ROLE } from "@/modules/userHelpers";
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
-
 function getEmail(email: string): string {
 	let parsed = email.trim();
 	if (NAME_EMAIL_FORMAT_REGEX.test(parsed)) {
@@ -80,6 +79,7 @@ export default mixins(showMessage).extend({
 					},
 					placeholder: 'name1@email.com, name2@email.com, ...',
 					capitalize: true,
+					focusInitially: true,
 				},
 			},
 			{
@@ -179,7 +179,7 @@ export default mixins(showMessage).extend({
 					setTimeout(() => {
 						this.$showMessage({
 							type: 'error',
-							title: this.$locale.baseText(invitedEmails.error.length > 1 ? 'settings.users.usersInvitedError': 'settings.users.userInvitedError'),
+							title: this.$locale.baseText('settings.users.usersEmailedError'),
 							message: this.$locale.baseText('settings.users.emailInvitesSentError', { interpolate: { emails: invitedEmails.error.join(', ') }}),
 						});
 					}, 0); // notifications stack on top of each other otherwise

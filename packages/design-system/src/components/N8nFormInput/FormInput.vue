@@ -10,6 +10,7 @@
 				@change="onInput"
 				@focus="onFocus"
 				@blur="onBlur"
+				ref="input"
 			>
 				<n8n-option
 					v-for="option in (options || [])"
@@ -28,6 +29,7 @@
 				@input="onInput"
 				@blur="onBlur"
 				@focus="onFocus"
+				ref="input"
 			/>
 		</div>
 		<div :class="$style.errors" v-if="showErrors">
@@ -130,9 +132,16 @@ export default mixins(Locale).extend({
 		autocomplete: {
 			type: String,
 		},
+		focusInitially: {
+			type: Boolean,
+		},
 	},
 	mounted() {
 		this.$emit('validate', !this.validationError);
+
+		if (this.focusInitially && this.$refs.input) {
+			this.$refs.input.focus();
+		}
 	},
 	computed: {
 		validationError(): string | null {
