@@ -174,29 +174,6 @@ export default mixins(
 				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, activeNode!.name, connectionInputData || [], {}, mode, additionalProxyKeys);
 				const proxy = dataProxy.getDataProxy();
 
-				//// ==============================================================================================================
-				//// removed from autocomplete since we don’t want to officially support these when we release
-				// const autoComplete$ = `
-				// {
-				// 	${this.codeAutocomplete === 'functionItem' ? 'pairedItem: () => {}' : ''},\n
-				// 	item: (itemIndex?: number, branchIndex?: number, runIndex?: number) => {},\n
-				// 	first: (branchIndex?: number, runIndex?: number) => {},\n
-				// 	last: (branchIndex?: number, runIndex?: number) => {},\n
-				// 	all: (branchIndex?: number, runIndex?: number) => {},\n
-				// 	context: {},\n
-				// 	params: {},\n
-				// }
-				// `;
-
-				// const autoComplete$input = `
-				// {
-				// 	item: (itemIndex?: number, runIndex?: number, inputConnectorIndex?: number) => {},\n
-				// 	first: (runIndex?: number, inputConnectorIndex?: number) => {},\n
-				// 	last: (runIndex?: number, inputConnectorIndex?: number) => {},\n
-				// 	all: (runIndex?: number, inputConnectorIndex?: number) => {},\n
-				// }
-				// `;
-
 				const workflowNodes = [];
 				for (const [nodeName, node] of Object.entries(workflow.nodes)) {
 					workflowNodes.push(`"${nodeName}"`);
@@ -208,11 +185,7 @@ export default mixins(
 					`function getWorkflowStaticData(type: string): {};`,
 					`function $item(itemIndex: number, runIndex?: number): {};`,
 					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number): {};`,
-					// `function $(nodeName?: ${workflowNodes.join(' | ')}): ${autoComplete$}`,
-					// `const $input = ${autoComplete$input}`,
 				];
-
-				//// ==============================================================================================================
 
 				const baseKeys = [
 					'$env',
