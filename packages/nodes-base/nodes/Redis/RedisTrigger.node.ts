@@ -38,7 +38,7 @@ export class RedisTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: `Channels to subscribe to, multiple can be defined with comma. Wildcard character(*) are supported`,
+				description: `Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported`,
 			},
 			{
 				displayName: 'Options',
@@ -104,20 +104,18 @@ export class RedisTrigger implements INodeType {
 						client.psubscribe(channel);
 					}
 					client.on('pmessage', (pattern: string, channel: string, message: string) => {
-						let result: IDataObject = {};
-						message = message.toString();
 						if (options.jsonParseBody) {
 							try {
 								message = JSON.parse(message);
-							} catch (err) { }
+							} catch (error) { }
 						}
-						result.channel = channel;
-						result.message = message;
+
 						if (options.onlyMessage) {
-							//@ts-ignore
-							result = [message];
+							self.emit([self.helpers.returnJsonArray({message})]);
+							resolve(true);
 						}
-						self.emit([self.helpers.returnJsonArray(result)]);
+
+						self.emit([self.helpers.returnJsonArray({channel, message})]);
 						resolve(true);
 					});
 				});
@@ -133,7 +131,7 @@ export class RedisTrigger implements INodeType {
 		}
 
 		async function closeFunction() {
-			client.end();
+			client.quit();
 		}
 
 		return {
