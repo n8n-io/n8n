@@ -252,7 +252,7 @@ export default mixins(
 						id: 'examples',
 						type: 'link',
 						properties: {
-							href: 'https://n8n.io/workflows',
+							href: 'https://docs.n8n.io/courses',
 							title: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
 							icon: 'graduation-cap',
 							newWindow: true,
