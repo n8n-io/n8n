@@ -98,14 +98,14 @@
 						</h3>
 
 						<div class="text">
-							{{ $locale.baseText(
+							<span v-html="$locale.baseText(
 								'runData.theNodeContains',
 								{
 									interpolate: {
 										numberOfKb: parseInt(dataSize/1024).toLocaleString()
 									}
 								}
-							)}}
+							)"></span>
 						</div>
 
 						<n8n-button
@@ -540,7 +540,7 @@ export default mixins(
 					return outputIndex + 1;
 				}
 
-				const nodeType = this.$store.getters.nodeType(this.node.type) as INodeTypeDescription | null;
+				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | null;
 				if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
 					return outputIndex + 1;
 				}
