@@ -1825,6 +1825,12 @@ export class Telegram implements INodeType {
 					uri: uri,
 					json: true,
 				};
+				if (credentials.advanced) {
+					return {
+						status: 'OK',
+						message: 'Credential test disabled when advanced api endpoint enabled.',
+					}
+				}
 				try {
 					const response = await this.helpers.request(options);
 					if (!response.ok) {

@@ -23,7 +23,7 @@ export class TelegramApi implements ICredentialType {
 			default: false,
 		},
 		{
-			displayName: 'APIEndpoint',
+			displayName: 'API Endpoint',
 			name: 'apiEndpoint',
 			type: 'string',
 			displayOptions: {
@@ -37,7 +37,7 @@ export class TelegramApi implements ICredentialType {
 			description: 'API endpoint. Use to redirect Telegram API calls to another server. First \'{0}\' is the \'accessToken\', second \'{1}\' is the endpoint method. See: <a href="https://core.telegram.org/bots">bot api</a>.',
 		},
 		{
-			displayName: 'FileEndpoint',
+			displayName: 'File Endpoint',
 			name: 'fileEndpoint',
 			type: 'string',
 			displayOptions: {
