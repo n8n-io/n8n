@@ -54,10 +54,11 @@ export class SeaTableApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Time Zone',
+			displayName: 'Timezone',
 			name: 'timezone',
 			type: 'options',
 			default: 'Europe/Berlin',
+			description: `Seatable server's timezone`,
 			options: [
 				...timezones,
 			],
