@@ -11,18 +11,17 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	addAdditionalFields,
 	apiRequest,
-	getPropertyName,
 	getApiEndpoint,
 	getFileEndpoint,
+	getPropertyName,
 } from './GenericFunctions';
-
-
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Telegram',
@@ -1822,14 +1821,14 @@ export class Telegram implements INodeType {
 				const endpoint = 'getMe';
 				const uri = getApiEndpoint(credentials, endpoint);
 				const options = {
-					uri: uri,
+					uri,
 					json: true,
 				};
 				if (credentials.advanced) {
 					return {
 						status: 'OK',
 						message: 'Credential test disabled when advanced api endpoint enabled.',
-					}
+					};
 				}
 				try {
 					const response = await this.helpers.request(options);
@@ -1840,9 +1839,10 @@ export class Telegram implements INodeType {
 						};
 					}
 				} catch (err) {
+					const error = (err as JsonObject);
 					return {
 						status: 'Error',
-						message: `Token is not valid; ${err.message}`,
+						message: `Token is not valid; ${error.message}`,
 					};
 				}
 
@@ -2233,7 +2233,7 @@ export class Telegram implements INodeType {
 				returnData.push({ json: responseData });
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
 				throw error;

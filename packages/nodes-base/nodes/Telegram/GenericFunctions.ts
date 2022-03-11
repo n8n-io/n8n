@@ -12,6 +12,7 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -159,7 +160,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	const options: OptionsWithUri = {
 		headers: {},
 		method,
-		uri: uri,
+		uri,
 		body,
 		qs: query,
 		json: true,
@@ -180,7 +181,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -202,13 +203,13 @@ export function getPropertyName(operation: string) {
 	return operation.replace('send', '').toLowerCase();
 }
 
-function formatEndpoint(s: string, ...args : string[]): string {
-	return s.replace(/{(\d+)}/g, function(match, number) {
-		return typeof args[number] != 'undefined'
-		  ? args[number]
-		  : match
-		;
-	  });
+function formatEndpoint(s: string, ...args: string[]): string {
+	return s.replace(/{(\d+)}/g, (match, num) => {
+		return typeof args[num] !== 'undefined'
+			? args[num]
+			: match
+			;
+	});
 }
 
 export function getApiEndpoint(credentials: ICredentialDataDecryptedObject, endpoint: string): string {

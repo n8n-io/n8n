@@ -13,8 +13,8 @@ import {
 
 import {
 	apiRequest,
-	getImageBySize,
 	getFileEndpoint,
+	getImageBySize,
 } from './GenericFunctions';
 
 import {
