@@ -84,6 +84,6 @@ export default {
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-xlight);
-	text-shadow: 0px 1px 6px rgba(25, 11, 9, 0.2);
+	text-shadow: 0px 1px 6px rgba(25, 11, 9, 0.3);
 }
 </style>
