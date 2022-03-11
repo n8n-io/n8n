@@ -171,7 +171,7 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
-import { isEmailSetUp } from './UserManagement/UserManagementHelper';
+import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -296,6 +296,7 @@ class App {
 			maxExecutionTimeout: this.maxExecutionTimeout,
 			timezone: this.timezone,
 			urlBaseWebhook,
+			urlBaseEditor: getInstanceBaseUrl(),
 			versionCli: '',
 			oauthCallbackUrls: {
 				oauth1: `${urlBaseWebhook}${this.restEndpoint}/oauth1-credential/callback`,
