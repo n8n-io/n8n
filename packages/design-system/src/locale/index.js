@@ -31,8 +31,9 @@ export const use = function(l) {
 		const ndsLang = require(`./lang/${l}`);
 		lang = ndsLang.default;
 
-		const elLang = require(`element-ui/lib/locale/lang/${l}`);;
-		ElementLocale.use(elLang);
+		// todo breaks select empty data
+		// const elLang = require(`element-ui/lib/locale/lang/${l}`);;
+		// ElementLocale.use(elLang);
 	} catch (e) {
 	}
 };
