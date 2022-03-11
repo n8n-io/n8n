@@ -18,6 +18,7 @@ export class LocalFileTrigger implements INodeType {
 		version: 1,
 		subtitle: '=Path: {{$parameter["path"]}}',
 		description: 'Triggers a workflow on file system changes',
+		eventTriggerDescription: '',
 		defaults: {
 			name: 'Local File Trigger',
 			color: '#404040',

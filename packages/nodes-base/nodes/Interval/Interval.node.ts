@@ -15,6 +15,8 @@ export class Interval implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Triggers the workflow in a given interval',
+		eventTriggerDescription: '',
+		activationMessage: 'Your interval trigger will now trigger executions on the schedule you have defined.',
 		defaults: {
 			name: 'Interval',
 			color: '#00FF00',

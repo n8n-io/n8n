@@ -8,11 +8,11 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -29,6 +29,7 @@ import {
 	getAccessToken,
 	googleApiRequest,
 	hexToRgb,
+	IGoogleAuthCredentials,
 } from './GenericFunctions';
 
 export class GoogleSheets implements INodeType {
@@ -42,7 +43,6 @@ export class GoogleSheets implements INodeType {
 		description: 'Read, update and write data to Google Sheets',
 		defaults: {
 			name: 'Google Sheets',
-			color: '#0aa55c',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -179,7 +179,7 @@ export class GoogleSheets implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The ID of the Google Spreadsheet.<br />Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
+				description: 'The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
 			},
 			{
 				displayName: 'Range',
@@ -201,7 +201,7 @@ export class GoogleSheets implements INodeType {
 				},
 				default: 'A:F',
 				required: true,
-				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.<br />If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
+				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"',
 			},
 
 			// ----------------------------------
@@ -452,7 +452,7 @@ export class GoogleSheets implements INodeType {
 					},
 				},
 				default: 0,
-				description: 'Index of the row which contains the keys. Starts at 0.<br />The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+				description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
 
 
@@ -782,7 +782,12 @@ export class GoogleSheets implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'en_US',
-						description: 'The locale of the spreadsheet in one of the following formats:<br /><ul><li>en (639-1)</li><li>fil (639-2 if no 639-1 format exists)</li><li>en_US (combination of ISO language an country)</li><ul>',
+						description: `The locale of the spreadsheet in one of the following formats:
+						<ul>
+							<li>en (639-1)</li>
+							<li>fil (639-2 if no 639-1 format exists)</li>
+							<li>en_US (combination of ISO language an country)</li>
+						<ul>`,
 					},
 					{
 						displayName: 'Recalculation Interval',
@@ -1012,9 +1017,9 @@ export class GoogleSheets implements INodeType {
 			},
 		},
 		credentialTest: {
-			async googleApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async googleApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					const tokenRequest = await getAccessToken.call(this, credential.data!);
+					const tokenRequest = await getAccessToken.call(this, credential.data! as unknown as IGoogleAuthCredentials);
 					if (!tokenRequest.access_token) {
 						return {
 							status: 'Error',

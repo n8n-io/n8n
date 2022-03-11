@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const dealOperations = [
+export const dealOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -45,9 +45,9 @@ export const dealOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const dealFields = [
+export const dealFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  deal:get                               */
 	/* -------------------------------------------------------------------------- */
@@ -301,6 +301,7 @@ export const dealFields = [
 				displayName: 'Custom Data',
 				name: 'customData',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Custom Data',
 				typeOptions: {
 					multipleValues: true,
@@ -480,6 +481,7 @@ export const dealFields = [
 				displayName: 'Custom Data',
 				name: 'customData',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Custom Data',
 				typeOptions: {
 					multipleValues: true,
@@ -510,4 +512,4 @@ export const dealFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

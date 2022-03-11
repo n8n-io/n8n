@@ -39,6 +39,6 @@ export const userInviteDescription: UserProperties = [
 			},
 		},
 		default: '',
-		description: `User's email. Multiple can be set separated by comma.`,
+		description: `User's email. Multiple emails can be set separated by comma.`,
 	},
 ];

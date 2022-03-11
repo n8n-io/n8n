@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const agentRoleOperations = [
+export const agentRoleOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -28,9 +28,9 @@ export const agentRoleOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const agentRoleFields = [
+export const agentRoleFields: INodeProperties[] = [
 	// ----------------------------------------
 	//              agentRole: get
 	// ----------------------------------------
@@ -96,4 +96,4 @@ export const agentRoleFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

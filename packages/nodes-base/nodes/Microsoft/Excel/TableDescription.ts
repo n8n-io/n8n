@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const tableOperations = [
+export const tableOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const tableOperations = [
 		default: 'addRow',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const tableFields = [
+export const tableFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 table:addRow                               */
@@ -134,8 +134,7 @@ export const tableFields = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: `Specifies the relative position of the new row. If not defined,</br>
-				 the addition happens at the end. Any rows below the inserted row are shifted downwards. Zero-indexed`,
+				description: `Specifies the relative position of the new row. If not defined, the addition happens at the end. Any rows below the inserted row are shifted downwards. Zero-indexed`,
 			},
 		],
 	},
@@ -622,4 +621,4 @@ export const tableFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

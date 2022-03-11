@@ -28,7 +28,6 @@ export class CrateDb implements INodeType {
 		description: 'Add and update data in CrateDB',
 		defaults: {
 			name: 'CrateDB',
-			color: '#47889f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -229,11 +228,7 @@ export class CrateDb implements INodeType {
 							},
 						],
 						default: 'multiple',
-						description: [
-							'The way queries should be sent to database.',
-							'Can be used in conjunction with <b>Continue on Fail</b>.',
-							'See the docs for more examples',
-						].join('<br>'),
+						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.crateDb/">the docs</a> for more examples.',
 					},
 					{
 						displayName: 'Query Parameters',

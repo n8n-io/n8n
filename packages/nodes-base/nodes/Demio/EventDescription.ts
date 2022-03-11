@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const eventOperations = [
+export const eventOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const eventOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const eventFields = [
+export const eventFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                   event:getAll                             */
@@ -342,4 +342,4 @@ export const eventFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

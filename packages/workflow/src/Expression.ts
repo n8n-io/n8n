@@ -114,6 +114,8 @@ export class Expression {
 
 		// @ts-ignore
 		data.document = {};
+		// @ts-ignore
+		data.constructor = {};
 
 		// Execute the expression
 		try {

@@ -26,7 +26,6 @@ export class LingvaNex implements INodeType {
 		description: 'Consume LingvaNex API',
 		defaults: {
 			name: 'LingvaNex',
-			color: '#00ade8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -123,7 +122,7 @@ export class LingvaNex implements INodeType {
 						name: 'translateMode',
 						type: 'string',
 						default: '',
-						description: 'Describe the input text format. Possible value is "html" for translating and preserving html structure.</br> If value is not specified or is other than "html" than plain text is translating.',
+						description: 'Describe the input text format. Possible value is "html" for translating and preserving html structure. If value is not specified or is other than "html" than plain text is translating.',
 					},
 				],
 			},

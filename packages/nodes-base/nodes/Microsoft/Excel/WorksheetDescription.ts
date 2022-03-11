@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const worksheetOperations = [
+export const worksheetOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const worksheetOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const worksheetFields = [
+export const worksheetFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 worksheet:getAll                           */
@@ -269,7 +269,7 @@ export const worksheetFields = [
 			},
 		},
 		default: 0,
-		description: 'Index of the row which contains the keys. Starts at 0.<br />The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
+		description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
 	},
 	{
 		displayName: 'Filters',
@@ -300,4 +300,4 @@ export const worksheetFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

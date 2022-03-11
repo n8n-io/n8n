@@ -4,7 +4,7 @@ import {
 
 import * as placeholders from './placeholders';
 
-export const documentOperations = [
+export const documentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -46,9 +46,9 @@ export const documentOperations = [
 		default: 'get',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const documentFields = [
+export const documentFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             document: delete
 	// ----------------------------------------
@@ -291,7 +291,7 @@ export const documentFields = [
 			{
 				displayName: 'Allow Partial Search Results',
 				name: 'allow_partial_search_results',
-				description: 'If true, return partial results if there are shard request timeouts or shard failures.<br>If false, returns an error with no partial results. Defaults to true',
+				description: '<p>If true, return partial results if there are shard request timeouts or shard failures.</p><p>If false, returns an error with no partial results. Defaults to true.</p>',
 				type: 'boolean',
 				default: true,
 			},
@@ -379,7 +379,7 @@ export const documentFields = [
 			{
 				displayName: 'Pre-Filter Shard Size',
 				name: 'pre_filter_shard_size',
-				description: 'Define a threshold that enforces a pre-filter roundtrip to prefilter search shards based on query rewriting.<br>Only used if the number of shards the search request expands to exceeds the threshold',
+				description: 'Define a threshold that enforces a pre-filter roundtrip to prefilter search shards based on query rewriting. Only used if the number of shards the search request expands to exceeds the threshold',
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
@@ -785,4 +785,4 @@ export const documentFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

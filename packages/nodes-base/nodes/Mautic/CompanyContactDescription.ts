@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const companyContactOperations = [
+export const companyContactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const companyContactOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyContactFields = [
+export const companyContactFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                companyContact:add                          */
@@ -72,4 +72,4 @@ export const companyContactFields = [
 		default: '',
 		description: 'The ID of the company.',
 	},
-] as INodeProperties[];
+];

@@ -224,7 +224,6 @@ All properties are optional. However, most only work when the node-property is o
  - **multipleValues** [type: all]: If set the property gets turned into an Array and the user can add multiple values
  - **multipleValueButtonText** [type: all]: Custom text for add button in case "multipleValues" got set
  - **numberPrecision** [type: number]: The precision of the number. By default it is "0" and will so only allow integers.
- - **numberStepSize** [type: number]: If step size in the UI if "numberPrecision" got set
  - **password** [type: string]: If a password field should be displayed (normally only used by credentials because all node data is not encrypted and get saved in clear-text)
  - **rows** [type: string]: Number of rows the input field should have. By default it is "1"
 

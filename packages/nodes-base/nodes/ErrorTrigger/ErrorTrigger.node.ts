@@ -14,6 +14,7 @@ export class ErrorTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Triggers the workflow when another workflow has an error',
+		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
 			name: 'Error Trigger',

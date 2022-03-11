@@ -116,6 +116,10 @@ export default Vue.extend({
 			this.$props.eventBus.$on('close', () => {
 				this.closeDialog();
 			});
+
+			this.$props.eventBus.$on('closeAll', () => {
+				this.closeAllDialogs();
+			});
 		}
 
 		const activeElement = document.activeElement as HTMLElement;
@@ -141,22 +145,18 @@ export default Vue.extend({
 				this.$emit('enter');
 			}
 		},
-		closeDialog(callback?: () => void) {
+		closeAllDialogs() {
+			this.$store.commit('ui/closeAllModals');
+		},
+		async closeDialog() {
 			if (this.beforeClose) {
-				this.beforeClose(() => {
-					this.$store.commit('ui/closeTopModal');
-					if (typeof callback === 'function') {
-						callback();
-					}
-				});
-
-				return;
+				const shouldClose = await this.beforeClose();
+				if (shouldClose === false) { // must be strictly false to stop modal from closing
+					return;
+				}
 			}
 
-			this.$store.commit('ui/closeTopModal');
-			if (typeof callback === 'function') {
-				callback();
-			}
+			this.$store.commit('ui/closeModal', this.$props.name);
 		},
 		getCustomClass() {
 			let classes = this.$props.customClass || '';

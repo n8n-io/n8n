@@ -6,7 +6,7 @@ import {
 	makeSimpleField,
 } from './SharedFields';
 
-export const signatureOperations = [
+export const signatureOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const signatureOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const signatureFields = [
+export const signatureFields: INodeProperties[] = [
 	// ----------------------------------------
 	//            signature: create
 	// ----------------------------------------
@@ -279,4 +279,4 @@ export const signatureFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

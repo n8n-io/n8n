@@ -6,7 +6,6 @@ import { INode, INodeCredentialsDetails, LoggerProxy } from 'n8n-workflow';
 
 import * as fs from 'fs';
 import * as glob from 'fast-glob';
-import * as path from 'path';
 import { UserSettings } from 'n8n-core';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDb } from '../../src';
@@ -86,9 +85,12 @@ export class ImportWorkflowsCommand extends Command {
 			const credentialsEntities = (await Db.collections.Credentials?.find()) ?? [];
 			let i;
 			if (flags.separate) {
-				const files = await glob(
-					`${flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep}*.json`,
-				);
+				let inputPath = flags.input;
+				if (process.platform === 'win32') {
+					inputPath = inputPath.replace(/\\/g, '/');
+				}
+				inputPath = inputPath.replace(/\/$/g, '');
+				const files = await glob(`${inputPath}/*.json`);
 				for (i = 0; i < files.length; i++) {
 					const workflow = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
 					if (credentialsEntities.length > 0) {

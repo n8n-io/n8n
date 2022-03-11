@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
@@ -74,6 +73,17 @@ export class HttpRequest implements INodeType {
 				},
 			},
 			{
+				name: 'httpQueryAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'queryAuth',
+						],
+					},
+				},
+			},
+			{
 				name: 'oAuth1Api',
 				required: true,
 				displayOptions: {
@@ -113,6 +123,10 @@ export class HttpRequest implements INodeType {
 					{
 						name: 'Header Auth',
 						value: 'headerAuth',
+					},
+					{
+						name: 'Query Auth',
+						value: 'queryAuth',
 					},
 					{
 						name: 'OAuth1',
@@ -436,9 +450,7 @@ export class HttpRequest implements INodeType {
 						],
 					},
 				},
-				description: `Name of the binary property which contains the data for the file to be uploaded.<br />
-							For Form-Data Multipart, multiple can be provided in the format:<br />
-							"sendKey1:binaryProperty1,sendKey2:binaryProperty2`,
+				description: `Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>`,
 			},
 			{
 				displayName: 'Body Parameters',
@@ -643,6 +655,7 @@ export class HttpRequest implements INodeType {
 		const httpBasicAuth = await this.getCredentials('httpBasicAuth');
 		const httpDigestAuth = await this.getCredentials('httpDigestAuth');
 		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+		const httpQueryAuth = await this.getCredentials('httpQueryAuth');
 		const oAuth1Api = await this.getCredentials('oAuth1Api');
 		const oAuth2Api = await this.getCredentials('oAuth2Api');
 
@@ -757,8 +770,9 @@ export class HttpRequest implements INodeType {
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 								}
-								const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
-								requestOptions.body = Buffer.from(binaryProperty.data, BINARY_ENCODING);
+
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+								requestOptions.body = binaryDataBuffer;
 							} else if (options.bodyContentType === 'multipart-form-data') {
 								requestOptions.body = {};
 								const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
@@ -772,7 +786,7 @@ export class HttpRequest implements INodeType {
 										propertyName = propertyDataParts[0];
 										binaryPropertyName = propertyDataParts[1];
 									} else if (binaryPropertyNames.length > 1) {
-										throw new NodeOperationError(this.getNode(), 'If more than one property should be send it is needed to define the in the format: "sendKey1:binaryProperty1,sendKey2:binaryProperty2"');
+										throw new NodeOperationError(this.getNode(), 'If more than one property should be send it is needed to define the in the format:<code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2"</code>');
 									}
 
 									if (item.binary[binaryPropertyName] === undefined) {
@@ -780,9 +794,10 @@ export class HttpRequest implements INodeType {
 									}
 
 									const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
+									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 
 									requestOptions.body[propertyName] = {
-										value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+										value: binaryDataBuffer,
 										options: {
 											filename: binaryProperty.fileName,
 											contentType: binaryProperty.mimeType,
@@ -836,6 +851,9 @@ export class HttpRequest implements INodeType {
 									}
 								};
 								requestOptions[optionName][parameterDataName] = computeNewValue(requestOptions[optionName][parameterDataName]);
+							} else if (optionName === 'headers') {
+								// @ts-ignore
+								requestOptions[optionName][parameterDataName.toString().toLowerCase()] = newValue;
 							} else {
 								// @ts-ignore
 								requestOptions[optionName][parameterDataName] = newValue;
@@ -864,7 +882,9 @@ export class HttpRequest implements INodeType {
 					if (requestOptions.headers === undefined) {
 						requestOptions.headers = {};
 					}
-					requestOptions.headers['Content-Type'] = 'application/json';
+					if (['POST', 'PUT', 'PATCH'].includes(requestMethod)) {
+						requestOptions.headers['Content-Type'] = 'application/json';
+					}
 				}
 			} else if (options.bodyContentType === 'raw') {
 				requestOptions.json = false;
@@ -889,6 +909,12 @@ export class HttpRequest implements INodeType {
 			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+			}
+			if (httpQueryAuth !== undefined) {
+				if (!requestOptions.qs) {
+					requestOptions.qs = {};
+				}
+				requestOptions.qs![httpQueryAuth.name as string] = httpQueryAuth.value;
 			}
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
@@ -918,7 +944,7 @@ export class HttpRequest implements INodeType {
 					};
 				}
 				this.sendMessageToUI(sendRequest);
-			} catch (e) {}
+			} catch (e) { }
 
 			// Now that the options are all set make the actual http request
 			if (oAuth1Api !== undefined) {
