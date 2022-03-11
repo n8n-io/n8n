@@ -60,6 +60,7 @@ export default mixins(showMessage).extend({
 					required: true,
 					autocomplete: 'current-password',
 					capitalize: true,
+					focusInitially: true,
 				},
 			},
 			{
