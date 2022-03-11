@@ -79,7 +79,7 @@ export type OnOfficeReadFilterConfiguration = {
 	}>;
 };
 
-export interface OnOfficeReadAdditionalFields {
+export type OnOfficeReadAdditionalFields = {
 	recordIds?: string[];
 	filterId?: number;
 	filters?: OnOfficeReadFilterConfiguration;
@@ -94,4 +94,5 @@ export interface OnOfficeReadAdditionalFields {
 	addEstateLanguage?: boolean;
 	addMainLangId?: boolean;
 	geoRangeSearch?: { country: string; radius: number; zip?: number };
-}
+};
+export type OnOfficeReadAdditionalFieldName = keyof OnOfficeReadAdditionalFields;

@@ -1,5 +1,9 @@
 import { INodeProperties } from 'n8n-workflow';
 import { commonReadDescription } from './CommonReadDescription';
+import {
+	generateReadAdditionalFieldsDescription,
+	generateReadDataFieldsDescription,
+} from './descriptionHelpers';
 
 export const addressOperations: INodeProperties[] = [
 	{
@@ -34,34 +38,9 @@ export const addressOperations: INodeProperties[] = [
 ];
 
 export const addressFields: INodeProperties[] = [
-	{
-		displayName: 'Data fields',
-		name: 'data',
-		type: 'string',
-		required: true,
-		typeOptions: {
-			multipleValues: true,
-		},
-		default: [],
-		displayOptions: {
-			show: {
-				resource: ['address'],
-				operation: ['read'],
-			},
-		},
-		description: 'The data fields to fetch',
-	},
-	{
-		displayName: 'Special data fields',
-		name: 'specialData',
-		type: 'multiOptions',
-		displayOptions: {
-			show: {
-				resource: ['address'],
-				operation: ['read'],
-			},
-		},
-		options: [
+	...generateReadDataFieldsDescription({
+		resource: 'address',
+		specialFields: [
 			{
 				name: 'phone',
 				value: 'phone',
@@ -103,22 +82,10 @@ export const addressFields: INodeProperties[] = [
 				description: 'Image URL (pass photo) of the address',
 			},
 		],
-		default: [],
-		description: 'Some data fields have special meaning. Select the fields you want to include.',
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['address'],
-				operation: ['read'],
-			},
-		},
-		options: [
+	}),
+	...generateReadAdditionalFieldsDescription({
+		resource: 'address',
+		additionalFields: [
 			{
 				displayName: 'Record IDs',
 				name: 'recordIds',
@@ -140,7 +107,6 @@ export const addressFields: INodeProperties[] = [
 				default: 0,
 				description: 'Restrict the selection of address data records by a existing filter',
 			},
-			...commonReadDescription,
 			{
 				//TODO: Figure out what this does
 				displayName: 'Format output',
@@ -180,5 +146,5 @@ export const addressFields: INodeProperties[] = [
 					'Causes the field "Land" to be displayed as a ISO-3166-2 or ISO-3166-3 country code',
 			},
 		],
-	},
+	}),
 ];

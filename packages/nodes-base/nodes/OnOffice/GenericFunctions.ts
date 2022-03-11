@@ -53,6 +53,7 @@ const assertSuccessfulActionResponses: (
 	}
 };
 
+// tslint:disable-next-line: no-any
 type requestType = (uriOrObject: any) => Promise<any>;
 
 export const onOfficeApiAction = async (

@@ -1,5 +1,9 @@
 import { INodeProperties } from 'n8n-workflow';
 import { commonReadDescription } from './CommonReadDescription';
+import {
+	generateReadAdditionalFieldsDescription,
+	generateReadDataFieldsDescription,
+} from './descriptionHelpers';
 
 export const estateOperations: INodeProperties[] = [
 	{
@@ -34,34 +38,9 @@ export const estateOperations: INodeProperties[] = [
 ];
 
 export const estateFields: INodeProperties[] = [
-	{
-		displayName: 'Data fields',
-		name: 'data',
-		type: 'string',
-		required: true,
-		typeOptions: {
-			multipleValues: true,
-		},
-		default: [],
-		displayOptions: {
-			show: {
-				resource: ['estate'],
-				operation: ['read'],
-			},
-		},
-		description: 'The data fields to fetch',
-	},
-	{
-		displayName: 'Special data fields',
-		name: 'specialData',
-		type: 'multiOptions',
-		displayOptions: {
-			show: {
-				resource: ['estate'],
-				operation: ['read'],
-			},
-		},
-		options: [
+	...generateReadDataFieldsDescription({
+		resource: 'estate',
+		specialFields: [
 			{
 				name: 'verkauft',
 				value: 'verkauft',
@@ -81,22 +60,10 @@ export const estateFields: INodeProperties[] = [
 					'Include a "multiParkingLot" field in the response. Look into documentation for more information.',
 			},
 		],
-		default: [],
-		description: 'Some data fields have special meaning. Select the fields you want to include.',
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['estate'],
-				operation: ['read'],
-			},
-		},
-		options: [
+	}),
+	...generateReadAdditionalFieldsDescription({
+		resource: 'address',
+		additionalFields: [
 			{
 				displayName: 'Filter ID',
 				name: 'filterId',
@@ -108,7 +75,6 @@ export const estateFields: INodeProperties[] = [
 				default: 0,
 				description: 'Restrict the selection of estate data records by an existing filter',
 			},
-			...commonReadDescription,
 			{
 				//TODO: Figure out what this does
 				displayName: 'Format output',
@@ -180,5 +146,5 @@ export const estateFields: INodeProperties[] = [
 				description: 'Radius search around zipcode.',
 			},
 		],
-	},
+	}),
 ];
