@@ -9,7 +9,7 @@
 			</div>
 			<div>
 				<n8n-text size="large" v-if="errorCode">
-					{{errorCode}} {{ $locale.baseText('ERROR') }}
+					{{errorCode}} {{ $locale.baseText('error') }}
 				</n8n-text>
 			</div>
 		</div>

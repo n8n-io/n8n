@@ -80,7 +80,7 @@ export default mixins(
 
 			await this.$store.dispatch('users/validatePasswordToken', {token, userId});
 		} catch (e) {
-			this.$showError(e, this.$locale.baseText('auth.changePassword.tokenValidationError'));
+			this.$showMessage({title: this.$locale.baseText('auth.changePassword.tokenValidationError'), type: 'error'});
 		}
 	},
 	methods: {
