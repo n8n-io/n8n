@@ -15,7 +15,7 @@ import {
 	sendyApiRequest,
 } from './GenericFunctions';
 
-import {
+import { 
 	campaignFields,
 	campaignOperations,
 } from './CampaignDescription';
@@ -24,7 +24,6 @@ import {
 	subscriberFields,
 	subscriberOperations,
 } from './SubscriberDescription';
-
 export class Sendy implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sendy',

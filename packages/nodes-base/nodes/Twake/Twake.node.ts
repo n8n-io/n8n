@@ -15,7 +15,7 @@ import {
 import {
 	twakeApiRequest,
 } from './GenericFunctions';
-
+const isOnline = require('is-online');
 export class Twake implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twake',
@@ -91,9 +91,7 @@ export class Twake implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: [
-							'message',
-						],
+						resource: ['message'],
 					},
 				},
 				options: [
@@ -115,9 +113,7 @@ export class Twake implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -130,9 +126,7 @@ export class Twake implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -145,9 +139,7 @@ export class Twake implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
+						operation: ['send'],
 					},
 				},
 				default: {},
@@ -173,8 +165,15 @@ export class Twake implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const responseData = await twakeApiRequest.call(this, 'POST', '/channel', {});
+			async getChannels(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const responseData = await twakeApiRequest.call(
+					this,
+					'POST',
+					'/channel',
+					{},
+				);
 				if (responseData === undefined) {
 					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
@@ -199,49 +198,42 @@ export class Twake implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		for (let i = 0; i < length; i++) {
-			if (resource === 'message') {
-				if (operation === 'send') {
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+			if (await isOnline()) {
+					for (let i = 0; i < length; i++) {
+						if (resource === 'message') {
+							if (operation === 'send') {
+								const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const message: IDataObject = {
-						channel_id: this.getNodeParameter('channelId', i),
-						content: {
-							formatted: this.getNodeParameter('content', i) as string,
-						},
-						hidden_data: {
-							allow_delete: 'everyone',
-						},
-					};
+								const message: IDataObject = { channel_id: this.getNodeParameter('channelId', i), content: { formatted: this.getNodeParameter('content', i) as string }, hidden_data: { allow_delete: 'everyone' } };
 
-					if (additionalFields.senderName) {
-						//@ts-ignore
-						message.hidden_data!.custom_title = additionalFields.senderName as string;
+								if (additionalFields.senderName) {
+									//@ts-ignore
+									message.hidden_data!.custom_title = additionalFields.senderName as string;
+								}
+
+								if (additionalFields.senderIcon) {
+									//@ts-ignore
+									message.hidden_data!.custom_icon = additionalFields.senderIcon as string;
+								}
+
+								const body = { object: message };
+
+								const endpoint = '/actions/message/save';
+
+								responseData = await twakeApiRequest.call(this, 'POST', endpoint, body);
+
+								responseData = responseData.object;
+							}
+						}
 					}
-
-					if (additionalFields.senderIcon) {
-						//@ts-ignore
-						message.hidden_data!.custom_icon = additionalFields.senderIcon as string;
-					}
-
-					const body = {
-						object: message,
-					};
-
-					const endpoint = '/actions/message/save';
-
-					responseData = await twakeApiRequest.call(this, 'POST', endpoint, body);
-
-					responseData = responseData.object;
 				}
-			}
-		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+					if (Array.isArray(responseData)) {
+						returnData.push.apply(returnData, responseData as IDataObject[]);
+					} else if (responseData !== undefined) {
+						returnData.push(responseData as IDataObject);
+					}
+					return [this.helpers.returnJsonArray(returnData)];
 	}
 }
+

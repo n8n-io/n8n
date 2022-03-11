@@ -64,7 +64,7 @@ import {
 } from './MessageInterface';
 
 import moment = require('moment');
-
+const isOnline = require('is-online');
 interface Attachment {
 	fields: {
 		item?: object[];
@@ -333,7 +333,7 @@ export class Slack implements INodeType {
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-
+		if(await isOnline()){
 		for (let i = 0; i < length; i++) {
 			try {
 				responseData = { error: 'Resource ' + resource + ' / operation ' + operation + ' not found!' };
@@ -1194,6 +1194,7 @@ export class Slack implements INodeType {
 				}
 				throw error;
 			}
+		}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

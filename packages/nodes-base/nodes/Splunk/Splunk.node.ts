@@ -44,7 +44,7 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
-
+const isOnline = require('is-online');
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Splunk',
@@ -170,7 +170,7 @@ export class Splunk implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let responseData;
-
+		if(await isOnline()){
 		for (let i = 0; i < items.length; i++) {
 
 			try {
@@ -490,7 +490,8 @@ export class Splunk implements INodeType {
 				: returnData.push(responseData as IDataObject);
 
 		}
-
+		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
+

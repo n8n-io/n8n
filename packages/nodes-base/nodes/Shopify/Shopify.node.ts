@@ -27,7 +27,7 @@ import {
 	productFields,
 	productOperations,
 } from './ProductDescription';
-
+const isOnline = require('is-online');
 import {
 	IAddress,
 	IDiscountCode,
@@ -38,7 +38,6 @@ import {
 import {
 	IProduct,
 } from './ProductInterface';
-
 export class Shopify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Shopify',
@@ -92,6 +91,7 @@ export class Shopify implements INodeType {
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				if(await isOnline()){
 				const products = await shopifyApiRequestAllItems.call(this, 'products', 'GET', '/products.json', {}, { fields: 'id,title' });
 				for (const product of products) {
 					const productName = product.title;
@@ -101,12 +101,14 @@ export class Shopify implements INodeType {
 						value: productId,
 					});
 				}
+			}
 				return returnData;
 			},
 			// Get all the available locations to display them to user so that he can
 			// select them easily
 			async getLocations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				if(await isOnline()){
 				const locations = await shopifyApiRequestAllItems.call(this, 'locations', 'GET', '/locations.json', {}, { fields: 'id,name' });
 				for (const location of locations) {
 					const locationName = location.name;
@@ -115,6 +117,7 @@ export class Shopify implements INodeType {
 						name: locationName,
 						value: locationId,
 					});
+				}
 				}
 				return returnData;
 			},
@@ -129,6 +132,7 @@ export class Shopify implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		if(await isOnline()){
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'order') {
@@ -373,6 +377,7 @@ export class Shopify implements INodeType {
 				}
 				throw error;
 			}
+		}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

@@ -38,7 +38,7 @@ import {
 } from './CommentDescription';
 import { v4 as uuid } from 'uuid';
 import * as moment from 'moment';
-
+const isOnline = require('is-online');
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twist',
@@ -173,6 +173,7 @@ export class Twist implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		if(await isOnline()){
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -777,6 +778,8 @@ export class Twist implements INodeType {
 				throw error;
 			}
 		}
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
+

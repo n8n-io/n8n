@@ -63,7 +63,7 @@ import {
 	userRoleFields,
 	userRoleOperations,
 } from './UserRoleDescription';
-
+const isOnline = require('is-online');
 export class ServiceNow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ServiceNow',
@@ -417,7 +417,7 @@ export class ServiceNow implements INodeType {
 		let qs: IDataObject;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-
+		if(await isOnline()){
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'businessService') {
@@ -781,6 +781,7 @@ export class ServiceNow implements INodeType {
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
+		}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

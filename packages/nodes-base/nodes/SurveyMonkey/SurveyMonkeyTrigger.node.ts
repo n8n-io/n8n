@@ -32,7 +32,7 @@ import {
 import {
 	createHmac,
 } from 'crypto';
-
+const isOnline = require('is-online');
 export class SurveyMonkeyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SurveyMonkey Trigger',
@@ -512,7 +512,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 		return new Promise((resolve, reject) => {
 			const data: Buffer[] = [];
-
+			if(isOnline()){
 			req.on('data', (chunk) => {
 				data.push(chunk);
 			});
@@ -741,6 +741,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 			req.on('error', (error) => {
 				throw new NodeOperationError(this.getNode(), error);
 			});
+		}
 		});
 	}
 }

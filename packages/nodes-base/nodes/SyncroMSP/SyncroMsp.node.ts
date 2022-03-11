@@ -1,12 +1,9 @@
-import {
-	INodeTypeBaseDescription,
-	INodeVersionedType,
-} from 'n8n-workflow';
+import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
 
 import { NodeVersionedType } from '../../src/NodeVersionedType';
 
 import { SyncroMspV1 } from './v1/SyncroMspV1.node';
-
+const isOnline = require('is-online');
 export class SyncroMsp extends NodeVersionedType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
@@ -22,7 +19,8 @@ export class SyncroMsp extends NodeVersionedType {
 		const nodeVersions: INodeVersionedType['nodeVersions'] = {
 			1: new SyncroMspV1(baseDescription),
 		};
-
-		super(nodeVersions, baseDescription);
+			if (isOnline()) {
+					super(nodeVersions, baseDescription);
+			}
 	}
 }

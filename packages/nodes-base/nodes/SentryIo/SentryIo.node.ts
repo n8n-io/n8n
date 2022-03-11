@@ -51,7 +51,7 @@ import {
 	IPatchSet,
 	IRef,
 } from './Interface';
-
+const isOnline = require('is-online');
 export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sentry.io',
@@ -314,7 +314,7 @@ export class SentryIo implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-
+		if(await isOnline()){
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'event') {
@@ -764,6 +764,7 @@ export class SentryIo implements INodeType {
 				}
 				throw error;
 			}
+		}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

@@ -13,7 +13,7 @@ import {
 import {
 	sms77ApiRequest,
 } from './GenericFunctions';
-
+const isOnline = require('is-online');
 export class Sms77 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'sms77',
@@ -283,7 +283,7 @@ export class Sms77 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: IDataObject[] = [];
-
+			if(await isOnline()){
 		for (let i = 0; i < this.getInputData().length; i++) {
 			const resource = this.getNodeParameter('resource', i);
 			const operation = this.getNodeParameter('operation', i);
@@ -333,7 +333,7 @@ export class Sms77 implements INodeType {
 				throw error;
 			}
 		}
-
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

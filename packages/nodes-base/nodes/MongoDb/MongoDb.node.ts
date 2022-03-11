@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,14 +8,9 @@ import {
 	NodeOperationError
 } from 'n8n-workflow';
 
-import {
-	nodeDescription,
-} from './mongo.node.options';
+import { nodeDescription } from './mongo.node.options';
 
-import {
-	MongoClient,
-	ObjectID,
-} from 'mongodb';
+import { MongoClient, ObjectID } from 'mongodb';
 
 import {
 	getItemCopy,
@@ -64,14 +57,15 @@ export class MongoDb implements INodeType {
 					throw error;
 				}
 			}
-
 		} else if (operation === 'find') {
 			// ----------------------------------
 			//         find
 			// ----------------------------------
 
 			try {
-				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+				const queryParameter = JSON.parse(
+					this.getNodeParameter('query', 0) as string,
+				);
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
 					queryParameter._id = new ObjectID(queryParameter._id);
@@ -91,15 +85,21 @@ export class MongoDb implements INodeType {
 				if (limit > 0) {
 					query = query.limit(limit);
 				}
-				if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
+				if (
+					sort &&
+					Object.keys(sort).length !== 0 &&
+					sort.constructor === Object
+				) {
 					query = query.sort(sort);
 				}
 				const queryResult = await query.toArray();
 
-				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+				returnItems = this.helpers.returnJsonArray(
+					queryResult as IDataObject[],
+				);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message } );
+					returnItems = this.helpers.returnJsonArray({ error: error.message });
 				} else {
 					throw error;
 				}
@@ -157,8 +157,9 @@ export class MongoDb implements INodeType {
 			let updateKey = this.getNodeParameter('updateKey', 0) as string;
 			updateKey = updateKey.trim();
 
-			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
-				? { upsert: true } : undefined;
+			const updateOptions = this.getNodeParameter('upsert', 0) as boolean
+				? { upsert: true }
+				: undefined;
 
 			if (!fields.includes(updateKey)) {
 				fields.push(updateKey);
@@ -197,9 +198,15 @@ export class MongoDb implements INodeType {
 			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
 		} else {
 			if (this.continueOnFail()) {
-				returnItems = this.helpers.returnJsonArray({ json: { error: `The operation "${operation}" is not supported!` } });
+				returnItems = this.helpers.returnJsonArray({
+					json: { error: `The operation "${operation}" is not supported!` },
+				});
 			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`The operation "${operation}" is not supported!`,
+				);
+
 			}
 		}
 

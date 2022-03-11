@@ -18,7 +18,7 @@ import {
 	personFields,
 	personOperations,
 } from './PersonDescription';
-
+const isOnline = require('is-online');
 export class Uplead implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Uplead',
@@ -48,7 +48,8 @@ export class Uplead implements INodeType {
 					{
 						name: 'Company',
 						value: 'company',
-						description: 'Company API lets you lookup company data via a domain name or company name.',
+						description:
+							'Company API lets you lookup company data via a domain name or company name.',
 					},
 					{
 						name: 'Person',
@@ -69,62 +70,85 @@ export class Uplead implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		for (let i = 0; i < length; i++) {
-			try {
-				if (resource === 'person') {
-					if (operation === 'enrich') {
-						const email = this.getNodeParameter('email', i) as string;
-						const firstname = this.getNodeParameter('firstname', i) as string;
-						const lastname = this.getNodeParameter('lastname', i) as string;
-						const domain = this.getNodeParameter('domain', i) as string;
-						if (email) {
-							qs.email = email;
+			if (await isOnline()) {
+					for (let i = 0; i < length; i++) {
+						try {
+							if (resource === 'person') {
+								if (operation === 'enrich') {
+									const email = this.getNodeParameter('email', i) as string;
+									const firstname = this.getNodeParameter(
+										'firstname',
+										i,
+									) as string;
+									const lastname = this.getNodeParameter(
+										'lastname',
+										i,
+									) as string;
+									const domain = this.getNodeParameter('domain', i) as string;
+									if (email) {
+										qs.email = email;
+									}
+									if (firstname) {
+										qs.first_name = firstname;
+									}
+									if (lastname) {
+										qs.last_name = lastname;
+									}
+									if (domain) {
+										qs.domain = domain;
+									}
+									responseData = await upleadApiRequest.call(
+										this,
+										'GET',
+										'/person-search',
+										{},
+										qs,
+									);
+								}
+							}
+							if (resource === 'company') {
+								if (operation === 'enrich') {
+									const domain = this.getNodeParameter('domain', i) as string;
+									const company = this.getNodeParameter('company', i) as string;
+									if (domain) {
+										qs.domain = domain;
+									}
+									if (company) {
+										qs.company = company;
+									}
+									responseData = await upleadApiRequest.call(
+										this,
+										'GET',
+										'/company-search',
+										{},
+										qs,
+									);
+								}
+							}
+							if (Array.isArray(responseData.data)) {
+								returnData.push.apply(
+									returnData,
+									responseData.data as IDataObject[],
+								);
+							} else {
+								if (responseData.data !== null) {
+									returnData.push(responseData.data as IDataObject);
+								}
+							}
+						} catch (error) {
+							if (this.continueOnFail()) {
+								returnData.push({ error: error.message });
+								continue;
+							}
+							throw error;
 						}
-						if (firstname) {
-							qs.first_name = firstname;
-						}
-						if (lastname) {
-							qs.last_name = lastname;
-						}
-						if (domain) {
-							qs.domain = domain;
-						}
-						responseData = await upleadApiRequest.call(this, 'GET', '/person-search', {}, qs);
 					}
 				}
-				if (resource === 'company') {
-					if (operation === 'enrich') {
-						const domain = this.getNodeParameter('domain', i) as string;
-						const company = this.getNodeParameter('company', i) as string;
-						if (domain) {
-							qs.domain = domain;
-						}
-						if (company) {
-							qs.company = company;
-						}
-						responseData = await upleadApiRequest.call(this, 'GET', '/company-search', {}, qs);
-					}
-				}
-				if (Array.isArray(responseData.data)) {
-					returnData.push.apply(returnData, responseData.data as IDataObject[]);
-				} else {
-					if (responseData.data !== null) {
-						returnData.push(responseData.data as IDataObject);
-					}
-				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
-					continue;
-				}
-				throw error;
-			}
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+					return [this.helpers.returnJsonArray(returnData)];
 	}
 }

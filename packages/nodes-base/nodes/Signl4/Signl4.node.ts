@@ -12,7 +12,7 @@ import {
 import {
 	SIGNL4ApiRequest,
 } from './GenericFunctions';
-
+const isOnline = require('is-online');
 export class Signl4 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SIGNL4',
@@ -248,6 +248,7 @@ export class Signl4 implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		if(await isOnline()){
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'alert') {
@@ -368,6 +369,7 @@ export class Signl4 implements INodeType {
 				}
 				throw error;
 			}
+		}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

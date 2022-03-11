@@ -27,7 +27,7 @@ import {
 	normalizeId,
 	urlScanIoApiRequest,
 } from './GenericFunctions';
-
+const isOnline = require('is-online');
 export class UrlScanIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'urlscan.io',
@@ -107,9 +107,8 @@ export class UrlScanIo implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as 'scan';
 		const operation = this.getNodeParameter('operation', 0) as 'perform' | 'get' | 'getAll';
-
 		let responseData;
-
+		if(await isOnline()){
 		for (let i = 0; i < items.length; i++) {
 
 			try {
@@ -205,7 +204,8 @@ export class UrlScanIo implements INodeType {
 			}
 
 		}
-
+	}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
+
