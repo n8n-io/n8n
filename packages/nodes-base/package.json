@@ -584,6 +584,7 @@
       "dist/nodes/ReadPdf/ReadPdf.node.js",
       "dist/nodes/Reddit/Reddit.node.js",
       "dist/nodes/Redis/Redis.node.js",
+      "dist/nodes/Redis/RedisTrigger.node.js",
       "dist/nodes/RenameKeys/RenameKeys.node.js",
       "dist/nodes/RespondToWebhook/RespondToWebhook.node.js",
       "dist/nodes/Rocketchat/Rocketchat.node.js",
