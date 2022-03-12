@@ -286,6 +286,11 @@ class App {
 			},
 			defaultLocale: config.get('defaultLocale'),
 			logLevel: config.get('logs.level'),
+			hiringBannerEnabled: config.get('hiringBanner.enabled'),
+			templates: {
+				enabled: config.get('templates.enabled'),
+				host: config.get('templates.host'),
+			},
 		};
 	}
 
