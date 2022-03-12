@@ -26,7 +26,6 @@ export const emailOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'Choose the operation to perform',
 	},
 ];
 
@@ -225,82 +224,33 @@ export const emailFields: INodeProperties[] = [
 				description: 'Enable or disable open tracking on this message',
 				default: 'account_default',
 			},
-		],
-	},
-	{
-		displayName: 'Use JSON for variables',
-		name: 'variablesAsJson',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Variables',
-		name: 'variablesUi',
-		type: 'json',
-		default: '',
-		description: 'Variables in JSON format',
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
-				variablesAsJson: [
-					true,
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Variables',
-		name: 'variablesUi',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
-				variablesAsJson: [
-					false,
-				],
-			},
-		},
-		placeholder: 'Add Variable',
-		default: {},
-		options: [
 			{
-				name: 'variablesValues',
-				displayName: 'Variable',
-				values: [
+				displayName: 'Variables',
+				name: 'variables',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Variable',
+				default: {},
+				options: [
 					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
+						name: 'variable',
+						displayName: 'Variable',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
 					},
 				],
 			},
@@ -443,82 +393,33 @@ export const emailFields: INodeProperties[] = [
 				description: 'Enable or disable open tracking on this message',
 				default: '',
 			},
-		],
-	},
-	{
-		displayName: 'Use JSON for variables',
-		name: 'variablesAsJson',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Variables',
-		name: 'variablesUi',
-		type: 'json',
-		default: '',
-		description: 'Variables in JSON format',
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
-				variablesAsJson: [
-					true,
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Variables',
-		name: 'variablesUi',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
-				variablesAsJson: [
-					false,
-				],
-			},
-		},
-		placeholder: 'Add Variable',
-		default: {},
-		options: [
 			{
-				name: 'variablesValues',
-				displayName: 'Variable',
-				values: [
+				displayName: 'Variables',
+				name: 'variables',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Variable',
+				default: {},
+				options: [
 					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
+						name: 'variable',
+						displayName: 'Variable',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
 					},
 				],
 			},
