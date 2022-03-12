@@ -84,7 +84,6 @@ export class RedisTrigger implements INodeType {
 			redisOptions.password = credentials.password as string;
 		}
 
-
 		const channels = (this.getNodeParameter('channels') as string).split(',');
 
 		const options = this.getNodeParameter('options') as IDataObject;
@@ -128,7 +127,7 @@ export class RedisTrigger implements INodeType {
 		}
 
 		if (this.getMode() === 'trigger') {
-			manualTriggerFunction();
+			await manualTriggerFunction();
 		}
 
 		async function closeFunction() {
