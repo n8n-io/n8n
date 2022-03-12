@@ -486,7 +486,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'category',
 				description: 'Category of the contact. For more information, see <a href="https://my.sevdesk.de/apiOverview/index.html#/doc-contacts#types">here</a>.',
 				type: 'collection',
-				required: true,
 				default: {},
 				options: [
 					{
@@ -580,7 +579,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'name',
 				description: 'The organization name. Be aware that the type of contact will depend on this attribute. If it holds a value, the contact will be regarded as an organization.',
 				type: 'string',
-				required: true,
 				default: '',
 			},
 			{
