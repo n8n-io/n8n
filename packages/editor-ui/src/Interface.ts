@@ -796,7 +796,6 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
-	fetchedAllCredentials: boolean;
 }
 
 export interface ITagsState {
