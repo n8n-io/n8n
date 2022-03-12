@@ -113,10 +113,12 @@ export class RedisTrigger implements INodeType {
 						if (options.onlyMessage) {
 							self.emit([self.helpers.returnJsonArray({message})]);
 							resolve(true);
+							return;
 						}
 
 						self.emit([self.helpers.returnJsonArray({channel, message})]);
 						resolve(true);
+						return;
 					});
 				});
 
