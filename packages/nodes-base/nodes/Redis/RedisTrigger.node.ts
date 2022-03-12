@@ -118,7 +118,6 @@ export class RedisTrigger implements INodeType {
 
 						self.emit([self.helpers.returnJsonArray({channel, message})]);
 						resolve(true);
-						return;
 					});
 				});
 
