@@ -259,6 +259,7 @@ export class ActiveWorkflows {
 						await triggerResponse.closeFunction();
 					} catch (error) {
 						Logger.error(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
 							`There was a problem deactivating trigger of workflow "${id}": "${error.message}"`,
 							{
 								workflowId: id,
@@ -276,6 +277,7 @@ export class ActiveWorkflows {
 						await pollResponse.closeFunction();
 					} catch (error) {
 						Logger.error(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
 							`There was a problem deactivating polling trigger of workflow "${id}": "${error.message}"`,
 							{
 								workflowId: id,
