@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -35,6 +36,7 @@ import {
 import * as moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
+import { moveMessagePortToContext } from 'worker_threads';
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,6 +63,7 @@ export class GoogleCalendar implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Calendar',
@@ -72,7 +75,7 @@ export class GoogleCalendar implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			...calendarOperations,
 			...calendarFields,
@@ -183,7 +186,7 @@ export class GoogleCalendar implements INodeType {
 				if (resource === 'calendar') {
 					//https://developers.google.com/calendar/v3/reference/freebusy/query
 					if (operation === 'availability') {
-						const timezone = this.getTimezone();
+						const timezone = moment.tz.guess();
 						const calendarId = this.getNodeParameter('calendar', i) as string;
 						const timeMin = this.getNodeParameter('timeMin', i) as string;
 						const timeMax = this.getNodeParameter('timeMax', i) as string;
@@ -191,8 +194,8 @@ export class GoogleCalendar implements INodeType {
 						const outputFormat = options.outputFormat || 'availability';
 
 						const body: IDataObject = {
-							timeMin: moment.tz(timeMin, timezone).utc().format(),
-							timeMax: moment.tz(timeMax, timezone).utc().format(),
+							timeMin: options.timezone ? moment.tz(timeMin, options.timezone as string).utc(true).format() : timeMin,
+							timeMax: options.timezone ? moment.tz(timeMax, options.timezone as string).utc(true).format() : timeMax,
 							items: [
 								{
 									id: calendarId,
@@ -237,6 +240,8 @@ export class GoogleCalendar implements INodeType {
 							'additionalFields',
 							i,
 						) as IDataObject;
+						const timezone = (additionalFields.timezone as string);
+
 						if (additionalFields.maxAttendees) {
 							qs.maxAttendees = additionalFields.maxAttendees as number;
 						}
@@ -248,12 +253,12 @@ export class GoogleCalendar implements INodeType {
 						}
 						const body: IEvent = {
 							start: {
-								dateTime: start,
-								timeZone: additionalFields.timeZone || this.getTimezone(),
+								dateTime: timezone ? moment.tz(start, timezone).utc(true).format() : start,
+								timeZone: timezone || moment.tz.guess(),
 							},
 							end: {
-								dateTime: end,
-								timeZone: additionalFields.timeZone || this.getTimezone(),
+								dateTime: timezone ? moment.tz(end, timezone).utc(true).format() : end,
+								timeZone: timezone || moment.tz.guess(),
 							},
 						};
 						if (additionalFields.attendees) {
@@ -304,16 +309,17 @@ export class GoogleCalendar implements INodeType {
 								body.reminders.overrides = reminders;
 							}
 						}
+
 						if (additionalFields.allday) {
 							body.start = {
-								date: moment(start)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone ?
+								moment.tz(start, timezone).utc(true).format('YYYY-MM-DD') :
+								moment.tz(start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 							body.end = {
-								date: moment(end)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone ?
+								moment.tz(end, timezone).utc(true).format('YYYY-MM-DD') :
+								moment.tz(end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
 						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
@@ -341,10 +347,12 @@ export class GoogleCalendar implements INodeType {
 								);
 							}
 							if (additionalFields.repeatUntil) {
+								const repeatUntil = timezone ?
+								moment.tz(additionalFields.repeatUntil as string, timezone).utc(true).format('YYYYMMDDTHHmmss') :
+								moment(additionalFields.repeatUntil as string).utc().format('YYYYMMDDTHHmmss');
+
 								body.recurrence?.push(
-									`UNTIL=${moment(additionalFields.repeatUntil as string)
-										.utc()
-										.format('YYYYMMDDTHHmmss')}Z`,
+									`UNTIL=${repeatUntil}Z`,
 								);
 							}
 							if (body.recurrence.length !== 0) {
@@ -482,6 +490,8 @@ export class GoogleCalendar implements INodeType {
 							'updateFields',
 							i,
 						) as IDataObject;
+						const timezone = (updateFields.timezone as string);
+
 						if (updateFields.maxAttendees) {
 							qs.maxAttendees = updateFields.maxAttendees as number;
 						}
@@ -494,14 +504,14 @@ export class GoogleCalendar implements INodeType {
 						const body: IEvent = {};
 						if (updateFields.start) {
 							body.start = {
-								dateTime: updateFields.start,
-								timeZone: updateFields.timeZone || this.getTimezone(),
+								dateTime: timezone ? moment.tz(updateFields.start as string, timezone).utc(true).format() : updateFields.start as string,
+								timeZone: timezone || moment.tz.guess(),
 							};
 						}
 						if (updateFields.end) {
 							body.end = {
-								dateTime: updateFields.end,
-								timeZone: updateFields.timeZone || this.getTimezone(),
+								dateTime: timezone ? moment.tz(updateFields.end as string, timezone).utc(true).format() : updateFields.end as string,
+								timeZone: timezone || moment.tz.guess(),
 							};
 						}
 						if (updateFields.attendees) {
@@ -554,14 +564,14 @@ export class GoogleCalendar implements INodeType {
 						}
 						if (updateFields.allday && updateFields.start && updateFields.end) {
 							body.start = {
-								date: moment(updateFields.start as string)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone ?
+								moment.tz(updateFields.start, timezone).utc(true).format('YYYY-MM-DD') :
+								moment.tz(updateFields.start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 							body.end = {
-								date: moment(updateFields.end as string)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone ?
+								moment.tz(updateFields.end, timezone).utc(true).format('YYYY-MM-DD') :
+								moment.tz(updateFields.end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
 						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
@@ -584,10 +594,12 @@ export class GoogleCalendar implements INodeType {
 								body.recurrence?.push(`COUNT=${updateFields.repeatHowManyTimes};`);
 							}
 							if (updateFields.repeatUntil) {
+								const repeatUntil = timezone ?
+								moment.tz(updateFields.repeatUntil as string, timezone).utc(true).format('YYYYMMDDTHHmmss') :
+								moment(updateFields.repeatUntil as string).utc().format('YYYYMMDDTHHmmss');
+
 								body.recurrence?.push(
-									`UNTIL=${moment(updateFields.repeatUntil as string)
-										.utc()
-										.format('YYYYMMDDTHHmmss')}Z`,
+									`UNTIL=${repeatUntil}Z`,
 								);
 							}
 							if (body.recurrence.length !== 0) {
@@ -618,7 +630,7 @@ export class GoogleCalendar implements INodeType {
 					// Return the actual reason as error
 					returnData.push(
 						{
-							error: error.message,
+							error: (error as JsonObject).message,
 						},
 					);
 					continue;
