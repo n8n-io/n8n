@@ -29,8 +29,10 @@
   "devDependencies": {
     "@types/express": "^4.17.6",
     "@types/jest": "^26.0.13",
+    "@types/jmespath": "^0.15.0",
     "@types/lodash.get": "^4.4.6",
     "@types/lodash.merge": "^4.6.6",
+    "@types/luxon": "^2.0.9",
     "@types/lodash.set": "^4.3.6",
     "@types/node": "14.17.27",
     "@types/xml2js": "^0.4.3",
@@ -48,10 +50,12 @@
     "typescript": "~4.3.5"
   },
   "dependencies": {
+    "jmespath": "^0.16.0",
     "lodash.get": "^4.4.2",
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
+    "luxon": "^2.3.0",
     "riot-tmpl": "^3.0.8",
     "xml2js": "^0.4.23"
   },
