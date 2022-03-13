@@ -174,11 +174,6 @@ export default mixins(
 				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, activeNode!.name, connectionInputData || [], {}, mode, additionalProxyKeys);
 				const proxy = dataProxy.getDataProxy();
 
-				const workflowNodes = [];
-				for (const [nodeName, node] of Object.entries(workflow.nodes)) {
-					workflowNodes.push(`"${nodeName}"`);
-				}
-
 				const autoCompleteItems = [
 					`function $evaluateExpression(expression: string, itemIndex?: number): any {};`,
 					`function getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): any {};`,
