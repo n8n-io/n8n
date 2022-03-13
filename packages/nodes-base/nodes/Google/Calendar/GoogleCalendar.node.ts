@@ -36,6 +36,7 @@ import {
 import * as moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
+import { moveMessagePortToContext } from 'worker_threads';
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -310,14 +311,14 @@ export class GoogleCalendar implements INodeType {
 
 						if (additionalFields.allday) {
 							body.start = {
-								date: moment(start)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone ?
+								moment.tz(start, timezone).utc(true).format('YYYY-MM-DD') :
+								moment.tz(start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 							body.end = {
-								date: moment(end)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone ?
+								moment.tz(end, timezone).utc(true).format('YYYY-MM-DD') :
+								moment.tz(end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
 						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
@@ -560,14 +561,14 @@ export class GoogleCalendar implements INodeType {
 						}
 						if (updateFields.allday && updateFields.start && updateFields.end) {
 							body.start = {
-								date: moment(updateFields.start as string)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone ?
+								moment.tz(updateFields.start, timezone).utc(true).format('YYYY-MM-DD') :
+								moment.tz(updateFields.start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 							body.end = {
-								date: moment(updateFields.end as string)
-									.utc()
-									.format('YYYY-MM-DD'),
+								date: timezone ?
+								moment.tz(updateFields.end, timezone).utc(true).format('YYYY-MM-DD') :
+								moment.tz(updateFields.end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
 						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z

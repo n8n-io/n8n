@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@fontsource/open-sans": "^4.5.0",
+    "luxon": "^2.3.0",
     "n8n-design-system": "~0.13.0",
     "monaco-editor": "^0.29.1",
     "timeago.js": "^4.0.2",
@@ -45,6 +46,7 @@
     "@types/lodash.camelcase": "^4.3.6",
     "@types/lodash.get": "^4.4.6",
     "@types/lodash.set": "^4.3.6",
+    "@types/luxon": "^2.0.9",
     "@types/node": "14.17.27",
     "@types/quill": "^2.0.1",
     "@types/uuid": "^8.3.2",
