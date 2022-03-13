@@ -9,11 +9,11 @@ export const nodeDescription: INodeTypeDescription = {
 	displayName: 'MongoDb Change Stream Trigger',
 	name: 'mongoDbTrigger',
 	icon: 'file:mongodb.svg',
-	group: ['transform'],
+	group: ['trigger'],
 	version: 1,
 	description: 'Watch for change events in a collection.',
 	defaults: {
-		name: 'MongoDbTrigger',
+		name: 'MongoDb Change Stream Trigger',
 		color: '#1A82e2',
 	},
 	inputs: ['main'],
