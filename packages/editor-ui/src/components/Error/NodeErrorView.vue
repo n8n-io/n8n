@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ':' + error.message }}</div>
+			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + error.message }}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
 		</div>
 		<details>
@@ -104,7 +104,6 @@ export default mixins(
 		copySuccess() {
 			this.$showMessage({
 				title: this.$locale.baseText('nodeErrorView.showMessage.title'),
-				message: this.$locale.baseText('nodeErrorView.showMessage.message'),
 				type: 'info',
 			});
 		},

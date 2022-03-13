@@ -1,4 +1,6 @@
 import {
+	IAuthenticateQueryAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -16,4 +18,12 @@ export class PipedriveApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate = {
+		type: 'queryAuth',
+		properties: {
+			key: 'api_token',
+			value: '={{$credentials.apiToken}}',
+		},
+	} as IAuthenticateQueryAuth;
 }

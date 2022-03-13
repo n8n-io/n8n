@@ -4,7 +4,7 @@
 		append-to-body
 		:close-on-click-modal="false"
 		width="80%"
-		:title="`${$locale.baseText('codeEdit.edit')} ${$locale.nodeText().topParameterDisplayName(parameter)}`"
+		:title="`${$locale.baseText('codeEdit.edit')} ${$locale.nodeText().inputLabelDisplayName(parameter, path)}`"
 		:before-close="closeDialog"
 	>
 		<div class="text-editor-wrapper ignore-key-press">
@@ -15,6 +15,7 @@
 
 <script lang="ts">
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import {DateTime} from 'luxon';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -39,7 +40,7 @@ export default mixins(
 	workflowHelpers,
 ).extend({
 	name: 'CodeEdit',
-	props: ['codeAutocomplete', 'parameter', 'type', 'value'],
+	props: ['codeAutocomplete', 'parameter', 'path', 'type', 'value'],
 	data() {
 		return {
 			monacoInstance: null as monaco.editor.IStandaloneCodeEditor | null,
@@ -88,6 +89,7 @@ export default mixins(
 			if (!this.$refs.code) return;
 
 			this.monacoInstance = monaco.editor.create(this.$refs.code as HTMLElement, {
+				automaticLayout: true,
 				value: this.value,
 				language: this.type === 'code' ? 'javascript' : 'json',
 				tabSize: 2,
@@ -175,13 +177,39 @@ export default mixins(
 				const autoCompleteItems = [
 					`function $evaluateExpression(expression: string, itemIndex?: number): any {};`,
 					`function getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): any {};`,
-					`function getWorkflowStaticData(type: string): object {};`,
-					`function $item(itemIndex: number, runIndex?: number) {};`,
-					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number) {};`,
+					`function getWorkflowStaticData(type: string): {};`,
+					`function $item(itemIndex: number, runIndex?: number): {};`,
+					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number): {};`,
 				];
 
-				const baseKeys = ['$env', '$executionId', '$mode', '$parameter', '$position', '$resumeWebhookUrl', '$workflow'];
-				const additionalKeys = ['$json', '$binary'];
+				const baseKeys = [
+					'$env',
+					'$executionId',
+					'$mode',
+					'$parameter',
+					'$resumeWebhookUrl',
+					'$workflow',
+					'$now',
+					'$today',
+					'$thisRunIndex',
+					'DateTime',
+					'Duration',
+					'Interval',
+				];
+
+				const functionItemKeys = [
+					'$json',
+					'$binary',
+					'$position',
+					'$thisItem',
+					'$thisItemIndex',
+				];
+
+				const additionalKeys: string[] = [];
+				if (this.codeAutocomplete === 'functionItem') {
+					additionalKeys.push(...functionItemKeys);
+				}
+
 				if (executedWorkflow && connectionInputData && connectionInputData.length) {
 					baseKeys.push(...additionalKeys);
 				} else {
@@ -215,6 +243,7 @@ export default mixins(
 					} catch(error) {}
 				}
 				autoCompleteItems.push(`const $node = ${JSON.stringify(nodes)}`);
+				autoCompleteItems.push(`function $jmespath(jsonDoc: object, query: string): {};`);
 
 				if (this.codeAutocomplete === 'function') {
 					if (connectionInputData) {

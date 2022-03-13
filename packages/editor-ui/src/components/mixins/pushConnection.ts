@@ -258,13 +258,13 @@ export const pushConnection = mixins(
 							title: 'Problem executing workflow',
 							message: runDataExecutedErrorMessage,
 							type: 'error',
+							duration: 0,
 						});
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
 							title: this.$locale.baseText('pushConnection.showMessage.title'),
-							message: this.$locale.baseText('pushConnection.showMessage.message'),
 							type: 'success',
 						});
 					}

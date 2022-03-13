@@ -1,6 +1,12 @@
 <template>
-	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
+	<Modal
+		:name="EXECUTIONS_MODAL_KEY"
+		width="80%"
+		:title="`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`"
+		:eventBus="modalBus"
+	>
+		<template v-slot:content>
+
 			<div class="filters">
 				<el-row>
 					<el-col :span="2" class="filter-headline">
@@ -153,9 +159,8 @@
 			<div class="load-more" v-if="finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated === true">
 				<n8n-button icon="sync" :title="$locale.baseText('executionsList.loadMore')" :label="$locale.baseText('executionsList.loadMore')" @click="loadMore()" :loading="isDataLoading" />
 			</div>
-
-		</el-dialog>
-	</span>
+		</template>
+	</Modal>
 </template>
 
 <script lang="ts">
@@ -163,9 +168,10 @@ import Vue from 'vue';
 
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import Modal from '@/components/Modal.vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { WAIT_TIME_UNLIMITED } from '@/constants';
+import { WAIT_TIME_UNLIMITED, EXECUTIONS_MODAL_KEY } from '@/constants';
 
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -200,12 +206,10 @@ export default mixins(
 	showMessage,
 ).extend({
 	name: 'ExecutionsList',
-	props: [
-		'dialogVisible',
-	],
 	components: {
 		ExecutionTime,
 		WorkflowActivator,
+		Modal,
 	},
 	data () {
 		return {
@@ -230,7 +234,23 @@ export default mixins(
 
 			stoppingExecutions: [] as string[],
 			workflows: [] as IWorkflowShortResponse[],
+			modalBus: new Vue(),
+			EXECUTIONS_MODAL_KEY,
 		};
+	},
+	async created() {
+		await this.loadWorkflows();
+		await this.refreshData();
+		this.handleAutoRefreshToggle();
+
+		this.$externalHooks().run('executionsList.openDialog');
+		this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
+	},
+	beforeDestroy() {
+		if (this.autoRefreshInterval) {
+			clearInterval(this.autoRefreshInterval);
+			this.autoRefreshInterval = undefined;
+		}
 	},
 	computed: {
 		statuses () {
@@ -312,23 +332,9 @@ export default mixins(
 			return filter;
 		},
 	},
-	watch: {
-		dialogVisible (newValue, oldValue) {
-			if (newValue) {
-				this.openDialog();
-			}
-		},
-	},
 	methods: {
-		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			if (this.autoRefreshInterval) {
-				clearInterval(this.autoRefreshInterval);
-				this.autoRefreshInterval = undefined;
-			}
-			return false;
+		closeDialog() {
+			this.modalBus.$emit('close');
 		},
 		convertToDisplayDate,
 		displayExecution (execution: IExecutionShortResponse, e: PointerEvent) {
@@ -343,7 +349,7 @@ export default mixins(
 				name: 'ExecutionById',
 				params: { id: execution.id },
 			});
-			this.closeDialog();
+			this.modalBus.$emit('closeAll');
 		},
 		handleAutoRefreshToggle () {
 			if (this.autoRefreshInterval) {
@@ -403,7 +409,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
-					this.$locale.baseText('executionsList.showError.handleDeleteSelected.message'),
 				);
 
 				return;
@@ -412,7 +417,6 @@ export default mixins(
 
 			this.$showMessage({
 				title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
-				message: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.message'),
 				type: 'success',
 			});
 
@@ -566,7 +570,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.loadMore.title'),
-					this.$locale.baseText('executionsList.showError.loadMore.message') + ':',
 				);
 				return;
 			}
@@ -606,21 +609,8 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.loadWorkflows.title'),
-					this.$locale.baseText('executionsList.showError.loadWorkflows.message') + ':',
 				);
 			}
-		},
-		async openDialog () {
-			Vue.set(this, 'selectedItems', {});
-			this.filter.workflowId = 'ALL';
-			this.checkAll = false;
-
-			await this.loadWorkflows();
-			await this.refreshData();
-			this.handleAutoRefreshToggle();
-
-			this.$externalHooks().run('executionsList.openDialog');
-			this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
@@ -631,13 +621,11 @@ export default mixins(
 				if (retrySuccessful === true) {
 					this.$showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
-						message: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.message'),
 						type: 'success',
 					});
 				} else {
 					this.$showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
-						message: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.message'),
 						type: 'error',
 					});
 				}
@@ -647,7 +635,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.retryExecution.title'),
-					this.$locale.baseText('executionsList.showError.retryExecution.message') + ':',
 				);
 
 				this.isDataLoading = false;
@@ -664,7 +651,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.refreshData.title'),
-					this.$locale.baseText('executionsList.showError.refreshData.message') + ':',
 				);
 			}
 
@@ -737,7 +723,6 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.stopExecution.title'),
-					this.$locale.baseText('executionsList.showError.stopExecution.message'),
 				);
 			}
 		},

@@ -20,6 +20,7 @@ import {
 } from '@/Interface';
 import {
 	IDataObject,
+	ILoadOptions,
 	INodeCredentials,
 	INodeParameters,
 	INodePropertyOptions,
@@ -79,6 +80,10 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('POST', `/executions-current/${executionId}/stop`);
 				},
 
+				getCredentialTranslation: (credentialType): Promise<object> => {
+					return self.restApi().makeRestApiRequest('GET', '/credential-translation', { credentialType });
+				},
+
 				getNodeTranslationHeaders: (): Promise<INodeTranslationHeaders> => {
 					return self.restApi().makeRestApiRequest('GET', '/node-translation-headers');
 				},
@@ -93,14 +98,7 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns all the parameter options from the server
-				getNodeParameterOptions: (nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]> => {
-					const sendData = {
-						nodeTypeAndVersion,
-						path,
-						methodName,
-						credentials,
-						currentNodeParameters,
-					};
+				getNodeParameterOptions: (sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> => {
 					return self.restApi().makeRestApiRequest('GET', '/node-parameter-options', sendData);
 				},
 

@@ -7,6 +7,8 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // eslint-disable-next-line import/no-extraneous-dependencies
+import * as express from 'express';
+import * as http from 'http';
 import * as PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
@@ -14,7 +16,7 @@ import { BinaryDataManager, IBinaryDataConfig, UserSettings, WorkflowExecute } f
 
 import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
 
-import { FindOneOptions } from 'typeorm';
+import { FindOneOptions, getConnectionManager } from 'typeorm';
 
 import * as Bull from 'bull';
 import {
@@ -274,10 +276,10 @@ export class Worker extends Command {
 				const versions = await GenericHelpers.getVersions();
 				const instanceId = await UserSettings.getInstanceId();
 
+				InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
+
 				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 				await BinaryDataManager.init(binaryDataConfig);
-
-				InternalHooksManager.init(instanceId, versions.cli);
 
 				console.info('\nn8n worker is now ready');
 				console.info(` * Version: ${versions.cli}`);
@@ -328,6 +330,77 @@ export class Worker extends Command {
 						logger.error('Error from queue: ', error);
 					}
 				});
+
+				if (config.get('queue.health.active')) {
+					const port = config.get('queue.health.port') as number;
+
+					const app = express();
+					const server = http.createServer(app);
+
+					app.get(
+						'/healthz',
+						// eslint-disable-next-line consistent-return
+						async (req: express.Request, res: express.Response) => {
+							LoggerProxy.debug('Health check started!');
+
+							const connection = getConnectionManager().get();
+
+							try {
+								if (!connection.isConnected) {
+									// Connection is not active
+									throw new Error('No active database connection!');
+								}
+								// DB ping
+								await connection.query('SELECT 1');
+							} catch (e) {
+								LoggerProxy.error('No Database connection!', e);
+								const error = new ResponseHelper.ResponseError(
+									'No Database connection!',
+									undefined,
+									503,
+								);
+								return ResponseHelper.sendErrorResponse(res, error);
+							}
+
+							// Just to be complete, generally will the worker stop automatically
+							// if it loses the conection to redis
+							try {
+								// Redis ping
+								await Worker.jobQueue.client.ping();
+							} catch (e) {
+								LoggerProxy.error('No Redis connection!', e);
+								const error = new ResponseHelper.ResponseError(
+									'No Redis connection!',
+									undefined,
+									503,
+								);
+								return ResponseHelper.sendErrorResponse(res, error);
+							}
+
+							// Everything fine
+							const responseData = {
+								status: 'ok',
+							};
+
+							LoggerProxy.debug('Health check completed successfully!');
+
+							ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
+						},
+					);
+
+					server.listen(port, () => {
+						console.info(`\nn8n worker health check via, port ${port}`);
+					});
+
+					server.on('error', (error: Error & { code: string }) => {
+						if (error.code === 'EADDRINUSE') {
+							console.log(
+								`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`,
+							);
+							process.exit(1);
+						}
+					});
+				}
 			} catch (error) {
 				logger.error(`Worker process cannot continue. "${error.message}"`);
 
