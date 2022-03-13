@@ -8,6 +8,7 @@ import { UniqueWorkflowNames1620824779533 } from './1620824779533-UniqueWorkflow
 import { AddwaitTill1626176912946 } from './1626176912946-AddwaitTill';
 import { UpdateWorkflowCredentials1630419189837 } from './1630419189837-UpdateWorkflowCredentials';
 import { AddExecutionEntityIndexes1644422880309 } from './1644422880309-AddExecutionEntityIndexes';
+import { IncreaseTypeVarcharLimit1646834195327 } from './1646834195327-IncreaseTypeVarcharLimit';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -20,4 +21,5 @@ export const postgresMigrations = [
 	AddwaitTill1626176912946,
 	UpdateWorkflowCredentials1630419189837,
 	AddExecutionEntityIndexes1644422880309,
+	IncreaseTypeVarcharLimit1646834195327,
 ];
