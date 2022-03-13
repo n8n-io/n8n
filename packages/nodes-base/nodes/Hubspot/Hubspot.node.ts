@@ -98,6 +98,17 @@ export class Hubspot implements INodeType {
 				},
 			},
 			{
+				name: 'hubspotAppToken',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'appToken',
+						],
+					},
+				},
+			},
+			{
 				name: 'hubspotOAuth2Api',
 				required: true,
 				displayOptions: {
@@ -118,6 +129,10 @@ export class Hubspot implements INodeType {
 					{
 						name: 'API Key',
 						value: 'apiKey',
+					},
+					{
+						name: 'App Token',
+						value: 'appToken',
 					},
 					{
 						name: 'OAuth2',
