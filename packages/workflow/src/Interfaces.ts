@@ -1169,6 +1169,13 @@ export interface IWorkflowDataProxyData {
 	$parameter: any;
 	$position: any;
 	$workflow: any;
+	$: any;
+	$input: any;
+	$thisItem: any;
+	$thisRunIndex: number;
+	$thisItemIndex: number;
+	$now: any;
+	$today: any;
 }
 
 export type IWorkflowDataProxyAdditionalKeys = IDataObject;
