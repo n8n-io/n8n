@@ -419,10 +419,7 @@ class App {
 			this.app.use(
 				async (req: express.Request, res: express.Response, next: express.NextFunction) => {
 					// Skip basic auth for a few listed endpoints or when instance owner has been setup
-					if (
-						authIgnoreRegex.exec(req.url) ||
-						config.get('userManagement.isInstanceOwnerSetUp')
-					) {
+					if (authIgnoreRegex.exec(req.url) || config.get('userManagement.isInstanceOwnerSetUp')) {
 						return next();
 					}
 					const realm = 'n8n - Editor UI';
