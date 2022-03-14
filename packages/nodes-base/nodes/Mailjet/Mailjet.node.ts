@@ -9,11 +9,14 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	IMessage,
 	mailjetApiRequest,
+	validateJSON,
 } from './GenericFunctions';
 
 import {
@@ -25,7 +28,6 @@ import {
 	smsFields,
 	smsOperations,
 } from './SmsDescription';
-
 export class Mailjet implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailjet',
@@ -45,6 +47,7 @@ export class Mailjet implements INodeType {
 			{
 				name: 'mailjetEmailApi',
 				required: true,
+				testedBy: 'mailjetEmailApiTest',
 				displayOptions: {
 					show: {
 						resource: [
@@ -127,7 +130,7 @@ export class Mailjet implements INodeType {
 						const subject = this.getNodeParameter('subject', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
-						const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
+						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						const body: IMessage = {
 							From: {
@@ -145,11 +148,21 @@ export class Mailjet implements INodeType {
 								Email: email,
 							});
 						}
-						if (variables) {
+
+						if (jsonParameters) {
+							const variablesJson = this.getNodeParameter('variablesJson', i) as string;
+							const parsedJson = validateJSON(variablesJson);
+							if (parsedJson === undefined) {
+								throw new NodeOperationError(this.getNode(),`Parameter 'Variables (JSON)' has a invalid JSON`);
+							}
+							body.Variables = parsedJson;
+						} else {
+							const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[] || [];
 							for (const variable of variables) {
 								body.Variables![variable.name as string] = variable.value;
 							}
 						}
+
 						if (htmlBody) {
 							body.HTMLPart = htmlBody;
 						}
@@ -202,10 +215,9 @@ export class Mailjet implements INodeType {
 						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 						const templateId = parseInt(this.getNodeParameter('templateId', i) as string, 10);
 						const subject = this.getNodeParameter('subject', i) as string;
-						const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
-						const variablesJson = this.getNodeParameter('variables', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
+						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						const body: IMessage = {
 							From: {
@@ -225,16 +237,20 @@ export class Mailjet implements INodeType {
 							});
 						}
 
-						if (variablesJson) {
-							const v = JSON.parse(variablesJson);
-							Object.assign(body.Variables!, v);
-						}
-
-						if (variables) {
+						if (jsonParameters) {
+							const variablesJson = this.getNodeParameter('variablesJson', i) as string;
+							const parsedJson = validateJSON(variablesJson);
+							if (parsedJson === undefined) {
+								throw new NodeOperationError(this.getNode(), `Parameter 'Variables (JSON)' has a invalid JSON`);
+							}
+							body.Variables = parsedJson;
+						} else {
+							const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[] || [];
 							for (const variable of variables) {
 								body.Variables![variable.name as string] = variable.value;
 							}
 						}
+						
 						if (additionalFields.bccEmail) {
 							const bccEmail = (additionalFields.bccEmail as string).split(',') as string[];
 							for (const email of bccEmail) {
@@ -297,7 +313,7 @@ export class Mailjet implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;
