@@ -54,10 +54,10 @@
 						defaultActive="connection"
 						:light="true"
 					>
-						<n8n-menu-item index="connection" :class="$style.credTab"
+						<n8n-menu-item index="connection"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
 						>
-						<n8n-menu-item index="details" :class="$style.credTab"
+						<n8n-menu-item index="details"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
 						>
 					</n8n-menu>
@@ -843,10 +843,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 	display: flex;
 	flex-grow: 1;
 	margin-bottom: var(--spacing-s);
-}
-
-.credTab {
-	padding-left: 12px !important;
 }
 
 .credActions {

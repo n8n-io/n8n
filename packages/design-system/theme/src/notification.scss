@@ -29,6 +29,7 @@
 	}
 
 	@include mixins.e(title) {
+		line-height: normal;
 		font-weight: bold;
 		font-size: var.$notification-title-font-size;
 		color: var.$notification-title-color;
@@ -37,13 +38,14 @@
 
 	@include mixins.e(content) {
 		font-size: var.$notification-content-font-size;
-		line-height: 21px;
+		line-height: 1.5;
 		margin: 6px 0 0 0;
 		color: var.$notification-content-color;
 		text-align: justify;
 
 		p {
 			margin: 0;
+			line-height: 1.5;
 		}
 	}
 
