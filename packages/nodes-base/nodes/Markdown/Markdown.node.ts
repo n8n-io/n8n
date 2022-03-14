@@ -119,14 +119,14 @@ export class Markdown implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Github',
-								value: 'github',
-								description: 'GitHub Flavored Markdown (<a href="https://github.github.com/gfm/" target="_blank" rel="nofollow">more info</a>)',
-							},
-							{
 								name: 'Default',
 								value: 'vanilla',
 								description: 'Defaults defined by Showdown library (<a href="https://github.com/showdownjs/showdown#valid-options" target="_blank">more info</a>)',
+							},
+							{
+								name: 'Github',
+								value: 'github',
+								description: 'GitHub Flavored Markdown (<a href="https://github.github.com/gfm/" target="_blank" rel="nofollow">more info</a>)',
 							},
 							{
 								name: 'Original',
