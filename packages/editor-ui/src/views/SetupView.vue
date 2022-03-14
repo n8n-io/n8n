@@ -32,9 +32,9 @@ export default mixins(
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
-			title: this.$locale.baseText('settings.setup.setupOwner'),
-			buttonText: this.$locale.baseText('settings.setup.next'),
-			secondaryButtonText: this.$locale.baseText('settings.setup.skipSetupTemporarily'),
+			title: this.$locale.baseText('auth.setup.setupOwner'),
+			buttonText: this.$locale.baseText('auth.setup.next'),
+			secondaryButtonText: this.$locale.baseText('auth.setup.skipSetupTemporarily'),
 			inputs: [
 				{
 					name: 'email',
@@ -98,32 +98,31 @@ export default mixins(
 			const workflows = await this.restApi().getWorkflows();
 			this.workflowsCount = workflows.length;
 		},
-		async confirmSetupOrSkip(): Promise<boolean> {
+		async confirmSetupOrGoBack(): Promise<boolean> {
 			if (this.workflowsCount === 0 && this.credentialsCount === 0) {
 				return true;
 			}
 
-			const workflows = this.workflowsCount > 0 ? this.$locale.baseText(this.workflowsCount === 1 ? 'settings.setup.showSkipConfirmation.oneWorkflowCount' : 'settings.setup.showSkipConfirmation.workflowsCount', { interpolate: { count: this.workflowsCount } }) : '';
-			const credentials = this.credentialsCount > 0 ? this.$locale.baseText(this.credentialsCount === 1? 'settings.setup.showSkipConfirmation.oneCredentialCount' : 'settings.setup.showSkipConfirmation.credentialsCount', { interpolate: { count: this.credentialsCount } }) : '';
+			const workflows = this.workflowsCount > 0 ? this.$locale.baseText(this.workflowsCount === 1 ? 'auth.setup.showSkipConfirmation.oneWorkflowCount' : 'auth.setup.showSkipConfirmation.workflowsCount', { interpolate: { count: this.workflowsCount } }) : '';
+			const credentials = this.credentialsCount > 0 ? this.$locale.baseText(this.credentialsCount === 1? 'auth.setup.showSkipConfirmation.oneCredentialCount' : 'auth.setup.showSkipConfirmation.credentialsCount', { interpolate: { count: this.credentialsCount } }) : '';
 
-			const entities = workflows && credentials ? this.$locale.baseText('settings.setup.showSkipConfirmation.concatEntities', {interpolate: { workflows, credentials }}) : (workflows || credentials);
+			const entities = workflows && credentials ? this.$locale.baseText('auth.setup.showSkipConfirmation.concatEntities', {interpolate: { workflows, credentials }}) : (workflows || credentials);
 			return await this.confirmMessage(
-				this.$locale.baseText('settings.setup.confirmOwnerSetupMessage', {
+				this.$locale.baseText('auth.setup.confirmOwnerSetupMessage', {
 					interpolate: {
 						entities,
 					},
 				}),
-				this.$locale.baseText('settings.setup.confirmOwnerSetup'),
+				this.$locale.baseText('auth.setup.confirmOwnerSetup'),
 				null,
-				this.$locale.baseText('settings.setup.continue'),
-				this.$locale.baseText('settings.setup.skipSetup'),
+				this.$locale.baseText('auth.setup.createAccount'),
+				this.$locale.baseText('auth.setup.goBack'),
 			);
 		},
 		async onSubmit(values: {[key: string]: string}) {
 			try {
-				const confirmSetup = await this.confirmSetupOrSkip();
+				const confirmSetup = await this.confirmSetupOrGoBack();
 				if (!confirmSetup) {
-					this.onSkip();
 					return;
 				}
 
@@ -138,17 +137,17 @@ export default mixins(
 				}
 
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.setup.settingUpOwnerError'));
+				this.$showError(error, this.$locale.baseText('auth.setup.settingUpOwnerError'));
 			}
 			this.loading = false;
 		},
 		async showSkipConfirmation() {
 			const skip = await this.confirmMessage(
-				this.$locale.baseText('settings.setup.ownerAccountBenefits'),
-				this.$locale.baseText('settings.setup.skipOwnerSetupQuestion'),
+				this.$locale.baseText('auth.setup.ownerAccountBenefits'),
+				this.$locale.baseText('auth.setup.skipOwnerSetupQuestion'),
 				null,
-				this.$locale.baseText('settings.setup.skipSetup'),
-				this.$locale.baseText('settings.goBack'),
+				this.$locale.baseText('auth.setup.skipSetup'),
+				this.$locale.baseText('auth.setup.goBack'),
 			);
 			if (skip) {
 				this.onSkip();
