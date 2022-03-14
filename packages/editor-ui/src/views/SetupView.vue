@@ -3,7 +3,7 @@
 		:form="FORM_CONFIG"
 		:formLoading="loading"
 		@submit="onSubmit"
-		@secondaryClick="onSkip"
+		@secondaryClick="showSkipConfirmation"
 	/>
 </template>
 
@@ -14,20 +14,27 @@ import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
+import { restApi } from '@/components/mixins/restApi';
 
 
 export default mixins(
 	showMessage,
+	restApi,
 ).extend({
 	name: 'SetupView',
 	components: {
 		AuthView,
 	},
+	async mounted() {
+		const getAllCredentialsPromise = this.getAllCredentials();
+		const getAllWorkflowsPromise = this.getAllWorkflows();
+		await Promise.all([getAllCredentialsPromise, getAllWorkflowsPromise]);
+	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
-			title: this.$locale.baseText('settings.setup.setupOwner'),
+			title: this.$locale.baseText('auth.setup.setupOwner'),
 			buttonText: this.$locale.baseText('auth.setup.next'),
-			secondaryButtonText: this.$locale.baseText('settings.setup.skipSetupTemporarily'),
+			secondaryButtonText: this.$locale.baseText('auth.setup.skipSetupTemporarily'),
 			inputs: [
 				{
 					name: 'email',
@@ -78,11 +85,47 @@ export default mixins(
 		return {
 			FORM_CONFIG,
 			loading: false,
+			workflowsCount: 0,
+			credentialsCount: 0,
 		};
 	},
 	methods: {
+		async getAllCredentials() {
+			const credentials = await this.$store.dispatch('credentials/fetchAllCredentials');
+			this.credentialsCount = credentials.length;
+		},
+		async getAllWorkflows() {
+			const workflows = await this.restApi().getWorkflows();
+			this.workflowsCount = workflows.length;
+		},
+		async confirmSetupOrGoBack(): Promise<boolean> {
+			if (this.workflowsCount === 0 && this.credentialsCount === 0) {
+				return true;
+			}
+
+			const workflows = this.workflowsCount > 0 ? this.$locale.baseText(this.workflowsCount === 1 ? 'auth.setup.setupConfirmation.oneWorkflowCount' : 'auth.setup.setupConfirmation.workflowsCount', { interpolate: { count: this.workflowsCount } }) : '';
+			const credentials = this.credentialsCount > 0 ? this.$locale.baseText(this.credentialsCount === 1? 'auth.setup.setupConfirmation.oneCredentialCount' : 'auth.setup.setupConfirmation.credentialsCount', { interpolate: { count: this.credentialsCount } }) : '';
+
+			const entities = workflows && credentials ? this.$locale.baseText('auth.setup.setupConfirmation.concatEntities', {interpolate: { workflows, credentials }}) : (workflows || credentials);
+			return await this.confirmMessage(
+				this.$locale.baseText('auth.setup.confirmOwnerSetupMessage', {
+					interpolate: {
+						entities,
+					},
+				}),
+				this.$locale.baseText('auth.setup.confirmOwnerSetup'),
+				null,
+				this.$locale.baseText('auth.setup.createAccount'),
+				this.$locale.baseText('auth.setup.goBack'),
+			);
+		},
 		async onSubmit(values: {[key: string]: string}) {
 			try {
+				const confirmSetup = await this.confirmSetupOrGoBack();
+				if (!confirmSetup) {
+					return;
+				}
+
 				const forceRedirectedHere = this.$store.getters['settings/showSetupPage'];
 				this.loading = true;
 				await this.$store.dispatch('users/createOwner', values);
@@ -98,20 +141,23 @@ export default mixins(
 			}
 			this.loading = false;
 		},
-		async onSkip() {
+		async showSkipConfirmation() {
 			const skip = await this.confirmMessage(
 				this.$locale.baseText('auth.setup.ownerAccountBenefits'),
-				this.$locale.baseText('settings.setup.skipOwnerSetupQuestion'),
+				this.$locale.baseText('auth.setup.skipOwnerSetupQuestion'),
 				null,
-				this.$locale.baseText('settings.setup.skipSetup'),
-				this.$locale.baseText('settings.goBack'),
+				this.$locale.baseText('auth.setup.skipSetup'),
+				this.$locale.baseText('auth.setup.goBack'),
 			);
 			if (skip) {
-				this.$store.dispatch('users/skipOwnerSetup');
-				this.$router.push({
-					name: VIEWS.HOMEPAGE,
-				});
+				this.onSkip();
 			}
+		},
+		onSkip() {
+			this.$store.dispatch('users/skipOwnerSetup');
+			this.$router.push({
+				name: VIEWS.HOMEPAGE,
+			});
 		},
 	},
 });
