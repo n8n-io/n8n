@@ -1,8 +1,27 @@
 import {
 	INodeType,
 	INodeTypeDescription,
-
 } from 'n8n-workflow';
+
+import {
+	questionsFields,
+	questionsOperations,
+} from './QuestionsDescription';
+
+import {
+	metricsFields,
+	metricsOperations,
+} from './MetricsDescription';
+
+import {
+	databasesFields,
+	databasesOperations,
+} from './DatabasesDescription';
+
+import {
+	alertsFields,
+	alertsOperations,
+} from './AlertsDescription';
 
 export class Metabase implements INodeType {
 	description: INodeTypeDescription = {
@@ -14,14 +33,14 @@ export class Metabase implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Use the Metabase API',
 		defaults: {
-			name: 'Metabse',
+			name: 'Metabase',
 			color: '#ff0000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'MetabseApi',
+				name: 'metabaseApi',
 				required: true,
 				testedBy: {
 					request: {
@@ -33,10 +52,8 @@ export class Metabase implements INodeType {
 		],
 		requestDefaults: {
 			returnFullResponse: true,
-			baseURL: '=${{credentials.url}}',
-
+			baseURL: '={{$credentials.url}}',
 			headers: {
-				'developer-token': '={{$credentials.developerToken}}',
 			},
 		},
 		properties: [
@@ -65,6 +82,14 @@ export class Metabase implements INodeType {
 				default: 'questions',
 				description: 'The resource to operate on.',
 			},
+			...questionsOperations,
+			...questionsFields,
+			...metricsOperations,
+			...metricsFields,
+			...databasesOperations,
+			...databasesFields,
+			...alertsOperations,
+			...alertsFields,
 		],
 	};
 }
