@@ -37,6 +37,8 @@ import {
 	WorkflowRunner,
 } from '../src';
 import config = require('../config');
+import { User } from '../src/databases/entities/User';
+import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -56,6 +58,8 @@ export class ExecuteBatch extends Command {
 	static debug = false;
 
 	static executionTimeout = 3 * 60 * 1000;
+
+	static instanceOwner: User;
 
 	static examples = [
 		`$ n8n executeBatch`,
@@ -278,6 +282,8 @@ export class ExecuteBatch extends Command {
 
 		// Wait till the database is ready
 		await startDbInitPromise;
+
+		ExecuteBatch.instanceOwner = await getInstanceOwner();
 
 		let allWorkflows;
 
@@ -666,6 +672,7 @@ export class ExecuteBatch extends Command {
 					executionMode: 'cli',
 					startNodes: [startNode!.name],
 					workflowData,
+					userId: ExecuteBatch.instanceOwner.id,
 				};
 
 				const workflowRunner = new WorkflowRunner();
