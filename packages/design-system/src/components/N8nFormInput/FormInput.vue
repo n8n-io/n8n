@@ -220,7 +220,9 @@ export default mixins(Locale).extend({
 		onFocus() {
 			this.$emit('focus');
 		},
-		onEnter() {
+		onEnter(e) {
+			e.stopPropagation();
+			e.preventDefault();
 			this.$emit('enter');
 		},
 	},
