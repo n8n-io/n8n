@@ -1116,7 +1116,7 @@
 	"auth.setup.showSkipConfirmation.workflowsCount": "{count} existing workflows",
 	"auth.setup.showSkipConfirmation.credentialsCount": "{count} credentials",
 	"auth.setup.showSkipConfirmation.concatEntities": "{workflows} and {credentials}",
-	"auth.setup.confirmOwnerSetupMessage": "To give others access to your <b>{entities}</b>, you'll need to share the owner account. If you continue, workflows and credentials cannot be shared between users. <a href=\"https://docs.n8n.io/reference/user-management.html\" target=\"_blank\">More info</a>",
+	"auth.setup.confirmOwnerSetupMessage": "To give others access to your <b>{entities}</b>, you’ll need to share these account details. Otherwise, you can go back and skip this setup for now. <a href=\"https://docs.n8n.io/reference/user-management.html\" target=\"_blank\">More info</a>",
 	"auth.setup.createAccount": "Create account",
 	"auth.setup.skipSetupTemporarily": "Skip setup for now",
 	"auth.setup.next": "Next",
