@@ -90,3 +90,10 @@ export async function validateCrendetials(this: ICredentialTestFunctions, decryp
 
 	return this.helpers.request!(options);
 }
+
+//@ts-ignore
+export const sort = (a, b) => {
+	if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
+	if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
+	return 0;
+};

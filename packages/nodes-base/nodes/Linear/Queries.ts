@@ -42,9 +42,9 @@ export const query = {
 		return `mutation IssueCreate (
 			$title: String!,
 			$teamId: String!,
-			$description: String
-			$assigneeId: String
-			$priorityId: Int
+			$description: String,
+			$assigneeId: String,
+			$priorityId: Int,
 			$stateId: String){
 			issueCreate(
 				input: {
@@ -155,5 +155,54 @@ export const query = {
 					}
 				}
 			}`;
+	},
+	updateIssue() {
+		return `mutation IssueUpdate (
+		$issueId: String!,
+		$title: String,
+		$teamId: String,
+		$description: String,
+		$assigneeId: String,
+		$priorityId: Int,
+		$stateId: String){
+		issueUpdate(
+			id: $issueId,
+			input: {
+				title: $title
+				description: $description
+				teamId: $teamId
+				assigneeId: $assigneeId
+				priority: $priorityId
+				stateId: $stateId
+			}
+		) {
+			success
+				issue {
+					id,
+					title,
+					priority
+					archivedAt
+					assignee {
+						id
+						displayName
+					}
+					state {
+						id
+						name
+					}
+					createdAt
+					creator {
+						id
+						displayName
+					}
+					description
+					dueDate
+					cycle {
+						id
+						name
+					}
+				}
+			}
+		}`;
 	},
 };

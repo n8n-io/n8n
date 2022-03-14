@@ -19,6 +19,7 @@ import {
 import {
 	linearApiRequest,
 	linearApiRequestAllItems,
+	sort,
 	validateCrendetials,
 } from './GenericFunctions';
 
@@ -149,7 +150,7 @@ export class Linear implements INodeType {
 						value: state.id,
 					});
 				}
-				return returnData;
+				return returnData.sort(sort);
 			},
 		},
 	};
@@ -191,7 +192,7 @@ export class Linear implements INodeType {
 						};
 
 						responseData = await linearApiRequest.call(this, body);
-						responseData = responseData.data.issueDelete;
+						responseData = responseData?.data?.issueDelete;
 					}
 					if (operation === 'get') {
 						const issueId = this.getNodeParameter('issueId', i) as string;
@@ -203,7 +204,7 @@ export class Linear implements INodeType {
 						};
 
 						responseData = await linearApiRequest.call(this, body);
-						responseData = responseData.data.issues?.nodes[0];
+						responseData = responseData.data?.issues?.nodes[0];
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -221,6 +222,20 @@ export class Linear implements INodeType {
 							responseData = await linearApiRequest.call(this, body);
 							responseData = responseData.data.issues.nodes;
 						}
+					}
+					if (operation === 'update') {
+						const issueId = this.getNodeParameter('issueId', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body: IGraphqlBody = {
+							query: query.updateIssue(),
+							variables: {
+								issueId,
+								...updateFields,
+							},
+						};
+
+						responseData = await linearApiRequest.call(this, body);
+						responseData = responseData?.data?.issueUpdate?.issue;
 					}
 				}
 				if (Array.isArray(responseData)) {

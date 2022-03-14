@@ -35,6 +35,11 @@ export const issueOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Get all issues',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an issue',
+			},
 		],
 		default: 'create',
 	},
@@ -49,6 +54,7 @@ export const issueFields: INodeProperties[] = [
 		displayName: 'Team Name/ID',
 		name: 'teamId',
 		type: 'options',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -68,6 +74,7 @@ export const issueFields: INodeProperties[] = [
 		displayName: 'Title',
 		name: 'title',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -155,12 +162,13 @@ export const issueFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 user:delete                                */
+	/*                                 issue:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue ID',
 		name: 'issueId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -201,6 +209,7 @@ export const issueFields: INodeProperties[] = [
 		default: 50,
 		typeOptions: {
 			minValue: 1,
+			maxValue: 300,
 		},
 		displayOptions: {
 			show: {
@@ -216,5 +225,114 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		description: 'Max number of results to return',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 issue:update                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Issue ID',
+		name: 'issueId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'issue',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'issue',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Assignee Name/ID',
+				name: 'assigneeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Priority Name/ID',
+				name: 'priorityId',
+				type: 'options',
+				options: [
+					{
+						name: 'Urgent',
+						value: 1,
+					},
+					{
+						name: 'High',
+						value: 2,
+					},
+					{
+						name: 'Medium',
+						value: 3,
+					},
+					{
+						name: 'Low',
+						value: 3,
+					},
+					{
+						name: 'No Priority',
+						value: 0,
+					},
+				],
+				default: 0,
+			},
+			{
+				displayName: 'State Name/ID',
+				name: 'stateId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getStates',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Team Name/ID',
+				name: 'teamId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTeams',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 ];
