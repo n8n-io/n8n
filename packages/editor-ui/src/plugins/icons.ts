@@ -47,6 +47,7 @@ import {
 	faFilePdf,
 	faFolderOpen,
 	faGift,
+	faGraduationCap,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -143,6 +144,7 @@ addIcon(faFileImport);
 addIcon(faFilePdf);
 addIcon(faFolderOpen);
 addIcon(faGift);
+addIcon(faGraduationCap);
 addIcon(faHdd);
 addIcon(faHome);
 addIcon(faHourglass);

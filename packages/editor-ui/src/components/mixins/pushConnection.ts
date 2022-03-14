@@ -258,6 +258,7 @@ export const pushConnection = mixins(
 							title: 'Problem executing workflow',
 							message: runDataExecutedErrorMessage,
 							type: 'error',
+							duration: 0,
 						});
 					} else {
 						// Workflow did execute without a problem

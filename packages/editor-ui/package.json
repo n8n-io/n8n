@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.133.0",
+  "version": "0.134.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@fontsource/open-sans": "^4.5.0",
+    "luxon": "^2.3.0",
     "n8n-design-system": "~0.13.0",
     "monaco-editor": "^0.29.1",
     "timeago.js": "^4.0.2",
@@ -45,6 +46,7 @@
     "@types/lodash.camelcase": "^4.3.6",
     "@types/lodash.get": "^4.4.6",
     "@types/lodash.set": "^4.3.6",
+    "@types/luxon": "^2.0.9",
     "@types/node": "14.17.27",
     "@types/quill": "^2.0.1",
     "@types/uuid": "^8.3.2",
@@ -75,7 +77,7 @@
     "lodash.debounce": "^4.0.8",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
-    "n8n-workflow": "~0.89.0",
+    "n8n-workflow": "~0.90.0",
     "monaco-editor-webpack-plugin": "^5.0.0",
     "normalize-wheel": "^1.0.1",
     "prismjs": "^1.17.1",

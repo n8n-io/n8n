@@ -303,9 +303,9 @@
 		"executions": "Executions",
 		"help": "Help",
 		"helpMenuItems": {
+			"course": "Course",
 			"documentation": "Documentation",
-			"forum": "Forum",
-			"workflows": "Workflows"
+			"forum": "Forum"
 		},
 		"importFromFile": "Import from File",
 		"importFromUrl": "Import from URL",
