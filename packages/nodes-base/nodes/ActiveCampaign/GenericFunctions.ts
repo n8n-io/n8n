@@ -26,7 +26,7 @@ export interface IProduct {
  * @returns {Promise<any>}
  */
 export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('activeCampaignApi');
+	const credentials = await this.getCredentials('activeCampaignApi');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
@@ -163,7 +163,7 @@ export function activeCampaignDefaultGetAllProperties(resource: string, operatio
 			description: 'How many results to return.',
 		},
 		{
-			displayName: 'Simple',
+			displayName: 'Simplify Response',
 			name: 'simple',
 			type: 'boolean',
 			displayOptions: {
@@ -177,7 +177,7 @@ export function activeCampaignDefaultGetAllProperties(resource: string, operatio
 				},
 			},
 			default: true,
-			description: 'When set to true a simplify version of the response will be used else the raw data.',
+			description: 'Return a simplified version of the response instead of the raw data.',
 		},
 	];
 }

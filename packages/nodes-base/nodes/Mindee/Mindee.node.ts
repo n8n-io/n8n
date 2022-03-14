@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -26,10 +25,9 @@ export class Mindee implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Mindee API.',
+		description: 'Consume Mindee API',
 		defaults: {
 			name: 'Mindee',
-			color: '#e94950',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -126,95 +124,104 @@ export class Mindee implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+			try {
+				if (resource === 'receipt') {
+					if (operation === 'predict') {
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
-			if (resource === 'receipt') {
-				if (operation === 'predict') {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const rawData = this.getNodeParameter('rawData', i) as boolean;
 
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+						if (items[i].binary === undefined) {
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+						}
 
-					if (items[i].binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-					}
+						const item = items[i].binary as IBinaryKeyData;
 
-					const item = items[i].binary as IBinaryKeyData;
+						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-					const binaryData = item[binaryPropertyName] as IBinaryData;
+						if (binaryData === undefined) {
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+						}
 
-					if (binaryData === undefined) {
-						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
-					}
-
-					responseData = await mindeeApiRequest.call(
-						this,
-						'POST',
-						`/expense_receipts/v2/predict`,
-						{},
-						{},
-						{
-							formData: {
-								file: {
-									value: Buffer.from(binaryData.data, BINARY_ENCODING),
-									options: {
-										filename: binaryData.fileName,
+						responseData = await mindeeApiRequest.call(
+							this,
+							'POST',
+							`/expense_receipts/v2/predict`,
+							{},
+							{},
+							{
+								formData: {
+									file: {
+										value: dataBuffer,
+										options: {
+											filename: binaryData.fileName,
+										},
 									},
 								},
 							},
-						},
-					);
+						);
 
-					if (rawData === false) {
-						responseData = cleanData(responseData.predictions);
+						if (rawData === false) {
+							responseData = cleanData(responseData.predictions);
+						}
 					}
 				}
-			}
 
-			if (resource === 'invoice') {
-				if (operation === 'predict') {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+				if (resource === 'invoice') {
+					if (operation === 'predict') {
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i) as boolean;
 
-					if (items[i].binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-					}
+						if (items[i].binary === undefined) {
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+						}
 
-					const item = items[i].binary as IBinaryKeyData;
+						const item = items[i].binary as IBinaryKeyData;
 
-					const binaryData = item[binaryPropertyName] as IBinaryData;
+						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-					if (binaryData === undefined) {
-						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
-					}
+						if (binaryData === undefined) {
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+						}
 
-					responseData = await mindeeApiRequest.call(
-						this,
-						'POST',
-						`/invoices/v1/predict`,
-						{},
-						{},
-						{
-							formData: {
-								file: {
-									value: Buffer.from(binaryData.data, BINARY_ENCODING),
-									options: {
-										filename: binaryData.fileName,
+						responseData = await mindeeApiRequest.call(
+							this,
+							'POST',
+							`/invoices/v1/predict`,
+							{},
+							{},
+							{
+								formData: {
+									file: {
+										value: dataBuffer,
+										options: {
+											filename: binaryData.fileName,
+										},
 									},
 								},
 							},
-						},
-					);
+						);
 
-					if (rawData === false) {
-						responseData = cleanData(responseData.predictions);
+						if (rawData === false) {
+							responseData = cleanData(responseData.predictions);
+						}
 					}
 				}
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
-		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

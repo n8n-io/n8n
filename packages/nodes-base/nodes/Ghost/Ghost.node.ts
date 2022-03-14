@@ -33,10 +33,9 @@ export class Ghost implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Ghost API.',
+		description: 'Consume Ghost API',
 		defaults: {
 			name: 'Ghost',
-			color: '#15212a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -156,196 +155,204 @@ export class Ghost implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const source = this.getNodeParameter('source', 0) as string;
+		for (let i = 0; i < length; i++) {
+			try {
+				if (source === 'contentApi') {
+					if (resource === 'post') {
+						if (operation === 'get') {
 
-		if (source === 'contentApi') {
-			if (resource === 'post') {
-				if (operation === 'get') {
-					for (let i = 0; i < items.length; i++) {
-						const by = this.getNodeParameter('by', i) as string;
+							const by = this.getNodeParameter('by', i) as string;
 
-						const identifier = this.getNodeParameter('identifier', i) as string;
+							const identifier = this.getNodeParameter('identifier', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i) as IDataObject;
 
-						Object.assign(qs, options);
+							Object.assign(qs, options);
 
-						let endpoint;
+							let endpoint;
 
-						if (by === 'slug') {
-							endpoint = `/content/posts/slug/${identifier}`;
-						} else {
-							endpoint = `/content/posts/${identifier}`;
-						}
-						responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-						returnData.push.apply(returnData, responseData.posts);
-					}
-				}
-
-				if (operation === 'getAll') {
-					for (let i = 0; i < items.length; i++) {
-
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-						const options = this.getNodeParameter('options', i) as IDataObject;
-
-						Object.assign(qs, options);
-
-						if (returnAll) {
-							responseData = await ghostApiRequestAllItems.call(this, 'posts', 'GET', '/content/posts', {} ,qs);
-						} else {
-							qs.limit = this.getNodeParameter('limit', 0);
-							responseData = await ghostApiRequest.call(this, 'GET', '/content/posts', {}, qs);
-							responseData = responseData.posts;
-						}
-
-						returnData.push.apply(returnData, responseData);
-					}
-				}
-			}
-		}
-
-		if (source === 'adminApi') {
-			if (resource === 'post') {
-				if (operation === 'create') {
-					for (let i = 0; i < length; i++) {
-						const title = this.getNodeParameter('title', i) as string;
-
-						const contentFormat = this.getNodeParameter('contentFormat', i) as string;
-
-						const content = this.getNodeParameter('content', i) as string;
-
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						const post: IDataObject = {
-							title,
-						};
-
-						if (contentFormat === 'html') {
-							post.html = content;
-							qs.source = 'html';
-						} else {
-							const mobileDoc = validateJSON(content);
-							if (mobileDoc === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON');
+							if (by === 'slug') {
+								endpoint = `/content/posts/slug/${identifier}`;
+							} else {
+								endpoint = `/content/posts/${identifier}`;
 							}
-							post.mobiledoc = content;
+							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
+
+							returnData.push.apply(returnData, responseData.posts);
+
 						}
 
-						delete post.content;
+						if (operation === 'getAll') {
 
-						Object.assign(post, additionalFields);
+							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
-						if (post.published_at) {
-							post.published_at = moment.tz(post.published_at, timezone).utc().format();
-						}
+							const options = this.getNodeParameter('options', i) as IDataObject;
 
-						if (post.status === 'scheduled' && post.published_at === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled');
-						}
+							Object.assign(qs, options);
 
-						responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
-
-						returnData.push.apply(returnData, responseData.posts);
-					}
-				}
-
-				if (operation === 'delete') {
-					for (let i = 0; i < length; i++) {
-						const postId = this.getNodeParameter('postId', i) as string;
-
-						responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
-
-						returnData.push({ success: true });
-					}
-				}
-
-				if (operation === 'get') {
-					for (let i = 0; i < length; i++) {
-						const by = this.getNodeParameter('by', i) as string;
-
-						const identifier = this.getNodeParameter('identifier', i) as string;
-
-						const options = this.getNodeParameter('options', i) as IDataObject;
-
-						Object.assign(qs, options);
-
-						let endpoint;
-
-						if (by === 'slug') {
-							endpoint = `/admin/posts/slug/${identifier}`;
-						} else {
-							endpoint = `/admin/posts/${identifier}`;
-						}
-						responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-						returnData.push.apply(returnData, responseData.posts);
-					}
-				}
-
-				if (operation === 'getAll') {
-					for (let i = 0; i < length; i++) {
-
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-						const options = this.getNodeParameter('options', i) as IDataObject;
-
-						Object.assign(qs, options);
-
-						if (returnAll) {
-							responseData = await ghostApiRequestAllItems.call(this, 'posts', 'GET', '/admin/posts', {} ,qs);
-						} else {
-							qs.limit = this.getNodeParameter('limit', 0);
-							responseData = await ghostApiRequest.call(this, 'GET', '/admin/posts', {}, qs);
-							responseData = responseData.posts;
-						}
-
-						returnData.push.apply(returnData, responseData);
-					}
-				}
-
-				if (operation === 'update') {
-					for (let i = 0; i < length; i++) {
-						const postId = this.getNodeParameter('postId', i) as string;
-
-						const contentFormat = this.getNodeParameter('contentFormat', i) as string;
-
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-						const post: IDataObject = {};
-
-						if (contentFormat === 'html') {
-							post.html = updateFields.content || '';
-							qs.source = 'html';
-							delete updateFields.content;
-						} else {
-							const mobileDoc = validateJSON(updateFields.contentJson as string || undefined);
-							if (mobileDoc === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON');
+							if (returnAll) {
+								responseData = await ghostApiRequestAllItems.call(this, 'posts', 'GET', '/content/posts', {} ,qs);
+							} else {
+								qs.limit = this.getNodeParameter('limit', 0);
+								responseData = await ghostApiRequest.call(this, 'GET', '/content/posts', {}, qs);
+								responseData = responseData.posts;
 							}
-							post.mobiledoc = updateFields.contentJson;
-							delete updateFields.contentJson;
+
+							returnData.push.apply(returnData, responseData);
+
 						}
-
-						Object.assign(post, updateFields);
-
-						const { posts } = await ghostApiRequest.call(this, 'GET', `/admin/posts/${postId}`, {}, { fields: 'id, updated_at' });
-
-						if (post.published_at) {
-							post.published_at = moment.tz(post.published_at, timezone).utc().format();
-						}
-
-						if (post.status === 'scheduled' && post.published_at === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled');
-						}
-
-						post.updated_at = posts[0].updated_at;
-
-						responseData = await ghostApiRequest.call(this, 'PUT', `/admin/posts/${postId}`, { posts: [post] }, qs);
-
-						returnData.push.apply(returnData, responseData.posts);
 					}
 				}
+
+				if (source === 'adminApi') {
+					if (resource === 'post') {
+						if (operation === 'create') {
+
+							const title = this.getNodeParameter('title', i) as string;
+
+							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
+
+							const content = this.getNodeParameter('content', i) as string;
+
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+							const post: IDataObject = {
+								title,
+							};
+
+							if (contentFormat === 'html') {
+								post.html = content;
+								qs.source = 'html';
+							} else {
+								const mobileDoc = validateJSON(content);
+								if (mobileDoc === undefined) {
+									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON');
+								}
+								post.mobiledoc = content;
+							}
+
+							delete post.content;
+
+							Object.assign(post, additionalFields);
+
+							if (post.published_at) {
+								post.published_at = moment.tz(post.published_at, timezone).utc().format();
+							}
+
+							if (post.status === 'scheduled' && post.published_at === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled');
+							}
+
+							responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
+
+							returnData.push.apply(returnData, responseData.posts);
+
+						}
+
+						if (operation === 'delete') {
+
+							const postId = this.getNodeParameter('postId', i) as string;
+
+							responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
+
+							returnData.push({ success: true });
+
+						}
+
+						if (operation === 'get') {
+
+							const by = this.getNodeParameter('by', i) as string;
+
+							const identifier = this.getNodeParameter('identifier', i) as string;
+
+							const options = this.getNodeParameter('options', i) as IDataObject;
+
+							Object.assign(qs, options);
+
+							let endpoint;
+
+							if (by === 'slug') {
+								endpoint = `/admin/posts/slug/${identifier}`;
+							} else {
+								endpoint = `/admin/posts/${identifier}`;
+							}
+							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
+
+							returnData.push.apply(returnData, responseData.posts);
+
+						}
+
+						if (operation === 'getAll') {
+
+
+							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+							const options = this.getNodeParameter('options', i) as IDataObject;
+
+							Object.assign(qs, options);
+
+							if (returnAll) {
+								responseData = await ghostApiRequestAllItems.call(this, 'posts', 'GET', '/admin/posts', {} ,qs);
+							} else {
+								qs.limit = this.getNodeParameter('limit', 0);
+								responseData = await ghostApiRequest.call(this, 'GET', '/admin/posts', {}, qs);
+								responseData = responseData.posts;
+							}
+
+							returnData.push.apply(returnData, responseData);
+
+						}
+
+						if (operation === 'update') {
+
+							const postId = this.getNodeParameter('postId', i) as string;
+
+							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
+
+							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+							const post: IDataObject = {};
+
+							if (contentFormat === 'html') {
+								post.html = updateFields.content || '';
+								qs.source = 'html';
+								delete updateFields.content;
+							} else {
+								const mobileDoc = validateJSON(updateFields.contentJson as string || undefined);
+								if (mobileDoc === undefined) {
+									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON');
+								}
+								post.mobiledoc = updateFields.contentJson;
+								delete updateFields.contentJson;
+							}
+
+							Object.assign(post, updateFields);
+
+							const { posts } = await ghostApiRequest.call(this, 'GET', `/admin/posts/${postId}`, {}, { fields: 'id, updated_at' });
+
+							if (post.published_at) {
+								post.published_at = moment.tz(post.published_at, timezone).utc().format();
+							}
+
+							if (post.status === 'scheduled' && post.published_at === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled');
+							}
+
+							post.updated_at = posts[0].updated_at;
+
+							responseData = await ghostApiRequest.call(this, 'PUT', `/admin/posts/${postId}`, { posts: [post] }, qs);
+
+							returnData.push.apply(returnData, responseData.posts);
+
+						}
+					}
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

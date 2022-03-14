@@ -25,10 +25,9 @@ export class CrateDb implements INodeType {
 		icon: 'file:cratedb.png',
 		group: ['input'],
 		version: 1,
-		description: 'Add and update data in CrateDB.',
+		description: 'Add and update data in CrateDB',
 		defaults: {
 			name: 'CrateDB',
-			color: '#47889f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -72,7 +71,7 @@ export class CrateDb implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -80,9 +79,9 @@ export class CrateDb implements INodeType {
 					},
 				},
 				default: '',
-				placeholder: 'SELECT id, name FROM product WHERE id < 40',
+				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute.',
+				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
 			},
 
 			// ----------------------------------
@@ -229,11 +228,22 @@ export class CrateDb implements INodeType {
 							},
 						],
 						default: 'multiple',
-						description: [
-							'The way queries should be sent to database.',
-							'Can be used in conjunction with <b>Continue on Fail</b>.',
-							'See the docs for more examples',
-						].join('<br>'),
+						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.crateDb/">the docs</a> for more examples.',
+					},
+					{
+						displayName: 'Query Parameters',
+						name: 'queryParams',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'executeQuery',
+								],
+							},
+						},
+						default: '',
+						placeholder: 'quantity,price',
+						description: 'Comma separated list of properties which should be used as query parameters.',
 					},
 				],
 			},
@@ -241,7 +251,7 @@ export class CrateDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('crateDb');
+		const credentials = await this.getCredentials('crateDb');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

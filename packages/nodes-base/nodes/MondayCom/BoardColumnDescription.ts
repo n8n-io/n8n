@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const boardColumnOperations = [
+export const boardColumnOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const boardColumnOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const boardColumnFields = [
+export const boardColumnFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 boardColumn:create                         */
 /* -------------------------------------------------------------------------- */
@@ -227,4 +227,4 @@ export const boardColumnFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

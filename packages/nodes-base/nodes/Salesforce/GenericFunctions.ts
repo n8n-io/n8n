@@ -18,26 +18,32 @@ import * as moment from 'moment-timezone';
 
 import * as jwt from 'jsonwebtoken';
 
+import {
+	LoggerProxy as Logger
+} from 'n8n-workflow';
+
 export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
-
 	try {
 		if (authenticationMethod === 'jwt') {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_jwt_flow.htm&type=5
 			const credentialsType = 'salesforceJwtApi';
-			const credentials = this.getCredentials(credentialsType);
+			const credentials = await this.getCredentials(credentialsType);
 			const response = await getAccessToken.call(this, credentials as IDataObject);
 			const { instance_url, access_token } = response;
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, instance_url as string);
+			Logger.debug(`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.uri}`);
 			options.headers!.Authorization = `Bearer ${access_token}`;
+			Object.assign(options, option);
 			//@ts-ignore
 			return await this.helpers.request(options);
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
 			const credentialsType = 'salesforceOAuth2Api';
-			const credentials = this.getCredentials(credentialsType);
-			const subdomain = ((credentials!.accessTokenUrl as string).match(/https:\/\/(.+).salesforce\.com/) || [])[1];
-			const options = getOptions.call(this, method, (uri || endpoint), body, qs, `https://${subdomain}.salesforce.com`);
+			const credentials = await this.getCredentials(credentialsType) as { oauthTokenData: { instance_url: string } };
+			const options = getOptions.call(this, method, (uri || endpoint), body, qs, credentials.oauthTokenData.instance_url);
+			Logger.debug(`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`);
+			Object.assign(options, option);
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
@@ -85,11 +91,15 @@ function getOptions(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOpt
 			'Content-Type': 'application/json',
 		},
 		method,
-		body: method === 'GET' ? undefined : body,
+		body,
 		qs,
 		uri: `${instanceUrl}/services/data/v39.0${endpoint}`,
 		json: true,
 	};
+
+	if (!Object.keys(options.body).length) {
+		delete options.body;
+	}
 
 	//@ts-ignore
 	return options;
@@ -136,7 +146,7 @@ export function getConditions(options: IDataObject) {
 	const conditions = (options.conditionsUi as IDataObject || {}).conditionValues as IDataObject[];
 	let data = undefined;
 	if (Array.isArray(conditions) && conditions.length !== 0) {
-		data = conditions.map((condition: IDataObject) => `${condition.field}${(condition.operation) === 'equal' ? '=' : condition.operation}${getValue(condition.value)}`);
+		data = conditions.map((condition: IDataObject) => `${condition.field} ${(condition.operation) === 'equal' ? '=' : condition.operation} ${getValue(condition.value)}`);
 		data = `WHERE ${data.join(' AND ')}`;
 	}
 	return data;
@@ -181,7 +191,9 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 }
 
 export function getValue(value: any) { // tslint:disable-line:no-any
-	if (typeof value === 'string') {
+	if (moment(value).isValid()) {
+		return value;
+	} else if (typeof value === 'string') {
 		return `'${value}'`;
 	} else {
 		return value;

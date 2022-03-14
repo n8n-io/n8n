@@ -28,7 +28,6 @@ export class AwsRekognition implements INodeType {
 		description: 'Sends data to AWS Rekognition',
 		defaults: {
 			name: 'AWS Rekognition',
-			color: '#305b94',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -383,129 +382,137 @@ export class AwsRekognition implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'image') {
-				//https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectModerationLabels.html#API_DetectModerationLabels_RequestSyntax
-				if (operation === 'analyze') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+			try {
+				if (resource === 'image') {
+					//https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectModerationLabels.html#API_DetectModerationLabels_RequestSyntax
+					if (operation === 'analyze') {
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					let action = undefined;
+						let action = undefined;
 
-					const body: IDataObject = {};
+						const body: IDataObject = {};
 
-					const type = this.getNodeParameter('type', 0) as string;
+						const type = this.getNodeParameter('type', 0) as string;
 
-					if (type === 'detectModerationLabels') {
-						action = 'RekognitionService.DetectModerationLabels';
+						if (type === 'detectModerationLabels') {
+							action = 'RekognitionService.DetectModerationLabels';
 
-						// property = 'ModerationLabels';
+							// property = 'ModerationLabels';
 
-						if (additionalFields.minConfidence) {
-							body['MinConfidence'] = additionalFields.minConfidence as number;
-						}
-					}
-
-					if (type === 'detectFaces') {
-						action = 'RekognitionService.DetectFaces';
-
-						// TODO: Add a later point make it possible to activate via option.
-						//       If activated add an index to each of the found faces/tages/...
-						//       to not loose the reference to the image it got found on if
-						//       multilpe ones got supplied.
-						// property = 'FaceDetails';
-
-						if (additionalFields.attributes) {
-							body['Attributes'] = additionalFields.attributes as string;
-						}
-					}
-
-					if (type === 'detectLabels') {
-						action = 'RekognitionService.DetectLabels';
-
-						if (additionalFields.minConfidence) {
-							body['MinConfidence'] = additionalFields.minConfidence as number;
+							if (additionalFields.minConfidence) {
+								body['MinConfidence'] = additionalFields.minConfidence as number;
+							}
 						}
 
-						if (additionalFields.maxLabels) {
-							body['MaxLabels'] = additionalFields.maxLabels as number;
-						}
-					}
+						if (type === 'detectFaces') {
+							action = 'RekognitionService.DetectFaces';
 
-					if (type === 'recognizeCelebrity') {
-						action = 'RekognitionService.RecognizeCelebrities';
-					}
+							// TODO: Add a later point make it possible to activate via option.
+							//       If activated add an index to each of the found faces/tages/...
+							//       to not loose the reference to the image it got found on if
+							//       multilpe ones got supplied.
+							// property = 'FaceDetails';
 
-					if (type === 'detectText') {
-						action = 'RekognitionService.DetectText';
-
-						body.Filters = {};
-
-						const box = (additionalFields.regionsOfInterestUi as IDataObject || {}).regionsOfInterestValues as IDataObject[] || [];
-
-						if (box.length !== 0) {
-							//@ts-ignore
-							body.Filters.RegionsOfInterest = box.map((box: IDataObject) => {
-								return { BoundingBox: keysTPascalCase(box) };
-							});
+							if (additionalFields.attributes) {
+								body['Attributes'] = additionalFields.attributes as string;
+							}
 						}
 
-						const wordFilter = additionalFields.wordFilterUi as IDataObject || {};
-						if (Object.keys(wordFilter).length !== 0) {
-							//@ts-ignore
-							body.Filters.WordFilter = keysTPascalCase(wordFilter);
-						}
+						if (type === 'detectLabels') {
+							action = 'RekognitionService.DetectLabels';
 
-						const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
-
-						if (binaryData) {
-
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-
-							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							if (additionalFields.minConfidence) {
+								body['MinConfidence'] = additionalFields.minConfidence as number;
 							}
 
-							if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+							if (additionalFields.maxLabels) {
+								body['MaxLabels'] = additionalFields.maxLabels as number;
 							}
+						}
 
-							const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+						if (type === 'recognizeCelebrity') {
+							action = 'RekognitionService.RecognizeCelebrities';
+						}
 
-							Object.assign(body, {
-								Image: {
-									Bytes: binaryPropertyData.data,
-								},
-							});
+						if (type === 'detectText') {
+							action = 'RekognitionService.DetectText';
 
-						} else {
+							body.Filters = {};
 
-							const bucket = this.getNodeParameter('bucket', i) as string;
+							const box = (additionalFields.regionsOfInterestUi as IDataObject || {}).regionsOfInterestValues as IDataObject[] || [];
 
-							const name = this.getNodeParameter('name', i) as string;
-
-							Object.assign(body, {
-								Image: {
-									S3Object: {
-										Bucket: bucket,
-										Name: name,
-									},
-								},
-							});
-
-							if (additionalFields.version) {
+							if (box.length !== 0) {
 								//@ts-ignore
-								body.Image.S3Object.Version = additionalFields.version as string;
+								body.Filters.RegionsOfInterest = box.map((box: IDataObject) => {
+									return { BoundingBox: keysTPascalCase(box) };
+								});
 							}
+
+							const wordFilter = additionalFields.wordFilterUi as IDataObject || {};
+							if (Object.keys(wordFilter).length !== 0) {
+								//@ts-ignore
+								body.Filters.WordFilter = keysTPascalCase(wordFilter);
+							}
+
+							const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
+
+							if (binaryData) {
+
+								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+
+								if (items[i].binary === undefined) {
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								}
+
+								if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								}
+
+								const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+
+								Object.assign(body, {
+									Image: {
+										Bytes: binaryPropertyData.data,
+									},
+								});
+
+							} else {
+
+								const bucket = this.getNodeParameter('bucket', i) as string;
+
+								const name = this.getNodeParameter('name', i) as string;
+
+								Object.assign(body, {
+									Image: {
+										S3Object: {
+											Bucket: bucket,
+											Name: name,
+										},
+									},
+								});
+
+								if (additionalFields.version) {
+									//@ts-ignore
+									body.Image.S3Object.Version = additionalFields.version as string;
+								}
+							}
+
+							responseData = await awsApiRequestREST.call(this, 'rekognition', 'POST', '', JSON.stringify(body), {}, { 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+
 						}
-
-						responseData = await awsApiRequestREST.call(this, 'rekognition', 'POST', '', JSON.stringify(body), {}, { 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' });
-
 					}
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

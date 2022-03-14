@@ -1,9 +1,14 @@
+import { OptionsWithUri } from 'request';
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -28,10 +33,9 @@ export class Github implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume GitHub API.',
+		description: 'Consume GitHub API',
 		defaults: {
 			name: 'GitHub',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -39,6 +43,7 @@ export class Github implements INodeType {
 			{
 				name: 'githubApi',
 				required: true,
+				testedBy: 'githubApiTest',
 				displayOptions: {
 					show: {
 						authentication: [
@@ -188,7 +193,12 @@ export class Github implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single issue.',
+						description: 'Get the data of a single file.',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'List contents of a folder.',
 					},
 				],
 				default: 'create',
@@ -408,9 +418,37 @@ export class Github implements INodeType {
 							'file',
 						],
 					},
+					hide: {
+						operation: [
+							'list',
+						],
+					},
 				},
 				placeholder: 'docs/README.md',
 				description: 'The file path of the file. Has to contain the full path.',
+			},
+
+			// ----------------------------------
+			//         file:list
+			// ----------------------------------
+			{
+				displayName: 'Path',
+				name: 'filePath',
+				type: 'string',
+				default: '',
+				required: false,
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+						operation: [
+							'list',
+						],
+					},
+				},
+				placeholder: 'docs/',
+				description: 'The path of the folder to list.',
 			},
 
 			// ----------------------------------
@@ -481,7 +519,7 @@ export class Github implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file.',
+				description: 'Name of the binary property which contains the data for the file.',
 			},
 			{
 				displayName: 'Commit Message',
@@ -597,7 +635,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'If set it will set the data of the file as binary property<br />instead of returning the raw API response.',
+				description: 'If set it will set the data of the file as binary property instead of returning the raw API response.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -620,10 +658,37 @@ export class Github implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property in which to save<br />the binary data of the received file.',
+				description: 'Name of the binary property in which to save the binary data of the received file.',
 			},
 
-
+			{
+				displayName: 'Additional Parameters',
+				name: 'additionalParameters',
+				placeholder: 'Add Parameter',
+				description: 'Additional fields to add.',
+				type: 'collection',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Reference',
+						name: 'reference',
+						type: 'string',
+						default: '',
+						placeholder: 'master',
+						description: 'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         issue
@@ -1698,6 +1763,43 @@ export class Github implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async githubApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data;
+				const baseUrl = credentials!.server as string || 'https://api.github.com/user';
+
+				const options: OptionsWithUri = {
+					method: 'GET',
+					headers: {
+						'User-Agent': 'n8n',
+						Authorization: `token ${credentials!.accessToken}`,
+					},
+					uri: baseUrl,
+					json: true,
+					timeout: 5000,
+				};
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.id) {
+						return {
+							status: 'Error',
+							message: `Token is not valid: ${response.error}`,
+						};
+					}
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Settings are not valid: ${error}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -1732,6 +1834,7 @@ export class Github implements INodeType {
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
 		const overwriteDataOperationsArray = [
+			'file:list',
 			'repository:getIssues',
 			'repository:listPopularPaths',
 			'repository:listReferrers',
@@ -1754,421 +1857,441 @@ export class Github implements INodeType {
 		const fullOperation = `${resource}:${operation}`;
 
 		for (let i = 0; i < items.length; i++) {
-			// Reset all values
-			requestMethod = 'GET';
-			endpoint = '';
-			body = {};
-			qs = {};
+			try {
+				// Reset all values
+				requestMethod = 'GET';
+				endpoint = '';
+				body = {};
+				qs = {};
 
-			let owner = '';
-			if (fullOperation !== 'user:invite') {
-				// Request the parameters which almost all operations need
-				owner = this.getNodeParameter('owner', i) as string;
-			}
+				let owner = '';
+				if (fullOperation !== 'user:invite') {
+					// Request the parameters which almost all operations need
+					owner = this.getNodeParameter('owner', i) as string;
+				}
 
-			let repository = '';
-			if (fullOperation !== 'user:getRepositories' && fullOperation !== 'user:invite') {
-				repository = this.getNodeParameter('repository', i) as string;
-			}
+				let repository = '';
+				if (fullOperation !== 'user:getRepositories' && fullOperation !== 'user:invite') {
+					repository = this.getNodeParameter('repository', i) as string;
+				}
 
-			if (resource === 'file') {
-				if (['create', 'edit'].includes(operation)) {
-					// ----------------------------------
-					//         create/edit
-					// ----------------------------------
+				if (resource === 'file') {
+					if (['create', 'edit'].includes(operation)) {
+						// ----------------------------------
+						//         create/edit
+						// ----------------------------------
 
-					requestMethod = 'PUT';
+						requestMethod = 'PUT';
 
-					const filePath = this.getNodeParameter('filePath', i) as string;
+						const filePath = this.getNodeParameter('filePath', i) as string;
 
-					const additionalParameters = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
-					if (additionalParameters.author) {
-						body.author = additionalParameters.author;
-					}
-					if (additionalParameters.committer) {
-						body.committer = additionalParameters.committer;
-					}
-					if (additionalParameters.branch && (additionalParameters.branch as IDataObject).branch) {
-						body.branch = (additionalParameters.branch as IDataObject).branch;
-					}
-
-					if (operation === 'edit') {
-						// If the file should be updated the request has to contain the SHA
-						// of the file which gets replaced.
-						body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
-					}
-
-					body.message = this.getNodeParameter('commitMessage', i) as string;
-
-					if (this.getNodeParameter('binaryData', i) === true) {
-						// Is binary file to upload
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+						const additionalParameters = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
+						if (additionalParameters.author) {
+							body.author = additionalParameters.author;
+						}
+						if (additionalParameters.committer) {
+							body.committer = additionalParameters.committer;
+						}
+						if (additionalParameters.branch && (additionalParameters.branch as IDataObject).branch) {
+							body.branch = (additionalParameters.branch as IDataObject).branch;
 						}
 
+						if (operation === 'edit') {
+							// If the file should be updated the request has to contain the SHA
+							// of the file which gets replaced.
+							body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
+						}
+
+						body.message = this.getNodeParameter('commitMessage', i) as string;
+
+						if (this.getNodeParameter('binaryData', i) === true) {
+							// Is binary file to upload
+							const item = items[i];
+
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+
+							if (item.binary[binaryPropertyName] === undefined) {
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+							}
+
+							// Currently internally n8n uses base64 and also Github expects it base64 encoded.
+							// If that ever changes the data has to get converted here.
+							body.content = item.binary[binaryPropertyName].data;
+						} else {
+							// Is text file
+							// body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'base64');
+							body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string).toString('base64');
+						}
+
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const additionalParameters = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
+						if (additionalParameters.author) {
+							body.author = additionalParameters.author;
+						}
+						if (additionalParameters.committer) {
+							body.committer = additionalParameters.committer;
+						}
+						if (additionalParameters.branch && (additionalParameters.branch as IDataObject).branch) {
+							body.branch = (additionalParameters.branch as IDataObject).branch;
+						}
+
+						const filePath = this.getNodeParameter('filePath', i) as string;
+						body.message = this.getNodeParameter('commitMessage', i) as string;
+
+						body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
+
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+					} else if (operation === 'get' || operation === 'list') {
+						requestMethod = 'GET';
+
+						const filePath = this.getNodeParameter('filePath', i) as string;
+						const additionalParameters = this.getNodeParameter('additionalParameters', i) as IDataObject;
+
+						if (additionalParameters.reference) {
+							qs.ref = additionalParameters.reference;
+						}
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+					}
+				} else if (resource === 'issue') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						body.title = this.getNodeParameter('title', i) as string;
+						body.body = this.getNodeParameter('body', i) as string;
+						const labels = this.getNodeParameter('labels', i) as IDataObject[];
+
+						const assignees = this.getNodeParameter('assignees', i) as IDataObject[];
+
+						body.labels = labels.map((data) => data['label']);
+						body.assignees = assignees.map((data) => data['assignee']);
+
+						endpoint = `/repos/${owner}/${repository}/issues`;
+					} else if (operation === 'createComment') {
+						// ----------------------------------
+						//         createComment
+						// ----------------------------------
+						requestMethod = 'POST';
+
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+						body.body = this.getNodeParameter('body', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/comments`;
+					} else if (operation === 'edit') {
+						// ----------------------------------
+						//         edit
+						// ----------------------------------
+
+						requestMethod = 'PATCH';
+
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+						body = this.getNodeParameter('editFields', i, {}) as IDataObject;
+
+						if (body.labels !== undefined) {
+							body.labels = (body.labels as IDataObject[]).map((data) => data['label']);
+						}
+						if (body.assignees !== undefined) {
+							body.assignees = (body.assignees as IDataObject[]).map((data) => data['assignee']);
+						}
+
+						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
+					} else if (operation === 'lock') {
+						// ----------------------------------
+						//         lock
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+						qs.lock_reason = this.getNodeParameter('lockReason', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/lock`;
+					}
+				} else if (resource === 'release') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+						body.tag_name = this.getNodeParameter('releaseTag', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/releases`;
+					}
+					if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const releaseId = this.getNodeParameter('release_id', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+					}
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const releaseId = this.getNodeParameter('release_id', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+					}
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `/repos/${owner}/${repository}/releases`;
+
+						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						if (returnAll === false) {
+							qs.per_page = this.getNodeParameter('limit', 0) as number;
+						}
+					}
+					if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PATCH';
+
+						const releaseId = this.getNodeParameter('release_id', i) as string;
+
+						body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+						endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+					}
+				} else if (resource === 'repository') {
+					if (operation === 'listPopularPaths') {
+						// ----------------------------------
+						//         listPopularPaths
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `/repos/${owner}/${repository}/traffic/popular/paths`;
+					} else if (operation === 'listReferrers') {
+						// ----------------------------------
+						//         listReferrers
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `/repos/${owner}/${repository}/traffic/popular/referrers`;
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `/repos/${owner}/${repository}`;
+					} else if (operation === 'getLicense') {
+						// ----------------------------------
+						//         getLicense
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `/repos/${owner}/${repository}/license`;
+					} else if (operation === 'getIssues') {
+						// ----------------------------------
+						//         getIssues
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
+
+						endpoint = `/repos/${owner}/${repository}/issues`;
+
+						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						if (returnAll === false) {
+							qs.per_page = this.getNodeParameter('limit', 0) as number;
+						}
+					}
+				} else if (resource === 'review') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+						requestMethod = 'GET';
+
+						const reviewId = this.getNodeParameter('reviewId', i) as string;
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+						requestMethod = 'GET';
+
+						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+
+						if (returnAll === false) {
+							qs.per_page = this.getNodeParameter('limit', 0) as number;
+						}
+
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+						requestMethod = 'POST';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+
+						body.event = snakeCase(this.getNodeParameter('event', i) as string).toUpperCase();
+						if (body.event === 'REQUEST_CHANGES' || body.event === 'COMMENT') {
+							body.body = this.getNodeParameter('body', i) as string;
+						}
+
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+						requestMethod = 'PUT';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const reviewId = this.getNodeParameter('reviewId', i) as string;
+
+						body.body = this.getNodeParameter('body', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
+					}
+				} else if (resource === 'user') {
+					if (operation === 'getRepositories') {
+						// ----------------------------------
+						//         getRepositories
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `/users/${owner}/repos`;
+
+						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						if (returnAll === false) {
+							qs.per_page = this.getNodeParameter('limit', 0) as number;
+						}
+
+					} else if (operation === 'invite') {
+						// ----------------------------------
+						//            invite
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						const org = this.getNodeParameter('organization', i) as string;
+						endpoint = `/orgs/${org}/invitations`;
+						body.email = this.getNodeParameter('email', i) as string;
+
+					}
+
+				} else {
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+				}
+
+				if (returnAll === true) {
+					responseData = await githubApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+				} else {
+					responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
+				}
+
+				if (fullOperation === 'file:get') {
+					const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i);
+
+					if (asBinaryProperty === true) {
+						if (Array.isArray(responseData)) {
+							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.');
+						}
+						// Add the returned data to the item as binary property
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
-						if (item.binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+						const newItem: INodeExecutionData = {
+							json: items[i].json,
+							binary: {},
+						};
+
+						if (items[i].binary !== undefined) {
+							// Create a shallow copy of the binary data so that the old
+							// data references which do not get changed still stay behind
+							// but the incoming data does not get changed.
+							Object.assign(newItem.binary, items[i].binary);
 						}
 
-						// Currently internally n8n uses base64 and also Github expects it base64 encoded.
-						// If that ever changes the data has to get converted here.
-						body.content = item.binary[binaryPropertyName].data;
+						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(responseData.content, 'base64'), responseData.path);
+
+						items[i] = newItem;
+
+						return this.prepareOutputData(items);
+					}
+				}
+				if (fullOperation === 'release:delete') {
+					responseData = { success: true };
+				}
+
+				if (overwriteDataOperations.includes(fullOperation)) {
+					returnData.push(responseData);
+				} else if (overwriteDataOperationsArray.includes(fullOperation)) {
+					returnData.push.apply(returnData, responseData);
+				}
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
+						returnData.push({ error: error.message });
 					} else {
-						// Is text file
-						// body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'base64');
-						body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string).toString('base64');
+						items[i].json = { error: error.message };
 					}
-
-					endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const additionalParameters = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
-					if (additionalParameters.author) {
-						body.author = additionalParameters.author;
-					}
-					if (additionalParameters.committer) {
-						body.committer = additionalParameters.committer;
-					}
-					if (additionalParameters.branch && (additionalParameters.branch as IDataObject).branch) {
-						body.branch = (additionalParameters.branch as IDataObject).branch;
-					}
-
-					const filePath = this.getNodeParameter('filePath', i) as string;
-					body.message = this.getNodeParameter('commitMessage', i) as string;
-
-					body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
-
-					endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-				} else if (operation === 'get') {
-					requestMethod = 'GET';
-
-					const filePath = this.getNodeParameter('filePath', i) as string;
-
-					endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+					continue;
 				}
-			} else if (resource === 'issue') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-
-					body.title = this.getNodeParameter('title', i) as string;
-					body.body = this.getNodeParameter('body', i) as string;
-					const labels = this.getNodeParameter('labels', i) as IDataObject[];
-
-					const assignees = this.getNodeParameter('assignees', i) as IDataObject[];
-
-					body.labels = labels.map((data) => data['label']);
-					body.assignees = assignees.map((data) => data['assignee']);
-
-					endpoint = `/repos/${owner}/${repository}/issues`;
-				} else if (operation === 'createComment') {
-					// ----------------------------------
-					//         createComment
-					// ----------------------------------
-					requestMethod = 'POST';
-
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
-
-					body.body = this.getNodeParameter('body', i) as string;
-
-					endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/comments`;
-				} else if (operation === 'edit') {
-					// ----------------------------------
-					//         edit
-					// ----------------------------------
-
-					requestMethod = 'PATCH';
-
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
-
-					body = this.getNodeParameter('editFields', i, {}) as IDataObject;
-
-					if (body.labels !== undefined) {
-						body.labels = (body.labels as IDataObject[]).map((data) => data['label']);
-					}
-					if (body.assignees !== undefined) {
-						body.assignees = (body.assignees as IDataObject[]).map((data) => data['assignee']);
-					}
-
-					endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
-
-					endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
-				} else if (operation === 'lock') {
-					// ----------------------------------
-					//         lock
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
-
-					qs.lock_reason = this.getNodeParameter('lockReason', i) as string;
-
-					endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/lock`;
-				}
-			} else if (resource === 'release') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-
-					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-
-					body.tag_name = this.getNodeParameter('releaseTag', i) as string;
-
-					endpoint = `/repos/${owner}/${repository}/releases`;
-				}
-				if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const releaseId = this.getNodeParameter('release_id', i) as string;
-
-					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
-				}
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const releaseId = this.getNodeParameter('release_id', i) as string;
-
-					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
-				}
-				if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					endpoint = `/repos/${owner}/${repository}/releases`;
-
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', 0) as number;
-					}
-				}
-				if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-
-					requestMethod = 'PATCH';
-
-					const releaseId = this.getNodeParameter('release_id', i) as string;
-
-					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-
-					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
-				}
-			} else if (resource === 'repository') {
-				if (operation === 'listPopularPaths') {
-					// ----------------------------------
-					//         listPopularPaths
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					endpoint = `/repos/${owner}/${repository}/traffic/popular/paths`;
-				} else if (operation === 'listReferrers') {
-					// ----------------------------------
-					//         listReferrers
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					endpoint = `/repos/${owner}/${repository}/traffic/popular/referrers`;
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					endpoint = `/repos/${owner}/${repository}`;
-				} else if (operation === 'getLicense') {
-					// ----------------------------------
-					//         getLicense
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					endpoint = `/repos/${owner}/${repository}/license`;
-				} else if (operation === 'getIssues') {
-					// ----------------------------------
-					//         getIssues
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
-
-					endpoint = `/repos/${owner}/${repository}/issues`;
-
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', 0) as number;
-					}
-				}
-			} else if (resource === 'review') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-					requestMethod = 'GET';
-
-					const reviewId = this.getNodeParameter('reviewId', i) as string;
-
-					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
-
-					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-					requestMethod = 'GET';
-
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
-
-					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', 0) as number;
-					}
-
-					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-					requestMethod = 'POST';
-
-					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-
-					body.event = snakeCase(this.getNodeParameter('event', i) as string).toUpperCase();
-					if (body.event === 'REQUEST_CHANGES' || body.event === 'COMMENT') {
-						body.body = this.getNodeParameter('body', i) as string;
-					}
-
-					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-					requestMethod = 'PUT';
-
-					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
-					const reviewId = this.getNodeParameter('reviewId', i) as string;
-
-					body.body = this.getNodeParameter('body', i) as string;
-
-					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
-				}
-			} else if (resource === 'user') {
-				if (operation === 'getRepositories') {
-					// ----------------------------------
-					//         getRepositories
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					endpoint = `/users/${owner}/repos`;
-
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', 0) as number;
-					}
-
-				} else if (operation === 'invite') {
-					// ----------------------------------
-					//            invite
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					const org = this.getNodeParameter('organization', i) as string;
-					endpoint = `/orgs/${org}/invitations`;
-					body.email = this.getNodeParameter('email', i) as string;
-
-				}
-
-			} else {
-				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-			}
-
-			if (returnAll === true) {
-				responseData = await githubApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-			} else {
-				responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
-			}
-
-			if (fullOperation === 'file:get') {
-				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i);
-
-				if (asBinaryProperty === true) {
-					// Add the returned data to the item as binary property
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-					const newItem: INodeExecutionData = {
-						json: items[i].json,
-						binary: {},
-					};
-
-					if (items[i].binary !== undefined) {
-						// Create a shallow copy of the binary data so that the old
-						// data references which do not get changed still stay behind
-						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
-					}
-
-					newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(responseData.content, 'base64'), responseData.path);
-
-					items[i] = newItem;
-
-					return this.prepareOutputData(items);
-				}
-			}
-			if (fullOperation === 'release:delete') {
-				responseData = { success: true };
-			}
-
-			if (overwriteDataOperations.includes(fullOperation)) {
-				returnData.push(responseData);
-			} else if (overwriteDataOperationsArray.includes(fullOperation)) {
-				returnData.push.apply(returnData, responseData);
+				throw error;
 			}
 		}
 

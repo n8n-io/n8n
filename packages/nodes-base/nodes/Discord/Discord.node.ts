@@ -5,6 +5,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -19,7 +20,6 @@ export class Discord implements INodeType {
 		description: 'Sends data to Discord',
 		defaults: {
 			name: 'Discord',
-			color: '#7289da',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -84,6 +84,7 @@ export class Discord implements INodeType {
 						// Waiting rating limit
 						await new Promise((resolve) => {
 							setTimeout(async () => {
+								// @ts-ignore
 								resolve();
 							}, get(error, 'response.body.retry_after', 150));
 						});
@@ -95,7 +96,7 @@ export class Discord implements INodeType {
 			} while (--maxTries);
 
 			if (maxTries <= 0) {
-				throw new NodeApiError(this.getNode(), { request: options }, { message: 'Could not send message. Max. amount of rate-limit retries got reached.' });
+				throw new NodeApiError(this.getNode(), { request: options } as JsonObject, { message: 'Could not send message. Max. amount of rate-limit retries got reached.' });
 			}
 
 			returnData.push({success: true});

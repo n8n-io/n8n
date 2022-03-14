@@ -2,6 +2,127 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.165.0
+
+### What changed?
+
+The Hive node now correctly rejects invalid SSL certificates when the "Ignore SSL Issues" option is set to False.
+
+### When is action necassary?
+
+If you are using a self signed certificate with The Hive.
+
+### How to upgrade:
+
+Go to the credentials for The Hive, Enable the "Ignore SSL Issues" option.
+
+## 0.139.0
+
+### What changed?
+
+For the HubSpot Trigger node, the authentication process has changed to OAuth2.
+
+### When is action necessary?
+
+If you are using the Hubspot Trigger.
+
+### How to upgrade:
+
+Create an app in HubSpot, use the Client ID, Client Secret, App ID, and the Developer Key, and complete the OAuth2 flow. 
+
+## 0.135.0
+
+### What changed?
+
+The in-node core methods for credentials and binary data have changed.
+
+### When is action necessary?
+
+If you are using custom n8n nodes.
+
+### How to upgrade:
+
+1. The method `this.getCredentials(myNodeCredentials)` is now async. So `await` has to be added in front of it.
+
+Example:
+
+```typescript
+// Before 0.135.0:
+const credentials = this.getCredentials(credentialTypeName);
+
+// From 0.135.0:
+const credentials = await this.getCredentials(myNodeCredentials);
+```
+
+2. Binary data should not get accessed directly anymore, instead the method `await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName)` has to be used.
+
+Example:
+
+```typescript
+
+const items = this.getInputData();
+
+for (const i = 0; i < items.length; i++) {
+  const item = items[i].binary as IBinaryKeyData;
+  const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+  const binaryData = item[binaryPropertyName] as IBinaryData;
+	// Before 0.135.0:
+  const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+	// From 0.135.0:
+	const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+}
+```
+
+## 0.131.0
+
+### What changed?
+
+For the Pipedrive regular node, the `deal:create` operation now requires an organization ID or person ID, in line with upcoming changes to the Pipedrive API.
+
+### When is action necessary?
+
+If you are using the `deal:create` operation in the Pipedrive regular node, set an organization ID or a person ID.
+
+## 0.130.0
+
+### What changed?
+
+For the Taiga regular and trigger nodes, the server and cloud credentials types are now unified into a single credentials type and the `version` param has been removed. Also, the `issue:create` operation now automatically loads the tags as `multiOptions`.
+
+### When is action necessary?
+
+If you are using the Taiga nodes, reconnect the credentials. If you are using tags in the `issue:create` operation, reselect them.
+
+## 0.127.0
+
+### What changed?
+
+For the Zoho node, the `lead:create` operation now requires a "Company" parameter, the parameter "Address" is now inside "Additional Options", and the parameters "Title" and "Is Duplicate Record" were removed. Also, the `lead:delete` operation now returns only the `id` of the deleted lead.
+
+### When is action necessary?
+
+If you are using `lead:create` with "Company" or "Address", reset the parameters; for the other two parameters, no action needed. If you are using the response from `lead:delete`, reselect the `id` key.
+
+## 0.118.0
+
+### What changed?
+The minimum Node.js version required for n8n is now v14.
+
+### When is action necessary?
+If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+Update the Node.js version to v14 or above.
+
+----------------------------
+
+### What changed?
+In the Postgres, CrateDB, QuestDB and TimescaleDB nodes the `Execute Query` operation returns the result from all queries executed instead of just one of the results.
+
+### When is action necessary?
+
+If you use any of the above mentioned nodes with the `Execute Query` operation and the result is relevant to you, you are encouraged to revisit your logic. The node output may now contain more information than before. This change was made so that the behavior is more consistent across n8n where input with multiple rows should yield results acccording all input data instead of only one. Please note: n8n was already running multiple queries based on input. Only the output was changed.
+
 ## 0.117.0
 
 ### What changed?

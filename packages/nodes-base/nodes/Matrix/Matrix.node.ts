@@ -56,7 +56,6 @@ export class Matrix implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Matrix',
-			color: '#772244',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -159,11 +158,19 @@ export class Matrix implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-			const responseData = await handleMatrixCall.call(this, items[i], i, resource, operation);
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+			try {
+				const responseData = await handleMatrixCall.call(this, items[i], i, resource, operation);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 

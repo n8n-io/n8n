@@ -18,10 +18,9 @@ export class TogglTrigger implements INodeType {
 		icon: 'file:toggl.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Toggl events occure',
+		description: 'Starts the workflow when Toggl events occur',
 		defaults: {
 			name: 'Toggl',
-			color: '#00FF00',
 		},
 		credentials: [
 			{

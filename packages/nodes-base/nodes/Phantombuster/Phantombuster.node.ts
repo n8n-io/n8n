@@ -33,10 +33,9 @@ export class Phantombuster implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Phantombuster API.',
+		description: 'Consume Phantombuster API',
 		defaults: {
 			name: 'Phantombuster',
-			color: '#62bfd7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -123,148 +122,156 @@ export class Phantombuster implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
 
-			if (resource === 'agent') {
-				//https://hub.phantombuster.com/reference#post_agents-delete-1
-				if (operation === 'delete') {
-					const agentId = this.getNodeParameter('agentId', i) as string;
+			try {
+				if (resource === 'agent') {
+					//https://hub.phantombuster.com/reference#post_agents-delete-1
+					if (operation === 'delete') {
+						const agentId = this.getNodeParameter('agentId', i) as string;
 
-					responseData = await phantombusterApiRequest.call(
-						this,
-						'POST',
-						'/agents/delete',
-						{ id: agentId },
-					);
-
-					responseData = { success: true };
-				}
-				//https://hub.phantombuster.com/reference#get_agents-fetch-1
-				if (operation === 'get') {
-					const agentId = this.getNodeParameter('agentId', i) as string;
-
-					responseData = await phantombusterApiRequest.call(
-						this,
-						'GET',
-						'/agents/fetch',
-						{},
-						{ id: agentId },
-					);
-				}
-				//https://hub.phantombuster.com/reference#get_agents-fetch-output-1
-				if (operation === 'getOutput') {
-					const agentId = this.getNodeParameter('agentId', i) as string;
-
-					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					Object.assign(qs, additionalFields);
-
-					qs.id = agentId;
-
-					responseData = await phantombusterApiRequest.call(
-						this,
-						'GET',
-						'/agents/fetch-output',
-						{},
-						qs,
-					);
-
-					if (resolveData === true) {
-						const { resultObject } = await phantombusterApiRequest.call(
+						responseData = await phantombusterApiRequest.call(
 							this,
-							'GET',
-							'/containers/fetch-result-object',
-							{},
-							{ id: responseData.containerId },
+							'POST',
+							'/agents/delete',
+							{ id: agentId },
 						);
 
-						if (resultObject === null) {
-							responseData = {};
-						} else {
-							responseData = JSON.parse(resultObject);
-						}
+						responseData = { success: true };
 					}
-				}
-				//https://api.phantombuster.com/api/v2/agents/fetch-all
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					//https://hub.phantombuster.com/reference#get_agents-fetch-1
+					if (operation === 'get') {
+						const agentId = this.getNodeParameter('agentId', i) as string;
 
-					responseData = await phantombusterApiRequest.call(
-						this,
-						'GET',
-						'/agents/fetch-all',
-					);
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
-						responseData = responseData.splice(0, limit);
-					}
-				}
-				//https://hub.phantombuster.com/reference#post_agents-launch-1
-				if (operation === 'launch') {
-					const agentId = this.getNodeParameter('agentId', i) as string;
-
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
-
-					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					const body: IDataObject = {
-						id: agentId,
-					};
-
-					if (jsonParameters) {
-						if (additionalFields.argumentsJson) {
-							body.arguments = validateJSON(this, additionalFields.argumentsJson as string, 'Arguments');
-
-							delete additionalFields.argumentsJson;
-						}
-						if (additionalFields.bonusArgumentJson) {
-							body.bonusArgument = validateJSON(this, additionalFields.bonusArgumentJson as string, 'Bonus Argument');
-							delete additionalFields.bonusArgumentJson;
-						}
-					} else {
-						const argumentParameters = ((additionalFields.argumentsUi as IDataObject || {}).argumentValues as IDataObject[]) || [];
-						body.arguments = argumentParameters.reduce((object, currentValue) => {
-							object[currentValue.key as string] = currentValue.value;
-							return object;
-						}, {});
-						delete additionalFields.argumentsUi;
-
-						const bonusParameters = ((additionalFields.bonusArgumentUi as IDataObject || {}).bonusArgumentValue as IDataObject[]) || [];
-						body.bonusArgument = bonusParameters.reduce((object, currentValue) => {
-							object[currentValue.key as string] = currentValue.value;
-							return object;
-						}, {});
-						delete additionalFields.bonusArgumentUi;
-					}
-
-					Object.assign(body, additionalFields);
-
-					responseData = await phantombusterApiRequest.call(
-						this,
-						'POST',
-						'/agents/launch',
-						body,
-					);
-
-					if (resolveData === true) {
 						responseData = await phantombusterApiRequest.call(
 							this,
 							'GET',
-							'/containers/fetch',
+							'/agents/fetch',
 							{},
-							{ id: responseData.containerId },
+							{ id: agentId },
 						);
 					}
-				}
-			}
+					//https://hub.phantombuster.com/reference#get_agents-fetch-output-1
+					if (operation === 'getOutput') {
+						const agentId = this.getNodeParameter('agentId', i) as string;
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
+						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						Object.assign(qs, additionalFields);
+
+						qs.id = agentId;
+
+						responseData = await phantombusterApiRequest.call(
+							this,
+							'GET',
+							'/agents/fetch-output',
+							{},
+							qs,
+						);
+
+						if (resolveData === true) {
+							const { resultObject } = await phantombusterApiRequest.call(
+								this,
+								'GET',
+								'/containers/fetch-result-object',
+								{},
+								{ id: responseData.containerId },
+							);
+
+							if (resultObject === null) {
+								responseData = {};
+							} else {
+								responseData = JSON.parse(resultObject);
+							}
+						}
+					}
+					//https://api.phantombuster.com/api/v2/agents/fetch-all
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						responseData = await phantombusterApiRequest.call(
+							this,
+							'GET',
+							'/agents/fetch-all',
+						);
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', 0) as number;
+							responseData = responseData.splice(0, limit);
+						}
+					}
+					//https://hub.phantombuster.com/reference#post_agents-launch-1
+					if (operation === 'launch') {
+						const agentId = this.getNodeParameter('agentId', i) as string;
+
+						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+
+						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const body: IDataObject = {
+							id: agentId,
+						};
+
+						if (jsonParameters) {
+							if (additionalFields.argumentsJson) {
+								body.arguments = validateJSON(this, additionalFields.argumentsJson as string, 'Arguments');
+
+								delete additionalFields.argumentsJson;
+							}
+							if (additionalFields.bonusArgumentJson) {
+								body.bonusArgument = validateJSON(this, additionalFields.bonusArgumentJson as string, 'Bonus Argument');
+								delete additionalFields.bonusArgumentJson;
+							}
+						} else {
+							const argumentParameters = ((additionalFields.argumentsUi as IDataObject || {}).argumentValues as IDataObject[]) || [];
+							body.arguments = argumentParameters.reduce((object, currentValue) => {
+								object[currentValue.key as string] = currentValue.value;
+								return object;
+							}, {});
+							delete additionalFields.argumentsUi;
+
+							const bonusParameters = ((additionalFields.bonusArgumentUi as IDataObject || {}).bonusArgumentValue as IDataObject[]) || [];
+							body.bonusArgument = bonusParameters.reduce((object, currentValue) => {
+								object[currentValue.key as string] = currentValue.value;
+								return object;
+							}, {});
+							delete additionalFields.bonusArgumentUi;
+						}
+
+						Object.assign(body, additionalFields);
+
+						responseData = await phantombusterApiRequest.call(
+							this,
+							'POST',
+							'/agents/launch',
+							body,
+						);
+
+						if (resolveData === true) {
+							responseData = await phantombusterApiRequest.call(
+								this,
+								'GET',
+								'/containers/fetch',
+								{},
+								{ id: responseData.containerId },
+							);
+						}
+					}
+				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

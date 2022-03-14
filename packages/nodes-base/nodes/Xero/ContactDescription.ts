@@ -2,7 +2,7 @@ import {
 	INodeProperties,
  } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const contactOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                contact:create                              */
@@ -515,7 +515,7 @@ export const contactFields = [
 				},
 				placeholder: 'EmailAddress!=null&&EmailAddress.StartsWith("boom")',
 				default: '',
-				description: `The where parameter allows you to filter on endpoints and elements that don't have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified" target="_blank">Examples Here</a>`,
+				description: `The where parameter allows you to filter on endpoints and elements that don't have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>`,
 			},
 		],
 	},
@@ -835,4 +835,4 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

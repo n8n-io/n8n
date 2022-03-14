@@ -34,7 +34,6 @@ export class Clearbit implements INodeType {
 		description: 'Consume Clearbit API',
 		defaults: {
 			name: 'Clearbit',
-			color: '#219ef9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -58,7 +57,7 @@ export class Clearbit implements INodeType {
 					{
 						name: 'Person',
 						value: 'person',
-						description: `The Person API lets you retrieve social information associated with an email address,<br/>
+						description: `The Person API lets you retrieve social information associated with an email address,
 						such as a person’s name, location and Twitter handle.`,
 					},
 				],
@@ -81,70 +80,78 @@ export class Clearbit implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-			if (resource === 'person') {
-				if (operation === 'enrich') {
-					const email = this.getNodeParameter('email', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					qs.email = email;
-					if (additionalFields.givenName) {
-						qs.given_name = additionalFields.givenName as string;
+			try {
+				if (resource === 'person') {
+					if (operation === 'enrich') {
+						const email = this.getNodeParameter('email', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						qs.email = email;
+						if (additionalFields.givenName) {
+							qs.given_name = additionalFields.givenName as string;
+						}
+						if (additionalFields.familyName) {
+							qs.family_name = additionalFields.familyName as string;
+						}
+						if (additionalFields.ipAddress) {
+							qs.ip_address = additionalFields.ipAddress as string;
+						}
+						if (additionalFields.location) {
+							qs.location = additionalFields.location as string;
+						}
+						if (additionalFields.company) {
+							qs.company = additionalFields.company as string;
+						}
+						if (additionalFields.companyDomain) {
+							qs.company_domain = additionalFields.companyDomain as string;
+						}
+						if (additionalFields.linkedIn) {
+							qs.linkedin = additionalFields.linkedIn as string;
+						}
+						if (additionalFields.twitter) {
+							qs.twitter = additionalFields.twitter as string;
+						}
+						if (additionalFields.facebook) {
+							qs.facebook = additionalFields.facebook as string;
+						}
+						responseData = await clearbitApiRequest.call(this, 'GET', `${resource}-stream`, '/v2/people/find', {}, qs);
 					}
-					if (additionalFields.familyName) {
-						qs.family_name = additionalFields.familyName as string;
-					}
-					if (additionalFields.ipAddress) {
-						qs.ip_address = additionalFields.ipAddress as string;
-					}
-					if (additionalFields.location) {
-						qs.location = additionalFields.location as string;
-					}
-					if (additionalFields.company) {
-						qs.company = additionalFields.company as string;
-					}
-					if (additionalFields.companyDomain) {
-						qs.company_domain = additionalFields.companyDomain as string;
-					}
-					if (additionalFields.linkedIn) {
-						qs.linkedin = additionalFields.linkedIn as string;
-					}
-					if (additionalFields.twitter) {
-						qs.twitter = additionalFields.twitter as string;
-					}
-					if (additionalFields.facebook) {
-						qs.facebook = additionalFields.facebook as string;
-					}
-					responseData = await clearbitApiRequest.call(this, 'GET', `${resource}-stream`, '/v2/people/find', {}, qs);
 				}
-			}
-			if (resource === 'company') {
-				if (operation === 'enrich') {
-					const domain = this.getNodeParameter('domain', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					qs.domain = domain;
-					if (additionalFields.companyName) {
-						qs.company_name = additionalFields.companyName as string;
+				if (resource === 'company') {
+					if (operation === 'enrich') {
+						const domain = this.getNodeParameter('domain', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						qs.domain = domain;
+						if (additionalFields.companyName) {
+							qs.company_name = additionalFields.companyName as string;
+						}
+						if (additionalFields.linkedin) {
+							qs.linkedin = additionalFields.linkedin as string;
+						}
+						if (additionalFields.twitter) {
+							qs.twitter = additionalFields.twitter as string;
+						}
+						if (additionalFields.facebook) {
+							qs.facebook = additionalFields.facebook as string;
+						}
+						responseData = await clearbitApiRequest.call(this, 'GET', `${resource}-stream`, '/v2/companies/find', {}, qs);
 					}
-					if (additionalFields.linkedin) {
-						qs.linkedin = additionalFields.linkedin as string;
+					if (operation === 'autocomplete') {
+						const name = this.getNodeParameter('name', i) as string;
+						qs.query = name;
+						responseData = await clearbitApiRequest.call(this, 'GET', 'autocomplete', '/v1/companies/suggest', {}, qs);
 					}
-					if (additionalFields.twitter) {
-						qs.twitter = additionalFields.twitter as string;
-					}
-					if (additionalFields.facebook) {
-						qs.facebook = additionalFields.facebook as string;
-					}
-					responseData = await clearbitApiRequest.call(this, 'GET', `${resource}-stream`, '/v2/companies/find', {}, qs);
 				}
-				if (operation === 'autocomplete') {
-					const name = this.getNodeParameter('name', i) as string;
-					qs.query = name;
-					responseData = await clearbitApiRequest.call(this, 'GET', 'autocomplete', '/v1/companies/suggest', {}, qs);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

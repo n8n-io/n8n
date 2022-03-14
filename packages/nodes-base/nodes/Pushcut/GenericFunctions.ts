@@ -15,7 +15,7 @@ import {
 
 export async function pushcutApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, uri?: string | undefined, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('pushcutApi') as IDataObject;
+	const credentials = await this.getCredentials('pushcutApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {

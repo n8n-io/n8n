@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const postOperations = [
+export const postOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -22,9 +22,9 @@ export const postOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const postFields = [
+export const postFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 post:create                              */
 /* -------------------------------------------------------------------------- */
@@ -74,7 +74,8 @@ export const postFields = [
 		name: 'organization',
 		type: 'string',
 		default: '',
-		description: 'URN of Organization as which the post should be posted as',
+		placeholder: '1234567',
+		description: 'URN of Organization as which the post should be posted as.',
 		displayOptions: {
 			show: {
 				operation: [
@@ -247,4 +248,4 @@ export const postFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

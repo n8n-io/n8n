@@ -21,10 +21,9 @@ export class QuestDb implements INodeType {
 		icon: 'file:questdb.png',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in QuestDB.',
+		description: 'Get, add and update data in QuestDB',
 		defaults: {
 			name: 'QuestDB',
-			color: '#2C4A79',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -63,7 +62,7 @@ export class QuestDb implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -73,9 +72,9 @@ export class QuestDb implements INodeType {
 					},
 				},
 				default: '',
-				placeholder: 'SELECT id, name FROM product WHERE id < 40',
+				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute.',
+				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
 			},
 
 			// ----------------------------------
@@ -170,11 +169,22 @@ export class QuestDb implements INodeType {
 							},
 						],
 						default: 'independently',
-						description: [
-							'The way queries should be sent to database.',
-							'Can be used in conjunction with <b>Continue on Fail</b>.',
-							'See the docs for more examples',
-						].join('<br>'),
+						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.questDb/">the docs</a> for more examples.',
+					},
+					{
+						displayName: 'Query Parameters',
+						name: 'queryParams',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'executeQuery',
+								],
+							},
+						},
+						default: '',
+						placeholder: 'quantity,price',
+						description: 'Comma separated list of properties which should be used as query parameters.',
 					},
 				],
 			},
@@ -195,7 +205,7 @@ export class QuestDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('questDb');
+		const credentials = await this.getCredentials('questDb');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -215,7 +225,7 @@ export class QuestDb implements INodeType {
 
 		const db = pgp(config);
 
-		let returnItems = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;

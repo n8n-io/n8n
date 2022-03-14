@@ -11,10 +11,9 @@ export const nodeDescription: INodeTypeDescription = {
 	icon: 'file:mongodb.svg',
 	group: ['input'],
 	version: 1,
-	description: 'Find, insert and update documents in MongoDB.',
+	description: 'Find, insert and update documents in MongoDB',
 	defaults: {
 		name: 'MongoDB',
-		color: '#13AA52',
 	},
 	inputs: ['main'],
 	outputs: ['main'],

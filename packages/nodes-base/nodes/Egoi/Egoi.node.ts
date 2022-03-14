@@ -35,7 +35,6 @@ export class Egoi implements INodeType {
 		description: 'Consume E-goi API',
 		defaults: {
 			name: 'E-goi',
-			color: '#4cacd6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -154,7 +153,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default the response just includes the contact id. If this option gets activated it<br />will resolve the data automatically.',
+				description: 'By default the response just includes the contact id. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -515,7 +514,7 @@ export class Egoi implements INodeType {
 				description: 'How many results to return.',
 			},
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify Response',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -530,7 +529,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'When set to true a simple version of the response will be returned else the RAW data.',
+				description: 'Return a simplified version of the response instead of the raw data.',
 			},
 		],
 	};

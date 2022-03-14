@@ -29,10 +29,9 @@ export class AsanaTrigger implements INodeType {
 		icon: 'file:asana.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Asana events occure.',
+		description: 'Starts the workflow when Asana events occur.',
 		defaults: {
 			name: 'Asana-Trigger',
-			color: '#FC636B',
 		},
 		inputs: [],
 		outputs: ['main'],

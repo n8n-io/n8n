@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const organizationOperations = [
+export const organizationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const organizationOperations = [
 		default: 'get',
 		description: 'The operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const organizationFields = [
+export const organizationFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                organization:getAll                         */
 	/* -------------------------------------------------------------------------- */
@@ -220,6 +220,7 @@ export const organizationFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getOrganizations',
 		},
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -266,4 +267,4 @@ export const organizationFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

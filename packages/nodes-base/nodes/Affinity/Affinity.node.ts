@@ -55,7 +55,6 @@ export class Affinity implements INodeType {
 		description: 'Consume Affinity API',
 		defaults: {
 			name: 'Affinity',
-			color: '#3343df',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -162,196 +161,204 @@ export class Affinity implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-			if (resource === 'list') {
-				//https://api-docs.affinity.co/#get-a-specific-list
-				if (operation === 'get') {
-					const listId = this.getNodeParameter('listId', i) as string;
-					responseData = await affinityApiRequest.call(this, 'GET', `/lists/${listId}`, {}, qs);
-				}
-				//https://api-docs.affinity.co/#get-all-lists
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					responseData = await affinityApiRequest.call(this, 'GET', `/lists`, {}, qs);
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = responseData.splice(0, limit);
+			try {
+				if (resource === 'list') {
+					//https://api-docs.affinity.co/#get-a-specific-list
+					if (operation === 'get') {
+						const listId = this.getNodeParameter('listId', i) as string;
+						responseData = await affinityApiRequest.call(this, 'GET', `/lists/${listId}`, {}, qs);
+					}
+					//https://api-docs.affinity.co/#get-all-lists
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						responseData = await affinityApiRequest.call(this, 'GET', `/lists`, {}, qs);
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, limit);
+						}
 					}
 				}
-			}
-			if (resource === 'listEntry') {
-				//https://api-docs.affinity.co/#create-a-new-list-entry
-				if (operation === 'create') {
-					const listId = this.getNodeParameter('listId', i) as string;
-					const entityId = this.getNodeParameter('entityId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: IDataObject = {
-						entity_id: parseInt(entityId, 10),
-					};
-					Object.assign(body, additionalFields);
-					responseData = await affinityApiRequest.call(this, 'POST', `/lists/${listId}/list-entries`, body);
-				}
-				//https://api-docs.affinity.co/#get-a-specific-list-entry
-				if (operation === 'get') {
-					const listId = this.getNodeParameter('listId', i) as string;
-					const listEntryId = this.getNodeParameter('listEntryId', i) as string;
-					responseData = await affinityApiRequest.call(this, 'GET', `/lists/${listId}/list-entries/${listEntryId}`, {}, qs);
-				}
-				//https://api-docs.affinity.co/#get-all-list-entries
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const listId = this.getNodeParameter('listId', i) as string;
-					if (returnAll === true) {
-						responseData = await affinityApiRequestAllItems.call(this, 'list_entries', 'GET', `/lists/${listId}/list-entries`, {}, qs);
-					} else {
-						qs.page_size = this.getNodeParameter('limit', i) as number;
-						responseData = await affinityApiRequest.call(this, 'GET', `/lists/${listId}/list-entries`, {}, qs);
-						responseData = responseData.list_entries;
+				if (resource === 'listEntry') {
+					//https://api-docs.affinity.co/#create-a-new-list-entry
+					if (operation === 'create') {
+						const listId = this.getNodeParameter('listId', i) as string;
+						const entityId = this.getNodeParameter('entityId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body: IDataObject = {
+							entity_id: parseInt(entityId, 10),
+						};
+						Object.assign(body, additionalFields);
+						responseData = await affinityApiRequest.call(this, 'POST', `/lists/${listId}/list-entries`, body);
+					}
+					//https://api-docs.affinity.co/#get-a-specific-list-entry
+					if (operation === 'get') {
+						const listId = this.getNodeParameter('listId', i) as string;
+						const listEntryId = this.getNodeParameter('listEntryId', i) as string;
+						responseData = await affinityApiRequest.call(this, 'GET', `/lists/${listId}/list-entries/${listEntryId}`, {}, qs);
+					}
+					//https://api-docs.affinity.co/#get-all-list-entries
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const listId = this.getNodeParameter('listId', i) as string;
+						if (returnAll === true) {
+							responseData = await affinityApiRequestAllItems.call(this, 'list_entries', 'GET', `/lists/${listId}/list-entries`, {}, qs);
+						} else {
+							qs.page_size = this.getNodeParameter('limit', i) as number;
+							responseData = await affinityApiRequest.call(this, 'GET', `/lists/${listId}/list-entries`, {}, qs);
+							responseData = responseData.list_entries;
+						}
+					}
+					//https://api-docs.affinity.co/#delete-a-specific-list-entry
+					if (operation === 'delete') {
+						const listId = this.getNodeParameter('listId', i) as string;
+						const listEntryId = this.getNodeParameter('listEntryId', i) as string;
+						responseData = await affinityApiRequest.call(this, 'DELETE', `/lists/${listId}/list-entries/${listEntryId}`, {}, qs);
 					}
 				}
-				//https://api-docs.affinity.co/#delete-a-specific-list-entry
-				if (operation === 'delete') {
-					const listId = this.getNodeParameter('listId', i) as string;
-					const listEntryId = this.getNodeParameter('listEntryId', i) as string;
-					responseData = await affinityApiRequest.call(this, 'DELETE', `/lists/${listId}/list-entries/${listEntryId}`, {}, qs);
-				}
-			}
-			if (resource === 'person') {
-				//https://api-docs.affinity.co/#create-a-new-person
-				if (operation === 'create') {
-					const firstName = this.getNodeParameter('firstName', i) as string;
-					const lastName = this.getNodeParameter('lastName', i) as string;
-					const emails = this.getNodeParameter('emails', i) as string[];
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: IPerson = {
-						first_name: firstName,
-						last_name: lastName,
-						emails,
-					};
-					if (additionalFields.organizations) {
-						body.organization_ids = additionalFields.organizations as number[];
+				if (resource === 'person') {
+					//https://api-docs.affinity.co/#create-a-new-person
+					if (operation === 'create') {
+						const firstName = this.getNodeParameter('firstName', i) as string;
+						const lastName = this.getNodeParameter('lastName', i) as string;
+						const emails = this.getNodeParameter('emails', i) as string[];
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body: IPerson = {
+							first_name: firstName,
+							last_name: lastName,
+							emails,
+						};
+						if (additionalFields.organizations) {
+							body.organization_ids = additionalFields.organizations as number[];
+						}
+						responseData = await affinityApiRequest.call(this, 'POST', '/persons', body);
 					}
-					responseData = await affinityApiRequest.call(this, 'POST', '/persons', body);
-				}
-				//https://api-docs.affinity.co/#update-a-person
-				if (operation === 'update') {
-					const personId = this.getNodeParameter('personId', i) as number;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const emails = this.getNodeParameter('emails', i) as string[];
-					const body: IPerson = {
-						emails,
-					};
-					if (updateFields.firstName) {
-						body.first_name = updateFields.firstName as string;
+					//https://api-docs.affinity.co/#update-a-person
+					if (operation === 'update') {
+						const personId = this.getNodeParameter('personId', i) as number;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const emails = this.getNodeParameter('emails', i) as string[];
+						const body: IPerson = {
+							emails,
+						};
+						if (updateFields.firstName) {
+							body.first_name = updateFields.firstName as string;
+						}
+						if (updateFields.lastName) {
+							body.last_name = updateFields.lastName as string;
+						}
+						if (updateFields.organizations) {
+							body.organization_ids = updateFields.organizations as number[];
+						}
+						responseData = await affinityApiRequest.call(this, 'PUT', `/persons/${personId}`, body);
 					}
-					if (updateFields.lastName) {
-						body.last_name = updateFields.lastName as string;
+					//https://api-docs.affinity.co/#get-a-specific-person
+					if (operation === 'get') {
+						const personId = this.getNodeParameter('personId', i) as number;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						if (options.withInteractionDates) {
+							qs.with_interaction_dates = options.withInteractionDates as boolean;
+						}
+						responseData = await affinityApiRequest.call(this, 'GET', `/persons/${personId}`, {}, qs);
 					}
-					if (updateFields.organizations) {
-						body.organization_ids = updateFields.organizations as number[];
+					//https://api-docs.affinity.co/#search-for-persons
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						if (options.term) {
+							qs.term = options.term as string;
+						}
+						if (options.withInteractionDates) {
+							qs.with_interaction_dates = options.withInteractionDates as boolean;
+						}
+						if (returnAll === true) {
+							responseData = await affinityApiRequestAllItems.call(this, 'persons', 'GET', '/persons', {}, qs);
+						} else {
+							qs.page_size = this.getNodeParameter('limit', i) as number;
+							responseData = await affinityApiRequest.call(this, 'GET', '/persons', {}, qs);
+							responseData = responseData.persons;
+						}
 					}
-					responseData = await affinityApiRequest.call(this, 'PUT', `/persons/${personId}`, body);
-				}
-				//https://api-docs.affinity.co/#get-a-specific-person
-				if (operation === 'get') {
-					const personId = this.getNodeParameter('personId', i) as number;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					if (options.withInteractionDates) {
-						qs.with_interaction_dates = options.withInteractionDates as boolean;
-					}
-					responseData = await affinityApiRequest.call(this, 'GET', `/persons/${personId}`, {}, qs);
-				}
-				//https://api-docs.affinity.co/#search-for-persons
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					if (options.term) {
-						qs.term = options.term as string;
-					}
-					if (options.withInteractionDates) {
-						qs.with_interaction_dates = options.withInteractionDates as boolean;
-					}
-					if (returnAll === true) {
-						responseData = await affinityApiRequestAllItems.call(this, 'persons', 'GET', '/persons', {}, qs);
-					} else {
-						qs.page_size = this.getNodeParameter('limit', i) as number;
-						responseData = await affinityApiRequest.call(this, 'GET', '/persons', {}, qs);
-						responseData = responseData.persons;
-					}
-				}
-				//https://api-docs.affinity.co/#delete-a-person
-				if (operation === 'delete') {
-					const personId = this.getNodeParameter('personId', i) as number;
-					responseData = await affinityApiRequest.call(this, 'DELETE', `/persons/${personId}`, {}, qs);
-				}
-			}
-			if (resource === 'organization') {
-				//https://api-docs.affinity.co/#create-a-new-organization
-				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
-					const domain = this.getNodeParameter('domain', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: IOrganization = {
-						name,
-						domain,
-					};
-					if (additionalFields.persons) {
-						body.person_ids = additionalFields.persons as number[];
-					}
-					responseData = await affinityApiRequest.call(this, 'POST', '/organizations', body);
-				}
-				//https://api-docs.affinity.co/#update-an-organization
-				if (operation === 'update') {
-					const organizationId = this.getNodeParameter('organizationId', i) as number;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const body: IOrganization = {};
-					if (updateFields.name) {
-						body.name = updateFields.name as string;
-					}
-					if (updateFields.domain) {
-						body.domain = updateFields.domain as string;
-					}
-					if (updateFields.persons) {
-						body.person_ids = updateFields.persons as number[];
-					}
-					responseData = await affinityApiRequest.call(this, 'PUT', `/organizations/${organizationId}`, body);
-				}
-				//https://api-docs.affinity.co/#get-a-specific-organization
-				if (operation === 'get') {
-					const organizationId = this.getNodeParameter('organizationId', i) as number;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					if (options.withInteractionDates) {
-						qs.with_interaction_dates = options.withInteractionDates as boolean;
-					}
-					responseData = await affinityApiRequest.call(this, 'GET', `/organizations/${organizationId}`, {}, qs);
-				}
-				//https://api-docs.affinity.co/#search-for-organizations
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					if (options.term) {
-						qs.term = options.term as string;
-					}
-					if (options.withInteractionDates) {
-						qs.with_interaction_dates = options.withInteractionDates as boolean;
-					}
-					if (returnAll === true) {
-						responseData = await affinityApiRequestAllItems.call(this, 'organizations', 'GET', '/organizations', {}, qs);
-					} else {
-						qs.page_size = this.getNodeParameter('limit', i) as number;
-						responseData = await affinityApiRequest.call(this, 'GET', '/organizations', {}, qs);
-						responseData = responseData.organizations;
+					//https://api-docs.affinity.co/#delete-a-person
+					if (operation === 'delete') {
+						const personId = this.getNodeParameter('personId', i) as number;
+						responseData = await affinityApiRequest.call(this, 'DELETE', `/persons/${personId}`, {}, qs);
 					}
 				}
-				//https://api-docs.affinity.co/#delete-an-organization
-				if (operation === 'delete') {
-					const organizationId = this.getNodeParameter('organizationId', i) as number;
-					responseData = await affinityApiRequest.call(this, 'DELETE', `/organizations/${organizationId}`, {}, qs);
+				if (resource === 'organization') {
+					//https://api-docs.affinity.co/#create-a-new-organization
+					if (operation === 'create') {
+						const name = this.getNodeParameter('name', i) as string;
+						const domain = this.getNodeParameter('domain', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body: IOrganization = {
+							name,
+							domain,
+						};
+						if (additionalFields.persons) {
+							body.person_ids = additionalFields.persons as number[];
+						}
+						responseData = await affinityApiRequest.call(this, 'POST', '/organizations', body);
+					}
+					//https://api-docs.affinity.co/#update-an-organization
+					if (operation === 'update') {
+						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body: IOrganization = {};
+						if (updateFields.name) {
+							body.name = updateFields.name as string;
+						}
+						if (updateFields.domain) {
+							body.domain = updateFields.domain as string;
+						}
+						if (updateFields.persons) {
+							body.person_ids = updateFields.persons as number[];
+						}
+						responseData = await affinityApiRequest.call(this, 'PUT', `/organizations/${organizationId}`, body);
+					}
+					//https://api-docs.affinity.co/#get-a-specific-organization
+					if (operation === 'get') {
+						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						if (options.withInteractionDates) {
+							qs.with_interaction_dates = options.withInteractionDates as boolean;
+						}
+						responseData = await affinityApiRequest.call(this, 'GET', `/organizations/${organizationId}`, {}, qs);
+					}
+					//https://api-docs.affinity.co/#search-for-organizations
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						if (options.term) {
+							qs.term = options.term as string;
+						}
+						if (options.withInteractionDates) {
+							qs.with_interaction_dates = options.withInteractionDates as boolean;
+						}
+						if (returnAll === true) {
+							responseData = await affinityApiRequestAllItems.call(this, 'organizations', 'GET', '/organizations', {}, qs);
+						} else {
+							qs.page_size = this.getNodeParameter('limit', i) as number;
+							responseData = await affinityApiRequest.call(this, 'GET', '/organizations', {}, qs);
+							responseData = responseData.organizations;
+						}
+					}
+					//https://api-docs.affinity.co/#delete-an-organization
+					if (operation === 'delete') {
+						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						responseData = await affinityApiRequest.call(this, 'DELETE', `/organizations/${organizationId}`, {}, qs);
+					}
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

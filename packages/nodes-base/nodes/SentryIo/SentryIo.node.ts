@@ -63,7 +63,6 @@ export class SentryIo implements INodeType {
 		description: 'Consume Sentry.io API',
 		defaults: {
 			name: 'Sentry.io',
-			color: '#362d59',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -317,445 +316,453 @@ export class SentryIo implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			if (resource === 'event') {
-				if (operation === 'getAll') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
-					const full = this.getNodeParameter('full', i) as boolean;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+			try {
+				if (resource === 'event') {
+					if (operation === 'getAll') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const full = this.getNodeParameter('full', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/events/`;
+						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/events/`;
 
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.limit = limit;
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = limit;
+						}
+
+						qs.full = full;
+
+						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, limit);
+						}
 					}
+					if (operation === 'get') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const eventId = this.getNodeParameter('eventId', i) as string;
 
-					qs.full = full;
+						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/events/${eventId}/`;
 
-					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = responseData.splice(0, limit);
-					}
-				}
-				if (operation === 'get') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
-					const eventId = this.getNodeParameter('eventId', i) as string;
-
-					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/events/${eventId}/`;
-
-					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
-				}
-			}
-			if (resource === 'issue') {
-				if (operation === 'getAll') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/issues/`;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (additionalFields.statsPeriod) {
-						qs.statsPeriod = additionalFields.statsPeriod as string;
-					}
-					if (additionalFields.shortIdLookup) {
-						qs.shortIdLookup = additionalFields.shortIdLookup as boolean;
-					}
-					if (additionalFields.query) {
-						qs.query = additionalFields.query as string;
-					}
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.limit = limit;
-					}
-
-					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = responseData.splice(0, limit);
-					}
-
-				}
-				if (operation === 'get') {
-					const issueId = this.getNodeParameter('issueId', i) as string;
-					const endpoint = `/api/0/issues/${issueId}/`;
-
-					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
-				}
-				if (operation === 'delete') {
-					const issueId = this.getNodeParameter('issueId', i) as string;
-					const endpoint = `/api/0/issues/${issueId}/`;
-
-					responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
-
-					responseData = { success: true };
-				}
-				if (operation === 'update') {
-					const issueId = this.getNodeParameter('issueId', i) as string;
-					const endpoint = `/api/0/issues/${issueId}/`;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (additionalFields.status) {
-						qs.status = additionalFields.status as string;
-					}
-					if (additionalFields.assignedTo) {
-						qs.assignedTo = additionalFields.assignedTo as string;
-					}
-					if (additionalFields.hasSeen) {
-						qs.hasSeen = additionalFields.hasSeen as boolean;
-					}
-					if (additionalFields.isBookmarked) {
-						qs.isBookmarked = additionalFields.isBookmarked as boolean;
-					}
-					if (additionalFields.isSubscribed) {
-						qs.isSubscribed = additionalFields.isSubscribed as boolean;
-					}
-					if (additionalFields.isPublic) {
-						qs.isPublic = additionalFields.isPublic as boolean;
-					}
-
-					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, qs);
-				}
-			}
-			if (resource === 'organization') {
-				if (operation === 'get') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const endpoint = `/api/0/organizations/${organizationSlug}/`;
-
-					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
-				}
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const endpoint = `/api/0/organizations/`;
-
-					if (additionalFields.member) {
-						qs.member = additionalFields.member as boolean;
-					}
-					if (additionalFields.owner) {
-						qs.owner = additionalFields.owner as boolean;
-					}
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.limit = limit;
-					}
-
-					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
-
-					if (responseData === undefined) {
-						responseData = [];
-					}
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = responseData.splice(0, limit);
+						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 					}
 				}
-				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
-					const agreeTerms = this.getNodeParameter('agreeTerms', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const endpoint = `/api/0/organizations/`;
+				if (resource === 'issue') {
+					if (operation === 'getAll') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					qs.name = name;
-					qs.agreeTerms = agreeTerms;
+						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/issues/`;
 
-					if (additionalFields.slug) {
-						qs.slug = additionalFields.slug as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.statsPeriod) {
+							qs.statsPeriod = additionalFields.statsPeriod as string;
+						}
+						if (additionalFields.shortIdLookup) {
+							qs.shortIdLookup = additionalFields.shortIdLookup as boolean;
+						}
+						if (additionalFields.query) {
+							qs.query = additionalFields.query as string;
+						}
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = limit;
+						}
+
+						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, limit);
+						}
+
 					}
+					if (operation === 'get') {
+						const issueId = this.getNodeParameter('issueId', i) as string;
+						const endpoint = `/api/0/issues/${issueId}/`;
 
-					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
-				}
-				if (operation === 'update') {
-					const organizationSlug = this.getNodeParameter('organization_slug', i) as string;
-					const endpoint = `/api/0/organizations/${organizationSlug}/`;
-
-					const body = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
-				}
-			}
-			if (resource === 'project') {
-				if (operation === 'create') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
-					const name = this.getNodeParameter('name', i) as string;
-
-					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/projects/`;
-
-					const body = {
-						name,
-						...this.getNodeParameter('additionalFields', i) as IDataObject,
-					};
-
-					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, body, qs);
-				}
-				if (operation === 'get') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
-					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
-
-					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
-				}
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const endpoint = `/api/0/projects/`;
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.limit = limit;
+						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 					}
+					if (operation === 'delete') {
+						const issueId = this.getNodeParameter('issueId', i) as string;
+						const endpoint = `/api/0/issues/${issueId}/`;
 
-					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+						responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
 
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = responseData.splice(0, limit);
+						responseData = { success: true };
 					}
-				}
-				if (operation === 'update') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
-					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
-					const body = this.getNodeParameter('updateFields', i) as IDataObject;
+					if (operation === 'update') {
+						const issueId = this.getNodeParameter('issueId', i) as string;
+						const endpoint = `/api/0/issues/${issueId}/`;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
-				}
-				if (operation === 'delete') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
-					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
+						if (additionalFields.status) {
+							qs.status = additionalFields.status as string;
+						}
+						if (additionalFields.assignedTo) {
+							qs.assignedTo = additionalFields.assignedTo as string;
+						}
+						if (additionalFields.hasSeen) {
+							qs.hasSeen = additionalFields.hasSeen as boolean;
+						}
+						if (additionalFields.isBookmarked) {
+							qs.isBookmarked = additionalFields.isBookmarked as boolean;
+						}
+						if (additionalFields.isSubscribed) {
+							qs.isSubscribed = additionalFields.isSubscribed as boolean;
+						}
+						if (additionalFields.isPublic) {
+							qs.isPublic = additionalFields.isPublic as boolean;
+						}
 
-					responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
-					responseData = { success: true };
-				}
-			}
-			if (resource === 'release') {
-				if (operation === 'get') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const version = this.getNodeParameter('version', i) as string;
-					const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
-
-					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
-				}
-				if (operation === 'getAll') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					if (additionalFields.query) {
-						qs.query = additionalFields.query as string;
-					}
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.limit = limit;
-					}
-
-					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = responseData.splice(0, limit);
+						responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, qs);
 					}
 				}
-				if (operation === 'delete') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const version = this.getNodeParameter('version', i) as string;
-					const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
-					responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
-					responseData = { success: true };
-				}
-				if (operation === 'create') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
-					const version = this.getNodeParameter('version', i) as string;
-					const url = this.getNodeParameter('url', i) as string;
-					const projects = this.getNodeParameter('projects', i) as string[];
+				if (resource === 'organization') {
+					if (operation === 'get') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const endpoint = `/api/0/organizations/${organizationSlug}/`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (additionalFields.dateReleased) {
-						qs.dateReleased = additionalFields.dateReleased as string;
+						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 					}
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const endpoint = `/api/0/organizations/`;
 
-					qs.version = version;
-					qs.url = url;
-					qs.projects = projects;
+						if (additionalFields.member) {
+							qs.member = additionalFields.member as boolean;
+						}
+						if (additionalFields.owner) {
+							qs.owner = additionalFields.owner as boolean;
+						}
 
-					if (additionalFields.commits) {
-						const commits: ICommit[] = [];
-						//@ts-ignore
-						// tslint:disable-next-line: no-any
-						additionalFields.commits.commitProperties.map((commit: any) => {
-							const commitObject: ICommit = { id: commit.id };
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = limit;
+						}
 
-							if (commit.repository) {
-								commitObject.repository = commit.repository;
-							}
-							if (commit.message) {
-								commitObject.message = commit.message;
-							}
-							if (commit.patchSet && Array.isArray(commit.patchSet)) {
-								commit.patchSet.patchSetProperties.map((patchSet: IPatchSet) => {
-									commitObject.patch_set?.push(patchSet);
-								});
-							}
-							if (commit.authorName) {
-								commitObject.author_name = commit.authorName;
-							}
-							if (commit.authorEmail) {
-								commitObject.author_email = commit.authorEmail;
-							}
-							if (commit.timestamp) {
-								commitObject.timestamp = commit.timestamp;
-							}
+						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
-							commits.push(commitObject);
-						});
+						if (responseData === undefined) {
+							responseData = [];
+						}
 
-						qs.commits = commits;
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, limit);
+						}
 					}
-					if (additionalFields.refs) {
-						const refs: IRef[] = [];
-						//@ts-ignore
-						additionalFields.refs.refProperties.map((ref: IRef) => {
-							refs.push(ref);
-						});
+					if (operation === 'create') {
+						const name = this.getNodeParameter('name', i) as string;
+						const agreeTerms = this.getNodeParameter('agreeTerms', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const endpoint = `/api/0/organizations/`;
 
-						qs.refs = refs;
+						qs.name = name;
+						qs.agreeTerms = agreeTerms;
+
+						if (additionalFields.slug) {
+							qs.slug = additionalFields.slug as string;
+						}
+
+						responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
 					}
+					if (operation === 'update') {
+						const organizationSlug = this.getNodeParameter('organization_slug', i) as string;
+						const endpoint = `/api/0/organizations/${organizationSlug}/`;
 
-					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
-				}
-				if (operation === 'update') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const version = this.getNodeParameter('version', i) as string;
-					const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
+						const body = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					const body = { ...updateFields };
-
-					if (updateFields.commits) {
-						const commits: ICommit[] = [];
-						//@ts-ignore
-						// tslint:disable-next-line: no-any
-						updateFields.commits.commitProperties.map((commit: any) => {
-							const commitObject: ICommit = { id: commit.id };
-
-							if (commit.repository) {
-								commitObject.repository = commit.repository;
-							}
-							if (commit.message) {
-								commitObject.message = commit.message;
-							}
-							if (commit.patchSet && Array.isArray(commit.patchSet)) {
-								commit.patchSet.patchSetProperties.map((patchSet: IPatchSet) => {
-									commitObject.patch_set?.push(patchSet);
-								});
-							}
-							if (commit.authorName) {
-								commitObject.author_name = commit.authorName;
-							}
-							if (commit.authorEmail) {
-								commitObject.author_email = commit.authorEmail;
-							}
-							if (commit.timestamp) {
-								commitObject.timestamp = commit.timestamp;
-							}
-
-							commits.push(commitObject);
-						});
-
-						body.commits = commits;
-					}
-					if (updateFields.refs) {
-						const refs: IRef[] = [];
-						//@ts-ignore
-						updateFields.refs.refProperties.map((ref: IRef) => {
-							refs.push(ref);
-						});
-
-						body.refs = refs;
-					}
-
-					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
-				}
-			}
-			if (resource === 'team') {
-				if (operation === 'get') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
-					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
-
-					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
-				}
-				if (operation === 'getAll') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.limit = limit;
-					}
-
-					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = responseData.splice(0, limit);
+						responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 					}
 				}
+				if (resource === 'project') {
+					if (operation === 'create') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+						const name = this.getNodeParameter('name', i) as string;
 
-				if (operation === 'create') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const name = this.getNodeParameter('name', i) as string;
-					const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
+						const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/projects/`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body = {
+							name,
+							...this.getNodeParameter('additionalFields', i) as IDataObject,
+						};
 
-					qs.name = name;
+						responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, body, qs);
+					}
+					if (operation === 'get') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
 
-					if (additionalFields.slug) {
-						qs.slug = additionalFields.slug;
+						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
+					}
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const endpoint = `/api/0/projects/`;
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = limit;
+						}
+
+						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, limit);
+						}
+					}
+					if (operation === 'update') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
+						const body = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
+					}
+					if (operation === 'delete') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
+
+						responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
+						responseData = { success: true };
+					}
+				}
+				if (resource === 'release') {
+					if (operation === 'get') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const version = this.getNodeParameter('version', i) as string;
+						const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
+
+						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
+					}
+					if (operation === 'getAll') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (additionalFields.query) {
+							qs.query = additionalFields.query as string;
+						}
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = limit;
+						}
+
+						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, limit);
+						}
+					}
+					if (operation === 'delete') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const version = this.getNodeParameter('version', i) as string;
+						const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
+						responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
+						responseData = { success: true };
+					}
+					if (operation === 'create') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
+						const version = this.getNodeParameter('version', i) as string;
+						const url = this.getNodeParameter('url', i) as string;
+						const projects = this.getNodeParameter('projects', i) as string[];
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.dateReleased) {
+							qs.dateReleased = additionalFields.dateReleased as string;
+						}
+
+						qs.version = version;
+						qs.url = url;
+						qs.projects = projects;
+
+						if (additionalFields.commits) {
+							const commits: ICommit[] = [];
+							//@ts-ignore
+							// tslint:disable-next-line: no-any
+							additionalFields.commits.commitProperties.map((commit: any) => {
+								const commitObject: ICommit = { id: commit.id };
+
+								if (commit.repository) {
+									commitObject.repository = commit.repository;
+								}
+								if (commit.message) {
+									commitObject.message = commit.message;
+								}
+								if (commit.patchSet && Array.isArray(commit.patchSet)) {
+									commit.patchSet.patchSetProperties.map((patchSet: IPatchSet) => {
+										commitObject.patch_set?.push(patchSet);
+									});
+								}
+								if (commit.authorName) {
+									commitObject.author_name = commit.authorName;
+								}
+								if (commit.authorEmail) {
+									commitObject.author_email = commit.authorEmail;
+								}
+								if (commit.timestamp) {
+									commitObject.timestamp = commit.timestamp;
+								}
+
+								commits.push(commitObject);
+							});
+
+							qs.commits = commits;
+						}
+						if (additionalFields.refs) {
+							const refs: IRef[] = [];
+							//@ts-ignore
+							additionalFields.refs.refProperties.map((ref: IRef) => {
+								refs.push(ref);
+							});
+
+							qs.refs = refs;
+						}
+
+						responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
+					}
+					if (operation === 'update') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const version = this.getNodeParameter('version', i) as string;
+						const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						const body = { ...updateFields };
+
+						if (updateFields.commits) {
+							const commits: ICommit[] = [];
+							//@ts-ignore
+							// tslint:disable-next-line: no-any
+							updateFields.commits.commitProperties.map((commit: any) => {
+								const commitObject: ICommit = { id: commit.id };
+
+								if (commit.repository) {
+									commitObject.repository = commit.repository;
+								}
+								if (commit.message) {
+									commitObject.message = commit.message;
+								}
+								if (commit.patchSet && Array.isArray(commit.patchSet)) {
+									commit.patchSet.patchSetProperties.map((patchSet: IPatchSet) => {
+										commitObject.patch_set?.push(patchSet);
+									});
+								}
+								if (commit.authorName) {
+									commitObject.author_name = commit.authorName;
+								}
+								if (commit.authorEmail) {
+									commitObject.author_email = commit.authorEmail;
+								}
+								if (commit.timestamp) {
+									commitObject.timestamp = commit.timestamp;
+								}
+
+								commits.push(commitObject);
+							});
+
+							body.commits = commits;
+						}
+						if (updateFields.refs) {
+							const refs: IRef[] = [];
+							//@ts-ignore
+							updateFields.refs.refProperties.map((ref: IRef) => {
+								refs.push(ref);
+							});
+
+							body.refs = refs;
+						}
+
+						responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
+					}
+				}
+				if (resource === 'team') {
+					if (operation === 'get') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+						const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
+
+						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
+					}
+					if (operation === 'getAll') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = limit;
+						}
+
+						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, limit);
+						}
 					}
 
-					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
+					if (operation === 'create') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const name = this.getNodeParameter('name', i) as string;
+						const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						qs.name = name;
+
+						if (additionalFields.slug) {
+							qs.slug = additionalFields.slug;
+						}
+
+						responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
+					}
+					if (operation === 'update') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+						const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
+
+						const body = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
+					}
+					if (operation === 'delete') {
+						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+						const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
+
+						responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
+						responseData = { success: true };
+					}
 				}
-				if (operation === 'update') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
-					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
 
-					const body = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
 				}
-				if (operation === 'delete') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
-					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
-
-					responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
-					responseData = { success: true };
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
-			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

@@ -1,17 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class PhantombusterApi implements ICredentialType {
 	name = 'phantombusterApi';
 	displayName = 'Phantombuster API';
 	documentationUrl = 'phantombuster';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

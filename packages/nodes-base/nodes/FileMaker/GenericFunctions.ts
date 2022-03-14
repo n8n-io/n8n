@@ -39,7 +39,7 @@ interface ScriptObject {
  */
 export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<INodePropertyOptions[]> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -89,7 +89,7 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
  */
 export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
 
 	if (credentials === undefined) {
@@ -125,7 +125,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // 
  */
 export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
 
 	if (credentials === undefined) {
@@ -161,7 +161,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
  */
 export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -207,7 +207,7 @@ function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
 }
 
 export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
@@ -256,7 +256,7 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 }
 
 export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions, token: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('fileMaker');
+	const credentials = await this.getCredentials('fileMaker');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}

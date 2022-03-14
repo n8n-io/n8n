@@ -56,10 +56,9 @@ export class Wekan implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Open-Source Kanban',
+		description: 'Consume Wekan API',
 		defaults: {
 			name: 'Wekan',
-			color: '#006581',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -249,437 +248,445 @@ export class Wekan implements INodeType {
 		let endpoint: string;
 
 		for (let i = 0; i < items.length; i++) {
-			requestMethod = 'GET';
-			endpoint = '';
-			body = {};
-			qs = {};
+			try {
+				requestMethod = 'GET';
+				endpoint = '';
+				body = {};
+				qs = {};
 
-			if (resource === 'board') {
+				if (resource === 'board') {
 
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
 
-					requestMethod = 'POST';
-					endpoint = 'boards';
+						requestMethod = 'POST';
+						endpoint = 'boards';
 
-					body.title = this.getNodeParameter('title', i) as string;
-					body.owner = this.getNodeParameter('owner', i) as string;
+						body.title = this.getNodeParameter('title', i) as string;
+						body.owner = this.getNodeParameter('owner', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
 
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
 
-					requestMethod = 'DELETE';
+						requestMethod = 'DELETE';
 
-					const boardId = this.getNodeParameter('boardId', i) as string;
+						const boardId = this.getNodeParameter('boardId', i) as string;
 
-					endpoint = `boards/${boardId}`;
+						endpoint = `boards/${boardId}`;
 
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
 
-					requestMethod = 'GET';
+						requestMethod = 'GET';
 
-					const boardId = this.getNodeParameter('boardId', i) as string;
+						const boardId = this.getNodeParameter('boardId', i) as string;
 
-					endpoint = `boards/${boardId}`;
+						endpoint = `boards/${boardId}`;
 
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
 
-					requestMethod = 'GET';
+						requestMethod = 'GET';
 
-					const userId = this.getNodeParameter('IdUser', i) as string;
+						const userId = this.getNodeParameter('IdUser', i) as string;
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					endpoint = `users/${userId}/boards`;
+						endpoint = `users/${userId}/boards`;
 
-				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
-				}
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					}
 
-			} else if (resource === 'card') {
+				} else if (resource === 'card') {
 
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
 
-					requestMethod = 'POST';
+						requestMethod = 'POST';
 
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const listId = this.getNodeParameter('listId', i) as string;
-
-					endpoint = `boards/${boardId}/lists/${listId}/cards`;
-
-					body.title = this.getNodeParameter('title', i) as string;
-					body.swimlaneId = this.getNodeParameter('swimlaneId', i) as string;
-					body.authorId = this.getNodeParameter('authorId', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const listId = this.getNodeParameter('listId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-
-					endpoint = `boards/${boardId}/lists/${listId}/cards/${cardId}`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const listId = this.getNodeParameter('listId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-
-					endpoint = `boards/${boardId}/lists/${listId}/cards/${cardId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const fromObject = this.getNodeParameter('fromObject', i) as string;
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					if (fromObject === 'list') {
+						const boardId = this.getNodeParameter('boardId', i) as string;
 						const listId = this.getNodeParameter('listId', i) as string;
 
 						endpoint = `boards/${boardId}/lists/${listId}/cards`;
+
+						body.title = this.getNodeParameter('title', i) as string;
+						body.swimlaneId = this.getNodeParameter('swimlaneId', i) as string;
+						body.authorId = this.getNodeParameter('authorId', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const listId = this.getNodeParameter('listId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+
+						endpoint = `boards/${boardId}/lists/${listId}/cards/${cardId}`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const listId = this.getNodeParameter('listId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+
+						endpoint = `boards/${boardId}/lists/${listId}/cards/${cardId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const fromObject = this.getNodeParameter('fromObject', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (fromObject === 'list') {
+							const listId = this.getNodeParameter('listId', i) as string;
+
+							endpoint = `boards/${boardId}/lists/${listId}/cards`;
+						}
+
+						if (fromObject === 'swimlane') {
+							const swimlaneId = this.getNodeParameter('swimlaneId', i) as string;
+
+							endpoint = `boards/${boardId}/swimlanes/${swimlaneId}/cards`;
+						}
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const listId = this.getNodeParameter('listId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+
+						endpoint = `boards/${boardId}/lists/${listId}/cards/${cardId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(body, updateFields);
+
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 					}
 
-					if (fromObject === 'swimlane') {
-						const swimlaneId = this.getNodeParameter('swimlaneId', i) as string;
+				} else if (resource === 'cardComment') {
 
-						endpoint = `boards/${boardId}/swimlanes/${swimlaneId}/cards`;
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/comments`;
+
+						body.authorId = this.getNodeParameter('authorId', i) as string;
+						body.comment = this.getNodeParameter('comment', i) as string;
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						const commentId = this.getNodeParameter('commentId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/comments/${commentId}`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						const commentId = this.getNodeParameter('commentId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/comments/${commentId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/comments`;
+
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 					}
 
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
+				} else if (resource === 'list') {
 
-					requestMethod = 'PUT';
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
 
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const listId = this.getNodeParameter('listId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
+						requestMethod = 'POST';
 
-					endpoint = `boards/${boardId}/lists/${listId}/cards/${cardId}`;
+						const boardId = this.getNodeParameter('boardId', i) as string;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(body, updateFields);
+						endpoint = `boards/${boardId}/lists`;
 
+						body.title = this.getNodeParameter('title', i) as string;
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const listId = this.getNodeParameter('listId', i) as string;
+
+						endpoint = `boards/${boardId}/lists/${listId}`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const listId = this.getNodeParameter('listId', i) as string;
+
+						endpoint = `boards/${boardId}/lists/${listId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						endpoint = `boards/${boardId}/lists`;
+
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					}
+
+				} else if (resource === 'checklist') {
+
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/checklists`;
+
+						body.title = this.getNodeParameter('title', i) as string;
+
+						body.items = this.getNodeParameter('items', i) as string[];
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						const checklistId = this.getNodeParameter('checklistId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						const checklistId = this.getNodeParameter('checklistId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+
+						endpoint = `boards/${boardId}/cards/${cardId}/checklists`;
+
+					} else if (operation === 'getCheckItem') {
+						// ----------------------------------
+						//         getCheckItem
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						const checklistId = this.getNodeParameter('checklistId', i) as string;
+						const itemId = this.getNodeParameter('itemId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
+
+					} else if (operation === 'deleteCheckItem') {
+						// ----------------------------------
+						//         deleteCheckItem
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						const checklistId = this.getNodeParameter('checklistId', i) as string;
+						const itemId = this.getNodeParameter('itemId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
+
+					} else if (operation === 'updateCheckItem') {
+						// ----------------------------------
+						//         updateCheckItem
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						const checklistId = this.getNodeParameter('checklistId', i) as string;
+						const itemId = this.getNodeParameter('itemId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(body, updateFields);
+
+
+
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					}
+				} else if (resource === 'checklistItem') {
+
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						const checklistId = this.getNodeParameter('checklistId', i) as string;
+						const itemId = this.getNodeParameter('checklistItemId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						const checklistId = this.getNodeParameter('checklistId', i) as string;
+						const itemId = this.getNodeParameter('checklistItemId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const boardId = this.getNodeParameter('boardId', i) as string;
+						const cardId = this.getNodeParameter('cardId', i) as string;
+						const checklistId = this.getNodeParameter('checklistId', i) as string;
+						const itemId = this.getNodeParameter('checklistItemId', i) as string;
+
+						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(body, updateFields);
+					}
+				}
+				let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+
+				if (returnAll === false) {
+					limit = this.getNodeParameter('limit', i) as number;
+					responseData = responseData.splice(0, limit);
+				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					returnData.push(responseData as IDataObject);
 				}
-
-			} else if (resource === 'cardComment') {
-
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/comments`;
-
-					body.authorId = this.getNodeParameter('authorId', i) as string;
-					body.comment = this.getNodeParameter('comment', i) as string;
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					const commentId = this.getNodeParameter('commentId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/comments/${commentId}`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					const commentId = this.getNodeParameter('commentId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/comments/${commentId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/comments`;
-
-				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
-
-			} else if (resource === 'list') {
-
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-
-					endpoint = `boards/${boardId}/lists`;
-
-					body.title = this.getNodeParameter('title', i) as string;
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const listId = this.getNodeParameter('listId', i) as string;
-
-					endpoint = `boards/${boardId}/lists/${listId}`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const listId = this.getNodeParameter('listId', i) as string;
-
-					endpoint = `boards/${boardId}/lists/${listId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					endpoint = `boards/${boardId}/lists`;
-
-				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
-				}
-
-			} else if (resource === 'checklist') {
-
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/checklists`;
-
-					body.title = this.getNodeParameter('title', i) as string;
-
-					body.items = this.getNodeParameter('items', i) as string[];
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					const checklistId = this.getNodeParameter('checklistId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					const checklistId = this.getNodeParameter('checklistId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-
-					endpoint = `boards/${boardId}/cards/${cardId}/checklists`;
-
-				} else if (operation === 'getCheckItem') {
-					// ----------------------------------
-					//         getCheckItem
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					const checklistId = this.getNodeParameter('checklistId', i) as string;
-					const itemId = this.getNodeParameter('itemId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
-
-				} else if (operation === 'deleteCheckItem') {
-					// ----------------------------------
-					//         deleteCheckItem
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					const checklistId = this.getNodeParameter('checklistId', i) as string;
-					const itemId = this.getNodeParameter('itemId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
-
-				} else if (operation === 'updateCheckItem') {
-					// ----------------------------------
-					//         updateCheckItem
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					const checklistId = this.getNodeParameter('checklistId', i) as string;
-					const itemId = this.getNodeParameter('itemId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(body, updateFields);
-
-
-
-				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
-				}
-			} else if (resource === 'checklistItem') {
-
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					const checklistId = this.getNodeParameter('checklistId', i) as string;
-					const itemId = this.getNodeParameter('checklistItemId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					const checklistId = this.getNodeParameter('checklistId', i) as string;
-					const itemId = this.getNodeParameter('checklistItemId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const boardId = this.getNodeParameter('boardId', i) as string;
-					const cardId = this.getNodeParameter('cardId', i) as string;
-					const checklistId = this.getNodeParameter('checklistId', i) as string;
-					const itemId = this.getNodeParameter('checklistItemId', i) as string;
-
-					endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(body, updateFields);
-				}
-			}
-			let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-
-			if (returnAll === false) {
-				limit = this.getNodeParameter('limit', i) as number;
-				responseData = responseData.splice(0, limit);
-			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				throw error;
 			}
 		}
 

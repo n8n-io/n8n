@@ -23,10 +23,9 @@ export class Gitlab implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Retrieve data from GitLab API.',
+		description: 'Retrieve data from GitLab API',
 		defaults: {
 			name: 'Gitlab',
-			color: '#FC6D27',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1101,19 +1100,22 @@ export class Gitlab implements INodeType {
 
 		try {
 			if (authenticationMethod === 'accessToken') {
-				credentials = this.getCredentials('gitlabApi');
+				credentials = await this.getCredentials('gitlabApi');
 
 				if (credentials === undefined) {
 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 			} else {
-				credentials = this.getCredentials('gitlabOAuth2Api');
+				credentials = await this.getCredentials('gitlabOAuth2Api');
 
 				if (credentials === undefined) {
 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 			}
 		} catch (error) {
+			if (this.continueOnFail()) {
+				return [this.helpers.returnJsonArray([{ error: error.message }])];
+			}
 			throw new NodeOperationError(this.getNode(), error);
 		}
 
@@ -1152,218 +1154,230 @@ export class Gitlab implements INodeType {
 		const fullOperation = `${resource}:${operation}`;
 
 		for (let i = 0; i < items.length; i++) {
-			// Reset all values
-			requestMethod = 'GET';
-			endpoint = '';
-			body = {};
-			qs = {};
+			try {
+				// Reset all values
+				requestMethod = 'GET';
+				endpoint = '';
+				body = {};
+				qs = {};
 
-			// Request the parameters which almost all operations need
-			let owner = this.getNodeParameter('owner', i) as string;
+				// Request the parameters which almost all operations need
+				let owner = this.getNodeParameter('owner', i) as string;
 
-			// Replace all slashes to work with subgroups
-			owner = owner.replace(new RegExp(/\//g), '%2F');
+				// Replace all slashes to work with subgroups
+				owner = owner.replace(new RegExp(/\//g), '%2F');
 
-			let repository = '';
-			if (fullOperation !== 'user:getRepositories') {
-				repository = this.getNodeParameter('repository', i) as string;
-			}
+				let repository = '';
+				if (fullOperation !== 'user:getRepositories') {
+					repository = this.getNodeParameter('repository', i) as string;
+				}
 
-			const baseEndpoint = `/projects/${owner}%2F${repository}`;
+				const baseEndpoint = `/projects/${owner}%2F${repository}`;
 
-			if (resource === 'issue') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
+				if (resource === 'issue') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
 
-					requestMethod = 'POST';
+						requestMethod = 'POST';
 
-					body.title = this.getNodeParameter('title', i) as string;
-					body.description = this.getNodeParameter('body', i) as string;
-					body.due_date = this.getNodeParameter('due_date', i) as string;
-					const labels = this.getNodeParameter('labels', i) as IDataObject[];
+						body.title = this.getNodeParameter('title', i) as string;
+						body.description = this.getNodeParameter('body', i) as string;
+						body.due_date = this.getNodeParameter('due_date', i) as string;
+						const labels = this.getNodeParameter('labels', i) as IDataObject[];
 
-					const assigneeIds = this.getNodeParameter('assignee_ids', i) as IDataObject[];
+						const assigneeIds = this.getNodeParameter('assignee_ids', i) as IDataObject[];
 
-					body.labels = labels.map((data) => data['label']).join(',');
-					body.assignee_ids = assigneeIds.map((data) => data['assignee']);
+						body.labels = labels.map((data) => data['label']).join(',');
+						body.assignee_ids = assigneeIds.map((data) => data['assignee']);
 
-					endpoint = `${baseEndpoint}/issues`;
-				} else if (operation === 'createComment') {
-					// ----------------------------------
-					//         createComment
-					// ----------------------------------
-					requestMethod = 'POST';
+						endpoint = `${baseEndpoint}/issues`;
+					} else if (operation === 'createComment') {
+						// ----------------------------------
+						//         createComment
+						// ----------------------------------
+						requestMethod = 'POST';
 
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
 
-					body.body = this.getNodeParameter('body', i) as string;
+						body.body = this.getNodeParameter('body', i) as string;
 
-					endpoint = `${baseEndpoint}/issues/${issueNumber}/notes`;
-				} else if (operation === 'edit') {
-					// ----------------------------------
-					//         edit
-					// ----------------------------------
+						endpoint = `${baseEndpoint}/issues/${issueNumber}/notes`;
+					} else if (operation === 'edit') {
+						// ----------------------------------
+						//         edit
+						// ----------------------------------
 
-					requestMethod = 'PUT';
+						requestMethod = 'PUT';
 
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
 
-					body = this.getNodeParameter('editFields', i, {}) as IDataObject;
+						body = this.getNodeParameter('editFields', i, {}) as IDataObject;
 
-					if (body.labels !== undefined) {
-						body.labels = (body.labels as IDataObject[]).map((data) => data['label']).join(',');
+						if (body.labels !== undefined) {
+							body.labels = (body.labels as IDataObject[]).map((data) => data['label']).join(',');
+						}
+						if (body.assignee_ids !== undefined) {
+							body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data['assignee']);
+						}
+
+						endpoint = `${baseEndpoint}/issues/${issueNumber}`;
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+						endpoint = `${baseEndpoint}/issues/${issueNumber}`;
+					} else if (operation === 'lock') {
+						// ----------------------------------
+						//         lock
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+						body.discussion_locked = true;
+
+						endpoint = `${baseEndpoint}/issues/${issueNumber}`;
 					}
-					if (body.assignee_ids !== undefined) {
-						body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data['assignee']);
+				} else if (resource === 'release') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+						body.tag_name = this.getNodeParameter('releaseTag', i) as string;
+
+						endpoint = `${baseEndpoint}/releases`;
 					}
+					if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
 
-					endpoint = `${baseEndpoint}/issues/${issueNumber}`;
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
+						requestMethod = 'DELETE';
 
-					requestMethod = 'GET';
+						const id = this.getNodeParameter('projectId', i) as string;
 
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+						const tagName = this.getNodeParameter('tag_name', i) as string;
 
-					endpoint = `${baseEndpoint}/issues/${issueNumber}`;
-				} else if (operation === 'lock') {
-					// ----------------------------------
-					//         lock
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
-
-					body.discussion_locked = true;
-
-					endpoint = `${baseEndpoint}/issues/${issueNumber}`;
-				}
-			} else if (resource === 'release') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-
-					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-
-					body.tag_name = this.getNodeParameter('releaseTag', i) as string;
-
-					endpoint = `${baseEndpoint}/releases`;
-				}
-				if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const id = this.getNodeParameter('projectId', i) as string;
-
-					const tagName = this.getNodeParameter('tag_name', i) as string;
-
-					endpoint = `/projects/${id}/releases/${tagName}`;
-				}
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const id = this.getNodeParameter('projectId', i) as string;
-
-					const tagName = this.getNodeParameter('tag_name', i) as string;
-
-					endpoint = `/projects/${id}/releases/${tagName}`;
-				}
-				if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const id = this.getNodeParameter('projectId', i) as string;
-
-					qs = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', 0) as number;
+						endpoint = `/projects/${id}/releases/${tagName}`;
 					}
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
 
-					endpoint = `/projects/${id}/releases`;
-				}
-				if (operation === 'update') {
-					// ----------------------------------
-					//         update
-					// ----------------------------------
+						requestMethod = 'GET';
 
-					requestMethod = 'PUT';
+						const id = this.getNodeParameter('projectId', i) as string;
 
-					const id = this.getNodeParameter('projectId', i) as string;
+						const tagName = this.getNodeParameter('tag_name', i) as string;
 
-					const tagName = this.getNodeParameter('tag_name', i) as string;
-
-					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-					if(body.milestones){
-						body.milestones = (body.milestones as string).split(',');
+						endpoint = `/projects/${id}/releases/${tagName}`;
 					}
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
 
-					endpoint = `/projects/${id}/releases/${tagName}`;
+						requestMethod = 'GET';
+
+						const id = this.getNodeParameter('projectId', i) as string;
+
+						qs = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						if (returnAll === false) {
+							qs.per_page = this.getNodeParameter('limit', 0) as number;
+						}
+
+						endpoint = `/projects/${id}/releases`;
+					}
+					if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const id = this.getNodeParameter('projectId', i) as string;
+
+						const tagName = this.getNodeParameter('tag_name', i) as string;
+
+						body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+						if(body.milestones){
+							body.milestones = (body.milestones as string).split(',');
+						}
+
+						endpoint = `/projects/${id}/releases/${tagName}`;
+					}
+				} else if (resource === 'repository') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `${baseEndpoint}`;
+					} else if (operation === 'getIssues') {
+						// ----------------------------------
+						//         getIssues
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
+
+						endpoint = `${baseEndpoint}/issues`;
+					}
+				} else if (resource === 'user') {
+					if (operation === 'getRepositories') {
+						// ----------------------------------
+						//         getRepositories
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `/users/${owner}/projects`;
+					}
+				} else {
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
-			} else if (resource === 'repository') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = `${baseEndpoint}`;
-				} else if (operation === 'getIssues') {
-					// ----------------------------------
-					//         getIssues
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
-
-					endpoint = `${baseEndpoint}/issues`;
+				if (returnAll === true) {
+					responseData = await gitlabApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+				} else {
+					responseData = await gitlabApiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
-			} else if (resource === 'user') {
-				if (operation === 'getRepositories') {
-					// ----------------------------------
-					//         getRepositories
-					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = `/users/${owner}/projects`;
+				if (overwriteDataOperations.includes(fullOperation)) {
+					returnData.push(responseData);
+				} else if (overwriteDataOperationsArray.includes(fullOperation)) {
+					returnData.push.apply(returnData, responseData);
 				}
-			} else {
-				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-			}
-
-			if (returnAll === true) {
-				responseData = await gitlabApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-			} else {
-				responseData = await gitlabApiRequest.call(this, requestMethod, endpoint, body, qs);
-			}
-
-			if (overwriteDataOperations.includes(fullOperation)) {
-				returnData.push(responseData);
-			} else if (overwriteDataOperationsArray.includes(fullOperation)) {
-				returnData.push.apply(returnData, responseData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
+						returnData.push({ error: error.message });
+					} else {
+						items[i].json = { error: error.message };
+					}
+					continue;
+				}
+				throw error;
 			}
 		}
 

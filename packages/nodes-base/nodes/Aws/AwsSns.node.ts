@@ -16,14 +16,13 @@ export class AwsSns implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS SNS',
 		name: 'awsSns',
-		icon: 'file:sns.png',
+		icon: 'file:sns.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["topic"]}}',
 		description: 'Sends data to AWS SNS',
 		defaults: {
 			name: 'AWS SNS',
-			color: '#FF9900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -140,15 +139,23 @@ export class AwsSns implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-			const params = [
-				'TopicArn=' + this.getNodeParameter('topic', i) as string,
-				'Subject=' + this.getNodeParameter('subject', i) as string,
-				'Message=' + this.getNodeParameter('message', i) as string,
-			];
+			try {
+				const params = [
+					'TopicArn=' + this.getNodeParameter('topic', i) as string,
+					'Subject=' + this.getNodeParameter('subject', i) as string,
+					'Message=' + this.getNodeParameter('message', i) as string,
+				];
 
 
-			const	responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
-			returnData.push({MessageId: responseData.PublishResponse.PublishResult.MessageId} as IDataObject);
+				const	responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
+				returnData.push({MessageId: responseData.PublishResponse.PublishResult.MessageId} as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
+			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

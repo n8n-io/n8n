@@ -6,7 +6,7 @@ const resource = [
 	'contact',
 ];
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const contactOperations = [
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:getAll                              */
@@ -353,4 +353,4 @@ export const contactFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

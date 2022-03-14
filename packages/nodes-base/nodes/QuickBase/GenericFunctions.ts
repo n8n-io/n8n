@@ -15,7 +15,7 @@ import {
 
 export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('quickbaseApi') as IDataObject;
+	const credentials = await this.getCredentials('quickbaseApi') as IDataObject;
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -43,6 +43,8 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 			uri: `https://api.quickbase.com/v1${resource}`,
 			json: true,
 		};
+
+
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}

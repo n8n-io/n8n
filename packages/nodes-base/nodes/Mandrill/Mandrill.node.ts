@@ -101,14 +101,13 @@ export class Mandrill implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mandrill',
 		name: 'mandrill',
-		icon: 'file:mandrill.png',
+		icon: 'file:mandrill.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume mandrill API',
+		description: 'Consume Mandrill API',
 		defaults: {
 			name: 'Mandrill',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -247,21 +246,21 @@ export class Mandrill implements INodeType {
 						name: 'async',
 						type: 'boolean',
 						default: false,
-						description: `Enable a background sending mode that is optimized for bulk sending.<br />In async mode, messages/send will immediately return a status of "queued"<br />for every recipient. To handle rejections when sending in async mode, set up<br />a webhook for the 'reject' event. Defaults to false for messages with<br />no more than 10 recipients; messages with more than 10 recipients are always sent<br />asynchronously, regardless of the value of async.`,
+						description: `Enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the 'reject' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.`,
 					},
 					{
 						displayName: 'Auto Text',
 						name: 'autoText',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically generate a text<br />part for messages that are not given text.',
+						description: 'Whether or not to automatically generate a text part for messages that are not given text.',
 					},
 					{
 						displayName: 'Auto HTML',
 						name: 'autoHtml',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically generate an HTML<br />part for messages that are not given HTML.',
+						description: 'Whether or not to automatically generate an HTML part for messages that are not given HTML.',
 					},
 					{
 						displayName: 'BCC Address',
@@ -293,7 +292,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `An array of strings separated by , indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically.`,
+						description: `An array of strings separated by a comma (,) indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically.`,
 					},
 					{
 						displayName: 'HTML',
@@ -311,14 +310,14 @@ export class Mandrill implements INodeType {
 						name: 'important',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not this message is important, and should be<br />delivered ahead of non-important messages.',
+						description: 'Whether or not this message is important, and should be delivered ahead of non-important messages.',
 					},
 					{
 						displayName: 'Inline CSS',
 						name: 'inlineCss',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically inline all CSS styles provided in<br />the message HTML - only for HTML documents less than 256KB in size.',
+						description: 'Whether or not to automatically inline all CSS styles provided in the message HTML - only for HTML documents less than 256KB in size.',
 					},
 					{
 						displayName: 'Ip Pool',
@@ -349,7 +348,7 @@ export class Mandrill implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: `When this message should be sent as a UTC timestamp in<br />YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message<br />will be sent immediately. An additional fee applies for scheduled email,<br />and this feature is only available to accounts with a positive balance.`,
+						description: `When this message should be sent as a UTC timestamp in YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message will be sent immediately. An additional fee applies for scheduled email, and this feature is only available to accounts with a positive balance.`,
 					},
 					{
 						displayName: 'Signing Domain',
@@ -357,7 +356,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `A custom domain to use for SPF/DKIM signing instead of<br />mandrill(for "via" or "on behalf of" in email clients).`,
+						description: `A custom domain to use for SPF/DKIM signing instead of mandrill(for "via" or "on behalf of" in email clients).`,
 					},
 					{
 						displayName: 'Subaccount',
@@ -381,7 +380,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `An array of string separated by , to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors.`,
+						description: `An array of string separated by a comma (,) to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors.`,
 					},
 					{
 						displayName: 'Text',
@@ -421,7 +420,7 @@ export class Mandrill implements INodeType {
 						name: 'urlStripQs',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to strip the query string from<br />URLs when aggregating tracked URL data.',
+						description: 'Whether or not to strip the query string from URLs when aggregating tracked URL data.',
 					},
 					{
 						displayName: 'View Content Link',
@@ -508,7 +507,7 @@ export class Mandrill implements INodeType {
 						],
 					},
 				},
-				description: 'Metadata an associative array of user metadata. Mandrill will store<br />this metadata and make it available for retrieval. In addition, you can select<br />up to 10 metadata fields to index and make searchable using the Mandrill search api.',
+				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.',
 				options: [
 					{
 						name: 'metadataValues',
@@ -549,7 +548,7 @@ export class Mandrill implements INodeType {
 				placeholder: `{
 	"website": "www.example.com"
 }`,
-				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata<br />and make it available for retrieval. In addition, you can select up to<br />10 metadata fields to index and make searchable using the Mandrill search api.',
+				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.',
 			},
 			{
 				displayName: 'Attachments',
@@ -738,154 +737,162 @@ export class Mandrill implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'message') {
+			try {
+				if (resource === 'message') {
 
-				const options = this.getNodeParameter('options', i) as Options;
-				const fromEmail = this.getNodeParameter('fromEmail', i) as string;
-				const toEmail = this.getNodeParameter('toEmail', i) as string;
-				const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
-				const toEmailArray = getToEmailArray(toEmail);
+					const options = this.getNodeParameter('options', i) as Options;
+					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
+					const toEmail = this.getNodeParameter('toEmail', i) as string;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const toEmailArray = getToEmailArray(toEmail);
 
-				const message: Message = {
-					html: (options.html) ? options.html : '',
-					text: (options.text) ? options.text : '',
-					subject: (options.subject) ? options.subject : '',
-					from_email: fromEmail,
-					to: toEmailArray,
-					important: (options.important) ? options.important : false,
-					track_opens: (options.trackOpens) ? options.trackOpens : false,
-					track_clicks: (options.trackClicks) ? options.trackClicks : false,
-					auto_text: (options.autoText) ? options.autoText : false,
-					auto_html: (options.autoHtml) ? options.autoHtml : false,
-					inline_css: (options.inlineCss) ? options.inlineCss : false,
-					url_strip_qs: (options.urlStripQs) ? options.urlStripQs : false,
-					preserve_recipients: (options.preserveRecipients) ? options.preserveRecipients : false,
-					view_content_link: (options.viewContentLink) ? options.viewContentLink : false,
-					async: (options.async) ? options.async : false,
-					google_analytics_campaign: (options.googleAnalyticsCampaign) ? options.googleAnalyticsCampaign : '',
-					ip_pool: (options.ipPool) ? options.ipPool : '',
-					bcc_address: (options.bccAddress) ? options.bccAddress : '',
-					tracking_domain: (options.trackingDomain) ? options.trackingDomain : '',
-					signing_domain: (options.signingDomain) ? options.signingDomain : '',
-					return_path_domain: (options.returnPathDomain) ? options.returnPathDomain : '',
-				};
+					const message: Message = {
+						html: (options.html) ? options.html : '',
+						text: (options.text) ? options.text : '',
+						subject: (options.subject) ? options.subject : '',
+						from_email: fromEmail,
+						to: toEmailArray,
+						important: (options.important) ? options.important : false,
+						track_opens: (options.trackOpens) ? options.trackOpens : false,
+						track_clicks: (options.trackClicks) ? options.trackClicks : false,
+						auto_text: (options.autoText) ? options.autoText : false,
+						auto_html: (options.autoHtml) ? options.autoHtml : false,
+						inline_css: (options.inlineCss) ? options.inlineCss : false,
+						url_strip_qs: (options.urlStripQs) ? options.urlStripQs : false,
+						preserve_recipients: (options.preserveRecipients) ? options.preserveRecipients : false,
+						view_content_link: (options.viewContentLink) ? options.viewContentLink : false,
+						async: (options.async) ? options.async : false,
+						google_analytics_campaign: (options.googleAnalyticsCampaign) ? options.googleAnalyticsCampaign : '',
+						ip_pool: (options.ipPool) ? options.ipPool : '',
+						bcc_address: (options.bccAddress) ? options.bccAddress : '',
+						tracking_domain: (options.trackingDomain) ? options.trackingDomain : '',
+						signing_domain: (options.signingDomain) ? options.signingDomain : '',
+						return_path_domain: (options.returnPathDomain) ? options.returnPathDomain : '',
+					};
 
-				if (options.googleAnalyticsDomains) {
-					message.google_analytics_domains = getGoogleAnalyticsDomainsArray(options.googleAnalyticsDomains);
-				}
+					if (options.googleAnalyticsDomains) {
+						message.google_analytics_domains = getGoogleAnalyticsDomainsArray(options.googleAnalyticsDomains);
+					}
 
-				if (options.tags) {
-					message.tags = getTags(options.tags);
-				}
+					if (options.tags) {
+						message.tags = getTags(options.tags);
+					}
 
-				if (options.fromName) {
-					message.from_name = options.fromName;
-				}
+					if (options.fromName) {
+						message.from_name = options.fromName;
+					}
 
-				if (options.subaccount) {
-					message.subaccount = options.subaccount;
-				}
+					if (options.subaccount) {
+						message.subaccount = options.subaccount;
+					}
 
-				const body: Body = {
-					template_content: [],
-					message,
-				};
+					const body: Body = {
+						template_content: [],
+						message,
+					};
 
-				if (options.sendAt) {
-					body.send_at = moment(options.sendAt).utc().format('YYYY-MM-DD HH:mm:ss');
-				}
+					if (options.sendAt) {
+						body.send_at = moment(options.sendAt).utc().format('YYYY-MM-DD HH:mm:ss');
+					}
 
-				if (jsonActive) {
+					if (jsonActive) {
 
-					body.message.headers = validateJSON(this.getNodeParameter('headersJson', i) as string);
-					body.message.metadata = validateJSON(this.getNodeParameter('metadataJson', i) as string);
-					body.message.global_merge_vars = validateJSON(this.getNodeParameter('mergeVarsJson', i) as string);
-					body.message.attachments = validateJSON(this.getNodeParameter('attachmentsJson', i) as string);
+						body.message.headers = validateJSON(this.getNodeParameter('headersJson', i) as string);
+						body.message.metadata = validateJSON(this.getNodeParameter('metadataJson', i) as string);
+						body.message.global_merge_vars = validateJSON(this.getNodeParameter('mergeVarsJson', i) as string);
+						body.message.attachments = validateJSON(this.getNodeParameter('attachmentsJson', i) as string);
 
-				} else {
+					} else {
 
-					const headersUi = this.getNodeParameter('headersUi', i) as IDataObject;
-					if (!_.isEmpty(headersUi)) {
-						// @ts-ignore
-						body.message.headers = _.map(headersUi.headersValues, (o) => {
-							const aux: IDataObject = {};
+						const headersUi = this.getNodeParameter('headersUi', i) as IDataObject;
+						if (!_.isEmpty(headersUi)) {
 							// @ts-ignore
-							aux[o.name] = o.value;
-							return aux;
-						});
-					}
-
-					const metadataUi = this.getNodeParameter('metadataUi', i) as IDataObject;
-					if (!_.isEmpty(metadataUi)) {
-						// @ts-ignore
-						body.message.metadata = _.map(metadataUi.metadataValues, (o: IDataObject) => {
-							const aux: IDataObject = {};
-							aux[o.name as string] = o.value;
-							return aux;
-						});
-					}
-
-					const mergeVarsUi = this.getNodeParameter('mergeVarsUi', i) as IDataObject;
-					if (!_.isEmpty(mergeVarsUi)) {
-						// @ts-ignore
-						body.message.global_merge_vars = _.map(mergeVarsUi.mergeVarsValues, (o: IDataObject) => {
-							const aux: IDataObject = {};
-							aux.name = o.name;
-							aux.content = o.content;
-							return aux;
-						});
-					}
-
-					const attachmentsUi = this.getNodeParameter('attachmentsUi', i) as IDataObject;
-					let attachmentsBinary: Attachments[] = [], attachmentsValues: Attachments[] = [];
-					if (!_.isEmpty(attachmentsUi)) {
-
-						if (attachmentsUi.hasOwnProperty('attachmentsValues')
-							&& !_.isEmpty(attachmentsUi.attachmentsValues)) {
-							// @ts-ignore
-							attachmentsValues = _.map(attachmentsUi.attachmentsValues, (o: IDataObject) => {
+							body.message.headers = _.map(headersUi.headersValues, (o) => {
 								const aux: IDataObject = {};
 								// @ts-ignore
-								aux.name = o.name;
-								aux.content = o.content;
-								aux.type = o.type;
+								aux[o.name] = o.value;
 								return aux;
 							});
 						}
 
-						if (attachmentsUi.hasOwnProperty('attachmentsBinary')
-							&& !_.isEmpty(attachmentsUi.attachmentsBinary)
-							&& items[i].binary) {
+						const metadataUi = this.getNodeParameter('metadataUi', i) as IDataObject;
+						if (!_.isEmpty(metadataUi)) {
 							// @ts-ignore
-							attachmentsBinary = _.map(attachmentsUi.attachmentsBinary, (o: IDataObject) => {
-								if (items[i].binary!.hasOwnProperty(o.property as string)) {
-									const aux: IDataObject = {};
-									aux.name = items[i].binary![o.property as string].fileName || 'unknown';
-									aux.content = items[i].binary![o.property as string].data;
-									aux.type = items[i].binary![o.property as string].mimeType;
-									return aux;
-								}
+							body.message.metadata = _.map(metadataUi.metadataValues, (o: IDataObject) => {
+								const aux: IDataObject = {};
+								aux[o.name as string] = o.value;
+								return aux;
 							});
 						}
+
+						const mergeVarsUi = this.getNodeParameter('mergeVarsUi', i) as IDataObject;
+						if (!_.isEmpty(mergeVarsUi)) {
+							// @ts-ignore
+							body.message.global_merge_vars = _.map(mergeVarsUi.mergeVarsValues, (o: IDataObject) => {
+								const aux: IDataObject = {};
+								aux.name = o.name;
+								aux.content = o.content;
+								return aux;
+							});
+						}
+
+						const attachmentsUi = this.getNodeParameter('attachmentsUi', i) as IDataObject;
+						let attachmentsBinary: Attachments[] = [], attachmentsValues: Attachments[] = [];
+						if (!_.isEmpty(attachmentsUi)) {
+
+							if (attachmentsUi.hasOwnProperty('attachmentsValues')
+								&& !_.isEmpty(attachmentsUi.attachmentsValues)) {
+								// @ts-ignore
+								attachmentsValues = _.map(attachmentsUi.attachmentsValues, (o: IDataObject) => {
+									const aux: IDataObject = {};
+									// @ts-ignore
+									aux.name = o.name;
+									aux.content = o.content;
+									aux.type = o.type;
+									return aux;
+								});
+							}
+
+							if (attachmentsUi.hasOwnProperty('attachmentsBinary')
+								&& !_.isEmpty(attachmentsUi.attachmentsBinary)
+								&& items[i].binary) {
+								// @ts-ignore
+								attachmentsBinary = _.map(attachmentsUi.attachmentsBinary, (o: IDataObject) => {
+									if (items[i].binary!.hasOwnProperty(o.property as string)) {
+										const aux: IDataObject = {};
+										aux.name = items[i].binary![o.property as string].fileName || 'unknown';
+										aux.content = items[i].binary![o.property as string].data;
+										aux.type = items[i].binary![o.property as string].mimeType;
+										return aux;
+									}
+								});
+							}
+						}
+
+						body.message.attachments = attachmentsBinary.concat(attachmentsValues);
 					}
 
-					body.message.attachments = attachmentsBinary.concat(attachmentsValues);
-				}
+					if (operation === 'sendTemplate') {
+						const template = this.getNodeParameter('template', i) as string;
+						body.template_name = template;
+						emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send-template', body);
+					} else if (operation === 'sendHtml') {
+						emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send', body);
+					}
 
-				if (operation === 'sendTemplate') {
-					const template = this.getNodeParameter('template', i) as string;
-					body.template_name = template;
-					emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send-template', body);
-				} else if (operation === 'sendHtml') {
-					emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send', body);
+					responseData = await emailSentResponse;
 				}
-
-				responseData = await emailSentResponse;
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

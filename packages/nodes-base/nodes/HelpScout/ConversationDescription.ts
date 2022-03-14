@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const conversationOperations = [
+export const conversationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const conversationOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const conversationFields = [
+export const conversationFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                conversation:create                         */
 /* -------------------------------------------------------------------------- */
@@ -164,7 +164,7 @@ export const conversationFields = [
 				],
 			},
 		},
-		description: 'By default the response only contain the ID to resource<br />. If this option gets activated it<br />will resolve the data automatically.',
+		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -195,7 +195,7 @@ export const conversationFields = [
 				name: 'autoReply',
 				type: 'boolean',
 				default: false,
-				description: `When autoReply is set to true, an auto reply will be sent</br>
+				description: `When autoReply is set to true, an auto reply will be sent
 				as long as there is at least one customer thread in the conversation.`,
 			},
 			{
@@ -635,4 +635,4 @@ export const conversationFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

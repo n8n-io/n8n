@@ -24,7 +24,7 @@ export async function bubbleApiRequest(
 	qs: IDataObject,
 ) {
 
-	const { apiToken, appName, domain, environment, hosting } = this.getCredentials('bubbleApi') as {
+	const { apiToken, appName, domain, environment, hosting } = await this.getCredentials('bubbleApi') as {
 		apiToken: string,
 		appName: string,
 		domain: string,

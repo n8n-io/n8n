@@ -39,6 +39,11 @@
 				"url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/"
 			},
 			{
+				"label": "Automate your data processing pipeline in 9 steps",
+				"icon": "⚙️",
+				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+			},
+			{
 				"label": "How Honest Burgers Use Automation to Save $100k per year",
 				"icon": "🍔",
 				"url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/"

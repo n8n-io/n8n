@@ -33,10 +33,9 @@ export class Sendy implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Sendy API.',
+		description: 'Consume Sendy API',
 		defaults: {
 			name: 'Sendy',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

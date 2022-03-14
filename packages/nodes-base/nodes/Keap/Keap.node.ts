@@ -110,10 +110,9 @@ export class Keap implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Keap API.',
+		description: 'Consume Keap API',
 		defaults: {
 			name: 'Keap',
-			color: '#79af53',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

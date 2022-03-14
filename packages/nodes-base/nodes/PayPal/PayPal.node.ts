@@ -39,7 +39,6 @@ export class PayPal implements INodeType {
 		description: 'Consume PayPal API',
 		defaults: {
 			name: 'PayPal',
-			color: '#356ae6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -87,77 +86,85 @@ export class PayPal implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			if (resource === 'payout') {
-				if (operation === 'create') {
-					const body: IPaymentBatch = {};
-					const header: ISenderBatchHeader = {};
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
-					const senderBatchId = this.getNodeParameter('senderBatchId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					header.sender_batch_id = senderBatchId;
-					if (additionalFields.emailSubject) {
-						header.email_subject = additionalFields.emailSubject as string;
-					}
-					if (additionalFields.emailMessage) {
-						header.email_message = additionalFields.emailMessage as string;
-					}
-					if (additionalFields.note) {
-						header.note = additionalFields.note as string;
-					}
-					body.sender_batch_header = header;
-					if (!jsonActive) {
-						const payoutItems: IItem[] = [];
-						const itemsValues = (this.getNodeParameter('itemsUi', i) as IDataObject).itemsValues as IDataObject[];
-						if (itemsValues && itemsValues.length > 0) {
-							itemsValues.forEach(o => {
-								const payoutItem: IItem = {};
-								const amount: IAmount = {};
-								amount.currency = o.currency as string;
-								amount.value = parseFloat(o.amount as string);
-								payoutItem.amount = amount;
-								payoutItem.note = o.note as string || '';
-								payoutItem.receiver = o.receiverValue as string;
-								payoutItem.recipient_type = o.recipientType as RecipientType;
-								payoutItem.recipient_wallet = o.recipientWallet as RecipientWallet;
-								payoutItem.sender_item_id = o.senderItemId as string || '';
-								payoutItems.push(payoutItem);
-							});
-							body.items = payoutItems;
-						} else {
-							throw new NodeOperationError(this.getNode(), 'You must have at least one item.');
+			try {
+				if (resource === 'payout') {
+					if (operation === 'create') {
+						const body: IPaymentBatch = {};
+						const header: ISenderBatchHeader = {};
+						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const senderBatchId = this.getNodeParameter('senderBatchId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						header.sender_batch_id = senderBatchId;
+						if (additionalFields.emailSubject) {
+							header.email_subject = additionalFields.emailSubject as string;
 						}
-					} else {
-						const itemsJson = validateJSON(this.getNodeParameter('itemsJson', i) as string);
-						body.items = itemsJson;
-					}
-					responseData = await payPalApiRequest.call(this, '/payments/payouts', 'POST', body);
+						if (additionalFields.emailMessage) {
+							header.email_message = additionalFields.emailMessage as string;
+						}
+						if (additionalFields.note) {
+							header.note = additionalFields.note as string;
+						}
+						body.sender_batch_header = header;
+						if (!jsonActive) {
+							const payoutItems: IItem[] = [];
+							const itemsValues = (this.getNodeParameter('itemsUi', i) as IDataObject).itemsValues as IDataObject[];
+							if (itemsValues && itemsValues.length > 0) {
+								itemsValues.forEach(o => {
+									const payoutItem: IItem = {};
+									const amount: IAmount = {};
+									amount.currency = o.currency as string;
+									amount.value = parseFloat(o.amount as string);
+									payoutItem.amount = amount;
+									payoutItem.note = o.note as string || '';
+									payoutItem.receiver = o.receiverValue as string;
+									payoutItem.recipient_type = o.recipientType as RecipientType;
+									payoutItem.recipient_wallet = o.recipientWallet as RecipientWallet;
+									payoutItem.sender_item_id = o.senderItemId as string || '';
+									payoutItems.push(payoutItem);
+								});
+								body.items = payoutItems;
+							} else {
+								throw new NodeOperationError(this.getNode(), 'You must have at least one item.');
+							}
+						} else {
+							const itemsJson = validateJSON(this.getNodeParameter('itemsJson', i) as string);
+							body.items = itemsJson;
+						}
+						responseData = await payPalApiRequest.call(this, '/payments/payouts', 'POST', body);
 
-				}
-				if (operation === 'get') {
-					const payoutBatchId = this.getNodeParameter('payoutBatchId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-					if (returnAll === true) {
-						responseData = await payPalApiRequestAllItems.call(this, 'items', `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
-					} else {
-						qs.page_size = this.getNodeParameter('limit', i) as number;
-						responseData = await payPalApiRequest.call(this, `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
-						responseData = responseData.items;
+					}
+					if (operation === 'get') {
+						const payoutBatchId = this.getNodeParameter('payoutBatchId', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						if (returnAll === true) {
+							responseData = await payPalApiRequestAllItems.call(this, 'items', `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
+						} else {
+							qs.page_size = this.getNodeParameter('limit', i) as number;
+							responseData = await payPalApiRequest.call(this, `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
+							responseData = responseData.items;
+						}
+					}
+				} else if (resource === 'payoutItem') {
+					if (operation === 'get') {
+						const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
+						responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}`, 'GET', {}, qs);
+					}
+					if (operation === 'cancel') {
+						const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
+						responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}/cancel`, 'POST', {}, qs);
 					}
 				}
-			} else if (resource === 'payoutItem') {
-				if (operation === 'get') {
-					const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
-					responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}`, 'GET', {}, qs);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
 				}
-				if (operation === 'cancel') {
-					const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
-					responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}/cancel`, 'POST', {}, qs);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

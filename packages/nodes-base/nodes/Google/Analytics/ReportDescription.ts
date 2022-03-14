@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const reportOperations = [
+export const reportOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const reportOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const reportFields = [
+export const reportFields: INodeProperties[] = [
 	{
 		displayName: 'View ID',
 		name: 'viewId',
@@ -50,7 +50,48 @@ export const reportFields = [
 		description: 'The View ID of Google Analytics',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'report',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'report',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		default: 1000,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -64,7 +105,7 @@ export const reportFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -143,6 +184,85 @@ export const reportFields = [
 				],
 			},
 			{
+				displayName: 'Dimension Filters',
+				name: 'dimensionFiltersUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Dimension Filter',
+				description: 'Dimension Filters in the request',
+				options: [
+					{
+						displayName: 'Filters',
+						name: 'filterValues',
+						values: [
+							{
+								displayName: 'Dimension Name',
+								name: 'dimensionName',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getDimensions',
+								},
+								default: '',
+								description: 'Name of the dimension to filter by.',
+							},
+							// https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Operator
+							{
+								displayName: 'Operator',
+								name: 'operator',
+								type: 'options',
+								default: 'EXACT',
+								description: 'Operator to use in combination with value.',
+								options: [
+									{
+										name: 'Begins With',
+										value: 'BEGINS_WITH',
+									},
+									{
+										name: 'Ends With',
+										value: 'ENDS_WITH',
+									},
+									{
+										name: 'Exact',
+										value: 'EXACT',
+									},
+									{
+										name: 'Greater Than (number)',
+										value: 'NUMERIC_GREATER_THAN',
+									},
+									{
+										name: 'Partial',
+										value: 'PARTIAL',
+									},
+									{
+										name: 'Regular Expression',
+										value: 'REGEXP',
+									},
+									{
+										name: 'Equal (number)',
+										value: 'NUMERIC_EQUAL',
+									},
+									{
+										name: 'Less Than (number)',
+										value: 'NUMERIC_LESS_THAN',
+									},
+								],
+							},
+							{
+								displayName: 'Value',
+								name: 'expressions',
+								type: 'string',
+								default: '',
+								placeholder: 'ga:newUsers',
+								description: `String or <a href="https://support.google.com/analytics/answer/1034324?hl=en">regular expression</a> to match against.`,
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Hide Totals',
 				name: 'hideTotals',
 				type: 'boolean',
@@ -190,11 +310,7 @@ export const reportFields = [
 								name: 'expression',
 								type: 'string',
 								default: 'ga:newUsers',
-								description: `A metric expression in the request. An expression is constructed from one or more metrics and numbers.<br>
-								Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis,<br>
-								Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters. Example ga:totalRefunds/ga:users,<br>
-								in most cases the metric expression is just a single metric name like ga:users. Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE)<br>
-								metrics will result in unexpected results.`,
+								description: `<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>`,
 							},
 							{
 								displayName: 'Formatting Type',
@@ -238,4 +354,4 @@ export const reportFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

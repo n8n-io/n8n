@@ -7,6 +7,10 @@ import {
 	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
+import {
+	OptionsWithUri,
+} from 'request';
+
 /**
  * Make an API request to Twilio
  *
@@ -17,7 +21,14 @@ import {
  * @returns {Promise<any>}
  */
 export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('twilioApi');
+	const credentials = await this.getCredentials('twilioApi') as {
+		accountSid: string;
+		authType: 'authToken' | 'apiKey';
+		authToken: string;
+		apiKeySid: string;
+		apiKeySecret: string;
+	};
+
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
@@ -26,17 +37,25 @@ export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions,
 		query = {};
 	}
 
-	const options = {
+	const options: OptionsWithUri = {
 		method,
 		form: body,
 		qs: query,
 		uri: `https://api.twilio.com/2010-04-01/Accounts/${credentials.accountSid}${endpoint}`,
-		auth: {
-			user: credentials.accountSid as string,
-			pass: credentials.authToken as string,
-		},
 		json: true,
 	};
+
+	if (credentials.authType === 'apiKey') {
+		options.auth = {
+			user: credentials.apiKeySid,
+			password: credentials.apiKeySecret,
+		};
+	} else if (credentials.authType === 'authToken') {
+		options.auth = {
+			user: credentials.accountSid,
+			pass: credentials.authToken,
+		};
+	}
 
 	try {
 		return await this.helpers.request(options);

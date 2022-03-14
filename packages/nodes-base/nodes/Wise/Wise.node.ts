@@ -5,6 +5,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -41,7 +42,7 @@ import {
 
 import * as moment from 'moment-timezone';
 
-import * as uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 
 export class Wise implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,7 +55,6 @@ export class Wise implements INodeType {
 		description: 'Consume the Wise API',
 		defaults: {
 			name: 'Wise',
-			color: '#37517e',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -142,12 +142,25 @@ export class Wise implements INodeType {
 					profileId: this.getNodeParameter('profileId', 0),
 				};
 
-				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', {}, qs);
+				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', {}, qs) as Recipient[];
 
-				return recipients.map(({ id, accountHolderName }: Recipient) => ({
-					name: accountHolderName,
-					value: id,
-				}));
+				return recipients.reduce<INodePropertyOptions[]>((activeRecipients, {
+					active,
+					id,
+					accountHolderName,
+					currency,
+					country,
+					type,
+				}) => {
+					if (active) {
+						const recipient = {
+							name: `[${currency}] ${accountHolderName} - (${country !== null ? country + ' - ' : '' }${type})`,
+							value: id,
+						};
+						activeRecipients.push(recipient);
+					}
+					return activeRecipients;
+				}, []);
 			},
 		},
 	};
@@ -426,7 +439,7 @@ export class Wise implements INodeType {
 
 						// in sandbox, simulate transfer completion so that PDF receipt can be downloaded
 
-						const { environment } = this.getCredentials('wiseApi') as IDataObject;
+						const { environment } = await this.getCredentials('wiseApi') as IDataObject;
 
 						if (environment === 'test') {
 							for (const endpoint of ['processing', 'funds_converted', 'outgoing_payment_sent']) {

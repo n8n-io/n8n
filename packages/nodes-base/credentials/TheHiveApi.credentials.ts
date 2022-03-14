@@ -1,24 +1,24 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class TheHiveApi implements ICredentialType {
 	name = 'theHiveApi';
 	displayName = 'The Hive API';
 	documentationUrl = 'theHive';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'ApiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'URL',
 			name: 'url',
 			default: '',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			description: 'The URL of TheHive instance',
 			placeholder: 'https://localhost:9000',
 		},
@@ -26,7 +26,7 @@ export class TheHiveApi implements ICredentialType {
 			displayName: 'API Version',
 			name: 'apiVersion',
 			default: '',
-			type: 'options' as NodePropertyTypes,
+			type: 'options',
 			description: 'The version of api to be used',
 			options: [
 				{
@@ -44,7 +44,7 @@ export class TheHiveApi implements ICredentialType {
 		{
 			displayName: 'Ignore SSL Issues',
 			name: 'allowUnauthorizedCerts',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: false,
 		},
 	];

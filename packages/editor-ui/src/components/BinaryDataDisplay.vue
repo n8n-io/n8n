@@ -1,20 +1,19 @@
 <template>
 	<div v-if="windowVisible" class="binary-data-window">
-		<el-button
+		<n8n-button
 			@click.stop="closeWindow"
 			size="small"
 			class="binary-data-window-back"
-			title="Back to overview page"
-			icon="el-icon-arrow-left"
-		>
-			Back to list
-		</el-button>
+			:title="$locale.baseText('binaryDataDisplay.backToOverviewPage')"
+			icon="arrow-left"
+			:label="$locale.baseText('binaryDataDisplay.backToList')"
+		/>
 
 		<div class="binary-data-window-wrapper">
 			<div v-if="!binaryData">
-				Data to display did not get found
+				{{ $locale.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
 			</div>
-			<embed v-else :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" class="binary-data" :class="embedClass"/>
+			<BinaryDataDisplayEmbed v-else :binaryData="binaryData"/>
 		</div>
 
 	</div>
@@ -27,15 +26,22 @@ import {
 	IRunExecutionData,
 } from 'n8n-workflow';
 
+import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
+
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { restApi } from '@/components/mixins/restApi';
 
 export default mixins(
 	nodeHelpers,
+	restApi,
 )
 	.extend({
 		name: 'BinaryDataDisplay',
+		components: {
+			BinaryDataDisplayEmbed,
+		},
 		props: [
 			'displayData', // IBinaryDisplayData
 			'windowVisible', // boolean
@@ -51,14 +57,15 @@ export default mixins(
 				if (this.displayData.index >= binaryData.length || binaryData[this.displayData.index][this.displayData.key] === undefined) {
 					return null;
 				}
-				return binaryData[this.displayData.index][this.displayData.key];
+
+				const binaryDataItem: IBinaryData = binaryData[this.displayData.index][this.displayData.key];
+
+				return binaryDataItem;
 			},
 
 			embedClass (): string[] {
-				if (this.binaryData !== null &&
-					this.binaryData.mimeType !== undefined &&
-					(this.binaryData.mimeType as string).startsWith('image')
-				) {
+				// @ts-ignore
+				if (this.binaryData! !== null && this.binaryData!.mimeType! !== undefined && (this.binaryData!.mimeType! as string).startsWith('image')) {
 					return ['image'];
 				}
 				return ['other'];
@@ -99,6 +106,7 @@ export default mixins(
 	text-align: center;
 
 	.binary-data-window-wrapper {
+		margin-top: .5em;
 		padding: 0 1em;
 		height: calc(100% - 50px);
 
@@ -106,10 +114,6 @@ export default mixins(
 		.el-col {
 			height: 100%;
 		}
-	}
-
-	.binary-data-window-back {
-		margin: 0 0 0.5em 0;
 	}
 
 	.binary-data {

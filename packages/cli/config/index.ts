@@ -1,10 +1,14 @@
+/* eslint-disable no-console */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import * as convict from 'convict';
 import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as core from 'n8n-core';
 
 dotenv.config();
 
 const config = convict({
-
 	database: {
 		type: {
 			doc: 'Type of database to use',
@@ -17,6 +21,26 @@ const config = convict({
 			format: '*',
 			default: '',
 			env: 'DB_TABLE_PREFIX',
+		},
+		logging: {
+			enabled: {
+				doc: 'Typeorm logging enabled flag.',
+				format: 'Boolean',
+				default: false,
+				env: 'DB_LOGGING_ENABLED',
+			},
+			options: {
+				doc: 'Logging level options, default is "error". Possible values: query,error,schema,warn,info,log. To enable all logging, specify "all"',
+				format: String,
+				default: 'error',
+				env: 'DB_LOGGING_OPTIONS',
+			},
+			maxQueryExecutionTime: {
+				doc: 'Maximum number of milliseconds query should be executed before logger logs a warning. Set 0 to disable long running query warning',
+				format: Number,
+				default: 1000,
+				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
+			},
 		},
 		postgresdb: {
 			database: {
@@ -82,7 +106,6 @@ const config = convict({
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
 			},
-
 		},
 		mysqldb: {
 			database: {
@@ -145,10 +168,24 @@ const config = convict({
 				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
 			},
 		},
+		defaultName: {
+			doc: 'Default name for credentials',
+			format: String,
+			default: 'My credentials',
+			env: 'CREDENTIALS_DEFAULT_NAME',
+		},
+	},
+
+	workflows: {
+		defaultName: {
+			doc: 'Default name for workflow',
+			format: String,
+			default: 'My workflow',
+			env: 'WORKFLOWS_DEFAULT_NAME',
+		},
 	},
 
 	executions: {
-
 		// By default workflows get always executed in their own process.
 		// If this option gets set to "main" it will run them in the
 		// main-process instead.
@@ -253,6 +290,20 @@ const config = convict({
 	},
 
 	queue: {
+		health: {
+			active: {
+				doc: 'If health checks should be enabled',
+				format: 'Boolean',
+				default: false,
+				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
+			},
+			port: {
+				doc: 'Port to serve health check on if activated',
+				format: Number,
+				default: 5678,
+				env: 'QUEUE_HEALTH_CHECK_PORT',
+			},
+		},
 		bull: {
 			prefix: {
 				doc: 'Prefix for all queue keys',
@@ -478,11 +529,23 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK',
 			doc: 'Path for webhook endpoint',
 		},
+		webhookWaiting: {
+			format: String,
+			default: 'webhook-waiting',
+			env: 'N8N_ENDPOINT_WEBHOOK_WAIT',
+			doc: 'Path for waiting-webhook endpoint',
+		},
 		webhookTest: {
 			format: String,
 			default: 'webhook-test',
 			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
 			doc: 'Path for test-webhook endpoint',
+		},
+		disableUi: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_DISABLE_UI',
+			doc: 'Disable N8N UI (Frontend).',
 		},
 		disableProductionWebhooksOnMainProcess: {
 			format: Boolean,
@@ -556,7 +619,6 @@ const config = convict({
 							throw new Error();
 						}
 					}
-
 				} catch (error) {
 					throw new TypeError(`The Nodes to exclude is not a valid Array of strings.`);
 				}
@@ -572,6 +634,165 @@ const config = convict({
 		},
 	},
 
+	logs: {
+		level: {
+			doc: 'Log output level. Options are error, warn, info, verbose and debug.',
+			format: String,
+			default: 'info',
+			env: 'N8N_LOG_LEVEL',
+		},
+		output: {
+			doc: 'Where to output logs. Options are: console, file. Multiple can be separated by comma (",")',
+			format: String,
+			default: 'console',
+			env: 'N8N_LOG_OUTPUT',
+		},
+		file: {
+			fileCountMax: {
+				doc: 'Maximum number of files to keep.',
+				format: Number,
+				default: 100,
+				env: 'N8N_LOG_FILE_COUNT_MAX',
+			},
+			fileSizeMax: {
+				doc: 'Maximum size for each log file in MB.',
+				format: Number,
+				default: 16,
+				env: 'N8N_LOG_FILE_SIZE_MAX',
+			},
+			location: {
+				doc: 'Log file location; only used if log output is set to file.',
+				format: String,
+				default: path.join(core.UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
+				env: 'N8N_LOG_FILE_LOCATION',
+			},
+		},
+	},
+
+	versionNotifications: {
+		enabled: {
+			doc: 'Whether feature is enabled to request notifications about new versions and security updates.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_VERSION_NOTIFICATIONS_ENABLED',
+		},
+		endpoint: {
+			doc: 'Endpoint to retrieve version information from.',
+			format: String,
+			default: 'https://api.n8n.io/versions/',
+			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
+		},
+		infoUrl: {
+			doc: `Url in New Versions Panel with more information on updating one's instance.`,
+			format: String,
+			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
+			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
+		},
+	},
+
+	templates: {
+		enabled: {
+			doc: 'Whether templates feature is enabled to load workflow templates.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_TEMPLATES_ENABLED',
+		},
+		host: {
+			doc: 'Endpoint host to retrieve workflow templates from endpoints.',
+			format: String,
+			default: 'https://api.n8n.io/',
+			env: 'N8N_TEMPLATES_HOST',
+		},
+	},
+
+	binaryDataManager: {
+		availableModes: {
+			format: String,
+			default: 'filesystem',
+			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
+			doc: 'Available modes of binary data storage, as comma separated strings',
+		},
+		mode: {
+			format: String,
+			default: 'default',
+			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
+			doc: 'Storage mode for binary data, default | filesystem',
+		},
+		localStoragePath: {
+			format: String,
+			default: path.join(core.UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			env: 'N8N_BINARY_DATA_STORAGE_PATH',
+			doc: 'Path for binary data storage in "filesystem" mode',
+		},
+		binaryDataTTL: {
+			format: Number,
+			default: 60,
+			env: 'N8N_BINARY_DATA_TTL',
+			doc: 'TTL for binary data of unsaved executions in minutes',
+		},
+		persistedBinaryDataTTL: {
+			format: Number,
+			default: 1440,
+			env: 'N8N_PERSISTED_BINARY_DATA_TTL',
+			doc: 'TTL for persisted binary data in minutes (binary data gets deleted if not persisted before TTL expires)',
+		},
+	},
+
+	deployment: {
+		type: {
+			format: String,
+			default: 'default',
+			env: 'N8N_DEPLOYMENT_TYPE',
+		},
+	},
+
+	hiringBanner: {
+		enabled: {
+			doc: 'Whether hiring banner in browser console is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_HIRING_BANNER_ENABLED',
+		},
+	},
+
+	personalization: {
+		enabled: {
+			doc: 'Whether personalization is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_PERSONALIZATION_ENABLED',
+		},
+	},
+
+	diagnostics: {
+		enabled: {
+			doc: 'Whether diagnostic mode is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_DIAGNOSTICS_ENABLED',
+		},
+		config: {
+			frontend: {
+				doc: 'Diagnostics config for frontend.',
+				format: String,
+				default: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
+				env: 'N8N_DIAGNOSTICS_CONFIG_FRONTEND',
+			},
+			backend: {
+				doc: 'Diagnostics config for backend.',
+				format: String,
+				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io/v1/batch',
+				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
+			},
+		},
+	},
+
+	defaultLocale: {
+		doc: 'Default locale for the UI',
+		format: String,
+		default: 'en',
+		env: 'N8N_DEFAULT_LOCALE',
+	},
 });
 
 // Overwrite default configuration with settings which got defined in

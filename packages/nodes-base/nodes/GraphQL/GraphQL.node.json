@@ -14,6 +14,11 @@
 		],
 		"generic": [
 			{
+				"label": "What are APIs and how to use them with no code",
+				"icon": " 🪢",
+				"url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/"
+			},
+			{
 				"label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n",
 				"icon": "👏",
 				"url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/"

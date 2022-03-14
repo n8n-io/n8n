@@ -13,7 +13,7 @@ import {
 
 export async function posthogApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('postHogApi') as IDataObject;
+	const credentials = await this.getCredentials('postHogApi') as IDataObject;
 
 	const base = credentials.url as string;
 

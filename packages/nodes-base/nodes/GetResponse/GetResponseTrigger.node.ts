@@ -26,10 +26,9 @@ export class GetResponseTrigger implements INodeType {
 		icon: 'file:getResponse.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when GetResponse events occure.',
+		description: 'Starts the workflow when GetResponse events occur',
 		defaults: {
 			name: 'GetResponse Trigger',
-			color: '#00afec',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -180,7 +179,7 @@ export class GetResponseTrigger implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (error.message.includes('[404]')) {
+					if (error.httpCode === '404') {
 						return false;
 					}
 				}

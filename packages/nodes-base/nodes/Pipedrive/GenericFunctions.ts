@@ -1,11 +1,12 @@
 import {
 	IExecuteFunctions,
 	IHookFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -66,23 +67,9 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		query = {};
 	}
 
-	let responseData;
-
 	try {
-		if (authenticationMethod === 'basicAuth' || authenticationMethod === 'apiToken' || authenticationMethod === 'none') {
-
-			const credentials = this.getCredentials('pipedriveApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			query.api_token = credentials.apiToken;
-			//@ts-ignore
-			responseData = await this.helpers.request(options);
-
-		} else {
-			responseData = await this.helpers.requestOAuth2!.call(this, 'pipedriveOAuth2Api', options);
-		}
+		const credentialType = authenticationMethod === 'apiToken' ? 'pipedriveApi' : 'pipedriveOAuth2Api';
+		const responseData = await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
 		if (downloadFile === true) {
 			return {
@@ -96,9 +83,9 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 
 		return {
 			additionalData: responseData.additional_data,
-			data: responseData.data,
+			data: (responseData.data === null) ? [] : responseData.data,
 		};
-	} catch(error) {
+	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
@@ -260,4 +247,17 @@ export function pipedriveResolveCustomProperties(customProperties: ICustomProper
 		}
 	}
 
+}
+
+
+export function sortOptionParameters(optionParameters: INodePropertyOptions[]): INodePropertyOptions[] {
+	optionParameters.sort((a, b) => {
+		const aName = a.name.toLowerCase();
+		const bName = b.name.toLowerCase();
+		if (aName < bName) { return -1; }
+		if (aName > bName) { return 1; }
+		return 0;
+	});
+
+	return optionParameters;
 }

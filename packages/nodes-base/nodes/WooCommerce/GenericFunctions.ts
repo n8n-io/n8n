@@ -9,6 +9,7 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
+
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -31,11 +32,16 @@ import {
 	snakeCase,
 } from 'change-case';
 
+import {
+	omit
+} from 'lodash';
+
 export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('wooCommerceApi');
+	const credentials = await this.getCredentials('wooCommerceApi');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
+
 	let options: OptionsWithUri = {
 		auth: {
 			user: credentials.consumerKey as string,
@@ -47,11 +53,16 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
 		json: true,
 	};
+
+	if (credentials.includeCredentialsInQuery === true) {
+		delete options.auth;
+		Object.assign(qs, { consumer_key: credentials.consumerKey, consumer_secret: credentials.consumerSecret });
+	}
+
 	if (!Object.keys(body).length) {
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -137,3 +148,29 @@ export function toSnakeCase(data:
 		}
 	}
 }
+
+export function setFields(fieldsToSet: IDataObject, body: IDataObject) {
+	for(const fields in fieldsToSet) {
+		if (fields === 'tags') {
+			body['tags'] = (fieldsToSet[fields] as string[]).map(tag => ({id: parseInt(tag, 10)}));
+		} else {
+			body[snakeCase(fields.toString())] = fieldsToSet[fields];
+		}
+		
+	}
+}
+
+export function adjustMetadata(fields: IDataObject & Metadata) {
+	if (!fields.meta_data) return fields;
+
+	return {
+		...omit(fields, ['meta_data']),
+		meta_data: fields.meta_data.meta_data_fields,
+	};
+}
+
+type Metadata = {
+	meta_data?: {
+		meta_data_fields: Array<{ key: string; value: string }>;
+	}
+};

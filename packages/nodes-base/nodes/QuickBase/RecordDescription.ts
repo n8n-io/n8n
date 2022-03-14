@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const recordOperations = [
+export const recordOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const recordOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const recordFields = [
+export const recordFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                record:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -84,11 +84,11 @@ export const recordFields = [
 		},
 		default: '',
 		required: true,
-		placeholder: 'id,name,description',
+		placeholder: 'Select Fields...',
 		description: 'Comma separated list of the properties which should used as columns for the new rows.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -102,7 +102,7 @@ export const recordFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -122,7 +122,7 @@ export const recordFields = [
 		},
 		options: [
 			{
-				displayName: 'Fields',
+				displayName: 'Return Fields',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -133,6 +133,13 @@ export const recordFields = [
 				},
 				default: [],
 				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
+			},
+			{
+				displayName: 'Use Field IDs',
+				name: 'useFieldIDs',
+				type: 'boolean',
+				default: false,
+				description: 'Use Field IDs instead of Field Names in Columns.',
 			},
 		],
 	},
@@ -173,8 +180,7 @@ export const recordFields = [
 				],
 			},
 		},
-		description: `The filter to delete records. To delete all records specify a filter that will include all records,</br>
-		for example {3.GT.0} where 3 is the ID of the Record ID field.`,
+		description: `The filter to delete records. To delete all records specify a filter that will include all records, for example {3.GT.0} where 3 is the ID of the Record ID field.`,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                record:getAll                               */
@@ -255,54 +261,6 @@ export const recordFields = [
 			},
 		},
 		options: [
-			// {
-			// 	displayName: 'Group By',
-			// 	name: 'groupByUi',
-			// 	placeholder: 'Add Group By',
-			// 	type: 'fixedCollection',
-			// 	typeOptions: {
-			// 		multipleValues: true,
-			// 	},
-			// 	default: {},
-			// 	options: [
-			// 		{
-			// 			name: 'groupByValues',
-			// 			displayName: 'Group By',
-			// 			values: [
-			// 				{
-			// 					displayName: 'Field ID',
-			// 					name: 'fieldId',
-			// 					type: 'options',
-			// 					typeOptions: {
-			// 						loadOptionsMethod: 'getTableFields',
-			// 					},
-			// 					default: '',
-			// 					description: 'The unique identifier of a field in a table.',
-			// 				},
-			// 				{
-			// 					displayName: 'Grouping',
-			// 					name: 'grouping',
-			// 					type: 'options',
-			// 					options: [
-			// 						{
-			// 							name: 'ASC',
-			// 							value: 'ASC',
-			// 						},
-			// 						{
-			// 							name: 'DESC',
-			// 							value: 'DESC',
-			// 						},
-			// 						{
-			// 							name: 'Equal Values',
-			// 							value: 'equal-values',
-			// 						},
-			// 					],
-			// 					default: 'ASC',
-			// 				},
-			// 			],
-			// 		},
-			// 	],
-			// },
 			{
 				displayName: 'Select',
 				name: 'select',
@@ -356,15 +314,14 @@ export const recordFields = [
 						],
 					},
 				],
-				description: `By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any.<br>
-				Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.`,
+				description: `By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any. Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.`,
 			},
 			{
 				displayName: 'Where',
 				name: 'where',
 				type: 'string',
 				default: '',
-				description: 'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html" target="_blank">Quick Base query language</a>, which determines the records to return.',
+				description: 'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html">Quick Base query language</a>, which determines the records to return.',
 			},
 		],
 	},
@@ -426,7 +383,7 @@ export const recordFields = [
 		description: 'update can use the key field on the table, or any other supported unique field.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -440,7 +397,7 @@ export const recordFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -472,6 +429,13 @@ export const recordFields = [
 				default: [],
 				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
 			},
+			{
+				displayName: 'Use Field IDs',
+				name: 'useFieldIDs',
+				type: 'boolean',
+				default: false,
+				description: 'Use Field IDs instead of Field Names in Columns.',
+			},
 			// {
 			// 	displayName: 'Merge Field ID',
 			// 	name: 'mergeFieldId',
@@ -480,8 +444,8 @@ export const recordFields = [
 			// 		loadOptionsMethod: 'getUniqueTableFields',
 			// 	},
 			// 	default: '',
-			// 	description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work,<br>
-			// 	Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by<br>
+			// 	description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work,
+			// 	Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by
 			// 	choosing the field in the app table that holds unique matching values. This is called a merge field.`,
 			// },
 		],
@@ -561,12 +525,10 @@ export const recordFields = [
 			},
 		},
 		default: '',
-		description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work,<br>
-		Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by<br>
-		choosing the field in the app table that holds unique matching values. This is called a merge field.`,
+		description: `<p>You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>`,
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -580,7 +542,7 @@ export const recordFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -612,6 +574,13 @@ export const recordFields = [
 				default: [],
 				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
 			},
+			{
+				displayName: 'Use Field IDs',
+				name: 'useFieldIDs',
+				type: 'boolean',
+				default: false,
+				description: 'Use Field IDs instead of Field Names in Columns.',
+			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const leadOperations = [
+export const leadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,6 +29,11 @@ export const leadOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a lead',
+			},
+			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new lead, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -59,13 +64,55 @@ export const leadOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const leadFields = [
+export const leadFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                lead:create                                 */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Match Against',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'resource',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `The field to check to see if the lead already exists`,
+	},
+	{
+		displayName: 'Value to Match',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If this value exists in the 'match against' field, update the lead. Otherwise create a new one`,
+	},
 	{
 		displayName: 'Company',
 		name: 'company',
@@ -79,6 +126,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -97,6 +145,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -115,6 +164,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -125,7 +175,6 @@ export const leadFields = [
 				type: 'number',
 				typeOptions: {
 					numberPrecision: 2,
-					numberStepSize: 1,
 				},
 				default: '',
 				description: 'Annual revenue for the company of the lead.',
@@ -207,7 +256,7 @@ export const leadFields = [
 			{
 				displayName: 'Is Unread By Owner',
 				name: 'IsUnreadByOwner',
-				type: 'Boolean',
+				type: 'boolean',
 				default: false,
 				description: 'If true, lead has been assigned, but not yet viewed. See Unread Leads for more information. Label is Unread By Owner.',
 			},
@@ -240,9 +289,6 @@ export const leadFields = [
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
 				type: 'number',
-				typeOptions: {
-					numberStepSize: 1,
-				},
 				default: '',
 				description: 'Number of employees at the lead’s company. Label is Employees.',
 			},
@@ -269,6 +315,15 @@ export const leadFields = [
 				type: 'string',
 				default: '',
 				description: 'Postal code for the address of the lead. Label is Zip/Postal Code.',
+			},
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Rating',
@@ -369,7 +424,6 @@ export const leadFields = [
 				type: 'number',
 				typeOptions: {
 					numberPrecision: 2,
-					numberStepSize: 1,
 				},
 				default: '',
 				description: 'Annual revenue for the company of the lead.',
@@ -458,7 +512,7 @@ export const leadFields = [
 			{
 				displayName: 'Is Unread By Owner',
 				name: 'IsUnreadByOwner',
-				type: 'Boolean',
+				type: 'boolean',
 				default: false,
 				description: 'If true, lead has been assigned, but not yet viewed. See Unread Leads for more information. Label is Unread By Owner.',
 			},
@@ -498,9 +552,6 @@ export const leadFields = [
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
 				type: 'number',
-				typeOptions: {
-					numberStepSize: 1,
-				},
 				default: '',
 				description: 'Number of employees at the lead’s company. Label is Employees.',
 			},
@@ -527,6 +578,15 @@ export const leadFields = [
 				type: 'string',
 				default: '',
 				description: 'Phone number for the lead.',
+			},
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Rating',
@@ -915,4 +975,4 @@ export const leadFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

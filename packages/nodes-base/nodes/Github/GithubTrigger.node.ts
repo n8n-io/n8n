@@ -25,10 +25,9 @@ export class GithubTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
-		description: 'Starts the workflow when a Github events occurs.',
+		description: 'Starts the workflow when Github events occur',
 		defaults: {
 			name: 'Github Trigger',
-			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -173,7 +172,7 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'installation',
 						value: 'installation',
-						description: 'Triggered when someone installs (created) , uninstalls (deleted), or accepts new permissions (new_permissions_accepted) for a GitHub App. When a GitHub App owner requests new permissions, the person who installed the GitHub App must accept the new permissions request.',
+						description: 'Triggered when someone installs (created), uninstalls (deleted), or accepts new permissions (new_permissions_accepted) for a GitHub App. When a GitHub App owner requests new permissions, the person who installed the GitHub App must accept the new permissions request.',
 					},
 					{
 						name: 'installation_repositories',
@@ -314,7 +313,7 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'team',
 						value: 'team',
-						description: 'Triggered when an organization\'s team is created,<br/>deleted, edited, added_to_repository, or removed_from_repository. Organization hooks only',
+						description: 'Triggered when an organization\'s team is created, deleted, edited, added_to_repository, or removed_from_repository. Organization hooks only',
 					},
 					{
 						name: 'team_add',
@@ -353,7 +352,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.message.includes('[404]:')) {
+					if (error.httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -399,7 +398,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					if (error.message.includes('[422]:')) {
+					if (error.httpCode === '422') {
 						// Webhook exists already
 
 						// Get the data of the already registered webhook

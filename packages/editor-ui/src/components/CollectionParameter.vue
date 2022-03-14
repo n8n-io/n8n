@@ -2,21 +2,28 @@
 	<div @keydown.stop class="collection-parameter">
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
-				Currently no properties exist
+				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
-			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" @valueChanged="valueChanged" />
+			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" @valueChanged="valueChanged" />
 
-			<div v-if="parameterOptions.length > 0 && !isReadOnly">
-				<el-button v-if="parameter.options.length === 1" size="small" class="add-option" @click="optionSelected(parameter.options[0].name)">{{ getPlaceholderText }}</el-button>
-				<el-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="small" class="add-option" @change="optionSelected" filterable>
-					<el-option
-						v-for="item in parameterOptions"
-						:key="item.name"
-						:label="item.displayName"
-						:value="item.name">
-					</el-option>
-				</el-select>
+			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
+				<n8n-button
+					v-if="parameter.options.length === 1"
+					fullWidth
+					@click="optionSelected(parameter.options[0].name)"
+					:label="getPlaceholderText"
+				/>
+				<div v-else class="add-option">
+					<n8n-select v-model="selectedOption" :placeholder="getPlaceholderText" size="small"  @change="optionSelected" filterable>
+						<n8n-option
+							v-for="item in parameterOptions"
+							:key="item.name"
+							:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
+							:value="item.name">
+						</n8n-option>
+					</n8n-select>
+				</div>
 			</div>
 
 		</div>
@@ -60,7 +67,8 @@ export default mixins(
 		},
 		computed: {
 			getPlaceholderText (): string {
-				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose Option To Add';
+				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
+				return placeholder ? placeholder : this.$locale.baseText('collectionParameter.choose');
 			},
 			getProperties (): INodeProperties[] {
 				const returnProperties = [];
@@ -68,7 +76,7 @@ export default mixins(
 				for (const name of this.propertyNames) {
 					tempProperties = this.getOptionProperties(name);
 					if (tempProperties !== undefined) {
-						returnProperties.push(tempProperties);
+						returnProperties.push(...tempProperties);
 					}
 				}
 				return returnProperties;
@@ -104,14 +112,15 @@ export default mixins(
 
 				return this.parameter.typeOptions[argumentName];
 			},
-			getOptionProperties (optionName: string): INodeProperties | undefined {
+			getOptionProperties (optionName: string): INodeProperties[] {
+				const properties: INodeProperties[] = [];
 				for (const option of this.parameter.options) {
 					if (option.name === optionName) {
-						return option;
+						properties.push(option);
 					}
 				}
 
-				return undefined;
+				return properties;
 			},
 			displayNodeParameter (parameter: INodeProperties) {
 				if (parameter.displayOptions === undefined) {
@@ -121,10 +130,12 @@ export default mixins(
 				return this.displayParameter(this.nodeValues, parameter, this.path);
 			},
 			optionSelected (optionName: string) {
-				const option = this.getOptionProperties(optionName);
-				if (option === undefined) {
+				const options = this.getOptionProperties(optionName);
+				if (options.length === 0) {
 					return;
 				}
+
+				const option = options[0];
 				const name = `${this.path}.${option.name}`;
 
 				let parameterData;
@@ -174,15 +185,14 @@ export default mixins(
 <style lang="scss">
 
 .collection-parameter {
-	padding: 0em 0 0em 2em;
+	padding-left: var(--spacing-s);
 
-	.add-option {
-		margin-top: 0.5em;
-		width: 100%;
+	.param-options {
+		margin-top: var(--spacing-xs);
 	}
 
 	.no-items-exist {
-		margin: 0.8em 0 0.4em 0;
+		margin: var(--spacing-xs) 0;
 	}
 	.option {
 		position: relative;

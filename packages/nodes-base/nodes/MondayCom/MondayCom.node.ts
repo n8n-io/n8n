@@ -57,7 +57,6 @@ export class MondayCom implements INodeType {
 		description: 'Consume Monday.com API',
 		defaults: {
 			name: 'Monday.com',
-			color: '#4353ff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -262,500 +261,508 @@ export class MondayCom implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-			if (resource === 'board') {
-				if (operation === 'archive') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+			try {
+				if (resource === 'board') {
+					if (operation === 'archive') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($id: Int!) {
-								archive_board (board_id: $id) {
-									id
-								}
-							}`,
-						variables: {
-							id: boardId,
-						},
-					};
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($id: Int!) {
+									archive_board (board_id: $id) {
+										id
+									}
+								}`,
+							variables: {
+								id: boardId,
+							},
+						};
 
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.archive_board;
-				}
-				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
-					const kind = this.getNodeParameter('kind', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($name: String!, $kind: BoardKind!, $templateId: Int) {
-								create_board (board_name: $name, board_kind: $kind, template_id: $templateId) {
-									id
-								}
-							}`,
-						variables: {
-							name,
-							kind,
-						},
-					};
-
-					if (additionalFields.templateId) {
-						body.variables.templateId = additionalFields.templateId as number;
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.archive_board;
 					}
+					if (operation === 'create') {
+						const name = this.getNodeParameter('name', i) as string;
+						const kind = this.getNodeParameter('kind', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.create_board;
-				}
-				if (operation === 'get') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-
-					const body: IGraphqlBody = {
-						query:
-							`query ($id: [Int]) {
-								boards (ids: $id){
-									id
-									name
-									description
-									state
-									board_folder_id
-									board_kind
-									owner() {
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($name: String!, $kind: BoardKind!, $templateId: Int) {
+									create_board (board_name: $name, board_kind: $kind, template_id: $templateId) {
 										id
 									}
-								}
-							}`,
-						variables: {
-							id: boardId,
-						},
-					};
+								}`,
+							variables: {
+								name,
+								kind,
+							},
+						};
 
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.boards;
-				}
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (additionalFields.templateId) {
+							body.variables.templateId = additionalFields.templateId as number;
+						}
 
-					const body: IGraphqlBody = {
-						query:
-							`query ($page: Int, $limit: Int) {
-								boards (page: $page, limit: $limit){
-									id
-									name
-									description
-									state
-									board_folder_id
-									board_kind
-									owner() {
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.create_board;
+					}
+					if (operation === 'get') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+
+						const body: IGraphqlBody = {
+							query:
+								`query ($id: [Int]) {
+									boards (ids: $id){
 										id
+										name
+										description
+										state
+										board_folder_id
+										board_kind
+										owner() {
+											id
+										}
 									}
-								}
-							}`,
-						variables: {
-							page: 1,
-						},
-					};
+								}`,
+							variables: {
+								id: boardId,
+							},
+						};
 
-					if (returnAll === true) {
-						responseData = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
-					} else {
-						body.variables.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.boards;
 					}
-				}
-			}
-			if (resource === 'boardColumn') {
-				if (operation === 'create') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-					const title = this.getNodeParameter('title', i) as string;
-					const columnType = this.getNodeParameter('columnType', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($boardId: Int!, $title: String!, $columnType: ColumnType, $defaults: JSON ) {
-								create_column (board_id: $boardId, title: $title, column_type: $columnType, defaults: $defaults) {
-									id
-								}
-							}`,
-						variables: {
-							boardId,
-							title,
-							columnType: snakeCase(columnType),
-						},
-					};
+						const body: IGraphqlBody = {
+							query:
+								`query ($page: Int, $limit: Int) {
+									boards (page: $page, limit: $limit){
+										id
+										name
+										description
+										state
+										board_folder_id
+										board_kind
+										owner() {
+											id
+										}
+									}
+								}`,
+							variables: {
+								page: 1,
+							},
+						};
 
-					if (additionalFields.defaults) {
-						try {
-							JSON.parse(additionalFields.defaults as string);
-						} catch (error) {
-							throw new NodeOperationError(this.getNode(), 'Defauls must be a valid JSON');
+						if (returnAll === true) {
+							responseData = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
+						} else {
+							body.variables.limit = this.getNodeParameter('limit', i) as number;
+							responseData = await mondayComApiRequest.call(this, body);
+							responseData = responseData.data.boards;
 						}
-						body.variables.defaults = JSON.stringify(JSON.parse(additionalFields.defaults as string));
 					}
-
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.create_column;
 				}
-				if (operation === 'getAll') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+				if (resource === 'boardColumn') {
+					if (operation === 'create') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+						const title = this.getNodeParameter('title', i) as string;
+						const columnType = this.getNodeParameter('columnType', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const body: IGraphqlBody = {
-						query:
-							`query ($boardId: [Int]) {
-								boards (ids: $boardId){
-									columns() {
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($boardId: Int!, $title: String!, $columnType: ColumnType, $defaults: JSON ) {
+									create_column (board_id: $boardId, title: $title, column_type: $columnType, defaults: $defaults) {
 										id
-										title
-										type
-										settings_str
-										archived
 									}
-								}
-							}`,
-						variables: {
-							page: 1,
-							boardId,
-						},
-					};
+								}`,
+							variables: {
+								boardId,
+								title,
+								columnType: snakeCase(columnType),
+							},
+						};
 
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.boards[0].columns;
+						if (additionalFields.defaults) {
+							try {
+								JSON.parse(additionalFields.defaults as string);
+							} catch (error) {
+								throw new NodeOperationError(this.getNode(), 'Defauls must be a valid JSON');
+							}
+							body.variables.defaults = JSON.stringify(JSON.parse(additionalFields.defaults as string));
+						}
+
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.create_column;
+					}
+					if (operation === 'getAll') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+
+						const body: IGraphqlBody = {
+							query:
+								`query ($boardId: [Int]) {
+									boards (ids: $boardId){
+										columns() {
+											id
+											title
+											type
+											settings_str
+											archived
+										}
+									}
+								}`,
+							variables: {
+								page: 1,
+								boardId,
+							},
+						};
+
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.boards[0].columns;
+					}
 				}
-			}
-			if (resource === 'boardGroup') {
-				if (operation === 'create') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-					const name = this.getNodeParameter('name', i) as string;
+				if (resource === 'boardGroup') {
+					if (operation === 'create') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+						const name = this.getNodeParameter('name', i) as string;
 
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($boardId: Int!, $groupName: String!) {
-								create_group (board_id: $boardId, group_name: $groupName) {
-									id
-								}
-							}`,
-						variables: {
-							boardId,
-							groupName: name,
-						},
-					};
-
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.create_group;
-				}
-				if (operation === 'delete') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-					const groupId = this.getNodeParameter('groupId', i) as string;
-
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($boardId: Int!, $groupId: String!) {
-								delete_group (board_id: $boardId, group_id: $groupId) {
-									id
-								}
-							}`,
-						variables: {
-							boardId,
-							groupId,
-						},
-					};
-
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.delete_group;
-				}
-				if (operation === 'getAll') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-
-					const body: IGraphqlBody = {
-						query:
-							`query ($boardId: [Int]) {
-								boards (ids: $boardId, ){
-									id
-									groups() {
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($boardId: Int!, $groupName: String!) {
+									create_group (board_id: $boardId, group_name: $groupName) {
 										id
-										title
-										color
-										position
-										archived
 									}
-								}
-							}`,
-						variables: {
-							boardId,
-						},
-					};
+								}`,
+							variables: {
+								boardId,
+								groupName: name,
+							},
+						};
 
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.boards[0].groups;
-				}
-			}
-			if (resource === 'boardItem') {
-				if (operation === 'addUpdate') {
-					const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
-					const value = this.getNodeParameter('value', i) as string;
-
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($itemId: Int!, $value: String!) {
-								create_update (item_id: $itemId, body: $value) {
-									id
-								}
-							}`,
-						variables: {
-							itemId,
-							value,
-						},
-					};
-
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.create_update;
-				}
-				if (operation === 'changeColumnValue') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-					const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
-					const columnId = this.getNodeParameter('columnId', i) as string;
-					const value = this.getNodeParameter('value', i) as string;
-
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($boardId: Int!, $itemId: Int!, $columnId: String!, $value: JSON!) {
-								change_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) {
-									id
-								}
-							}`,
-						variables: {
-							boardId,
-							itemId,
-							columnId,
-						},
-					};
-
-					try {
-						JSON.parse(value);
-					} catch (error) {
-						throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.create_group;
 					}
-					body.variables.value = JSON.stringify(JSON.parse(value));
+					if (operation === 'delete') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+						const groupId = this.getNodeParameter('groupId', i) as string;
 
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.change_column_value;
-				}
-				if (operation === 'changeMultipleColumnValues') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-					const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
-					const columnValues = this.getNodeParameter('columnValues', i) as string;
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($boardId: Int!, $groupId: String!) {
+									delete_group (board_id: $boardId, group_id: $groupId) {
+										id
+									}
+								}`,
+							variables: {
+								boardId,
+								groupId,
+							},
+						};
 
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($boardId: Int!, $itemId: Int!, $columnValues: JSON!) {
-								change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) {
-									id
-								}
-							}`,
-						variables: {
-							boardId,
-							itemId,
-						},
-					};
-
-					try {
-						JSON.parse(columnValues);
-					} catch (error) {
-						throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.delete_group;
 					}
-					body.variables.columnValues = JSON.stringify(JSON.parse(columnValues));
+					if (operation === 'getAll') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.change_multiple_column_values;
+						const body: IGraphqlBody = {
+							query:
+								`query ($boardId: [Int]) {
+									boards (ids: $boardId, ){
+										id
+										groups() {
+											id
+											title
+											color
+											position
+											archived
+										}
+									}
+								}`,
+							variables: {
+								boardId,
+							},
+						};
+
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.boards[0].groups;
+					}
 				}
-				if (operation === 'create') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-					const groupId = this.getNodeParameter('groupId', i) as string;
-					const itemName = this.getNodeParameter('name', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+				if (resource === 'boardItem') {
+					if (operation === 'addUpdate') {
+						const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+						const value = this.getNodeParameter('value', i) as string;
 
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($boardId: Int!, $groupId: String!, $itemName: String!, $columnValues: JSON) {
-								create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) {
-									id
-								}
-							}`,
-						variables: {
-							boardId,
-							groupId,
-							itemName,
-						},
-					};
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($itemId: Int!, $value: String!) {
+									create_update (item_id: $itemId, body: $value) {
+										id
+									}
+								}`,
+							variables: {
+								itemId,
+								value,
+							},
+						};
 
-					if (additionalFields.columnValues) {
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.create_update;
+					}
+					if (operation === 'changeColumnValue') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+						const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+						const columnId = this.getNodeParameter('columnId', i) as string;
+						const value = this.getNodeParameter('value', i) as string;
+
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($boardId: Int!, $itemId: Int!, $columnId: String!, $value: JSON!) {
+									change_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) {
+										id
+									}
+								}`,
+							variables: {
+								boardId,
+								itemId,
+								columnId,
+							},
+						};
+
 						try {
-							JSON.parse(additionalFields.columnValues as string);
+							JSON.parse(value);
 						} catch (error) {
 							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
 						}
-						body.variables.columnValues = JSON.stringify(JSON.parse(additionalFields.columnValues as string));
-					}
+						body.variables.value = JSON.stringify(JSON.parse(value));
 
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.create_item;
-				}
-				if (operation === 'delete') {
-					const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
-
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($itemId: Int!) {
-								delete_item (item_id: $itemId) {
-									id
-								}
-							}`,
-						variables: {
-							itemId,
-						},
-					};
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.delete_item;
-				}
-				if (operation === 'get') {
-					const itemIds = ((this.getNodeParameter('itemId', i) as string).split(',') as string[]).map((n) => parseInt(n, 10));
-
-					const body: IGraphqlBody = {
-						query:
-							`query ($itemId: [Int!]){
-								items (ids: $itemId) {
-									id
-									name
-									created_at
-									state
-									column_values() {
-										id
-										text
-										title
-										type
-										value
-										additional_info
-									}
-								}
-							}`,
-						variables: {
-							itemId: itemIds,
-						},
-					};
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.items;
-				}
-				if (operation === 'getAll') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-					const groupId = this.getNodeParameter('groupId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					const body: IGraphqlBody = {
-						query:
-							`query ($boardId: [Int], $groupId: [String], $page: Int, $limit: Int) {
-								boards (ids: $boardId) {
-									groups (ids: $groupId) {
-										 id
-										 items(limit: $limit, page: $page) {
-											 id
-											 name
-											 created_at
-											 state
-											 column_values() {
-												 id
-												 text
-												 title
-												 type
-												 value
-												 additional_info
-											 }
-										 }
-									}
-								}
-							}`,
-						variables: {
-							boardId,
-							groupId,
-						},
-					};
-
-					if (returnAll) {
-						responseData = await mondayComApiRequestAllItems.call(this, 'data.boards[0].groups[0].items', body);
-					} else {
-						body.variables.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await mondayComApiRequest.call(this, body);
-						responseData = responseData.data.boards[0].groups[0].items;
+						responseData = responseData.data.change_column_value;
 					}
+					if (operation === 'changeMultipleColumnValues') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+						const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+						const columnValues = this.getNodeParameter('columnValues', i) as string;
 
-				}
-				if (operation === 'getByColumnValue') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-					const columnId = this.getNodeParameter('columnId', i) as string;
-					const columnValue = this.getNodeParameter('columnValue', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					const body: IGraphqlBody = {
-						query:
-							`query ($boardId: Int!, $columnId: String!, $columnValue: String!, $page: Int, $limit: Int ){
-								items_by_column_values (board_id: $boardId, column_id: $columnId, column_value: $columnValue, page: $page, limit: $limit) {
-									id
-									name
-									created_at
-									state
-									board {
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($boardId: Int!, $itemId: Int!, $columnValues: JSON!) {
+									change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) {
 										id
 									}
-									column_values() {
-										 id
-										 text
-										 title
-										 type
-										 value
-										 additional_info
-									}
-								}
-							}`,
-						variables: {
-							boardId,
-							columnId,
-							columnValue,
-						},
-					};
+								}`,
+							variables: {
+								boardId,
+								itemId,
+							},
+						};
 
-					if (returnAll) {
-						responseData = await mondayComApiRequestAllItems.call(this, 'data.items_by_column_values', body);
-					} else {
-						body.variables.limit = this.getNodeParameter('limit', i) as number;
+						try {
+							JSON.parse(columnValues);
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
+						}
+						body.variables.columnValues = JSON.stringify(JSON.parse(columnValues));
+
 						responseData = await mondayComApiRequest.call(this, body);
-						responseData = responseData.data.items_by_column_values;
+						responseData = responseData.data.change_multiple_column_values;
+					}
+					if (operation === 'create') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+						const groupId = this.getNodeParameter('groupId', i) as string;
+						const itemName = this.getNodeParameter('name', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($boardId: Int!, $groupId: String!, $itemName: String!, $columnValues: JSON) {
+									create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) {
+										id
+									}
+								}`,
+							variables: {
+								boardId,
+								groupId,
+								itemName,
+							},
+						};
+
+						if (additionalFields.columnValues) {
+							try {
+								JSON.parse(additionalFields.columnValues as string);
+							} catch (error) {
+								throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
+							}
+							body.variables.columnValues = JSON.stringify(JSON.parse(additionalFields.columnValues as string));
+						}
+
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.create_item;
+					}
+					if (operation === 'delete') {
+						const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($itemId: Int!) {
+									delete_item (item_id: $itemId) {
+										id
+									}
+								}`,
+							variables: {
+								itemId,
+							},
+						};
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.delete_item;
+					}
+					if (operation === 'get') {
+						const itemIds = ((this.getNodeParameter('itemId', i) as string).split(',') as string[]).map((n) => parseInt(n, 10));
+
+						const body: IGraphqlBody = {
+							query:
+								`query ($itemId: [Int!]){
+									items (ids: $itemId) {
+										id
+										name
+										created_at
+										state
+										column_values() {
+											id
+											text
+											title
+											type
+											value
+											additional_info
+										}
+									}
+								}`,
+							variables: {
+								itemId: itemIds,
+							},
+						};
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.items;
+					}
+					if (operation === 'getAll') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+						const groupId = this.getNodeParameter('groupId', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const body: IGraphqlBody = {
+							query:
+								`query ($boardId: [Int], $groupId: [String], $page: Int, $limit: Int) {
+									boards (ids: $boardId) {
+										groups (ids: $groupId) {
+											id
+											items(limit: $limit, page: $page) {
+												id
+												name
+												created_at
+												state
+												column_values() {
+													id
+													text
+													title
+													type
+													value
+													additional_info
+												}
+											}
+										}
+									}
+								}`,
+							variables: {
+								boardId,
+								groupId,
+							},
+						};
+
+						if (returnAll) {
+							responseData = await mondayComApiRequestAllItems.call(this, 'data.boards[0].groups[0].items', body);
+						} else {
+							body.variables.limit = this.getNodeParameter('limit', i) as number;
+							responseData = await mondayComApiRequest.call(this, body);
+							responseData = responseData.data.boards[0].groups[0].items;
+						}
+
+					}
+					if (operation === 'getByColumnValue') {
+						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+						const columnId = this.getNodeParameter('columnId', i) as string;
+						const columnValue = this.getNodeParameter('columnValue', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const body: IGraphqlBody = {
+							query:
+								`query ($boardId: Int!, $columnId: String!, $columnValue: String!, $page: Int, $limit: Int ){
+									items_by_column_values (board_id: $boardId, column_id: $columnId, column_value: $columnValue, page: $page, limit: $limit) {
+										id
+										name
+										created_at
+										state
+										board {
+											id
+										}
+										column_values() {
+											id
+											text
+											title
+											type
+											value
+											additional_info
+										}
+									}
+								}`,
+							variables: {
+								boardId,
+								columnId,
+								columnValue,
+							},
+						};
+
+						if (returnAll) {
+							responseData = await mondayComApiRequestAllItems.call(this, 'data.items_by_column_values', body);
+						} else {
+							body.variables.limit = this.getNodeParameter('limit', i) as number;
+							responseData = await mondayComApiRequest.call(this, body);
+							responseData = responseData.data.items_by_column_values;
+						}
+					}
+					if (operation === 'move') {
+						const groupId = this.getNodeParameter('groupId', i) as string;
+						const itemId = parseInt(this.getNodeParameter('itemId', i) as string, 10);
+
+						const body: IGraphqlBody = {
+							query:
+								`mutation ($groupId: String!, $itemId: Int!) {
+									move_item_to_group (group_id: $groupId, item_id: $itemId) {
+										id
+									}
+								}`,
+							variables: {
+								groupId,
+								itemId,
+							},
+						};
+
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.move_item_to_group;
 					}
 				}
-				if (operation === 'move') {
-					const groupId = this.getNodeParameter('groupId', i) as string;
-					const itemId = parseInt(this.getNodeParameter('itemId', i) as string, 10);
-
-					const body: IGraphqlBody = {
-						query:
-							`mutation ($groupId: String!, $itemId: Int!) {
-								move_item_to_group (group_id: $groupId, item_id: $itemId) {
-									id
-								}
-							}`,
-						variables: {
-							groupId,
-							itemId,
-						},
-					};
-
-					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.move_item_to_group;
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

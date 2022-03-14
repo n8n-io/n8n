@@ -42,10 +42,9 @@ export class Iterable implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Iterable API.',
+		description: 'Consume Iterable API',
 		defaults: {
 			name: 'Iterable',
-			color: '#725ed8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -29,10 +28,9 @@ export class Pushbullet implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Pushbullet API.',
+		description: 'Consume Pushbullet API',
 		defaults: {
 			name: 'Pushbullet',
-			color: '#457854',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -209,7 +207,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be created.',
+				description: 'Name of the binary property which contains the data for the file to be created.',
 			},
 			{
 				displayName: 'Target',
@@ -273,9 +271,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `The value to be set depending on the target selected.<br>
-				For example, if the target selected is email then this field would take the email address<br>
-				of the person you are trying to send the push to.`,
+				description: `The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.`,
 			},
 			{
 				displayName: 'Value',
@@ -456,154 +452,163 @@ export class Pushbullet implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+			try {
+				if (resource === 'push') {
+					if (operation === 'create') {
+						const type = this.getNodeParameter('type', i) as string;
 
-			if (resource === 'push') {
-				if (operation === 'create') {
-					const type = this.getNodeParameter('type', i) as string;
+						const message = this.getNodeParameter('body', i) as string;
 
-					const message = this.getNodeParameter('body', i) as string;
+						const target = this.getNodeParameter('target', i) as string;
 
-					const target = this.getNodeParameter('target', i) as string;
+						const body: IDataObject = {
+							type,
+							body: message,
+						};
 
-					const body: IDataObject = {
-						type,
-						body: message,
-					};
-
-					if (target !== 'default') {
-						const value = this.getNodeParameter('value', i) as string;
-						body[target as string] = value;
-					}
-
-					if (['note', 'link'].includes(type)) {
-						body.title = this.getNodeParameter('title', i) as string;
-
-						if (type === 'link') {
-							body.url = this.getNodeParameter('url', i) as string;
-						}
-					}
-
-					if (type === 'file') {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-						}
-						//@ts-ignore
-						if (items[i].binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+						if (target !== 'default') {
+							const value = this.getNodeParameter('value', i) as string;
+							body[target as string] = value;
 						}
 
-						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+						if (['note', 'link'].includes(type)) {
+							body.title = this.getNodeParameter('title', i) as string;
 
-						//create upload url
-						const {
-							upload_url: uploadUrl,
-							file_name,
-							file_type,
-							file_url,
-						} = await pushbulletApiRequest.call(
-							this,
-							'POST',
-							`/upload-request`,
-							{
-								file_name: binaryData.fileName,
-								file_type: binaryData.mimeType,
-							},
-						);
+							if (type === 'link') {
+								body.url = this.getNodeParameter('url', i) as string;
+							}
+						}
 
-						//upload the file
-						await pushbulletApiRequest.call(
-							this,
-							'POST',
-							'',
-							{},
-							{},
-							uploadUrl,
-							{
-								formData: {
-									file: {
-										value: Buffer.from(binaryData.data, BINARY_ENCODING),
-										options: {
-											filename: binaryData.fileName,
+						if (type === 'file') {
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+
+							if (items[i].binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+							//@ts-ignore
+							if (items[i].binary[binaryPropertyName] === undefined) {
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+							}
+
+							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+
+							//create upload url
+							const {
+								upload_url: uploadUrl,
+								file_name,
+								file_type,
+								file_url,
+							} = await pushbulletApiRequest.call(
+								this,
+								'POST',
+								`/upload-request`,
+								{
+									file_name: binaryData.fileName,
+									file_type: binaryData.mimeType,
+								},
+							);
+
+							//upload the file
+							await pushbulletApiRequest.call(
+								this,
+								'POST',
+								'',
+								{},
+								{},
+								uploadUrl,
+								{
+									formData: {
+										file: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
 										},
 									},
+									json: false,
 								},
-								json: false,
-							},
+							);
+
+							body.file_name = file_name;
+							body.file_type = file_type;
+							body.file_url = file_url;
+						}
+
+						responseData = await pushbulletApiRequest.call(
+							this,
+							'POST',
+							`/pushes`,
+							body,
+						);
+					}
+
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+						Object.assign(qs, filters);
+
+						if (qs.modified_after) {
+							qs.modified_after = moment(qs.modified_after as string).unix();
+						}
+
+						if (returnAll) {
+							responseData = await pushbulletApiRequestAllItems.call(this, 'pushes', 'GET', '/pushes', {}, qs);
+
+						} else {
+							qs.limit = this.getNodeParameter('limit', 0) as number;
+
+							responseData = await pushbulletApiRequest.call(this, 'GET', '/pushes', {}, qs);
+
+							responseData = responseData.pushes;
+						}
+					}
+
+					if (operation === 'delete') {
+						const pushId = this.getNodeParameter('pushId', i) as string;
+
+						responseData = await pushbulletApiRequest.call(
+							this,
+							'DELETE',
+							`/pushes/${pushId}`,
 						);
 
-						body.file_name = file_name;
-						body.file_type = file_type;
-						body.file_url = file_url;
+						responseData = { success: true };
 					}
 
-					responseData = await pushbulletApiRequest.call(
-						this,
-						'POST',
-						`/pushes`,
-						body,
-					);
-				}
+					if (operation === 'update') {
+						const pushId = this.getNodeParameter('pushId', i) as string;
 
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const dismissed = this.getNodeParameter('dismissed', i) as boolean;
 
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					Object.assign(qs, filters);
-
-					if (qs.modified_after) {
-						qs.modified_after = moment(qs.modified_after as string).unix();
-					}
-
-					if (returnAll) {
-						responseData = await pushbulletApiRequestAllItems.call(this, 'pushes', 'GET', '/pushes', {}, qs);
-
-					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
-
-						responseData = await pushbulletApiRequest.call(this, 'GET', '/pushes', {}, qs);
-
-						responseData = responseData.pushes;
+						responseData = await pushbulletApiRequest.call(
+							this,
+							'POST',
+							`/pushes/${pushId}`,
+							{
+								dismissed,
+							},
+						);
 					}
 				}
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 
-				if (operation === 'delete') {
-					const pushId = this.getNodeParameter('pushId', i) as string;
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
 
-					responseData = await pushbulletApiRequest.call(
-						this,
-						'DELETE',
-						`/pushes/${pushId}`,
-					);
-
-					responseData = { success: true };
 				}
-
-				if (operation === 'update') {
-					const pushId = this.getNodeParameter('pushId', i) as string;
-
-					const dismissed = this.getNodeParameter('dismissed', i) as boolean;
-
-					responseData = await pushbulletApiRequest.call(
-						this,
-						'POST',
-						`/pushes/${pushId}`,
-						{
-							dismissed,
-						},
-					);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
+				throw error;
 			}
 		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
 
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
-
-		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

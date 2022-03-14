@@ -15,18 +15,22 @@ import {
 } from 'n8n-workflow';
 
 export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('paddleApi');
+	const credentials = await this.getCredentials('paddleApi');
+	const productionUrl = 'https://vendors.paddle.com/api';
+	const sandboxUrl = 'https://sandbox-vendors.paddle.com/api';
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'Could not retrieve credentials!');
 	}
+
+	const isSandbox = credentials.sandbox;
 
 	const options: OptionsWithUri = {
 		method,
 		headers: {
 			'content-type': 'application/json',
 		},
-		uri: `https://vendors.paddle.com/api${endpoint}`,
+		uri: `${isSandbox === true ? sandboxUrl : productionUrl}${endpoint}`,
 		body,
 		json: true,
 	};

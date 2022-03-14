@@ -29,10 +29,9 @@ export class Strava implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Strava API.',
+		description: 'Consume Strava API',
 		defaults: {
 			name: 'Strava',
-			color: '#ea5929',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -71,105 +70,113 @@ export class Strava implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
 
-			if (resource === 'activity') {
-				//https://developers.strava.com/docs/reference/#api-Activities-createActivity
-				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
+			try {
+				if (resource === 'activity') {
+					//https://developers.strava.com/docs/reference/#api-Activities-createActivity
+					if (operation === 'create') {
+						const name = this.getNodeParameter('name', i) as string;
 
-					const type = this.getNodeParameter('type', i) as string;
+						const type = this.getNodeParameter('type', i) as string;
 
-					const startDate = this.getNodeParameter('startDate', i) as string;
+						const startDate = this.getNodeParameter('startDate', i) as string;
 
-					const elapsedTime = this.getNodeParameter('elapsedTime', i) as number;
+						const elapsedTime = this.getNodeParameter('elapsedTime', i) as number;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					if (additionalFields.trainer === true) {
-						additionalFields.trainer = 1;
+						if (additionalFields.trainer === true) {
+							additionalFields.trainer = 1;
+						}
+
+						if (additionalFields.commute === true) {
+							additionalFields.commute = 1;
+						}
+
+						const body: IDataObject = {
+							name,
+							type,
+							start_date_local: moment(startDate).toISOString(),
+							elapsed_time: elapsedTime,
+						};
+
+						Object.assign(body, additionalFields);
+
+						responseData = await stravaApiRequest.call(this, 'POST', '/activities', body);
 					}
+					//https://developers.strava.com/docs/reference/#api-Activities-getActivityById
+					if (operation === 'get') {
+						const activityId = this.getNodeParameter('activityId', i) as string;
 
-					if (additionalFields.commute === true) {
-						additionalFields.commute = 1;
+						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}`);
 					}
+					if (['getLaps', 'getZones', 'getKudos', 'getComments'].includes(operation)) {
 
-					const body: IDataObject = {
-						name,
-						type,
-						start_date_local: moment(startDate).toISOString(),
-						elapsed_time: elapsedTime,
-					};
+						const path: IDataObject = {
+							'getComments': 'comments',
+							'getZones': 'zones',
+							'getKudos': 'kudos',
+							'getLaps': 'laps',
+						};
 
-					Object.assign(body, additionalFields);
+						const activityId = this.getNodeParameter('activityId', i) as string;
 
-					responseData = await stravaApiRequest.call(this, 'POST', '/activities', body);
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}/${path[operation]}`);
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, limit);
+						}
+					}
+					//https://developers.mailerlite.com/reference#subscribers
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (returnAll) {
+
+							responseData = await stravaApiRequestAllItems.call(this, 'GET', `/activities`, {}, qs);
+						} else {
+							qs.per_page = this.getNodeParameter('limit', i) as number;
+
+							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
+						}
+					}
+					//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
+					if (operation === 'update') {
+						const activityId = this.getNodeParameter('activityId', i) as string;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						if (updateFields.trainer === true) {
+							updateFields.trainer = 1;
+						}
+
+						if (updateFields.commute === true) {
+							updateFields.commute = 1;
+						}
+
+						const body: IDataObject = {};
+
+						Object.assign(body, updateFields);
+
+						responseData = await stravaApiRequest.call(this, 'PUT', `/activities/${activityId}`, body);
+					}
 				}
-				//https://developers.strava.com/docs/reference/#api-Activities-getActivityById
-				if (operation === 'get') {
-					const activityId = this.getNodeParameter('activityId', i) as string;
-
-					responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}`);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
 				}
-				if (['getLaps', 'getZones', 'getKudos', 'getComments'].includes(operation)) {
-
-					const path: IDataObject = {
-						'getComments': 'comments',
-						'getZones': 'zones',
-						'getKudos': 'kudos',
-						'getLaps': 'laps',
-					};
-
-					const activityId = this.getNodeParameter('activityId', i) as string;
-
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}/${path[operation]}`);
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = responseData.splice(0, limit);
-					}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
-				//https://developers.mailerlite.com/reference#subscribers
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					if (returnAll) {
-
-						responseData = await stravaApiRequestAllItems.call(this, 'GET', `/activities`, {}, qs);
-					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-
-						responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
-					}
-				}
-				//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
-				if (operation === 'update') {
-					const activityId = this.getNodeParameter('activityId', i) as string;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					if (updateFields.trainer === true) {
-						updateFields.trainer = 1;
-					}
-
-					if (updateFields.commute === true) {
-						updateFields.commute = 1;
-					}
-
-					const body: IDataObject = {};
-
-					Object.assign(body, updateFields);
-
-					responseData = await stravaApiRequest.call(this, 'PUT', `/activities/${activityId}`, body);
-				}
+				throw error;
 			}
 		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
 
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
-		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

@@ -26,7 +26,6 @@ export class GoogleSlides implements INodeType {
 		description: 'Consume the Google Slides API',
 		defaults: {
 			name: 'Google Slides',
-			color: '#edba25',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -171,7 +170,7 @@ export class GoogleSlides implements INodeType {
 			{
 				displayName: 'Presentation ID',
 				name: 'presentationId',
-				description: 'ID of the presentation to retrieve. Found in the presentation URL:<br><code>https://docs.google.com/presentation/d/PRESENTATION_ID/edit</code>',
+				description: 'ID of the presentation to retrieve. Found in the presentation URL: <code>https://docs.google.com/presentation/d/PRESENTATION_ID/edit</code>',
 				placeholder: '1wZtNFZ8MO-WKrxhYrOLMvyiqSgFwdSz5vn8_l_7eNqw',
 				type: 'string',
 				default: '',
@@ -335,9 +334,7 @@ export class GoogleSlides implements INodeType {
 						name: 'revisionId',
 						type: 'string',
 						default: '',
-						description: `The revision ID of the presentation required for the write request.</br>
-						If specified and the requiredRevisionId doesn't exactly match the presentation's</br>
-						current revisionId, the request will not be processed and will return a 400 bad request error.`,
+						description: `The revision ID of the presentation required for the write request. If specified and the requiredRevisionId doesn't exactly match the presentation's current revisionId, the request will not be processed and will return a 400 bad request error.`,
 					},
 				],
 			},
@@ -357,7 +354,7 @@ export class GoogleSlides implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to<br />write the data of the read page.',
+				description: 'Name of the binary property to which to write the data of the read page.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -416,136 +413,146 @@ export class GoogleSlides implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
-			if (resource === 'page') {
+			try {
 
-				// *********************************************************************
-				//                              page
-				// *********************************************************************
+				if (resource === 'page') {
 
-				if (operation === 'get') {
+					// *********************************************************************
+					//                              page
+					// *********************************************************************
 
-					// ----------------------------------
-					//            page: get
-					// ----------------------------------
+					if (operation === 'get') {
 
-					const presentationId = this.getNodeParameter('presentationId', i) as string;
-					const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
-					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}/pages/${pageObjectId}`);
-					returnData.push({ json: responseData });
+						// ----------------------------------
+						//            page: get
+						// ----------------------------------
 
-				} else if (operation === 'getThumbnail') {
-
-					// ----------------------------------
-					//         page: getThumbnail
-					// ----------------------------------
-
-					const presentationId = this.getNodeParameter('presentationId', i) as string;
-					const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
-					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`);
-
-					const download = this.getNodeParameter('download', 0) as boolean;
-					if (download === true) {
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
-
-						const data = await this.helpers.request({
-							uri: responseData.contentUrl,
-							method: 'GET',
-							json: false,
-							encoding: null,
-						});
-
-						const fileName = pageObjectId + '.png';
-						const binaryData = await this.helpers.prepareBinaryData(data, fileName || fileName);
-						returnData.push({
-							json: responseData,
-							binary: {
-								[binaryProperty]: binaryData,
-							},
-						});
-					} else {
+						const presentationId = this.getNodeParameter('presentationId', i) as string;
+						const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
+						responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}/pages/${pageObjectId}`);
 						returnData.push({ json: responseData });
-					}
-				}
 
-			} else if (resource === 'presentation') {
+					} else if (operation === 'getThumbnail') {
 
-				// *********************************************************************
-				//                           presentation
-				// *********************************************************************
+						// ----------------------------------
+						//         page: getThumbnail
+						// ----------------------------------
 
-				if (operation === 'create') {
+						const presentationId = this.getNodeParameter('presentationId', i) as string;
+						const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
+						responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`);
 
-					// ----------------------------------
-					//       presentation: create
-					// ----------------------------------
+						const download = this.getNodeParameter('download', 0) as boolean;
+						if (download === true) {
+							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 
-					const body = {
-						title: this.getNodeParameter('title', i) as string,
-					};
+							const data = await this.helpers.request({
+								uri: responseData.contentUrl,
+								method: 'GET',
+								json: false,
+								encoding: null,
+							});
 
-					responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
-					returnData.push({ json: responseData });
-
-				} else if (operation === 'get') {
-
-					// ----------------------------------
-					//         presentation: get
-					// ----------------------------------
-
-					const presentationId = this.getNodeParameter('presentationId', i) as string;
-					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`);
-					returnData.push({ json: responseData });
-
-				} else if (operation === 'getSlides') {
-
-					// ----------------------------------
-					//      presentation: getSlides
-					// ----------------------------------
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-					const presentationId = this.getNodeParameter('presentationId', i) as string;
-					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`, {}, { fields: 'slides' });
-					responseData = responseData.slides;
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = responseData.slice(0, limit);
-					}
-					returnData.push(...this.helpers.returnJsonArray(responseData));
-
-				} else if (operation === 'replaceText') {
-
-					// ----------------------------------
-					//      presentation: replaceText
-					// ----------------------------------
-					const presentationId = this.getNodeParameter('presentationId', i) as string;
-					const texts = this.getNodeParameter('textUi.textValues', i, []) as IDataObject[];
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					const requests = texts.map((text => {
-						return {
-							replaceAllText: {
-								replaceText: text.replaceText,
-								pageObjectIds: text.pageObjectIds || [],
-								containsText: {
-									text: text.text,
-									matchCase: text.matchCase,
+							const fileName = pageObjectId + '.png';
+							const binaryData = await this.helpers.prepareBinaryData(data, fileName || fileName);
+							returnData.push({
+								json: responseData,
+								binary: {
+									[binaryProperty]: binaryData,
 								},
-							},
-						};
-					}));
-
-					const body: IDataObject = {
-						requests,
-					};
-
-					if (options.revisionId) {
-						body['writeControl'] = {
-							requiredRevisionId: options.revisionId as string,
-						};
+							});
+						} else {
+							returnData.push({ json: responseData });
+						}
 					}
 
-					responseData = await googleApiRequest.call(this, 'POST', `/presentations/${presentationId}:batchUpdate`, { requests });
-					returnData.push({ json: responseData });
+				} else if (resource === 'presentation') {
 
+					// *********************************************************************
+					//                           presentation
+					// *********************************************************************
+
+					if (operation === 'create') {
+
+						// ----------------------------------
+						//       presentation: create
+						// ----------------------------------
+
+						const body = {
+							title: this.getNodeParameter('title', i) as string,
+						};
+
+						responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
+						returnData.push({ json: responseData });
+
+					} else if (operation === 'get') {
+
+						// ----------------------------------
+						//         presentation: get
+						// ----------------------------------
+
+						const presentationId = this.getNodeParameter('presentationId', i) as string;
+						responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`);
+						returnData.push({ json: responseData });
+
+					} else if (operation === 'getSlides') {
+
+						// ----------------------------------
+						//      presentation: getSlides
+						// ----------------------------------
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const presentationId = this.getNodeParameter('presentationId', i) as string;
+						responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`, {}, { fields: 'slides' });
+						responseData = responseData.slides;
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.slice(0, limit);
+						}
+						returnData.push(...this.helpers.returnJsonArray(responseData));
+
+					} else if (operation === 'replaceText') {
+
+						// ----------------------------------
+						//      presentation: replaceText
+						// ----------------------------------
+						const presentationId = this.getNodeParameter('presentationId', i) as string;
+						const texts = this.getNodeParameter('textUi.textValues', i, []) as IDataObject[];
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						const requests = texts.map((text => {
+							return {
+								replaceAllText: {
+									replaceText: text.replaceText,
+									pageObjectIds: text.pageObjectIds || [],
+									containsText: {
+										text: text.text,
+										matchCase: text.matchCase,
+									},
+								},
+							};
+						}));
+
+						const body: IDataObject = {
+							requests,
+						};
+
+						if (options.revisionId) {
+							body['writeControl'] = {
+								requiredRevisionId: options.revisionId as string,
+							};
+						}
+
+						responseData = await googleApiRequest.call(this, 'POST', `/presentations/${presentationId}:batchUpdate`, { requests });
+						returnData.push({ json: responseData });
+
+					}
 				}
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
 			}
 		}
 

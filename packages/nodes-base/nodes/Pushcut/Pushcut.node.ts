@@ -23,10 +23,9 @@ export class Pushcut implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Pushcut API.',
+		description: 'Consume Pushcut API',
 		defaults: {
 			name: 'Pushcut',
-			color: '#1f2957',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

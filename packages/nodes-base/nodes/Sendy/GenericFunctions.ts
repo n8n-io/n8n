@@ -13,7 +13,7 @@ import {
 
 export async function sendyApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('sendyApi') as IDataObject;
+	const credentials = await this.getCredentials('sendyApi') as IDataObject;
 
 	body.api_key = credentials.apiKey;
 

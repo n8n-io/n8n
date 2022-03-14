@@ -17,10 +17,9 @@ export class TheHiveTrigger implements INodeType {
 		icon: 'file:thehive.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a TheHive event occurs.',
+		description: 'Starts the workflow when TheHive events occur',
 		defaults: {
 			name: 'TheHive Trigger',
-			color: '#f3d02f',
 		},
 		inputs: [],
 		outputs: ['main'],

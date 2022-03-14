@@ -20,10 +20,9 @@ export class Msg91 implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Send Transactional SMS',
+		description: 'Sends transactional SMS via MSG91',
 		defaults: {
 			name: 'Msg91',
-			color: '#0000ff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

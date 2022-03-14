@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -26,7 +27,6 @@ export class RabbitMQ implements INodeType {
 		description: 'Sends messages to a RabbitMQ topic',
 		defaults: {
 			name: 'RabbitMQ',
-			color: '#ff6600',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -331,7 +331,7 @@ export class RabbitMQ implements INodeType {
 				// @ts-ignore
 				const promisesResponses = await Promise.allSettled(queuePromises);
 
-				promisesResponses.forEach((response: IDataObject) => {
+				promisesResponses.forEach((response: JsonObject) => {
 					if (response!.status !== 'fulfilled') {
 
 						if (this.continueOnFail() !== true) {
@@ -396,7 +396,7 @@ export class RabbitMQ implements INodeType {
 				// @ts-ignore
 				const promisesResponses = await Promise.allSettled(exchangePromises);
 
-				promisesResponses.forEach((response: IDataObject) => {
+				promisesResponses.forEach((response: JsonObject) => {
 					if (response!.status !== 'fulfilled') {
 
 						if (this.continueOnFail() !== true) {

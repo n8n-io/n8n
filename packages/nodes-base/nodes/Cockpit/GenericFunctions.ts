@@ -7,7 +7,7 @@ import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
 
 export async function cockpitApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('cockpitApi');
+	const credentials = await this.getCredentials('cockpitApi');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials available.');

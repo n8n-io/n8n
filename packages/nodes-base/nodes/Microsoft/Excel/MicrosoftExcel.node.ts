@@ -42,10 +42,9 @@ export class MicrosoftExcel implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Microsoft Excel API.',
+		description: 'Consume Microsoft Excel API',
 		defaults: {
 			name: 'Microsoft Excel',
-			color: '#1c6d40',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -164,77 +163,93 @@ export class MicrosoftExcel implements INodeType {
 		if (resource === 'table') {
 			//https://docs.microsoft.com/en-us/graph/api/table-post-rows?view=graph-rest-1.0&tabs=http
 			if (operation === 'addRow') {
-				// TODO: At some point it should be possible to use item dependent parameters.
-				//       Is however important to then not make one separate request each.
-				const workbookId = this.getNodeParameter('workbook', 0) as string;
-				const worksheetId = this.getNodeParameter('worksheet', 0) as string;
-				const tableId = this.getNodeParameter('table', 0) as string;
-				const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-				const body: IDataObject = {};
+				try {
+					// TODO: At some point it should be possible to use item dependent parameters.
+					//       Is however important to then not make one separate request each.
+					const workbookId = this.getNodeParameter('workbook', 0) as string;
+					const worksheetId = this.getNodeParameter('worksheet', 0) as string;
+					const tableId = this.getNodeParameter('table', 0) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+					const body: IDataObject = {};
 
-				if (additionalFields.index) {
-					body.index = additionalFields.index as number;
-				}
-
-				// Get table columns to eliminate any columns not needed on the input
-				responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, qs);
-				const columns = responseData.value.map((column: IDataObject) => (column.name));
-
-				const rows: any[][] = []; // tslint:disable-line:no-any
-
-				// Bring the items into the correct format
-				for (const item of items) {
-					const row = [];
-					for (const column of columns) {
-						row.push(item.json[column]);
+					if (additionalFields.index) {
+						body.index = additionalFields.index as number;
 					}
-					rows.push(row);
-				}
 
-				body.values = rows;
-				const { id } = await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/createSession`, { persistChanges: true });
-				responseData = await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows/add`, body, {}, '', { 'workbook-session-id': id });
-				await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/closeSession`, {}, {}, '', { 'workbook-session-id': id });
+					// Get table columns to eliminate any columns not needed on the input
+					responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, qs);
+					const columns = responseData.value.map((column: IDataObject) => (column.name));
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
-			}
-			//https://docs.microsoft.com/en-us/graph/api/table-list-columns?view=graph-rest-1.0&tabs=http
-			if (operation === 'getColumns') {
-				for (let i = 0; i < length; i++) {
-					qs = {};
-					const workbookId = this.getNodeParameter('workbook', i) as string;
-					const worksheetId = this.getNodeParameter('worksheet', i) as string;
-					const tableId = this.getNodeParameter('table', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
-					if (rawData) {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						if (filters.fields) {
-							qs['$select'] = filters.fields;
+					const rows: any[][] = []; // tslint:disable-line:no-any
+
+					// Bring the items into the correct format
+					for (const item of items) {
+						const row = [];
+						for (const column of columns) {
+							row.push(item.json[column]);
 						}
+						rows.push(row);
 					}
-					if (returnAll === true) {
-						responseData = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, qs);
-					} else {
-						qs['$top'] = this.getNodeParameter('limit', i) as number;
-						responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, qs);
-						responseData = responseData.value;
-					}
-					if (!rawData) {
-						responseData = responseData.map((column: IDataObject) => ({ name: column.name }));
-					} else {
-						const dataProperty = this.getNodeParameter('dataProperty', i) as string;
-						responseData = { [dataProperty] : responseData };
-					}
+
+					body.values = rows;
+					const { id } = await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/createSession`, { persistChanges: true });
+					responseData = await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows/add`, body, {}, '', { 'workbook-session-id': id });
+					await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/closeSession`, {}, {}, '', { 'workbook-session-id': id });
 
 					if (Array.isArray(responseData)) {
 						returnData.push.apply(returnData, responseData as IDataObject[]);
 					} else if (responseData !== undefined) {
 						returnData.push(responseData as IDataObject);
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+					} else {
+						throw error;
+					}
+				}
+			}
+			//https://docs.microsoft.com/en-us/graph/api/table-list-columns?view=graph-rest-1.0&tabs=http
+			if (operation === 'getColumns') {
+				for (let i = 0; i < length; i++) {
+					try {
+						qs = {};
+						const workbookId = this.getNodeParameter('workbook', i) as string;
+						const worksheetId = this.getNodeParameter('worksheet', i) as string;
+						const tableId = this.getNodeParameter('table', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						if (rawData) {
+							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							if (filters.fields) {
+								qs['$select'] = filters.fields;
+							}
+						}
+						if (returnAll === true) {
+							responseData = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, qs);
+						} else {
+							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, qs);
+							responseData = responseData.value;
+						}
+						if (!rawData) {
+							responseData = responseData.map((column: IDataObject) => ({ name: column.name }));
+						} else {
+							const dataProperty = this.getNodeParameter('dataProperty', i) as string;
+							responseData = { [dataProperty] : responseData };
+						}
+
+						if (Array.isArray(responseData)) {
+							returnData.push.apply(returnData, responseData as IDataObject[]);
+						} else if (responseData !== undefined) {
+							returnData.push(responseData as IDataObject);
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
 					}
 				}
 			}
@@ -242,85 +257,101 @@ export class MicrosoftExcel implements INodeType {
 			if (operation === 'getRows') {
 				for (let i = 0; i < length; i++) {
 					qs = {};
-					const workbookId = this.getNodeParameter('workbook', i) as string;
-					const worksheetId = this.getNodeParameter('worksheet', i) as string;
-					const tableId = this.getNodeParameter('table', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
-					if (rawData) {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						if (filters.fields) {
-							qs['$select'] = filters.fields;
-						}
-					}
-					if (returnAll === true) {
-						responseData = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`, {}, qs);
-					} else {
-						const rowsQs = { ...qs };
-						rowsQs['$top'] = this.getNodeParameter('limit', i) as number;
-						responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`, {}, rowsQs);
-						responseData = responseData.value;
-					}
-					if (!rawData) {
-						const columnsQs = { ...qs };
-						columnsQs['$select'] = 'name';
-						// TODO: That should probably be cached in the future
-						let columns = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, columnsQs);
-						//@ts-ignore
-						columns = columns.map(column => column.name);
-						for (let i = 0; i < responseData.length; i++) {
-							const object: IDataObject = {};
-							for (let y = 0; y < columns.length; y++) {
-								object[columns[y]] = responseData[i].values[0][y];
+					try {
+						const workbookId = this.getNodeParameter('workbook', i) as string;
+						const worksheetId = this.getNodeParameter('worksheet', i) as string;
+						const tableId = this.getNodeParameter('table', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						if (rawData) {
+							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							if (filters.fields) {
+								qs['$select'] = filters.fields;
 							}
-							returnData.push({ ...object });
 						}
-					} else {
-						const dataProperty = this.getNodeParameter('dataProperty', i) as string;
-						returnData.push({ [dataProperty]: responseData });
+						if (returnAll === true) {
+							responseData = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`, {}, qs);
+						} else {
+							const rowsQs = { ...qs };
+							rowsQs['$top'] = this.getNodeParameter('limit', i) as number;
+							responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`, {}, rowsQs);
+							responseData = responseData.value;
+						}
+						if (!rawData) {
+							const columnsQs = { ...qs };
+							columnsQs['$select'] = 'name';
+							// TODO: That should probably be cached in the future
+							let columns = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, columnsQs);
+							//@ts-ignore
+							columns = columns.map(column => column.name);
+							for (let i = 0; i < responseData.length; i++) {
+								const object: IDataObject = {};
+								for (let y = 0; y < columns.length; y++) {
+									object[columns[y]] = responseData[i].values[0][y];
+								}
+								returnData.push({ ...object });
+							}
+						} else {
+							const dataProperty = this.getNodeParameter('dataProperty', i) as string;
+							returnData.push({ [dataProperty]: responseData });
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
 					}
 				}
 			}
 			if (operation === 'lookup') {
 				for (let i = 0; i < length; i++) {
 					qs = {};
-					const workbookId = this.getNodeParameter('workbook', i) as string;
-					const worksheetId = this.getNodeParameter('worksheet', i) as string;
-					const tableId = this.getNodeParameter('table', i) as string;
-					const lookupColumn = this.getNodeParameter('lookupColumn', i) as string;
-					const lookupValue = this.getNodeParameter('lookupValue', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					try {
+						const workbookId = this.getNodeParameter('workbook', i) as string;
+						const worksheetId = this.getNodeParameter('worksheet', i) as string;
+						const tableId = this.getNodeParameter('table', i) as string;
+						const lookupColumn = this.getNodeParameter('lookupColumn', i) as string;
+						const lookupValue = this.getNodeParameter('lookupValue', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
-					responseData = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`, {}, {});
+						responseData = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`, {}, {});
 
-					qs['$select'] = 'name';
-					// TODO: That should probably be cached in the future
-					let columns = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, qs);
-					columns = columns.map((column: IDataObject) => column.name);
+						qs['$select'] = 'name';
+						// TODO: That should probably be cached in the future
+						let columns = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, qs);
+						columns = columns.map((column: IDataObject) => column.name);
 
-					if (!columns.includes(lookupColumn)) {
-						throw new NodeApiError(this.getNode(), responseData, { message: `Column ${lookupColumn} does not exist on the table selected` });
-					}
-
-					result.length = 0;
-					for (let i = 0; i < responseData.length; i++) {
-						const object: IDataObject = {};
-						for (let y = 0; y < columns.length; y++) {
-							object[columns[y]] = responseData[i].values[0][y];
+						if (!columns.includes(lookupColumn)) {
+							throw new NodeApiError(this.getNode(), responseData, { message: `Column ${lookupColumn} does not exist on the table selected` });
 						}
-						result.push({ ...object });
-					}
 
-					if (options.returnAllMatches) {
-						responseData = result.filter((data: IDataObject) => {
-							return (data[lookupColumn]?.toString() === lookupValue );
-						});
-						returnData.push.apply(returnData, responseData as IDataObject[]);
-					} else {
-						responseData = result.find((data: IDataObject) => {
-							return (data[lookupColumn]?.toString() === lookupValue );
-						});
-						returnData.push(responseData as IDataObject);
+						result.length = 0;
+						for (let i = 0; i < responseData.length; i++) {
+							const object: IDataObject = {};
+							for (let y = 0; y < columns.length; y++) {
+								object[columns[y]] = responseData[i].values[0][y];
+							}
+							result.push({ ...object });
+						}
+
+						if (options.returnAllMatches) {
+							responseData = result.filter((data: IDataObject) => {
+								return (data[lookupColumn]?.toString() === lookupValue );
+							});
+							returnData.push.apply(returnData, responseData as IDataObject[]);
+						} else {
+							responseData = result.find((data: IDataObject) => {
+								return (data[lookupColumn]?.toString() === lookupValue );
+							});
+							returnData.push(responseData as IDataObject);
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
 					}
 				}
 			}
@@ -328,92 +359,108 @@ export class MicrosoftExcel implements INodeType {
 		if (resource === 'workbook') {
 			for (let i = 0; i < length; i++) {
 				qs = {};
-				//https://docs.microsoft.com/en-us/graph/api/worksheetcollection-add?view=graph-rest-1.0&tabs=http
-				if (operation === 'addWorksheet') {
-					const workbookId = this.getNodeParameter('workbook', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: IDataObject = {};
-					if (additionalFields.name) {
-						body.name = additionalFields.name;
+				try {
+					//https://docs.microsoft.com/en-us/graph/api/worksheetcollection-add?view=graph-rest-1.0&tabs=http
+					if (operation === 'addWorksheet') {
+						const workbookId = this.getNodeParameter('workbook', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body: IDataObject = {};
+						if (additionalFields.name) {
+							body.name = additionalFields.name;
+						}
+						const { id } = await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/createSession`, { persistChanges: true });
+						responseData = await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/worksheets/add`, body, {}, '', { 'workbook-session-id': id });
+						await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/closeSession`, {}, {}, '', { 'workbook-session-id': id });
 					}
-					const { id } = await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/createSession`, { persistChanges: true });
-					responseData = await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/worksheets/add`, body, {}, '', { 'workbook-session-id': id });
-					await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/closeSession`, {}, {}, '', { 'workbook-session-id': id });
-				}
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					if (filters.fields) {
-						qs['$select'] = filters.fields;
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						if (filters.fields) {
+							qs['$select'] = filters.fields;
+						}
+						if (returnAll === true) {
+							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='.xlsx')`, {}, qs);
+						} else {
+							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							responseData = await microsoftApiRequest.call(this, 'GET', `/drive/root/search(q='.xlsx')`, {}, qs);
+							responseData = responseData.value;
+						}
 					}
-					if (returnAll === true) {
-						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='.xlsx')`, {}, qs);
-					} else {
-						qs['$top'] = this.getNodeParameter('limit', i) as number;
-						responseData = await microsoftApiRequest.call(this, 'GET', `/drive/root/search(q='.xlsx')`, {}, qs);
-						responseData = responseData.value;
-					}
-				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
+					if (Array.isArray(responseData)) {
+						returnData.push.apply(returnData, responseData as IDataObject[]);
+					} else if (responseData !== undefined) {
+						returnData.push(responseData as IDataObject);
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+						continue;
+					}
+					throw error;
 				}
 			}
 		}
 		if (resource === 'worksheet') {
 			for (let i = 0; i < length; i++) {
 				qs = {};
-				//https://docs.microsoft.com/en-us/graph/api/workbook-list-worksheets?view=graph-rest-1.0&tabs=http
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const workbookId = this.getNodeParameter('workbook', i) as string;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					if (filters.fields) {
-						qs['$select'] = filters.fields;
-					}
-					if (returnAll === true) {
-						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets`, {}, qs);
-					} else {
-						qs['$top'] = this.getNodeParameter('limit', i) as number;
-						responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets`, {}, qs);
-						responseData = responseData.value;
-					}
-				}
-				//https://docs.microsoft.com/en-us/graph/api/worksheet-range?view=graph-rest-1.0&tabs=http
-				if (operation === 'getContent') {
-					const workbookId = this.getNodeParameter('workbook', i) as string;
-					const worksheetId = this.getNodeParameter('worksheet', i) as string;
-					const range = this.getNodeParameter('range', i) as string;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
-					if (rawData) {
+				try {
+					//https://docs.microsoft.com/en-us/graph/api/workbook-list-worksheets?view=graph-rest-1.0&tabs=http
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (filters.fields) {
 							qs['$select'] = filters.fields;
 						}
-					}
-
-					responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`, {}, qs);
-
-					if (!rawData) {
-						const keyRow = this.getNodeParameter('keyRow', i) as number;
-						const dataStartRow = this.getNodeParameter('dataStartRow', i) as number;
-						if (responseData.values === null) {
-							throw new NodeApiError(this.getNode(), responseData, { message: 'Range did not return data' });
+						if (returnAll === true) {
+							responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets`, {}, qs);
+						} else {
+							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets`, {}, qs);
+							responseData = responseData.value;
 						}
-						const keyValues = responseData.values[keyRow];
-						for (let i = dataStartRow; i < responseData.values.length; i++) {
-							const object: IDataObject = {};
-							for (let y = 0; y < keyValues.length; y++) {
-								object[keyValues[y]] = responseData.values[i][y];
+					}
+					//https://docs.microsoft.com/en-us/graph/api/worksheet-range?view=graph-rest-1.0&tabs=http
+					if (operation === 'getContent') {
+						const workbookId = this.getNodeParameter('workbook', i) as string;
+						const worksheetId = this.getNodeParameter('worksheet', i) as string;
+						const range = this.getNodeParameter('range', i) as string;
+						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						if (rawData) {
+							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							if (filters.fields) {
+								qs['$select'] = filters.fields;
 							}
-							returnData.push({ ...object });
 						}
-					} else {
-						const dataProperty = this.getNodeParameter('dataProperty', i) as string;
-						returnData.push({ [dataProperty]: responseData });
+
+						responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`, {}, qs);
+
+						if (!rawData) {
+							const keyRow = this.getNodeParameter('keyRow', i) as number;
+							const dataStartRow = this.getNodeParameter('dataStartRow', i) as number;
+							if (responseData.values === null) {
+								throw new NodeApiError(this.getNode(), responseData, { message: 'Range did not return data' });
+							}
+							const keyValues = responseData.values[keyRow];
+							for (let i = dataStartRow; i < responseData.values.length; i++) {
+								const object: IDataObject = {};
+								for (let y = 0; y < keyValues.length; y++) {
+									object[keyValues[y]] = responseData.values[i][y];
+								}
+								returnData.push({ ...object });
+							}
+						} else {
+							const dataProperty = this.getNodeParameter('dataProperty', i) as string;
+							returnData.push({ [dataProperty]: responseData });
+						}
 					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+						continue;
+					}
+					throw error;
 				}
 			}
 		}

@@ -17,10 +17,9 @@ export class Mocean implements INodeType {
 		icon: 'file:mocean.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Send SMS & voice messages via Mocean (https://moceanapi.com)',
+		description: 'Send SMS and voice messages via Mocean',
 		defaults: {
 			name: 'Mocean',
-			color: '#772244',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -195,45 +194,52 @@ export class Mocean implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			body = {};
 			qs = {};
+			try {
+				resource = this.getNodeParameter('resource', itemIndex, '') as string;
+				operation = this.getNodeParameter('operation',itemIndex,'') as string;
+				text = this.getNodeParameter('message', itemIndex, '') as string;
+				requesetMethod = 'POST';
+				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
+				body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
 
-			resource = this.getNodeParameter('resource', itemIndex, '') as string;
-			operation = this.getNodeParameter('operation',itemIndex,'') as string;
-			text = this.getNodeParameter('message', itemIndex, '') as string;
-			requesetMethod = 'POST';
-			body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
-			body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
+				if (resource === 'voice') {
+					const language: string = this.getNodeParameter('language', itemIndex) as string;
+					const command = [
+						{
+							action: 'say',
+							language,
+							text,
+						},
+					];
 
-			if (resource === 'voice') {
-				const language: string = this.getNodeParameter('language', itemIndex) as string;
-				const command = [
-					{
-						action: 'say',
-						language,
-						text,
-					},
-				];
-
-				dataKey = 'voice';
-				body['mocean-command'] = JSON.stringify(command);
-				endpoint = '/rest/2/voice/dial';
-			} else if(resource === 'sms') {
-				dataKey = 'messages';
-				body['mocean-text'] = text;
-				endpoint = '/rest/2/sms';
-			} else {
-				throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`);
-			}
-
-			if (operation === 'send') {
-				const responseData = await moceanApiRequest.call(this,requesetMethod,endpoint,body,qs);
-
-				for (const item of responseData[dataKey] as IDataObject[]) {
-					item.type = resource;
-					returnData.push(item);
+					dataKey = 'voice';
+					body['mocean-command'] = JSON.stringify(command);
+					endpoint = '/rest/2/voice/dial';
+				} else if(resource === 'sms') {
+					dataKey = 'messages';
+					body['mocean-text'] = text;
+					endpoint = '/rest/2/sms';
+				} else {
+					throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`);
 				}
 
-			} else {
-				throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`);
+				if (operation === 'send') {
+					const responseData = await moceanApiRequest.call(this,requesetMethod,endpoint,body,qs);
+
+					for (const item of responseData[dataKey] as IDataObject[]) {
+						item.type = resource;
+						returnData.push(item);
+					}
+
+				} else {
+					throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 

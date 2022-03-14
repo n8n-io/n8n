@@ -10,15 +10,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, JsonObject, NodeApiError,
 } from 'n8n-workflow';
-
-interface OMauticErrorResponse {
-	errors: Array<{
-		conde: number;
-		message: string;
-	}>;
-}
 
 export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
@@ -37,7 +30,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 		let returnData;
 
 		if (authenticationMethod === 'credentials') {
-			const credentials = this.getCredentials('mauticApi') as IDataObject;
+			const credentials = await this.getCredentials('mauticApi') as IDataObject;
 
 			const base64Key = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
 
@@ -48,7 +41,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 			//@ts-ignore
 			returnData = await this.helpers.request(options);
 		} else {
-			const credentials = this.getCredentials('mauticOAuth2Api') as IDataObject;
+			const credentials = await this.getCredentials('mauticOAuth2Api') as IDataObject;
 
 			options.uri = `${credentials.url}${options.uri}`;
 			//@ts-ignore
@@ -62,7 +55,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 		return returnData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -82,15 +75,13 @@ export async function mauticApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	do {
 		responseData = await mauticApiRequest.call(this, method, endpoint, body, query);
 		const values = Object.values(responseData[propertyName]);
-		for (const value of values) {
-			data.push(value as IDataObject);
-		}
-		returnData.push.apply(returnData, data);
-		query.start++;
+		//@ts-ignore
+		returnData.push.apply(returnData, values);
+		query.start += query.limit;
 		data = [];
 	} while (
 		responseData.total !== undefined &&
-		((query.limit * query.start) - parseInt(responseData.total, 10)) < 0
+		(returnData.length - parseInt(responseData.total, 10)) < 0
 	);
 
 	return returnData;

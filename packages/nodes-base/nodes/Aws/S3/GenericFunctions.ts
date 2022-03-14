@@ -3,6 +3,7 @@ import {
 } from 'url';
 
 import {
+	Request,
 	sign,
 } from 'aws4';
 
@@ -30,7 +31,7 @@ import {
  } from 'n8n-workflow';
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('aws');
+	const credentials = await this.getCredentials('aws');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
@@ -38,7 +39,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const endpoint = new URL(((credentials.s3Endpoint as string || '').replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`) + path);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = {headers: headers || {}, host: endpoint.host, method, path: `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`, body};
+	const signOpts = {headers: headers || {}, host: endpoint.host, method, path: `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`, body} as Request;
 
 
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim()});
@@ -57,7 +58,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error, { parseXml: true });
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

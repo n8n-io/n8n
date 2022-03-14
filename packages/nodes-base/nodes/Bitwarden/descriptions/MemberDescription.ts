@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const memberOperations = [
+export const memberOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const memberOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const memberFields = [
+export const memberFields: INodeProperties[] = [
 	// ----------------------------------
 	//       member: shared
 	// ----------------------------------
@@ -312,7 +312,7 @@ export const memberFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
 type MemberSchema = {
 	email: string;

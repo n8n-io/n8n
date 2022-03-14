@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const subscriberOperations = [
+export const subscriberOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const subscriberOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const subscriberFields = [
+export const subscriberFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                subscriber:create                           */
@@ -51,6 +51,7 @@ export const subscriberFields = [
 		name: 'email',
 		type: 'string',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -412,4 +413,4 @@ export const subscriberFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

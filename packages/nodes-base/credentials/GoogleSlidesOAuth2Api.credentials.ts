@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 const scopes = [
@@ -15,11 +15,11 @@ export class GoogleSlidesOAuth2Api implements ICredentialType {
 	];
 	displayName = 'Google Slides OAuth2 API';
 	documentationUrl = 'google';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: scopes.join(' '),
 		},
 	];

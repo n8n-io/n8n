@@ -20,13 +20,12 @@ export class StripeTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stripe Trigger',
 		name: 'stripeTrigger',
-		icon: 'file:stripe.png',
+		icon: 'file:stripe.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Stripe events via webhooks',
 		defaults: {
 			name: 'Stripe Trigger',
-			color: '#32325d',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -820,7 +819,7 @@ export class StripeTrigger implements INodeType {
 				try {
 					await stripeApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.message.includes('resource_missing')) {
+					if (error.httpCode === '404' || error.message.includes('resource_missing')) {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;

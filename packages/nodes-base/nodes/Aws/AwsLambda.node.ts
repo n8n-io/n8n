@@ -16,14 +16,13 @@ export class AwsLambda implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Lambda',
 		name: 'awsLambda',
-		icon: 'file:lambda.png',
+		icon: 'file:lambda.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["function"]}}',
 		description: 'Invoke functions on AWS Lambda',
 		defaults: {
 			name: 'AWS Lambda',
-			color: '#FF9900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -140,6 +139,27 @@ export class AwsLambda implements INodeType {
 						value: func.FunctionArn as string,
 					});
 				}
+
+				if (data.NextMarker) {
+					let marker: string = data.NextMarker;
+					while (true) {
+						const dataLoop = await awsApiRequestREST.call(this, 'lambda', 'GET', `/2015-03-31/functions/?MaxItems=50&Marker=${encodeURIComponent(marker)}`);
+
+						for (const func of dataLoop.Functions!) {
+							returnData.push({
+								name: func.FunctionName as string,
+								value: func.FunctionArn as string,
+							});
+						}
+
+						if (dataLoop.NextMarker) {
+							marker = dataLoop.NextMarker;
+						} else {
+							break;
+						}
+					}
+				}
+
 				return returnData;
 			},
 		},
@@ -151,39 +171,46 @@ export class AwsLambda implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-			const params = {
-				FunctionName: this.getNodeParameter('function', i) as string,
-				InvocationType: this.getNodeParameter('invocationType', i) as string,
-				Payload: this.getNodeParameter('payload', i) as string,
-				Qualifier: this.getNodeParameter('qualifier', i) as string,
-			};
+			try {
+				const params = {
+					FunctionName: this.getNodeParameter('function', i) as string,
+					InvocationType: this.getNodeParameter('invocationType', i) as string,
+					Payload: this.getNodeParameter('payload', i) as string,
+					Qualifier: this.getNodeParameter('qualifier', i) as string,
+				};
 
-			const responseData = await awsApiRequestREST.call(
-				this,
-				'lambda',
-				'POST',
-				`/2015-03-31/functions/${params.FunctionName}/invocations?Qualifier=${params.Qualifier}`,
-				params.Payload,
-				{
-					'X-Amz-Invocation-Type': params.InvocationType,
-					'Content-Type': 'application/x-amz-json-1.0',
-				},
-			);
+				const responseData = await awsApiRequestREST.call(
+					this,
+					'lambda',
+					'POST',
+					`/2015-03-31/functions/${params.FunctionName}/invocations?Qualifier=${params.Qualifier}`,
+					params.Payload,
+					{
+						'X-Amz-Invocation-Type': params.InvocationType,
+						'Content-Type': 'application/x-amz-json-1.0',
+					},
+				);
 
-			if (responseData !== null && responseData.errorMessage !== undefined) {
-				let errorMessage = responseData.errorMessage;
+				if (responseData !== null && responseData.errorMessage !== undefined) {
+					let errorMessage = responseData.errorMessage;
 
-				if (responseData.stackTrace) {
-					errorMessage += `\n\nStack trace:\n${responseData.stackTrace}`;
+					if (responseData.stackTrace) {
+						errorMessage += `\n\nStack trace:\n${responseData.stackTrace}`;
+					}
+
+					throw new NodeApiError(this.getNode(), responseData);
+				} else {
+					returnData.push({
+						result: responseData,
+					} as IDataObject);
 				}
-
-				throw new NodeApiError(this.getNode(), responseData);
-			} else {
-				returnData.push({
-					result: responseData,
-				} as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

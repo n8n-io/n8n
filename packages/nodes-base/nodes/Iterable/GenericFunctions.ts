@@ -14,7 +14,7 @@ import {
 
 export async function iterableApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('iterableApi') as IDataObject;
+	const credentials = await this.getCredentials('iterableApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {

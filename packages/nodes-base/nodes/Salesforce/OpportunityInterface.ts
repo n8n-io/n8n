@@ -1,4 +1,6 @@
 export interface IOpportunity {
+	// tslint:disable-next-line: no-any
+	[key: string]: any;
 	Name?: string;
 	StageName?: string;
 	CloseDate?: string;

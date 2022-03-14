@@ -26,11 +26,16 @@ import {
 	itemOperations,
 	paymentFields,
 	paymentOperations,
+	purchaseFields,
+	purchaseOperations,
+	transactionFields,
+	transactionOperations,
 	vendorFields,
 	vendorOperations,
 } from './descriptions';
 
 import {
+	adjustTransactionDates,
 	getRefAndSyncToken,
 	getSyncToken,
 	handleBinaryData,
@@ -39,6 +44,7 @@ import {
 	populateFields,
 	processLines,
 	quickBooksApiRequest,
+	simplifyTransactionReport,
 } from './GenericFunctions';
 
 import {
@@ -49,18 +55,23 @@ import {
 	isEmpty,
 } from 'lodash';
 
+import {
+	DateFieldsUi,
+	QuickBooksOAuth2Credentials,
+	TransactionFields,
+} from './types';
+
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'QuickBooks',
+		displayName: 'QuickBooks Online',
 		name: 'quickbooks',
 		icon: 'file:quickbooks.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume the QuickBooks API',
+		description: 'Consume the QuickBooks Online API',
 		defaults: {
-			name: 'QuickBooks',
-			color: '#2CA01C',
+			name: 'QuickBooks Online',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -105,6 +116,14 @@ export class QuickBooks implements INodeType {
 						value: 'payment',
 					},
 					{
+						name: 'Purchase',
+						value: 'purchase',
+					},
+					{
+						name: 'Transaction',
+						value: 'transaction',
+					},
+					{
 						name: 'Vendor',
 						value: 'vendor',
 					},
@@ -126,6 +145,10 @@ export class QuickBooks implements INodeType {
 			...itemFields,
 			...paymentOperations,
 			...paymentFields,
+			...purchaseOperations,
+			...purchaseFields,
+			...transactionOperations,
+			...transactionFields,
 			...vendorOperations,
 			...vendorFields,
 		],
@@ -141,8 +164,24 @@ export class QuickBooks implements INodeType {
 				return await loadResource.call(this, 'preferences');
 			},
 
+			async getDepartments(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'department');
+			},
+
 			async getItems(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'item');
+			},
+
+			async getMemos(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'CreditMemo');
+			},
+
+			async getPurchases(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'purchase');
+			},
+
+			async getTerms(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'Term');
 			},
 
 			async getVendors(this: ILoadOptionsFunctions) {
@@ -160,821 +199,930 @@ export class QuickBooks implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const { oauthTokenData } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
-		// @ts-ignore
+		const { oauthTokenData } = await this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
 		const companyId = oauthTokenData.callbackQueryString.realmId;
 
 		for (let i = 0; i < items.length; i++) {
+			try {
+				if (resource === 'bill') {
 
-			if (resource === 'bill') {
+					// *********************************************************************
+					//                            bill
+					// *********************************************************************
 
-				// *********************************************************************
-				//           bill
-				// *********************************************************************
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/bill
 
-				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/estimate
+					if (operation === 'create') {
 
-				if (operation === 'create') {
+						// ----------------------------------
+						//         bill: create
+						// ----------------------------------
 
-					// ----------------------------------
-					//         bill: create
-					// ----------------------------------
+						const lines = this.getNodeParameter('Line', i) as IDataObject[];
 
-					const lines = this.getNodeParameter('Line', i) as IDataObject[];
-
-					if (!lines.length) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one line for the ${resource}.`);
-					}
-
-					if (lines.some(line => line.DetailType === undefined || line.Amount === undefined || line.Description === undefined)) {
-						throw new NodeOperationError(this.getNode(), 'Please enter detail type, amount and description for every line.');
-					}
-
-					lines.forEach(line => {
-						if (line.DetailType === 'AccountBasedExpenseLineDetail' && line.accountId === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Please enter an account ID for the associated line.');
-						} else if (line.DetailType === 'ItemBasedExpenseLineDetail' && line.itemId === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Please enter an item ID for the associated line.');
+						if (!lines.length) {
+							throw new NodeOperationError(this.getNode(), `Please enter at least one line for the ${resource}.`);
 						}
-					});
 
-					let body = {
-						VendorRef: {
-							value: this.getNodeParameter('VendorRef', i),
-						},
-					} as IDataObject;
-
-					body.Line = processLines.call(this, body, lines, resource);
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					body = populateFields.call(this, body, additionalFields, resource);
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'delete') {
-
-					// ----------------------------------
-					//         bill: delete
-					// ----------------------------------
-
-					const qs = {
-						operation: 'delete',
-					} as IDataObject;
-
-					const body = {
-						Id: this.getNodeParameter('billId', i),
-						SyncToken: await getSyncToken.call(this, i, companyId, resource),
-					} as IDataObject;
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'get') {
-
-					// ----------------------------------
-					//         bill: get
-					// ----------------------------------
-
-					const billId = this.getNodeParameter('billId', i);
-					const endpoint = `/v3/company/${companyId}/${resource}/${billId}`;
-					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'getAll') {
-
-					// ----------------------------------
-					//         bill: getAll
-					// ----------------------------------
-
-					const endpoint = `/v3/company/${companyId}/query`;
-					responseData = await handleListing.call(this, i, endpoint, resource);
-
-				} else if (operation === 'update') {
-
-					// ----------------------------------
-					//         bill: update
-					// ----------------------------------
-
-					const { ref, syncToken } = await getRefAndSyncToken.call(this, i, companyId, resource, 'VendorRef');
-
-					let body = {
-						Id: this.getNodeParameter('billId', i),
-						SyncToken: syncToken,
-						sparse: true,
-						VendorRef: {
-							name: ref.name,
-							value: ref.value,
-						},
-					} as IDataObject;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					if (isEmpty(updateFields)) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
-					}
-
-					body = populateFields.call(this, body, updateFields, resource);
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
-
-				}
-
-			} else if (resource === 'customer') {
-
-				// *********************************************************************
-				//         customer
-				// *********************************************************************
-
-				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/customer
-
-				if (operation === 'create') {
-
-					// ----------------------------------
-					//         customer: create
-					// ----------------------------------
-
-					let body = {
-						DisplayName: this.getNodeParameter('displayName', i),
-					} as IDataObject;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					body = populateFields.call(this, body, additionalFields, resource);
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'get') {
-
-					// ----------------------------------
-					//         customer: get
-					// ----------------------------------
-
-					const customerId = this.getNodeParameter('customerId', i);
-					const endpoint = `/v3/company/${companyId}/${resource}/${customerId}`;
-					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'getAll') {
-
-					// ----------------------------------
-					//         customer: getAll
-					// ----------------------------------
-
-					const endpoint = `/v3/company/${companyId}/query`;
-					responseData = await handleListing.call(this, i, endpoint, resource);
-
-				} else if (operation === 'update') {
-
-					// ----------------------------------
-					//         customer: update
-					// ----------------------------------
-
-					let body = {
-						Id: this.getNodeParameter('customerId', i),
-						SyncToken: await getSyncToken.call(this, i, companyId, resource),
-						sparse: true,
-					} as IDataObject;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					if (isEmpty(updateFields)) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
-					}
-
-					body = populateFields.call(this, body, updateFields, resource);
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
-
-				}
-
-			} else if (resource === 'employee') {
-
-				// *********************************************************************
-				//         employee
-				// *********************************************************************
-
-				if (operation === 'create') {
-
-					// ----------------------------------
-					//         employee: create
-					// ----------------------------------
-
-					let body = {
-						FamilyName: this.getNodeParameter('FamilyName', i),
-						GivenName: this.getNodeParameter('GivenName', i),
-					} as IDataObject;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					body = populateFields.call(this, body, additionalFields, resource);
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'get') {
-
-					// ----------------------------------
-					//         employee: get
-					// ----------------------------------
-
-					const employeeId = this.getNodeParameter('employeeId', i);
-					const endpoint = `/v3/company/${companyId}/${resource}/${employeeId}`;
-					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'getAll') {
-
-					// ----------------------------------
-					//         employee: getAll
-					// ----------------------------------
-
-					const endpoint = `/v3/company/${companyId}/query`;
-					responseData = await handleListing.call(this, i, endpoint, resource);
-
-				} else if (operation === 'update') {
-
-					// ----------------------------------
-					//         employee: update
-					// ----------------------------------
-
-					let body = {
-						Id: this.getNodeParameter('employeeId', i),
-						SyncToken: await getSyncToken.call(this, i, companyId, resource),
-						sparse: true,
-					} as IDataObject;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					if (isEmpty(updateFields)) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
-					}
-
-					body = populateFields.call(this, body, updateFields, resource);
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
-
-				}
-
-			} else if (resource === 'estimate') {
-
-				// *********************************************************************
-				//         estimate
-				// *********************************************************************
-
-				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/estimate
-
-				if (operation === 'create') {
-
-					// ----------------------------------
-					//         estimate: create
-					// ----------------------------------
-
-					const lines = this.getNodeParameter('Line', i) as IDataObject[];
-
-					if (!lines.length) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one line for the ${resource}.`);
-					}
-
-					if (lines.some(line => line.DetailType === undefined || line.Amount === undefined || line.Description === undefined)) {
-						throw new NodeOperationError(this.getNode(), 'Please enter detail type, amount and description for every line.');
-					}
-
-					lines.forEach(line => {
-						if (line.DetailType === 'SalesItemLineDetail' && line.itemId === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Please enter an item ID for the associated line.');
+						if (lines.some(line => line.DetailType === undefined || line.Amount === undefined || line.Description === undefined)) {
+							throw new NodeOperationError(this.getNode(), 'Please enter detail type, amount and description for every line.');
 						}
-					});
 
-					let body = {
-						CustomerRef: {
-							value: this.getNodeParameter('CustomerRef', i),
-						},
-					} as IDataObject;
+						lines.forEach(line => {
+							if (line.DetailType === 'AccountBasedExpenseLineDetail' && line.accountId === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Please enter an account ID for the associated line.');
+							} else if (line.DetailType === 'ItemBasedExpenseLineDetail' && line.itemId === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Please enter an item ID for the associated line.');
+							}
+						});
 
-					body.Line = processLines.call(this, body, lines, resource);
+						let body = {
+							VendorRef: {
+								value: this.getNodeParameter('VendorRef', i),
+							},
+						} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						body.Line = processLines.call(this, body, lines, resource);
 
-					body = populateFields.call(this, body, additionalFields, resource);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
+						body = populateFields.call(this, body, additionalFields, resource);
 
-				} else if (operation === 'delete') {
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
 
-					// ----------------------------------
-					//         estimate: delete
-					// ----------------------------------
+					} else if (operation === 'delete') {
 
-					const qs = {
-						operation: 'delete',
-					} as IDataObject;
+						// ----------------------------------
+						//         bill: delete
+						// ----------------------------------
 
-					const body = {
-						Id: this.getNodeParameter('estimateId', i),
-						SyncToken: await getSyncToken.call(this, i, companyId, resource),
-					} as IDataObject;
+						const qs = {
+							operation: 'delete',
+						} as IDataObject;
 
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
-					responseData = responseData[capitalCase(resource)];
+						const body = {
+							Id: this.getNodeParameter('billId', i),
+							SyncToken: await getSyncToken.call(this, i, companyId, resource),
+						} as IDataObject;
 
-				} else if (operation === 'get') {
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
+						responseData = responseData[capitalCase(resource)];
 
-					// ----------------------------------
-					//         estimate: get
-					// ----------------------------------
+					} else if (operation === 'get') {
 
-					const estimateId = this.getNodeParameter('estimateId', i) as string;
-					const download = this.getNodeParameter('download', i) as boolean;
+						// ----------------------------------
+						//         bill: get
+						// ----------------------------------
 
-					if (download) {
-
-						responseData = await handleBinaryData.call(this, items, i, companyId, resource, estimateId);
-
-					} else {
-
-						const endpoint = `/v3/company/${companyId}/${resource}/${estimateId}`;
+						const billId = this.getNodeParameter('billId', i);
+						const endpoint = `/v3/company/${companyId}/${resource}/${billId}`;
 						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------
+						//         bill: getAll
+						// ----------------------------------
+
+						const endpoint = `/v3/company/${companyId}/query`;
+						responseData = await handleListing.call(this, i, endpoint, resource);
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------
+						//         bill: update
+						// ----------------------------------
+
+						const { ref, syncToken } = await getRefAndSyncToken.call(this, i, companyId, resource, 'VendorRef');
+
+						let body = {
+							Id: this.getNodeParameter('billId', i),
+							SyncToken: syncToken,
+							sparse: true,
+							VendorRef: {
+								name: ref.name,
+								value: ref.value,
+							},
+						} as IDataObject;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						if (isEmpty(updateFields)) {
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						}
+
+						body = populateFields.call(this, body, updateFields, resource);
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 						responseData = responseData[capitalCase(resource)];
 
 					}
 
-				} else if (operation === 'getAll') {
+				} else if (resource === 'customer') {
 
-					// ----------------------------------
-					//         estimate: getAll
-					// ----------------------------------
+					// *********************************************************************
+					//                            customer
+					// *********************************************************************
 
-					const endpoint = `/v3/company/${companyId}/query`;
-					responseData = await handleListing.call(this, i, endpoint, resource);
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/customer
 
-				} else if (operation === 'send') {
+					if (operation === 'create') {
 
-					// ----------------------------------
-					//         estimate: send
-					// ----------------------------------
+						// ----------------------------------
+						//         customer: create
+						// ----------------------------------
 
-					const estimateId = this.getNodeParameter('estimateId', i) as string;
+						let body = {
+							DisplayName: this.getNodeParameter('displayName', i),
+						} as IDataObject;
 
-					const qs = {
-						sendTo: this.getNodeParameter('email', i) as string,
-					} as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const endpoint = `/v3/company/${companyId}/${resource}/${estimateId}/send`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
-					responseData = responseData[capitalCase(resource)];
+						body = populateFields.call(this, body, additionalFields, resource);
 
-				} else if (operation === 'update') {
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
 
-					// ----------------------------------
-					//         estimate: update
-					// ----------------------------------
+					} else if (operation === 'get') {
 
-					const { ref, syncToken } = await getRefAndSyncToken.call(this, i, companyId, resource, 'CustomerRef');
+						// ----------------------------------
+						//         customer: get
+						// ----------------------------------
 
-					let body = {
-						Id: this.getNodeParameter('estimateId', i),
-						SyncToken: syncToken,
-						sparse: true,
-						CustomerRef: {
-							name: ref.name,
-							value: ref.value,
-						},
-					} as IDataObject;
+						const customerId = this.getNodeParameter('customerId', i);
+						const endpoint = `/v3/company/${companyId}/${resource}/${customerId}`;
+						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+						responseData = responseData[capitalCase(resource)];
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					} else if (operation === 'getAll') {
 
-					if (isEmpty(updateFields)) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
-					}
+						// ----------------------------------
+						//         customer: getAll
+						// ----------------------------------
 
-					body = populateFields.call(this, body, updateFields, resource);
+						const endpoint = `/v3/company/${companyId}/query`;
+						responseData = await handleListing.call(this, i, endpoint, resource);
 
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
+					} else if (operation === 'update') {
 
-				}
+						// ----------------------------------
+						//         customer: update
+						// ----------------------------------
 
-			} else if (resource === 'invoice') {
+						let body = {
+							Id: this.getNodeParameter('customerId', i),
+							SyncToken: await getSyncToken.call(this, i, companyId, resource),
+							sparse: true,
+						} as IDataObject;
 
-				// *********************************************************************
-				//         invoice
-				// *********************************************************************
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/invoice
-
-				if (operation === 'create') {
-
-					// ----------------------------------
-					//         invoice: create
-					// ----------------------------------
-
-					const lines = this.getNodeParameter('Line', i) as IDataObject[];
-
-					if (!lines.length) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one line for the ${resource}.`);
-					}
-
-					if (lines.some(line => line.DetailType === undefined || line.Amount === undefined || line.Description === undefined)) {
-						throw new NodeOperationError(this.getNode(), 'Please enter detail type, amount and description for every line.');
-					}
-
-					lines.forEach(line => {
-						if (line.DetailType === 'SalesItemLineDetail' && line.itemId === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Please enter an item ID for the associated line.');
+						if (isEmpty(updateFields)) {
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
 						}
-					});
 
-					let body = {
-						CustomerRef: {
-							value: this.getNodeParameter('CustomerRef', i),
-						},
-					} as IDataObject;
+						body = populateFields.call(this, body, updateFields, resource);
 
-					body.Line = processLines.call(this, body, lines, resource);
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					body = populateFields.call(this, body, additionalFields, resource);
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'delete') {
-
-					// ----------------------------------
-					//         invoice: delete
-					// ----------------------------------
-
-					const qs = {
-						operation: 'delete',
-					} as IDataObject;
-
-					const body = {
-						Id: this.getNodeParameter('invoiceId', i),
-						SyncToken: await getSyncToken.call(this, i, companyId, resource),
-					} as IDataObject;
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'get') {
-
-					// ----------------------------------
-					//         invoice: get
-					// ----------------------------------
-
-					const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-					const download = this.getNodeParameter('download', i) as boolean;
-
-					if (download) {
-
-						responseData = await handleBinaryData.call(this, items, i, companyId, resource, invoiceId);
-
-					} else {
-
-						const endpoint = `/v3/company/${companyId}/${resource}/${invoiceId}`;
-						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 						responseData = responseData[capitalCase(resource)];
 
 					}
 
-				} else if (operation === 'getAll') {
+				} else if (resource === 'employee') {
 
-					// ----------------------------------
-					//         invoice: getAll
-					// ----------------------------------
+					// *********************************************************************
+					//                            employee
+					// *********************************************************************
 
-					const endpoint = `/v3/company/${companyId}/query`;
-					responseData = await handleListing.call(this, i, endpoint, resource);
+					if (operation === 'create') {
 
-				} else if (operation === 'send') {
+						// ----------------------------------
+						//         employee: create
+						// ----------------------------------
 
-					// ----------------------------------
-					//         invoice: send
-					// ----------------------------------
+						let body = {
+							FamilyName: this.getNodeParameter('FamilyName', i),
+							GivenName: this.getNodeParameter('GivenName', i),
+						} as IDataObject;
 
-					const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const qs = {
-						sendTo: this.getNodeParameter('email', i) as string,
-					} as IDataObject;
+						body = populateFields.call(this, body, additionalFields, resource);
 
-					const endpoint = `/v3/company/${companyId}/${resource}/${invoiceId}/send`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
-					responseData = responseData[capitalCase(resource)];
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
 
-				} else if (operation === 'update') {
+					} else if (operation === 'get') {
 
-					// ----------------------------------
-					//         invoice: update
-					// ----------------------------------
+						// ----------------------------------
+						//         employee: get
+						// ----------------------------------
 
-					const { ref, syncToken } = await getRefAndSyncToken.call(this, i, companyId, resource, 'CustomerRef');
-
-					let body = {
-						Id: this.getNodeParameter('invoiceId', i),
-						SyncToken: syncToken,
-						sparse: true,
-						CustomerRef: {
-							name: ref.name,
-							value: ref.value,
-						},
-					} as IDataObject;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					if (isEmpty(updateFields)) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
-					}
-
-					body = populateFields.call(this, body, updateFields, resource);
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'void') {
-
-					// ----------------------------------
-					//         invoice: void
-					// ----------------------------------
-
-					const qs = {
-						Id: this.getNodeParameter('invoiceId', i),
-						SyncToken: await getSyncToken.call(this, i, companyId, resource),
-						operation: 'void',
-					} as IDataObject;
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
-					responseData = responseData[capitalCase(resource)];
-
-				}
-
-			} else if (resource === 'item') {
-
-				// *********************************************************************
-				//           item
-				// *********************************************************************
-
-				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/item
-
-				if (operation === 'get') {
-
-					// ----------------------------------
-					//         item: get
-					// ----------------------------------
-
-					const item = this.getNodeParameter('itemId', i);
-					const endpoint = `/v3/company/${companyId}/${resource}/${item}`;
-					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'getAll') {
-
-					// ----------------------------------
-					//         item: getAll
-					// ----------------------------------
-
-					const endpoint = `/v3/company/${companyId}/query`;
-					responseData = await handleListing.call(this, i, endpoint, resource);
-
-				}
-
-			} else if (resource === 'payment') {
-
-				// *********************************************************************
-				//         payment
-				// *********************************************************************
-
-				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/payment
-
-				if (operation === 'create') {
-
-					// ----------------------------------
-					//         payment: create
-					// ----------------------------------
-
-					let body = {
-						CustomerRef: {
-							value: this.getNodeParameter('CustomerRef', i),
-						},
-						TotalAmt: this.getNodeParameter('TotalAmt', i),
-					} as IDataObject;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					body = populateFields.call(this, body, additionalFields, resource);
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'delete') {
-
-					// ----------------------------------
-					//         payment: delete
-					// ----------------------------------
-
-					const qs = {
-						operation: 'delete',
-					} as IDataObject;
-
-					const body = {
-						Id: this.getNodeParameter('paymentId', i),
-						SyncToken: await getSyncToken.call(this, i, companyId, resource),
-					} as IDataObject;
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'get') {
-
-					// ----------------------------------
-					//         payment: get
-					// ----------------------------------
-
-					const paymentId = this.getNodeParameter('paymentId', i) as string;
-					const download = this.getNodeParameter('download', i) as boolean;
-
-					if (download) {
-
-						responseData = await handleBinaryData.call(this, items, i, companyId, resource, paymentId);
-
-					} else {
-
-						const endpoint = `/v3/company/${companyId}/${resource}/${paymentId}`;
+						const employeeId = this.getNodeParameter('employeeId', i);
+						const endpoint = `/v3/company/${companyId}/${resource}/${employeeId}`;
 						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------
+						//         employee: getAll
+						// ----------------------------------
+
+						const endpoint = `/v3/company/${companyId}/query`;
+						responseData = await handleListing.call(this, i, endpoint, resource);
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------
+						//         employee: update
+						// ----------------------------------
+
+						let body = {
+							Id: this.getNodeParameter('employeeId', i),
+							SyncToken: await getSyncToken.call(this, i, companyId, resource),
+							sparse: true,
+						} as IDataObject;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						if (isEmpty(updateFields)) {
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						}
+
+						body = populateFields.call(this, body, updateFields, resource);
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 						responseData = responseData[capitalCase(resource)];
 
 					}
 
-				} else if (operation === 'getAll') {
+				} else if (resource === 'estimate') {
 
-					// ----------------------------------
-					//         payment: getAll
-					// ----------------------------------
+					// *********************************************************************
+					//                            estimate
+					// *********************************************************************
 
-					const endpoint = `/v3/company/${companyId}/query`;
-					responseData = await handleListing.call(this, i, endpoint, resource);
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/estimate
 
-				} else if (operation === 'send') {
+					if (operation === 'create') {
 
-					// ----------------------------------
-					//         payment: send
-					// ----------------------------------
+						// ----------------------------------
+						//         estimate: create
+						// ----------------------------------
 
-					const paymentId = this.getNodeParameter('paymentId', i) as string;
+						const lines = this.getNodeParameter('Line', i) as IDataObject[];
 
-					const qs = {
-						sendTo: this.getNodeParameter('email', i) as string,
-					} as IDataObject;
+						if (!lines.length) {
+							throw new NodeOperationError(this.getNode(), `Please enter at least one line for the ${resource}.`);
+						}
 
-					const endpoint = `/v3/company/${companyId}/${resource}/${paymentId}/send`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
-					responseData = responseData[capitalCase(resource)];
+						if (lines.some(line => line.DetailType === undefined || line.Amount === undefined || line.Description === undefined)) {
+							throw new NodeOperationError(this.getNode(), 'Please enter detail type, amount and description for every line.');
+						}
 
-				} else if (operation === 'update') {
+						lines.forEach(line => {
+							if (line.DetailType === 'SalesItemLineDetail' && line.itemId === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Please enter an item ID for the associated line.');
+							}
+						});
 
-					// ----------------------------------
-					//         payment: update
-					// ----------------------------------
+						let body = {
+							CustomerRef: {
+								value: this.getNodeParameter('CustomerRef', i),
+							},
+						} as IDataObject;
 
-					const { ref, syncToken } = await getRefAndSyncToken.call(this, i, companyId, resource, 'CustomerRef');
+						body.Line = processLines.call(this, body, lines, resource);
 
-					let body = {
-						Id: this.getNodeParameter('paymentId', i),
-						SyncToken: syncToken,
-						sparse: true,
-						CustomerRef: {
-							name: ref.name,
-							value: ref.value,
-						},
-					} as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						body = populateFields.call(this, body, additionalFields, resource);
 
-					if (isEmpty(updateFields)) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'delete') {
+
+						// ----------------------------------
+						//         estimate: delete
+						// ----------------------------------
+
+						const qs = {
+							operation: 'delete',
+						} as IDataObject;
+
+						const body = {
+							Id: this.getNodeParameter('estimateId', i),
+							SyncToken: await getSyncToken.call(this, i, companyId, resource),
+						} as IDataObject;
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'get') {
+
+						// ----------------------------------
+						//         estimate: get
+						// ----------------------------------
+
+						const estimateId = this.getNodeParameter('estimateId', i) as string;
+						const download = this.getNodeParameter('download', i) as boolean;
+
+						if (download) {
+
+							responseData = await handleBinaryData.call(this, items, i, companyId, resource, estimateId);
+
+						} else {
+
+							const endpoint = `/v3/company/${companyId}/${resource}/${estimateId}`;
+							responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+							responseData = responseData[capitalCase(resource)];
+
+						}
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------
+						//         estimate: getAll
+						// ----------------------------------
+
+						const endpoint = `/v3/company/${companyId}/query`;
+						responseData = await handleListing.call(this, i, endpoint, resource);
+
+					} else if (operation === 'send') {
+
+						// ----------------------------------
+						//         estimate: send
+						// ----------------------------------
+
+						const estimateId = this.getNodeParameter('estimateId', i) as string;
+
+						const qs = {
+							sendTo: this.getNodeParameter('email', i) as string,
+						} as IDataObject;
+
+						const endpoint = `/v3/company/${companyId}/${resource}/${estimateId}/send`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------
+						//         estimate: update
+						// ----------------------------------
+
+						const { ref, syncToken } = await getRefAndSyncToken.call(this, i, companyId, resource, 'CustomerRef');
+
+						let body = {
+							Id: this.getNodeParameter('estimateId', i),
+							SyncToken: syncToken,
+							sparse: true,
+							CustomerRef: {
+								name: ref.name,
+								value: ref.value,
+							},
+						} as IDataObject;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						if (isEmpty(updateFields)) {
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						}
+
+						body = populateFields.call(this, body, updateFields, resource);
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
+
 					}
 
-					body = populateFields.call(this, body, updateFields, resource);
+				} else if (resource === 'invoice') {
 
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
+					// *********************************************************************
+					//                            invoice
+					// *********************************************************************
 
-				} else if (operation === 'void') {
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/invoice
 
-					// ----------------------------------
-					//         payment: void
-					// ----------------------------------
+					if (operation === 'create') {
 
-					const qs = {
-						Id: this.getNodeParameter('paymentId', i),
-						SyncToken: await getSyncToken.call(this, i, companyId, resource),
-						operation: 'void',
-					} as IDataObject;
+						// ----------------------------------
+						//         invoice: create
+						// ----------------------------------
 
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
-					responseData = responseData[capitalCase(resource)];
+						const lines = this.getNodeParameter('Line', i) as IDataObject[];
 
-				}
+						if (!lines.length) {
+							throw new NodeOperationError(this.getNode(), `Please enter at least one line for the ${resource}.`);
+						}
 
-			} else if (resource === 'vendor') {
+						if (lines.some(line => line.DetailType === undefined || line.Amount === undefined || line.Description === undefined)) {
+							throw new NodeOperationError(this.getNode(), 'Please enter detail type, amount and description for every line.');
+						}
 
-				// *********************************************************************
-				//         vendor
-				// *********************************************************************
+						lines.forEach(line => {
+							if (line.DetailType === 'SalesItemLineDetail' && line.itemId === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Please enter an item ID for the associated line.');
+							}
+						});
 
-				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/vendor
+						let body = {
+							CustomerRef: {
+								value: this.getNodeParameter('CustomerRef', i),
+							},
+						} as IDataObject;
 
-				if (operation === 'create') {
+						body.Line = processLines.call(this, body, lines, resource);
 
-					// ----------------------------------
-					//         vendor: create
-					// ----------------------------------
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					let body = {
-						DisplayName: this.getNodeParameter('displayName', i),
-					} as IDataObject;
+						body = populateFields.call(this, body, additionalFields, resource);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
 
-					body = populateFields.call(this, body, additionalFields, resource);
+					} else if (operation === 'delete') {
 
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
+						// ----------------------------------
+						//         invoice: delete
+						// ----------------------------------
 
-				} else if (operation === 'get') {
+						const qs = {
+							operation: 'delete',
+						} as IDataObject;
 
-					// ----------------------------------
-					//         vendor: get
-					// ----------------------------------
+						const body = {
+							Id: this.getNodeParameter('invoiceId', i),
+							SyncToken: await getSyncToken.call(this, i, companyId, resource),
+						} as IDataObject;
 
-					const vendorId = this.getNodeParameter('vendorId', i);
-					const endpoint = `/v3/company/${companyId}/${resource}/${vendorId}`;
-					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = responseData[capitalCase(resource)];
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
+						responseData = responseData[capitalCase(resource)];
 
-				} else if (operation === 'getAll') {
+					} else if (operation === 'get') {
 
-					// ----------------------------------
-					//         vendor: getAll
-					// ----------------------------------
+						// ----------------------------------
+						//         invoice: get
+						// ----------------------------------
 
-					const endpoint = `/v3/company/${companyId}/query`;
-					responseData = await handleListing.call(this, i, endpoint, resource);
+						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+						const download = this.getNodeParameter('download', i) as boolean;
 
-				} else if (operation === 'update') {
+						if (download) {
 
-					// ----------------------------------
-					//         vendor: update
-					// ----------------------------------
+							responseData = await handleBinaryData.call(this, items, i, companyId, resource, invoiceId);
 
-					let body = {
-						Id: this.getNodeParameter('vendorId', i),
-						SyncToken: await getSyncToken.call(this, i, companyId, resource),
-						sparse: true,
-					} as IDataObject;
+						} else {
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+							const endpoint = `/v3/company/${companyId}/${resource}/${invoiceId}`;
+							responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+							responseData = responseData[capitalCase(resource)];
 
-					if (isEmpty(updateFields)) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						}
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------
+						//         invoice: getAll
+						// ----------------------------------
+
+						const endpoint = `/v3/company/${companyId}/query`;
+						responseData = await handleListing.call(this, i, endpoint, resource);
+
+					} else if (operation === 'send') {
+
+						// ----------------------------------
+						//         invoice: send
+						// ----------------------------------
+
+						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+
+						const qs = {
+							sendTo: this.getNodeParameter('email', i) as string,
+						} as IDataObject;
+
+						const endpoint = `/v3/company/${companyId}/${resource}/${invoiceId}/send`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------
+						//         invoice: update
+						// ----------------------------------
+
+						const { ref, syncToken } = await getRefAndSyncToken.call(this, i, companyId, resource, 'CustomerRef');
+
+						let body = {
+							Id: this.getNodeParameter('invoiceId', i),
+							SyncToken: syncToken,
+							sparse: true,
+							CustomerRef: {
+								name: ref.name,
+								value: ref.value,
+							},
+						} as IDataObject;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						if (isEmpty(updateFields)) {
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						}
+
+						body = populateFields.call(this, body, updateFields, resource);
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'void') {
+
+						// ----------------------------------
+						//         invoice: void
+						// ----------------------------------
+
+						const qs = {
+							Id: this.getNodeParameter('invoiceId', i),
+							SyncToken: await getSyncToken.call(this, i, companyId, resource),
+							operation: 'void',
+						} as IDataObject;
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
+						responseData = responseData[capitalCase(resource)];
+
 					}
 
-					body = populateFields.call(this, body, updateFields, resource);
+				} else if (resource === 'item') {
 
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData[capitalCase(resource)];
+					// *********************************************************************
+					//                            item
+					// *********************************************************************
+
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/item
+
+					if (operation === 'get') {
+
+						// ----------------------------------
+						//         item: get
+						// ----------------------------------
+
+						const item = this.getNodeParameter('itemId', i);
+						const endpoint = `/v3/company/${companyId}/${resource}/${item}`;
+						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------
+						//         item: getAll
+						// ----------------------------------
+
+						const endpoint = `/v3/company/${companyId}/query`;
+						responseData = await handleListing.call(this, i, endpoint, resource);
+
+					}
+
+				} else if (resource === 'payment') {
+
+					// *********************************************************************
+					//                            payment
+					// *********************************************************************
+
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/payment
+
+					if (operation === 'create') {
+
+						// ----------------------------------
+						//         payment: create
+						// ----------------------------------
+
+						let body = {
+							CustomerRef: {
+								value: this.getNodeParameter('CustomerRef', i),
+							},
+							TotalAmt: this.getNodeParameter('TotalAmt', i),
+						} as IDataObject;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						body = populateFields.call(this, body, additionalFields, resource);
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'delete') {
+
+						// ----------------------------------
+						//         payment: delete
+						// ----------------------------------
+
+						const qs = {
+							operation: 'delete',
+						} as IDataObject;
+
+						const body = {
+							Id: this.getNodeParameter('paymentId', i),
+							SyncToken: await getSyncToken.call(this, i, companyId, resource),
+						} as IDataObject;
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'get') {
+
+						// ----------------------------------
+						//         payment: get
+						// ----------------------------------
+
+						const paymentId = this.getNodeParameter('paymentId', i) as string;
+						const download = this.getNodeParameter('download', i) as boolean;
+
+						if (download) {
+
+							responseData = await handleBinaryData.call(this, items, i, companyId, resource, paymentId);
+
+						} else {
+
+							const endpoint = `/v3/company/${companyId}/${resource}/${paymentId}`;
+							responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+							responseData = responseData[capitalCase(resource)];
+
+						}
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------
+						//         payment: getAll
+						// ----------------------------------
+
+						const endpoint = `/v3/company/${companyId}/query`;
+						responseData = await handleListing.call(this, i, endpoint, resource);
+
+					} else if (operation === 'send') {
+
+						// ----------------------------------
+						//         payment: send
+						// ----------------------------------
+
+						const paymentId = this.getNodeParameter('paymentId', i) as string;
+
+						const qs = {
+							sendTo: this.getNodeParameter('email', i) as string,
+						} as IDataObject;
+
+						const endpoint = `/v3/company/${companyId}/${resource}/${paymentId}/send`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------
+						//         payment: update
+						// ----------------------------------
+
+						const { ref, syncToken } = await getRefAndSyncToken.call(this, i, companyId, resource, 'CustomerRef');
+
+						let body = {
+							Id: this.getNodeParameter('paymentId', i),
+							SyncToken: syncToken,
+							sparse: true,
+							CustomerRef: {
+								name: ref.name,
+								value: ref.value,
+							},
+						} as IDataObject;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						if (isEmpty(updateFields)) {
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						}
+
+						body = populateFields.call(this, body, updateFields, resource);
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'void') {
+
+						// ----------------------------------
+						//         payment: void
+						// ----------------------------------
+
+						const qs = {
+							Id: this.getNodeParameter('paymentId', i),
+							SyncToken: await getSyncToken.call(this, i, companyId, resource),
+							operation: 'void',
+						} as IDataObject;
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
+						responseData = responseData[capitalCase(resource)];
+
+					}
+
+				} else if (resource === 'purchase') {
+
+					// *********************************************************************
+					//                            purchase
+					// *********************************************************************
+
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase
+
+					if (operation === 'get') {
+
+						// ----------------------------------
+						//         purchase: get
+						// ----------------------------------
+
+						const purchaseId = this.getNodeParameter('purchaseId', i);
+						const endpoint = `/v3/company/${companyId}/${resource}/${purchaseId}`;
+						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------
+						//         purchase: getAll
+						// ----------------------------------
+
+						const endpoint = `/v3/company/${companyId}/query`;
+						responseData = await handleListing.call(this, i, endpoint, resource);
+
+					}
+
+				} else if (resource === 'transaction') {
+
+					// *********************************************************************
+					//                            transaction
+					// *********************************************************************
+
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/transactionlist
+
+					if (operation === 'getReport') {
+
+						// ----------------------------------
+						//        transaction: getReport
+						// ----------------------------------
+
+						const {
+							columns,
+							memo,
+							term,
+							customer,
+							vendor,
+							...rest
+						} = this.getNodeParameter('filters', i) as TransactionFields;
+
+						let qs = { ...rest };
+
+						if (columns?.length) {
+							qs.columns = columns.join(',');
+						}
+
+						if (memo?.length) {
+							qs.memo = memo.join(',');
+						}
+
+						if (term?.length) {
+							qs.term = term.join(',');
+						}
+
+						if (customer?.length) {
+							qs.customer = customer.join(',');
+						}
+
+						if (vendor?.length) {
+							qs.vendor = vendor.join(',');
+						}
+
+						qs = adjustTransactionDates(qs);
+
+						const endpoint = `/v3/company/${companyId}/reports/TransactionList`;
+						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, qs, {});
+
+						const simplifyResponse = this.getNodeParameter('simple', i, true) as boolean;
+
+						if (!Object.keys(responseData?.Rows).length) {
+							responseData = [];
+						}
+
+						if (simplifyResponse && !Array.isArray(responseData)) {
+							responseData = simplifyTransactionReport(responseData);
+						}
+					}
+
+				} else if (resource === 'vendor') {
+
+					// *********************************************************************
+					//                            vendor
+					// *********************************************************************
+
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/vendor
+
+					if (operation === 'create') {
+
+						// ----------------------------------
+						//         vendor: create
+						// ----------------------------------
+
+						let body = {
+							DisplayName: this.getNodeParameter('displayName', i),
+						} as IDataObject;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						body = populateFields.call(this, body, additionalFields, resource);
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'get') {
+
+						// ----------------------------------
+						//         vendor: get
+						// ----------------------------------
+
+						const vendorId = this.getNodeParameter('vendorId', i);
+						const endpoint = `/v3/company/${companyId}/${resource}/${vendorId}`;
+						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+						responseData = responseData[capitalCase(resource)];
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------
+						//         vendor: getAll
+						// ----------------------------------
+
+						const endpoint = `/v3/company/${companyId}/query`;
+						responseData = await handleListing.call(this, i, endpoint, resource);
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------
+						//         vendor: update
+						// ----------------------------------
+
+						let body = {
+							Id: this.getNodeParameter('vendorId', i),
+							SyncToken: await getSyncToken.call(this, i, companyId, resource),
+							sparse: true,
+						} as IDataObject;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						if (isEmpty(updateFields)) {
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						}
+
+						body = populateFields.call(this, body, updateFields, resource);
+
+						const endpoint = `/v3/company/${companyId}/${resource}`;
+						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = responseData[capitalCase(resource)];
+
+					}
 
 				}
-
+			} catch (error) {
+				if (this.continueOnFail()) {
+					const download = this.getNodeParameter('download', 0, false) as boolean;
+					if (['invoice', 'estimate', 'payment'].includes(resource) && ['get'].includes(operation) && download) {
+						// in this case responseDate? === items
+						if (!responseData){
+							items[i].json = { error: error.message };
+							responseData = items;
+						}else {
+							responseData[i].json = { error: error.message };
+						}
+					}else {
+						returnData.push({ error: error.message });
+					}
+					continue;
+				}
+				throw error;
 			}
+
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
@@ -989,3 +1137,4 @@ export class QuickBooks implements INodeType {
 		}
 	}
 }
+

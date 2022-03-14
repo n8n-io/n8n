@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,6 +29,11 @@ export const contactOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact',
+			},
+			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new contact, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -59,13 +64,55 @@ export const contactOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Match Against',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'resource',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `The field to check to see if the contact already exists`,
+	},
+	{
+		displayName: 'Value to Match',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If this value exists in the 'match against' field, update the contact. Otherwise create a new one`,
+	},
 	{
 		displayName: 'Last Name',
 		name: 'lastname',
@@ -79,6 +126,7 @@ export const contactFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -97,6 +145,7 @@ export const contactFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -336,6 +385,15 @@ export const contactFields = [
 				description: 'Phone number for the contact.',
 			},
 			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
+			},
+			{
 				displayName: 'Salutation',
 				name: 'salutation',
 				type: 'string',
@@ -522,6 +580,13 @@ export const contactFields = [
 				If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.`,
 			},
 			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
+				description: 'Last name of the contact. Limited to 80 characters.',
+			},
+			{
 				displayName: 'Lead Source',
 				name: 'leadSource',
 				type: 'options',
@@ -625,6 +690,15 @@ export const contactFields = [
 				description: 'Phone number for the contact.',
 			},
 			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
+			},
+			{
 				displayName: 'Salutation',
 				name: 'salutation',
 				type: 'string',
@@ -642,7 +716,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                  contact:get                                  */
+	/*                                  contact:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
@@ -973,4 +1047,4 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

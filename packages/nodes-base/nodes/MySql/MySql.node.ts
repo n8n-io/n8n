@@ -15,13 +15,12 @@ export class MySql implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MySQL',
 		name: 'mySql',
-		icon: 'file:mysql.png',
+		icon: 'file:mysql.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Get, add and update data in MySQL.',
+		description: 'Get, add and update data in MySQL',
 		defaults: {
 			name: 'MySQL',
-			color: '#4279a2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -65,7 +64,7 @@ export class MySql implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -213,7 +212,7 @@ export class MySql implements INodeType {
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('mySql');
+		const credentials = await this.getCredentials('mySql');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -252,70 +251,101 @@ export class MySql implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryQueue = items.map((item, index) => {
-				const rawQuery = this.getNodeParameter('query', index) as string;
+			try {
+				const queryQueue = items.map((item, index) => {
+					const rawQuery = this.getNodeParameter('query', index) as string;
 
-				return connection.query(rawQuery);
-			});
+					return connection.query(rawQuery);
+				});
 
-			const queryResult = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result) => {
-				const [rows, fields] = result;
+				const queryResult = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result) => {
+					const [rows, fields] = result;
 
-				if (Array.isArray(rows)) {
-					return collection.concat(rows);
+					if (Array.isArray(rows)) {
+						return collection.concat(rows);
+					}
+
+					collection.push(rows);
+
+					return collection;
+				}, []);
+
+				returnItems = this.helpers.returnJsonArray(queryResult as unknown as IDataObject[]);
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems = this.helpers.returnJsonArray({ error: error.message });
+				} else {
+					await connection.end();
+					throw error;
 				}
-
-				collection.push(rows);
-
-				return collection;
-			}, []);
-
-			returnItems = this.helpers.returnJsonArray(queryResult as unknown as IDataObject[]);
-
+			}
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
 
-			const table = this.getNodeParameter('table', 0) as string;
-			const columnString = this.getNodeParameter('columns', 0) as string;
-			const columns = columnString.split(',').map(column => column.trim());
-			const insertItems = copyInputItems(items, columns);
-			const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
-			const options = this.getNodeParameter('options', 0) as IDataObject;
-			const insertIgnore = options.ignore as boolean;
-			const insertPriority = options.priority as string;
+			try {
+				const table = this.getNodeParameter('table', 0) as string;
+				const columnString = this.getNodeParameter('columns', 0) as string;
+				const columns = columnString.split(',').map(column => column.trim());
+				const insertItems = copyInputItems(items, columns);
+				const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
+				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const insertIgnore = options.ignore as boolean;
+				const insertPriority = options.priority as string;
 
-			const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''} INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
-			const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
-			
-			const queryResult = await connection.query(insertSQL, queryItems);
+				const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''} INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
+				const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
 
-			returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
+				const queryResult = await connection.query(insertSQL, queryItems);
+
+				returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems = this.helpers.returnJsonArray({ error: error.message });
+				} else {
+					await connection.end();
+					throw error;
+				}
+			}
 
 		} else if (operation === 'update') {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
 
-			const table = this.getNodeParameter('table', 0) as string;
-			const updateKey = this.getNodeParameter('updateKey', 0) as string;
-			const columnString = this.getNodeParameter('columns', 0) as string;
-			const columns = columnString.split(',').map(column => column.trim());
+			try {
+				const table = this.getNodeParameter('table', 0) as string;
+				const updateKey = this.getNodeParameter('updateKey', 0) as string;
+				const columnString = this.getNodeParameter('columns', 0) as string;
+				const columns = columnString.split(',').map(column => column.trim());
 
-			if (!columns.includes(updateKey)) {
-				columns.unshift(updateKey);
+				if (!columns.includes(updateKey)) {
+					columns.unshift(updateKey);
+				}
+
+				const updateItems = copyInputItems(items, columns);
+				const updateSQL = `UPDATE ${table} SET ${columns.map(column => `${column} = ?`).join(',')} WHERE ${updateKey} = ?;`;
+				const queryQueue = updateItems.map((item) => connection.query(updateSQL, Object.values(item).concat(item[updateKey])));
+				const queryResult = await Promise.all(queryQueue);
+				returnItems = this.helpers.returnJsonArray(queryResult.map(result => result[0]) as unknown as IDataObject[]);
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems = this.helpers.returnJsonArray({ error: error.message });
+				} else {
+					await connection.end();
+					throw error;
+				}
 			}
-
-			const updateItems = copyInputItems(items, columns);
-			const updateSQL = `UPDATE ${table} SET ${columns.map(column => `${column} = ?`).join(',')} WHERE ${updateKey} = ?;`;
-			const queryQueue = updateItems.map((item) => connection.query(updateSQL, Object.values(item).concat(item[updateKey])));
-			const queryResult = await Promise.all(queryQueue);
-			returnItems = this.helpers.returnJsonArray(queryResult.map(result => result[0]) as unknown as IDataObject[]);
-
 		} else {
-			await connection.end();
-			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+			if (this.continueOnFail()) {
+				returnItems = this.helpers.returnJsonArray({ error: `The operation "${operation}" is not supported!` });
+			} else {
+				await connection.end();
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+			}
 		}
 
 		await connection.end();
