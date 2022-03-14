@@ -2,5 +2,7 @@
     "packages": [
         "packages/*"
     ],
-    "version": "independent"
+    "version": "independent",
+    "useGitVersion": true,
+    "gitVersionPrefix": "v"
 }

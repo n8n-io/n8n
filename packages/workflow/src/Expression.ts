@@ -1,5 +1,5 @@
 // @ts-ignore
-import * as tmpl from 'riot-tmpl';
+import * as tmpl from 'n8n-tmpl';
 // eslint-disable-next-line import/no-cycle
 import {
 	INode,
