@@ -8,12 +8,12 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -99,7 +99,7 @@ export class Mailjet implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async mailjetEmailApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async mailjetEmailApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
