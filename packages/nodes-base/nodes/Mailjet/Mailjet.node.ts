@@ -3,6 +3,9 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -10,12 +13,14 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	IMessage,
 	mailjetApiRequest,
+	validateCredentials,
 	validateJSON,
 } from './GenericFunctions';
 
@@ -94,6 +99,25 @@ export class Mailjet implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async mailjetEmailApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				try {
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					const err = error as JsonObject;
+					if (err.statusCode === 401) {
+						return {
+							status: 'Error',
+							message: `Invalid credentials`,
+						};
+					}
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful',
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the available custom fields to display them to user so that he can
 			// select them easily
