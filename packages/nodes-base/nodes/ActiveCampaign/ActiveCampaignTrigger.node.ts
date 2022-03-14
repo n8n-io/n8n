@@ -27,7 +27,6 @@ export class ActiveCampaignTrigger implements INodeType {
 		description: 'Handle ActiveCampaign events via webhooks',
 		defaults: {
 			name: 'ActiveCampaign Trigger',
-			color: '#356ae6',
 		},
 		inputs: [],
 		outputs: ['main'],

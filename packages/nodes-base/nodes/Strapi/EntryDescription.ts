@@ -6,6 +6,7 @@ export const entryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -42,7 +43,7 @@ export const entryOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ];
 
@@ -66,7 +67,7 @@ export const entryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the content type.',
+		description: 'Name of the content type',
 	},
 	{
 		displayName: 'Columns',
@@ -84,7 +85,7 @@ export const entryFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'id,name,description',
-		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+		description: 'Comma separated list of the properties which should used as columns for the new rows',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -106,7 +107,7 @@ export const entryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the content type.',
+		description: 'Name of the content type',
 	},
 	{
 		displayName: 'Entry ID',
@@ -124,7 +125,7 @@ export const entryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the entry to delete.',
+		description: 'The ID of the entry to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -146,7 +147,7 @@ export const entryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the content type.',
+		description: 'Name of the content type',
 	},
 	{
 		displayName: 'Entry ID',
@@ -164,7 +165,7 @@ export const entryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the entry to get.',
+		description: 'The ID of the entry to get',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -203,7 +204,7 @@ export const entryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -227,7 +228,7 @@ export const entryFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -261,7 +262,7 @@ export const entryFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Only select entries matching the publication state provided.',
+				description: 'Only select entries matching the publication state provided',
 			},
 			{
 				displayName: 'Sort Fields',
@@ -273,7 +274,7 @@ export const entryFields: INodeProperties[] = [
 				},
 				default: '',
 				placeholder: 'name:asc',
-				description: `Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>`,
+				description: `Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>.`,
 			},
 			{
 				displayName: 'Where (JSON)',
@@ -307,7 +308,7 @@ export const entryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the content type.',
+		description: 'Name of the content type',
 	},
 	{
 		displayName: 'Update Key',
@@ -343,6 +344,6 @@ export const entryFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'id,name,description',
-		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+		description: 'Comma separated list of the properties which should used as columns for the new rows',
 	},
 ];

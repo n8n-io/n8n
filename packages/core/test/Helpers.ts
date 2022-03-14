@@ -6,6 +6,7 @@ import {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteWorkflowInfo,
+	IHttpRequestOptions,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
@@ -24,17 +25,30 @@ import {
 import { Credentials, IExecuteFunctions } from '../src';
 
 export class CredentialsHelper extends ICredentialsHelper {
-	getDecrypted(
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		requestParams: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		return requestParams;
+	}
+
+	getParentTypes(name: string): string[] {
+		return [];
+	}
+
+	async getDecrypted(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		return new Promise((res) => res({}));
+		return {};
 	}
 
-	getCredentials(nodeCredentials: INodeCredentialsDetails, type: string): Promise<Credentials> {
-		return new Promise((res) => {
-			res(new Credentials({ id: null, name: '' }, '', [], ''));
-		});
+	async getCredentials(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+	): Promise<Credentials> {
+		return new Credentials({ id: null, name: '' }, '', [], '');
 	}
 
 	async updateCredentials(
@@ -723,7 +737,7 @@ class NodeTypesClass implements INodeTypes {
 	async init(nodeTypes: INodeTypeData): Promise<void> {}
 
 	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedTypeNode(data.type));
+		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
 	}
 
 	getByName(nodeType: string): INodeType {
@@ -731,7 +745,7 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
+		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
 	}
 }
 
@@ -783,5 +797,6 @@ export function WorkflowExecuteAdditionalData(
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
+		userId: '123',
 	};
 }
