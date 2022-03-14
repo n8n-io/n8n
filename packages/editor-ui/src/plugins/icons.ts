@@ -31,6 +31,7 @@ import {
 	faCut,
 	faDotCircle,
 	faEdit,
+	faEllipsisV,
 	faEnvelope,
 	faEye,
 	faExclamationTriangle,
@@ -64,6 +65,7 @@ import {
 	faPlayCircle,
 	faPlus,
 	faPlusCircle,
+	faPlusSquare,
 	faQuestion,
 	faQuestionCircle,
 	faRedo,
@@ -87,6 +89,8 @@ import {
 	faTimes,
 	faTrash,
 	faUndo,
+	faUserCircle,
+	faUserFriends,
 	faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -124,6 +128,7 @@ addIcon(faCopy);
 addIcon(faCut);
 addIcon(faDotCircle);
 addIcon(faEdit);
+addIcon(faEllipsisV);
 addIcon(faEnvelope);
 addIcon(faEye);
 addIcon(faExclamationTriangle);
@@ -157,6 +162,7 @@ addIcon(faPlay);
 addIcon(faPlayCircle);
 addIcon(faPlus);
 addIcon(faPlusCircle);
+addIcon(faPlusSquare);
 addIcon(faQuestion);
 addIcon(faQuestionCircle);
 addIcon(faRedo);
@@ -180,6 +186,8 @@ addIcon(faThLarge);
 addIcon(faTimes);
 addIcon(faTrash);
 addIcon(faUndo);
+addIcon(faUserCircle);
+addIcon(faUserFriends);
 addIcon(faUsers);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);

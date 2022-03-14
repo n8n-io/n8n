@@ -1331,6 +1331,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
+	userId: string;
 }
 
 export type WorkflowExecuteMode =

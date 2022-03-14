@@ -1,4 +1,5 @@
 import { showMessage } from '@/components/mixins/showMessage';
+import { VIEWS } from '@/constants';
 import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
@@ -12,10 +13,7 @@ export const genericHelpers = mixins(showMessage).extend({
 	},
 	computed: {
 		isReadOnly (): boolean {
-			if (['NodeViewExisting', 'NodeViewNew'].includes(this.$route.name as string)) {
-				return false;
-			}
-			return true;
+			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.$route.name as VIEWS);
 		},
 	},
 	methods: {
@@ -77,7 +75,7 @@ export const genericHelpers = mixins(showMessage).extend({
 		async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
 			const functionName = inputParameters.shift() as string;
 			const { trailing, debounceTime }  = inputParameters.shift();
-			
+
 			// @ts-ignore
 			if (this.debouncedFunctions[functionName] === undefined) {
 				// @ts-ignore
