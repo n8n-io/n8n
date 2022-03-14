@@ -415,7 +415,7 @@ const config = convict({
 		format: String,
 		default: '',
 		env: 'N8N_EDITOR_BASE_URL',
-		doc: 'Public URL where the editor is accessible; path will be concatenated to this base. Also used for emails sent from n8n.',
+		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
 	},
 
 	security: {
