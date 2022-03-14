@@ -6,17 +6,17 @@ import {
  * Options to be displayed
  */
 export const nodeDescription: INodeTypeDescription = {
-	displayName: 'MongoDb Change Stream Trigger',
+	displayName: 'MongoDb Trigger',
 	name: 'mongoDbTrigger',
 	icon: 'file:mongodb.svg',
 	group: ['trigger'],
 	version: 1,
-	description: 'Watch for change events in a collection.',
+	description: 'Watch for change events in a collection',
 	defaults: {
-		name: 'MongoDb Change Stream Trigger',
+		name: 'MongoDb Trigger',
 		color: '#1A82e2',
 	},
-	inputs: ['main'],
+	inputs: [],
 	outputs: ['main'],
 	credentials: [
 		{
@@ -31,14 +31,14 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			required: true,
 			default: '',
-			description: 'MongoDb Collection.',
+			description: 'Enter the name of the MongoDB\'s collection',
 		},
 		{
-			displayName: 'Get Full Document',
-			name: 'getFullDocument',
+			displayName: 'Include Full Document',
+			name: 'includeFullDocument',
 			type: 'boolean',
 			default: false,
-			description: 'Get JSON of full document or only changed fields.',
+			description: 'Whether to include a copy of the entire document alongside with a delta describing the changes to the document',
 		},
 	],
 };

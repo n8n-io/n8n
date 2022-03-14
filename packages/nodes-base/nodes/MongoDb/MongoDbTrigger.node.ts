@@ -1,4 +1,4 @@
-import {INodeType, INodeTypeDescription, ITriggerResponse} from 'n8n-workflow';
+import {IDataObject, INodeType, INodeTypeDescription, ITriggerResponse} from 'n8n-workflow';
 import {ITriggerFunctions} from 'n8n-core';
 import {
 	ChangeEvent,
@@ -18,11 +18,10 @@ export class MongoDbTrigger implements INodeType {
 			this,
 			await this.getCredentials('mongoDb'),
 		);
-		const collectionName = this.getNodeParameter('collection', '') as string;
-		const getFullDocument = this.getNodeParameter('getFullDocument', false);
+		const collectionName = this.getNodeParameter('collection') as string;
+		const includeFullDocument = this.getNodeParameter('includeFullDocument') as boolean;
 		const self = this;
 
-		let changedObject = {};
 		let changeStream: ChangeStream;
 
 		const client: MongoClient = new MongoClient(connectionString, {
@@ -31,29 +30,36 @@ export class MongoDbTrigger implements INodeType {
 		});
 		await client.connect();
 
-		client.db(database)
-			.listCollections({name: collectionName})
-			.hasNext((error: MongoError, isFound: boolean) => {
-				if (isFound) {
-					// The collection name is found... Continue with change stream.
-					const collection: Collection = client.db(database).collection(collectionName);
-					changeStream = getFullDocument ?
-						collection.watch({fullDocument: 'updateLookup'}) :
-						collection.watch();
+		async function manualTriggerFunction() {
+			await new Promise((resolve, reject) => {
+				client.db(database)
+				.listCollections({name: collectionName})
+				.hasNext((error: MongoError, isFound: boolean) => {
+					if (isFound) {
+						const collection: Collection = client.db(database).collection(collectionName);
 
-					monitorListingsUsingEventEmitter();
-				}
-				// The collection name is not found... Return an empty array.
-				else {
-					return self.emit([]);
-				}
-		});
+						changeStream = includeFullDocument ?
+							collection.watch({fullDocument: 'updateLookup'}) :
+							collection.watch();
 
-		async function monitorListingsUsingEventEmitter() {
-			changeStream.on('change', (next: ChangeEvent) => {
-				changedObject = flattenJson(JSON.stringify(next));
-				self.emit([self.helpers.returnJsonArray(changedObject)]);
+						changeStream.on('change', (next: ChangeEvent) => {
+							self.emit([self.helpers.returnJsonArray(next as unknown as IDataObject)]);
+							resolve(true);
+						});
+
+						changeStream.on('error', (error) => {
+							reject(error);
+						});
+					}
+					else {
+						reject(new Error('The collection was not found'));
+					}
+				});
 			});
+		}
+
+		if (this.getMode() === 'trigger') {
+			manualTriggerFunction();
 		}
 
 		async function closeFunction() {
@@ -61,37 +67,9 @@ export class MongoDbTrigger implements INodeType {
 			await client.close();
 		}
 
-		async function manualTriggerFunction() {
-		}
 		return {
 			closeFunction,
 			manualTriggerFunction,
 		};
 	}
-}
-
-function flattenJson(jsonString: string): JSON {
-	const jsonToFlatten = JSON.parse(jsonString);
-	const result = {};
-	flatten(jsonToFlatten, result);
-	return result as JSON;
-
-	function flatten(property: IData, result: IData, parentName= '') {
-		const keys = Object.keys(property);
-
-		for (const key of keys) {
-			const value = property[key];
-			if (typeof(value) === 'object' && !Array.isArray(value)) {
-				flatten(value as IData, result, key);
-			}
-			else {
-				const keyName = parentName === '' ? key : `${parentName}.${key}`;
-				result[keyName] = value;
-			}
-		}
-	}
-}
-type GenericValue = string | object | number | boolean;
-interface IData {
-	[key: string]: GenericValue | IData | GenericValue[] | IData[];
 }
