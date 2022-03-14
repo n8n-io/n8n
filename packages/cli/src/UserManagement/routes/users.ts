@@ -266,7 +266,11 @@ export function usersNamespace(this: N8nApp): void {
 					inviterId,
 					inviteeId,
 				});
-				throw new ResponseHelper.ResponseError('The invitation was likely either deleted or already claimed', undefined, 400);
+				throw new ResponseHelper.ResponseError(
+					'The invitation was likely either deleted or already claimed',
+					undefined,
+					400,
+				);
 			}
 
 			const inviter = users.find((user) => user.id === inviterId);
