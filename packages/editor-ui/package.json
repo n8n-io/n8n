@@ -20,7 +20,6 @@
     "lint": "tslint -p tsconfig.json -c tslint.json",
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vue-cli-service serve",
-    "test": "npm run test:unit",
     "test:e2e": "vue-cli-service test:e2e",
     "test:unit": "vue-cli-service test:unit"
   },
@@ -32,6 +31,7 @@
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
     "vue-fragment": "^1.5.2",
+    "vue2-boring-avatars": "0.3.4",
     "vue-i18n": "^8.26.7",
     "xss": "^1.0.10"
   },
@@ -42,7 +42,7 @@
     "@types/dateformat": "^3.0.0",
     "@types/express": "^4.17.6",
     "@types/file-saver": "^2.0.1",
-    "@types/jest": "^26.0.13",
+    "@types/jest": "^27.4.0",
     "@types/lodash.camelcase": "^4.3.6",
     "@types/lodash.get": "^4.4.6",
     "@types/lodash.set": "^4.3.6",
@@ -86,7 +86,7 @@
     "sass": "^1.26.5",
     "sass-loader": "^8.0.2",
     "string-template-parser": "^1.2.6",
-    "ts-jest": "^26.3.0",
+    "ts-jest": "^27.1.3",
     "tslint": "^6.1.2",
     "typescript": "~4.3.5",
     "uuid": "^8.3.2",
