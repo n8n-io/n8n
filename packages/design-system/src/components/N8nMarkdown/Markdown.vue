@@ -228,21 +228,19 @@ export default {
   h1, h2, h3, h4 {
     margin-bottom: var(--spacing-2xs);
     font-weight: var(--font-weight-bold);
+    line-height: var(--font-line-height-loose);
   }
 
   h1 {
     font-size: 36px;
-    line-height: var(--font-line-height-xloose);
   }
 
   h2 {
     font-size: 24px;
-    line-height: var(--font-line-height-loose);
   }
 
-  h3 {
+  h3, h4, h5, h6 {
     font-size: var(--font-size-m);
-    line-height: var(--font-line-height-regular);
   }
 
   p {
@@ -262,6 +260,15 @@ export default {
       font-weight: var(--font-weight-regular);
       line-height: var(--font-line-height-regular);
     }
+  }
+	
+  code {
+    padding: 0 var(--spacing-4xs);
+    color: #5C4EC2;
+  }
+
+  pre > code,li > code, p > code {
+    color: #5C4EC2;
   }
 }
 

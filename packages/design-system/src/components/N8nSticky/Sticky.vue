@@ -1,6 +1,6 @@
 <template>
   <div
-    :class="$style.sticky"
+    :class="[$style.sticky, isEditable ? $style.editMode : '']"
     :style="styles"
     @dblclick="changeMode"
   >
@@ -9,21 +9,35 @@
       :content="content"
       theme="sticky"
     />
-    <n8n-input
-      v-else
-      :value="content"
-      type="textarea"
-      @blur="onBlur"
-      @change="onChange"
-      @focus="onFocus"
-      @input="onInput"
-    />
+    <div class="textarea" v-else>
+      <n8n-input
+        v-model="tempValue"
+        type="textarea"
+        :rows="5"
+        @blur="onBlur"
+        @change="onChange"
+        @focus="onFocus"
+        @input="onInput"
+      />
+      <div :class="$style.footer">
+        <n8n-text
+          size="xsmall"
+          aligh="right"
+        >
+          You can style with 
+          <a href="https://www.markdownguide.org/getting-started/" target="_blank">
+            Markdown
+          </a>
+        </n8n-text>
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
-import N8nMarkdown from '../N8nMarkdown';
 import N8nInput from '../N8nInput';
+import N8nMarkdown from '../N8nMarkdown';
+import N8nText from '../N8nText';
 
 export default {
   name: 'n8n-sticky',
@@ -45,8 +59,9 @@ export default {
     }
   },
   components: {
-    N8nMarkdown,
     N8nInput,
+    N8nMarkdown,
+    N8nText,
   },
   computed: {
     styles() {
@@ -58,7 +73,8 @@ export default {
   },
   data() {
     return {
-      isEditable: false
+      isEditable: false,
+      tempValue: ''
     }
   },
   methods: {
@@ -82,6 +98,9 @@ export default {
     onInput(value: string) {
       this.$emit('input', value);
     },
+  },
+  mounted() {
+    this.tempValue = this.content;
   }
 };
 </script>
@@ -90,10 +109,28 @@ export default {
 .sticky {
   min-width: 150px;
   min-height: 80px;
-  overflow-y: auto;
   padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl);
   background-color: var(--color-sticky-default-background);
   border: 1px solid var(--color-sticky-default-border);
   border-radius: var(--border-radius-large);
+  cursor: pointer;
+}
+
+.editMode {
+  padding: var(--spacing-2xs) var(--spacing-2xs) 0;
+}
+
+.footer {
+  padding: var(--spacing-4xs) 0;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>
+
+<style lang="scss">
+.textarea {
+  .el-textarea__inner {
+    resize: unset;
+  }
 }
 </style>

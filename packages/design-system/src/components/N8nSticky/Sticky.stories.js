@@ -1,4 +1,4 @@
-import {action, actions} from '@storybook/addon-actions';
+import { action } from '@storybook/addon-actions';
 import N8nSticky from './Sticky.vue';
 
 export default {
@@ -48,8 +48,8 @@ const Template = (args, { argTypes }) => ({
 
 export const Sticky = Template.bind({});
 Sticky.args = {
-  content: '## I am a heading.\nThis is how you **bold** text and this is how you create an [inline link](https://n8n.io/)',
-  height: 160,
+  content: '### I am a heading.\nThis is how you **bold** text and this is how you create an [inline link](https://n8n.io/)',
+  height: 150,
   readOnly: false,
   width: 220,
 };
