@@ -52,7 +52,7 @@
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
-    "n8n-tmpl": "git+ssh://git@github.com:n8n-io/tmpl.git#v1.0.0",
+    "n8n-tmpl": "github:n8n-io/tmpl.git#v1.0.0",
     "xml2js": "^0.4.23"
   },
   "jest": {
