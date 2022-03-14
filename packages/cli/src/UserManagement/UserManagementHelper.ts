@@ -10,6 +10,7 @@ import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/ent
 import { Role } from '../databases/entities/Role';
 import { AuthenticatedRequest } from '../requests';
 import config = require('../../config');
+import { getWebhookBaseUrl } from '../WebhookHelpers';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
 	const sharedWorkflow = await Db.collections.SharedWorkflow!.findOneOrFail({
@@ -55,9 +56,14 @@ export async function getInstanceOwner(): Promise<User> {
  * Return the n8n instance base URL without trailing slash.
  */
 export function getInstanceBaseUrl(): string {
-	const editorBaseUrl = config.get('editorBaseUrl');
-	const baseUrl = editorBaseUrl ? editorBaseUrl + config.get('path') : GenericHelpers.getBaseUrl();
-	return baseUrl.endsWith('/') ? baseUrl.slice(0, baseUrl.length - 1) : baseUrl;
+	let n8nBaseUrl = getWebhookBaseUrl();
+
+	const editorBaseUrl = config.get('editorBaseUrl'); // defaults to empty string
+	if (editorBaseUrl) {
+		n8nBaseUrl = editorBaseUrl + config.get('path');
+	}
+
+	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
 }
 
 export async function isInstanceOwnerSetup(): Promise<boolean> {
