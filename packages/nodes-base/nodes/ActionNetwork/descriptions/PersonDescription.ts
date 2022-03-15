@@ -7,7 +7,7 @@ import {
 	personAdditionalFieldsOptions,
 } from './SharedFields';
 
-export const personOperations = [
+export const personOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -40,9 +40,9 @@ export const personOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const personFields = [
+export const personFields: INodeProperties[] = [
 	// ----------------------------------------
 	//              person: create
 	// ----------------------------------------
@@ -247,4 +247,4 @@ export const personFields = [
 		},
 		options: personAdditionalFieldsOptions,
 	},
-] as INodeProperties[];
+];

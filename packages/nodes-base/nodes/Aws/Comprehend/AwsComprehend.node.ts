@@ -24,7 +24,6 @@ export class AwsComprehend implements INodeType {
 		description: 'Sends data to Amazon Comprehend',
 		defaults: {
 			name: 'AWS Comprehend',
-			color: '#5aa08d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

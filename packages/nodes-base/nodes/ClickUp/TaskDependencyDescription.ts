@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const taskDependencyOperations = [
+export const taskDependencyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const taskDependencyOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const taskDependencyFields = [
+export const taskDependencyFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                taskDependency:create                        */
@@ -57,6 +57,7 @@ export const taskDependencyFields = [
 		displayName: 'Depends On Task ID',
 		name: 'dependsOnTask',
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -94,6 +95,7 @@ export const taskDependencyFields = [
 		displayName: 'Depends On Task ID',
 		name: 'dependsOnTask',
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -106,4 +108,4 @@ export const taskDependencyFields = [
 		},
 		required: true,
 	},
-] as INodeProperties[];
+];

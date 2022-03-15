@@ -4,7 +4,7 @@ import {
 
 import * as placeholders from './placeholders';
 
-export const documentOperations = [
+export const documentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -46,9 +46,9 @@ export const documentOperations = [
 		default: 'get',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const documentFields = [
+export const documentFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             document: delete
 	// ----------------------------------------
@@ -785,4 +785,4 @@ export const documentFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

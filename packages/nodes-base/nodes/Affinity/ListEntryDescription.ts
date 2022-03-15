@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const listEntryOperations = [
+export const listEntryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const listEntryOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const listEntryFields = [
+export const listEntryFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                listEntry:create                            */
@@ -259,4 +259,4 @@ export const listEntryFields = [
 		},
 		description: 'The unique id of the list entry object to be deleted.',
 	},
-] as INodeProperties[];
+];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const postCommentOperations = [
+export const postCommentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const postCommentOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const postCommentFields = [
+export const postCommentFields: INodeProperties[] = [
 	// ----------------------------------
 	//        postComment: create
 	// ----------------------------------
@@ -228,4 +228,4 @@ export const postCommentFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

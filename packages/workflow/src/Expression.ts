@@ -1,5 +1,7 @@
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
+import { DateTime, Duration, Interval } from 'luxon';
+
 // eslint-disable-next-line import/no-cycle
 import {
 	INode,
@@ -115,10 +117,16 @@ export class Expression {
 		// @ts-ignore
 		data.document = {};
 
+		// @ts-ignore
+		data.DateTime = DateTime;
+		data.Interval = Interval;
+		data.Duration = Duration;
+
+		// @ts-ignore
+		data.constructor = {};
+
 		// Execute the expression
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			// tmpl.tmpl('{{this.Promise=global.Promise;global=this;}}', data);
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			const returnValue = tmpl.tmpl(parameterValue, data);
 			if (typeof returnValue === 'function') {

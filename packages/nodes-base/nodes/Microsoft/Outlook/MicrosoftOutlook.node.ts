@@ -62,7 +62,6 @@ export class MicrosoftOutlook implements INodeType {
 		description: 'Consume Microsoft Outlook API',
 		defaults: {
 			name: 'Microsoft Outlook',
-			color: '#3a71b5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

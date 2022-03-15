@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const historyOperations = [
+export const historyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const historyOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const historyFields = [
+export const historyFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                history:getLogbookEntries                   */
 	/* -------------------------------------------------------------------------- */
@@ -125,4 +125,4 @@ export const historyFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

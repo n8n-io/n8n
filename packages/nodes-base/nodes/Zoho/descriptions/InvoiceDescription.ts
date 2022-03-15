@@ -11,7 +11,7 @@ import {
 	shippingAddress,
 } from './SharedFields';
 
-export const invoiceOperations = [
+export const invoiceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -58,9 +58,9 @@ export const invoiceOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const invoiceFields = [
+export const invoiceFields: INodeProperties[] = [
 	// ----------------------------------------
 	//            invoice: create
 	// ----------------------------------------
@@ -460,4 +460,4 @@ export const invoiceFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

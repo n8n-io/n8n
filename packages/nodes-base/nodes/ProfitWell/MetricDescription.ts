@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const metricOperations = [
+export const metricOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const metricOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const metricFields = [
+export const metricFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                metric:get                                  */
@@ -436,4 +436,4 @@ export const metricFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

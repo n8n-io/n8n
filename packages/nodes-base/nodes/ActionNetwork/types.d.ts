@@ -4,6 +4,7 @@ export type Resource = 'attendance' | 'event' | 'person' | 'personTag' | 'petiti
 
 export type Operation = 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'add' | 'remove';
 
+// @ts-ignore
 export type LanguageCodes = typeof languageOptions[number]['value']
 
 

@@ -1,15 +1,25 @@
-<template functional>
-	<div :class="{[$style['node-item']]: true, [$style.bordered]: props.bordered}">
-		<NodeIcon :class="$style['node-icon']" :nodeType="props.nodeType" />
+<template>
+	<div :class="{[$style['node-item']]: true, [$style.bordered]: bordered}">
+		<NodeIcon :class="$style['node-icon']" :nodeType="nodeType" />
 		<div>
 			<div :class="$style.details">
-				<span :class="$style.name">{{props.nodeType.displayName}}</span>
+				<span :class="$style.name">
+					{{ $locale.headerText({
+							key: `headers.${shortNodeType}.displayName`,
+							fallback: nodeType.displayName,
+						})
+					}}
+				</span>
 				<span :class="$style['trigger-icon']">
-					<TriggerIcon v-if="$options.isTrigger(props.nodeType)" />
+					<TriggerIcon v-if="$options.isTrigger(nodeType)" />
 				</span>
 			</div>
 			<div :class="$style.description">
-				{{props.nodeType.description}}
+				{{ $locale.headerText({
+						key: `headers.${shortNodeType}.description`,
+						fallback: nodeType.description,
+					})
+				}}
 			</div>
 		</div>
 	</div>
@@ -26,17 +36,24 @@ import TriggerIcon from '../TriggerIcon.vue';
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TriggerIcon', TriggerIcon);
 
-export default {
+export default Vue.extend({
+	name: 'NodeItem',
 	props: [
 		'active',
 		'filter',
 		'nodeType',
 		'bordered',
 	],
+	computed: {
+		shortNodeType() {
+			return this.$locale.shortNodeType(this.nodeType.name);
+		},
+	},
+	// @ts-ignore
 	isTrigger (nodeType: INodeTypeDescription): boolean {
 		return nodeType.group.includes('trigger');
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

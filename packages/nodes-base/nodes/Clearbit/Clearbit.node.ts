@@ -34,7 +34,6 @@ export class Clearbit implements INodeType {
 		description: 'Consume Clearbit API',
 		defaults: {
 			name: 'Clearbit',
-			color: '#219ef9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

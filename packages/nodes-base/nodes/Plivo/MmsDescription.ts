@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const mmsOperations = [
+export const mmsOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const mmsOperations = [
 		default: 'send',
 		description: 'Operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const mmsFields = [
+export const mmsFields: INodeProperties[] = [
 	// ----------------------------------
 	//           mms: send
 	// ----------------------------------
@@ -104,4 +104,4 @@ export const mmsFields = [
 		},
 		description: 'Comma-separated list of media URLs of the files from your file server.',
 	},
-] as INodeProperties[];
+];

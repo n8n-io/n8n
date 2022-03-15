@@ -50,7 +50,6 @@ export class Segment implements INodeType {
 		description: 'Consume Segment API',
 		defaults: {
 			name: 'Segment',
-			color: '#6ebb99',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

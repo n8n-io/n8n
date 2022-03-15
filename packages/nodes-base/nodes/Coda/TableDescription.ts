@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const tableOperations = [
+export const tableOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -52,9 +52,9 @@ export const tableOperations = [
 		default: 'createRow',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const tableFields = [
+export const tableFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                table:createRow                             */
@@ -754,4 +754,4 @@ export const tableFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

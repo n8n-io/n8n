@@ -34,10 +34,10 @@ jobs:
       -
         name: Install dependencies
         run: |
-          apt update -y
-          echo 'tzdata tzdata/Areas select Europe' | debconf-set-selections
-          echo 'tzdata tzdata/Zones/Europe select Paris' | debconf-set-selections
-          DEBIAN_FRONTEND="noninteractive" apt-get install -y graphicsmagick
+          sudo apt update -y
+          echo 'tzdata tzdata/Areas select Europe' | sudo debconf-set-selections
+          echo 'tzdata tzdata/Zones/Europe select Paris' | sudo debconf-set-selections
+          DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y graphicsmagick
         shell: bash
       -
         name: npm install and build
@@ -75,19 +75,19 @@ jobs:
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
-      -
-        name: Export credentials
-        if: always()
-        run: n8n/packages/cli/bin/n8n export:credentials --output=test-workflows/credentials.json --all --pretty
-        shell: bash
-        env:
-          N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
-      -
-        name: Commit and push credential changes
-        if: always()
-        run: |
-          cd test-workflows
-          git config --global user.name 'n8n test bot'
-          git config --global user.email 'n8n-test-bot@users.noreply.github.com'
-          git commit -am "Automated credential update"
-          git push --force --quiet "https://janober:${{ secrets.TOKEN }}@github.com/n8n-io/test-workflows.git" main:main
+      # -
+      #   name: Export credentials
+      #   if: always()
+      #   run: n8n/packages/cli/bin/n8n export:credentials --output=test-workflows/credentials.json --all --pretty
+      #   shell: bash
+      #   env:
+      #     N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+      # -
+      #   name: Commit and push credential changes
+      #   if: always()
+      #   run: |
+      #     cd test-workflows
+      #     git config --global user.name 'n8n test bot'
+      #     git config --global user.email 'n8n-test-bot@users.noreply.github.com'
+      #     git commit -am "Automated credential update"
+      #     git push --force --quiet "https://janober:${{ secrets.TOKEN }}@github.com/n8n-io/test-workflows.git" main:main

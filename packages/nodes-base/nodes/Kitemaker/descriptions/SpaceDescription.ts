@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const spaceOperations = [
+export const spaceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const spaceOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const spaceFields = [
+export const spaceFields: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -68,4 +68,4 @@ export const spaceFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
