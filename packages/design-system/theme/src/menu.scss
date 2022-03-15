@@ -19,7 +19,7 @@
 	border-radius: var.$menu-item-border-radius;
 
 	i {
-		color: var(--color-text-light);
+		color: var.$menu-item-icon-font-color;
 	}
 
 	&:hover,
@@ -27,6 +27,10 @@
 		outline: none;
 		background-color: var.$menu-item-hover-fill;
 		color: var.$menu-item-hover-font-color;
+
+		i {
+			color: var.$menu-item-hover-font-color;
+		}
 	}
 
 	@include mixins.when(disabled) {
@@ -198,6 +202,9 @@
 @include mixins.b(menu-item) {
 	@include menu-item;
 
+	display: flex;
+	align-items: center;
+
 	& [class^='el-icon-'] {
 		margin-right: 5px;
 		width: 24px;
@@ -208,6 +215,7 @@
 	@include mixins.when(active) {
 		color: var.$menu-item-active-font-color;
 		background-color: var.$menu-item-active-background-color;
+		font-weight: var.$menu-item-active-font-weight;
 
 		i {
 			color: inherit;

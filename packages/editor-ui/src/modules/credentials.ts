@@ -35,7 +35,6 @@ const module: Module<ICredentialsState, IRootState> = {
 	state: {
 		credentialTypes: {},
 		credentials: {},
-		fetchedAllCredentials: false,
 	},
 	mutations: {
 		setCredentialTypes: (state: ICredentialsState, credentialTypes: ICredentialType[]) => {
@@ -53,7 +52,6 @@ const module: Module<ICredentialsState, IRootState> = {
 
 				return accu;
 			}, {});
-			state.fetchedAllCredentials = true;
 		},
 		upsertCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			if (credential.id) {
@@ -131,12 +129,11 @@ const module: Module<ICredentialsState, IRootState> = {
 			const credentialTypes = await getCredentialTypes(context.rootGetters.getRestApiContext);
 			context.commit('setCredentialTypes', credentialTypes);
 		},
-		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>) => {
-			if (context.state.fetchedAllCredentials) {
-				return;
-			}
+		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {
 			const credentials = await getAllCredentials(context.rootGetters.getRestApiContext);
 			context.commit('setCredentials', credentials);
+
+			return credentials;
 		},
 		getCredentialData: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
 			return await getCredentialData(context.rootGetters.getRestApiContext, id);
