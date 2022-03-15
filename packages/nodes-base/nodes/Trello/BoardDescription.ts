@@ -331,7 +331,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Select board board to get.',
+		description: 'Select a board to delete',
 	},
 
 	// ----------------------------------
@@ -357,7 +357,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Select board board to get.',
+		description: 'Select a board',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -416,7 +416,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Select board board to get.',
+		description: 'Select a board to update',
 	},
 	{
 		displayName: 'Update Fields',
