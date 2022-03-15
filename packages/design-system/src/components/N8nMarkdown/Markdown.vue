@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :class="theme === 'markdown' ? '' : $style.overflow">
     <div 
       v-if="!loading" 
       ref="editor" 
@@ -151,6 +151,11 @@ export default {
 </script>
 
 <style lang="scss" module>
+.overflow {
+  height: 100%;
+  overflow: hidden;
+}
+
 .markdown {
 	color: var(--color-text-base);
 
@@ -263,6 +268,7 @@ export default {
   }
 	
   code {
+		background-color: var(--color-background-base);
     padding: 0 var(--spacing-4xs);
     color: #5C4EC2;
   }

@@ -118,6 +118,7 @@ export default {
 
 .editMode {
   padding: var(--spacing-2xs) var(--spacing-2xs) 0;
+  cursor: default;
 }
 
 .footer {
@@ -129,8 +130,15 @@ export default {
 
 <style lang="scss">
 .textarea {
-  .el-textarea__inner {
-    resize: unset;
+  height: calc(100% - var(--spacing-m));
+  
+  .el-textarea {
+    height: 100%;
+
+    .el-textarea__inner {
+      height: 100%;
+      resize: unset;
+    }
   }
 }
 </style>
