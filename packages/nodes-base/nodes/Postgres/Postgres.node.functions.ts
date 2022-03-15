@@ -1,4 +1,4 @@
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import pgPromise = require('pg-promise');
 import pg = require('pg-promise/typescript/pg-subset');
 
@@ -10,12 +10,12 @@ import pg = require('pg-promise/typescript/pg-subset');
  * @param {string[]} properties The properties it should include
  * @returns
  */
-export function getItemsCopy(items: INodeExecutionData[], properties: string[]): IDataObject[] {
+export function getItemsCopy(items: INodeExecutionData[], properties: string[], removeSpaces = false): IDataObject[] {
 	let newItem: IDataObject;
 	return items.map(item => {
 		newItem = {};
 		for (const property of properties) {
-			newItem[property] = item.json[property];
+			newItem[removeSpaces ? property.replace(/ /g, '') : property] = item.json[property];
 		}
 		return newItem;
 	});
@@ -29,10 +29,10 @@ export function getItemsCopy(items: INodeExecutionData[], properties: string[]):
  * @param {string[]} properties The properties it should include
  * @returns
  */
-export function getItemCopy(item: INodeExecutionData, properties: string[]): IDataObject {
+export function getItemCopy(item: INodeExecutionData, properties: string[], removeSpaces = false): IDataObject {
 	const newItem: IDataObject = {};
 	for (const property of properties) {
-		newItem[property] = item.json[property];
+		newItem[removeSpaces ? property.replace(/ /g, '') : property] = item.json[property];
 	}
 	return newItem;
 }
@@ -93,7 +93,7 @@ export async function pgQuery(
 					Array.prototype.push.apply(result, await t.any(allQueries[i].query, allQueries[i].values));
 				} catch (err) {
 					if (continueOnFail === false) throw err;
-					result.push({ ...items[i].json, code: err.code, message: err.message });
+					result.push({ ...items[i].json, code: (err as JsonObject).code, message: (err as JsonObject).message });
 					return result;
 				}
 			}
@@ -107,7 +107,7 @@ export async function pgQuery(
 					Array.prototype.push.apply(result, await t.any(allQueries[i].query, allQueries[i].values));
 				} catch (err) {
 					if (continueOnFail === false) throw err;
-					result.push({ ...items[i].json, code: err.code, message: err.message });
+					result.push({ ...items[i].json, code: (err as JsonObject).code, message: (err as JsonObject).message });
 				}
 			}
 			return result;
@@ -138,7 +138,7 @@ export async function pgInsert(
 	const columnString = getNodeParam('columns', 0) as string;
 	const columns = columnString.split(',')
 		.map(column => column.trim().split(':'))
-		.map(([name, cast]) => ({ name, cast }));
+		.map(([name, cast]) => ({ name, cast, prop: name.replace(/ /g, '') }));
 	const columnNames = columns.map(column => column.name);
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
@@ -148,18 +148,18 @@ export async function pgInsert(
 
 	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
 	if (mode === 'multiple') {
-		const query = pgp.helpers.insert(getItemsCopy(items, columnNames), cs) + returning;
+		const query = pgp.helpers.insert(getItemsCopy(items, columnNames, true), cs) + returning;
 		return db.any(query);
 	} else if (mode === 'transaction') {
 		return db.tx(async t => {
 			const result: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
-				const itemCopy = getItemCopy(items[i], columnNames);
+				const itemCopy = getItemCopy(items[i], columnNames, true);
 				try {
 					result.push(await t.one(pgp.helpers.insert(itemCopy, cs) + returning));
 				} catch (err) {
 					if (continueOnFail === false) throw err;
-					result.push({ ...itemCopy, code: err.code, message: err.message });
+					result.push({ ...itemCopy, code: (err as JsonObject).code, message: (err as JsonObject).message });
 					return result;
 				}
 			}
@@ -169,7 +169,7 @@ export async function pgInsert(
 		return db.task(async t => {
 			const result: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
-				const itemCopy = getItemCopy(items[i], columnNames);
+				const itemCopy = getItemCopy(items[i], columnNames, true);
 				try {
 					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
 					if (insertResult !== null) {
@@ -179,7 +179,7 @@ export async function pgInsert(
 					if (continueOnFail === false) {
 						throw err;
 					}
-					result.push({ ...itemCopy, code: err.code, message: err.message });
+					result.push({ ...itemCopy, code: (err as JsonObject).code, message: (err as JsonObject).message });
 				}
 			}
 			return result;
@@ -209,9 +209,9 @@ export async function pgUpdate(
 	const schema = getNodeParam('schema', 0) as string;
 	const updateKey = getNodeParam('updateKey', 0) as string;
 	const columnString = getNodeParam('columns', 0) as string;
-	const columns = columnString.split(',')
+	const columns: Array<{name:string, cast: string, prop?:string}> = columnString.split(',')
 		.map(column => column.trim().split(':'))
-		.map(([name, cast]) => ({ name, cast }));
+		.map(([name, cast]) => ({ name, cast, prop: name.replace(/ /g, '') }));
 
 	const updateKeys = updateKey.split(',').map(key => {
 		const [name, cast] = key.trim().split(':');
@@ -233,7 +233,7 @@ export async function pgUpdate(
 
 	// Prepare the data to update and copy it to be returned
 	const columnNames = columns.map(column => column.name);
-	const updateItems = getItemsCopy(items, columnNames);
+	const updateItems = getItemsCopy(items, columnNames, true);
 
 	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
 	if (mode === 'multiple') {
@@ -246,17 +246,20 @@ export async function pgUpdate(
 			+ returning;
 		return await db.any(query);
 	} else {
-		const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey.name) + ' = ${' + updateKey.name + '}').join(' AND ');
+		const where = ' WHERE ' +
+		updateKeys.map(updateKey => pgp.as.name(updateKey.name) +
+		' = ${' + updateKey.name.replace(/ /g, '') + '}').join(' AND ');
+
 		if (mode === 'transaction') {
 			return db.tx(async t => {
 				const result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
-					const itemCopy = getItemCopy(items[i], columnNames);
+					const itemCopy = getItemCopy(items[i], columnNames, true);
 					try {
 						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
 					} catch (err) {
 						if (continueOnFail === false) throw err;
-						result.push({ ...itemCopy, code: err.code, message: err.message });
+						result.push({ ...itemCopy, code: (err as JsonObject).code, message: (err as JsonObject).message });
 						return result;
 					}
 				}
@@ -266,12 +269,13 @@ export async function pgUpdate(
 			return db.task(async t => {
 				const result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
-					const itemCopy = getItemCopy(items[i], columnNames);
+					const itemCopy = getItemCopy(items[i], columnNames, true);
 					try {
+						console.log(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
 						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
 					} catch (err) {
 						if (continueOnFail === false) throw err;
-						result.push({ ...itemCopy, code: err.code, message: err.message });
+						result.push({ ...itemCopy, code: (err as JsonObject).code, message: (err as JsonObject).message });
 					}
 				}
 				return result;
