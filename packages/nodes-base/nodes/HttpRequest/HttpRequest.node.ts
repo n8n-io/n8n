@@ -343,6 +343,13 @@ export class HttpRequest implements INodeType {
 						description: 'Succeeds also when status code is not 2xx.',
 					},
 					{
+						displayName: 'Use Keep-Alive',
+						name: 'keepAlive',
+						type: 'boolean',
+						default: false,
+						description: 'Use Keep-Alive HTTP connection',
+					},
+					{
 						displayName: 'MIME Type',
 						name: 'bodyContentCustomMimeType',
 						type: 'string',
@@ -724,6 +731,12 @@ export class HttpRequest implements INodeType {
 				// @ts-ignore
 				requestOptions.simple = false;
 			}
+
+			if (options.keepAlive === true) {
+				// @ts-ignore
+				requestOptions.keepAlive = true;
+			}
+
 			if (options.proxy !== undefined) {
 				requestOptions.proxy = options.proxy as string;
 			}

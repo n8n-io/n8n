@@ -376,9 +376,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.maxRedirects = 0;
 	}
 
-	if (requestObject.rejectUnauthorized === false) {
+	if (requestObject.rejectUnauthorized === false || requestObject.keepAlive === true) {
 		axiosConfig.httpsAgent = new Agent({
-			rejectUnauthorized: false,
+			rejectUnauthorized: requestObject.rejectUnauthorized as boolean,
+			keepAlive: requestObject.keepAlive as boolean,
 		});
 	}
 
