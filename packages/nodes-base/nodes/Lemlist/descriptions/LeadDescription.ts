@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const leadOperations = [
+export const leadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const leadOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const leadFields = [
+export const leadFields: INodeProperties[] = [
 	// ----------------------------------
 	//        lead: create
 	// ----------------------------------
@@ -259,4 +259,4 @@ export const leadFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

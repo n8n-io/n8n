@@ -27,7 +27,6 @@ export class TrelloTrigger implements INodeType {
 		description: 'Starts the workflow when Trello events occur',
 		defaults: {
 			name: 'Trello Trigger',
-			color: '#026aa7',
 		},
 		inputs: [],
 		outputs: ['main'],

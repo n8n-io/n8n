@@ -60,7 +60,7 @@ export const pushConnection = mixins(
 
 				const connectionUrl = `${this.$store.getters.getRestUrl}/push?sessionId=${this.sessionId}`;
 
-				this.eventSource = new EventSource(connectionUrl);
+				this.eventSource = new EventSource(connectionUrl, { withCredentials: true });
 				this.eventSource.addEventListener('message', this.pushMessageReceived, false);
 
 				this.eventSource.addEventListener('open', () => {
@@ -165,7 +165,7 @@ export const pushConnection = mixins(
 
 				if (receivedData.type === 'sendConsoleMessage') {
 					const pushData = receivedData.data;
-					console.log(pushData.source, pushData.message); // eslint-disable-line no-console
+					console.log(pushData.source, ...pushData.messages); // eslint-disable-line no-console
 					return true;
 				}
 
@@ -258,13 +258,13 @@ export const pushConnection = mixins(
 							title: 'Problem executing workflow',
 							message: runDataExecutedErrorMessage,
 							type: 'error',
+							duration: 0,
 						});
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
-							title: 'Workflow was executed',
-							message: 'Workflow was executed successfully!',
+							title: this.$locale.baseText('pushConnection.showMessage.title'),
 							type: 'success',
 						});
 					}

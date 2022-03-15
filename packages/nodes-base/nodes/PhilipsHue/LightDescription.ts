@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const lightOperations = [
+export const lightOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -33,15 +33,15 @@ export const lightOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an light',
+				description: 'Update a light',
 			},
 		],
 		default: 'update',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const lightFields = [
+export const lightFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 light:delete                               */
@@ -341,4 +341,4 @@ export const lightFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

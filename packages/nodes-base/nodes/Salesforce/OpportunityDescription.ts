@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const opportunityOperations = [
+export const opportunityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -59,9 +59,9 @@ export const opportunityOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const opportunityFields = [
+export const opportunityFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                opportunity:create                          */
@@ -813,4 +813,4 @@ export const opportunityFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

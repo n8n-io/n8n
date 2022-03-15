@@ -21,7 +21,7 @@ import {
 import {
 	ICredentialType,
 	ICredentialsDecrypted,
-	NodeCredentialTestResult,
+	INodeCredentialTestResult,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
@@ -123,12 +123,17 @@ const module: Module<ICredentialsState, IRootState> = {
 	},
 	actions: {
 		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>) => {
+			if (context.getters.allCredentialTypes.length > 0) {
+				return;
+			}
 			const credentialTypes = await getCredentialTypes(context.rootGetters.getRestApiContext);
 			context.commit('setCredentialTypes', credentialTypes);
 		},
-		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>) => {
+		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {
 			const credentials = await getAllCredentials(context.rootGetters.getRestApiContext);
 			context.commit('setCredentials', credentials);
+
+			return credentials;
 		},
 		getCredentialData: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
 			return await getCredentialData(context.rootGetters.getRestApiContext, id);
@@ -158,7 +163,7 @@ const module: Module<ICredentialsState, IRootState> = {
 		oAuth1Authorize: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsResponse) => {
 			return oAuth1CredentialAuthorize(context.rootGetters.getRestApiContext, data);
 		},
-		testCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted): Promise<NodeCredentialTestResult> => {
+		testCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted): Promise<INodeCredentialTestResult> => {
 			return testCredential(context.rootGetters.getRestApiContext, { credentials: data });
 		},
 		getNewCredentialName: async (context: ActionContext<ICredentialsState, IRootState>, params: { credentialTypeName: string }) => {

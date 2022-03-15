@@ -2,7 +2,7 @@ import {
 	INodeProperties,
  } from 'n8n-workflow';
 
-export const emailOperations = [
+export const emailOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const emailOperations = [
 		default: 'createRecord',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const emailFields = [
+export const emailFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 email:createRecord                         */
@@ -459,4 +459,4 @@ export const emailFields = [
 		default: '',
 		description: 'Attachments to be sent with each copy of the email, maximum of 10 with size of 1MB each',
 	},
-] as INodeProperties[];
+];

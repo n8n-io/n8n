@@ -45,7 +45,6 @@ export class MicrosoftToDo implements INodeType {
 		description: 'Consume Microsoft To Do API.',
 		defaults: {
 			name: 'Microsoft To Do',
-			color: '#0078D7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
