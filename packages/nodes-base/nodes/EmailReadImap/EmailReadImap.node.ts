@@ -7,6 +7,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	LoggerProxy,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -423,10 +424,8 @@ export class EmailReadImap implements INodeType {
 								this.emit([returnData]);
 							}
 						} catch (error) {
-							this.emit([[{
-								json:{}, // seems like I have to pass it
-								error: new NodeOperationError(this.getNode(), `IMAP query failed: ${error instanceof Error ? error.message : error}`)
-							}]]);
+							Logger.error('Email Read Imap node encountered an error fetching new emails', { error });
+							throw error;
 						}
 					}
 				},
