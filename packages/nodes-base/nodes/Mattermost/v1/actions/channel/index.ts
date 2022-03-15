@@ -57,14 +57,14 @@ export const descriptions: INodeProperties[] = [
 				description: 'Restores a soft deleted channel',
 			},
 			{
-				name: 'Statistics',
-				value: 'statistics',
-				description: 'Get statistics for a channel',
-			},
-			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search for a channel',
+			},
+			{
+				name: 'Statistics',
+				value: 'statistics',
+				description: 'Get statistics for a channel',
 			},
 		],
 		default: 'create',
