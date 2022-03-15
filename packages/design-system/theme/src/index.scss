@@ -22,6 +22,7 @@
 // @use "./checkbox-group.scss";
 @use "./switch.scss";
 @use "./select.scss";
+@use "./skeleton.scss";
 @use "./button.scss";
 // @use "./button-group.scss";
 @use "./table.scss";
@@ -49,7 +50,7 @@
 // @use "./upload.scss";
 // @use "./progress.scss";
 // @use "./spinner.scss";
-// @use "./message.scss";
+@use "./message.scss";
 @use "./badge.scss";
 @use "./card.scss";
 // @use "./rate.scss";

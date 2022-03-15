@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const objectOperations = [
+export const objectOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const objectOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const objectFields = [
+export const objectFields: INodeProperties[] = [
 	// ----------------------------------
 	//         object: create
 	// ----------------------------------
@@ -492,8 +492,7 @@ export const objectFields = [
 								name: 'sort_field',
 								type: 'string',
 								default: '',
-								description: `Specify the field to use for sorting. Either use a fielddefined for</br>
-								the current typeor use _random_sorting to get the entries in a random order`,
+								description: `Specify the field to use for sorting. Either use a fielddefined for the current typeor use <code>_random_sorting</code> to get the entries in a random order`,
 							},
 							{
 								displayName: 'Descending',
@@ -514,4 +513,4 @@ export const objectFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

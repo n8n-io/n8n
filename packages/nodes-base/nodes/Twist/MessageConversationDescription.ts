@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const messageConversationOperations = [
+export const messageConversationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const messageConversationOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const messageConversationFields = [
+export const messageConversationFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                messageConversation:create                  */
@@ -135,6 +135,7 @@ export const messageConversationFields = [
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Action',
 				typeOptions: {
 					multipleValues: true,
@@ -376,7 +377,7 @@ export const messageConversationFields = [
 		required: true,
 		description: 'The ID of the conversation message.',
 	},
-	
+
 	/* -------------------------------------------------------------------------- */
 	/*                                messageConversation:update                  */
 	/* -------------------------------------------------------------------------- */
@@ -419,6 +420,7 @@ export const messageConversationFields = [
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Action',
 				typeOptions: {
 					multipleValues: true,
@@ -528,4 +530,4 @@ export const messageConversationFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

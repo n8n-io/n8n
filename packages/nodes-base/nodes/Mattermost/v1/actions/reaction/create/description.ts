@@ -42,7 +42,7 @@ export const reactionCreateDescription: ReactionProperties = [
 				],
 			},
 		},
-		description: 'ID of the post to react to.<br>Obtainable from the post link:<br><code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
+		description: 'ID of the post to react to. Obtainable from the post link: <code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
 	},
 	{
 		displayName: 'Emoji Name',

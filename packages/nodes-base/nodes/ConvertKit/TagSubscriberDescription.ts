@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const tagSubscriberOperations = [
+export const tagSubscriberOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const tagSubscriberOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const tagSubscriberFields = [
+export const tagSubscriberFields: INodeProperties[] = [
 	{
 		displayName: 'Tag ID',
 		name: 'tagId',
@@ -216,4 +216,4 @@ export const tagSubscriberFields = [
 		],
 		description: 'Receive only active subscribers or cancelled subscribers.',
 	},
-] as INodeProperties[];
+];

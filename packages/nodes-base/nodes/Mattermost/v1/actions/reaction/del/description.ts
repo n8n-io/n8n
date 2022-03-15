@@ -42,7 +42,7 @@ export const reactionDeleteDescription: ReactionProperties = [
 				],
 			},
 		},
-		description: 'ID of the post whose reaction to delete.<br>Obtainable from the post link:<br><code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
+		description: 'ID of the post whose reaction to delete. Obtainable from the post link: <code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
 	},
 	{
 		displayName: 'Emoji Name',

@@ -17,6 +17,13 @@ import * as moment from 'moment-timezone';
 
 import * as jwt from 'jsonwebtoken';
 
+interface IGoogleAuthCredentials {
+	delegatedEmail?: string;
+	email: string;
+	inpersonate: boolean;
+	privateKey: string;
+}
+
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -50,7 +57,7 @@ export async function googleApiRequest(
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
-			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
+			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request!(options);
@@ -84,7 +91,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-function getAccessToken(this: IExecuteFunctions | ILoadOptionsFunctions, credentials: IDataObject): Promise<IDataObject> {
+function getAccessToken(this: IExecuteFunctions | ILoadOptionsFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -95,6 +102,9 @@ function getAccessToken(this: IExecuteFunctions | ILoadOptionsFunctions, credent
 
 	const now = moment().unix();
 
+	credentials.email = credentials.email.trim();
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+
 	const signature = jwt.sign(
 		{
 			'iss': credentials.email as string,
@@ -104,11 +114,11 @@ function getAccessToken(this: IExecuteFunctions | ILoadOptionsFunctions, credent
 			'iat': now,
 			'exp': now + 3600,
 		},
-		credentials.privateKey as string,
+		privateKey as string,
 		{
 			algorithm: 'RS256',
 			header: {
-				'kid': credentials.privateKey as string,
+				'kid': privateKey as string,
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},

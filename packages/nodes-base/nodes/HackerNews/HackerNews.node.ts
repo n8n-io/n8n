@@ -26,7 +26,6 @@ export class HackerNews implements INodeType {
 		description: 'Consume Hacker News API',
 		defaults: {
 			name: 'Hacker News',
-			color: '#ff6600',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

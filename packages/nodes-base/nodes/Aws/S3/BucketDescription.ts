@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const bucketOperations = [
+export const bucketOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const bucketOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const bucketFields = [
+export const bucketFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                bucket:create                               */
@@ -352,4 +352,4 @@ export const bucketFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
