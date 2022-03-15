@@ -104,7 +104,7 @@ export class Markdown implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: '',
-        description: 'The field to put the output in. Specify nested fields<br />using dots, e.g."level1.level2.newKey"',
+				description: 'The field to put the output in. Specify nested fields<br />using dots, e.g."level1.level2.newKey"',
 			},
 			{
 				displayName: 'Options',
