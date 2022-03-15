@@ -211,6 +211,7 @@
 import VueJsonPretty from 'vue-json-pretty';
 import {
 	GenericValue,
+	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -243,7 +244,7 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
 
-import { base64ToBlob, saveAs } from 'file-saver';
+import { saveAs } from 'file-saver';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -529,11 +530,19 @@ export default mixins(
 			},
 			isDownloadable (index: number, key: string): boolean {
 				const binaryDataItem: IBinaryData = this.binaryData[index][key];
-				return binaryDataItem.mimeType && binaryDataItem.fileName;
+				return !!(binaryDataItem.mimeType && binaryDataItem.fileName);
 			},
 			async downloadBinaryData (index: number, key: string) {
 				const binaryDataItem: IBinaryData = this.binaryData[index][key];
-				const data = await fetch('data:' + binaryDataItem.mimeType + ';base64,' + binaryDataItem.data);
+
+				let bufferString = 'data:' + binaryDataItem.mimeType + ';base64,';
+				if(binaryDataItem.id) {
+					bufferString += await this.restApi().getBinaryBufferString(binaryDataItem.id);
+				} else {
+					bufferString += binaryDataItem.data;
+				}
+
+				const data = await fetch(bufferString);
 				const blob = await data.blob();
 				saveAs(blob, binaryDataItem.fileName);
 			},
