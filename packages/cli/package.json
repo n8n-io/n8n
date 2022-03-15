@@ -25,7 +25,7 @@
     "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli",
     "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli --fix",
     "postpack": "rm -f oclif.manifest.json",
-    "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b && oclif-dev manifest",
+    "prepack": "oclif-dev manifest",
     "start": "run-script-os",
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
