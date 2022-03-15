@@ -753,6 +753,7 @@
 		"noTextDataFound": "No text data found",
 		"nodeReturnedALargeAmountOfData": "Node returned a large amount of data",
 		"output": "Output",
+		"downloadBinaryData": "Download",
 		"showBinaryData": "Show Binary Data",
 		"startTime": "Start Time",
 		"table": "Table",

@@ -184,6 +184,7 @@
 
 											<div class="binary-data-show-data-button-wrapper">
 												<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+												<n8n-button v-if="isDownloadable(index, key)" size="small" icon="file-download" :title="$locale.baseText('runData.downloadBinaryData')" class="binary-data-show-data-button" @click="downloadBinaryData(index, key)" />
 											</div>
 
 										</div>
@@ -241,6 +242,8 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
+
+import { base64ToBlob, saveAs } from 'file-saver';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -524,6 +527,16 @@ export default mixins(
 			dataItemClicked (path: string, data: object | number | string) {
 				this.state.value = data;
 			},
+			isDownloadable (index: number, key: string): boolean {
+				const binaryDataItem: IBinaryData = this.binaryData[index][key];
+				return binaryDataItem.mimeType && binaryDataItem.fileName;
+			},
+			async downloadBinaryData (index: number, key: string) {
+				const binaryDataItem: IBinaryData = this.binaryData[index][key];
+				const data = await fetch('data:' + binaryDataItem.mimeType + ';base64,' + binaryDataItem.data);
+				const blob = await data.blob();
+				saveAs(blob, binaryDataItem.fileName);
+			},
 			displayBinaryData (index: number, key: string) {
 				this.binaryDataDisplayVisible = true;
 
@@ -702,6 +715,10 @@ export default mixins(
 					.binary-data-show-data-button-wrapper {
 						margin-top: 1.5em;
 						text-align: center;
+
+						button {
+							margin: 0 0.5em;
+						}
 					}
 
 					.label {
