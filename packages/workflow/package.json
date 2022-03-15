@@ -48,11 +48,11 @@
     "typescript": "~4.3.5"
   },
   "dependencies": {
+    "@n8n_io/riot-tmpl": "^1.0.0",
     "lodash.get": "^4.4.2",
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
-    "n8n-tmpl": "github:n8n-io/tmpl.git#v1.0.0",
     "xml2js": "^0.4.23"
   },
   "jest": {
