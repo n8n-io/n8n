@@ -9,7 +9,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult
+	INodeCredentialTestResult,
+	JsonObject
 } from 'n8n-workflow';
 
 import {
@@ -88,7 +89,7 @@ export class Elasticsearch implements INodeType {
 			async elasticApiTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
-			): Promise<NodeCredentialTestResult> {
+			): Promise<INodeCredentialTestResult> {
 				const {
 					username,
 					password,
@@ -116,7 +117,7 @@ export class Elasticsearch implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as JsonObject).message as string,
 					};
 				}
 			},
