@@ -1952,7 +1952,7 @@ export class Github implements INodeType {
 						body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
 
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-					} else if (operation === 'get' || operation === 'list') {
+					} else if (operation === 'get') {
 						requestMethod = 'GET';
 
 						const filePath = this.getNodeParameter('filePath', i) as string;
@@ -1961,6 +1961,11 @@ export class Github implements INodeType {
 						if (additionalParameters.reference) {
 							qs.ref = additionalParameters.reference;
 						}
+
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+					} else if (operation === 'list') {
+						requestMethod = 'GET';
+						const filePath = this.getNodeParameter('filePath', i) as string;
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
 					}
 				} else if (resource === 'issue') {
