@@ -59,8 +59,8 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			req.url.startsWith('/fonts/') ||
 			req.url.includes('.svg') ||
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
-			req.url.includes('login') ||
-			req.url.includes('logout') ||
+			req.url.startsWith(`/${restEndpoint}/login`) ||
+			req.url.startsWith(`/${restEndpoint}/logout`) ||
 			req.url.startsWith(`/${restEndpoint}/resolve-signup-token`) ||
 			isPostUsersId(req, restEndpoint) ||
 			req.url.startsWith(`/${restEndpoint}/forgot-password`) ||
