@@ -969,6 +969,33 @@ describe('Workflow', () => {
 					value1: 'valueNode1ab',
 				},
 			},
+			{
+				description:
+					'use callback function in expressions',
+				input: {
+					Node1: {
+						parameters: {
+							value1: 'whatever',
+						},
+						// Overwrite the output data
+						outputJson: {
+							value1: {
+								a: 1,
+								b: 2,
+								c: 3,
+							},
+						},
+					},
+					Node2: {
+						parameters: {
+							value1: '={{Object.values($node.Node1.data.value1).filter((v) => v > 2)}}',
+						},
+					},
+				},
+				output: {
+					value1: [3],
+				},
+			},
 			// TODO: Make that this test does not fail!
 			// {
 			//     description: 'return resolved value when short "data" syntax got used in expression on paramter of not active node which got referenced by active one',
