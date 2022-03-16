@@ -34,6 +34,10 @@ export const campaignOperations: INodeProperties[] = [
 				name: 'Start',
 				value: 'start',
 			},
+			{
+				name: 'Duplicate',
+				value: 'duplicate',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -318,6 +322,114 @@ export const campaignFields: INodeProperties[] = [
 				],
 				operation: [
 					'start',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
+	//       campaign: duplicate
+	// ----------------------------------
+	{
+		displayName: 'Campaign ID',
+		name: 'campaignId',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The ID of the campaign to duplicate.',
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+				operation: [
+					'duplicate',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'New Campaign Name',
+		name: 'campaignName',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The name of the new campaign to create.',
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+				operation: [
+					'duplicate',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Copy Global Settings',
+		name: 'copySettings',
+		type: 'boolean',
+		default: true,
+		description: 'Copy all the general settings from the original campaign.',
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+				operation: [
+					'duplicate',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Copy Email Provider',
+		name: 'copyProvider',
+		type: 'boolean',
+		default: true,
+		description: 'Set the same email provider than the original campaign.',
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+				operation: [
+					'duplicate',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Copy Email Sequence',
+		name: 'copyMails',
+		type: 'boolean',
+		default: true,
+		description: 'Copy all the steps of the email sequence from the original campaign.',
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+				operation: [
+					'duplicate',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Copy Contacts',
+		name: 'copyContacts',
+		type: 'boolean',
+		default: false,
+		description: 'Copy all the contacts from the original campaign.',
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+				operation: [
+					'duplicate',
 				],
 			},
 		},

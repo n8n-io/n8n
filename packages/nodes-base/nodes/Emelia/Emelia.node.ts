@@ -290,6 +290,44 @@ export class Emelia implements INodeType {
 
 						returnData.push({ success: true });
 
+					} else if (operation === 'duplicate') {
+
+						// ----------------------------------
+						//        campaign: duplicate
+						// ----------------------------------
+
+						await emeliaGraphqlRequest.call(this, {
+							query: `
+									mutation duplicateCampaign(
+										$fromId: ID!
+										$name: String!
+										$copySettings: Boolean!
+										$copyMails: Boolean!
+										$copyContacts: Boolean!
+										$copyProvider: Boolean!
+									) {
+										duplicateCampaign(
+											fromId: $fromId
+											name: $name
+											copySettings: $copySettings
+											copyMails: $copyMails
+											copyContacts: $copyContacts
+											copyProvider: $copyProvider
+										)
+									}`,
+							operationName: 'duplicateCampaign',
+							variables: {
+								fromId: this.getNodeParameter('campaignId', i),
+								name: this.getNodeParameter('campaignName', i),
+								copySettings: this.getNodeParameter('copySettings', i),
+								copyMails: this.getNodeParameter('copyMails', i),
+								copyContacts: this.getNodeParameter('copyContacts', i),
+								copyProvider: this.getNodeParameter('copyProvider', i),
+							},
+						});
+
+						returnData.push({ success: true });
+
 					}
 
 				} else if (resource === 'contactList') {
