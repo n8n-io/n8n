@@ -2082,6 +2082,17 @@ export class Hubspot implements INodeType {
 									qs.properties = ['pipeline'];
 								}
 							}
+							if (filters.includeDetails) {
+								for (const prop  of detailingProperties) {
+
+									// @ts-ignore
+									if (qs.properties && Array.isArray(qs.properties) && !qs.properties?.includes(prop.name)) {
+										qs.properties.push(prop.name);
+									} else {
+										qs.properties = [prop.name];
+									}
+								}
+							}
 
 							const endpoint = `/deals/v1/deal/paged`;
 							if (returnAll) {
