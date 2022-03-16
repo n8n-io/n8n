@@ -48,12 +48,12 @@ export class Markdown implements INodeType {
 					{
 						name: 'Markdown to HTML',
 						value: 'markdownToHtml',
-						description: 'Convert data from Markdown to HTML.',
+						description: 'Convert data from Markdown to HTML',
 					},
 					{
 						name: 'HTML to Markdown',
 						value: 'htmlToMarkdown',
-						description: 'Convert data from HTML to Markdown.',
+						description: 'Convert data from HTML to Markdown',
 					},
 				],
 				default: 'htmlToMarkdown',
@@ -72,7 +72,7 @@ export class Markdown implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The HTML to be converted.',
+				description: 'The HTML to be converted',
 			},
 			{
 				displayName: 'Markdown',
@@ -87,7 +87,7 @@ export class Markdown implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The Markdown to be converted.',
+				description: 'The Markdown to be converted',
 			},
 			{
 				displayName: 'Destination Key',
@@ -124,14 +124,14 @@ export class Markdown implements INodeType {
 								description: 'Defaults defined by Showdown library (<a href="https://github.com/showdownjs/showdown#valid-options" target="_blank">more info</a>)',
 							},
 							{
-								name: 'Github',
+								name: 'GitHub',
 								value: 'github',
-								description: 'GitHub Flavored Markdown (<a href="https://github.github.com/gfm/" target="_blank" rel="nofollow">more info</a>)',
+								description: 'GitHub Flavored Markdown (<a href="https://github.github.com/gfm/" target="_blank">more info</a>)',
 							},
 							{
 								name: 'Original',
 								value: 'original',
-								description: `As first defined by John Gruber (<a href="https://daringfireball.net/projects/markdown/" target="_blank" rel="nofollow">more info</a>)`,
+								description: `As first defined by John Gruber (<a href="https://daringfireball.net/projects/markdown/" target="_blank">more info</a>)`,
 							},
 						],
 						displayOptions: {
