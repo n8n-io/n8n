@@ -1,3 +1,15 @@
+## [0.168.1](https://github.com/n8n-io/n8n/compare/n8n@0.168.0...n8n@0.168.1) (2022-03-15)
+
+### Bug Fixes
+
+- Add missing email templates
+
+# [0.168.0](https://github.com/n8n-io/n8n/compare/n8n@0.167.0...n8n@0.168.0) (2022-03-14)
+
+### Features
+
+- Add User Management ([#2636](https://github.com/n8n-io/n8n/issues/2636)) ([7264239](https://github.com/n8n-io/n8n/commit/7264239b839b8e92b7ea667ec70e5c3edb578277))
+
 # 0.167.0 (2022-03-13)
 
 ### Bug Fixes
