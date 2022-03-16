@@ -1767,7 +1767,7 @@ export class Github implements INodeType {
 		credentialTest: {
 			async githubApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
-				const baseUrl = credentials!.server as string || 'https://api.github.com/user';
+				const baseUrl = credentials!.server as string || 'https://api.github.com';
 
 				const options: OptionsWithUri = {
 					method: 'GET',
@@ -1775,7 +1775,7 @@ export class Github implements INodeType {
 						'User-Agent': 'n8n',
 						Authorization: `token ${credentials!.accessToken}`,
 					},
-					uri: baseUrl,
+					uri: baseUrl.endsWith('/') ? baseUrl + 'user' : baseUrl + '/user',
 					json: true,
 					timeout: 5000,
 				};
