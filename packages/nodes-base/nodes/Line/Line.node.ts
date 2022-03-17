@@ -31,7 +31,6 @@ export class Line implements INodeType {
 		description: 'Consume Line API',
 		defaults: {
 			name: 'Line',
-			color: '#00b900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -23,7 +23,6 @@ export class Redis implements INodeType {
 		description: 'Get, send and update data in Redis',
 		defaults: {
 			name: 'Redis',
-			color: '#0033AA',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -69,6 +68,11 @@ export class Redis implements INodeType {
 						value: 'set',
 						description: 'Set the value of a key in redis.',
 					},
+					{
+						name: 'Publish',
+						value: 'publish',
+						description: 'Publish message to redis channel.',
+					},
 				],
 				default: 'info',
 				description: 'The operation to perform.',
@@ -90,7 +94,7 @@ export class Redis implements INodeType {
 				},
 				default: 'propertyName',
 				required: true,
-				description: 'Name of the property to write received data to.<br />Supports dot-notation.<br />Example: "data.person[0].name"',
+				description: 'Name of the property to write received data to. Supports dot-notation. Example: "data.person[0].name"',
 			},
 			{
 				displayName: 'Key',
@@ -183,9 +187,7 @@ export class Redis implements INodeType {
 						name: 'dotNotation',
 						type: 'boolean',
 						default: true,
-						description: `By default does dot-notation get used in property names.<br />
-						This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<br />
-						If that is not intended this can be deactivated, it will then set { "a.b": value } instead.
+						description: `<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>
 						`,
 					},
 				],
@@ -373,6 +375,42 @@ export class Redis implements INodeType {
 				default: 60,
 				description: 'Number of seconds before key expiration.',
 			},
+			// ----------------------------------
+			//         publish
+			// ----------------------------------
+			{
+				displayName: 'Channel',
+				name: 'channel',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'publish',
+						],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Channel name.',
+			},
+			{
+				displayName: 'Data',
+				name: 'messageData',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'publish',
+						],
+					},
+				},
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				required: true,
+				description: 'Data to publish.',
+			},
 		],
 	};
 
@@ -494,6 +532,7 @@ export class Redis implements INodeType {
 			const redisOptions: redis.ClientOpts = {
 				host: credentials.host as string,
 				port: credentials.port as number,
+				db: credentials.database as number,
 			};
 
 			if (credentials.password) {
@@ -510,6 +549,7 @@ export class Redis implements INodeType {
 			});
 
 			client.on('ready', async (err: Error | null) => {
+				client.select(credentials.database as number);
 				try {
 					if (operation === 'info') {
 						const clientInfo = util.promisify(client.info).bind(client);
@@ -518,7 +558,7 @@ export class Redis implements INodeType {
 						resolve(this.prepareOutputData([{ json: convertInfoToObject(result as unknown as string) }]));
 						client.quit();
 
-					} else if (['delete', 'get', 'keys', 'set', 'incr'].includes(operation)) {
+					} else if (['delete', 'get', 'keys', 'set', 'incr', 'publish'].includes(operation)) {
 						const items = this.getInputData();
 						const returnItems: INodeExecutionData[] = [];
 
@@ -589,6 +629,12 @@ export class Redis implements INodeType {
 									await clientExpire(keyIncr, ttl);
 								}
 								returnItems.push({json: {[keyIncr]: incrementVal}});
+							} else if (operation === 'publish'){
+								const channel = this.getNodeParameter('channel', itemIndex) as string;
+								const messageData = this.getNodeParameter('messageData', itemIndex) as string;
+								const clientPublish = util.promisify(client.publish).bind(client);
+								await clientPublish(channel, messageData);
+								returnItems.push(items[itemIndex]);
 							}
 						}
 

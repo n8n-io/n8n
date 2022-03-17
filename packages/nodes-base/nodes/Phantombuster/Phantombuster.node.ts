@@ -36,7 +36,6 @@ export class Phantombuster implements INodeType {
 		description: 'Consume Phantombuster API',
 		defaults: {
 			name: 'Phantombuster',
-			color: '#62bfd7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

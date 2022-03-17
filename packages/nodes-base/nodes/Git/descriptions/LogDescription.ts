@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const logFields = [
+export const logFields: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -61,4 +61,4 @@ export const logFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

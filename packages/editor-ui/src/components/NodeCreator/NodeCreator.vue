@@ -19,6 +19,7 @@ import { HIDDEN_NODES  } from '@/constants';
 
 import MainPanel from './MainPanel.vue';
 import { getCategoriesWithNodes, getCategorizedList } from './helpers';
+import { mapGetters } from 'vuex';
 
 export default Vue.extend({
 	name: 'NodeCreator',
@@ -35,6 +36,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		...mapGetters('users', ['personalizedNodeTypes']),
 		nodeTypes(): INodeTypeDescription[] {
 			return this.$store.getters.allNodeTypes;
 		},
@@ -57,7 +59,7 @@ export default Vue.extend({
 				}, []);
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
-			return getCategoriesWithNodes(this.visibleNodeTypes);
+			return getCategoriesWithNodes(this.visibleNodeTypes, this.personalizedNodeTypes as string[]);
 		},
 		categorizedItems(): INodeCreateElement[] {
 			return getCategorizedList(this.categoriesWithNodes);
@@ -94,8 +96,8 @@ export default Vue.extend({
 		},
 	},
 	watch: {
-		nodeTypes(newList, prevList) {
-			if (prevList.length === 0) {
+		nodeTypes(newList) {
+			if (newList.length !== this.allNodeTypes.length) {
 				this.allNodeTypes = newList;
 			}
 		},

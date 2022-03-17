@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const starOperations = [
+export const starOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -32,9 +32,9 @@ export const starOperations = [
 		default: 'add',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const starFields = [
+export const starFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                star:add                                    */
@@ -190,4 +190,4 @@ export const starFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

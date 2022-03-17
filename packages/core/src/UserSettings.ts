@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import * as fs from 'fs';
 import * as path from 'path';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 // eslint-disable-next-line import/no-cycle
 import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
@@ -37,7 +37,12 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
 	if (userSettings !== undefined) {
 		// Settings already exist, check if they contain the encryptionKey
 		if (userSettings.encryptionKey !== undefined) {
-			// Key already exists so return
+			// Key already exists
+			if (userSettings.instanceId === undefined) {
+				userSettings.instanceId = await generateInstanceId(userSettings.encryptionKey);
+				settingsCache = userSettings;
+			}
+
 			return userSettings;
 		}
 	} else {
@@ -52,6 +57,8 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
 		userSettings.encryptionKey = randomBytes(24).toString('base64');
 	}
 
+	userSettings.instanceId = await generateInstanceId(userSettings.encryptionKey);
+
 	// eslint-disable-next-line no-console
 	console.log(`UserSettings were generated and saved to: ${settingsPath}`);
 
@@ -65,8 +72,8 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
  * @export
  * @returns
  */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function getEncryptionKey() {
+
+export async function getEncryptionKey(): Promise<string | undefined> {
 	if (process.env[ENCRYPTION_KEY_ENV_OVERWRITE] !== undefined) {
 		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE];
 	}
@@ -82,6 +89,36 @@ export async function getEncryptionKey() {
 	}
 
 	return userSettings.encryptionKey;
+}
+
+/**
+ * Returns the instance ID
+ *
+ * @export
+ * @returns
+ */
+export async function getInstanceId(): Promise<string> {
+	const userSettings = await getUserSettings();
+
+	if (userSettings === undefined) {
+		return '';
+	}
+
+	if (userSettings.instanceId === undefined) {
+		return '';
+	}
+
+	return userSettings.instanceId;
+}
+
+async function generateInstanceId(key?: string) {
+	const hash = key
+		? createHash('sha256')
+				.update(key.slice(Math.round(key.length / 2)))
+				.digest('hex')
+		: undefined;
+
+	return hash;
 }
 
 /**
@@ -141,7 +178,12 @@ export async function writeUserSettings(
 		await fsMkdir(path.dirname(settingsPath));
 	}
 
-	await fsWriteFile(settingsPath, JSON.stringify(userSettings, null, '\t'));
+	const settingsToWrite = { ...userSettings };
+	if (settingsToWrite.instanceId !== undefined) {
+		delete settingsToWrite.instanceId;
+	}
+
+	await fsWriteFile(settingsPath, JSON.stringify(settingsToWrite, null, '\t'));
 	settingsCache = JSON.parse(JSON.stringify(userSettings));
 
 	return userSettings;

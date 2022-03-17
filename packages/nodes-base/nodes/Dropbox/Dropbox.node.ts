@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -30,7 +27,6 @@ export class Dropbox implements INodeType {
 		description: 'Access data on Dropbox',
 		defaults: {
 			name: 'Dropbox',
-			color: '#007ee5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -361,7 +357,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to<br />write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file.',
 			},
 
 			// ----------------------------------
@@ -446,7 +442,7 @@ export class Dropbox implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+				description: 'Name of the binary property which contains the data for the file to be uploaded.',
 			},
 
 			// ----------------------------------
@@ -621,7 +617,7 @@ export class Dropbox implements INodeType {
 						name: 'file_extensions',
 						type: 'string',
 						default: '',
-						description: 'Multiple can be set separated by comma. Example: jpg,pdf',
+						description: 'Multiple file extensions can be set separated by comma. Example: jpg,pdf',
 					},
 					{
 						displayName: 'Folder',
@@ -860,7 +856,7 @@ export class Dropbox implements INodeType {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 							}
 
-							body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
+							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
 						} else {
 							// Is text file
 							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');

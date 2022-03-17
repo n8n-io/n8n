@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -42,9 +42,9 @@ export const companyOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                company:users                               */
@@ -371,7 +371,7 @@ export const companyFields = [
 				name: 'website',
 				type: 'string',
 				default: '',
-				description: `The URL for this company's website. Please note that the value<br />specified here is not validated. Accepts any string.`,
+				description: `The URL for this company's website. Please note that the value specified here is not validated. Accepts any string.`,
 			},
 		],
 	},
@@ -446,4 +446,4 @@ export const companyFields = [
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
-] as INodeProperties[];
+];

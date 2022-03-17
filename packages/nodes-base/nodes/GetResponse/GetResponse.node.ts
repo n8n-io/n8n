@@ -34,7 +34,6 @@ export class GetResponse implements INodeType {
 		description: 'Consume GetResponse API',
 		defaults: {
 			name: 'GetResponse',
-			color: '#00afec',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

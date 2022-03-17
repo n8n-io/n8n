@@ -7,4 +7,4 @@ export declare class N8nComponent extends Vue {
 }
 
 /** Component size definition for button, input, etc */
-export type N8nComponentSize = 'large' | 'medium' | 'small';
+export type N8nComponentSize = 'xlarge' | 'large' | 'medium' | 'small' | 'mini';

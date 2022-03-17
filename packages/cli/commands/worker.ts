@@ -7,26 +7,19 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // eslint-disable-next-line import/no-extraneous-dependencies
+import * as express from 'express';
+import * as http from 'http';
 import * as PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
-import { UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, IBinaryDataConfig, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeTypes,
-	IRun,
-	IWorkflowExecuteHooks,
-	Workflow,
-	WorkflowHooks,
-	LoggerProxy,
-} from 'n8n-workflow';
+import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
 
-import { FindOneOptions } from 'typeorm';
+import { FindOneOptions, getConnectionManager } from 'typeorm';
 
 import * as Bull from 'bull';
 import {
-	ActiveExecutions,
 	CredentialsOverwrites,
 	CredentialTypes,
 	Db,
@@ -34,12 +27,13 @@ import {
 	GenericHelpers,
 	IBullJobData,
 	IBullJobResponse,
+	IBullWebhookResponse,
 	IExecutionFlattedDb,
-	IExecutionResponse,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	ResponseHelper,
-	WorkflowCredentials,
+	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 } from '../src';
 
@@ -47,6 +41,10 @@ import { getLogger } from '../src/Logger';
 
 import * as config from '../config';
 import * as Queue from '../src/Queue';
+import {
+	checkPermissionsForExecution,
+	getWorkflowOwner,
+} from '../src/UserManagement/UserManagementHelper';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -129,6 +127,8 @@ export class Worker extends Command {
 			`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`,
 		);
 
+		const workflowOwner = await getWorkflowOwner(currentExecutionDb.workflowData.id!.toString());
+
 		let { staticData } = currentExecutionDb.workflowData;
 		if (jobData.loadStaticData) {
 			const findOptions = {
@@ -172,7 +172,10 @@ export class Worker extends Command {
 			settings: currentExecutionDb.workflowData.settings,
 		});
 
+		await checkPermissionsForExecution(workflow, workflowOwner.id);
+
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			workflowOwner.id,
 			undefined,
 			executionTimeoutTimestamp,
 		);
@@ -182,6 +185,16 @@ export class Worker extends Command {
 			currentExecutionDb.workflowData,
 			{ retryOf: currentExecutionDb.retryOf as string },
 		);
+
+		additionalData.hooks.hookFunctions.sendResponse = [
+			async (response: IExecuteResponsePromiseData): Promise<void> => {
+				await job.progress({
+					executionId: job.data.executionId as string,
+					response: WebhookHelpers.encodeWebhookResponse(response),
+				} as IBullWebhookResponse);
+			},
+		];
+
 		additionalData.executionId = jobData.executionId;
 
 		let workflowExecute: WorkflowExecute;
@@ -203,7 +216,7 @@ export class Worker extends Command {
 		Worker.runningJobs[job.id] = workflowRun;
 
 		// Wait till the execution is finished
-		const runData = await workflowRun;
+		await workflowRun;
 
 		delete Worker.runningJobs[job.id];
 
@@ -270,6 +283,12 @@ export class Worker extends Command {
 				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
 
 				const versions = await GenericHelpers.getVersions();
+				const instanceId = await UserSettings.getInstanceId();
+
+				InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
+
+				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				await BinaryDataManager.init(binaryDataConfig);
 
 				console.info('\nn8n worker is now ready');
 				console.info(` * Version: ${versions.cli}`);
@@ -320,6 +339,77 @@ export class Worker extends Command {
 						logger.error('Error from queue: ', error);
 					}
 				});
+
+				if (config.get('queue.health.active')) {
+					const port = config.get('queue.health.port') as number;
+
+					const app = express();
+					const server = http.createServer(app);
+
+					app.get(
+						'/healthz',
+						// eslint-disable-next-line consistent-return
+						async (req: express.Request, res: express.Response) => {
+							LoggerProxy.debug('Health check started!');
+
+							const connection = getConnectionManager().get();
+
+							try {
+								if (!connection.isConnected) {
+									// Connection is not active
+									throw new Error('No active database connection!');
+								}
+								// DB ping
+								await connection.query('SELECT 1');
+							} catch (e) {
+								LoggerProxy.error('No Database connection!', e);
+								const error = new ResponseHelper.ResponseError(
+									'No Database connection!',
+									undefined,
+									503,
+								);
+								return ResponseHelper.sendErrorResponse(res, error);
+							}
+
+							// Just to be complete, generally will the worker stop automatically
+							// if it loses the conection to redis
+							try {
+								// Redis ping
+								await Worker.jobQueue.client.ping();
+							} catch (e) {
+								LoggerProxy.error('No Redis connection!', e);
+								const error = new ResponseHelper.ResponseError(
+									'No Redis connection!',
+									undefined,
+									503,
+								);
+								return ResponseHelper.sendErrorResponse(res, error);
+							}
+
+							// Everything fine
+							const responseData = {
+								status: 'ok',
+							};
+
+							LoggerProxy.debug('Health check completed successfully!');
+
+							ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
+						},
+					);
+
+					server.listen(port, () => {
+						console.info(`\nn8n worker health check via, port ${port}`);
+					});
+
+					server.on('error', (error: Error & { code: string }) => {
+						if (error.code === 'EADDRINUSE') {
+							console.log(
+								`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`,
+							);
+							process.exit(1);
+						}
+					});
+				}
 			} catch (error) {
 				logger.error(`Worker process cannot continue. "${error.message}"`);
 

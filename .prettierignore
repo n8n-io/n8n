@@ -1,3 +1,4 @@
 packages/nodes-base
 packages/editor-ui
 packages/design-system
+*package.json

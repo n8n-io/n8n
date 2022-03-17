@@ -62,7 +62,6 @@ export class Paddle implements INodeType {
 		description: 'Consume Paddle API',
 		defaults: {
 			name: 'Paddle',
-			color: '#45567c',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

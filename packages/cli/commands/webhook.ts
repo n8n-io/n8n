@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { UserSettings } from 'n8n-core';
+import { BinaryDataManager, IBinaryDataConfig, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
@@ -18,10 +18,9 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	TestWebhooks,
 	WebhookServer,
 } from '../src';
 
@@ -148,6 +147,13 @@ export class Webhook extends Command {
 
 				// Wait till the database is ready
 				await startDbInitPromise;
+
+				const instanceId = await UserSettings.getInstanceId();
+				const { cli } = await GenericHelpers.getVersions();
+				InternalHooksManager.init(instanceId, cli, nodeTypes);
+
+				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				await BinaryDataManager.init(binaryDataConfig);
 
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');

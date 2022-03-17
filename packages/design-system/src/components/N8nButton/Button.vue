@@ -16,13 +16,13 @@
 			<component
 				:is="$options.components.N8nSpinner"
 				v-if="props.loading"
-				:size="props.iconSize"
+				:size="props.size"
 			/>
 			<component
 				:is="$options.components.N8nIcon"
 				v-else-if="props.icon"
 				:icon="props.icon"
-				:size="props.iconSize"
+				:size="props.size"
 			/>
 		</span>
 		<span v-if="props.label">{{ props.label }}</span>
@@ -47,18 +47,18 @@ export default {
 			type: String,
 			default: 'primary',
 			validator: (value: string): boolean =>
-				['primary', 'outline', 'light', 'text'].indexOf(value) !== -1,
+				['primary', 'outline', 'light', 'text'].includes(value),
 		},
 		theme: {
 			type: String,
 			validator: (value: string): boolean =>
-				['success', 'warning', 'danger'].indexOf(value) !== -1,
+				['success', 'warning', 'danger'].includes(value),
 		},
 		size: {
 			type: String,
 			default: 'medium',
 			validator: (value: string): boolean =>
-				['small', 'medium', 'large'].indexOf(value) !== -1,
+				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		loading: {
 			type: Boolean,
@@ -69,9 +69,6 @@ export default {
 			default: false,
 		},
 		icon: {
-			type: String,
-		},
-		iconSize: {
 			type: String,
 		},
 		round: {
@@ -85,7 +82,7 @@ export default {
 		float: {
 			type: String,
 			validator: (value: string): boolean =>
-				['left', 'right'].indexOf(value) !== -1,
+				['left', 'right'].includes(value),
 		},
 		fullWidth: {
 			type: Boolean,
@@ -125,9 +122,7 @@ export default {
 </script>
 
 <style lang="scss" module>
-@function lightness($h, $s, $l, $lightness) {
-	@return hsl(var(#{$h}), var(#{$s}), calc(var(#{$l}) + #{$lightness}));
-}
+@import "../../utils";
 
 .button {
 	> i {

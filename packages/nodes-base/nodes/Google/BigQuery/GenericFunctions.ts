@@ -56,11 +56,11 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['nextPageToken'];
+		query.pageToken = responseData['pageToken'];
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		responseData['nextPageToken'] !== undefined &&
-		responseData['nextPageToken'] !== ''
+		responseData['pageToken'] !== undefined &&
+		responseData['pageToken'] !== ''
 	);
 
 	return returnData;

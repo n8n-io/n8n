@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const issueCommentOperations = [
+export const issueCommentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const issueCommentOperations = [
 		default: 'add',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const issueCommentFields = [
+export const issueCommentFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                issueComment:add                            */
@@ -89,6 +89,7 @@ export const issueCommentFields = [
 		displayName: 'Comment',
 		name: 'comment',
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -108,6 +109,7 @@ export const issueCommentFields = [
 		displayName: 'Document Format (JSON)',
 		name: 'commentJson',
 		type: 'json',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -151,7 +153,7 @@ export const issueCommentFields = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments<br />in the response. This parameter accepts Rendered Body, which<br />returns the comment body rendered in HTML.',
+				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},
@@ -181,6 +183,7 @@ export const issueCommentFields = [
 		displayName: 'Comment ID',
 		name: 'commentId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -222,7 +225,7 @@ export const issueCommentFields = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in<br />the response. This parameter accepts Rendered Body, which<br />returns the comment body rendered in HTML.',
+				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},
@@ -317,7 +320,7 @@ export const issueCommentFields = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the<br />response. This parameter accepts Rendered Body, which returns the comment<br />body rendered in HTML.',
+				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},
@@ -347,6 +350,7 @@ export const issueCommentFields = [
 		displayName: 'Comment ID',
 		name: 'commentId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -386,6 +390,7 @@ export const issueCommentFields = [
 		displayName: 'Comment ID',
 		name: 'commentId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -419,6 +424,7 @@ export const issueCommentFields = [
 		displayName: 'Comment',
 		name: 'comment',
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -438,6 +444,7 @@ export const issueCommentFields = [
 		displayName: 'Document Format (JSON)',
 		name: 'commentJson',
 		type: 'json',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -485,4 +492,4 @@ export const issueCommentFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

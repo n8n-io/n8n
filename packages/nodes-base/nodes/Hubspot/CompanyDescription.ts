@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -59,9 +59,9 @@ export const companyOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                company:create                              */
@@ -896,18 +896,14 @@ export const companyFields = [
 					loadOptionsMethod: 'getCompanyProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companies.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Properties With History',
 				name: 'propertiesWithHistory',
 				type: 'string',
 				default: '',
-				description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
-				instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
+				description: `Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
 			},
 		],
 	},
@@ -1009,8 +1005,7 @@ export const companyFields = [
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
-				description: `By default, you will only get data for the most recent version of a property in the "versions" data.<br/>
-				If you include this parameter, you will get data for all previous versions.`,
+				description: `By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.`,
 			},
 		],
 	},
@@ -1101,11 +1096,8 @@ export const companyFields = [
 					loadOptionsMethod: 'getCompanyProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 		],
 	},
-] as INodeProperties[];
+];

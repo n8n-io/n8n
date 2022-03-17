@@ -1,39 +1,22 @@
-import { ICredentialType, ICredentialTypes as ICredentialTypesInterface } from 'n8n-workflow';
-
-// eslint-disable-next-line import/no-cycle
-import { CredentialsOverwrites, ICredentialsTypeData } from '.';
+import {
+	ICredentialType,
+	ICredentialTypeData,
+	ICredentialTypes as ICredentialTypesInterface,
+} from 'n8n-workflow';
 
 class CredentialTypesClass implements ICredentialTypesInterface {
-	credentialTypes: ICredentialsTypeData = {};
+	credentialTypes: ICredentialTypeData = {};
 
-	async init(credentialTypes: ICredentialsTypeData): Promise<void> {
+	async init(credentialTypes: ICredentialTypeData): Promise<void> {
 		this.credentialTypes = credentialTypes;
-
-		// Load the credentials overwrites if any exist
-		const credentialsOverwrites = CredentialsOverwrites().getAll();
-
-		// eslint-disable-next-line no-restricted-syntax
-		for (const credentialType of Object.keys(credentialsOverwrites)) {
-			if (credentialTypes[credentialType] === undefined) {
-				// eslint-disable-next-line no-continue
-				continue;
-			}
-
-			// Add which properties got overwritten that the Editor-UI knows
-			// which properties it should hide
-			// eslint-disable-next-line no-underscore-dangle, no-param-reassign
-			credentialTypes[credentialType].__overwrittenProperties = Object.keys(
-				credentialsOverwrites[credentialType],
-			);
-		}
 	}
 
 	getAll(): ICredentialType[] {
-		return Object.values(this.credentialTypes);
+		return Object.values(this.credentialTypes).map((data) => data.type);
 	}
 
 	getByName(credentialType: string): ICredentialType {
-		return this.credentialTypes[credentialType];
+		return this.credentialTypes[credentialType].type;
 	}
 }
 

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const draftMessageSharedFields = [
+export const draftMessageSharedFields: INodeProperties[] = [
 
 	// Get & Get All operations
 	{
@@ -29,7 +29,7 @@ export const draftMessageSharedFields = [
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
-				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Fields',
@@ -150,7 +150,7 @@ export const draftMessageSharedFields = [
 			{
 				displayName: 'From',
 				name: 'from',
-				description: 'The owner of the mailbox which the message is sent.<br>Must correspond to the actual mailbox used.',
+				description: 'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
 				type: 'string',
 				default: '',
 			},
@@ -213,4 +213,4 @@ export const draftMessageSharedFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

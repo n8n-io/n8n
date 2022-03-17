@@ -24,7 +24,6 @@ export class Vonage implements INodeType {
 		description: 'Consume Vonage API',
 		defaults: {
 			name: 'Vonage',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

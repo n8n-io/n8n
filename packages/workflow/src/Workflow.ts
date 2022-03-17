@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -12,10 +13,12 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
-// eslint-disable-next-line import/no-cycle
+
 import {
 	Expression,
 	IConnections,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
 	INode,
 	INodeExecuteFunctions,
@@ -37,6 +40,7 @@ import {
 	NodeHelpers,
 	NodeParameterValue,
 	ObservableObject,
+	RoutingNode,
 	WebhookSetupMethodNames,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -415,8 +419,7 @@ export class Workflow {
 					const currentNameEscaped = currentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 					parameterValue = parameterValue.replace(
-						// eslint-disable-next-line no-useless-escape
-						new RegExp(`(\\$node(\.|\\["|\\[\'))${currentNameEscaped}((\.|"\\]|\'\\]))`, 'g'),
+						new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.|"\\]|'\\]))`, 'g'),
 						`$1${newName}$3`,
 					);
 				}
@@ -947,10 +950,23 @@ export class Workflow {
 
 			// Add the manual trigger response which resolves when the first time data got emitted
 			triggerResponse!.manualTriggerResponse = new Promise((resolve) => {
-				// eslint-disable-next-line @typescript-eslint/no-shadow
-				triggerFunctions.emit = ((resolve) => (data: INodeExecutionData[][]) => {
-					resolve(data);
-				})(resolve);
+				triggerFunctions.emit = (
+					(resolveEmit) =>
+					(
+						data: INodeExecutionData[][],
+						responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+					) => {
+						additionalData.hooks!.hookFunctions.sendResponse = [
+							async (response: IExecuteResponsePromiseData): Promise<void> => {
+								if (responsePromise) {
+									responsePromise.resolve(response);
+								}
+							},
+						];
+
+						resolveEmit(data);
+					}
+				)(resolve);
 			});
 
 			return triggerResponse;
@@ -1064,7 +1080,11 @@ export class Workflow {
 		}
 
 		let connectionInputData: INodeExecutionData[] = [];
-		if (nodeType.execute || nodeType.executeSingle) {
+		if (
+			nodeType.execute ||
+			nodeType.executeSingle ||
+			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
+		) {
 			// Only stop if first input is empty for execute & executeSingle runs. For all others run anyways
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
@@ -1203,6 +1223,19 @@ export class Workflow {
 		} else if (nodeType.webhook) {
 			// For webhook nodes always simply pass the data through
 			return inputData.main as INodeExecutionData[][];
+		} else {
+			// For nodes which have routing information on properties
+
+			const routingNode = new RoutingNode(
+				this,
+				node,
+				connectionInputData,
+				runExecutionData ?? null,
+				additionalData,
+				mode,
+			);
+
+			return routingNode.runNode(inputData, runIndex, nodeType, nodeExecuteFunctions);
 		}
 
 		return null;

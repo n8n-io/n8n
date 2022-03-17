@@ -1,6 +1,7 @@
 <template>
 	<div @keydown.stop :class="$style.container" v-if="credentialProperties.length">
-		<div v-for="parameter in credentialProperties" :key="parameter.name">
+		<form v-for="parameter in credentialProperties" :key="parameter.name" autocomplete="off">
+			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
 			<ParameterInputExpanded
 				:parameter="parameter"
 				:value="credentialData[parameter.name]"
@@ -8,7 +9,7 @@
 				:showValidationWarnings="showValidationWarnings"
 				@change="valueChanged"
 			/>
-		</div>
+		</form>
 	</div>
 </template>
 

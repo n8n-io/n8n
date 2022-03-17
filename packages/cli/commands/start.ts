@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -6,12 +7,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as localtunnel from 'localtunnel';
-import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
+import { BinaryDataManager, IBinaryDataConfig, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import { createHash } from 'crypto';
 import * as config from '../config';
 import {
 	ActiveExecutions,
@@ -22,8 +24,7 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IExecutionsCurrentSummary,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Server,
@@ -32,12 +33,13 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { RESPONSE_ERROR_MESSAGES } from '../src/constants';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
-let processExistCode = 0;
+let processExitCode = 0;
 
 export class Start extends Command {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
@@ -92,8 +94,11 @@ export class Start extends Command {
 			setTimeout(() => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
-				process.exit(processExistCode);
+				console.log(`process exited after 30s`);
+				process.exit(processExitCode);
 			}, 30000);
+
+			await InternalHooksManager.getInstance().onN8nStop();
 
 			const skipWebhookDeregistration = config.get(
 				'endpoints.skipWebhoooksDeregistrationOnShutdown',
@@ -133,7 +138,7 @@ export class Start extends Command {
 			console.error('There was an error shutting down n8n.', error);
 		}
 
-		process.exit(processExistCode);
+		process.exit(processExitCode);
 	}
 
 	async run() {
@@ -151,16 +156,11 @@ export class Start extends Command {
 				LoggerProxy.init(logger);
 				logger.info('Initializing n8n process');
 
-				// todo remove a few versions after release
-				logger.info(
-					'\nn8n now checks for new versions and security updates. You can turn this off using the environment variable N8N_VERSION_NOTIFICATIONS_ENABLED to "false"\nFor more information, please refer to https://docs.n8n.io/getting-started/installation/advanced/configuration.html\n',
-				);
-
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error: Error) => {
 					logger.error(`There was an error initializing DB: "${error.message}"`);
 
-					processExistCode = 1;
+					processExitCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
 					process.exit(1);
@@ -169,13 +169,29 @@ export class Start extends Command {
 				// Make sure the settings exist
 				const userSettings = await UserSettings.prepareUserSettings();
 
+				if (!config.get('userManagement.jwtSecret')) {
+					// If we don't have a JWT secret set, generate
+					// one based and save to config.
+					const encryptionKey = await UserSettings.getEncryptionKey();
+					if (!encryptionKey) {
+						throw new Error('Fatal error setting up user management: no encryption key set.');
+					}
+
+					// For a key off every other letter from encryption key
+					// CAREFUL: do not change this or it breaks all existing tokens.
+					let baseKey = '';
+					for (let i = 0; i < encryptionKey.length; i += 2) {
+						baseKey += encryptionKey[i];
+					}
+					config.set(
+						'userManagement.jwtSecret',
+						createHash('sha256').update(baseKey).digest('hex'),
+					);
+				}
+
 				// Load all node and credential types
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
 				await loadNodesAndCredentials.init();
-
-				// Load the credentials overwrites if any exist
-				const credentialsOverwrites = CredentialsOverwrites();
-				await credentialsOverwrites.init();
 
 				// Load all external hooks
 				const externalHooks = ExternalHooks();
@@ -187,8 +203,24 @@ export class Start extends Command {
 				const credentialTypes = CredentialTypes();
 				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
+				// Load the credentials overwrites if any exist
+				const credentialsOverwrites = CredentialsOverwrites();
+				await credentialsOverwrites.init();
+
 				// Wait till the database is ready
 				await startDbInitPromise;
+
+				const encryptionKey = await UserSettings.getEncryptionKey();
+
+				if (!encryptionKey) {
+					throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
+				}
+
+				// Load settings from database and set them to config.
+				const databaseSettings = await Db.collections.Settings!.find({ loadOnStartup: true });
+				databaseSettings.forEach((setting) => {
+					config.set(setting.key, JSON.parse(setting.value));
+				});
 
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');
@@ -304,17 +336,29 @@ export class Start extends Command {
 					);
 				}
 
+				const instanceId = await UserSettings.getInstanceId();
+				const { cli } = await GenericHelpers.getVersions();
+				InternalHooksManager.init(instanceId, cli, nodeTypes);
+
+				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				await BinaryDataManager.init(binaryDataConfig, true);
+
 				await Server.start();
 
 				// Start to get active workflows and run their triggers
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.init();
 
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const waitTracker = WaitTracker();
+				WaitTracker();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
+
+				const saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+
+				if (saveManualExecutions) {
+					this.log('\nManual executions will be visible only for the owner');
+				}
 
 				// Allow to open n8n editor by pressing "o"
 				if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
@@ -355,7 +399,7 @@ export class Start extends Command {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				this.error(`There was an error: ${error.message}`);
 
-				processExistCode = 1;
+				processExitCode = 1;
 				// @ts-ignore
 				process.emit('SIGINT');
 			}

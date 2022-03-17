@@ -18,6 +18,11 @@
 		],
 		"generic": [
 			{
+				"label": "6 e-commerce workflows to power up your Shopify s",
+				"icon": "store",
+				"url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
+			},
+			{
 				"label": "5 tasks you can automate with the new Notion API ",
 				"icon": "⚡️",
 				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"

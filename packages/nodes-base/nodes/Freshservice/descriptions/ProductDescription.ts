@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const productOperations = [
+export const productOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const productOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const productFields = [
+export const productFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             product: create
 	// ----------------------------------------
@@ -57,9 +57,7 @@ export const productFields = [
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsMethod: [
-				'getAssetTypes',
-			],
+			loadOptionsMethod: 'getAssetTypes',
 		},
 		displayOptions: {
 			show: {
@@ -295,9 +293,7 @@ export const productFields = [
 				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAssetTypes',
-					],
+					loadOptionsMethod: 'getAssetTypes',
 				},
 			},
 			{
@@ -361,4 +357,4 @@ export const productFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

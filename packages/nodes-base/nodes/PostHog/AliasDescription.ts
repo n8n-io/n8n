@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const aliasOperations = [
+export const aliasOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const aliasOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const aliasFields = [
+export const aliasFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 alias:create                               */
@@ -123,4 +123,4 @@ export const aliasFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
