@@ -48,7 +48,8 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
-	let array: { [x: string]: any; }[] = [];
+	// tslint:disable-next-line: no-any array-type
+	const array: { [x: string]: any; }[] = [];
 
 	let responseData;
 
@@ -62,7 +63,7 @@ export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoa
 			const body = responseData.body;
 			Object.keys(body).map(key => {
 				array.push({[key]:body[key]});
-			})
+			});
 
 			returnData.push.apply(returnData, array);
 

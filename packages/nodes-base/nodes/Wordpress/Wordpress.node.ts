@@ -131,11 +131,11 @@ export class Wordpress implements INodeType {
 				const types = await wordpressApiRequestAllItems.call(this, 'GET', '/types', {});
 
 				for (const type of types) {
-					const name = type[Object.keys(type)[0]].name;
-					const value = type[Object.keys(type)[0]].rest_base;
+					const typeName = type[Object.keys(type)[0]].name;
+					const typeValue = type[Object.keys(type)[0]].rest_base;
 					returnData.push({
-						name: name,
-						value: value,
+						name: typeName,
+						value: typeValue,
 					});
 				}
 				return returnData;
@@ -160,6 +160,7 @@ export class Wordpress implements INodeType {
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const customFields = this.getNodeParameter('customFields', i) as IDataObject;
+						// tslint:disable-next-line: no-any
 						const meta: {[key: string]: any} = {};
 						const body: IPost = {
 							title,
@@ -217,6 +218,7 @@ export class Wordpress implements INodeType {
 						const postId = this.getNodeParameter('postId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const updateCustomFields = this.getNodeParameter('updateCustomFields', i) as IDataObject;
+						// tslint:disable-next-line: no-any
 						const meta: {[key: string]: any} = {};
 						const body: IPost = {
 							id: parseInt(postId, 10),
@@ -349,6 +351,7 @@ export class Wordpress implements INodeType {
 						const password = this.getNodeParameter('password', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const customFields = this.getNodeParameter('customFields', i) as IDataObject;
+						// tslint:disable-next-line: no-any
 						const meta: {[key: string]: any} = {};
 						const body: IUser = {
 							name,
@@ -387,6 +390,7 @@ export class Wordpress implements INodeType {
 						const userId = this.getNodeParameter('userId', i) as number;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const updateCustomFields = this.getNodeParameter('updateCustomFields', i) as IDataObject;
+						// tslint:disable-next-line: no-any
 						const meta: {[key: string]: any} = {};
 						const body: IUser = {
 							id: userId,
