@@ -404,7 +404,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 	}
 });
 
-test('POST /users/:id should fail with already accepted invite', async () => {
+test.skip('POST /users/:id should fail with already accepted invite', async () => {
 	const authlessAgent = utils.createAgent(app);
 
 	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
@@ -458,7 +458,7 @@ test('POST /users should fail if user management is disabled', async () => {
 	expect(response.statusCode).toBe(500);
 });
 
-test('POST /users should email invites and create user shells', async () => {
+test.skip('POST /users should email invites and create user shells', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
@@ -502,7 +502,7 @@ test('POST /users should email invites and create user shells', async () => {
 	}
 });
 
-test('POST /users should fail with invalid inputs', async () => {
+test.skip('POST /users should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
@@ -525,7 +525,7 @@ test('POST /users should fail with invalid inputs', async () => {
 	}
 });
 
-test('POST /users should ignore an empty payload', async () => {
+test.skip('POST /users should ignore an empty payload', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
