@@ -63,12 +63,12 @@ export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoa
 			Object.keys(body).map(key => {
 				array.push({[key]:body[key]});
 			})
-			
+
 			returnData.push.apply(returnData, array);
-			
+
 			break;
 		}
-		
+
 		returnData.push.apply(returnData, responseData.body);
 	} while (
 		responseData.headers['x-wp-totalpages'] !== undefined &&

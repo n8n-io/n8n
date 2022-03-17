@@ -67,27 +67,6 @@ export const postFields: INodeProperties[] = [
 		},
 		description: 'The title for the post',
 	},
-	{	
-		displayName: 'Post Type',
-		name: 'postType',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getTypes',
-		},
-		default: '',
-		description: 'The type for the post to create.',
-		placeholder: 'Select post type',
-		displayOptions: {
-			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},	
-	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -138,6 +117,17 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'A password to protect access to the content and excerpt.',
+			},
+			{
+				displayName: 'Post Type',
+				name: 'postType',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTypes',
+				},
+				default: '',
+				description: 'The type for the post to create.',
+				placeholder: 'Select post type',
 			},
 			{
 				displayName: 'Status',
@@ -323,7 +313,7 @@ export const postFields: INodeProperties[] = [
 			},
 		],
 	},
-	
+
 /* -------------------------------------------------------------------------- */
 /*                                 post:update                                */
 /* -------------------------------------------------------------------------- */
@@ -587,7 +577,7 @@ export const postFields: INodeProperties[] = [
 			},
 		],
 	},
-	
+
 /* -------------------------------------------------------------------------- */
 /*                                  post:get                                  */
 /* -------------------------------------------------------------------------- */
