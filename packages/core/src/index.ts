@@ -10,6 +10,7 @@ try {
 
 export * from './ActiveWorkflows';
 export * from './ActiveWebhooks';
+export * from './BinaryDataManager';
 export * from './Constants';
 export * from './Credentials';
 export * from './Interfaces';

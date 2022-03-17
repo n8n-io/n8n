@@ -29,7 +29,6 @@ export class GoogleCalendarTrigger implements INodeType {
 		description: 'Starts the workflow when Google Calendar events occur',
 		defaults: {
 			name: 'Google Calendar Trigger',
-			color: '#3E87E4',
 		},
 		inputs: [],
 		outputs: ['main'],

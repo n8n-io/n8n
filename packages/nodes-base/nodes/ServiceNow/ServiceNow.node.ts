@@ -75,7 +75,6 @@ export class ServiceNow implements INodeType {
 		description: 'Consume ServiceNow API',
 		defaults: {
 			name: 'ServiceNow',
-			color: '#81b5a1',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

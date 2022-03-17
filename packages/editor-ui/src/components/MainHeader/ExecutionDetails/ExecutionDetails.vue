@@ -1,7 +1,7 @@
 <template>
 	<div class="container">
 		<span class="title">
-			Execution Id:
+			{{ $locale.baseText('executionDetails.executionId') + ':' }}
 			<span>
 				<strong>{{ executionId }}</strong
 				>&nbsp;
@@ -9,23 +9,23 @@
 					icon="check"
 					class="execution-icon success"
 					v-if="executionFinished"
-					title="Execution was successful"
+					:title="$locale.baseText('executionDetails.executionWasSuccessful')"
 				/>
 				<font-awesome-icon
 					icon="clock"
 					class="execution-icon warning"
 					v-else-if="executionWaiting"
-					title="Execution waiting"
+					:title="$locale.baseText('executionDetails.executionWaiting')"
 				/>
 				<font-awesome-icon
 					icon="times"
 					class="execution-icon error"
 					v-else
-					title="Execution failed"
+					:title="$locale.baseText('executionDetails.executionFailed')"
 				/>
 			</span>
-			of
-			<span class="primary-color clickable" title="Open Workflow">
+			{{ $locale.baseText('executionDetails.of') }}
+			<span class="primary-color clickable" :title="$locale.baseText('executionDetails.openWorkflow')">
 				<WorkflowNameShort :name="workflowName">
 					<template v-slot="{ shortenedName }">
 						<span @click="openWorkflow(workflowExecution.workflowId)">
@@ -34,7 +34,7 @@
 					</template>
 				</WorkflowNameShort>
 			</span>
-			workflow
+			{{ $locale.baseText('executionDetails.workflow') }}
 		</span>
 		<ReadOnly class="read-only" />
 	</div>
@@ -116,5 +116,9 @@ export default mixins(titleChange).extend({
 
 .read-only {
 	align-self: flex-end;
+}
+
+.el-tooltip.read-only div {
+	max-width: 400px;
 }
 </style>

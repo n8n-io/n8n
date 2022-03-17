@@ -33,7 +33,7 @@ export const lightOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an light',
+				description: 'Update a light',
 			},
 		],
 		default: 'update',

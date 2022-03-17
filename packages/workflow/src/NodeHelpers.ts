@@ -56,7 +56,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 					multipleValues: true,
 					multipleValueButtonText: 'Add Poll Time',
 				},
-				default: {},
+				default: { item: [{ mode: 'everyMinute' }] },
 				description: 'Time at which polling should occur',
 				placeholder: 'Add Poll Time',
 				options: [
@@ -782,7 +782,6 @@ export function getNodeParameters(
 
 			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {
 				// Set only if value got found
-
 				if (returnDefaults) {
 					// Set also when it has the default value
 					if (collectionValues === undefined) {
@@ -1390,7 +1389,7 @@ export function mergeNodeProperties(
 	}
 }
 
-export function getVersionedTypeNode(
+export function getVersionedNodeType(
 	object: INodeVersionedType | INodeType,
 	version?: number,
 ): INodeType {
@@ -1400,7 +1399,7 @@ export function getVersionedTypeNode(
 	return object as INodeType;
 }
 
-export function getVersionedTypeNodeAll(object: INodeVersionedType | INodeType): INodeType[] {
+export function getVersionedNodeTypeAll(object: INodeVersionedType | INodeType): INodeType[] {
 	if (isNodeTypeVersioned(object)) {
 		return Object.values((object as INodeVersionedType).nodeVersions).map((element) => {
 			element.description.name = object.description.name;

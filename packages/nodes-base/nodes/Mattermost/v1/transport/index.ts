@@ -7,8 +7,8 @@ import {
 import {
 	GenericValue,
 	IDataObject,
+	IHttpRequestMethods,
 	IHttpRequestOptions,
-	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -17,7 +17,7 @@ import {
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject | GenericValue | GenericValue[] = {},
 	query: IDataObject = {},
@@ -34,16 +34,11 @@ export async function apiRequest(
 		qs: query,
 		url: `${credentials.baseUrl}/api/v4/${endpoint}`,
 		headers: {
-			authorization: `Bearer ${credentials.accessToken}`,
 			'content-type': 'application/json; charset=utf-8',
 		},
 	};
 
-	try {
-		return await this.helpers.httpRequest(options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.httpRequestWithAuthentication.call(this, 'mattermostApi', options);
 }
 
 export async function apiRequestAllItems(

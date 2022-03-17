@@ -29,7 +29,6 @@ export class HelpScoutTrigger implements INodeType {
 		description: 'Starts the workflow when HelpScout events occur',
 		defaults: {
 			name: 'HelpScout Trigger',
-			color: '#1392ee',
 		},
 		inputs: [],
 		outputs: ['main'],

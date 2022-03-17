@@ -4,30 +4,33 @@
 			<NoResultsIcon />
 		</div>
 		<div class="title">
-			<div>We didn't make that... yet</div>
+			<div>
+				{{ $locale.baseText('nodeCreator.noResults.weDidntMakeThatYet') }}
+			</div>
 			<div class="action">
-				Don’t worry, you can probably do it with the
-				<a @click="selectHttpRequest">HTTP Request</a> or
-				<a @click="selectWebhook">Webhook</a> node
+				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+				<n8n-link @click="selectHttpRequest">{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}</n8n-link> {{ $locale.baseText('nodeCreator.noResults.or') }}
+				<n8n-link @click="selectWebhook">{{ $locale.baseText('nodeCreator.noResults.webhook') }}</n8n-link> {{ $locale.baseText('nodeCreator.noResults.node') }}
 			</div>
 		</div>
 
 		<div class="request">
-			<div>Want us to make it faster?</div>
 			<div>
-				<a
-					:href="REQUEST_NODE_FORM_URL"
-					target="_blank"
+				{{ $locale.baseText('nodeCreator.noResults.wantUsToMakeItFaster') }}
+			</div>
+			<div>
+				<n8n-link
+					:to="REQUEST_NODE_FORM_URL"
 				>
-					<span>Request the node</span>&nbsp;
+					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span>&nbsp;
 					<span>
 						<font-awesome-icon
 							class="external"
 							icon="external-link-alt"
-							title="Request the node"
+							:title="$locale.baseText('nodeCreator.noResults.requestTheNode')"
 						/>
 					</span>
-				</a>
+				</n8n-link>
 			</div>
 		</div>
 	</div>
@@ -37,7 +40,6 @@
 <script lang="ts">
 import { HTTP_REQUEST_NODE_TYPE, REQUEST_NODE_FORM_URL, WEBHOOK_NODE_TYPE } from '@/constants';
 import Vue from 'vue';
-
 import NoResultsIcon from './NoResultsIcon.vue';
 
 export default Vue.extend({
@@ -49,11 +51,6 @@ export default Vue.extend({
 		return {
 			REQUEST_NODE_FORM_URL,
 		};
-	},
-	computed: {
-		basePath(): string {
-			return this.$store.getters.getBaseUrl;
-		},
 	},
 	methods: {
 		selectWebhook() {
@@ -104,13 +101,6 @@ export default Vue.extend({
 	@media (min-height: 550px) {
 		display: block;
 	}
-}
-
-a {
-	color: $--color-primary;
-	text-decoration: none;
-	cursor: pointer;
-	font-weight: 500;
 }
 
 .icon {
