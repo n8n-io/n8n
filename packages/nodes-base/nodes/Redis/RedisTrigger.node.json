@@ -8,7 +8,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io"
+				"url": "https://docs.n8n.io/credentials/redis"
 			}
 		],
 		"primaryDocumentation": [
