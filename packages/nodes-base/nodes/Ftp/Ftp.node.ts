@@ -381,8 +381,8 @@ export class Ftp implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'Failed to get credentials!');
 			}
 
-			let ftp : ftpClient;
-			let sftp : sftpClient;
+			let ftp: ftpClient;
+			let sftp: sftpClient;
 
 			if (protocol === 'sftp') {
 				sftp = new sftpClient();
@@ -454,6 +454,7 @@ export class Ftp implements INodeType {
 						const oldPath = this.getNodeParameter('oldPath', i) as string;
 
 						const newPath = this.getNodeParameter('newPath', i) as string;
+						await recursivelyCreateSftpDirs(sftp!, newPath);
 
 						responseData = await sftp!.rename(oldPath, newPath);
 
@@ -475,16 +476,7 @@ export class Ftp implements INodeType {
 
 					if (operation === 'upload') {
 						const remotePath = this.getNodeParameter('path', i) as string;
-
-						// Check if dir path exists
-						const dirPath = dirname(remotePath);
-						const dirExists = await sftp!.exists(dirPath);
-
-						// If dir does not exist, create all recursively in path
-						if (!dirExists) {
-							// Create directory
-							await sftp!.mkdir(dirPath, true);
-						}
+						await recursivelyCreateSftpDirs(sftp!, remotePath);
 
 						if (this.getNodeParameter('binaryData', i) === true) {
 							// Is binary file to upload
@@ -635,7 +627,7 @@ export class Ftp implements INodeType {
 
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{json:{ error: error.message }}]);
+				return this.prepareOutputData([{ json: { error: error.message } }]);
 			}
 
 			throw error;
@@ -661,17 +653,17 @@ function normalizeSFtpItem(input: sftpClient.FileInfo, path: string, recursive =
 }
 
 async function callRecursiveList(path: string, client: sftpClient | ftpClient, normalizeFunction: (input: ftpClient.ListingElement & sftpClient.FileInfo, path: string, recursive?: boolean) => void) {
-	const pathArray : string[] = [path];
+	const pathArray: string[] = [path];
 	let currentPath = path;
-	const directoryItems : sftpClient.FileInfo[] = [];
+	const directoryItems: sftpClient.FileInfo[] = [];
 	let index = 0;
 
 	do {
 		// tslint:disable-next-line: array-type
-		const returnData : sftpClient.FileInfo[] | (string | ftpClient.ListingElement)[] = await client.list(pathArray[index]);
+		const returnData: sftpClient.FileInfo[] | (string | ftpClient.ListingElement)[] = await client.list(pathArray[index]);
 
 		// @ts-ignore
-		returnData.map((item : sftpClient.FileInfo) => {
+		returnData.map((item: sftpClient.FileInfo) => {
 			if ((pathArray[index] as string).endsWith('/')) {
 				currentPath = `${pathArray[index]}${item.name}`;
 			} else {
@@ -692,4 +684,13 @@ async function callRecursiveList(path: string, client: sftpClient | ftpClient, n
 
 
 	return directoryItems;
+}
+
+async function recursivelyCreateSftpDirs(sftp: sftpClient, path: string) {
+	const dirPath = dirname(path);
+	const dirExists = await sftp!.exists(dirPath);
+
+	if (!dirExists) {
+		await sftp!.mkdir(dirPath, true);
+	}
 }
