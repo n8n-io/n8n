@@ -51,6 +51,7 @@ export class Ftp implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
+				// nodelinter-ignore-next-line
 				name: 'ftp',
 				required: true,
 				displayOptions: {
@@ -62,6 +63,7 @@ export class Ftp implements INodeType {
 				},
 			},
 			{
+				// nodelinter-ignore-next-line
 				name: 'sftp',
 				required: true,
 				displayOptions: {
@@ -124,6 +126,7 @@ export class Ftp implements INodeType {
 				],
 				default: 'download',
 				description: 'Operation to perform.',
+				noDataExpression: true,
 			},
 
 			// ----------------------------------
