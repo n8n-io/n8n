@@ -11,6 +11,8 @@ import {
 	IMongoParametricCredentials,
 } from './mongo.node.types';
 
+import { get, set } from 'lodash';
+
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
  *
@@ -108,45 +110,16 @@ export function getItemCopy(
 	});
 }
 
-/**
- * Assign a Date Object to an Field
- * @param {Object} insertItem the item object
- * @param {string} str the path to set value
- * @param {Date} val the date value
- * @returns
- */
-function setDateField(insertItem: IDataObject, str: string, val: Date) {
-	const path = str.split('.') || [];
-	while (path.length > 1){
-		const item = path.shift() as string;
-		if (item !== undefined) {
-			insertItem = insertItem[item] as IDataObject;
-		}
-	}
-	return insertItem[path.shift() as string] = val;
-}
-
-/**
- *
- * @param {Object} insertItem the item object
- * @param {string} str the path to get value
- * @returns
- */
-function getDateField(insertItem: IDataObject, str: string) {
-	const path = str.split('.') || [];
-	for (let i = 0; i < path.length; i++){
-		insertItem = insertItem[path[i]] as IDataObject;
-	}
-	return insertItem;
-}
-
 export function handleDateFields(insertItems: IDataObject[], fields: string) {
-	const dateFields = fields.split(',');
+	const dateFields = fields.split(',').map(field => field.trim());
+
 	for (let i = 0; i < insertItems.length; i++) {
-		for(const dateField of dateFields){
-			const dateValue = getDateField(insertItems[i], dateField);
-			if (undefined !== dateValue){
-				setDateField(insertItems[i], dateField, new Date(dateValue as unknown as string));
+		for (const field of dateFields) {
+			const fieldValue = get(insertItems[i], field) as string;
+			const date = new Date(fieldValue);
+
+			if (fieldValue && !isNaN(date.valueOf())) {
+				set(insertItems[i], field, date);
 			}
 		}
 	}

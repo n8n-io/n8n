@@ -267,7 +267,7 @@ export const nodeDescription: INodeTypeDescription = {
 					type: 'string',
 					default: '',
 					description: 'Comma separeted list of fields that will be parse as Mongo Date type.',
-					hint: 'You can use dot notation here to specify a path to date field'
+					hint: 'You can use dot notation here to specify a path to date field',
 				},
 			],
 		},
