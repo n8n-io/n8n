@@ -1,10 +1,10 @@
 {
 	"about": {
 		"aboutN8n": "About n8n",
-		"apacheWithCommons20Clause": "Apache 2.0 with Commons Clause",
 		"close": "Close",
 		"license": "License",
 		"n8nVersion": "n8n Version",
+		"n8nLicense": "Sustainable Use License",
 		"sourceCode": "Source Code"
 	},
 	"binaryDataDisplay": {
