@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, JsonObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
@@ -55,7 +55,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 		return returnData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -75,15 +75,13 @@ export async function mauticApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	do {
 		responseData = await mauticApiRequest.call(this, method, endpoint, body, query);
 		const values = Object.values(responseData[propertyName]);
-		for (const value of values) {
-			data.push(value as IDataObject);
-		}
-		returnData.push.apply(returnData, data);
-		query.start++;
+		//@ts-ignore
+		returnData.push.apply(returnData, values);
+		query.start += query.limit;
 		data = [];
 	} while (
 		responseData.total !== undefined &&
-		((query.limit * query.start) - parseInt(responseData.total, 10)) < 0
+		(returnData.length - parseInt(responseData.total, 10)) < 0
 	);
 
 	return returnData;

@@ -27,17 +27,16 @@
 					)}}</strong> {{ $locale.baseText('updatesPanel.behindTheLatest') }}
 				</p>
 
-				<a
-					:class="$style['info-url']"
-					:href="infoUrl"
+				<n8n-link
 					v-if="infoUrl"
-					target="_blank"
+					:to="infoUrl"
+					:bold="true"
 				>
 					<font-awesome-icon icon="info-circle"></font-awesome-icon>
 					<span>
 						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>
-				</a>
+				</n8n-link>
 
 			</section>
 			<section :class="$style.versions">
@@ -118,20 +117,5 @@ export default Vue.extend({
 
 .versions-card {
 	margin-block-end: 15px;
-}
-
-.info-url {
-	text-decoration: none;
-	font-size: 14px;
-
-	svg {
-		color: $--updates-panel-info-icon-color;
-		margin-right: 5px;
-	}
-
-	span {
-		color: $--updates-panel-info-url-color;
-		font-weight: 600;
-	}
 }
 </style>

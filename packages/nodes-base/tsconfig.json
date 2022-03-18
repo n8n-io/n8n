@@ -2,8 +2,7 @@
 	"compilerOptions": {
 		"lib": [
 			"dom",
-			"es2017",
-			"es2019.array"
+			"es2019"
 		],
 		"types": [
 			"node",
@@ -16,7 +15,7 @@
 		"resolveJsonModule": true,
 		"declaration": true,
 		"outDir": "./dist/",
-		"target": "es2017",
+		"target": "es2019",
 		"sourceMap": true
 	},
 	"include": [
