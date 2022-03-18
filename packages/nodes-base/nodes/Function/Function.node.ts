@@ -54,11 +54,24 @@ return items;`,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		// const item = this.getInputData();
-		let items = this.getInputData();
+		const items = this.getInputData();
+		const length = items.length as unknown as number;
+		
+		let returnData: INodeExecutionData[] = [];
 
-		// Copy the items as they may get changed in the functions
-		items = JSON.parse(JSON.stringify(items));
+		let item: INodeExecutionData;
+		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+			item = items[itemIndex];
+			const newItem: INodeExecutionData = {
+				json: JSON.parse(JSON.stringify(item.json)),
+			};
+			if (item.binary !== undefined) {
+				newItem.binary = {};
+				Object.assign(newItem.binary, item.binary);
+			}
+
+			returnData.push(newItem);
+		}
 
 		const cleanupData = (inputData: IDataObject): IDataObject => {
 			Object.keys(inputData).map(key => {
@@ -80,7 +93,7 @@ return items;`,
 			getNodeParameter: this.getNodeParameter,
 			getWorkflowStaticData: this.getWorkflowStaticData,
 			helpers: this.helpers,
-			items,
+			returnData,
 			// To be able to access data of other items
 			$item: (index: number) => this.getWorkflowDataProxy(index),
 		};
@@ -119,17 +132,17 @@ return items;`,
 
 		try {
 			// Execute the function code
-			items = (await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname));
-			items = this.helpers.normalizeItems(items);
+			returnData = (await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname));
+			returnData = this.helpers.normalizeItems(returnData);
 
 			// Do very basic validation of the data
-			if (items === undefined) {
+			if (returnData === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No data got returned. Always return an Array of items!');
 			}
-			if (!Array.isArray(items)) {
+			if (!Array.isArray(returnData)) {
 				throw new NodeOperationError(this.getNode(), 'Always an Array of items has to be returned!');
 			}
-			for (const item of items) {
+			for (const item of returnData) {
 				if (item.json === undefined) {
 					throw new NodeOperationError(this.getNode(), 'All returned items have to contain a property named "json"!');
 				}
@@ -147,7 +160,7 @@ return items;`,
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
-				items=[{json:{ error: error.message }}];
+				returnData=[{json:{ error: error.message }}];
 			} else {
 				// Try to find the line number which contains the error and attach to error message
 				const stackLines = error.stack.split('\n');
@@ -166,6 +179,6 @@ return items;`,
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return this.prepareOutputData(returnData);
 	}
 }
