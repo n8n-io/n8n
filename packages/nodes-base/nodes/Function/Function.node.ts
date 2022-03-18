@@ -93,7 +93,7 @@ return items;`,
 			getNodeParameter: this.getNodeParameter,
 			getWorkflowStaticData: this.getWorkflowStaticData,
 			helpers: this.helpers,
-			returnData,
+			items: returnData,
 			// To be able to access data of other items
 			$item: (index: number) => this.getWorkflowDataProxy(index),
 		};
