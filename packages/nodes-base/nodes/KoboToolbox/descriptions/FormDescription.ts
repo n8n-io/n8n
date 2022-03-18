@@ -72,7 +72,7 @@ export const formFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If checked, all results will be returned instead of just the first page - WARNING, this can cause a lot of data to be returned!',
+		description: 'Whether to return all results',
 	},
 	{
 		displayName: 'Limit',
@@ -96,7 +96,7 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: 1000,
-		description: 'Max records to return (up to 30000)',
+		description: 'The number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -116,41 +116,59 @@ export const formFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Descending',
-				name: 'descending',
-				type: 'boolean',
-				default: true,
-				description: 'Sort by descending order',
-			},
-			{
-				displayName: 'Order By',
-				name: 'ordering',
-				type: 'options',
-				required: false,
-				default: 'date_modified',
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: '',
+				placeholder: 'Add Sort',
 				options: [
 					{
-						name: 'Asset Type',
-						value: 'asset_type',
-					},
-					{
-						name: 'Date Modified',
-						value: 'date_modified',
-					},
-					{
-						name: 'Name',
-						value: 'name',
-					},
-					{
-						name: 'Owner Username',
-						value: 'owner__username',
-					},
-					{
-						name: 'Subscribers Count',
-						value: 'subscribers_count',
+						displayName: 'Sort',
+						name: 'value',
+						values: [
+							{
+								displayName: 'Descending',
+								name: 'descending',
+								type: 'boolean',
+								default: true,
+								description: 'Sort by descending order',
+							},
+							{
+								displayName: 'Order By',
+								name: 'ordering',
+								type: 'options',
+								required: false,
+								default: 'date_modified',
+								options: [
+									{
+										name: 'Asset Type',
+										value: 'asset_type',
+									},
+									{
+										name: 'Date Modified',
+										value: 'date_modified',
+									},
+									{
+										name: 'Name',
+										value: 'name',
+									},
+									{
+										name: 'Owner Username',
+										value: 'owner__username',
+									},
+									{
+										name: 'Subscribers Count',
+										value: 'subscribers_count',
+									},
+								],
+								description: 'Field to order by',
+							},
+						],
 					},
 				],
-				description: 'Field to order by',
 			},
 		],
 	},

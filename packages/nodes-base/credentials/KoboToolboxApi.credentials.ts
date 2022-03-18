@@ -10,18 +10,18 @@ export class KoBoToolboxApi implements ICredentialType {
 	documentationUrl = 'koBoToolbox';
 	properties = [
 		{
-			displayName: 'API root URL (e.g. https://kf.kobotoolbox.org/)',
+			displayName: 'API root URL',
 			name: 'URL',
 			type: 'string' as NodePropertyTypes,
-			default: 'https://kf.kobotoolbox.org/',
+			default: '',
 			placeholder: 'https://kf.kobotoolbox.org/',
 		},
 		{
-			displayName: 'API Token (get it from https://[api-root]/token/?format=json)',
+			displayName: 'API Token',
 			name: 'token',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			description: 'You can get your API token at https://[api-root]/token/?format=json (for a logged in user)',
+			hint: 'You can get your API token at https://[api-root]/token/?format=json (for a logged in user)',
 		},
 	];
 }

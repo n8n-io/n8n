@@ -13,6 +13,13 @@ export const options = {
 			displayName: 'Attachments Prefix',
 			name: 'dataPropertyAttachmentsPrefixName',
 			type: 'string',
+			displayOptions: {
+				show: {
+					download: [
+						true,
+					],
+				},
+			},
 			default: 'attachment_',
 			description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 		},
@@ -27,6 +34,13 @@ export const options = {
 			displayName: 'File Size',
 			name: 'version',
 			type: 'options',
+			displayOptions: {
+				show: {
+					download: [
+						true,
+					],
+				},
+			},
 			default: 'download_url',
 			description: 'Attachment size to retrieve, if multiple versions are available',
 			options: [

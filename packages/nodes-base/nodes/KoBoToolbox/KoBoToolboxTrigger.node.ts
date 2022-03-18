@@ -48,7 +48,7 @@ export class KoBoToolboxTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Form ID',
+				displayName: 'Form Name/ID',
 				name: 'assetUid',
 				type: 'options',
 				typeOptions: {
@@ -143,8 +143,6 @@ export class KoBoToolboxTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const formatOptions = this.getNodeParameter('formatOptions') as IDataObject;
-
-		// Logger.debug('KoBoToolboxTriggerReceived', req.body);
 
 		const responseData = formatOptions.reformat
 			? formatSubmission(req.body, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))

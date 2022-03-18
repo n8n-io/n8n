@@ -26,14 +26,14 @@ export const submissionOperations: INodeProperties[] = [
 				description: 'Get a single submission',
 			},
 			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all submissions',
+			},
+			{
 				name: 'Get Validation Status',
 				value: 'getValidation',
 				description: 'Get the validation status for the submission',
-			},
-			{
-				name: 'Query',
-				value: 'query',
-				description: 'Query matching submissions',
 			},
 			{
 				name: 'Update Validation Status',
@@ -41,7 +41,7 @@ export const submissionOperations: INodeProperties[] = [
 				description: 'Set the validation status of the submission',
 			},
 		],
-		default: 'query',
+		default: 'getAll',
 	},
 ];
 
@@ -125,10 +125,10 @@ export const submissionFields: INodeProperties[] = [
 		description: 'Desired Validation Status',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                submission:query                            */
+	/*                                submission:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name/ID',
 		name: 'assetUid',
 		type: 'options',
 		typeOptions: {
@@ -142,7 +142,7 @@ export const submissionFields: INodeProperties[] = [
 					'submission',
 				],
 				operation: [
-					'query',
+					'getAll',
 				],
 			},
 		},
@@ -160,11 +160,11 @@ export const submissionFields: INodeProperties[] = [
 					'submission',
 				],
 				operation: [
-					'query',
+					'getAll',
 				],
 			},
 		},
-		description: 'If checked, all results will be returned instead of just the first page - WARNING, this can cause a lot of data to be returned!',
+		description: 'Whether to return all results',
 	},
 	{
 		displayName: 'Limit',
@@ -180,7 +180,7 @@ export const submissionFields: INodeProperties[] = [
 					'submission',
 				],
 				operation: [
-					'query',
+					'getAll',
 				],
 				returnAll: [
 					false,
@@ -188,7 +188,7 @@ export const submissionFields: INodeProperties[] = [
 			},
 		},
 		default: 100,
-		description: 'Max records to return (up to 30000)',
+		description: 'The number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -201,7 +201,7 @@ export const submissionFields: INodeProperties[] = [
 				],
 				operation: [
 					'get',
-					'query',
+					'getAll',
 				],
 			},
 		},
@@ -212,6 +212,13 @@ export const submissionFields: INodeProperties[] = [
 				displayName: 'Attachments Prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
+				displayOptions: {
+					show: {
+						download: [
+							true,
+						],
+					},
+				},
 				default: 'attachment_',
 				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
@@ -223,16 +230,23 @@ export const submissionFields: INodeProperties[] = [
 				description: 'Download submitted attachments',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Fields to Retrieve',
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of fields to retrieve (e.g. _submission_time,_submitted_by)',
+				description: 'Comma-separated list of fields to retrieve (e.g. _submission_time,_submitted_by). If left blank, all fields are retrieved',
 			},
 			{
 				displayName: 'File Size',
 				name: 'version',
 				type: 'options',
+				displayOptions: {
+					show: {
+						download: [
+							true,
+						],
+					},
+				},
 				default: 'download_url',
 				description: 'Attachment size to retrieve, if multiple versions are available',
 				options: [
@@ -275,13 +289,13 @@ export const submissionFields: INodeProperties[] = [
 				default: false,
 				description: 'Apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
 			},
-			{
-				displayName: 'Sort',
-				name: 'sort',
-				type: 'json',
-				default: '',
-				description: 'Sort predicates, in Mongo JSON format (e.g. {"_submission_time":1})',
-			},
+			// {
+			// 	displayName: 'Sort',
+			// 	name: 'sort',
+			// 	type: 'json',
+			// 	default: '',
+			// 	description: 'Sort predicates, in Mongo JSON format (e.g. {"_submission_time":1})',
+			// },
 		],
 	},
 ];

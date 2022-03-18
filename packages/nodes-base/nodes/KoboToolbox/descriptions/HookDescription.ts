@@ -51,8 +51,29 @@ export const hookFields: INodeProperties[] = [
 	/*                                hook:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Form ID',
+		name: 'assetUid',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'hook',
+				],
+				operation: [
+					'get',
+					'retryOne',
+					'retryAll',
+					'getLogs',
+				],
+			},
+		},
+		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+	},
+	{
 		displayName: 'Hook ID',
-		name: 'id',
+		name: 'hookId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -87,7 +108,6 @@ export const hookFields: INodeProperties[] = [
 				],
 				operation: [
 					'getAll',
-					'getLogs',
 				],
 			},
 		},
@@ -112,42 +132,6 @@ export const hookFields: INodeProperties[] = [
 		description: 'Hook log ID (starts with hl, e.g. hlSbGKaUKzTVNoWEVMYbLHe)',
 	},
 	{
-		displayName: 'Status',
-		name: 'status',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'getLogs',
-				],
-			},
-		},
-		default: '',
-		options: [
-			{
-				name: 'Any',
-				value: '',
-			},
-			{
-				name: 'Failed',
-				value: '0',
-			},
-			{
-				name: 'Pending',
-				value: '1',
-			},
-			{
-				name: 'Success',
-				value: '2',
-			},
-		],
-		description: 'Hook status to filter for (0=failed, 1=pending, 2=success)',
-	},
-
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -160,10 +144,11 @@ export const hookFields: INodeProperties[] = [
 				],
 				operation: [
 					'getAll',
+					'getLogs',
 				],
 			},
 		},
-		description: 'If checked, all results will be returned instead of just the first page - WARNING, this can cause a lot of data to be returned!',
+		description: 'Whether to return all results',
 	},
 	{
 		displayName: 'Limit',
@@ -180,6 +165,7 @@ export const hookFields: INodeProperties[] = [
 				],
 				operation: [
 					'getAll',
+					'getLogs',
 				],
 				returnAll: [
 					false,
@@ -187,6 +173,6 @@ export const hookFields: INodeProperties[] = [
 			},
 		},
 		default: 1000,
-		description: 'Max records to return (up to 30000)',
+		description: 'The number of results to return',
 	},
 ];

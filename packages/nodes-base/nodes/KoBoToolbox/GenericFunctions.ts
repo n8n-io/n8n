@@ -14,8 +14,6 @@ import {
 
 import * as _ from 'lodash';
 
-import axios from 'axios';
-
 export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('koBoToolboxApi') as IDataObject;
 
@@ -23,7 +21,7 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 	const returnAll = !!option.returnAll;
 	if (returnAll) {
 		// Override manual pagination options
-		_.set(option, 'qs.limit', 30000);
+		_.set(option, 'qs.limit', 3000);
 		// Don't pass this custom param to helpers.httpRequest
 		delete option.returnAll;
 	}
@@ -46,7 +44,6 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 	let results = null;
 	let keepLooking = true;
 	while (keepLooking) {
-		// Logger.debug('KoBoToolboxApiRequest', options);
 		const response = await this.helpers.httpRequest(options);
 		// Append or set results
 		results = response.results ? _.concat(results || [], response.results) : response;
@@ -129,12 +126,9 @@ const formatValue = (value: any, format: string): any => { //tslint:disable-line
 export function formatSubmission(submission: IDataObject, selectMasks: string[] = [], numberMasks: string[] = []): IDataObject {
 	// Create a shallow copy of the submission
 	const response = {} as IDataObject;
-	// Logger.debug('KoBoToolboxFormatSubmission', submission);
-
 
 	for (const key of Object.keys(submission)) {
 		let value = _.clone(submission[key]);
-		// Logger.debug(`Formatting ${key} : ${value}`);
 		// Sanitize key names: split by group, trim _
 		const sanitizedKey = key.split('/').map(k => _.trim(k, ' _')).join('.');
 		const leafKey = sanitizedKey.split('.').pop() || '';
@@ -188,7 +182,7 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 			// NOTE: this needs to follow redirects (possibly across domains), while keeping Authorization headers
 			// The Axios client will not propagate the Authorization header on redirects (see https://github.com/axios/axios/issues/3607), so we need to follow ourselves...
 			let response = null;
-			let attachmentUrl = attachment[options.version as string] || attachment.download_url as string;
+			const attachmentUrl = attachment[options.version as string] || attachment.download_url as string;
 			let final = false, redir = 0;
 
 			const axiosOptions: IHttpRequestOptions = {
@@ -198,25 +192,28 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 					'Authorization': `Token ${credentials.token}`,
 				},
 				ignoreHttpStatusErrors: true,
+				returnFullResponse: true,
+				disableFollowRedirect: true,
 				encoding: 'arraybuffer',
 			};
 
 			while (!final && redir < 5) {
 				response = await this.helpers.httpRequest(axiosOptions);
+
 				if (response && response.headers.location) {
 					// Follow redirect
-					attachmentUrl = response.headers.location;
+					axiosOptions.url = response.headers.location;
 					redir++;
 				} else {
 					final = true;
 				}
 			}
 
-			const dataPropertyAttachmentsPrefixName = this.getNodeParameter('dataPropertyAttachmentsPrefixName', 0, 'attachment_');
+			const dataPropertyAttachmentsPrefixName = options.dataPropertyAttachmentsPrefixName || 'attachment_';
 			const fileName = filename.split('/').pop();
 
-			if (response && response.data) {
-				binaryItem.binary![`${dataPropertyAttachmentsPrefixName}${index}`] = await this.helpers.prepareBinaryData(Buffer.from(response.data), fileName);
+			if (response && response.body) {
+				binaryItem.binary![`${dataPropertyAttachmentsPrefixName}${index}`] = await this.helpers.prepareBinaryData(response.body, fileName);
 			}
 		}
 	} else {
@@ -237,6 +234,5 @@ export async function loadSurveys(this: ILoadOptionsFunctions): Promise<INodePro
 		scroll: true,
 	});
 
-	// Logger.debug('LoadSurveys', responseData);
 	return responseData?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];  // tslint:disable-line:no-any
 }
