@@ -10,7 +10,10 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -27,6 +30,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
+		headers: {},
 		uri: uri || `https://api.hubapi.com${endpoint}`,
 		body,
 		json: true,
@@ -38,6 +42,11 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			const credentials = await this.getCredentials('hubspotApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
+			return await this.helpers.request!(options);
+		} else if (authenticationMethod === 'appToken') {
+			const credentials = await this.getCredentials('hubspotAppToken');
+
+			options.headers!['Authorization'] = `Bearer ${credentials!.appToken}`;
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'developerApi') {
 			if (endpoint.includes('webhooks')) {
@@ -53,7 +62,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer', includeCredentialsOnRefreshOnBody: true });
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -1963,3 +1972,33 @@ export const getAssociations = (associations: {
 		...(associations.ticketIds && { ticketIds: associations.ticketIds.toString().split(',') }),
 	};
 };
+
+export async function validateCredentials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject,
+): Promise<any> { // tslint:disable-line:no-any
+	const credentials = decryptedCredentials;
+
+	const {
+		apiKey,
+		appToken,
+	} = credentials as {
+		appToken: string,
+		apiKey: string,
+	};
+
+	const options: OptionsWithUri = {
+		method: 'GET',
+		headers: {},
+		uri: `https://api.hubapi.com/deals/v1/deal/paged`,
+		json: true,
+	};
+
+	if (apiKey) {
+		options.qs = { hapikey: apiKey };
+	} else {
+		options.headers = { Authorization: `Bearer ${appToken}` };
+	}
+
+	return await this.helpers.request(options);
+}

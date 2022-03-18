@@ -156,6 +156,10 @@ export class If implements INodeType {
 										name: 'Is Empty',
 										value: 'isEmpty',
 									},
+									{
+										name: 'Is Not Empty',
+										value: 'isNotEmpty',
+									},
 								],
 								default: 'smaller',
 								description: 'Operation to decide where the the data should be mapped to.',
@@ -168,6 +172,7 @@ export class If implements INodeType {
 									hide: {
 										operation: [
 											'isEmpty',
+											'isNotEmpty',
 										],
 									},
 								},
@@ -197,32 +202,48 @@ export class If implements INodeType {
 										value: 'contains',
 									},
 									{
+										name: 'Not Contains',
+										value: 'notContains',
+									},
+									{
 										name: 'Ends With',
 										value: 'endsWith',
+									},
+									{
+										name: 'Not Ends With',
+										value: 'notEndsWith',
 									},
 									{
 										name: 'Equal',
 										value: 'equal',
 									},
 									{
-										name: 'Not Contains',
-										value: 'notContains',
-									},
-									{
 										name: 'Not Equal',
 										value: 'notEqual',
 									},
 									{
-										name: 'Regex',
+										name: 'Regex Match',
 										value: 'regex',
+									},
+									{
+										name: 'Regex Not Match',
+										value: 'notRegex',
 									},
 									{
 										name: 'Starts With',
 										value: 'startsWith',
 									},
 									{
+										name: 'Not Starts With',
+										value: 'notStartsWith',
+									},
+									{
 										name: 'Is Empty',
 										value: 'isEmpty',
+									},
+									{
+										name: 'Is Not Empty',
+										value: 'isNotEmpty',
 									},
 								],
 								default: 'equal',
@@ -236,7 +257,9 @@ export class If implements INodeType {
 									hide: {
 										operation: [
 											'isEmpty',
+											'isNotEmpty',
 											'regex',
+											'notRegex',
 										],
 									},
 								},
@@ -251,6 +274,7 @@ export class If implements INodeType {
 									show: {
 										operation: [
 											'regex',
+											'notRegex',
 										],
 									},
 								},
@@ -303,6 +327,7 @@ export class If implements INodeType {
 			contains: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || '').toString().includes((value2 || '').toString()),
 			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 || '').toString().includes((value2 || '').toString()),
 			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).endsWith(value2 as string),
+			notEndsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 as string).endsWith(value2 as string),
 			equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 			notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
 			larger: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
@@ -310,7 +335,9 @@ export class If implements INodeType {
 			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
 			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) <= (value2 || 0),
 			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).startsWith(value2 as string),
-			isEmpty: (value1: NodeParameterValue) => [undefined, null, ''].includes(value1 as string),
+			notStartsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 as string).startsWith(value2 as string),
+			isEmpty: (value1: NodeParameterValue) => (([undefined, null, ''].includes(value1 as string)) || ((typeof value1 === 'object' && value1 !== null) ? (Object.entries(value1 as string).length === 0) : false)),
+			isNotEmpty: (value1: NodeParameterValue) => !(([undefined, null, ''].includes(value1 as string)) || ((typeof value1 === 'object' && value1 !== null) ? (Object.entries(value1 as string).length === 0) : false)),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
 				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
@@ -324,6 +351,20 @@ export class If implements INodeType {
 				}
 
 				return !!(value1 || '').toString().match(regex);
+			},
+			notRegex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
+				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
+
+				let regex: RegExp;
+				if (!regexMatch) {
+					regex = new RegExp((value2 || '').toString());
+				} else if (regexMatch.length === 1) {
+					regex = new RegExp(regexMatch[1]);
+				} else {
+					regex = new RegExp(regexMatch[1], regexMatch[2]);
+				}
+
+				return !(value1 || '').toString().match(regex);
 			},
 		};
 

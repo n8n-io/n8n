@@ -3,7 +3,9 @@ import {
 	ITelemetrySettings,
 	IDataObject,
 } from 'n8n-workflow';
-import { ILogLevel, INodeCreateElement } from "@/Interface";
+import { ILogLevel, INodeCreateElement, IRootState } from "@/Interface";
+import { Route } from "vue-router";
+import { Store } from "vuex";
 
 declare module 'vue/types/vue' {
 	interface Vue {
@@ -35,7 +37,9 @@ interface IUserNodesPanelSession {
 
 class Telemetry {
 
-	private pageEventQueue: Array<{category?: string, name?: string | null}>;
+	private pageEventQueue: Array<{route: Route}>;
+	private previousPath: string;
+	private store: Store<IRootState> | null;
 
 	private get telemetry() {
 		// @ts-ignore
@@ -53,18 +57,32 @@ class Telemetry {
 
 	constructor() {
 		this.pageEventQueue = [];
+		this.previousPath = '';
+		this.store = null;
 	}
 
-	init(options: ITelemetrySettings, instanceId: string, logLevel?: ILogLevel) {
+	init(options: ITelemetrySettings, { instanceId, logLevel, userId, store }: { instanceId: string, logLevel?: ILogLevel, userId?: string, store: Store<IRootState> }) {
 		if (options.enabled && !this.telemetry) {
 			if(!options.config) {
 				return;
 			}
 
+			this.store = store;
 			const logging = logLevel === 'debug' ? { logLevel: 'DEBUG'} : {};
 			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false, ...logging});
-			this.telemetry.identify(instanceId);
+			this.identify(instanceId, userId);
 			this.flushPageEvents();
+		}
+	}
+
+	identify(instanceId: string, userId?: string) {
+		const traits = { instance_id: instanceId };
+		if (userId) {
+			this.telemetry.identify(`${instanceId}#${userId}`, traits);
+		}
+		else {
+			this.telemetry.reset();
+			this.telemetry.identify(undefined, traits);
 		}
 	}
 
@@ -74,14 +92,25 @@ class Telemetry {
 		}
 	}
 
-	page(category?: string, name?: string | null) {
+	page(route: Route) {
 		if (this.telemetry)	{
-			this.telemetry.page(category, name);
+			if (route.path === this.previousPath) { // avoid duplicate requests query is changed for example on search page
+				return;
+			}
+			this.previousPath = route.path;
+
+			const pageName = route.name;
+			let properties: {[key: string]: string} = {};
+			if (this.store && route.meta && route.meta.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
+				properties = route.meta.telemetry.getProperties(route, this.store);
+			}
+
+			const category = (route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
+			this.telemetry.page(category, pageName, properties);
 		}
 		else {
 			this.pageEventQueue.push({
-				category,
-				name,
+				route,
 			});
 		}
 	}
@@ -89,10 +118,8 @@ class Telemetry {
 	flushPageEvents() {
 		const queue = this.pageEventQueue;
 		this.pageEventQueue = [];
-		queue.forEach(({category, name}) => {
-			if (this.telemetry) {
-				this.telemetry.page(category, name);
-			}
+		queue.forEach(({route}) => {
+			this.page(route);
 		});
 	}
 
