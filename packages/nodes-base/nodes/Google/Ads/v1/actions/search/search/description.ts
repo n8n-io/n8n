@@ -1,16 +1,16 @@
 import {
-	UserListProperties,
+	SearchProperties,
 } from '../../Interfaces';
 
-export const userListDescription: UserListProperties = [
+export const searchDescription: SearchProperties = [
 	{
 		displayName: 'See <a href="https://developers.google.com/google-ads/api/docs/query/overview" target="_blank">Google Ads Guide</a> To GQL',
 		name: 'jsonNotice',
 		type: 'notice',
 		displayOptions: {
 			show: {
-				resource: ['userList'],
-				operation: ['custom'],
+				resource: ['search'],
+				operation: ['search'],
 			},
 		},
 		default: '',
@@ -25,8 +25,8 @@ export const userListDescription: UserListProperties = [
 		},
 		displayOptions: {
 			show: {
-				resource: ['userList'],
-				operation: ['custom'],
+				resource: ['search'],
+				operation: ['search'],
 			},
 		},
 		default: '',
@@ -39,8 +39,8 @@ export const userListDescription: UserListProperties = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: ['userList'],
-				operation: ['custom'],
+				resource: ['search'],
+				operation: ['search'],
 			},
 		},
 		description: 'Whether to simplify the output data',

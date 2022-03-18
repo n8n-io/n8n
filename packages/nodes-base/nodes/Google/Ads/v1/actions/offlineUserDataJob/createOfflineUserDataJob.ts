@@ -14,16 +14,10 @@ export async function createOfflineUserDataJob(this: IExecuteFunctions, index: n
 	// https://developers.google.com/google-ads/api/reference/rpc/v9/CreateOfflineUserDataJobRequest
 
 	const customerId = this.getNodeParameter('customerId', index) as string;
-	const devToken = this.getNodeParameter('devToken', index) as string;
 	const userListResourceName = this.getNodeParameter('userListResourceName', index) as string;
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = `customers/${customerId}/offlineUserDataJobs:create`;
-
-	const headers = {
-		'developer-token': devToken,
-		'login-customer-id': customerId,
-	} as IDataObject;
+	const endpoint = `/${customerId}/offlineUserDataJobs:create`;
 
 	const form = {
 		job: {
@@ -34,5 +28,5 @@ export async function createOfflineUserDataJob(this: IExecuteFunctions, index: n
 		},
 	} as IDataObject;
 
-	return await apiRequest.call(this, requestMethod, endpoint, form, qs, undefined, headers);
+	return await apiRequest.call(this, requestMethod, endpoint, form, qs);
 }

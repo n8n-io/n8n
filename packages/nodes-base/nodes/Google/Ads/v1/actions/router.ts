@@ -8,6 +8,7 @@ import {
 
 import * as campaign from './campaign';
 import * as userList from './userList';
+import * as search from './search';
 import { Ads } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
@@ -30,6 +31,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			} else if (ads.resource === 'userList') {
 				// @ts-ignore
 				 operationResult.push(...await userList[ads.operation].execute.call(this, i));
+			} else if (ads.resource === 'search') {
+				// @ts-ignore
+				 operationResult.push(...await search[ads.operation].execute.call(this, i));
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {

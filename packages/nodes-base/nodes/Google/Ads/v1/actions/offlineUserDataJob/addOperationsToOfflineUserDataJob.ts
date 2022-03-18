@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -18,23 +19,16 @@ import {
 export async function addOperationsToOfflineUserDataJob(this: IExecuteFunctions, index: number, resourceName: string, operation: string): Promise<IDataObject> {
 	// https://developers.google.com/google-ads/api/reference/rpc/v9/AddOfflineUserDataJobOperationsRequest
 
-	const customerId = this.getNodeParameter('customerId', index) as string;
-	const devToken = this.getNodeParameter('devToken', index) as string;
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = `${resourceName}:addOperations`;
-
-	const headers = {
-		'developer-token': devToken,
-		'login-customer-id': customerId,
-	} as IDataObject;
+	const endpoint = `/${resourceName}:addOperations`;
 
 	const userIdentifiersArray: IDataObject[] = [];
 
+	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 	// add email as userIdentifier
-	const email = this.getNodeParameter('email', index) as IDataObject;
-	if (email.metadataValues !== undefined) {
-		const normalizedEmail = normalize((email.metadataValues as IDataObject).email as string);
+	if (additionalFields.email !== undefined) {
+		const normalizedEmail = normalize(additionalFields.email as string);
 
 		const hashedEmail = hash(normalizedEmail);
 
@@ -43,34 +37,31 @@ export async function addOperationsToOfflineUserDataJob(this: IExecuteFunctions,
 			hashedEmail,
 		});
 	}
-
 	// add phoneNumber as userIdentifier
-	const phoneNumber = this.getNodeParameter('phoneNumber', index) as IDataObject;
-	if (phoneNumber.metadataValues !== undefined) {
+	if (additionalFields.phoneNumber !== undefined) {
 
-		const hashedPhoneNumber = hash((phoneNumber.metadataValues as IDataObject).phoneNumber as string);
+		const hashedPhoneNumber = hash(additionalFields.phoneNumber as string);
 
 		userIdentifiersArray.push({
 			userIdentifierSource: 'UNSPECIFIED',
 			hashedPhoneNumber,
 		});
 	}
-
 	// add addressInfo as userIdentifier
-	const addressInfo = this.getNodeParameter('addressInfo', index) as IDataObject;
-	if (addressInfo.metadataValues !== undefined) {
+	if (additionalFields.addressInfo !== undefined) {
+		const addressInfo = (additionalFields.addressInfo as IDataObject).metadataValues as IDataObject;
 
-		const normalizedFirstName = normalize((addressInfo.metadataValues as IDataObject).firstName as string);
+		const normalizedFirstName = normalize(addressInfo.firstName as string);
 		const hashedFirstName = hash(normalizedFirstName);
 
-		const normalizedLastName = normalize((addressInfo.metadataValues as IDataObject).lastName as string);
+		const normalizedLastName = normalize(addressInfo.lastName as string);
 		const hashedLastName = hash(normalizedLastName);
 
 		const hashedAddressInfo = {
 			hashedFirstName,
 			hashedLastName,
-			countryCode: (addressInfo.metadataValues as IDataObject).countryCode,
-			postalCode: (addressInfo.metadataValues as IDataObject).postalCode,
+			countryCode: addressInfo.countryCode,
+			postalCode: addressInfo.postalCode,
 		};
 
 		userIdentifiersArray.push({
@@ -101,8 +92,7 @@ export async function addOperationsToOfflineUserDataJob(this: IExecuteFunctions,
 			],
 		} as IDataObject;
 	} else {
-
+		throw new NodeOperationError(this.getNode(), 'Wrong OfflineUserDataJob operation!');
 	}
-
-	return await apiRequest.call(this, requestMethod, endpoint, form, qs, undefined, headers);
+	return await apiRequest.call(this, requestMethod, endpoint, form, qs);
 }

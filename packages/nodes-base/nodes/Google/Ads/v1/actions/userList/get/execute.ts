@@ -13,18 +13,14 @@ import {
 } from '../../../transport';
 
 export async function get(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const userListId = this.getNodeParameter('userListId', index) as string;
-	const devToken = this.getNodeParameter('devToken', index) as string;
-	const customerId = this.getNodeParameter('customerId', index) as string;
+	// https://developers.google.com/google-ads/api/rest/reference/rest/v9/customers.userLists/get
+
+	const userListResourceName = this.getNodeParameter('userListResourceName', index) as string;
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
-	const endpoint = `customers/${customerId}/userLists/${userListId}`;
-	const headers = {
-		'developer-token': devToken,
-		'login-customer-id': customerId,
-	} as IDataObject;
+	const endpoint = `/${userListResourceName}`;
 
-	const responseData = await apiRequest.call(this, requestMethod, endpoint, undefined, qs, undefined, headers);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, undefined, qs);
 
 	if (responseData.error) {
 		throw new NodeOperationError(this.getNode(), responseData.error);

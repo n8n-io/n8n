@@ -1,14 +1,11 @@
 import * as get from './get';
 import * as getAll from './getAll';
-import * as custom from './custom';
 
 import { INodeProperties } from 'n8n-workflow';
-
 
 export {
 	get,
 	getAll,
-	custom,
 };
 
 export const descriptions: INodeProperties[] = [
@@ -34,16 +31,10 @@ export const descriptions: INodeProperties[] = [
 				value: 'get',
 				description: 'Get the campaign via its ID',
 			},
-			{
-				name: 'Custom',
-				value: 'custom',
-				description: 'Custom query to be executed against the campaign endpoint',
-			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform',
 	},
 	...get.description,
 	...getAll.description,
-	...custom.description,
 ];

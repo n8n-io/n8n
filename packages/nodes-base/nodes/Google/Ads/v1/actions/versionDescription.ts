@@ -5,6 +5,7 @@ import {
 
 import * as campaign from './campaign';
 import * as userList from './userList';
+import * as search from './search';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Ads',
@@ -28,23 +29,39 @@ export const versionDescription: INodeTypeDescription = {
 	],
 	properties: [
 		{
+			displayName: 'Customer ID',
+			name: 'customerId',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getAccessibleCustomers',
+			},
+			required: true,
+			default: '',
+			description: 'The Google Ads customer ID of the account',
+		},
+		{
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',
 			options: [
-				{
-					name: 'Campaign',
-					value: 'campaign',
-				},
+				// {
+				// 	name: 'Campaign',
+				// 	value: 'campaign',
+				// },
 				{
 					name: 'User List',
 					value: 'userList',
+				},
+				{
+					name: 'Search',
+					value: 'search',
 				},
 			],
 			default: 'campaign',
 			description: 'The resource to operate on',
 		},
-		...campaign.descriptions,
+		// ...campaign.descriptions,
 		...userList.descriptions,
+		...search.descriptions,
 	],
 };

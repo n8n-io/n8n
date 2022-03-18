@@ -7,7 +7,7 @@ export const userListGetAllDescription: UserListProperties = [
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
-		default: 'false',
+		default: false,
 		displayOptions: {
 			show: {
 				resource: ['userList'],

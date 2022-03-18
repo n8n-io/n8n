@@ -4,40 +4,6 @@ import {
 
 export const campaignGetAllDescription: CampaignProperties = [
 	{
-		displayName: 'Customer ID',
-		name: 'customerId',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'campaign',
-				],
-			},
-		},
-		default: '',
-		description: 'Your Google Ads customer ID.',
-	},
-	{
-		displayName: 'Developer Token',
-		name: 'devToken',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'campaign',
-				],
-			},
-		},
-		default: '',
-		description: 'Your Google Ads developer token.',
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',

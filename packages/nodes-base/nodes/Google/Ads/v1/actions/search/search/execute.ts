@@ -12,31 +12,29 @@ import {
 } from '../../../transport';
 
 import {
-	simplify
-} from '../../../methods/simplify';
+	mapObjectsToArray,
+	simplify,
+} from '../../../methods';
 
-export async function custom(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function search(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+	// https://developers.google.com/google-ads/api/rest/common/search
+
 	const customerId = this.getNodeParameter('customerId', index) as string;
-	const devToken = this.getNodeParameter('devToken', index) as string;
 	const queryGQL = this.getNodeParameter('queryGQL', index) as string;
 	const simplifyOutput = this.getNodeParameter('simplifyOutput', 0) as boolean;
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = `customers/${customerId}/googleAds:search`;
-	const headers = {
-		'developer-token': devToken,
-		'login-customer-id': customerId,
-	} as IDataObject;
+	const endpoint = `/${customerId}/googleAds:search`;
 
-	const
-		form = {
-			query: queryGQL,
-		};
+	const form = {
+		query: queryGQL,
+	};
 
-	let responseData = await apiRequest.call(this, requestMethod, endpoint, form, qs, undefined, headers);
+	let responseData = await apiRequest.call(this, requestMethod, endpoint, form, qs);
 
 	if (simplifyOutput) {
 		responseData = simplify(responseData);
+		responseData = mapObjectsToArray(responseData);
 	}
 	return this.helpers.returnJsonArray(responseData);
 }

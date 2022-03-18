@@ -14,10 +14,23 @@ export const userListDescription: UserListProperties = [
 		displayOptions: {
 			show: {
 				resource: ['userList'],
-				operation: ['get'],
+				operation: ['deleteOpr'],
 			},
 		},
 		default: '',
-		description: 'The resource name of the user list',
+		description: 'The name of the user list',
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simplifyOutput',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['userList'],
+				operation: ['deleteOpr'],
+			},
+		},
+		description: 'Whether to simplify the output data',
 	},
 ];

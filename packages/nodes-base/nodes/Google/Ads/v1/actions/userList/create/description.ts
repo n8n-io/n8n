@@ -73,7 +73,7 @@ export const userListDescription: UserListProperties = [
 		description: 'A string that uniquely identifies a mobile application from which the data was collected. For iOS, the ID string is the 9 digit string that appears at the end of an App Store URL (example: 476943146). For Android, the ID string is the application\'s package name (example: com.labpixies.colordrips).',
 	},
 	{
-		displayName: 'app_id',
+		displayName: 'Data Source Type',
 		name: 'dataSourceType',
 		type: 'options',
 		default: 'UNSPECIFIED',
@@ -128,11 +128,11 @@ export const userListDescription: UserListProperties = [
 				description: 'Description of this user list',
 			},
 			{
-					displayName: 'Integration Code',
-					name: 'integrationCode',
-					type: 'string',
-					default: '',
-					description: 'An ID from external system. It is used by user list sellers to correlate IDs on their systems.',
+				displayName: 'Integration Code',
+				name: 'integrationCode',
+				type: 'string',
+				default: '',
+				description: 'An ID from external system. It is used by user list sellers to correlate IDs on their systems.',
 			},
 			{
 				displayName: 'Membership Life Span',
@@ -144,12 +144,25 @@ export const userListDescription: UserListProperties = [
 					'However, for CRM based userlists, this field can be set to 10000 which means no expiration.',
 			},
 			{
-					displayName: 'Eligible For Search',
-					name: 'eligibleForSearch',
-					type: 'boolean',
-					default: false,
-					description: 'Whether the user list is eligible for Google Search Network',
+				displayName: 'Eligible For Search',
+				name: 'eligibleForSearch',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the user list is eligible for Google Search Network',
 			},
 		],
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simplifyOutput',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['userList'],
+				operation: ['create'],
+			},
+		},
+		description: 'Whether to simplify the output data',
 	},
 ];
