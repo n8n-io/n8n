@@ -1,0 +1,21 @@
+{
+	"node": "n8n-nodes-base.datagma",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Data & Storage",
+		"Utility"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://doc.datagma.com/reference/getting-started-with-your-api"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://doc.datagma.com/reference/getting-started-with-your-api"
+			}
+		]
+	}
+}
