@@ -21,7 +21,7 @@
   "scripts": {
     "build": "run-script-os",
     "build:default": "tsc && cp -r ./src/UserManagement/email/templates ./dist/src/UserManagement/email",
-    "build:windows": "tsc && robocopy ./src/UserManagement/email/templates ./dist/src/UserManagement/email /e",
+    "build:windows": "tsc && xcopy \"./src/UserManagement/email/templates\" \"./dist/src/UserManagement/email\" /E /H /Y",
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/cli/**/**.ts --write",
     "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli",
