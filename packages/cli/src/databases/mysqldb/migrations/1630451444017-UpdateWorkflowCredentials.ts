@@ -9,8 +9,6 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 	name = 'UpdateWorkflowCredentials1630451444017';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		console.log('Start migration', this.name);
-		console.time(this.name);
 		const tablePrefix = config.get('database.tablePrefix');
 		const helpers = new MigrationHelpers(queryRunner);
 
@@ -145,7 +143,6 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 				queryRunner.query(updateQuery, updateParams);
 			}
 		});
-		console.timeEnd(this.name);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {

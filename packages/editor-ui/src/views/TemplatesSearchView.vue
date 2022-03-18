@@ -84,6 +84,7 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/components/helpers';
+import { VIEWS } from '@/constants';
 
 interface ISearchEvent {
 	search_string: string;
@@ -159,10 +160,10 @@ export default mixins(genericHelpers).extend({
 	},
 	methods: {
 		onOpenCollection({event, id}: {event: MouseEvent, id: string}) {
-			this.navigateTo(event, 'TemplatesCollectionView', id);
+			this.navigateTo(event, VIEWS.COLLECTION, id);
 		},
 		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
-			this.navigateTo(event, 'TemplatesWorkflowView', id);
+			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {
 			if (e.metaKey || e.ctrlKey) {
@@ -202,7 +203,7 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 		openNewWorkflow() {
-			this.$router.push({ name: 'NodeViewNew' });
+			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 		},
 		onSearchInput(search: string) {
 			this.loadingWorkflows = true;
@@ -342,6 +343,7 @@ export default mixins(genericHelpers).extend({
 		setPageTitle('n8n - Templates');
 		this.loadCategories();
 		this.loadWorkflowsAndCollections(true);
+		this.$store.dispatch('users/showPersonalizationSurvey');
 	},
 	async created() {
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
