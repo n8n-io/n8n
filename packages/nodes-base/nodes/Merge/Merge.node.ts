@@ -282,7 +282,7 @@ export class Merge implements INodeType {
 
 				newItem.pairedItem = [
 					dataInput1[i].pairedItem as IPairedItemData,
-					dataInput2[i].pairedItem as IPairedItemData
+					dataInput2[i].pairedItem as IPairedItemData,
 				];
 
 				// Copy binary data
