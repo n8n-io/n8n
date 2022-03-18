@@ -276,6 +276,9 @@ export class Wordpress implements INodeType {
 						if (options.sticky) {
 							qs.sticky = options.sticky as boolean;
 						}
+						if (options.status) {
+							qs.status = options.status as string;
+						}
 						if (returnAll === true) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);
 						} else {

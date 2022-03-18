@@ -584,7 +584,6 @@ export default mixins(
 
 .setting-name {
 	line-height: 32px;
-	font-weight: var(--font-weight-regular);
 }
 
 .setting-name:hover {

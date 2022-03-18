@@ -351,6 +351,7 @@ const config = convict({
 			},
 		},
 	},
+
 	generic: {
 		// The timezone to use. Is important for nodes like "Cron" which start the
 		// workflow automatically at a specified time. This setting can also be
@@ -409,6 +410,12 @@ const config = convict({
 		default: '',
 		env: 'N8N_SSL_CERT',
 		doc: 'SSL Cert for HTTPS Protocol',
+	},
+	editorBaseUrl: {
+		format: String,
+		default: '',
+		env: 'N8N_EDITOR_BASE_URL',
+		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
 	},
 
 	security: {
@@ -573,6 +580,90 @@ const config = convict({
 		},
 	},
 
+	workflowTagsDisabled: {
+		format: Boolean,
+		default: false,
+		env: 'N8N_WORKFLOW_TAGS_DISABLED',
+		doc: 'Disable worfklow tags.',
+	},
+
+	userManagement: {
+		disabled: {
+			doc: 'Disable user management and hide it completely.',
+			format: Boolean,
+			default: false,
+			env: 'N8N_USER_MANAGEMENT_DISABLED',
+		},
+		jwtSecret: {
+			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
+			format: String,
+			default: '',
+			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
+		},
+		emails: {
+			mode: {
+				doc: 'How to send emails',
+				format: ['', 'smtp'],
+				default: 'smtp',
+				env: 'N8N_EMAIL_MODE',
+			},
+			smtp: {
+				host: {
+					doc: 'SMTP server host',
+					format: String, // e.g. 'smtp.gmail.com'
+					default: '',
+					env: 'N8N_SMTP_HOST',
+				},
+				port: {
+					doc: 'SMTP server port',
+					format: Number,
+					default: 465,
+					env: 'N8N_SMTP_PORT',
+				},
+				secure: {
+					doc: 'Whether or not to use SSL for SMTP',
+					format: Boolean,
+					default: true,
+					env: 'N8N_SMTP_SSL',
+				},
+				auth: {
+					user: {
+						doc: 'SMTP login username',
+						format: String, // e.g.'you@gmail.com'
+						default: '',
+						env: 'N8N_SMTP_USER',
+					},
+					pass: {
+						doc: 'SMTP login password',
+						format: String,
+						default: '',
+						env: 'N8N_SMTP_PASS',
+					},
+				},
+				sender: {
+					doc: 'How to display sender name',
+					format: String,
+					default: '',
+					env: 'N8N_SMTP_SENDER',
+				},
+			},
+			templates: {
+				invite: {
+					doc: 'Overrides default HTML template for inviting new people (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_INVITE',
+				},
+				passwordReset: {
+					doc: 'Overrides default HTML template for resetting password (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
+				},
+			},
+		},
+	},
+
 	externalHookFiles: {
 		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
 		format: String,
@@ -636,8 +727,8 @@ const config = convict({
 
 	logs: {
 		level: {
-			doc: 'Log output level. Options are error, warn, info, verbose and debug.',
-			format: String,
+			doc: 'Log output level',
+			format: ['error', 'warn', 'info', 'verbose', 'debug'],
 			default: 'info',
 			env: 'N8N_LOG_LEVEL',
 		},
@@ -713,10 +804,10 @@ const config = convict({
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
 		mode: {
-			format: String,
+			format: ['default', 'filesystem'],
 			default: 'default',
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
-			doc: 'Storage mode for binary data, default | filesystem',
+			doc: 'Storage mode for binary data',
 		},
 		localStoragePath: {
 			format: String,
