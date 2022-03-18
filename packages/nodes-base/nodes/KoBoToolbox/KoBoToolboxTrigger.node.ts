@@ -16,8 +16,9 @@ import {
 } from './GenericFunctions';
 
 import {
-	options,
-} from './descriptions';
+	 options,
+} from './Options';
+
 export class KoBoToolboxTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'KoBoToolbox Trigger',

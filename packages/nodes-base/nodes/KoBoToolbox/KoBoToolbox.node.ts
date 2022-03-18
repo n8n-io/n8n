@@ -23,12 +23,19 @@ import {
 
 import {
 	formFields,
-	formOperations,
-	hookFields,
-	hookOperations,
+	formOperations
+} from './FormDescription';
+
+import {
 	submissionFields,
 	submissionOperations,
-} from './descriptions';
+} from './SubmissionDescription';
+
+import {
+	hookFields,
+	hookOperations,
+} from './HookDescription';
+
 export class KoBoToolbox implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'KoBoToolbox',
