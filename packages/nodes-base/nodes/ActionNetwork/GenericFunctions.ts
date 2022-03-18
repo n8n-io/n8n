@@ -95,8 +95,11 @@ export async function handleListing(
 			return returnData.slice(0, limit);
 		}
 
-		qs.page = responseData.page as number;
-	} while (responseData.total_pages && qs.page < responseData.total_pages);
+		if (responseData._links && responseData._links.next && responseData._links.next.href) {
+			const queryString = new URLSearchParams(responseData._links.next.href.split('?')[1]);
+			qs.page = queryString.get('page') as string;
+		}
+	} while (responseData._links && responseData._links.next);
 
 	return returnData;
 }
