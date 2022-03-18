@@ -13,9 +13,13 @@ import * as jmespath from 'jmespath';
 // eslint-disable-next-line import/no-cycle
 import {
 	IDataObject,
+	IExecuteData,
 	INodeExecutionData,
 	INodeParameters,
+	IPairedItemData,
 	IRunExecutionData,
+	ISourceData,
+	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	NodeHelpers,
@@ -47,6 +51,8 @@ export class WorkflowDataProxy {
 
 	private additionalKeys: IWorkflowDataProxyAdditionalKeys;
 
+	private executeData: IExecuteData | undefined;
+
 	constructor(
 		workflow: Workflow,
 		runExecutionData: IRunExecutionData | null,
@@ -57,6 +63,7 @@ export class WorkflowDataProxy {
 		siblingParameters: INodeParameters,
 		mode: WorkflowExecuteMode,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		defaultReturnRunIndex = -1,
 		selfData = {},
 	) {
@@ -71,6 +78,7 @@ export class WorkflowDataProxy {
 		this.mode = mode;
 		this.selfData = selfData;
 		this.additionalKeys = additionalKeys;
+		this.executeData = executeData;
 	}
 
 	/**
@@ -192,6 +200,7 @@ export class WorkflowDataProxy {
 						that.connectionInputData,
 						that.mode,
 						that.additionalKeys,
+						that.executeData,
 					);
 				}
 
@@ -476,6 +485,67 @@ export class WorkflowDataProxy {
 			return jmespath.search(data, query);
 		};
 
+		const getPairedItem = (
+			destinationNodeName: string,
+			incomingSourceData: ISourceData | null,
+			pairedItem: IPairedItemData,
+		): INodeExecutionData | null => {
+			let taskData: ITaskData;
+
+			let sourceData: ISourceData | null = incomingSourceData;
+
+			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
+				taskData =
+					that.runExecutionData!.resultData.runData[sourceData.previousNode][
+						sourceData?.previousNodeRun
+					];
+
+				const itemPreviousNode: INodeExecutionData =
+					taskData.data!.main[sourceData.previousNodeOutput]![pairedItem.item];
+
+				if (!itemPreviousNode.pairedItem) {
+					throw new Error(
+						`Could not resolve as pairedItem data is missing on node "${sourceData.previousNodeOutput}"`,
+					);
+				}
+
+				if (Array.isArray(itemPreviousNode.pairedItem)) {
+					// Item is based on multiple items so check all of them
+					const results = itemPreviousNode.pairedItem
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
+						.map((item) => {
+							try {
+								return getPairedItem(destinationNodeName, taskData.source[item.input || 0], item);
+							} catch (error) {
+								// Means pairedItem could not be found
+								return null;
+							}
+						})
+						.filter((result) => result !== null);
+
+					if (results.length !== 1) {
+						throw new Error('Could not resolve as no definitive match could be found');
+					}
+
+					return results[0];
+				}
+
+				pairedItem = itemPreviousNode.pairedItem;
+				sourceData = taskData.source[pairedItem.input || 0] || null;
+			}
+
+			if (sourceData === null) {
+				throw new Error('Could not resolve as sourceData information is missing');
+			}
+
+			taskData =
+				that.runExecutionData!.resultData.runData[sourceData.previousNode][
+					sourceData?.previousNodeRun
+				];
+
+			return taskData.data!.main[sourceData.previousNodeRun]![sourceData.previousNodeOutput];
+		};
+
 		const base = {
 			$: (nodeName: string) => {
 				if (!nodeName) {
@@ -487,12 +557,28 @@ export class WorkflowDataProxy {
 					{
 						get(target, property, receiver) {
 							if (property === 'pairedItem') {
-								return () => {
-									const executionData = getNodeOutput(nodeName, 0, that.runIndex);
-									if (executionData[that.itemIndex]) {
-										return executionData[that.itemIndex];
+								return (itemIndex?: number) => {
+									if (itemIndex === undefined) {
+										itemIndex = that.itemIndex;
 									}
-									return undefined;
+
+									// TODO: Switch maybe back to just source data instead of the whole executionData
+									const executionData = that.connectionInputData;
+
+									// As we operate on the incoming item we can be sure that pairedItem is not an
+									// array, for that reason do we not have to consider that case
+									const pairedItem = executionData[itemIndex].pairedItem as IPairedItemData;
+
+									if (pairedItem === undefined) {
+										// If no data could be found, try to resolve automatically
+										throw new Error('Could not resolve as pairedItem data is missing');
+									}
+
+									const sourceData: ISourceData = that.executeData?.source!.main![
+										pairedItem.input || 0
+									] as ISourceData;
+
+									return getPairedItem(nodeName, sourceData, pairedItem);
 								};
 							}
 							if (property === 'item') {
@@ -634,6 +720,7 @@ export class WorkflowDataProxy {
 					that.connectionInputData,
 					that.mode,
 					that.additionalKeys,
+					that.executeData,
 				);
 			},
 			$item: (itemIndex: number, runIndex?: number) => {
@@ -648,6 +735,7 @@ export class WorkflowDataProxy {
 					that.siblingParameters,
 					that.mode,
 					that.additionalKeys,
+					that.executeData,
 					defaultReturnRunIndex,
 				);
 				return dataProxy.getDataProxy();

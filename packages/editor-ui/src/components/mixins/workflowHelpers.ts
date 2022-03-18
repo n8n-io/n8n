@@ -27,6 +27,7 @@ import {
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	NodeHelpers,
+	IExecuteData,
 } from 'n8n-workflow';
 
 import {
@@ -59,9 +60,13 @@ export const workflowHelpers = mixins(
 )
 	.extend({
 		methods: {
-			// Returns connectionInputData to be able to execute an expression.
-			connectionInputData (parentNode: string[], inputName: string, runIndex: number, inputIndex: number): INodeExecutionData[] | null {
-				let connectionInputData = null;
+			 executeData(parentNode: string[], inputName: string, runIndex: number): IExecuteData {
+				const executeData = {
+					node: {},
+					data: {},
+					// TODO: Has to be set to correct value to work
+					source: null,
+				} as IExecuteData;
 
 				if (parentNode.length) {
 					// Add the input data to be able to also resolve the short expression format
@@ -70,18 +75,32 @@ export const workflowHelpers = mixins(
 
 					const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
 					if (workflowRunData === null) {
-						return null;
+						return executeData;
 					}
 					if (!workflowRunData[parentNodeName] ||
 						workflowRunData[parentNodeName].length <= runIndex ||
 						!workflowRunData[parentNodeName][runIndex].hasOwnProperty('data') ||
 						workflowRunData[parentNodeName][runIndex].data === undefined ||
-						!workflowRunData[parentNodeName][runIndex].data!.hasOwnProperty(inputName) ||
-						workflowRunData[parentNodeName][runIndex].data![inputName].length <= inputIndex
+						!workflowRunData[parentNodeName][runIndex].data!.hasOwnProperty(inputName)
 					) {
+						executeData.data = {};
+					} else {
+						executeData.data = workflowRunData[parentNodeName][runIndex].data!;
+					}
+				}
+
+				return executeData;
+			},
+			// Returns connectionInputData to be able to execute an expression.
+			connectionInputData (parentNode: string[], inputName: string, runIndex: number, inputIndex: number): INodeExecutionData[] | null {
+				// TODO: If that is used nowhere else remove function and combine with other, or move code below
+				let connectionInputData = null;
+				const executeData = this.executeData(parentNode, inputName, runIndex);
+				if (parentNode.length) {
+					if (executeData.data[inputName].length <= inputIndex) {
 						connectionInputData = [];
 					} else {
-						connectionInputData = workflowRunData[parentNodeName][runIndex].data![inputName][inputIndex];
+						connectionInputData = executeData.data![inputName][inputIndex];
 					}
 				}
 
@@ -408,7 +427,8 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
+				const executeData = this.executeData(parentNode, inputName, runIndex);
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, executeData, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {

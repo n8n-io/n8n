@@ -4,6 +4,7 @@ import { DateTime, Duration, Interval } from 'luxon';
 
 // eslint-disable-next-line import/no-cycle
 import {
+	IExecuteData,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -70,6 +71,7 @@ export class Expression {
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
@@ -96,6 +98,7 @@ export class Expression {
 			siblingParameters,
 			mode,
 			additionalKeys,
+			executeData,
 			-1,
 			selfData,
 		);
@@ -158,6 +161,7 @@ export class Expression {
 		parameterValue: string | boolean | undefined,
 		mode: WorkflowExecuteMode,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		defaultValue?: boolean | number | string,
 	): boolean | number | string | undefined {
 		if (parameterValue === undefined) {
@@ -184,6 +188,7 @@ export class Expression {
 			connectionInputData,
 			mode,
 			additionalKeys,
+			executeData,
 		) as boolean | number | string | undefined;
 	}
 
@@ -201,6 +206,7 @@ export class Expression {
 		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 		mode: WorkflowExecuteMode,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		defaultValue:
 			| NodeParameterValue
 			| INodeParameters
@@ -234,6 +240,7 @@ export class Expression {
 			connectionInputData,
 			mode,
 			additionalKeys,
+			executeData,
 			false,
 			selfData,
 		);
@@ -248,6 +255,7 @@ export class Expression {
 			connectionInputData,
 			mode,
 			additionalKeys,
+			executeData,
 			false,
 			selfData,
 		);
@@ -277,6 +285,7 @@ export class Expression {
 		connectionInputData: INodeExecutionData[],
 		mode: WorkflowExecuteMode,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
@@ -302,6 +311,7 @@ export class Expression {
 					connectionInputData,
 					mode,
 					additionalKeys,
+					executeData,
 					returnObjectAsString,
 					selfData,
 				);
@@ -316,6 +326,7 @@ export class Expression {
 				connectionInputData,
 				mode,
 				additionalKeys,
+				executeData,
 				returnObjectAsString,
 				selfData,
 			);
@@ -333,6 +344,7 @@ export class Expression {
 				connectionInputData,
 				mode,
 				additionalKeys,
+				executeData,
 				returnObjectAsString,
 				selfData,
 			);

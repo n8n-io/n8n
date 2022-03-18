@@ -46,7 +46,7 @@ import {
 	WorkflowExecuteMode,
 } from '.';
 
-import { IConnection, IDataObject, IObservableObject } from './Interfaces';
+import { IConnection, IDataObject, IExecuteData, IObservableObject } from './Interfaces';
 
 export class Workflow {
 	id: string | undefined;
@@ -1042,8 +1042,7 @@ export class Workflow {
 	/**
 	 * Executes the given node.
 	 *
-	 * @param {INode} node
-	 * @param {ITaskDataConnections} inputData
+	 * @param {IExecuteData} executionData
 	 * @param {IRunExecutionData} runExecutionData
 	 * @param {number} runIndex
 	 * @param {IWorkflowExecuteAdditionalData} additionalData
@@ -1053,14 +1052,15 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	async runNode(
-		node: INode,
-		inputData: ITaskDataConnections,
+		executionData: IExecuteData,
 		runExecutionData: IRunExecutionData,
 		runIndex: number,
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 	): Promise<INodeExecutionData[][] | null | undefined> {
+		const { node } = executionData;
+		let inputData = executionData.data;
 		if (node.disabled === true) {
 			// If node is disabled simply pass the data through
 			// return NodeRunHelpers.
@@ -1139,6 +1139,7 @@ export class Workflow {
 					node,
 					itemIndex,
 					additionalData,
+					executionData,
 					mode,
 				);
 
@@ -1168,6 +1169,7 @@ export class Workflow {
 				inputData,
 				node,
 				additionalData,
+				executionData,
 				mode,
 			);
 			return nodeType.execute.call(thisArgs);
@@ -1235,7 +1237,13 @@ export class Workflow {
 				mode,
 			);
 
-			return routingNode.runNode(inputData, runIndex, nodeType, nodeExecuteFunctions);
+			return routingNode.runNode(
+				inputData,
+				runIndex,
+				nodeType,
+				executionData,
+				nodeExecuteFunctions,
+			);
 		}
 
 		return null;

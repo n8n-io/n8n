@@ -15,6 +15,7 @@ import {
 	INodeExecuteFunctions,
 	IN8nRequestOperations,
 	INodeCredentialDescription,
+	IExecuteData,
 } from '../src';
 
 import * as Helpers from './Helpers';
@@ -657,6 +658,11 @@ describe('RoutingNode', () => {
 					node,
 					itemIndex,
 					additionalData,
+					{
+						node,
+						data: {},
+						source: null,
+					},
 					mode,
 				);
 
@@ -1636,6 +1642,12 @@ describe('RoutingNode', () => {
 					mode,
 				);
 
+				const executeData = {
+					data: {},
+					node,
+					source: null,
+				} as IExecuteData;
+
 				// @ts-ignore
 				const nodeExecuteFunctions: INodeExecuteFunctions = {
 					getExecuteFunctions: () => {
@@ -1648,6 +1660,7 @@ describe('RoutingNode', () => {
 							node,
 							itemIndex,
 							additionalData,
+							executeData,
 							mode,
 						);
 					},
@@ -1661,6 +1674,7 @@ describe('RoutingNode', () => {
 							node,
 							itemIndex,
 							additionalData,
+							executeData,
 							mode,
 						);
 					},
@@ -1670,6 +1684,7 @@ describe('RoutingNode', () => {
 					inputData,
 					runIndex,
 					nodeType,
+					executeData,
 					nodeExecuteFunctions,
 				);
 

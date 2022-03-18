@@ -200,6 +200,7 @@ export async function executeWebhook(
 		webhookData.webhookDescription.responseMode,
 		executionMode,
 		additionalKeys,
+		undefined,
 		'onReceived',
 	);
 	const responseCode = workflow.expression.getSimpleParameterValue(
@@ -207,6 +208,7 @@ export async function executeWebhook(
 		webhookData.webhookDescription.responseCode,
 		executionMode,
 		additionalKeys,
+		undefined,
 		200,
 	) as number;
 
@@ -215,6 +217,7 @@ export async function executeWebhook(
 		webhookData.webhookDescription.responseData,
 		executionMode,
 		additionalKeys,
+		undefined,
 		'firstEntryJson',
 	);
 
@@ -304,6 +307,7 @@ export async function executeWebhook(
 				executionMode,
 				additionalKeys,
 				undefined,
+				undefined,
 			) as {
 				entries?:
 					| Array<{
@@ -389,6 +393,7 @@ export async function executeWebhook(
 			data: {
 				main: webhookResultData.workflowData,
 			},
+			source: null,
 		});
 
 		runExecutionData =
@@ -561,6 +566,7 @@ export async function executeWebhook(
 							executionMode,
 							additionalKeys,
 							undefined,
+							undefined,
 						);
 
 						if (responsePropertyName !== undefined) {
@@ -572,6 +578,7 @@ export async function executeWebhook(
 							webhookData.webhookDescription.responseContentType,
 							executionMode,
 							additionalKeys,
+							undefined,
 							undefined,
 						);
 
@@ -614,6 +621,7 @@ export async function executeWebhook(
 							webhookData.webhookDescription.responseBinaryPropertyName,
 							executionMode,
 							additionalKeys,
+							undefined,
 							'data',
 						);
 

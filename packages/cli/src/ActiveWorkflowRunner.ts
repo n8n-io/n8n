@@ -585,6 +585,7 @@ export class ActiveWorkflowRunner {
 				data: {
 					main: data,
 				},
+				source: null,
 			},
 		];
 
@@ -597,6 +598,7 @@ export class ActiveWorkflowRunner {
 				contextData: {},
 				nodeExecutionStack,
 				waitingExecution: {},
+				waitingExecutionSource: {},
 			},
 		};
 

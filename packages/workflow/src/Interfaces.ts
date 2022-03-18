@@ -348,6 +348,7 @@ export interface IGetExecuteFunctions {
 		inputData: ITaskDataConnections,
 		node: INode,
 		additionalData: IWorkflowExecuteAdditionalData,
+		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
 	): IExecuteFunctions;
 }
@@ -362,6 +363,7 @@ export interface IGetExecuteSingleFunctions {
 		node: INode,
 		itemIndex: number,
 		additionalData: IWorkflowExecuteAdditionalData,
+		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
 	): IExecuteSingleFunctions;
 }
@@ -388,9 +390,17 @@ export interface IGetExecuteWebhookFunctions {
 	): IWebhookFunctions;
 }
 
+export interface ISourceDataConnections {
+	// Key for each input type and because there can be multiple inputs of the same type it is an array
+	// null is also allowed because if we still need data for a later while executing the workflow set teompoary to null
+	// the nodes get as input TaskDataConnections which is identical to this one except that no null is allowed.
+	[key: string]: Array<ISourceData[] | null>;
+}
+
 export interface IExecuteData {
 	data: ITaskDataConnections;
 	node: INode;
+	source: ITaskDataConnectionsSource | null;
 }
 
 export type IContextObject = {
@@ -502,6 +512,7 @@ export interface IExecuteFunctions {
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;
 	getTimezone(): string;
+	getExecuteData(): IExecuteData;
 	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(
 		outputData: INodeExecutionData[],
@@ -541,6 +552,7 @@ export interface IExecuteSingleFunctions {
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
+	getExecuteData(): IExecuteData;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowDataProxy(): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
@@ -787,11 +799,24 @@ export interface IBinaryKeyData {
 	[key: string]: IBinaryData;
 }
 
+export interface IPairedItemData {
+	item: number;
+	input?: number;
+}
+
 export interface INodeExecutionData {
-	[key: string]: IDataObject | IBinaryKeyData | NodeApiError | NodeOperationError | undefined;
+	[key: string]:
+		| IDataObject
+		| IBinaryKeyData
+		| IPairedItemData
+		| IPairedItemData[]
+		| NodeApiError
+		| NodeOperationError
+		| undefined;
 	json: IDataObject;
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
+	pairedItem?: IPairedItemData | IPairedItemData[];
 }
 
 export interface INodeExecuteFunctions {
@@ -1244,6 +1269,7 @@ export interface IRunExecutionData {
 		contextData: IExecuteContextData;
 		nodeExecutionStack: IExecuteData[];
 		waitingExecution: IWaitingForExecution;
+		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	waitTill?: Date;
 }
@@ -1259,9 +1285,16 @@ export interface ITaskData {
 	executionTime: number;
 	data?: ITaskDataConnections;
 	error?: ExecutionError;
+	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 }
 
-// The data for al the different kind of connectons (like main) and all the indexes
+export interface ISourceData {
+	previousNode: string;
+	previousNodeOutput: number; // TODO: Make optional [default: 0]
+	previousNodeRun: number; // TODO: Make optional [default: 0]
+}
+
+// The data for all the different kind of connectons (like main) and all the indexes
 export interface ITaskDataConnections {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
 	// null is also allowed because if we still need data for a later while executing the workflow set teompoary to null
@@ -1275,6 +1308,21 @@ export interface IWaitingForExecution {
 	[key: string]: {
 		// Run index
 		[key: number]: ITaskDataConnections;
+	};
+}
+
+export interface ITaskDataConnectionsSource {
+	// Key for each input type and because there can be multiple inputs of the same type it is an array
+	// null is also allowed because if we still need data for a later while executing the workflow set teompoary to null
+	// the nodes get as input TaskDataConnections which is identical to this one except that no null is allowed.
+	[key: string]: Array<ISourceData | null>;
+}
+
+export interface IWaitingForExecutionSource {
+	// Node name
+	[key: string]: {
+		// Run index
+		[key: number]: ITaskDataConnectionsSource;
 	};
 }
 

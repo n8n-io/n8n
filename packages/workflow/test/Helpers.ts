@@ -9,6 +9,7 @@ import {
 	ICredentialsEncrypted,
 	ICredentialsHelper,
 	IDataObject,
+	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
 	IExecuteSingleFunctions,
@@ -145,6 +146,7 @@ export function getNodeParameter(
 	itemIndex: number,
 	mode: WorkflowExecuteMode,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
+	executeData: IExecuteData,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -187,6 +189,7 @@ export function getExecuteFunctions(
 	node: INode,
 	itemIndex: number,
 	additionalData: IWorkflowExecuteAdditionalData,
+	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
@@ -269,6 +272,9 @@ export function getExecuteFunctions(
 			getTimezone: (): string => {
 				return additionalData.timezone;
 			},
+			getExecuteData: (): IExecuteData => {
+				return executeData;
+			},
 			getWorkflow: () => {
 				return {
 					id: workflow.id,
@@ -287,6 +293,7 @@ export function getExecuteFunctions(
 					{},
 					mode,
 					{},
+					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
@@ -371,6 +378,7 @@ export function getExecuteSingleFunctions(
 	node: INode,
 	itemIndex: number,
 	additionalData: IWorkflowExecuteAdditionalData,
+	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 ): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
@@ -427,6 +435,9 @@ export function getExecuteSingleFunctions(
 			getTimezone: (): string => {
 				return additionalData.timezone;
 			},
+			getExecuteData: (): IExecuteData => {
+				return executeData;
+			},
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
@@ -467,6 +478,7 @@ export function getExecuteSingleFunctions(
 					{},
 					mode,
 					{},
+					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},

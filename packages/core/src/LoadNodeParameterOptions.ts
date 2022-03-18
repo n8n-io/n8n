@@ -210,6 +210,7 @@ export class LoadNodeParameterOptions {
 			inputData,
 			runIndex,
 			tempNode,
+			{ node: node!, source: null, data: {} },
 			NodeExecuteFunctions,
 		);
 

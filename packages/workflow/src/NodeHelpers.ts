@@ -891,6 +891,7 @@ export function getNodeWebhooks(
 			webhookDescription.isFullPath,
 			'internal',
 			{},
+			undefined,
 			false,
 		) as boolean;
 		const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
@@ -898,6 +899,7 @@ export function getNodeWebhooks(
 			webhookDescription.restartWebhook,
 			'internal',
 			{},
+			undefined,
 			false,
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
@@ -907,6 +909,7 @@ export function getNodeWebhooks(
 			webhookDescription.httpMethod,
 			mode,
 			{},
+			undefined,
 			'GET',
 		);
 
@@ -984,6 +987,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 			webhookDescription.isFullPath,
 			mode,
 			{},
+			undefined,
 			false,
 		) as boolean;
 

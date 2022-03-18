@@ -1241,6 +1241,7 @@ describe('Workflow', () => {
 										],
 									],
 								},
+								source: [],
 							},
 						],
 					},

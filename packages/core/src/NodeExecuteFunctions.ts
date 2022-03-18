@@ -56,6 +56,7 @@ import {
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
+	IExecuteData,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1417,6 +1418,7 @@ export function getNodeParameter(
 	itemIndex: number,
 	mode: WorkflowExecuteMode,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
+	executeData?: IExecuteData,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -1441,6 +1443,7 @@ export function getNodeParameter(
 			connectionInputData,
 			mode,
 			additionalKeys,
+			executeData,
 		);
 	} catch (e) {
 		e.message += ` [Error in parameter: "${parameterName}"]`;
@@ -1507,6 +1510,7 @@ export function getNodeWebhookUrl(
 		webhookDescription.isFullPath,
 		mode,
 		additionalKeys,
+		undefined,
 		false,
 	) as boolean;
 	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
@@ -1636,6 +1640,7 @@ export function getExecutePollFunctions(
 					itemIndex,
 					mode,
 					getAdditionalKeys(additionalData),
+					undefined,
 					fallbackValue,
 				);
 			},
@@ -1786,6 +1791,7 @@ export function getExecuteTriggerFunctions(
 					itemIndex,
 					mode,
 					getAdditionalKeys(additionalData),
+					undefined,
 					fallbackValue,
 				);
 			},
@@ -1899,6 +1905,7 @@ export function getExecuteFunctions(
 	inputData: ITaskDataConnections,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
+	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
@@ -1917,6 +1924,7 @@ export function getExecuteFunctions(
 					connectionInputData,
 					mode,
 					getAdditionalKeys(additionalData),
+					executeData,
 				);
 			},
 			async executeWorkflow(
@@ -1992,6 +2000,7 @@ export function getExecuteFunctions(
 					itemIndex,
 					mode,
 					getAdditionalKeys(additionalData),
+					executeData,
 					fallbackValue,
 				);
 			},
@@ -2007,6 +2016,9 @@ export function getExecuteFunctions(
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
 			},
+			getExecuteData: (): IExecuteData => {
+				return executeData;
+			},
 			getWorkflow: () => {
 				return getWorkflowMetadata(workflow);
 			},
@@ -2021,6 +2033,7 @@ export function getExecuteFunctions(
 					{},
 					mode,
 					getAdditionalKeys(additionalData),
+					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
@@ -2155,6 +2168,7 @@ export function getExecuteSingleFunctions(
 	node: INode,
 	itemIndex: number,
 	additionalData: IWorkflowExecuteAdditionalData,
+	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 ): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
@@ -2174,6 +2188,7 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					mode,
 					getAdditionalKeys(additionalData),
+					executeData,
 				);
 			},
 			getContext(type: string): IContextObject {
@@ -2231,6 +2246,9 @@ export function getExecuteSingleFunctions(
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
 			},
+			getExecuteData: (): IExecuteData => {
+				return executeData;
+			},
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
@@ -2250,6 +2268,7 @@ export function getExecuteSingleFunctions(
 					itemIndex,
 					mode,
 					getAdditionalKeys(additionalData),
+					executeData,
 					fallbackValue,
 				);
 			},
@@ -2267,6 +2286,7 @@ export function getExecuteSingleFunctions(
 					{},
 					mode,
 					getAdditionalKeys(additionalData),
+					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
@@ -2423,6 +2443,7 @@ export function getLoadOptionsFunctions(
 					itemIndex,
 					'internal' as WorkflowExecuteMode,
 					getAdditionalKeys(additionalData),
+					undefined,
 					fallbackValue,
 				);
 			},
@@ -2552,6 +2573,7 @@ export function getExecuteHookFunctions(
 					itemIndex,
 					mode,
 					getAdditionalKeys(additionalData),
+					undefined,
 					fallbackValue,
 				);
 			},
@@ -2712,6 +2734,7 @@ export function getExecuteWebhookFunctions(
 					itemIndex,
 					mode,
 					getAdditionalKeys(additionalData),
+					undefined,
 					fallbackValue,
 				);
 			},

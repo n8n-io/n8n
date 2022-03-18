@@ -182,6 +182,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			parameterValue,
 			'internal',
 			additionalKeys,
+			undefined,
 			'',
 		);
 
@@ -358,6 +359,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					expressionResolveValues.connectionInputData,
 					mode,
 					{},
+					undefined,
 					false,
 					decryptedData,
 				) as ICredentialDataDecryptedObject;
@@ -388,6 +390,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				decryptedData as INodeParameters,
 				mode,
 				{},
+				undefined,
 				undefined,
 				decryptedData,
 			) as ICredentialDataDecryptedObject;
@@ -631,6 +634,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				inputData,
 				runIndex,
 				nodeTypeCopy,
+				{ node, data: {}, source: null },
 				NodeExecuteFunctions,
 				credentialsDecrypted,
 			);
