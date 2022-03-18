@@ -139,7 +139,7 @@ return item;`,
 					newItem.json = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						newItem.json = {error: e.toString()};
+						newItem.json = { error: error.message };
 						continue;
 					} else {
 						// Try to find the line number which contains the error and attach to error message
