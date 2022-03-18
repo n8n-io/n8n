@@ -16,11 +16,17 @@ export async function search(this: IExecuteFunctions, index: number): Promise<IN
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const teamId = this.getNodeParameter('teamId', index);
+	const returnAll = this.getNodeParameter('returnAll', 0);
 	const endpoint = `teams/${teamId}/channels/search`;
 
 	body.term = this.getNodeParameter('term', index) as string;
 
-	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+
+	if (!returnAll) {
+		const limit = this.getNodeParameter('limit', 0);
+		responseData = responseData.slice(0, limit);
+	}
 
 	return this.helpers.returnJsonArray(responseData);
 }
