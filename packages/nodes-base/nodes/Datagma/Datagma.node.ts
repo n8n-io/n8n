@@ -68,8 +68,8 @@ export class Datagma implements INodeType {
 					{
 						name: 'Enrich',
 						value: 'enrich',
-						description: 'Enrich contact'
-					}
+						description: 'Enrich contact',
+					},
 				],
 				default: 'enrich',
 				description: 'The operation to perform.',
@@ -370,8 +370,8 @@ export class Datagma implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-        // predefined constants
-        const source = 'n8n'
+		// predefined constants
+		const source = 'n8n';
 
 		// get credentials the user provided for this node
 		const credentials = await this.getCredentials('datagmaApi') as IDataObject;
@@ -398,7 +398,7 @@ export class Datagma implements INodeType {
 							lastName: lname,
 							fullName: additionalFields.fullName,
 							company: company,
-                            source: source,
+							source: source,
 						},
 						uri: `https://gateway.datagma.net/api/ingress/v2/findEmail`,
 						json: true,
@@ -445,7 +445,7 @@ export class Datagma implements INodeType {
 							maxEmployeesReturn: additionalFields.maxEmployeesReturn,
 							employeeCountry: additionalFields.employeeCountry,
 							debug: additionalFields.debug,
-                            source: source,
+							source: source,
 						},
 						uri: `https://gateway.datagma.net/api/ingress/v2/full`,
 						json: true,
