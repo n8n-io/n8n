@@ -64,7 +64,6 @@ export const workflowHelpers = mixins(
 				const executeData = {
 					node: {},
 					data: {},
-					// TODO: Has to be set to correct value to work
 					source: null,
 				} as IExecuteData;
 
@@ -86,6 +85,9 @@ export const workflowHelpers = mixins(
 						executeData.data = {};
 					} else {
 						executeData.data = workflowRunData[parentNodeName][runIndex].data!;
+						executeData.source = {
+							main: workflowRunData[parentNodeName][runIndex].source!,
+						};
 					}
 				}
 
@@ -97,7 +99,7 @@ export const workflowHelpers = mixins(
 				let connectionInputData = null;
 				const executeData = this.executeData(parentNode, inputName, runIndex);
 				if (parentNode.length) {
-					if (executeData.data[inputName].length <= inputIndex) {
+					if (!Object.keys(executeData.data).length || executeData.data[inputName].length <= inputIndex) {
 						connectionInputData = [];
 					} else {
 						connectionInputData = executeData.data![inputName][inputIndex];
