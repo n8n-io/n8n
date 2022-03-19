@@ -375,7 +375,7 @@ export default mixins(
 				const runIndex = 0;
 				const returnData: IVariableSelectorOption[] = [];
 
-				const connectionInputData = this.connectionInputData(parentNode, inputName, runIndex, inputIndex);
+				const connectionInputData = this.connectionInputData(parentNode, nodeName, inputName, runIndex, inputIndex);
 
 				if (connectionInputData === null) {
 					return returnData;

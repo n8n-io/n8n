@@ -164,7 +164,7 @@ export default mixins(
 					}
 				}
 
-				const connectionInputData = this.connectionInputData(parentNode, inputName, runIndex, inputIndex);
+				const connectionInputData = this.connectionInputData(parentNode, activeNode!.name, inputName, runIndex, inputIndex);
 
 				const additionalProxyKeys: IWorkflowDataProxyAdditionalKeys = {
 					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,

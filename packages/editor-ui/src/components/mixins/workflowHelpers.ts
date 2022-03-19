@@ -60,7 +60,7 @@ export const workflowHelpers = mixins(
 )
 	.extend({
 		methods: {
-			 executeData(parentNode: string[], inputName: string, runIndex: number): IExecuteData {
+			 executeData(parentNode: string[], currentNode: string, inputName: string, runIndex: number): IExecuteData {
 				const executeData = {
 					node: {},
 					data: {},
@@ -85,19 +85,20 @@ export const workflowHelpers = mixins(
 						executeData.data = {};
 					} else {
 						executeData.data = workflowRunData[parentNodeName][runIndex].data!;
-						executeData.source = {
-							main: workflowRunData[parentNodeName][runIndex].source!,
-						};
+						if (workflowRunData[currentNode] && workflowRunData[currentNode][runIndex]) {
+							executeData.source = {
+								main: workflowRunData[currentNode][runIndex].source!,
+							};
+						}
 					}
 				}
 
 				return executeData;
 			},
 			// Returns connectionInputData to be able to execute an expression.
-			connectionInputData (parentNode: string[], inputName: string, runIndex: number, inputIndex: number): INodeExecutionData[] | null {
-				// TODO: If that is used nowhere else remove function and combine with other, or move code below
+			connectionInputData (parentNode: string[], currentNode: string, inputName: string, runIndex: number, inputIndex: number): INodeExecutionData[] | null {
 				let connectionInputData = null;
-				const executeData = this.executeData(parentNode, inputName, runIndex);
+				const executeData = this.executeData(parentNode, currentNode, inputName, runIndex);
 				if (parentNode.length) {
 					if (!Object.keys(executeData.data).length || executeData.data[inputName].length <= inputIndex) {
 						connectionInputData = [];
@@ -407,7 +408,7 @@ export const workflowHelpers = mixins(
 				const parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
 				const inputIndex = workflow.getNodeConnectionOutputIndex(activeNode!.name, parentNode[0]) || 0;
-				let connectionInputData = this.connectionInputData(parentNode, inputName, runIndex, inputIndex);
+				let connectionInputData = this.connectionInputData(parentNode, activeNode.name, inputName, runIndex, inputIndex);
 
 				let runExecutionData: IRunExecutionData;
 				if (executionData === null) {
@@ -429,7 +430,8 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				const executeData = this.executeData(parentNode, inputName, runIndex);
+				const executeData = this.executeData(parentNode, activeNode.name, inputName, runIndex);
+
 				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, executeData, false) as IDataObject;
 			},
 
