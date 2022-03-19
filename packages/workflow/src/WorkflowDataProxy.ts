@@ -543,7 +543,7 @@ export class WorkflowDataProxy {
 					sourceData?.previousNodeRun
 				];
 
-			return taskData.data!.main[sourceData.previousNodeRun]![sourceData.previousNodeOutput];
+			return taskData.data!.main[sourceData.previousNodeOutput]![pairedItem.item];
 		};
 
 		const base = {
