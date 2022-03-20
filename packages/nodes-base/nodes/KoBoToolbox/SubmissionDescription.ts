@@ -52,8 +52,11 @@ export const submissionFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Form ID',
-		name: 'assetUid',
-		type: 'string',
+		name: 'formId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadForms',
+		},
 		required: true,
 		default: '',
 		displayOptions: {
@@ -129,10 +132,10 @@ export const submissionFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Form Name/ID',
-		name: 'assetUid',
+		name: 'formId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'loadSurveys',
+			loadOptionsMethod: 'loadForms',
 		},
 		required: true,
 		default: '',

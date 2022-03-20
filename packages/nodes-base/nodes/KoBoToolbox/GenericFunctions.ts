@@ -224,7 +224,7 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 	return binaryItem;
 }
 
-export async function loadSurveys(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function loadForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const responseData = await koBoToolboxApiRequest.call(this, {
 		url: '/api/v2/assets/',
 		qs: {

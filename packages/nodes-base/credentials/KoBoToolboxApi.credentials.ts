@@ -13,8 +13,7 @@ export class KoBoToolboxApi implements ICredentialType {
 			displayName: 'API root URL',
 			name: 'URL',
 			type: 'string' as NodePropertyTypes,
-			default: '',
-			placeholder: 'https://kf.kobotoolbox.org/',
+			default: 'https://kf.kobotoolbox.org/',
 		},
 		{
 			displayName: 'API Token',

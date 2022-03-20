@@ -37,7 +37,7 @@ export const formFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Form ID',
-		name: 'assetUid',
+		name: 'formId',
 		type: 'string',
 		required: true,
 		default: '',

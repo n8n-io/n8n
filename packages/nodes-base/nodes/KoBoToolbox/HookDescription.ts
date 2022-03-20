@@ -52,8 +52,11 @@ export const hookFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Form ID',
-		name: 'assetUid',
-		type: 'string',
+		name: 'formId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadForms',
+		},
 		required: true,
 		default: '',
 		displayOptions: {
@@ -97,8 +100,11 @@ export const hookFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Form ID',
-		name: 'assetUid',
-		type: 'string',
+		name: 'formId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadForms',
+		},
 		required: true,
 		default: '',
 		displayOptions: {
