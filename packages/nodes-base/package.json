@@ -240,6 +240,7 @@
       "dist/credentials/RaindropOAuth2Api.credentials.js",
       "dist/credentials/RedditOAuth2Api.credentials.js",
       "dist/credentials/Redis.credentials.js",
+      "dist/credentials/RenovateMetabaseToken.credentials.js",
       "dist/credentials/RocketchatApi.credentials.js",
       "dist/credentials/RundeckApi.credentials.js",
       "dist/credentials/S3.credentials.js",

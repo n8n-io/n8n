@@ -8,6 +8,9 @@ export class MetabaseApi implements ICredentialType {
 	name = 'metabaseApi';
 	displayName = 'Metabase API';
 	documentationUrl = 'metabase';
+	extends = [
+		'renovateMetabaseToken',
+	];
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Api url',
