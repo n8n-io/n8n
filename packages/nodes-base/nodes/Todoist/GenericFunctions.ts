@@ -12,6 +12,8 @@ import {
 	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
+export type Context = IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
+
 export function FormatDueDatetime(isoString: string): string {
 	// Assuming that the problem with incorrect date format was caused by milliseconds
 	// Replacing the last 5 characters of ISO-formatted string with just Z char
@@ -19,10 +21,7 @@ export function FormatDueDatetime(isoString: string): string {
 }
 
 export async function todoistApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| ILoadOptionsFunctions,
+	this: Context,
 	method: string,
 	resource: string,
 	body: any = {}, // tslint:disable-line:no-any
@@ -37,6 +36,42 @@ export async function todoistApiRequest(
 		method,
 		qs,
 		uri: `https://${endpoint}${resource}`,
+		json: true,
+	};
+
+	if (Object.keys(body).length !== 0) {
+		options.body = body;
+	}
+
+	try {
+		if (authentication === 'apiKey') {
+			const credentials = await this.getCredentials('todoistApi') as IDataObject;
+
+			//@ts-ignore
+			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
+			return this.helpers.request!(options);
+		} else {
+			//@ts-ignore
+			return await this.helpers.requestOAuth2.call(this, 'todoistOAuth2Api', options);
+		}
+
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
+}
+
+export async function todoistSyncRequest(
+	this: Context,
+	body: any = {}, // tslint:disable-line:no-any
+	qs: IDataObject = {},
+): Promise<any> { // tslint:disable-line:no-any
+	const authentication = this.getNodeParameter('authentication', 0, 'apiKey');
+
+	const options: OptionsWithUri = {
+		headers: {},
+		method: 'POST',
+		qs,
+		uri: `https://api.todoist.com/sync/v8/sync`,
 		json: true,
 	};
 
