@@ -13,6 +13,7 @@ import {
 	Index,
 	JoinTable,
 	ManyToMany,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
@@ -20,6 +21,7 @@ import {
 import config = require('../../../config');
 import { DatabaseType, IWorkflowDb } from '../..';
 import { TagEntity } from './TagEntity';
+import { SharedWorkflow } from './SharedWorkflow';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.get('database.type') as DatabaseType;
@@ -57,8 +59,11 @@ export class WorkflowEntity implements IWorkflowDb {
 	@PrimaryGeneratedColumn()
 	id: number;
 
+	// TODO: Add XSS check
 	@Index({ unique: true })
-	@Length(1, 128, { message: 'Workflow name must be 1 to 128 characters long.' })
+	@Length(1, 128, {
+		message: 'Workflow name must be $constraint1 to $constraint2 characters long.',
+	})
 	@Column({ length: 128 })
 	name: string;
 
@@ -106,6 +111,9 @@ export class WorkflowEntity implements IWorkflowDb {
 		},
 	})
 	tags: TagEntity[];
+
+	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
+	shared: SharedWorkflow[];
 
 	@BeforeUpdate()
 	setUpdateDate() {

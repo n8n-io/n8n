@@ -2172,6 +2172,8 @@ export class Telegram implements INodeType {
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
 
+					body.disable_notification = body.disable_notification?.toString() || 'false';
+
 					const formData = {
 						...body,
 						[propertyName]: {
