@@ -292,13 +292,39 @@ export const submissionFields: INodeProperties[] = [
 				default: false,
 				description: 'Apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
 			},
-			// {
-			// 	displayName: 'Sort',
-			// 	name: 'sort',
-			// 	type: 'json',
-			// 	default: '',
-			// 	description: 'Sort predicates, in Mongo JSON format (e.g. {"_submission_time":1})',
-			// },
+		],
+	},
+	{
+		displayName: 'Query Options',
+		name: 'listOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Query Option',
+		options: [
+			{
+				displayName: 'Filter',
+				name: 'query',
+				type: 'json',
+				default:'',
+				description:'Query for matching submissions, in MongoDB JSON format (e.g. {"_submission_time":{"$lt":"2021-10-01T01:02:03"}})',
+			},
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'json',
+				default: '',
+				description: 'Sort predicates, in Mongo JSON format (e.g. {"_submission_time":1})',
+			},
 		],
 	},
 ];
