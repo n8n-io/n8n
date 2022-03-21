@@ -1,6 +1,7 @@
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { type } from 'os';
 
 /**
  * Options to be displayed
@@ -262,12 +263,18 @@ export const nodeDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
+					displayName:'Use Dot Notation',
+					name: 'useDotNotation',
+					type: 'boolean',
+					default: false,
+					description: 'Wheather to use dot notation to access date fields',
+				},
+				{
 					displayName: 'Date Fields',
 					name: 'dateFields',
 					type: 'string',
 					default: '',
-					description: 'Comma separeted list of fields that will be parse as Mongo Date type.',
-					hint: 'You can use dot notation here to specify a path to date field',
+					description: 'Comma separeted list of fields that will be parse as Mongo Date type',
 				},
 			],
 		},

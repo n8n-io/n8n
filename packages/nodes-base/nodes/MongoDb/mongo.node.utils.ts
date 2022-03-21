@@ -111,6 +111,17 @@ export function getItemCopy(
 }
 
 export function handleDateFields(insertItems: IDataObject[], fields: string) {
+	const dateFields = (fields as string).split(',');
+	for (let i = 0; i < insertItems.length; i++) {
+		for (const key of Object.keys(insertItems[i])) {
+			if (dateFields.includes(key)) {
+				insertItems[i][key] = new Date(insertItems[i][key] as string);
+			}
+		}
+	}
+}
+
+export function handleDateFieldsWithDotNotation(insertItems: IDataObject[], fields: string) {
 	const dateFields = fields.split(',').map(field => field.trim());
 
 	for (let i = 0; i < insertItems.length; i++) {
