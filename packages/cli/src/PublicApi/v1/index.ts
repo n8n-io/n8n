@@ -9,6 +9,9 @@ import path = require('path');
 
 import express = require('express');
 
+import { OpenAPIV3 } from 'express-openapi-validator/dist/framework/types';
+import { Db } from '../..';
+
 export interface N8nApp {
 	app: Application;
 }
@@ -23,6 +26,29 @@ export const getRoutes = (): express.Router => {
 			operationHandlers: path.join(__dirname),
 			validateRequests: true, // (default)
 			validateApiSpec: true,
+			validateSecurity: {
+				handlers: {
+					ApiKeyAuth: async (req, scopes, schema: OpenAPIV3.ApiKeySecurityScheme) => {
+
+						const apiKey = req.headers[schema.name.toLowerCase()];
+
+						const user = await Db.collections.User!.find({
+							where: {
+								apiKey,
+							},
+							relations: ['globalRole'],
+						});
+
+						if (!user.length) {
+							return false;
+						}
+
+						req.user = user[0];
+
+						return true;
+					},
+				},
+			},	
 		}));
 
 	//add error handler

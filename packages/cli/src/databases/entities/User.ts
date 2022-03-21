@@ -124,6 +124,9 @@ export class User {
 		this.updatedAt = new Date();
 	}
 
+	@Column({ type: String, nullable: true })
+	apiKey?: string | null;
+
 	/**
 	 * Whether the user is pending setup completion.
 	 */

@@ -7,7 +7,6 @@ export = {
 		res.json({ success: true});
 	},
 	deleteUser: async (req: UserRequest.Delete, res: express.Response) => {
-		console.log('aja')
 		res.json({ success: true });
 	},
 	getUser: async (req: UserRequest.Get, res: express.Response) => {
