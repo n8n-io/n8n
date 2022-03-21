@@ -24,6 +24,7 @@ import {
 	WorkflowCredentials,
 	WorkflowRunner,
 } from '.';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
 export class WaitTrackerClass {
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
@@ -157,10 +158,16 @@ export class WaitTrackerClass {
 				throw new Error('The execution did succeed and can so not be started again.');
 			}
 
+			if (!fullExecutionData.workflowData.id) {
+				throw new Error('Only saved workflows can be resumed.');
+			}
+			const user = await getWorkflowOwner(fullExecutionData.workflowData.id.toString());
+
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,
 				executionData: fullExecutionData.data,
 				workflowData: fullExecutionData.workflowData,
+				userId: user.id,
 			};
 
 			// Start the execution again

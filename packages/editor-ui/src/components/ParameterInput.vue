@@ -935,16 +935,4 @@ export default mixins(
 	align-items: center;
 }
 
-.errors {
-	margin-top: var(--spacing-2xs);
-	color: var(--color-danger);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
-
-	a {
-		color: var(--color-danger);
-		text-decoration: underline;
-	}
-}
-
 </style>
