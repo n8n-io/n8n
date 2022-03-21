@@ -78,19 +78,19 @@ export class DataApi implements INodeType {
 		async function handleValueGet(this: IExecuteFunctions, operation: string, i: number) {
 			const valueMetadataId = this.getNodeParameter('valueMetadataId', i);
 			const qs: IDataObject = this.getNodeParameter('additionalFields', i) as IDataObject;
+			
+			let endpoint = '';
 
-			if (operation === 'getValuesAsByte') {
-				const endpoint = `/values/byte/${valueMetadataId}`;
-				return dataApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-			} else if (operation === 'getValuesAsString') {
-				const endpoint = `/values/string/${valueMetadataId}`;
-				return dataApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-			} else if (operation === 'getValuesAsDouble') {
-				const endpoint = `/values/double/${valueMetadataId}`;
-				return dataApiRequest.call(this, 'GET', endpoint, {}, qs);
+			switch (operation) {
+				case 'getValuesAsByte': endpoint = `/values/byte/${valueMetadataId}`; break;
+				case 'getValuesAsString': endpoint = `/values/string/${valueMetadataId}`; break;
+				case 'getValuesAsDouble': endpoint = `/values/double/${valueMetadataId}`; break;
+				case 'getValuesAsInt': endpoint = `/values/int/${valueMetadataId}`; break;
+				case 'getValuesAsFloat': endpoint = `/values/float/${valueMetadataId}`; break;
+				default: return;
 			}
+
+			return dataApiRequest.call(this, 'GET', endpoint, {}, qs);
 		}
 
 		async function handleValuePost(this: IExecuteFunctions, operation: string, i: number) {
