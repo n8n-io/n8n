@@ -57,7 +57,7 @@ import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
-import { createHmac } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -563,6 +563,24 @@ class App {
 		// ----------------------------------------
 		// Public API
 		// ----------------------------------------
+
+
+		//test routes to create/regenerate/delete token
+		//NOTE: Only works with admin role
+		//This should be within the user's management user scope
+		this.app.post('/token', async (req: express.Request, res: express.Response) => {
+			const ramdonToken = randomBytes(20).toString('hex');
+			//@ts-ignore
+			await Db.collections.User!.update({ globalRole: 1 }, { apiKey: ramdonToken });
+			return ResponseHelper.sendSuccessResponse(res, { token: ramdonToken }, true, 200);
+		});
+
+		this.app.delete('/token', async (req: express.Request, res: express.Response) => {
+			//@ts-ignore
+			await Db.collections.User!.update({ globalRole: 1 }, { apiKey: null });
+			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+		});
+
 
 		this.app.use(`/${this.publicApiEndpoint}`, publicApiv1Routes.getRoutes());
 

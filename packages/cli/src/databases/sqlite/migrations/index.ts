@@ -11,6 +11,7 @@ import { AddWaitColumn1621707690587 } from './1621707690587-AddWaitColumn';
 import { UpdateWorkflowCredentials1630330987096 } from './1630330987096-UpdateWorkflowCredentials';
 import { AddExecutionEntityIndexes1644421939510 } from './1644421939510-AddExecutionEntityIndexes';
 import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserManagement';
+import { AddAPIKeyColumn1647888658687 } from './1647888658687-AddAPIKeyColumn';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -24,6 +25,7 @@ const sqliteMigrations = [
 	UpdateWorkflowCredentials1630330987096,
 	AddExecutionEntityIndexes1644421939510,
 	CreateUserManagement1646992772331,
+	AddAPIKeyColumn1647888658687,
 ];
 
 export { sqliteMigrations };
