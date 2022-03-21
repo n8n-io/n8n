@@ -1,0 +1,292 @@
+---
+openapi: 3.0.0
+info:
+  title: Public n8n API
+  description: n8n Public API
+  termsOfService: https://n8n.io/legal/terms
+  contact:
+    email: hello@n8n.io
+  license:
+    name: Apache 2.0 with Commons Clause
+    url: https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md
+  version: 1.0.0
+externalDocs:
+  description: Find out more about Swagger
+  url: http://swagger.io
+servers:
+  - url: /api/v1
+tags:
+- name: user
+  description: Operations about user
+  externalDocs:
+    description: Find out more about our store
+    url: http://swagger.io
+paths:
+  /users:
+    get:
+      x-eov-operation-id: getUsers
+      x-eov-operation-handler: routes/Users
+      tags:
+      - users
+      summary: Retrieve all users
+      description: Retrieve all users from your instance. Only available for the instance owner.
+      parameters:
+      - name: select
+        in: query
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          description: Comma-separted list of the properties to return. Use a to return all properties. Dot notation be use for nested properties
+          example: email,firstName
+      - name: limit
+        in: query
+        description: The maximum number of items to return
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          example: 100
+          default: 100
+      - name: cursor
+        in: query
+        description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request's response_metadata. Default value fetches the first "page" of the collection. See pagination for more detail.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      x-eov-operation-id: createUsers
+      x-eov-operation-handler: routes/Users
+      tags:
+      - user
+      summary: Invite a user
+      description: Invites a user to your instance. Only available for the instance owner.
+      operationId: createUser
+      requestBody:
+        description: Created user object
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Users'
+        required: true
+      responses:
+        "200":
+          description: A User object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "422":
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InputValidationError'
+  /users/{userId}:
+    get:
+      x-eov-operation-id: getUser
+      x-eov-operation-handler: routes/Users
+      tags:
+      - users
+      summary: Get user by ID/Email
+      description: Retrieve a user from your instance. Only available for the instance owner.
+      operationId: getUser
+      parameters:
+      - name: userId
+        in: path
+        description: The ID or email of the user
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      x-eov-operation-id: deleteUser
+      x-eov-operation-handler: routes/Users
+      tags:
+      - users
+      summary: Delete user by ID/Email
+      description: Deletes a user from your instance. Only available for the instance owner.
+      operationId: deleteUser
+      parameters:
+      - name: userId
+        in: path
+        description: The name that needs to be deleted
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: transferId
+        in: query
+        description: ID of the user to transfer workflows and credentials to.
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: User deleted successfully
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: User not found
+components:
+  schemas:
+    InputValidationError:
+      required:
+      - code
+      - description
+      - message
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        errors:
+          $ref: '#/components/schemas/Errors'
+    Error:
+      required:
+      - code
+      - description
+      - message
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        description:
+          type: string
+    Errors:
+      type: array
+      items:
+        $ref: '#/components/schemas/Error'
+    Users:
+      type: array
+      items:
+        $ref: '#/components/schemas/User'
+    User:
+      required:
+      - email
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+          example: 123e4567-e89b-12d3-a456-426614174000
+        email:
+          type: string
+          example: jhon.doe@company.com
+        firstName:
+          maxLength: 32
+          type: string
+          description: User's first name
+          example: jhon
+        lastName:
+          maxLength: 32
+          type: string
+          description: User's last name
+          example: doe
+        finishedSetup:
+          type: boolean
+          description: Whether the user finished setting up the invitation or not
+          readOnly: true
+        createdAt:
+          type: string
+          description: Time the user was created
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          description: Last time the user was updaded
+          format: date-time
+          readOnly: true
+    inline_response_200:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        nextCursor:
+          type: string
+          description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
+          nullable: true
+          example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+  responses:
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    UnprocessableEntity:
+      description: Unprocessable Entity
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InputValidationError'
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-N8N-API-KEY
+
+security:
+  - ApiKeyAuth: []

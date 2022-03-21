@@ -111,9 +111,11 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	getCredentialForUser,
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	ICustomRequest,
+	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionFlattedResponse,
 	IExecutionPushResponse,
@@ -122,7 +124,6 @@ import {
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IExternalHooksClass,
-	IDiagnosticInfo,
 	IN8nUISettings,
 	IPackageVersions,
 	ITagWithCountDb,
@@ -139,7 +140,6 @@ import {
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 	WorkflowRunner,
-	getCredentialForUser,
 } from '.';
 
 import * as config from '../config';
@@ -158,13 +158,13 @@ import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 import type {
+	AuthenticatedRequest,
 	CredentialRequest,
 	ExecutionRequest,
-	WorkflowRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
-	AuthenticatedRequest,
 	TagsRequest,
+	WorkflowRequest,
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
@@ -172,6 +172,7 @@ import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
 import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
+import * as publicApiv1Routes from './PublicApi/v1';
 
 require('body-parser-xml')(bodyParser);
 
@@ -220,6 +221,8 @@ class App {
 
 	restEndpoint: string;
 
+	publicApiEndpoint: string;
+
 	frontendSettings: IN8nUISettings;
 
 	protocol: string;
@@ -252,6 +255,7 @@ class App {
 		this.payloadSizeMax = config.get('endpoints.payloadSizeMax') as number;
 		this.timezone = config.get('generic.timezone') as string;
 		this.restEndpoint = config.get('endpoints.rest') as string;
+		this.publicApiEndpoint = config.get('publicApiEndpoints.path') as string;
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
@@ -386,6 +390,7 @@ class App {
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
+			this.publicApiEndpoint,
 		];
 		// eslint-disable-next-line prefer-spread
 		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
@@ -495,8 +500,9 @@ class App {
 
 			// eslint-disable-next-line no-inner-declarations
 			function isTenantAllowed(decodedToken: object): boolean {
-				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '')
+				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') {
 					return true;
+				}
 
 				for (const [k, v] of Object.entries(decodedToken)) {
 					if (k === jwtNamespace) {
@@ -553,6 +559,12 @@ class App {
 				});
 			});
 		}
+
+		// ----------------------------------------
+		// Public API
+		// ----------------------------------------
+
+		this.app.use(`/${this.publicApiEndpoint}`, publicApiv1Routes.getRoutes());
 
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
@@ -3081,7 +3093,7 @@ async function getExecutionsCount(
 	try {
 		// Get an estimate of rows count.
 		const estimateRowsNumberSql =
-			"SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
+			'SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = \'execution_entity\';';
 		const rows: Array<{ n_live_tup: string }> = await Db.collections.Execution!.query(
 			estimateRowsNumberSql,
 		);
