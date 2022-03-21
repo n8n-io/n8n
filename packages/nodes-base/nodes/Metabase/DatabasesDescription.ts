@@ -37,7 +37,6 @@ export const databasesOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '={{"/api/database/" + $parameter.databaseId + "/fields"}}',
-						returnFullResponse: true,
 					},
 				},
 			},

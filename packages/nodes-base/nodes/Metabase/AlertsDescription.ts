@@ -37,7 +37,6 @@ export const alertsOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '={{"/api/alert/" + $parameter.alertId}}',
-						returnFullResponse: true,
 					},
 				},
 			},
