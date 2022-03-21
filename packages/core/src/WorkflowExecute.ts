@@ -932,6 +932,34 @@ export class WorkflowExecute {
 								workflowId: workflow.id,
 							});
 
+							// Check if the output data contains pairedItem data
+							checkOutputData: for (const outputData of nodeSuccessData as INodeExecutionData[][]) {
+								if (outputData === null) {
+									continue;
+								}
+								let item: INodeExecutionData;
+								for (let itemIndex = 0; itemIndex < outputData.length; itemIndex++) {
+									item = outputData[itemIndex];
+
+									if (!item.pairedItem) {
+										// The pairedItem is missing
+										if (
+											executionData.data.main.length !== 1 ||
+											executionData.data.main[0]?.length !== 1
+										) {
+											// Automatically fixing is only possible if there is only one
+											// input and one input item
+											break checkOutputData;
+										}
+
+										item.pairedItem = {
+											item: itemIndex,
+											input: 0,
+										};
+									}
+								}
+							}
+
 							if (nodeSuccessData === undefined) {
 								// Node did not get executed
 								nodeSuccessData = null;
