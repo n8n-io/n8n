@@ -919,7 +919,7 @@ export function getNodeWebhooks(
 		}
 
 		let webhookId: string | undefined;
-		if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+		if (path.startsWith(':') && node.webhookId) {
 			webhookId = node.webhookId;
 		}
 
@@ -1070,7 +1070,7 @@ export function getNodeWebhookUrl(
 		path = path.slice(1);
 	}
 	
-	if ((path.startsWith(':') && node.webhookId) {
+	if (path.startsWith(':') && node.webhookId) {
 		// setting this to false to prefix the webhookId
 		isFullPath = false;
 	}
