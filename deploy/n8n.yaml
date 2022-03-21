@@ -1,0 +1,18 @@
+# helmfile for deploying the n8n helm chart to staging and production
+
+releases:
+  - name: {{ .Environment.Name }}-n8n-release
+    chart: charts/n8n
+    namespace: {{ .Environment.Name }}
+    labels:
+      app: n8n
+    values:
+    - values/n8n/acs/{{ .Environment.Name }}/values.yaml
+    secrets:
+    - values/n8n/acs/{{ .Environment.Name }}/secrets.yaml
+    missingFileHandler: Error
+
+
+environments:
+  staging:
+  prod:

@@ -1,0 +1,4 @@
+apiVersion: v1
+description: The Helm chart of configurations for hasura
+name: hasura
+version: 0.1.0

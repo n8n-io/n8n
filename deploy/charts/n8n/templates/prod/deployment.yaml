@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prod-hasura-secrets
+  namespace: prod
+type: Opaque
+data:
+  myadminsecretkey: N1IzWkNFbHh1UGhtRWZxTw==
+  pg_database_url: cG9zdGdyZXM6Ly9wcm9kX2hhc3VyYTpzNnVmNXF3ajFzNDd5R3NhQHBnbS11ZjZyODcyNWhmbXRiMDlwMTE3MzkwLnBnLnJkcy5hbGl5dW5jcy5jb206NTQzMi9wcm9kX2hhc3VyYQ==
+  hasura_graphql_database_url: cG9zdGdyZXM6Ly9wcm9kX2hhc3VyYTpzNnVmNXF3ajFzNDd5R3NhQHBnbS11ZjZyODcyNWhmbXRiMDlwMTE3MzkwLnBnLnJkcy5hbGl5dW5jcy5jb206NTQzMi9wcm9kX2hhc3VyYQ==
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: prod-hasura
+  name: prod-hasura-svc
+  namespace: prod
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  selector:
+    app: prod-hasura
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: prod-hasura
+    hasuraService: custom
+  name: prod-hasura
+  namespace: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prod-hasura
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: prod-hasura
+    spec:
+      containers:
+      - image: registry.cn-shanghai.aliyuncs.com/cgp-application/hasura:GIT_TAG
+        imagePullPolicy: IfNotPresent
+        name: prod-hasura
+        env:
+        - name: HASURA_GRAPHQL_MIGRATIONS_DIR
+          value: /hasura-migrations
+        - name: HASURA_GRAPHQL_METADATA_DIR
+          value: /hasura-metadata
+        - name: PG_DATABASE_URL
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-hasura-secrets
+              key: pg_database_url
+        - name: HASURA_GRAPHQL_DATABASE_URL
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-hasura-secrets
+              key: hasura_graphql_database_url
+        ## enable the console served by server
+        - name: HASURA_GRAPHQL_ENABLE_CONSOLE
+          value: "false"
+        ## uncomment next line to set an admin secret
+        ## @DevOps, need replace password with Env Var
+        - name: HASURA_GRAPHQL_ADMIN_SECRET
+          valueFrom: 
+            secretKeyRef: 
+              name: prod-hasura-secrets
+              key: myadminsecretkey
+        ## enable debugging mode. It is recommended to disable this in production
+        - name: HASURA_GRAPHQL_DEV_MODE
+          value: "true"
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources: {}

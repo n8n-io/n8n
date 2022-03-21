@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: prod-hasura
+  name: prod-hasura-svc
+  namespace: prod
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  selector:
+    app: prod-hasura
+  type: ClusterIP
