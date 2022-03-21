@@ -28,6 +28,7 @@ import {
 	Workflow,
 	NodeHelpers,
 	IExecuteData,
+	INodeConnection,
 } from 'n8n-workflow';
 
 import {
@@ -96,14 +97,27 @@ export const workflowHelpers = mixins(
 				return executeData;
 			},
 			// Returns connectionInputData to be able to execute an expression.
-			connectionInputData (parentNode: string[], currentNode: string, inputName: string, runIndex: number, inputIndex: number): INodeExecutionData[] | null {
+			connectionInputData (parentNode: string[], currentNode: string, inputName: string, runIndex: number, nodeConnection: INodeConnection = { sourceIndex: 0,	destinationIndex: 0 }): INodeExecutionData[] | null {
 				let connectionInputData = null;
 				const executeData = this.executeData(parentNode, currentNode, inputName, runIndex);
 				if (parentNode.length) {
-					if (!Object.keys(executeData.data).length || executeData.data[inputName].length <= inputIndex) {
+					if (!Object.keys(executeData.data).length || executeData.data[inputName].length <= nodeConnection.sourceIndex) {
 						connectionInputData = [];
 					} else {
-						connectionInputData = executeData.data![inputName][inputIndex];
+						connectionInputData = executeData.data![inputName][nodeConnection.sourceIndex];
+
+						if (connectionInputData !== null) {
+							// Update the pairedItem information on items
+							connectionInputData = connectionInputData.map((item, itemIndex) => {
+								return {
+									...item,
+									pairedItem: {
+										item: itemIndex,
+										input: nodeConnection.destinationIndex,
+									},
+								};
+							});
+						}
 					}
 				}
 
@@ -401,14 +415,20 @@ export const workflowHelpers = mixins(
 
 			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) {
 				const itemIndex = 0;
-				const runIndex = 0;
 				const inputName = 'main';
 				const activeNode = this.$store.getters.activeNode;
 				const workflow = this.getWorkflow();
 				const parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
-				const inputIndex = workflow.getNodeConnectionOutputIndex(activeNode!.name, parentNode[0]) || 0;
-				let connectionInputData = this.connectionInputData(parentNode, activeNode.name, inputName, runIndex, inputIndex);
+
+				const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
+				let runIndexParent = 0;
+				if (workflowRunData !== null && parentNode.length) {
+					runIndexParent = workflowRunData[parentNode[0]].length -1;
+				}
+
+				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
+				let connectionInputData = this.connectionInputData(parentNode, activeNode.name, inputName, runIndexParent, nodeConnection);
 
 				let runExecutionData: IRunExecutionData;
 				if (executionData === null) {
@@ -430,9 +450,13 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				const executeData = this.executeData(parentNode, activeNode.name, inputName, runIndex);
+				let runIndexCurrent = 0;
+				if (workflowRunData !== null && workflowRunData[activeNode.name]) {
+					runIndexCurrent = workflowRunData[activeNode.name].length -1;
+				}
+				const executeData = this.executeData(parentNode, activeNode.name, inputName, runIndexCurrent);
 
-				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, executeData, false) as IDataObject;
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndexCurrent, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, executeData, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {

@@ -265,18 +265,18 @@ export class WorkflowDataProxy {
 			// Depends on how the nodes are connected.
 			// (example "IF" node. If node is connected to "true" or to "false" output)
 			if (outputIndex === undefined) {
-				// eslint-disable-next-line @typescript-eslint/no-shadow
-				const outputIndex = that.workflow.getNodeConnectionOutputIndex(
+				const nodeConnection = that.workflow.getNodeConnectionIndexes(
 					that.activeNodeName,
 					nodeName,
 					'main',
 				);
 
-				if (outputIndex === undefined) {
+				if (nodeConnection === undefined) {
 					throw new Error(
 						`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`,
 					);
 				}
+				outputIndex = nodeConnection.sourceIndex;
 			}
 
 			if (outputIndex === undefined) {
@@ -530,7 +530,9 @@ export class WorkflowDataProxy {
 					return results[0];
 				}
 
+				// pairedItem is not an array
 				pairedItem = itemPreviousNode.pairedItem;
+
 				sourceData = taskData.source[pairedItem.input || 0] || null;
 			}
 
@@ -565,6 +567,7 @@ export class WorkflowDataProxy {
 									// TODO: Switch maybe back to just source data instead of the whole executionData
 									const executionData = that.connectionInputData;
 
+									// TODO: Is that really true?
 									// As we operate on the incoming item we can be sure that pairedItem is not an
 									// array, for that reason do we not have to consider that case
 									const pairedItem = executionData[itemIndex].pairedItem as IPairedItemData;
@@ -572,6 +575,11 @@ export class WorkflowDataProxy {
 									if (pairedItem === undefined) {
 										// If no data could be found, try to resolve automatically
 										throw new Error('Could not resolve as pairedItem data is missing');
+									}
+
+									if (that.executeData?.source === undefined) {
+										// If no data could be found, try to resolve automatically
+										throw new Error('Could not resolve as source data is missing');
 									}
 
 									const sourceData: ISourceData = that.executeData?.source!.main![

@@ -46,7 +46,13 @@ import {
 	WorkflowExecuteMode,
 } from '.';
 
-import { IConnection, IDataObject, IExecuteData, IObservableObject } from './Interfaces';
+import {
+	IConnection,
+	IDataObject,
+	IExecuteData,
+	INodeConnection,
+	IObservableObject,
+} from './Interfaces';
 
 export class Workflow {
 	id: string | undefined;
@@ -713,33 +719,27 @@ export class Workflow {
 	}
 
 	/**
-	 * Returns via which output of the parent-node the node
-	 * is connected to.
+	 * Returns via which output of the parent-node and index the current node
+	 * they are connected
 	 *
 	 * @param {string} nodeName The node to check how it is connected with parent node
 	 * @param {string} parentNodeName The parent node to get the output index of
 	 * @param {string} [type='main']
 	 * @param {*} [depth=-1]
 	 * @param {string[]} [checkedNodes]
-	 * @returns {(number | undefined)}
+	 * @returns {(INodeConnection | undefined)}
 	 * @memberof Workflow
 	 */
-	getNodeConnectionOutputIndex(
+	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
 		type = 'main',
 		depth = -1,
 		checkedNodes?: string[],
-	): number | undefined {
+	): INodeConnection | undefined {
 		const node = this.getNode(parentNodeName);
 		if (node === null) {
 			return undefined;
-		}
-		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
-		if (nodeType.description.outputs.length === 1) {
-			// If the parent node has only one output, it can only be connected
-			// to that one. So no further checking is required.
-			return 0;
 		}
 
 		depth = depth === -1 ? -1 : depth;
@@ -768,11 +768,19 @@ export class Workflow {
 
 		checkedNodes.push(nodeName);
 
-		let outputIndex: number | undefined;
+		let outputIndex: INodeConnection | undefined;
 		for (const connectionsByIndex of this.connectionsByDestinationNode[nodeName][type]) {
-			for (const connection of connectionsByIndex) {
+			for (
+				let destinationIndex = 0;
+				destinationIndex < connectionsByIndex.length;
+				destinationIndex++
+			) {
+				const connection = connectionsByIndex[destinationIndex];
 				if (parentNodeName === connection.node) {
-					return connection.index;
+					return {
+						sourceIndex: connection.index,
+						destinationIndex,
+					};
 				}
 
 				if (checkedNodes.includes(connection.node)) {
@@ -780,7 +788,7 @@ export class Workflow {
 					continue;
 				}
 
-				outputIndex = this.getNodeConnectionOutputIndex(
+				outputIndex = this.getNodeConnectionIndexes(
 					connection.node,
 					parentNodeName,
 					type,

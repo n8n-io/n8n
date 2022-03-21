@@ -295,6 +295,11 @@ export interface ICredentialDataDecryptedObject {
 // Second array index: The different connections (if one node is connected to multiple nodes)
 export type NodeInputConnections = IConnection[][];
 
+export interface INodeConnection {
+	sourceIndex: number;
+	destinationIndex: number;
+}
+
 export interface INodeConnections {
 	// Input name
 	[key: string]: NodeInputConnections;
