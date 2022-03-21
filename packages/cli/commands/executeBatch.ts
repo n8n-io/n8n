@@ -76,7 +76,8 @@ export class ExecuteBatch extends Command {
 			description: 'Toggles on displaying all errors and debug messages.',
 		}),
 		ids: flags.string({
-			description: 'Specifies workflow IDs to get executed, separated by a comma.',
+			description:
+				'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
 		}),
 		concurrency: flags.integer({
 			default: 1,
@@ -244,16 +245,25 @@ export class ExecuteBatch extends Command {
 		}
 
 		if (flags.ids !== undefined) {
-			const paramIds = flags.ids.split(',');
-			const re = /\d+/;
-			const matchedIds = paramIds.filter((id) => re.exec(id)).map((id) => parseInt(id.trim(), 10));
+			if (fs.existsSync(flags.ids)) {
+				const contents = fs.readFileSync(flags.ids, { encoding: 'utf-8' });
+				ids.push(...contents.split(',').map((id) => parseInt(id.trim(), 10)));
+			} else {
+				const paramIds = flags.ids.split(',');
+				const re = /\d+/;
+				const matchedIds = paramIds
+					.filter((id) => re.exec(id))
+					.map((id) => parseInt(id.trim(), 10));
 
-			if (matchedIds.length === 0) {
-				console.log(`The parameter --ids must be a list of numeric IDs separated by a comma.`);
-				return;
+				if (matchedIds.length === 0) {
+					console.log(
+						`The parameter --ids must be a list of numeric IDs separated by a comma or a file with this content.`,
+					);
+					return;
+				}
+
+				ids.push(...matchedIds);
 			}
-
-			ids.push(...matchedIds);
 		}
 
 		if (flags.skipList !== undefined) {
