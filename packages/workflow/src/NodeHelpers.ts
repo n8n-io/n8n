@@ -1066,13 +1066,15 @@ export function getNodeWebhookUrl(
 	path: string,
 	isFullPath?: boolean,
 ): string {
-	if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
-		// setting this to false to prefix the webhookId
-		isFullPath = false;
-	}
 	if (path.startsWith('/')) {
 		path = path.slice(1);
 	}
+	
+	if ((path.startsWith(':') && node.webhookId) {
+		// setting this to false to prefix the webhookId
+		isFullPath = false;
+	}
+	
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 
