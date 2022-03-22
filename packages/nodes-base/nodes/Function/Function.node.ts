@@ -36,6 +36,7 @@ export class Function implements INodeType {
 				type: 'string',
 				default: `// Code here will run only once, no matter how many input items there are.
 // More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function
+// Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Loop over inputs and add a new field called 'myNewField' to the JSON of each one
 for (item of items) {
@@ -119,6 +120,8 @@ return items;`,
 		try {
 			// Execute the function code
 			items = (await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname));
+			items = this.helpers.normalizeItems(items);
+
 			// Do very basic validation of the data
 			if (items === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No data got returned. Always return an Array of items!');
@@ -149,7 +152,8 @@ return items;`,
 				// Try to find the line number which contains the error and attach to error message
 				const stackLines = error.stack.split('\n');
 				if (stackLines.length > 0) {
-					const lineParts = stackLines[1].split(':');
+					stackLines.shift();
+					const lineParts = stackLines.find((line: string) => line.includes('Function')).split(':');
 					if (lineParts.length > 2) {
 						const lineNumber = lineParts.splice(-2, 1);
 						if (!isNaN(lineNumber)) {
