@@ -24,7 +24,6 @@ export class Brandfetch implements INodeType {
 		description: 'Consume Brandfetch API',
 		defaults: {
 			name: 'Brandfetch',
-			color: '#1f1f1f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

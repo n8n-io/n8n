@@ -30,7 +30,6 @@ export class ClickUpTrigger implements INodeType {
 		description: 'Handle ClickUp events via webhooks (Beta)',
 		defaults: {
 			name: 'ClickUp Trigger',
-			color: '#7B68EE',
 		},
 		inputs: [],
 		outputs: ['main'],

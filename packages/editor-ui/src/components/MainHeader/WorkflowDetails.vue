@@ -23,47 +23,47 @@
 			</template>
 		</BreakpointsObserver>
 
-		<div
-			v-if="isTagsEditEnabled"
-			class="tags">
-			<TagsDropdown
-				:createEnabled="true"
-				:currentTagIds="appliedTagIds"
-				:eventBus="tagsEditBus"
-				@blur="onTagsBlur"
-				@update="onTagsUpdate"
-				@esc="onTagsEditEsc"
-				placeholder="Choose or create a tag"
-				ref="dropdown"
-				class="tags-edit"
-			/>
-		</div>
-		<div
-			class="tags"
-			v-else-if="currentWorkflowTagIds.length === 0"
-		>
-			<span
-				class="add-tag clickable"
-				@click="onTagsEditEnable"
+		<span v-if="areTagsEnabled" class="tags">
+			<div
+				v-if="isTagsEditEnabled">
+				<TagsDropdown
+					:createEnabled="true"
+					:currentTagIds="appliedTagIds"
+					:eventBus="tagsEditBus"
+					@blur="onTagsBlur"
+					@update="onTagsUpdate"
+					@esc="onTagsEditEsc"
+					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
+					ref="dropdown"
+					class="tags-edit"
+				/>
+			</div>
+			<div
+				v-else-if="currentWorkflowTagIds.length === 0"
 			>
-				+ Add tag
-			</span>
-		</div>
-		<TagsContainer
-			v-else
-			:tagIds="currentWorkflowTagIds"
-			:clickable="true"
-			:responsive="true"
-			:key="currentWorkflowId"
-			@click="onTagsEditEnable"
-			class="tags"
-		/>
+				<span
+					class="add-tag clickable"
+					@click="onTagsEditEnable"
+				>
+					+ {{ $locale.baseText('workflowDetails.addTag') }}
+				</span>
+			</div>
+			<TagsContainer
+				v-else
+				:tagIds="currentWorkflowTagIds"
+				:clickable="true"
+				:responsive="true"
+				:key="currentWorkflowId"
+				@click="onTagsEditEnable"
+			/>
+		</span>
+		<span v-else class="tags"></span>
 
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<span>Active:</span>
-					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
+					<span>{{ $locale.baseText('workflowDetails.active') + ':' }}</span>
+					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId"/>
 				</span>
 				<SaveButton
 					:saved="!this.isDirty && !this.isNewWorkflow"
@@ -129,6 +129,7 @@ export default mixins(workflowHelpers).extend({
 			isDirty: "getStateIsDirty",
 			currentWorkflowTagIds: "workflowTags",
 		}),
+		...mapGetters('settings', ['areTagsEnabled']),
 		isNewWorkflow(): boolean {
 			return !this.$route.params.name;
 		},
@@ -197,8 +198,8 @@ export default mixins(workflowHelpers).extend({
 			const newName = name.trim();
 			if (!newName) {
 				this.$showMessage({
-					title: "Name missing",
-					message: `Please enter a name, or press 'esc' to go back to the old one.`,
+					title: this.$locale.baseText('workflowDetails.showMessage.title'),
+					message: this.$locale.baseText('workflowDetails.showMessage.message'),
 					type: "error",
 				});
 

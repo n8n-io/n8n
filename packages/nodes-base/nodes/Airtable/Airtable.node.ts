@@ -26,7 +26,6 @@ export class Airtable implements INodeType {
 		description: 'Read, update, write and delete data from Airtable',
 		defaults: {
 			name: 'Airtable',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -84,13 +83,13 @@ export class Airtable implements INodeType {
 				description: 'The ID of the base to access.',
 			},
 			{
-				displayName: 'Table',
+				displayName: 'Table ID',
 				name: 'table',
 				type: 'string',
 				default: '',
 				placeholder: 'Stories',
 				required: true,
-				description: 'The name of table to access.',
+				description: 'The ID of the table to access.',
 			},
 
 			// ----------------------------------
