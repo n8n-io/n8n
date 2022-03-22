@@ -175,11 +175,37 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'URL',
-				name: 'url',
-				type: 'string',
+				displayName: 'Custom Fields',
+				name: 'customFields',
+				type: 'fixedCollection',
+				placeholder: 'Add Custom Field',
 				default: '',
-				description: 'URL of the user.',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: '',
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Fields',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the field key to add.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set for the field key.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Description',
@@ -205,52 +231,15 @@ export const userFields: INodeProperties[] = [
 				default: '',
 				description: 'An alphanumeric identifier for the user.',
 			},
-		],
-	},
-	{
-		displayName: 'Custom Fields',
-		name: 'customFields',
-		placeholder: 'Add Custom Field',
-		type: 'fixedCollection',
-		default: '',
-		typeOptions: {
-			multipleValues: true,
-		},
-		description: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: [
 			{
-				name: 'customFieldsValues',
-				displayName: 'Custom Fields',
-				values: [
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-						description: 'Name of the field key to add.',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: 'Value to set for the field key.',
-					},
-				],
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				default: '',
+				description: 'URL of the user.',
 			},
 		],
 	},
-
 /* -------------------------------------------------------------------------- */
 /*                                 user:update                                */
 /* -------------------------------------------------------------------------- */
@@ -290,18 +279,54 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Username',
-				name: 'username',
-				type: 'string',
+				displayName: 'Custom Fields',
+				name: 'customFields',
+				type: 'fixedCollection',
+				placeholder: 'Add Custom Field',
 				default: '',
-				description: 'Login name for the user.',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: '',
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Fields',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the field key to add.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set for the field key.',
+							},
+						],
+					},
+				],
 			},
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'Description',
+				name: 'description',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				type: 'string',
 				default: '',
-				description: 'Display name for the user.',
+				description: 'Description of the user.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				description: 'The email address for the user.',
 			},
 			{
 				displayName: 'First Name',
@@ -318,11 +343,18 @@ export const userFields: INodeProperties[] = [
 				description: 'Last name for the user.',
 			},
 			{
-				displayName: 'Email',
-				name: 'email',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The email address for the user.',
+				description: 'Display name for the user.',
+			},
+			{
+				displayName: 'Nickname',
+				name: 'nickname',
+				type: 'string',
+				default: '',
+				description: 'The nickname for the user.',
 			},
 			{
 				displayName: 'Password',
@@ -339,21 +371,11 @@ export const userFields: INodeProperties[] = [
 				description: 'URL of the user.',
 			},
 			{
-				displayName: 'Description',
-				name: 'description',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
+				displayName: 'Username',
+				name: 'username',
 				type: 'string',
 				default: '',
-				description: 'Description of the user.',
-			},
-			{
-				displayName: 'Nickname',
-				name: 'nickname',
-				type: 'string',
-				default: '',
-				description: 'The nickname for the user.',
+				description: 'Login name for the user.',
 			},
 			{
 				displayName: 'Slug',
@@ -361,49 +383,6 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'An alphanumeric identifier for the user.',
-			},
-		],
-	},
-	{
-		displayName: 'Update Custom Fields',
-		name: 'updateCustomFields',
-		placeholder: 'Update Custom Field',
-		type: 'fixedCollection',
-		default: '',
-		typeOptions: {
-			multipleValues: true,
-		},
-		description: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'customFieldsValues',
-				displayName: 'Custom Fields',
-				values: [
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-						description: 'Name of the field key to add.',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: 'Value to set for the field key.',
-					},
-				],
 			},
 		],
 	},

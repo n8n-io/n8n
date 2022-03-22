@@ -95,68 +95,14 @@ export const postFields: INodeProperties[] = [
 				description: 'The ID for the author of the object.',
 			},
 			{
-				displayName: 'Content',
-				name: 'content',
-				type: 'string',
+				displayName: 'Categories',
+				name: 'categories',
+				type: 'multiOptions',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					loadOptionsMethod: 'getCategories',
 				},
-				default: '',
-				description: 'The content for the post',
-			},
-			{
-				displayName: 'Slug',
-				name: 'slug',
-				type: 'string',
-				default: '',
-				description: 'An alphanumeric identifier for the object unique to its type.',
-			},
-			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				default: '',
-				description: 'A password to protect access to the content and excerpt.',
-			},
-			{
-				displayName: 'Post Type',
-				name: 'postType',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTypes',
-				},
-				default: '',
-				description: 'The type for the post to create.',
-				placeholder: 'Select post type',
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{
-						name: 'Draft',
-						value: 'draft',
-					},
-					{
-						name: 'Future',
-						value: 'future',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Private',
-						value: 'private',
-					},
-					{
-						name: 'Publish',
-						value: 'publish',
-					},
-				],
-				default: 'draft',
-				description: 'A named status for the post.',
+				default: [],
+				description: 'The terms assigned to the object in the category taxonomy.',
 			},
 			{
 				displayName: 'Comment Status',
@@ -176,21 +122,47 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not comments are open on the post.',
 			},
 			{
-				displayName: 'Ping Status',
-				name: 'pingStatus',
-				type: 'options',
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'The content for the post',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFields',
+				type: 'fixedCollection',
+				placeholder: 'Add Custom Field',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: '',
 				options: [
 					{
-						name: 'Open',
-						value: 'open',
-					},
-					{
-						name: 'Close',
-						value: 'closed',
+						name: 'customFieldsValues',
+						displayName: 'Custom Fields',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the field key to add.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set for the field key.',
+							},
+						],
 					},
 				],
-				default: 'open',
-				description: 'If the a message should be send to announce the post.',
 			},
 			{
 				displayName: 'Format',
@@ -242,21 +214,82 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not comments are open on the post.',
 			},
 			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				default: '',
+				description: 'A password to protect access to the content and excerpt.',
+			},
+			{
+				displayName: 'Ping Status',
+				name: 'pingStatus',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'Close',
+						value: 'closed',
+					},
+				],
+				default: 'open',
+				description: 'If the a message should be send to announce the post.',
+			},
+			{
+				displayName: 'Post Type',
+				name: 'postType',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTypes',
+				},
+				default: '',
+				description: 'The type for the post to create.',
+				placeholder: 'Select post type',
+			},
+			{
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+				description: 'An alphanumeric identifier for the object unique to its type.',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Draft',
+						value: 'draft',
+					},
+					{
+						name: 'Future',
+						value: 'future',
+					},
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+					{
+						name: 'Private',
+						value: 'private',
+					},
+					{
+						name: 'Publish',
+						value: 'publish',
+					},
+				],
+				default: 'draft',
+				description: 'A named status for the post.',
+			},
+			{
 				displayName: 'Sticky',
 				name: 'sticky',
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not the object should be treated as sticky.',
-			},
-			{
-				displayName: 'Categories',
-				name: 'categories',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				default: [],
-				description: 'The terms assigned to the object in the category taxonomy.',
 			},
 			{
 				displayName: 'Tags',
@@ -267,49 +300,6 @@ export const postFields: INodeProperties[] = [
 				},
 				default: [],
 				description: 'The terms assigned to the object in the post_tag taxonomy.',
-			},
-		],
-	},
-	{
-		displayName: 'Custom Fields',
-		name: 'customFields',
-		placeholder: 'Add Custom Field',
-		type: 'fixedCollection',
-		default: '',
-		typeOptions: {
-			multipleValues: true,
-		},
-		description: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'customFieldsValues',
-				displayName: 'Custom Fields',
-				values: [
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-						description: 'Name of the field key to add.',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: 'Value to set for the field key.',
-					},
-				],
 			},
 		],
 	},
@@ -363,64 +353,14 @@ export const postFields: INodeProperties[] = [
 				description: 'The ID for the author of the object.',
 			},
 			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'The title for the post',
-			},
-			{
-				displayName: 'Content',
-				name: 'content',
-				type: 'string',
+				displayName: 'Categories',
+				name: 'categories',
+				type: 'multiOptions',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					loadOptionsMethod: 'getCategories',
 				},
-				default: '',
-				description: 'The content for the post',
-			},
-			{
-				displayName: 'Slug',
-				name: 'slug',
-				type: 'string',
-				default: '',
-				description: 'An alphanumeric identifier for the object unique to its type.',
-			},
-			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				default: '',
-				description: 'A password to protect access to the content and excerpt.',
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{
-						name: 'Publish',
-						value: 'publish',
-					},
-					{
-						name: 'Future',
-						value: 'future',
-					},
-					{
-						name: 'Draft',
-						value: 'draft',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Private',
-						value: 'private',
-					},
-				],
-				default: 'draft',
-				description: 'A named status for the post.',
+				default: [],
+				description: 'The terms assigned to the object in the category taxonomy.',
 			},
 			{
 				displayName: 'Comment Status',
@@ -440,21 +380,47 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not comments are open on the post.',
 			},
 			{
-				displayName: 'Ping Status',
-				name: 'pingStatus',
-				type: 'options',
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'The content for the post',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFields',
+				type: 'fixedCollection',
+				placeholder: 'Add Custom Field',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: '',
 				options: [
 					{
-						name: 'Open',
-						value: 'open',
-					},
-					{
-						name: 'Close',
-						value: 'closed',
+						name: 'customFieldsValues',
+						displayName: 'Custom Fields',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the field key to add.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set for the field key.',
+							},
+						],
 					},
 				],
-				default: 'open',
-				description: 'Whether or not comments are open on the post.',
 			},
 			{
 				displayName: 'Format',
@@ -506,21 +472,71 @@ export const postFields: INodeProperties[] = [
 				description: 'The format of the post.',
 			},
 			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				default: '',
+				description: 'A password to protect access to the content and excerpt.',
+			},
+			{
+				displayName: 'Ping Status',
+				name: 'pingStatus',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'Close',
+						value: 'closed',
+					},
+				],
+				default: 'open',
+				description: 'Whether or not comments are open on the post.',
+			},
+			{ // slug
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+				description: 'An alphanumeric identifier for the object unique to its type.',
+			},
+			{ // status
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Publish',
+						value: 'publish',
+					},
+					{
+						name: 'Future',
+						value: 'future',
+					},
+					{
+						name: 'Draft',
+						value: 'draft',
+					},
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+					{
+						name: 'Private',
+						value: 'private',
+					},
+				],
+				default: 'draft',
+				description: 'A named status for the post.',
+			},
+			{
 				displayName: 'Sticky',
 				name: 'sticky',
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not the object should be treated as sticky.',
-			},
-			{
-				displayName: 'Categories',
-				name: 'categories',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				default: [],
-				description: 'The terms assigned to the object in the category taxonomy.',
 			},
 			{
 				displayName: 'Tags',
@@ -532,51 +548,16 @@ export const postFields: INodeProperties[] = [
 				default: [],
 				description: 'The terms assigned to the object in the post_tag taxonomy.',
 			},
-		],
-	},
-	{
-		displayName: 'Update Custom Fields',
-		name: 'updateCustomFields',
-		placeholder: 'Update Custom Field',
-		type: 'fixedCollection',
-		default: '',
-		typeOptions: {
-			multipleValues: true,
-		},
-		description: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		options: [
 			{
-				name: 'customFieldsValues',
-				displayName: 'Custom Fields',
-				values: [
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-						description: 'Name of the field key to add.',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: 'Value to set for the field key.',
-					},
-				],
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'The title for the post',
 			},
 		],
 	},
+
 
 /* -------------------------------------------------------------------------- */
 /*                                  post:get                                  */

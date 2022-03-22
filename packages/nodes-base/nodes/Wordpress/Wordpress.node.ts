@@ -27,7 +27,6 @@ import {
 import {
 	IUser,
 } from './UserInterface';
-import { validateUpdateFields } from '../Freshservice/GenericFunctions';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
@@ -159,7 +158,6 @@ export class Wordpress implements INodeType {
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const customFields = this.getNodeParameter('customFields', i) as IDataObject;
 						// tslint:disable-next-line: no-any
 						const meta: {[key: string]: any} = {};
 						const body: IPost = {
@@ -201,7 +199,8 @@ export class Wordpress implements INodeType {
 
 						const postType = additionalFields.postType ? additionalFields.postType as string : 'posts';
 
-						if(customFields.customFieldsValues) {
+						if (additionalFields.customFields) {
+							const customFields = additionalFields.customFields as IDataObject;
 							const values = customFields.customFieldsValues as IDataObject[];
 
 							values.forEach(value => {
@@ -217,7 +216,6 @@ export class Wordpress implements INodeType {
 					if (operation === 'update') {
 						const postId = this.getNodeParameter('postId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-						const updateCustomFields = this.getNodeParameter('updateCustomFields', i) as IDataObject;
 						// tslint:disable-next-line: no-any
 						const meta: {[key: string]: any} = {};
 						const body: IPost = {
@@ -259,8 +257,9 @@ export class Wordpress implements INodeType {
 						if (updateFields.format) {
 							body.format = updateFields.format as string;
 						}
-						if(updateCustomFields.customFieldsValues) {
-							const values = updateCustomFields.customFieldsValues as IDataObject[];
+						if (updateFields.customFields) {
+							const customFields = updateFields.customFields as IDataObject;
+							const values = customFields.customFieldsValues as IDataObject[];
 
 							values.forEach(value => {
 								const name = value.name as string;
@@ -350,7 +349,6 @@ export class Wordpress implements INodeType {
 						const email = this.getNodeParameter('email', i) as string;
 						const password = this.getNodeParameter('password', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const customFields = this.getNodeParameter('customFields', i) as IDataObject;
 						// tslint:disable-next-line: no-any
 						const meta: {[key: string]: any} = {};
 						const body: IUser = {
@@ -373,7 +371,8 @@ export class Wordpress implements INodeType {
 						if (additionalFields.slug) {
 							body.slug = additionalFields.slug as string;
 						}
-						if(customFields.customFieldsValues) {
+						if (additionalFields.customFields) {
+							const customFields = additionalFields.customFields as IDataObject;
 							const values = customFields.customFieldsValues as IDataObject[];
 
 							values.forEach(value => {
@@ -389,7 +388,6 @@ export class Wordpress implements INodeType {
 					if (operation === 'update') {
 						const userId = this.getNodeParameter('userId', i) as number;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-						const updateCustomFields = this.getNodeParameter('updateCustomFields', i) as IDataObject;
 						// tslint:disable-next-line: no-any
 						const meta: {[key: string]: any} = {};
 						const body: IUser = {
@@ -425,8 +423,9 @@ export class Wordpress implements INodeType {
 						if (updateFields.slug) {
 							body.slug = updateFields.slug as string;
 						}
-						if(updateCustomFields.customFieldsValues) {
-							const values = updateCustomFields.customFieldsValues as IDataObject[];
+						if (updateFields.customFields) {
+							const customFields = updateFields.customFields as IDataObject;
+							const values = customFields.customFieldsValues as IDataObject[];
 
 							values.forEach(value => {
 								const name = value.name as string;
