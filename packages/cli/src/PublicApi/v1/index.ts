@@ -43,6 +43,22 @@ export const getRoutes = (): express.Router => {
 							return false;
 						}
 
+						// if (!config.get('userManagement.isInstanceOwnerSetUp')) {
+						// 	Logger.debug(
+						// 		'Request to send email invite(s) to user(s) failed because the owner account is not set up',
+						// 	);
+						// 	throw new ResponseHelper.ResponseError(
+						// 		'You must set up your own account before inviting others',
+						// 		undefined,
+						// 		400,
+						// 	);
+						// }
+
+						// if (req.user.globalRole.name === 'owner') {
+
+
+						// }
+
 						req.user = user[0];
 
 						return true;
