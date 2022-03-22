@@ -597,7 +597,7 @@ export class TextManipulation implements INodeType {
 														decodeWithEntities: [
 															'xml',
 															'html',
-														]
+														],
 													},
 												},
 												type: 'options',
@@ -609,7 +609,7 @@ export class TextManipulation implements INodeType {
 													{
 														name: 'Strict',
 														value: 'strict',
-													}
+													},
 												],
 												default: 'legacy',
 											},
@@ -683,7 +683,7 @@ export class TextManipulation implements INodeType {
 														encodeWithEntities: [
 															'xml',
 															'html',
-														]
+														],
 													},
 												},
 												type: 'options',
@@ -699,7 +699,7 @@ export class TextManipulation implements INodeType {
 													{
 														name: 'NonAscii',
 														value: 'nonAscii',
-													}
+													},
 												],
 												default: 'extensive',
 											},
