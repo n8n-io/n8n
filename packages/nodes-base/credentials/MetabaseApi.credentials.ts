@@ -8,33 +8,14 @@ export class MetabaseApi implements ICredentialType {
 	displayName = 'Metabase API';
 	documentationUrl = 'metabase';
 	extends = [
-		'renovateMetabaseToken',
+		'renovateToken',
 	];
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Api url',
-			name: 'url',
-			type: 'string',
-			default: '',
-		},
-		{
-			displayName: 'Username',
-			name: 'username',
-			type: 'string',
-			default: '',
-		},
-		{
-			displayName: 'Password',
-			name: 'password',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-			default: '',
+			displayName: 'Authentication Endpoint',
+			name: 'authEndpoint',
+			type: 'hidden',
+			default: '/api/session',
 		},
 	];
-
-	// ! Special authentication is needed, as the Metabase API is using a special auth
-	// ! 1st solution would be to authenticate at every request, but this is bad for performance
-	// ! 2nd solution is to use a implement a special auth function just for Metabase
 }

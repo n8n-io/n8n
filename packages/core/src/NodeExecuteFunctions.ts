@@ -1065,7 +1065,7 @@ export async function requestOAuth1(
  * @returns
  */
 
-export async function requestMetabaseToken(
+export async function requestRenovateToken(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
 	requestOptions:
@@ -1089,7 +1089,7 @@ export async function requestMetabaseToken(
 			password: credentials.password as string,
 		};
 		const requestOptionsToken = {
-			url: '/api/session',
+			url: credentials.authEndpoint,
 			// @ts-ignore
 			baseURL: requestOptions.baseURL,
 			method: 'POST',
@@ -1152,8 +1152,8 @@ export async function httpRequestWithAuthentication(
 				true,
 			);
 		}
-		if (parentTypes.includes('renovateMetabaseToken')) {
-			return await requestMetabaseToken.call(this, credentialsType, requestOptions, true);
+		if (parentTypes.includes('renovateToken')) {
+			return await requestRenovateToken.call(this, credentialsType, requestOptions, true);
 		}
 
 		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
