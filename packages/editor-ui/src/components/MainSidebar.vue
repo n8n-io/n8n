@@ -504,7 +504,11 @@ export default mixins(
 
 					const exportData: IWorkflowDataUpdate = {
 						...data,
-						tags: (tags || []).map(tagId => this.$store.getters["tags/getTagById"](tagId)),
+						tags: (tags || []).map(tagId => {
+							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
+
+							return tag;
+						}),
 					};
 
 					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
