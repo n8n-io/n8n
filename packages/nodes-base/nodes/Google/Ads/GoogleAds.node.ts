@@ -14,11 +14,6 @@ import {
 	campaignOperations,
 } from './CampaignDescription';
 
-import {
-	invoiceFields,
-	invoiceOperations,
-} from './InvoiceDescription';
-
 export class GoogleAds implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Ads',
@@ -64,10 +59,6 @@ export class GoogleAds implements INodeType {
 						value: 'campaign',
 					},
 					{
-						name: 'Invoice',
-						value: 'invoice',
-					},
-					{
 						name: 'Analytics',
 						value: 'analytics',
 					},
@@ -80,11 +71,6 @@ export class GoogleAds implements INodeType {
 			//-------------------------------
 			...campaignOperations,
 			...campaignFields,
-			//-------------------------------
-			// Invoice Operations
-			//-------------------------------
-			...invoiceOperations,
-			...invoiceFields,
 			//-------------------------------
 			// Analytics Operations
 			//-------------------------------

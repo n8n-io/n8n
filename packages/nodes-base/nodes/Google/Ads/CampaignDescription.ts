@@ -25,13 +25,29 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/, "")  + "/googleAds:search"}}',
+						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
 						body: {
-							query: 'SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC',
+							query: 'SELECT campaign.id, campaign.name, campaign.advertising_channel_type, campaign.status, campaign.campaign_budget, campaign.start_date, campaign.end_date FROM campaign ORDER BY campaign.id DESC',
 						},
 						headers: {
-							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/, "")}}',
+							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
 						},
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'results',
+								},
+							},
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'campaign',
+								},
+							},
+						],
 					},
 				},
 			},
@@ -42,14 +58,31 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/, "") + "/googleAds:search"}}',
+						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
 						returnFullResponse: true,
 						body: {
-							query: '={{"SELECT campaign.id, campaign.name FROM campaign WHERE campaign.id = " + $parameter["campaignId"].toString().replace(/-/, "") + "ORDER BY campaign.id DESC" }}',
+							query: '={{ "SELECT campaign.id, campaign.name, campaign.advertising_channel_type, campaign.status, campaign.campaign_budget, campaign.start_date, campaign.end_date FROM campaign WHERE campaign.id = " + $parameter["campaignId"].toString().replace(/-/g, "") + " ORDER BY campaign.id DESC" }}',
 						},
 						headers: {
-							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/, "")}}',
+							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
+							'content-type': 'application/x-www-form-urlencoded',
 						},
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'results',
+								},
+							},
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'campaign',
+								},
+							},
+						],
 					},
 				},
 			},
@@ -60,14 +93,30 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/, "") + "/googleAds:search"}}',
+						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
 						returnFullResponse: true,
 						body: {
 							query: '={{$parameter["customGQL"]}}',
 						},
 						headers: {
-							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/, "")}}',
+							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
 						},
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'results',
+								},
+							},
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'campaign',
+								},
+							},
+						],
 					},
 				},
 			},

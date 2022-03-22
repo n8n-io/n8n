@@ -722,6 +722,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 				axiosRequest.headers = axiosRequest.headers || {};
 				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			}
+		} else if (
+			axiosRequest.headers[existingContentTypeHeaderKey] === 'application/x-www-form-urlencoded'
+		) {
+			axiosRequest.data = new URLSearchParams(n8nRequest.body as Record<string, string>);
 		}
 	}
 

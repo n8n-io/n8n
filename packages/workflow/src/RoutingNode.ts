@@ -125,6 +125,7 @@ export class RoutingNode {
 					options: {
 						qs: {},
 						body: {},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -140,14 +141,16 @@ export class RoutingNode {
 						let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
 						// Parse the headers value as expression so that we can use complex values
 						if (['headers', 'body'].includes(key)) {
-							for (const headerName of Object.keys(value)) {
-								value[headerName] = this.getParameterValue(
-									value[headerName],
+							for (const attributeName of Object.keys(value)) {
+								const attributeValue = this.getParameterValue(
+									value[attributeName],
 									i,
 									runIndex,
 									{ $credentials: credentials },
 									true,
 								) as string;
+								// @ts-ignore
+								requestData.options[key][attributeName] = attributeValue;
 							}
 						} else {
 							value = this.getParameterValue(
@@ -157,9 +160,9 @@ export class RoutingNode {
 								{ $credentials: credentials },
 								true,
 							) as string;
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(requestData.options as Record<string, any>)[key] = value;
 						}
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						(requestData.options as Record<string, any>)[key] = value;
 					}
 				}
 
@@ -586,6 +589,7 @@ export class RoutingNode {
 			options: {
 				qs: {},
 				body: {},
+				headers: {},
 			},
 			preSend: [],
 			postReceive: [],
@@ -612,14 +616,16 @@ export class RoutingNode {
 					let propertyValue = (nodeProperties.routing.request as Record<string, any>)[key];
 					// If the value is an expression resolve it
 					if (['headers', 'body'].includes(key)) {
-						for (const headerName of Object.keys(propertyValue)) {
-							propertyValue[headerName] = this.getParameterValue(
-								propertyValue[headerName],
+						for (const attributeName of Object.keys(propertyValue)) {
+							const attributeValue = this.getParameterValue(
+								propertyValue[attributeName],
 								itemIndex,
 								runIndex,
 								{ ...additionalKeys, $value: parameterValue },
 								true,
 							) as string;
+							// @ts-ignore
+							returnData.options[key][attributeName] = attributeValue;
 						}
 					} else {
 						propertyValue = this.getParameterValue(
@@ -629,9 +635,9 @@ export class RoutingNode {
 							{ ...additionalKeys, $value: parameterValue },
 							true,
 						) as string;
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(returnData.options as Record<string, any>)[key] = propertyValue;
 					}
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					(returnData.options as Record<string, any>)[key] = propertyValue;
 				}
 			}
 
