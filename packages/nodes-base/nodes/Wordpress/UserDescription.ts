@@ -175,39 +175,6 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
-				name: 'customFields',
-				type: 'fixedCollection',
-				placeholder: 'Add Custom Field',
-				default: '',
-				typeOptions: {
-					multipleValues: true,
-				},
-				description: '',
-				options: [
-					{
-						name: 'customFieldsValues',
-						displayName: 'Custom Fields',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								description: 'Name of the field key to add.',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value to set for the field key.',
-							},
-						],
-					},
-				],
-			},
-			{
 				displayName: 'Description',
 				name: 'description',
 				typeOptions: {
@@ -278,39 +245,6 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Custom Fields',
-				name: 'customFields',
-				type: 'fixedCollection',
-				placeholder: 'Add Custom Field',
-				default: '',
-				typeOptions: {
-					multipleValues: true,
-				},
-				description: '',
-				options: [
-					{
-						name: 'customFieldsValues',
-						displayName: 'Custom Fields',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								description: 'Name of the field key to add.',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value to set for the field key.',
-							},
-						],
-					},
-				],
-			},
 			{
 				displayName: 'Description',
 				name: 'description',

@@ -371,16 +371,6 @@ export class Wordpress implements INodeType {
 						if (additionalFields.slug) {
 							body.slug = additionalFields.slug as string;
 						}
-						if (additionalFields.customFields) {
-							const customFields = additionalFields.customFields as IDataObject;
-							const values = customFields.customFieldsValues as IDataObject[];
-
-							values.forEach(value => {
-								const name = value.name as string;
-								meta[name] = value.value;
-							});
-							body.meta = meta as object;
-						}
 
 						responseData = await wordpressApiRequest.call(this, 'POST', '/users', body);
 					}
@@ -422,16 +412,6 @@ export class Wordpress implements INodeType {
 						}
 						if (updateFields.slug) {
 							body.slug = updateFields.slug as string;
-						}
-						if (updateFields.customFields) {
-							const customFields = updateFields.customFields as IDataObject;
-							const values = customFields.customFieldsValues as IDataObject[];
-
-							values.forEach(value => {
-								const name = value.name as string;
-								meta[name] = value.value;
-							});
-							body.meta = meta as object;
 						}
 
 						responseData = await wordpressApiRequest.call(this, 'POST', `/users/${userId}`, body);
