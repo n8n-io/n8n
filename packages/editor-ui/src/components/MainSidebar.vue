@@ -502,15 +502,9 @@ export default mixins(
 						data.id = parseInt(data.id, 10);
 					}
 
-					// Add tag info
 					const exportData: IWorkflowDataUpdate = {
 						...data,
-						tags: (tags||[]).map(tagId => {
-							return {
-								...this.$store.getters["tags/getTagById"](tagId),
-								usageCount: undefined,
-							};
-						}),
+						tags: (tags || []).map(tagId => this.$store.getters["tags/getTagById"](tagId)),
 					};
 
 					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
