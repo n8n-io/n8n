@@ -15,6 +15,16 @@ export default {
         control: 'number',
       }
     },
+    minHeight: {
+      control: {
+        control: 'number',
+      }
+    },
+    minWidth: {
+      control: {
+        control: 'number',
+      }
+    },
     readOnly: {
       control: {
         control: 'Boolean',
@@ -48,8 +58,10 @@ const Template = (args, { argTypes }) => ({
 
 export const Sticky = Template.bind({});
 Sticky.args = {
-  content: '### I am a heading.\nThis is how you **bold** text and this is how you create an [inline link](https://n8n.io/)',
-  height: 150,
+  content: '### I am a heading.\nThis is how you **bold** text and this is how you create an [inline link](n8n.io/)',
+  height: 160,
+  minHeight: 80,
+  minWidth: 150,
   readOnly: false,
-  width: 220,
+  width: 240,
 };

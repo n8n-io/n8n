@@ -10,6 +10,7 @@ import N8nHeading from './N8nHeading';
 import N8nMarkdown from './N8nMarkdown';
 import N8nMenu from './N8nMenu';
 import N8nMenuItem from './N8nMenuItem';
+import N8nResize from './N8nResize';
 import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
 import N8nSticky from './N8nSticky';
@@ -33,6 +34,7 @@ export {
 	N8nHeading,
 	N8nMenu,
 	N8nMenuItem,
+  N8nResize,
 	N8nSelect,
 	N8nSpinner,
 	N8nSticky,

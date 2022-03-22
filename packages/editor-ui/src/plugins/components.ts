@@ -56,6 +56,7 @@ import {
 	N8nMarkdown,
 	N8nMenu,
 	N8nMenuItem,
+  N8nResize,
 	N8nSelect,
 	N8nSpinner,
 	N8nSticky,
@@ -82,6 +83,7 @@ Vue.use(N8nHeading);
 Vue.component('n8n-markdown', N8nMarkdown);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
+Vue.use(N8nResize);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
 Vue.use(N8nSticky);

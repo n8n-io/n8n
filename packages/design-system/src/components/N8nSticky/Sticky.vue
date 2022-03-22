@@ -1,14 +1,24 @@
 <template>
   <div
+    id="sticky"
     :class="[$style.sticky, isEditable ? $style.editMode : '']"
     :style="styles"
     @dblclick="changeMode"
   >
-    <n8n-markdown
+    <n8n-resize 
       v-if="!isEditable"
-      :content="content"
-      theme="sticky"
-    />
+      :minHeight="minHeight"
+      :minWidth="minWidth"
+      :resizer="resizer"
+    >
+      <template>
+        <n8n-markdown
+          :content="content"
+          theme="sticky"
+        />
+      </template>
+    </n8n-resize>
+    
     <div class="textarea" v-else>
       <n8n-input
         v-model="tempValue"
@@ -37,6 +47,7 @@
 <script lang="ts">
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
+import N8nResize from '../N8nResize';
 import N8nText from '../N8nText';
 
 export default {
@@ -49,18 +60,27 @@ export default {
       type: Number,
       default: 160,
     },
+    minHeight: {
+      type: Number,
+      default: 80,
+    },
+    minWidth: {
+      type: Number,
+      default: 150,
+    },
     readOnly: {
       type: Boolean,
       default: false,
     },
     width: {
       type: Number,
-      default: 220,
+      default: 240,
     }
   },
   components: {
     N8nInput,
     N8nMarkdown,
+    N8nResize,
     N8nText,
   },
   computed: {
@@ -68,13 +88,16 @@ export default {
       return {
         ...(this.height ? { height: this.height + 'px' } : { height: '100%' }),
         ...(this.width ? { width: this.width + 'px' } : { width: '100%' }),
+        ...(this.minHeight ? { minHeight: this.minHeight + 'px' } : { minHeight: '100%' }),
+        ...(this.minWidth ? { minWidth: this.minWidth + 'px' } : { minWidth: '100%' }),
       };
     },
   },
   data() {
     return {
       isEditable: false,
-      tempValue: ''
+      tempValue: '',
+      resizer: null,
     }
   },
   methods: {
@@ -100,20 +123,20 @@ export default {
     },
   },
   mounted() {
-    this.tempValue = this.content;
-  }
+   this.resizer = document.querySelector('#sticky');
+   this.tempValue = this.content;
+  },
 };
 </script>
 
 <style lang="scss" module>
 .sticky {
-  min-width: 150px;
-  min-height: 80px;
-  padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl);
+  position: absolute;
   background-color: var(--color-sticky-default-background);
   border: 1px solid var(--color-sticky-default-border);
   border-radius: var(--border-radius-large);
   cursor: pointer;
+  z-index: 2;
 }
 
 .editMode {
@@ -122,7 +145,7 @@ export default {
 }
 
 .footer {
-  padding: var(--spacing-4xs) 0;
+  padding: var(--spacing-4xs) 0 var(--spacing-xs);
   display: flex;
   justify-content: flex-end;
 }
@@ -130,7 +153,7 @@ export default {
 
 <style lang="scss">
 .textarea {
-  height: calc(100% - var(--spacing-m));
+  height: calc(100% - var(--spacing-l));
   
   .el-textarea {
     height: 100%;
