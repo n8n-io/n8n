@@ -56,7 +56,7 @@ import {
 	N8nMarkdown,
 	N8nMenu,
 	N8nMenuItem,
-  N8nResize,
+	N8nResize,
 	N8nSelect,
 	N8nSpinner,
 	N8nSticky,
