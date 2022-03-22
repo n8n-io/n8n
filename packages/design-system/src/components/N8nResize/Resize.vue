@@ -20,103 +20,94 @@ export default {
     return {
       currentResizer: null,
       isResizing: false,
+      prevX: 0,
+      prevY: 0,
     }
   },
   methods: {
     resizerMove(e) {
-      var vm = this;
-      var currentResizer = e.target;
+      this.currentResizer = e.target;
       this.isResizing = true;
-      
-      let prevX = e.clientX;
-      let prevY = e.clientY;
 
-      window.addEventListener('mousemove', mousemove);
-      window.addEventListener('mouseup', mouseup);
- 
-      function mousemove(e){
-        const rect = vm.resizer.getBoundingClientRect();
+      this.prevX = e.clientX;
+      this.prevY = e.clientY;
 
-        if (currentResizer.classList.contains('se')) {
-          vm.resizer.style.width = rect.width - (prevX - e.clientX) + 'px';
-          vm.resizer.style.height = rect.height - (prevY - e.clientY) + 'px';
-        } 
-        else if (currentResizer.classList.contains('sw')) {
-          if (rect.width > vm.minWidth && rect.height > vm.minHeight) {
-            vm.resizer.style.width = rect.width + (prevX - e.clientX) + 'px';
-            vm.resizer.style.height = rect.height - (prevY - e.clientY) + 'px';
-            vm.resizer.style.left = rect.left - (prevX - e.clientX) + 'px';
+      window.addEventListener('mousemove', this.mouseMove);
+      window.addEventListener('mouseup', this.mouseUp);
+    },
+    mouseMove(e) {
+      const rect = this.resizer.getBoundingClientRect();
+
+        if (this.currentResizer.classList.contains('se')) {
+          this.resizer.style.width = rect.width - (this.prevX - e.clientX) + 'px';
+          this.resizer.style.height = rect.height - (this.prevY - e.clientY) + 'px';
+        } else if (this.currentResizer.classList.contains('sw')) {
+          if (rect.width > this.minWidth && rect.height > this.minHeight) {
+            this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
+            this.resizer.style.height = rect.height - (this.prevY - e.clientY) + 'px';
+            this.resizer.style.left = rect.left - (this.prevX - e.clientX) + 'px';
           } else {
-            vm.resizer.style.width = rect.width + (prevX - e.clientX) + 'px';
-            vm.resizer.style.height = rect.height - (prevY - e.clientY) + 'px';
+            this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
+            this.resizer.style.height = rect.height - (this.prevY - e.clientY) + 'px';
           }
-        }
-
-        else if (currentResizer.classList.contains('ne')) {
-          if (rect.width > vm.minWidth && rect.height > vm.minHeight) { 
-            vm.resizer.style.width = rect.width - (prevX - e.clientX) + 'px';
-            vm.resizer.style.height = rect.height + (prevY - e.clientY) + 'px';
-            vm.resizer.style.top = rect.top + (prevX - e.clientX) + 'px';
+        } else if (this.currentResizer.classList.contains('ne')) {
+          if (rect.width > this.minWidth && rect.height > this.minHeight) { 
+            this.resizer.style.width = rect.width - (this.prevX - e.clientX) + 'px';
+            this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
+            this.resizer.style.top = rect.top + (this.prevX - e.clientX) + 'px';
           } else {
-            vm.resizer.style.height = rect.height + (prevY - e.clientY) + 'px';
-            vm.resizer.style.width = rect.width - (prevX - e.clientX) + 'px';
+            this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
+            this.resizer.style.width = rect.width - (this.prevX - e.clientX) + 'px';
           }
-
-        }
-
-         else if (currentResizer.classList.contains('nw')) {
-           if (rect.width > vm.minWidth && rect.height > vm.minHeight) { 
-          vm.resizer.style.width = rect.width + (prevX - e.clientX) + 'px';
-          vm.resizer.style.height = rect.height + (prevY - e.clientY) + 'px';
-          vm.resizer.style.top = rect.top - (prevY - e.clientY) + 'px';
-          vm.resizer.style.left = rect.left - (prevX - e.clientX) + 'px';
-           } else {
-             vm.resizer.style.width = rect.width + (prevX - e.clientX) + 'px';
-            vm.resizer.style.height = rect.height + (prevY - e.clientY) + 'px';
-           }
-        } 
-        
-        else if (currentResizer.classList.contains('w')) {
-           if (rect.width < vm.minWidth) {
-               vm.resizer.style.width = rect.width + (prevX - e.clientX) + 'px';
-           } else {
-             vm.resizer.style.width = rect.width - (prevX - e.clientX) + 'px';
-           }
-        } else if (currentResizer.classList.contains('e')) {
-          if (rect.width > vm.minWidth) {
-            vm.resizer.style.left = rect.left - (prevX - e.clientX) + 'px';
-             vm.resizer.style.width = rect.width + (prevX - e.clientX) + 'px';
+        } else if (this.currentResizer.classList.contains('nw')) {
+          if (rect.width > this.minWidth && rect.height > this.minHeight) { 
+            this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
+            this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
+            this.resizer.style.top = rect.top - (this.prevY - e.clientY) + 'px';
+            this.resizer.style.left = rect.left - (this.prevX - e.clientX) + 'px';
           } else {
-             vm.resizer.style.width = rect.width + (prevX - e.clientX) + 'px';
+            this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
+            this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
           }
-        } else if (currentResizer.classList.contains('n')) {
-          if (rect.height > vm.minHeight) {
-            vm.resizer.style.top = rect.top - (prevY - e.clientY) + 'px';
-            vm.resizer.style.height = rect.height + (prevY - e.clientY) + 'px';
+        } else if (this.currentResizer.classList.contains('w')) {
+          if (rect.width < this.minWidth) {
+            this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
           } else {
-            vm.resizer.style.height = rect.height + (prevY - e.clientY) + 'px';
+            this.resizer.style.width = rect.width - (this.prevX - e.clientX) + 'px';
+          }
+        } else if (this.currentResizer.classList.contains('e')) {
+          if (rect.width > this.minWidth) {
+            this.resizer.style.left = rect.left - (this.prevX - e.clientX) + 'px';
+            this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
+          } else {
+            this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
+          }
+        } else if (this.currentResizer.classList.contains('n')) {
+          if (rect.height > this.minHeight) {
+            this.resizer.style.top = rect.top - (this.prevY - e.clientY) + 'px';
+            this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
+          } else {
+            this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
           }       
-        } else if (currentResizer.classList.contains('s')) {
-          if (rect.height < vm.minHeight) {
-            vm.resizer.style.height = rect.height + (prevY - e.clientY) + 'px';
+        } else if (this.currentResizer.classList.contains('s')) {
+          if (rect.height < this.minHeight) {
+            this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
           } else {
-            vm.resizer.style.height = rect.height - (prevY - e.clientY) + 'px';
+            this.resizer.style.height = rect.height - (this.prevY - e.clientY) + 'px';
           }
         }
 
-        prevX = e.clientX;
-        prevY = e.clientY;
-      }
-
-      function mouseup() {
-        window.removeEventListener('mousemove', mousemove);
-        window.removeEventListener('mouseup', mouseup);
-        vm.isResizing = false;
-      }
-    }
+        this.prevX = e.clientX;
+        this.prevY = e.clientY;
+    },
+    mouseUp() {
+      window.removeEventListener('mousemove', this.mouseMove);
+      window.removeEventListener('mouseup', this.mouseUp);
+      this.isResizing = false;
+    },
   },
   mounted() {
-   this.currentResizer = null;
+    this.currentResizer = null;
   },
 };
 </script>
@@ -126,7 +117,6 @@ export default {
   position: absolute;
   width: 100%;
   height: 100%;
-  padding: var(--spacing-s) var(--spacing-s) 0;
   z-index: 2;
 }
 </style>
@@ -138,7 +128,7 @@ export default {
 }
 
 .w {
-  width: 10px;
+  width: 12px;
   height: 100%;
   top: -2px;
   right: -2px;
@@ -147,7 +137,7 @@ export default {
 
 .n {
   width: 100%;
-  height: 10px;
+  height: 12px;
   top: -2px;
   left: -2px;
   cursor:  ns-resize;
@@ -155,14 +145,14 @@ export default {
 
 .s {
   width: 100%;
-  height: 10px;
+  height: 12px;
   bottom: -2px;
   left: -2px;
   cursor: ns-resize;
 }
 
 .e {
-  width: 10px;
+  width: 12px;
   height: 100%;
   top: -2px;
   left: -2px;
@@ -170,34 +160,38 @@ export default {
 }
 
 .nw {
-  width: 10px;
-  height: 10px;
-  top: -2px;
-  left: -2px;
+  width: 12px;
+  height: 12px;
+  top: -3px;
+  left: -3px;
   cursor: nw-resize;
+  z-index: 3;
 }
 
 .ne {
-  width: 10px;
-  height: 10px;
-  top: -2px;
-  right: -2px;
+  width: 12px;
+  height: 12px;
+  top: -3px;
+  right: -3px;
   cursor: ne-resize;
+  z-index: 3;
 }
 
 .sw {
-  width: 10px;
-  height: 10px;
-  bottom: -2px;
-  left: -2px;
+  width: 12px;
+  height: 12px;
+  bottom: -3px;
+  left: -3px;
   cursor: sw-resize;
+  z-index: 3;
 }
 
 .se {
-  width: 10px;
-  height: 10px;
-  bottom: -2px;
-  right: -2px;
+  width: 12px;
+  height: 12px;
+  bottom: -3px;
+  right: -3px;
   cursor: se-resize;
+  z-index: 3;
 }
 </style>

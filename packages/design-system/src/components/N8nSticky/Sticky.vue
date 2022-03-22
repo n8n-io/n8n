@@ -12,10 +12,12 @@
       :resizer="resizer"
     >
       <template>
-        <n8n-markdown
-          :content="content"
-          theme="sticky"
-        />
+        <div :class="$style.wrapper">
+          <n8n-markdown
+            :content="content"
+            theme="sticky"
+          />
+        </div>
       </template>
     </n8n-resize>
     
@@ -137,6 +139,23 @@ export default {
   border-radius: var(--border-radius-large);
   cursor: pointer;
   z-index: 2;
+}
+
+.wrapper {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  padding: var(--spacing-s) var(--spacing-s) 0;
+
+  &::after {
+    content: '';
+    width: 100%;
+    height: 24px;
+    left: 0;
+    bottom: 0;
+    position: absolute;
+    background: linear-gradient(180deg, var(--color-sticky-default-background), #fff5d600 0.01%, var(--color-sticky-default-background));
+  }
 }
 
 .editMode {

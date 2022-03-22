@@ -1,16 +1,25 @@
-import { action } from '@storybook/addon-actions';
 import N8nResize from './Resize.vue';
 
 export default {
   title: 'Atoms/Resize',
   component: N8nResize,
   argTypes: {
-    
+    minHeight: {
+      control: {
+        control: 'number',
+      }
+    },
+    minWidth: {
+      control: {
+        control: 'number',
+      }
+    },
+    resizer: {
+      control: {
+        control: 'text',
+      },
+    },
   },
-};
-
-const methods = {
-
 };
 
 const Template = (args, { argTypes }) => ({
@@ -25,5 +34,6 @@ const Template = (args, { argTypes }) => ({
 
 export const Resize = Template.bind({});
 Resize.args = {
-  
+  minHeight: 80,
+  minWidth: 150,
 };
