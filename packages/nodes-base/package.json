@@ -555,6 +555,7 @@
       "dist/nodes/Notion/Notion.node.js",
       "dist/nodes/Notion/NotionTrigger.node.js",
       "dist/nodes/Odoo/Odoo.node.js",
+      "dist/nodes/Odoo/OdooTrigger.node.js",
       "dist/nodes/OneSimpleApi/OneSimpleApi.node.js",
       "dist/nodes/OpenThesaurus/OpenThesaurus.node.js",
       "dist/nodes/OpenWeatherMap/OpenWeatherMap.node.js",
