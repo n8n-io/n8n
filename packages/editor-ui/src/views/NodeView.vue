@@ -114,7 +114,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -282,7 +282,7 @@ export default mixins(
 				return this.$store.getters.executionWaitingForWebhook;
 			},
 			isDemo (): boolean {
-				return this.$route.name === 'WorkflowDemo';
+				return this.$route.name === VIEWS.DEMO;
 			},
 			lastSelectedNode (): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
@@ -547,14 +547,14 @@ export default mixins(
 					}
 				} catch (error) {
 					this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
-					this.$router.replace({ name: 'NodeViewNew' });
+					this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 					return;
 				}
 
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
 
 				this.blankRedirect = true;
-				this.$router.replace({ name: 'NodeViewNew', query: { templateId } });
+				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
@@ -683,13 +683,13 @@ export default mixins(
 				}
 
 				if (e.key === 'd') {
-					this.callDebounced('deactivateSelectedNode', 350);
+					this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
 
 				} else if (e.key === 'Delete' || e.key === 'Backspace') {
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('deleteSelectedNodes', 500);
+					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 
 				} else if (e.key === 'Tab') {
 					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
@@ -701,7 +701,7 @@ export default mixins(
 				} else if (e.key === 'F2' && !this.isReadOnly) {
 					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode !== null) {
-						this.callDebounced('renameNodePrompt', 1500, lastSelectedNode.name);
+						this.callDebounced('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
 					}
 				} else if ((e.key === '=' || e.key === '+') && !this.isCtrlKeyPressed(e)) {
 					this.zoomIn();
@@ -716,30 +716,36 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectAllNodes', 1000);
+					this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
-					this.callDebounced('copySelectedNodes', 1000);
+					this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
 					// Cut nodes
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('cutSelectedNodes', 1000);
+					this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
 				} else if (e.key === 'o' && this.isCtrlKeyPressed(e) === true) {
 					// Open workflow dialog
 					e.stopPropagation();
 					e.preventDefault();
+					if (this.isDemo) {
+						return;
+					}
 
 					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
 					e.preventDefault();
+					if (this.isDemo) {
+						return;
+					}
 
-					if (this.$router.currentRoute.name === 'NodeViewNew') {
+					if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 						this.$root.$emit('newWorkflow');
 					} else {
-						this.$router.push({ name: 'NodeViewNew' });
+						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					}
 
 					this.$showMessage({
@@ -755,7 +761,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('onSaveKeyboardShortcut', 1000);
+					this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 });
 				} else if (e.key === 'Enter') {
 					// Activate the last selected node
 					const lastSelectedNode = this.lastSelectedNode;
@@ -768,7 +774,7 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectDownstreamNodes', 1000);
+					this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
 				} else if (e.key === 'ArrowRight') {
 					// Set child node active
 					const lastSelectedNode = this.lastSelectedNode;
@@ -782,13 +788,13 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('nodeSelectedByName', 100, connections.main[0][0].node, false, true);
+					this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
 				} else if (e.key === 'ArrowLeft' && e.shiftKey === true) {
 					// Select all downstream nodes
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectUpstreamNodes', 1000);
+					this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
 				} else if (e.key === 'ArrowLeft') {
 					// Set parent node active
 					const lastSelectedNode = this.lastSelectedNode;
@@ -808,7 +814,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('nodeSelectedByName', 100, connections.main[0][0].node, false, true);
+					this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
 				} else if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
 					// Set sibling node as active
 
@@ -866,7 +872,7 @@ export default mixins(
 					}
 
 					if (nextSelectNode !== null) {
-						this.callDebounced('nodeSelectedByName', 100, nextSelectNode, false, true);
+						this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, nextSelectNode, false, true);
 					}
 				}
 			},
@@ -1782,11 +1788,11 @@ export default mixins(
 				if (this.blankRedirect) {
 					this.blankRedirect = false;
 				}
-				else if (this.$route.name === 'WorkflowTemplate') {
+				else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
 					const templateId = this.$route.params.id;
 					await this.openWorkflowTemplate(templateId);
 				}
-				else if (this.$route.name === 'ExecutionById') {
+				else if (this.$route.name === VIEWS.EXECUTION) {
 					// Load an execution
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
@@ -1820,11 +1826,11 @@ export default mixins(
 						const workflow = await this.restApi().getWorkflow(workflowId);
 						if (!workflow) {
 							this.$router.push({
-								name: "NodeViewNew",
+								name: VIEWS.NEW_WORKFLOW,
 							});
 							this.$showMessage({
 								title: 'Error',
-								message: 'Could not find workflow',
+								message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
 								type: 'error',
 							});
 						} else {
@@ -2697,10 +2703,10 @@ export default mixins(
 							await this.importWorkflowExact(json);
 						} catch (e) {
 							if (window.top) {
-								window.top.postMessage(JSON.stringify({command: 'error', message: 'Could not import workflow'}), '*');
+								window.top.postMessage(JSON.stringify({ command: 'error', message: this.$locale.baseText('openWorkflow.workflowImportError') }), '*');
 							}
 							this.$showMessage({
-								title: 'Could not import workflow',
+								title: this.$locale.baseText('openWorkflow.workflowImportError'),
 								message: (e as Error).message,
 								type: 'error',
 							});
@@ -2773,6 +2779,7 @@ export default mixins(
 				this.stopLoading();
 
 				setTimeout(() => {
+					this.$store.dispatch('users/showPersonalizationSurvey');
 					this.checkForNewVersions();
 				}, 0);
 			});
@@ -2842,6 +2849,7 @@ export default mixins(
 	left: 0;
 	top: 0;
 	overflow: hidden;
+	background-color: var(--color-canvas-background);
 }
 
 .node-view-wrapper {

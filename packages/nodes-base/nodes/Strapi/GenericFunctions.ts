@@ -23,7 +23,7 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 			method,
 			body,
 			qs,
-			uri: uri || `${credentials.url}${resource}`,
+			uri: uri || credentials.apiVersion === 'v4' ? `${credentials.url}/api${resource}` : `${credentials.url}${resource}`,
 			json: true,
 			qsStringifyOptions: {
 				arrayFormat: 'indice',
@@ -45,41 +45,50 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 
 export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('strapiApi') as IDataObject;
-
-	const options: OptionsWithUri = {
-		headers: {
-			'content-type': `application/json`,
-		},
-		method: 'POST',
-		uri: `${credentials.url}/auth/local`,
-		body: {
-			identifier: credentials.email,
-			password: credentials.password,
-		},
-		json: true,
-	};
-
+	let options = {} as OptionsWithUri;
+		options = {
+			headers: {
+				'content-type': 'application/json',
+			},
+			method: 'POST',
+			body: {
+				identifier: credentials.email,
+				password: credentials.password,
+			},
+			uri: credentials.apiVersion === 'v4' ? `${credentials.url}/api/auth/local`:`${credentials.url}/auth/local`,
+			json: true,
+		};
 	return this.helpers.request!(options);
 }
 
 export async function strapiApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
+	const {apiVersion} = await this.getCredentials('strapiApi') as IDataObject;
 
 	let responseData;
+	if (apiVersion === 'v4') {
+		query['pagination[pageSize]'] = 20;
+		query['pagination[page]'] = 0;
+		do {
+			({data:responseData} = await strapiApiRequest.call(this, method, resource, body, query, undefined, headers));
+			query['pagination[page]'] += query['pagination[pageSize]'];
+			returnData.push.apply(returnData, responseData);
+		} while (
+			responseData.length !== 0
+		);
 
-	query._limit = 20;
-
-	query._start = 0;
-
-	do {
-		responseData = await strapiApiRequest.call(this, method, resource, body, query, undefined, headers);
-		query._start += query._limit;
-		returnData.push.apply(returnData, responseData);
-	} while (
-		responseData.length !== 0
-	);
-
+	} else {
+		query._limit = 20;
+		query._start = 0;
+		do {
+			responseData = await strapiApiRequest.call(this, method, resource, body, query, undefined, headers);
+			query._start += query._limit;
+			returnData.push.apply(returnData, responseData);
+		} while (
+			responseData.length !== 0
+		);
+	}
 	return returnData;
 }
 
