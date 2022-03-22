@@ -1,29 +1,42 @@
 import {
+	OptionsWithUri,
+} from 'request';
+
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import {
 	wordpressApiRequest,
 	wordpressApiRequestAllItems,
 } from './GenericFunctions';
+
 import {
 	postFields,
 	postOperations,
 } from './PostDescription';
+
 import {
 	userFields,
 	userOperations,
 } from './UserDescription';
+
 import {
 	IPost,
 } from './PostInterface';
+
 import {
 	IUser,
 } from './UserInterface';
@@ -46,6 +59,7 @@ export class Wordpress implements INodeType {
 			{
 				name: 'wordpressApi',
 				required: true,
+				testedBy: 'wordpressApiTest',
 			},
 		],
 		properties: [
@@ -74,8 +88,40 @@ export class Wordpress implements INodeType {
 			...userFields,
 		],
 	};
-
 	methods = {
+		credentialTest: {
+			async wordpressApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data;
+
+				const options: OptionsWithUri = {
+					headers: {
+						Accept: 'application/json',
+						'Content-Type': 'application/json',
+						'User-Agent': 'n8n',
+					},
+					auth: {
+						user: credentials!.username as string,
+						password: credentials!.password as string,
+					},
+					method: 'GET',
+					uri: `${credentials!.url}/wp-json/wp/v2/`,
+					json: true,
+					timeout: 5000,
+				};
+				try {
+					await this.helpers.request!(options);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid: ${error.message}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the available categories to display them to user so that he can
 			// select them easily
