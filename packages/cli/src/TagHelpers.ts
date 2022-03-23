@@ -38,6 +38,8 @@ export async function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithC
 		.createQueryBuilder()
 		.select(`${tablePrefix}tag_entity.id`, 'id')
 		.addSelect(`${tablePrefix}tag_entity.name`, 'name')
+		.addSelect(`${tablePrefix}tag_entity.createdAt`, 'createdAt')
+		.addSelect(`${tablePrefix}tag_entity.updatedAt`, 'updatedAt')
 		.addSelect(`COUNT(${tablePrefix}workflows_tags.workflowId)`, 'usageCount')
 		.from(`${tablePrefix}tag_entity`, 'tag_entity')
 		.leftJoin(
