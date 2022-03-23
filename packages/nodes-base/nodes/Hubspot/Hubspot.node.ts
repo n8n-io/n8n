@@ -44,6 +44,11 @@ import {
 } from './CompanyDescription';
 
 import {
+	customObjectFields,
+	customObjectOperations
+} from './CustomObjectDescription';
+
+import {
 	dealFields,
 	dealOperations,
 } from './DealDescription';
@@ -170,6 +175,10 @@ export class Hubspot implements INodeType {
 						value: 'company',
 					},
 					{
+						name: 'Custom Object',
+						value: 'customObject',
+					},
+					{
 						name: 'Deal',
 						value: 'deal',
 					},
@@ -198,6 +207,9 @@ export class Hubspot implements INodeType {
 			// COMPANY
 			...companyOperations,
 			...companyFields,
+			// CUSTOM OBJECT
+			...customObjectOperations,
+			...customObjectFields,
 			// DEAL
 			...dealOperations,
 			...dealFields,
@@ -923,6 +935,69 @@ export class Hubspot implements INodeType {
 				return returnData.sort((a, b) => a.name < b.name ? 0 : 1);
 			},
 
+			/* -------------------------------------------------------------------------- */
+			/*                               Custom objects                               */
+			/* -------------------------------------------------------------------------- */
+
+			// Get all the custom object types to display them to user so that he can select them
+			async getCustomObjectTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/crm/v3/schemas';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				console.log('param', this.getNodeParameter('resource', 0));
+				for (const customObjectType of properties.results) {
+					const objectLabel = customObjectType.labels.singular;
+					const objectTypeId = customObjectType.objectTypeId;
+					returnData.push({
+						name: objectLabel,
+						value: objectTypeId,
+					});
+				}
+				return returnData;
+			},
+			// Get the properties of a custom object type
+			async getCustomObjectProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const customObjectType = this.getNodeParameter('customObjectType', 0) as string;
+				const endpoint = `/crm/v3/schemas/${customObjectType}`;
+				const result = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = result.properties;
+
+				for (const property of properties) {
+					const propertyLabel = property.label;
+					const propertyValue = property.name;
+					returnData.push({
+						name: propertyLabel,
+						value: propertyValue,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all properties that can be used as property id
+			async getCustomObjectIdProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const customObjectType = this.getNodeParameter('customObjectType', 0) as string;
+				const endpoint = `/crm/v3/schemas/${customObjectType}`;
+				const result = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = result.properties;
+				const idProperties = properties.filter((property: { hasUniqueValue?: boolean }) => property.hasUniqueValue === true)
+
+				returnData.push({
+					name: 'Hubspot object ID',
+					value: '',
+				})
+				for (const property of idProperties) {
+					const propertyLabel = property.label;
+					const propertyValue = property.name;
+					returnData.push({
+						name: propertyLabel,
+						value: propertyValue,
+					});
+				}
+				return returnData;
+			},
+
 		},
 	};
 
@@ -934,6 +1009,9 @@ export class Hubspot implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+
+		const customObjectType = resource === 'customObject' ? this.getNodeParameter('customObjectType', 0) as string : undefined
+		// const customObjectSchema = customObjectType && await hubspotApiRequest.call(this, 'GET', `/crm/v3/schemas/${customObjectType}`, {});
 
 		//https://legacydocs.hubspot.com/docs/methods/lists/contact-lists-overview
 		if (resource === 'contactList') {
@@ -1941,6 +2019,101 @@ export class Hubspot implements INodeType {
 						if (operation === 'delete') {
 							const companyId = this.getNodeParameter('companyId', i) as string;
 							const endpoint = `/companies/v2/companies/${companyId}`;
+							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
+						}
+					}
+					//https://developers.hubspot.com/docs/api/crm/crm-custom-objects
+					if (resource === 'customObject') {
+						if (operation === 'create') {
+							// const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const properties: Record<string, unknown> = {};
+
+							if (additionalFields.customPropertiesUi) {
+								const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+
+								if (customProperties) {
+									for (const customProperty of customProperties) {
+										properties[customProperty.property as string] = customProperty.value;
+									}
+								}
+							}
+
+							const endpoint = `/crm/v3/objects/${customObjectType}`;
+
+							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, { properties });
+
+							// if (resolveData) {
+							// 	const isNew = responseData.isNew;
+							// 	const qs: IDataObject = {};
+							// 	if (additionalFields.properties) {
+							// 		qs.property = additionalFields.properties as string[];
+							// 	}
+							// 	responseData = await hubspotApiRequest.call(this, 'GET', `/contacts/v1/contact/vid/${responseData.vid}/profile`, {}, qs);
+							// 	responseData.isNew = isNew;
+							// }
+						}
+						if (operation === 'update') {
+							const idProperty = this.getNodeParameter('idProperty', i) as string;
+							const objectId = this.getNodeParameter('objectId', i) as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+							const properties: Record<string, unknown> = {};
+							if (additionalFields.customPropertiesUi) {
+								const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+
+								if (customProperties) {
+									for (const customProperty of customProperties) {
+										properties[customProperty.property as string] = customProperty.value;
+									}
+								}
+							}
+
+							const endpoint = `/crm/v3/objects/${customObjectType}/${objectId}`;
+							responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, { properties }, idProperty ? { idProperty } : {});
+						}
+						if (operation === 'get') {
+							const idProperty = this.getNodeParameter('idProperty', i) as string;
+							const objectId = this.getNodeParameter('objectId', i) as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							if (additionalFields.formSubmissionMode) {
+								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
+							}
+							if (additionalFields.listMerberships) {
+								qs.showListMemberships = additionalFields.listMerberships as boolean;
+							}
+							if (additionalFields.properties) {
+								qs.properties = additionalFields.properties as string[];
+							}
+							if (additionalFields.propertiesWithHistory) {
+								qs.propertiesWithHistory = additionalFields.propertiesWithHistory as string[];
+							}
+							if (additionalFields.archived) {
+								qs.archived = additionalFields.archived as boolean;
+							}
+							if (idProperty) {
+								qs.idProperty = idProperty;
+							}
+							const endpoint = `/crm/v3/objects/${customObjectType}/${objectId}`;
+							responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+						}
+						if (operation === 'delete') {
+							const idProperty = this.getNodeParameter('idProperty', i) as string;
+							const objectId = this.getNodeParameter('objectId', i) as string;
+
+							let realObjectId = objectId;
+
+							if (idProperty) {
+								const qs = {
+									idProperty,
+									properties: [idProperty],
+								};
+								const getEndpoint = `/crm/v3/objects/${customObjectType}/${objectId}`;
+								const idResponseData = await hubspotApiRequest.call(this, 'GET', getEndpoint, {}, qs);
+								realObjectId = idResponseData.id;
+							}
+
+							const endpoint = `/crm/v3/objects/${customObjectType}/${realObjectId}`;
 							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
 						}
 					}
