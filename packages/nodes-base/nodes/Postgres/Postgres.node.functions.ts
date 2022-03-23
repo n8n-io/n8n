@@ -236,11 +236,12 @@ export async function pgUpdate(
 			return { name, cast, prop: `column${i}` };
 		});
 
-	const updateKeys = updateKey.split(',').map(key => {
+	const updateKeys = updateKey.split(',').map((key, i) => {
 		const [name, cast] = key.trim().split(':');
 		const targetCol = columns.find((column) => column.name === name);
-		const updateColumn = { name, cast, prop: targetCol ? targetCol.prop : name };
+		const updateColumn = { name, cast, prop: targetCol ? targetCol.prop : `updateColumn${i}` };
 		if (!targetCol) {
+			guardedColumns[updateColumn.prop] = name;
 			columns.unshift(updateColumn);
 		}
 		else if (!targetCol.cast) {
