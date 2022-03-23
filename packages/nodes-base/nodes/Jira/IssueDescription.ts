@@ -546,7 +546,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `Return the display value of fields instead of their ID`,
+		description: `Return a simplified output of the issues fields.`,
 	},
 	{
 		displayName: 'Additional Fields',
