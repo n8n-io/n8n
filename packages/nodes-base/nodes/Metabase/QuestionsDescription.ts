@@ -3,7 +3,6 @@ import {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
-	IDataObject,
 } from 'n8n-workflow';
 
 export const questionsOperations: INodeProperties[] = [
@@ -50,7 +49,7 @@ export const questionsOperations: INodeProperties[] = [
 								};
 							});
 						},
-						]
+						],
 					},
 				},
 			},
@@ -141,15 +140,15 @@ export const questionsFields: INodeProperties[] = [
 ];
 
 type MetabaseQuestionsResponse = IN8nHttpFullResponse & {
-		body: Array<{id: number,name: string, result_metadata: Array<MetabaseResultMetadata>, description: string, creator_id: number, table_id: number, database_id: number }>
+		body: Array<{id: number,name: string, result_metadata: MetabaseResultMetadata[], description: string, creator_id: number, table_id: number, database_id: number }>
 };
 type MetabaseResultMetadata = {
 	display_name: string,
 	fingerprint: {
 			type: {
-					"type/Number": {
+					'type/Number': {
 							avg: number
 					}
 				}
 			}
-}
+};
