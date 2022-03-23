@@ -2125,7 +2125,7 @@ export class Hubspot implements INodeType {
 									for (const prop of detailingProperties) {
 										if (!deal.properties[prop.name]) continue;
 										const propData = detailingPropsMap.get(prop.name);
-										deal[prop.additionName] = propData.get(deal.properties[prop.name].value);
+										deal.properties[prop.name][prop.additionName] = propData.get(deal.properties[prop.name].value);
 										if (!deal.properties[prop.name].versions || deal.properties[prop.name].versions.length <= 1) continue;
 										for (const propVersion of deal.properties[prop.name].versions) {
 											propVersion[prop.additionName] = propData.get(propVersion.value);
