@@ -65,12 +65,12 @@ export const userFields: INodeProperties[] = [
 				value: 'gilded',
 			},
 			{
-				name: 'Saved',
-				value: 'saved',
-			},
-			{
 				name: 'Overview',
 				value: 'overview',
+			},
+			{
+				name: 'Saved',
+				value: 'saved',
 			},
 			{
 				name: 'Submitted',
