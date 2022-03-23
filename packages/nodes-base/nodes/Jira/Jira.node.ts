@@ -626,6 +626,7 @@ export class Jira implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const simplifyOutput = this.getNodeParameter('simplifyOutput', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					if (additionalFields.fields) {
 						qs.fields = additionalFields.fields as string;
@@ -636,7 +637,7 @@ export class Jira implements INodeType {
 					if (additionalFields.expand) {
 						qs.expand = additionalFields.expand as string;
 					}
-					if (additionalFields.resolveCustomFields) {
+					if (simplifyOutput) {
 						qs.expand = `${qs.expand || ''},names`;
 					}
 					if (additionalFields.properties) {
@@ -647,7 +648,7 @@ export class Jira implements INodeType {
 					}
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
 
-					if (additionalFields.resolveCustomFields) {
+					if (simplifyOutput) {
 						const mappedFields: IDataObject = {};
 						// Sort custom fields last so we map them last
 						const customField = /^customfield_\d+$/;
@@ -678,7 +679,7 @@ export class Jira implements INodeType {
 						}
 						responseData.fields = mappedFields;
 					}
-					returnData.push(responseData);
+					simplifyOutput ? returnData.push(responseData.fields) : returnData.push(responseData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-search-post
