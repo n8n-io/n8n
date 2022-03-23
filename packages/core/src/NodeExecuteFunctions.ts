@@ -47,6 +47,7 @@ import {
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowMetadata,
+	LoggerProxy as Logger,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -55,7 +56,6 @@ import {
 	WorkflowActivateMode,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
-	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1143,10 +1143,12 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 export function normalizeItems(
 	executionData: INodeExecutionData | INodeExecutionData[],
 ): INodeExecutionData[] {
-	if (typeof executionData === 'object' && !Array.isArray(executionData))
+	if (typeof executionData === 'object' && !Array.isArray(executionData)) {
 		executionData = [{ json: executionData as IDataObject }];
-	if (executionData.every((item) => typeof item === 'object' && 'json' in item))
+	}
+	if (executionData.every((item) => typeof item === 'object' && 'json' in item)) {
 		return executionData;
+	}
 
 	if (executionData.some((item) => typeof item === 'object' && 'json' in item)) {
 		throw new Error('Inconsistent item format');
