@@ -1,5 +1,7 @@
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
+import { DateTime, Duration, Interval } from 'luxon';
+
 // eslint-disable-next-line import/no-cycle
 import {
 	INode,
@@ -114,6 +116,12 @@ export class Expression {
 
 		// @ts-ignore
 		data.document = {};
+
+		// @ts-ignore
+		data.DateTime = DateTime;
+		data.Interval = Interval;
+		data.Duration = Duration;
+
 		// @ts-ignore
 		data.constructor = {};
 

@@ -8,7 +8,7 @@
 				</div>
 				<WarningTooltip v-if="version.hasSecurityIssue">
 					<template>
-						{{ $locale.baseText('versionCard.thisVersionHasASecurityIssue') }}
+						<span v-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
 					</template>
 				</WarningTooltip>
 				<Badge
