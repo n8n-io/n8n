@@ -6,6 +6,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+
+import { DateTime, Duration, Interval } from 'luxon';
+import * as jmespath from 'jmespath';
+
 // eslint-disable-next-line import/no-cycle
 import {
 	IDataObject,
@@ -224,15 +228,21 @@ export class WorkflowDataProxy {
 			}
 
 			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
-				throw new Error(`No execution data found for node "${nodeName}"`);
+				if (that.workflow.getNode(nodeName)) {
+					throw new Error(
+						`The node "${nodeName}" hasn't been executed yet, so you can't reference its output data`,
+					);
+				} else {
+					throw new Error(`No node called "${nodeName}" in this workflow`);
+				}
 			}
 
 			runIndex = runIndex === undefined ? that.defaultReturnRunIndex : runIndex;
 			runIndex =
 				runIndex === -1 ? that.runExecutionData.resultData.runData[nodeName].length - 1 : runIndex;
 
-			if (that.runExecutionData.resultData.runData[nodeName].length < runIndex) {
-				throw new Error(`No execution data found for run "${runIndex}" of node "${nodeName}"`);
+			if (that.runExecutionData.resultData.runData[nodeName].length <= runIndex) {
+				throw new Error(`Run ${runIndex} of node "${nodeName}" not found`);
 			}
 
 			const taskData = that.runExecutionData.resultData.runData[nodeName][runIndex].data!;
@@ -264,10 +274,8 @@ export class WorkflowDataProxy {
 				outputIndex = 0;
 			}
 
-			if (taskData.main.length < outputIndex) {
-				throw new Error(
-					`No data found from "main" input with index "${outputIndex}" via which node is connected with.`,
-				);
+			if (taskData.main.length <= outputIndex) {
+				throw new Error(`Node "${nodeName}" has no branch with index ${outputIndex}.`);
 			}
 
 			executionData = taskData.main[outputIndex] as INodeExecutionData[];
@@ -446,7 +454,172 @@ export class WorkflowDataProxy {
 	getDataProxy(): IWorkflowDataProxyData {
 		const that = this;
 
+		const getNodeOutput = (nodeName?: string, branchIndex?: number, runIndex?: number) => {
+			let executionData: INodeExecutionData[];
+
+			if (nodeName === undefined) {
+				executionData = that.connectionInputData;
+			} else {
+				branchIndex = branchIndex || 0;
+				runIndex = runIndex === undefined ? -1 : runIndex;
+				executionData = that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
+			}
+
+			return executionData;
+		};
+
+		// replacing proxies with the actual data.
+		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
+			if (!Array.isArray(data) && typeof data === 'object') {
+				return jmespath.search({ ...data }, query);
+			}
+			return jmespath.search(data, query);
+		};
+
 		const base = {
+			$: (nodeName: string) => {
+				if (!nodeName) {
+					throw new Error(`When calling $(), please specify a node`);
+				}
+
+				return new Proxy(
+					{},
+					{
+						get(target, property, receiver) {
+							if (property === 'pairedItem') {
+								return () => {
+									const executionData = getNodeOutput(nodeName, 0, that.runIndex);
+									if (executionData[that.itemIndex]) {
+										return executionData[that.itemIndex];
+									}
+									return undefined;
+								};
+							}
+							if (property === 'item') {
+								return (itemIndex?: number, branchIndex?: number, runIndex?: number) => {
+									if (itemIndex === undefined) {
+										itemIndex = that.itemIndex;
+										branchIndex = 0;
+										runIndex = that.runIndex;
+									}
+									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									if (executionData[itemIndex]) {
+										return executionData[itemIndex];
+									}
+									let errorMessage = '';
+
+									if (branchIndex === undefined && runIndex === undefined) {
+										errorMessage = `
+											No item found at index ${itemIndex}
+											(for node "${nodeName}")`;
+										throw new Error(errorMessage);
+									}
+									if (branchIndex === undefined) {
+										errorMessage = `
+											No item found at index ${itemIndex}
+											in run ${runIndex || that.runIndex}
+											(for node "${nodeName}")`;
+										throw new Error(errorMessage);
+									}
+									if (runIndex === undefined) {
+										errorMessage = `
+											No item found at index ${itemIndex}
+											of branch ${branchIndex || 0}
+											(for node "${nodeName}")`;
+										throw new Error(errorMessage);
+									}
+
+									errorMessage = `
+										No item found at index ${itemIndex}
+										of branch ${branchIndex || 0}
+										in run ${runIndex || that.runIndex}
+										(for node "${nodeName}")`;
+									throw new Error(errorMessage);
+								};
+							}
+							if (property === 'first') {
+								return (branchIndex?: number, runIndex?: number) => {
+									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									if (executionData[0]) return executionData[0];
+									return undefined;
+								};
+							}
+							if (property === 'last') {
+								return (branchIndex?: number, runIndex?: number) => {
+									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									if (!executionData.length) return undefined;
+									if (executionData[executionData.length - 1]) {
+										return executionData[executionData.length - 1];
+									}
+									return undefined;
+								};
+							}
+							if (property === 'all') {
+								return (branchIndex?: number, runIndex?: number) =>
+									getNodeOutput(nodeName, branchIndex, runIndex);
+							}
+							if (property === 'context') {
+								return that.nodeContextGetter(nodeName);
+							}
+							if (property === 'params') {
+								return that.workflow.getNode(nodeName)?.parameters;
+							}
+							return Reflect.get(target, property, receiver);
+						},
+					},
+				);
+			},
+
+			$input: new Proxy(
+				{},
+				{
+					get(target, property, receiver) {
+						if (property === 'thisItem') {
+							return that.connectionInputData[that.itemIndex];
+						}
+						if (property === 'item') {
+							return (itemIndex?: number) => {
+								if (itemIndex === undefined) itemIndex = that.itemIndex;
+								const result = that.connectionInputData;
+								if (result[itemIndex]) {
+									return result[itemIndex];
+								}
+								return undefined;
+							};
+						}
+						if (property === 'first') {
+							return () => {
+								const result = that.connectionInputData;
+								if (result[0]) {
+									return result[0];
+								}
+								return undefined;
+							};
+						}
+						if (property === 'last') {
+							return () => {
+								const result = that.connectionInputData;
+								if (result.length && result[result.length - 1]) {
+									return result[result.length - 1];
+								}
+								return undefined;
+							};
+						}
+						if (property === 'all') {
+							return () => {
+								const result = that.connectionInputData;
+								if (result.length) {
+									return result;
+								}
+								return [];
+							};
+						}
+						return Reflect.get(target, property, receiver);
+					},
+				},
+			),
+
+			$thisItem: that.connectionInputData[that.itemIndex],
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
 			$env: this.envGetter(),
@@ -500,6 +673,17 @@ export class WorkflowDataProxy {
 			$runIndex: this.runIndex,
 			$mode: this.mode,
 			$workflow: this.workflowGetter(),
+			$thisRunIndex: this.runIndex,
+			$thisItemIndex: this.itemIndex,
+			$now: DateTime.now(),
+			$today: DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
+			$jmespath: jmespathWrapper,
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			DateTime,
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			Interval,
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			Duration,
 			...that.additionalKeys,
 		};
 
