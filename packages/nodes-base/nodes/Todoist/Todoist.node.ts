@@ -604,7 +604,10 @@ export class Todoist implements INodeType {
 				}
 				if (Array.isArray(responseData?.data)) {
 					returnData.push.apply(returnData, responseData?.data as IDataObject[]);
-				} else {
+				} else if (!responseData?.data) {
+					returnData.push({success: true});
+				}
+				else {
 					returnData.push( responseData?.data as IDataObject);
 				}
 			} catch (error) {
