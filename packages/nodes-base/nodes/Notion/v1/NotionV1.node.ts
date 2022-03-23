@@ -126,10 +126,12 @@ export class NotionV1 implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const users = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
 				for (const user of users) {
-					returnData.push({
-						name: user.name,
-						value: user.id,
-					});
+					if (user.type === 'person') {
+						returnData.push({
+							name: user.name,
+							value: user.id,
+						});
+					}
 				}
 				return returnData;
 			},

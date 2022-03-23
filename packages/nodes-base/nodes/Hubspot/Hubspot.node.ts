@@ -3,12 +3,17 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -77,6 +82,10 @@ import {
 	detailingProperties
 } from './DealsDetailing';
 
+import {
+	validateCredentials
+} from './GenericFunctions';
+
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot',
@@ -95,10 +104,23 @@ export class Hubspot implements INodeType {
 			{
 				name: 'hubspotApi',
 				required: true,
+				testedBy: 'hubspotApiTest',
 				displayOptions: {
 					show: {
 						authentication: [
 							'apiKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'hubspotAppToken',
+				required: true,
+				testedBy: 'hubspotApiTest',
+				displayOptions: {
+					show: {
+						authentication: [
+							'appToken',
 						],
 					},
 				},
@@ -124,6 +146,10 @@ export class Hubspot implements INodeType {
 					{
 						name: 'API Key',
 						value: 'apiKey',
+					},
+					{
+						name: 'APP Token',
+						value: 'appToken',
 					},
 					{
 						name: 'OAuth2',
@@ -195,6 +221,26 @@ export class Hubspot implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async hubspotApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				try {
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					const err = error as JsonObject;
+					if (err.statusCode === 401) {
+						return {
+							status: 'Error',
+							message: `Invalid credentials`,
+						};
+					}
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful',
+				};
+			},
+		},
+
 		loadOptions: {
 			/* -------------------------------------------------------------------------- */
 			/*                                 CONTACT                                    */
@@ -944,7 +990,7 @@ export class Hubspot implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 				} else {
 					throw error;
 				}
@@ -2582,7 +2628,7 @@ export class Hubspot implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({ error: (error as JsonObject).message });
 						continue;
 					}
 					throw error;

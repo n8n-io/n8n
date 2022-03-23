@@ -5,6 +5,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -141,12 +142,25 @@ export class Wise implements INodeType {
 					profileId: this.getNodeParameter('profileId', 0),
 				};
 
-				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', {}, qs);
+				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', {}, qs) as Recipient[];
 
-				return recipients.map(({ id, accountHolderName }: Recipient) => ({
-					name: accountHolderName,
-					value: id,
-				}));
+				return recipients.reduce<INodePropertyOptions[]>((activeRecipients, {
+					active,
+					id,
+					accountHolderName,
+					currency,
+					country,
+					type,
+				}) => {
+					if (active) {
+						const recipient = {
+							name: `[${currency}] ${accountHolderName} - (${country !== null ? country + ' - ' : '' }${type})`,
+							value: id,
+						};
+						activeRecipients.push(recipient);
+					}
+					return activeRecipients;
+				}, []);
 			},
 		},
 	};
