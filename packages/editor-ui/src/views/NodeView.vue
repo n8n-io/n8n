@@ -177,8 +177,6 @@ import {
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
-import { setTagsForImport } from "n8n-workflow/dist/src/WorkflowHelpers";
-import { createTag, getTags } from "@/api/tags";
 
 export default mixins(
 	copyPaste,
@@ -1216,13 +1214,28 @@ export default mixins(
 						});
 					});
 
-					if (workflowData.tags) {
-						await setTagsForImport(workflowData as { tags: ITag[] }, await getTags(this.$store.getters.getRestApiContext), (name: string) => {
-							return createTag(this.$store.getters.getRestApiContext, {
-								name,
-							});
+					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
+					if (Array.isArray(workflowData.tags) && tagsEnabled) {
+						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');
+						const tagNames = new Set(allTags.map((tag) => tag.name));
+
+						const workflowTags = workflowData.tags as ITag[];
+						const notFound = workflowTags.filter((tag) => !tagNames.has(tag.name));
+						notFound.forEach(async (tag) => {
+							await this.$store.dispatch('tags/create', tag.name);
 						});
-						const tagIds = workflowData.tags.map((tag) => typeof tag === "string" ? tag : tag.id);
+
+						const updatedTags: ITag[] = this.$store.getters['tags/allTags'];
+						const tagIds = workflowTags.map((imported) => {
+							const tag = updatedTags.find(tag => tag.name === imported.name);
+							if (tag) {
+								return tag.id;
+							}
+
+							return undefined;
+						})
+							.filter((id) => !!id);
+
 						this.$store.commit('setWorkflowTagIds', tagIds || []);
 					}
 

@@ -64,10 +64,10 @@ const module: Module<ITagsState, IRootState> = {
 		},
 	},
 	actions: {
-		fetchAll: async (context: ActionContext<ITagsState, IRootState>, params?: { force?: boolean, withUsageCount?: boolean }) => {
+		fetchAll: async (context: ActionContext<ITagsState, IRootState>, params?: { force?: boolean, withUsageCount?: boolean }): Promise<ITag[]> => {
 			const { force = false, withUsageCount = false } = params || {};
 			if (!force && context.state.fetchedAll && context.state.fetchedUsageCount === withUsageCount) {
-				return context.state.tags;
+				return Object.values(context.state.tags);
 			}
 
 			context.commit('setLoading', true);
@@ -88,7 +88,7 @@ const module: Module<ITagsState, IRootState> = {
 			context.commit('upsertTags', [tag]);
 
 			return tag;
-		}, 
+		},
 		delete: async (context: ActionContext<ITagsState, IRootState>, id: string) => {
 			const deleted = await deleteTag(context.rootGetters.getRestApiContext, id);
 
@@ -98,7 +98,7 @@ const module: Module<ITagsState, IRootState> = {
 			}
 
 			return deleted;
-		}, 
+		},
 	},
 };
 
