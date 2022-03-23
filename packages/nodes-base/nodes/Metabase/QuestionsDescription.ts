@@ -3,6 +3,7 @@ import {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
+	IDataObject,
 } from 'n8n-workflow';
 
 export const questionsOperations: INodeProperties[] = [
@@ -27,6 +28,30 @@ export const questionsOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '/api/card/',
 					},
+					output: {
+						postReceive: [
+						// @ts-ignore
+						function(
+							this: IExecuteSingleFunctions,
+							_items: INodeExecutionData[],
+							response: MetabaseQuestionsResponse,
+						): INodeExecutionData[] {
+							// @ts-ignore
+							return response.body.map((metabaseQuestion) => {
+								return {
+									json: {
+										name: metabaseQuestion.name,
+										id: metabaseQuestion.id,
+										description: metabaseQuestion.description,
+										average: metabaseQuestion.result_metadata[0].fingerprint.type['type/Number'].avg,
+										creator_id: metabaseQuestion.creator_id,
+										database_id: metabaseQuestion.database_id,
+									},
+								};
+							});
+						},
+						]
+					},
 				},
 			},
 			{
@@ -37,11 +62,10 @@ export const questionsOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '={{"/api/card/" + $parameter.questionId}}',
-						returnFullResponse: true,
 					},
-				},
 			},
-						{
+			},
+			{
 				name: 'Export',
 				value: 'export',
 				description: 'Export question to a specific file format',
@@ -115,3 +139,17 @@ export const questionsFields: INodeProperties[] = [
 		},
 	},
 ];
+
+type MetabaseQuestionsResponse = IN8nHttpFullResponse & {
+		body: Array<{id: number,name: string, result_metadata: Array<MetabaseResultMetadata>, description: string, creator_id: number, table_id: number, database_id: number }>
+};
+type MetabaseResultMetadata = {
+	display_name: string,
+	fingerprint: {
+			type: {
+					"type/Number": {
+							avg: number
+					}
+				}
+			}
+}

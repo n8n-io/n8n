@@ -82,7 +82,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (credentialType.authenticate) {
 			if (typeof credentialType.authenticate === 'function') {
 				// Special authentication function is defined
-
+				console.log(credentialType.authenticate);
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				return credentialType.authenticate(credentials, requestOptions as IHttpRequestOptions);
 			}
@@ -94,7 +94,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				if (requestOptions.headers === undefined) {
 					requestOptions.headers = {};
 				}
-
+				console.log(authenticate);
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if (authenticate.type === 'bearer') {
 					const tokenPropertyName: string =
@@ -612,7 +612,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			additionalData,
 			mode,
 		);
-
 		try {
 			await routingNode.runNode(
 				inputData,
