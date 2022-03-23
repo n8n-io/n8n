@@ -64,7 +64,7 @@ export class Reddit implements INodeType {
 							'postComment',
 							'post',
 							'profile',
-							'user'
+							'user',
 						],
 					},
 				},
