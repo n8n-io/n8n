@@ -32,15 +32,15 @@ export const customObjectOperations: INodeProperties[] = [
 				description: 'Get a custom Object',
 			},
 			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search custom Objects',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: '(Partially) Update a custom Object',
 			},
-			// {
-			//     name: 'Search',
-			//     value: 'search',
-			//     description: 'Search custom Objects',
-			// },
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -366,6 +366,264 @@ export const customObjectFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: `Whether to return only results that have been archived.`,
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                            customObject:search                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'customObject',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'customObject',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 250,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['search'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Properties',
+				name: 'properties',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getCustomObjectProperties',
+				},
+				default: '',
+				description: `A list of the properties to be returned in the response. `,
+			},
+			{
+				displayName: 'Filter Groups',
+				name: 'filterGroups',
+				type: 'fixedCollection',
+				default: '',
+				placeholder: 'Add Filter Group',
+				typeOptions: {
+					multipleValues: true,
+				},
+				required: false,
+				options: [
+					{
+						name: 'filterGroupsValues',
+						displayName: 'Filter Group',
+						values: [
+							{
+								displayName: 'Filters',
+								name: 'filtersUi',
+								type: 'fixedCollection',
+								default: '',
+								placeholder: 'Add Filter',
+								typeOptions: {
+									multipleValues: true,
+								},
+								required: false,
+								options: [
+									{
+										name: 'filterValues',
+										displayName: 'Filter',
+										values: [
+											{
+												displayName: 'Property Name',
+												name: 'propertyName',
+												type: 'options',
+												typeOptions: {
+													loadOptionsMethod: 'getCustomObjectProperties',
+												},
+												default: '',
+											},
+											{
+												displayName: 'Operator',
+												name: 'operator',
+												type: 'options',
+												options: [
+													{
+														name: 'Equal',
+														value: 'EQ',
+													},
+													{
+														name: 'Not Equal',
+														value: 'NEQ',
+													},
+													{
+														name: 'Less Than',
+														value: 'LT',
+													},
+													{
+														name: 'Less Than Or Equal',
+														value: 'LTE',
+													},
+													{
+														name: 'Greater Than',
+														value: 'GT',
+													},
+													{
+														name: 'Greater Than Or Equal',
+														value: 'GTE',
+													},
+													{
+														name: 'Between',
+														value: 'BETWEEN',
+													},
+													{
+														name: 'In a set',
+														value: 'IN',
+													},
+													{
+														name: `Not in a set`,
+														value: 'NOT_IN',
+													},
+													{
+														name: 'Is Known',
+														value: 'HAS_PROPERTY',
+													},
+													{
+														name: 'Is Unknown',
+														value: 'NOT_HAS_PROPERTY',
+													},
+													{
+														name: 'Contains Exactly',
+														value: 'CONSTAIN_TOKEN',
+													},
+													{
+														name: `Doesn't Contain Exactly`,
+														value: 'NOT_CONSTAIN_TOKEN',
+													},
+
+												],
+												default: 'EQ',
+											},
+											{
+												displayName: 'Value',
+												name: 'value',
+												displayOptions: {
+													hide: {
+														operator: [
+															'HAS_PROPERTY',
+															'NOT_HAS_PROPERTY',
+															'BETWEEN',
+															'IN',
+															'NOT_IN',
+														],
+													},
+												},
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Low value',
+												name: 'value',
+												displayOptions: {
+													show: {
+														operator: [
+															'BETWEEN',
+														],
+													},
+												},
+												type: 'string',
+												default: '',
+												description: 'The lower bound for a between filter',
+											},
+											{
+												displayName: 'High value',
+												name: 'highValue',
+												displayOptions: {
+													show: {
+														operator: [
+															'BETWEEN',
+														],
+													},
+												},
+												type: 'string',
+												default: '',
+												description: 'The upper bound for a between filter',
+											},
+											{
+												displayName: 'Values',
+												name: 'values',
+												displayOptions: {
+													show: {
+														operator: [
+															'IN',
+															'NOT_IN',
+														],
+													},
+												},
+												type: 'string',
+												typeOptions: {
+													multipleValues: true,
+												},
+												default: [],
+											},
+										],
+									},
+								],
+								description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+							},
+						],
+					},
+				],
+				description: `When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>`,
+			},
+			{
+				displayName: 'Sort',
+				name: 'sortBy',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getCustomObjectProperties',
+				},
+				default: '',
+				description: `Sort the results ascending by this property`,
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: `Search all searchable properties for this string`,
 			},
 		],
 	},
