@@ -2126,6 +2126,43 @@ export class Hubspot implements INodeType {
 							const endpoint = `/crm/v3/objects/${customObjectType}/${objectId}`;
 							responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 						}
+						if (operation === 'search') {
+							const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+							const limit = returnAll ? undefined : this.getNodeParameter('limit', i) as number;
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+							const filterGroups = (additionalFields.filterGroups as IDataObject)?.filterGroupsValues as IDataObject[] | undefined;
+							const bodyFilterGroups = filterGroups?.map(filterGroup =>
+							({
+								filters: ((filterGroup?.filtersUi as IDataObject)?.filterValues as IDataObject[])?.map(filter => ({
+									...(filter.value !== undefined ? { value: filter.value } : {}),
+									...(filter.highValue !== undefined ? { highValue: filter.highValue } : {}),
+									...(filter.values !== undefined ? { values: filter.values } : {}),
+									propertyName: filter.propertyName,
+									operator: filter.operator,
+								})),
+							}),
+							);
+
+							const body = {
+								...(additionalFields.properties ? { properties: additionalFields.properties } : {}),
+								...(bodyFilterGroups ? { filterGroups: bodyFilterGroups } : {}),
+								...(limit ? { limit } : {}),
+								...(additionalFields.query ? { query: additionalFields.query } : {}),
+								...(additionalFields.sortBy ? { sorts: [additionalFields.sortBy] } : {}),
+							};
+
+							const endpoint = `/crm/v3/objects/${customObjectType}/search`;
+
+							if (returnAll) {
+								responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body);
+								console.log(responseData);
+							} else {
+								const response = await hubspotApiRequest.call(this, 'POST', endpoint, body);
+								responseData = response.results;
+							}
+
+						}
 						if (operation === 'delete') {
 							const idProperty = this.getNodeParameter('idProperty', i) as string;
 							const objectId = this.getNodeParameter('objectId', i) as string;
