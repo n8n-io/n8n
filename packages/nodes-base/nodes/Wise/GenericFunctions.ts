@@ -70,7 +70,7 @@ export async function wiseApiRequest(
 		throw new NodeApiError(this.getNode(), error);
 	}
 
-	if (response.statusCode === 200) {
+	if (response.statusCode >= 200 && response.statusCode < 300) {
 		return response.body;
 	}
 
