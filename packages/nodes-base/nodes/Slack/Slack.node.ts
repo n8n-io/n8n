@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -312,7 +313,7 @@ export class Slack implements INodeType {
 				} catch (err) {
 					return {
 						status: 'Error',
-						message: `${err.message}`,
+						message: `${(err as JsonObject).message}`,
 					};
 				}
 
@@ -839,14 +840,29 @@ export class Slack implements INodeType {
 							}
 						}
 						body['attachments'] = attachments;
-						const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
 
-						if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json');
+						const jsonParameters = this.getNodeParameter('jsonParameters', i, false) as boolean;
+						if (jsonParameters) {
+							const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
+
+							if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json');
+							}
+							if (blocksJson !== '') {
+								body.blocks = blocksJson;
+							}
+
+							const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
+
+							if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json');
+							}
+
+							if (attachmentsJson !== '') {
+								body.attachments = attachmentsJson;
+							}
 						}
-						if (blocksJson !== '') {
-							body.blocks = blocksJson;
-						}
+
 						// Add all the other options to the request
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(body, updateFields);
@@ -1196,7 +1212,7 @@ export class Slack implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

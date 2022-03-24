@@ -520,6 +520,22 @@ export const messageFields: INodeProperties[] = [
 		description: `Timestamp of the message to be updated.`,
 	},
 	{
+		displayName: 'JSON parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -583,9 +599,36 @@ export const messageFields: INodeProperties[] = [
 				operation: [
 					'update',
 				],
+				jsonParameters: [
+					true,
+				],
 			},
 		},
 		description: 'The blocks to add',
+	},
+	{
+		displayName: 'Attachments',
+		name: 'attachmentsJson',
+		type: 'json',
+		default: '',
+		required: false,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'The attachments to add',
 	},
 	{
 		displayName: 'Blocks',
