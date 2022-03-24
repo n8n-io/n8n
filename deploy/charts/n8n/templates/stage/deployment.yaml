@@ -52,14 +52,14 @@ spec:
         name: staging-n8n
         env:
         - name: DB_POSTGRESDB_DATABASE
-          value: staging_n8n
+          value: "staging_n8n"
         - name: DB_POSTGRESDB_HOST
           valueFrom: 
             secretKeyRef: 
               name: staging-n8n-secrets
               key: DB_POSTGRESDB_HOST
         - name: DB_POSTGRESDB_PORT
-          value: 5432
+          value: "5432"
         - name: DB_POSTGRESDB_USER
           valueFrom: 
             secretKeyRef: 
@@ -81,9 +81,9 @@ spec:
               name: staging-n8n-secrets
               key: N8N_BASIC_AUTH_PASSWORD
         - name: GENERIC_TIMEZONE
-          value: Asia/Shanghai
+          value: "Asia/Shanghai"
         - name: TZ
-          value: Asia/Shanghai
+          value: "Asia/Shanghai"
         ports:
         - containerPort: 5678
           protocol: TCP
