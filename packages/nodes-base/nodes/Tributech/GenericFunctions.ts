@@ -6,6 +6,7 @@ import {
 import {
 	IDataObject,
 	NodeApiError,
+	IOAuth2Options,
 } from 'n8n-workflow';
 
 import {
@@ -29,6 +30,10 @@ async function executeApiRequest(
 		json: true,
 	};
 
+	const oAuth2Options: IOAuth2Options = {
+		includeCredentialsOnRefreshOnBody: true,
+	};
+
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
@@ -38,7 +43,7 @@ async function executeApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2.call(this, 'tributechOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'tributechOAuth2Api', options, oAuth2Options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
