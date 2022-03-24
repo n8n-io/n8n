@@ -5,8 +5,8 @@ import {
 
 import {
 	IDataObject,
-	NodeApiError,
 	IOAuth2Options,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
