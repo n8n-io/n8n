@@ -1767,7 +1767,7 @@ export class Github implements INodeType {
 		credentialTest: {
 			async githubApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
-				const baseUrl = credentials!.server as string || 'https://api.github.com/user';
+				const baseUrl = credentials!.server as string || 'https://api.github.com';
 
 				const options: OptionsWithUri = {
 					method: 'GET',
@@ -1775,7 +1775,7 @@ export class Github implements INodeType {
 						'User-Agent': 'n8n',
 						Authorization: `token ${credentials!.accessToken}`,
 					},
-					uri: baseUrl,
+					uri: baseUrl.endsWith('/') ? baseUrl + 'user' : baseUrl + '/user',
 					json: true,
 					timeout: 5000,
 				};
@@ -1952,7 +1952,7 @@ export class Github implements INodeType {
 						body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
 
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-					} else if (operation === 'get' || operation === 'list') {
+					} else if (operation === 'get') {
 						requestMethod = 'GET';
 
 						const filePath = this.getNodeParameter('filePath', i) as string;
@@ -1961,6 +1961,11 @@ export class Github implements INodeType {
 						if (additionalParameters.reference) {
 							qs.ref = additionalParameters.reference;
 						}
+
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+					} else if (operation === 'list') {
+						requestMethod = 'GET';
+						const filePath = this.getNodeParameter('filePath', i) as string;
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
 					}
 				} else if (resource === 'issue') {
