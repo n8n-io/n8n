@@ -2,20 +2,6 @@ import { INodeProperties } from 'n8n-workflow';
 
 export const customObjectOperations: INodeProperties[] = [
 	{
-		displayName: 'Custom Object Type',
-		name: 'customObjectType',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: ['customObject'],
-			},
-		},
-		typeOptions: {
-			loadOptionsMethod: 'getCustomObjectTypes',
-		},
-		default: '',
-	},
-	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
@@ -25,6 +11,11 @@ export const customObjectOperations: INodeProperties[] = [
 			},
 		},
 		options: [
+			// {
+			// 	name: 'Create/Update',
+			// 	value: 'upsert',
+			// 	description: 'Get all custom Objects',
+			// },
 			{
 				name: 'Create',
 				value: 'create',
@@ -33,7 +24,7 @@ export const customObjectOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a custom Object',
+				description: 'Archive a custom Object',
 			},
 			{
 				name: 'Get',
@@ -46,11 +37,6 @@ export const customObjectOperations: INodeProperties[] = [
 				description: '(Partially) Update a custom Object',
 			},
 			// {
-			//     name: 'Get All',
-			//     value: 'getAll',
-			//     description: 'Get all custom Objects',
-			// },
-			// {
 			//     name: 'Search',
 			//     value: 'search',
 			//     description: 'Search custom Objects',
@@ -58,6 +44,20 @@ export const customObjectOperations: INodeProperties[] = [
 		],
 		default: 'create',
 		description: 'The operation to perform.',
+	},
+	{
+		displayName: 'Custom Object Type',
+		name: 'customObjectType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getCustomObjectTypes',
+		},
+		default: '',
 	},
 ];
 
@@ -81,7 +81,7 @@ export const customObjectFields: INodeProperties[] = [
 			{
 				displayName: 'Properties',
 				name: 'customPropertiesUi',
-				placeholder: 'Add Custom Property',
+				placeholder: 'Add Property',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -165,7 +165,7 @@ export const customObjectFields: INodeProperties[] = [
 			{
 				displayName: 'Properties',
 				name: 'customPropertiesUi',
-				placeholder: 'Update these properties',
+				placeholder: 'Add Property',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -285,94 +285,6 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		],
 	},
-
-	/* -------------------------------------------------------------------------- */
-	/*                              customObject:getAll                           */
-	/* -------------------------------------------------------------------------- */
-	// {
-	//     displayName: 'Get All',
-	//     name: 'returnAll',
-	//     type: 'boolean',
-	//     displayOptions: {
-	//         show: {
-	//             resource: ['customObject'],
-	//             operation: ['getAll'],
-	//         },
-	//     },
-	//     default: false,
-	//     description: 'If all results should be returned or only up to a given limit.',
-	// },
-	// {
-	//     displayName: 'Limit',
-	//     name: 'limit',
-	//     type: 'number',
-	//     displayOptions: {
-	//         show: {
-	//             resource: ['customObject'],
-	//             operation: ['getAll'],
-	//             returnAll: [false],
-	//         },
-	//     },
-	//     typeOptions: {
-	//         minValue: 1,
-	//         maxValue: 250,
-	//     },
-	//     default: 100,
-	//     description: 'How many results to return.',
-	// },
-	// {
-	//     displayName: 'Additional Fields',
-	//     name: 'additionalFields',
-	//     type: 'collection',
-	//     placeholder: 'Add Field',
-	//     default: {},
-	//     displayOptions: {
-	//         show: {
-	//             resource: ['contact'],
-	//             operation: ['getAll'],
-	//         },
-	//     },
-	//     options: [
-	//         {
-	//             displayName: 'Properties',
-	//             name: 'properties',
-	//             type: 'multiOptions',
-	//             typeOptions: {
-	//                 loadOptionsMethod: 'getContactProperties',
-	//             },
-	//             default: '',
-	//             description: `A list of the properties to be returned in the response. `,
-	//         },
-	//         {
-	//             displayName: 'Properties with history',
-	//             name: 'propertiesWithHistory',
-	//             type: 'multiOptions',
-	//             typeOptions: {
-	//                 loadOptionsMethod: 'getContactProperties',
-	//             },
-	//             default: '',
-	//             description: `A list of the properties to be returned along with their history of previous values.`,
-	//         },
-	//         {
-	//             displayName: 'Associations',
-	//             name: 'associations',
-	//             type: 'multiOptions',
-	//             typeOptions: {
-	//                 loadOptionsMethod: 'getContactAssociations',
-	//             },
-	//             default: '',
-	//             description: `A list of object types to retrieve associated IDs for.`,
-	//         },
-	//         {
-	//             displayName: 'Archived',
-	//             name: 'archived',
-	//             type: 'boolean',
-	//             default: false,
-	//             description: `Whether to return only results that have been archived.`,
-	//         },
-	//     ],
-	// },
-
 	/* -------------------------------------------------------------------------- */
 	/*                              customObject:delete                           */
 	/* -------------------------------------------------------------------------- */
