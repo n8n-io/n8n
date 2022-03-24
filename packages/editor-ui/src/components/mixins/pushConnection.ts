@@ -60,7 +60,7 @@ export const pushConnection = mixins(
 
 				const connectionUrl = `${this.$store.getters.getRestUrl}/push?sessionId=${this.sessionId}`;
 
-				this.eventSource = new EventSource(connectionUrl);
+				this.eventSource = new EventSource(connectionUrl, { withCredentials: true });
 				this.eventSource.addEventListener('message', this.pushMessageReceived, false);
 
 				this.eventSource.addEventListener('open', () => {
@@ -258,6 +258,7 @@ export const pushConnection = mixins(
 							title: 'Problem executing workflow',
 							message: runDataExecutedErrorMessage,
 							type: 'error',
+							duration: 0,
 						});
 					} else {
 						// Workflow did execute without a problem
