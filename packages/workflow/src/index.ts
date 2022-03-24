@@ -6,6 +6,7 @@ import * as ObservableObject from './ObservableObject';
 export * from './DeferredPromise';
 export * from './Interfaces';
 export * from './Expression';
+export * from './ExpressionError';
 export * from './NodeErrors';
 export * as TelemetryHelpers from './TelemetryHelpers';
 export * from './RoutingNode';

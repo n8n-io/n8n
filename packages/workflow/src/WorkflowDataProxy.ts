@@ -12,6 +12,7 @@ import * as jmespath from 'jmespath';
 
 // eslint-disable-next-line import/no-cycle
 import {
+	ExpressionError,
 	IDataObject,
 	IExecuteData,
 	INodeExecutionData,
@@ -79,6 +80,10 @@ export class WorkflowDataProxy {
 		this.selfData = selfData;
 		this.additionalKeys = additionalKeys;
 		this.executeData = executeData;
+	}
+
+	private isExpressionError(data: INodeExecutionData[] | ExpressionError): boolean {
+		return data && data.constructor.name === 'ExpressionError';
 	}
 
 	/**
@@ -225,7 +230,7 @@ export class WorkflowDataProxy {
 		shortSyntax = false,
 		outputIndex?: number,
 		runIndex?: number,
-	): INodeExecutionData[] {
+	): INodeExecutionData[] | ExpressionError {
 		const that = this;
 
 		let executionData: INodeExecutionData[];
@@ -233,17 +238,16 @@ export class WorkflowDataProxy {
 			// Long syntax got used to return data from node in path
 
 			if (that.runExecutionData === null) {
-				throw new Error(`Workflow did not run so do not have any execution-data.`);
+				return new ExpressionError(`Workflow did not run so do not have any execution-data.`);
 			}
 
 			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
 				if (that.workflow.getNode(nodeName)) {
-					throw new Error(
+					return new ExpressionError(
 						`The node "${nodeName}" hasn't been executed yet, so you can't reference its output data`,
 					);
-				} else {
-					throw new Error(`No node called "${nodeName}" in this workflow`);
 				}
+				return new ExpressionError(`No node called "${nodeName}" in this workflow`);
 			}
 
 			runIndex = runIndex === undefined ? that.defaultReturnRunIndex : runIndex;
@@ -251,14 +255,14 @@ export class WorkflowDataProxy {
 				runIndex === -1 ? that.runExecutionData.resultData.runData[nodeName].length - 1 : runIndex;
 
 			if (that.runExecutionData.resultData.runData[nodeName].length <= runIndex) {
-				throw new Error(`Run ${runIndex} of node "${nodeName}" not found`);
+				return new ExpressionError(`Run ${runIndex} of node "${nodeName}" not found`);
 			}
 
 			const taskData = that.runExecutionData.resultData.runData[nodeName][runIndex].data!;
 
 			if (taskData.main === null || !taskData.main.length || taskData.main[0] === null) {
 				// throw new Error(`No data found for item-index: "${itemIndex}"`);
-				throw new Error(`No data found from "main" input.`);
+				return new ExpressionError(`No data found from "main" input.`);
 			}
 
 			// Check from which output to read the data.
@@ -272,7 +276,7 @@ export class WorkflowDataProxy {
 				);
 
 				if (nodeConnection === undefined) {
-					throw new Error(
+					return new ExpressionError(
 						`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`,
 					);
 				}
@@ -284,7 +288,7 @@ export class WorkflowDataProxy {
 			}
 
 			if (taskData.main.length <= outputIndex) {
-				throw new Error(`Node "${nodeName}" has no branch with index ${outputIndex}.`);
+				return new ExpressionError(`Node "${nodeName}" has no branch with index ${outputIndex}.`);
 			}
 
 			executionData = taskData.main[outputIndex] as INodeExecutionData[];
@@ -326,10 +330,15 @@ export class WorkflowDataProxy {
 					name = name.toString();
 
 					if (['binary', 'data', 'json'].includes(name)) {
-						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
+						let executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
+
+						if (that.isExpressionError(executionData)) {
+							return executionData;
+						}
+						executionData = executionData as INodeExecutionData[];
 
 						if (executionData.length <= that.itemIndex) {
-							throw new Error(`No data found for item-index: "${that.itemIndex}"`);
+							return new ExpressionError(`No data found for item-index: "${that.itemIndex}"`);
 						}
 
 						if (['data', 'json'].includes(name)) {
@@ -464,7 +473,7 @@ export class WorkflowDataProxy {
 		const that = this;
 
 		const getNodeOutput = (nodeName?: string, branchIndex?: number, runIndex?: number) => {
-			let executionData: INodeExecutionData[];
+			let executionData: INodeExecutionData[] | ExpressionError;
 
 			if (nodeName === undefined) {
 				executionData = that.connectionInputData;
@@ -489,7 +498,7 @@ export class WorkflowDataProxy {
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
 			pairedItem: IPairedItemData,
-		): INodeExecutionData | null => {
+		): INodeExecutionData | ExpressionError | null => {
 			let taskData: ITaskData;
 
 			let sourceData: ISourceData | null = incomingSourceData;
@@ -505,7 +514,7 @@ export class WorkflowDataProxy {
 
 				if (!itemPreviousNode.pairedItem) {
 					throw new Error(
-						`Could not resolve as pairedItem data is missing on node "${
+						`Could not resolve, as pairedItem data is missing on node "${
 							sourceData.previousNodeOutput || 0
 						}"`,
 					);
@@ -526,7 +535,7 @@ export class WorkflowDataProxy {
 						.filter((result) => result !== null);
 
 					if (results.length !== 1) {
-						throw new Error('Could not resolve as no definitive match could be found');
+						return new ExpressionError('Could not resolve, as no definitive match could be found');
 					}
 
 					return results[0];
@@ -539,7 +548,7 @@ export class WorkflowDataProxy {
 			}
 
 			if (sourceData === null) {
-				throw new Error('Could not resolve as sourceData information is missing');
+				return new ExpressionError('Could not resolve, proably no pairedItem exists');
 			}
 
 			taskData =
@@ -576,12 +585,12 @@ export class WorkflowDataProxy {
 
 									if (pairedItem === undefined) {
 										// If no data could be found, try to resolve automatically
-										throw new Error('Could not resolve as pairedItem data is missing');
+										return new ExpressionError('Could not resolve, as pairedItem data is missing');
 									}
 
 									if (that.executeData?.source === undefined) {
 										// If no data could be found, try to resolve automatically
-										throw new Error('Could not resolve as source data is missing');
+										return new ExpressionError('Could not resolve, as source data is missing');
 									}
 
 									const sourceData: ISourceData = that.executeData?.source!.main![
@@ -598,7 +607,13 @@ export class WorkflowDataProxy {
 										branchIndex = 0;
 										runIndex = that.runIndex;
 									}
-									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									let executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+
+									if (that.isExpressionError(executionData)) {
+										return executionData;
+									}
+									executionData = executionData as INodeExecutionData[];
+
 									if (executionData[itemIndex]) {
 										return executionData[itemIndex];
 									}
@@ -635,14 +650,22 @@ export class WorkflowDataProxy {
 							}
 							if (property === 'first') {
 								return (branchIndex?: number, runIndex?: number) => {
-									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									let executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									if (that.isExpressionError(executionData)) {
+										return executionData;
+									}
+									executionData = executionData as INodeExecutionData[];
 									if (executionData[0]) return executionData[0];
 									return undefined;
 								};
 							}
 							if (property === 'last') {
 								return (branchIndex?: number, runIndex?: number) => {
-									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									let executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									if (that.isExpressionError(executionData)) {
+										return executionData;
+									}
+									executionData = executionData as INodeExecutionData[];
 									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
 										return executionData[executionData.length - 1];
@@ -751,7 +774,7 @@ export class WorkflowDataProxy {
 				return dataProxy.getDataProxy();
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
-				let executionData: INodeExecutionData[];
+				let executionData: INodeExecutionData[] | ExpressionError;
 
 				if (nodeName === undefined) {
 					executionData = that.connectionInputData;

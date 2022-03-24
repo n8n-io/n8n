@@ -132,6 +132,15 @@ export class Expression {
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			const returnValue = tmpl.tmpl(parameterValue, data);
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (returnValue?.constructor.name === 'ExpressionError') {
+				if (typeof window !== 'undefined') {
+					throw new Error(returnValue.message);
+				}
+				return undefined;
+			}
+
 			if (typeof returnValue === 'function') {
 				throw new Error('Expression resolved to a function. Please add "()"');
 			} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -143,7 +152,7 @@ export class Expression {
 			return returnValue;
 		} catch (e) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-			throw new Error(`Expression is not valid: ${e.message}`);
+			throw new Error(`Expression error: ${e.message}`);
 		}
 	}
 
