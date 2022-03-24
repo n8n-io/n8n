@@ -10,11 +10,15 @@
       :minHeight="minHeight"
       :minWidth="minWidth"
       :resizer="resizer"
+      @onHeightChange="onHeightChange"
+      @onWidthChange="onWidthChange"
+      @onTopChange="onTopChange"
+      @onLeftChange="onLeftChange"
     >
       <template>
         <div :class="$style.wrapper">
           <n8n-markdown
-            :content="content"
+            :content="tempContent"
             theme="sticky"
           />
         </div>
@@ -23,7 +27,7 @@
     
     <div class="textarea" v-else>
       <n8n-input
-        v-model="tempValue"
+        v-model="tempContent"
         type="textarea"
         :rows="5"
         @blur="onBlur"
@@ -79,6 +83,11 @@ export default {
       default: 240,
     }
   },
+  watch: {
+    content(content) {
+      this.tempContent = content;
+    },
+  },
   components: {
     N8nInput,
     N8nMarkdown,
@@ -98,7 +107,7 @@ export default {
   data() {
     return {
       isEditable: false,
-      tempValue: '',
+      tempContent: this.content,
       resizer: null,
     }
   },
@@ -117,6 +126,18 @@ export default {
     onChange(value: string) {
       this.$emit('change', value);
     },
+    onHeightChange(height) {
+      this.$emit('onHeightChange', height);
+    },
+    onWidthChange(width) {
+      this.$emit('onWidthChange', width);
+    },
+    onTopChange(top) {
+      this.$emit('onTopChange', top);
+    },
+    onLeftChange(left) {
+      this.$emit('onLeftChange', left);
+    },
     onFocus(value) {
       this.$emit('focus', value);
     },
@@ -126,7 +147,6 @@ export default {
   },
   mounted() {
    this.resizer = document.querySelector('#sticky');
-   this.tempValue = this.content;
   },
 };
 </script>
@@ -155,6 +175,7 @@ export default {
     bottom: 0;
     position: absolute;
     background: linear-gradient(180deg, var(--color-sticky-default-background), #fff5d600 0.01%, var(--color-sticky-default-background));
+    border-radius: var(--border-radius-large);
   }
 }
 

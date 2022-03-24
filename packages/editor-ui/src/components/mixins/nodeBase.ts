@@ -40,6 +40,7 @@ export const nodeBase = mixins(
 		'isReadOnly',
 		'isActive',
 		'hideActions',
+		'parameters',
 	],
 	methods: {
 		__addInputEndpoints (node: INodeUi, nodeTypeData: INodeTypeDescription) {

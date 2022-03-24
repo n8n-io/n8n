@@ -29,7 +29,6 @@ const Template = (args, { argTypes }) => ({
   },
   template:
     '<n8n-resize v-bind="$props"><slot></slot></n8n-resize>',
-  methods,
 });
 
 export const Resize = Template.bind({});

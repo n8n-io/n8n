@@ -31,6 +31,24 @@
 				:isActive="!!activeNode && activeNode.name === nodeData.name"
 				:hideActions="pullConnActive"
 				></node>
+				<Sticky
+					v-for="nodeData in stickies"
+					@duplicateNode="duplicateNode"
+					@deselectAllNodes="deselectAllNodes"
+					@deselectNode="nodeDeselectedByName"
+					@nodeSelected="nodeSelectedByName"
+					@removeNode="removeNode"
+					@moved="onNodeMoved"
+					@run="onNodeRun"
+					:id="'node-' + getNodeIndex(nodeData.name)"
+					:key="getNodeIndex(nodeData.name)"
+					:name="nodeData.name"
+					:isReadOnly="true"
+					:instance="instance"
+					:isActive="!!activeNode && activeNode.name === nodeData.name"
+					:hideActions="pullConnActive"
+					:parameters="nodeData.parameters"
+				/>
 			</div>
 		</div>
 		<DataDisplay @valueChanged="valueChanged"/>
@@ -133,6 +151,7 @@ import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
+import Sticky from '@/components/Sticky.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
 
@@ -199,6 +218,7 @@ export default mixins(
 			NodeCreator,
 			NodeSettings,
 			RunData,
+			Sticky,
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
@@ -288,7 +308,14 @@ export default mixins(
 				return this.$store.getters.lastSelectedNode;
 			},
 			nodes (): INodeUi[] {
-				return this.$store.getters.allNodes;
+				return this.$store.getters.allNodes.filter((node: INodeUi) => {
+					return node.type !== 'n8n-nodes-base.note';
+				});
+			},
+			stickies(): INodeUi[] {
+				return this.$store.getters.allNodes.filter((node: INodeUi) => {
+					return node.type === 'n8n-nodes-base.note';
+				});
 			},
 			runButtonText (): string {
 				if (this.workflowRunning === false) {
@@ -2862,6 +2889,11 @@ export default mixins(
 	position: relative;
 	width: 100%;
 	height: 100%;
+	transform-origin: 0 0;
+}
+
+.sticky-view {
+	position: relative;
 	transform-origin: 0 0;
 }
 
