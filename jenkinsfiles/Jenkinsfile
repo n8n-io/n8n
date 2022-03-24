@@ -8,7 +8,7 @@ pipeline {
     environment {
         ALIYUN_CREDS = credentials('aliyun-acr')
         K8S_CONFIG = credentials('ali-staging-kube-config')
-        GIT_TAG = sh(returnStdout: true,script: 'git describe --tags --always').trim()
+        GIT_TAG = sh(returnStdout: true,script: 'git tag --sort=taggerdate | tail -1').trim()
     }
     stages {
         stage('Clone') {
