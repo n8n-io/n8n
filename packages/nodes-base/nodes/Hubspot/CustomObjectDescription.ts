@@ -11,11 +11,11 @@ export const customObjectOperations: INodeProperties[] = [
 			},
 		},
 		options: [
-			// {
-			// 	name: 'Create/Update',
-			// 	value: 'upsert',
-			// 	description: 'Get all custom Objects',
-			// },
+			{
+				name: 'Create/Update',
+				value: 'upsert',
+				description: 'Get all custom Objects',
+			},
 			{
 				name: 'Create',
 				value: 'create',
@@ -159,6 +159,90 @@ export const customObjectFields: INodeProperties[] = [
 			show: {
 				resource: ['customObject'],
 				operation: ['update'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Properties',
+				name: 'customPropertiesUi',
+				placeholder: 'Add Property',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customPropertiesValues',
+						displayName: 'Custom Property',
+						values: [
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomObjectProperties',
+								},
+								default: '',
+								description: 'Name of the property.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the property',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                              customObject:upsert                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'ID property',
+		name: 'idProperty',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCustomObjectIdProperties',
+		},
+		required: false,
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['upsert'],
+			},
+		},
+		default: '',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
+	},
+	{
+		displayName: 'Object ID',
+		name: 'objectId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['upsert'],
+			},
+		},
+		default: '',
+		description: 'The value of the idProperty of the object. If idProperty is not set, this defaults to the hubspot object id.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
