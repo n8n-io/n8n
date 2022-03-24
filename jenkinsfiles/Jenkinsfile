@@ -3,7 +3,7 @@
 
 pipeline {
     agent {
-        label 'jnlp-n8n'
+        label 'jnlp-hasura-n8n'
     }
     environment {
         ALIYUN_CREDS = credentials('aliyun-acr')

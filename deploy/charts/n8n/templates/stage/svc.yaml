@@ -2,14 +2,14 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: staging-hasura
-  name: staging-hasura-svc
+    app: staging-n8n
+  name: staging-n8n-svc
   namespace: staging
 spec:
   ports:
   - protocol: TCP
     port: 80
-    targetPort: 8080
+    targetPort: 5678
   selector:
-    app: staging-hasura
+    app: staging-n8n
   type: ClusterIP

@@ -1,82 +1,90 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: staging-hasura-secrets
+  name: staging-n8n-secrets
   namespace: staging
 type: Opaque
 data:
-  myadminsecretkey: ZXZjVjlkUFViVjBqcjhjeQ==
-  pg_database_url: cG9zdGdyZXM6Ly9zdGFnaW5nX2hhc3VyYTpXeTA0ZkFVdmlVWDZBeUtiQHBnbS11ZjZyODcyNWhmbXRiMDlwMTE3MzkwLnBnLnJkcy5hbGl5dW5jcy5jb206NTQzMi9zdGFnaW5nX2hhc3VyYQ==
-  hasura_graphql_database_url: cG9zdGdyZXM6Ly9zdGFnaW5nX2hhc3VyYTpXeTA0ZkFVdmlVWDZBeUtiQHBnbS11ZjZyODcyNWhmbXRiMDlwMTE3MzkwLnBnLnJkcy5hbGl5dW5jcy5jb206NTQzMi9zdGFnaW5nX2hhc3VyYQ==
+  DB_POSTGRESDB_HOST: cGdtLXVmNnI4NzI1aGZtdGIwOXAxMTczOTAucGcucmRzLmFsaXl1bmNzLmNvbQ==
+  DB_POSTGRESDB_USER: c3RhZ2luZ19uOG4=
+  DB_POSTGRESDB_PASSWORD: QVNENXhMY0JOY0hLb2JIVg==
+  N8N_BASIC_AUTH_USER: bjhuYmFzaWM=
+  N8N_BASIC_AUTH_PASSWORD: M3lQcW4xRDdNRHJhNDd2bA==
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: staging-hasura
-  name: staging-hasura-svc
+    app: staging-n8n
+  name: staging-n8n-svc
   namespace: staging
 spec:
   ports:
   - protocol: TCP
     port: 80
-    targetPort: 8080
+    targetPort: 5678
   selector:
-    app: staging-hasura
+    app: staging-n8n
   type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: staging-hasura
+    app: staging-n8n
     hasuraService: custom
-  name: stging-hasura
+  name: stging-n8n
   namespace: staging
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: staging-hasura
+      app: staging-n8n
   template:
     metadata:
       creationTimestamp: null
       labels:
-        app: staging-hasura
+        app: staging-n8n
     spec:
       containers:
-      - image: registry.cn-shanghai.aliyuncs.com/cgp-application/hasura:GIT_TAG
+      - image: registry.cn-shanghai.aliyuncs.com/cgp-application/n8n:GIT_TAG
         imagePullPolicy: IfNotPresent
-        name: staging-hasura
+        name: staging-n8n
         env:
-        - name: HASURA_GRAPHQL_MIGRATIONS_DIR
-          value: /hasura-migrations
-        - name: HASURA_GRAPHQL_METADATA_DIR
-          value: /hasura-metadata
-        - name: PG_DATABASE_URL
+        - name: DB_POSTGRESDB_DATABASE
+          value: staging_n8n
+        - name: DB_POSTGRESDB_HOST
           valueFrom: 
             secretKeyRef: 
-              name: staging-hasura-secrets
-              key: pg_database_url
-        - name: HASURA_GRAPHQL_DATABASE_URL
+              name: staging-n8n-secrets
+              key: DB_POSTGRESDB_HOST
+        - name: DB_POSTGRESDB_PORT
+          value: 5432
+        - name: DB_POSTGRESDB_USER
           valueFrom: 
             secretKeyRef: 
-              name: staging-hasura-secrets
-              key: hasura_graphql_database_url
-        ## enable the console served by server
-        - name: HASURA_GRAPHQL_ENABLE_CONSOLE
-          value: "false"
-        ## uncomment next line to set an admin secret
-        ## @DevOps, need replace password with Env Var
-        - name: HASURA_GRAPHQL_ADMIN_SECRET
+              name: staging-n8n-secrets
+              key: DB_POSTGRESDB_USER
+        - name: DB_POSTGRESDB_PASSWORD
           valueFrom: 
             secretKeyRef: 
-              name: staging-hasura-secrets
-              key: myadminsecretkey
-        ## enable debugging mode. It is recommended to disable this in production
-        - name: HASURA_GRAPHQL_DEV_MODE
-          value: "true"
+              name: staging-n8n-secrets
+              key: DB_POSTGRESDB_PASSWORD
+        - name: N8N_BASIC_AUTH_USER
+          valueFrom: 
+            secretKeyRef: 
+              name: staging-n8n-secrets
+              key: N8N_BASIC_AUTH_USER
+        - name: N8N_BASIC_AUTH_PASSWORD
+          valueFrom: 
+            secretKeyRef: 
+              name: staging-n8n-secrets
+              key: N8N_BASIC_AUTH_PASSWORD
+        - name: GENERIC_TIMEZONE
+          value: Asia/Shanghai
+        - name: TZ
+          value: Asia/Shanghai
         ports:
-        - containerPort: 8080
+        - containerPort: 5678
           protocol: TCP
         resources: {}
