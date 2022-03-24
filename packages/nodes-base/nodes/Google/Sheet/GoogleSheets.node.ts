@@ -161,7 +161,7 @@ export class GoogleSheets implements INodeType {
 					{
 						name: 'Upsert',
 						value: 'upsert',
-						description: 'Create or update rows in a sheet',
+						description: 'Update rows in a sheet, or append rows if not exists',
 					},
 				],
 				default: 'read',

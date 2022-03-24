@@ -268,7 +268,16 @@ export class GoogleSheet {
 	 * @returns {Promise<string[][]>}
 	 * @memberof GoogleSheet
 	 */
-	async updateSheetData(inputData: IDataObject[], indexKey: string, range: string, keyRowIndex: number, dataStartRowIndex: number, valueInputMode: ValueInputOption, valueRenderMode: ValueRenderOption, upsert = false): Promise<string[][]> {
+	async updateSheetData(
+			inputData: IDataObject[],
+			indexKey: string,
+			range: string,
+			keyRowIndex: number,
+			dataStartRowIndex: number,
+			valueInputMode: ValueInputOption,
+			valueRenderMode: ValueRenderOption,
+			upsert = false,
+		): Promise<string[][]> {
 		// Get current data in Google Sheet
 		let rangeStart: string, rangeEnd: string, rangeFull: string;
 		let sheet: string | undefined = undefined;
@@ -333,7 +342,7 @@ export class GoogleSheet {
 			itemKey = inputItem[indexKey] as string;
 			// if ([undefined, null].includes(inputItem[indexKey] as string | undefined | null)) {
 			if (itemKey === undefined || itemKey === null) {
-				// Item does not have the indexKey so we can ignore it or append it
+				// Item does not have the indexKey so we can ignore it or append it if upsert true
 				if (upsert) {
 					const data = await this.appendSheetData([inputItem], this.encodeRange(range), keyRowIndex, valueInputMode);
 				}
@@ -343,7 +352,7 @@ export class GoogleSheet {
 			// Item does have the key so check if it exists in Sheet
 			itemKeyIndex = keyColumnIndexLookup.indexOf(itemKey as string);
 			if (itemKeyIndex === -1) {
-				// Key does not exist in the Sheet so it can not be updated so skip it or append it
+				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
 					const data = await this.appendSheetData([inputItem], this.encodeRange(range), keyRowIndex, valueInputMode);
 				}
