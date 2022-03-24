@@ -233,8 +233,8 @@ export class WorkflowExecute {
 							);
 							waitingExecutionSource[destinationNode][runIndex][connection.type].push({
 								previousNode: connection.node,
-								previousNodeOutput: connection.index,
-								previousNodeRun: runIndex,
+								previousNodeOutput: connection.index || undefined,
+								previousNodeRun: runIndex || undefined,
 							} as ISourceData);
 						} else {
 							waitingExecution[destinationNode][runIndex][connection.type].push(null);
@@ -326,7 +326,6 @@ export class WorkflowExecute {
 			// Node has multiple inputs
 			let nodeWasWaiting = true;
 
-			// TODO: Check if needed
 			if (this.runExecutionData.executionData!.waitingExecutionSource === null) {
 				this.runExecutionData.executionData!.waitingExecutionSource = {};
 			}
@@ -383,9 +382,8 @@ export class WorkflowExecute {
 					runIndex
 				].main[connectionData.index] = {
 					previousNode: parentNodeName,
-					previousNodeOutput: outputIndex,
-					// TODO: Check if this is correct
-					previousNodeRun: runIndex,
+					previousNodeOutput: outputIndex || undefined,
+					previousNodeRun: runIndex || undefined,
 				};
 			}
 
@@ -604,8 +602,8 @@ export class WorkflowExecute {
 									main: [
 										{
 											previousNode: parentNodeName,
-											previousNodeOutput: outputIndex,
-											previousNodeRun: runIndex,
+											previousNodeOutput: outputIndex || undefined,
+											previousNodeRun: runIndex || undefined,
 										},
 									],
 								},
@@ -650,8 +648,8 @@ export class WorkflowExecute {
 					main: [
 						{
 							previousNode: parentNodeName,
-							previousNodeOutput: outputIndex,
-							previousNodeRun: runIndex,
+							previousNodeOutput: outputIndex || undefined,
+							previousNodeRun: runIndex || undefined,
 						},
 					],
 				},
@@ -789,7 +787,7 @@ export class WorkflowExecute {
 										...item,
 										pairedItem: {
 											item: itemIndex,
-											input: inputIndex,
+											input: inputIndex || undefined,
 										},
 									};
 								});
@@ -874,9 +872,6 @@ export class WorkflowExecute {
 						}
 					}
 
-					// Clone input data that nodes can not mess up data of parallel nodes which receive the same data
-					// TODO: Should only clone if multiple nodes get the same data or when it gets returned to frontned
-					//       is very slow so only do if needed
 					startTime = new Date().getTime();
 
 					let maxTries = 1;
@@ -942,7 +937,7 @@ export class WorkflowExecute {
 									item = outputData[itemIndex];
 
 									if (!item.pairedItem) {
-										// The pairedItem is missing
+										// The pairedItem is missing so check if it can get automatically fixed
 										if (
 											executionData.data.main.length !== 1 ||
 											executionData.data.main[0]?.length !== 1
@@ -954,7 +949,6 @@ export class WorkflowExecute {
 
 										item.pairedItem = {
 											item: itemIndex,
-											input: 0,
 										};
 									}
 								}

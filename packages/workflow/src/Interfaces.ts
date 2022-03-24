@@ -806,7 +806,7 @@ export interface IBinaryKeyData {
 
 export interface IPairedItemData {
 	item: number;
-	input?: number;
+	input?: number; // If undefined "0" gets used
 }
 
 export interface INodeExecutionData {
@@ -1295,8 +1295,8 @@ export interface ITaskData {
 
 export interface ISourceData {
 	previousNode: string;
-	previousNodeOutput: number; // TODO: Make optional [default: 0]
-	previousNodeRun: number; // TODO: Make optional [default: 0]
+	previousNodeOutput?: number; // If undefined "0" gets used
+	previousNodeRun?: number; // If undefined "0" gets used
 }
 
 // The data for all the different kind of connectons (like main) and all the indexes

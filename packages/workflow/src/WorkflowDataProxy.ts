@@ -497,15 +497,17 @@ export class WorkflowDataProxy {
 			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
 				taskData =
 					that.runExecutionData!.resultData.runData[sourceData.previousNode][
-						sourceData?.previousNodeRun
+						sourceData?.previousNodeRun || 0
 					];
 
 				const itemPreviousNode: INodeExecutionData =
-					taskData.data!.main[sourceData.previousNodeOutput]![pairedItem.item];
+					taskData.data!.main[sourceData.previousNodeOutput || 0]![pairedItem.item];
 
 				if (!itemPreviousNode.pairedItem) {
 					throw new Error(
-						`Could not resolve as pairedItem data is missing on node "${sourceData.previousNodeOutput}"`,
+						`Could not resolve as pairedItem data is missing on node "${
+							sourceData.previousNodeOutput || 0
+						}"`,
 					);
 				}
 
@@ -542,10 +544,10 @@ export class WorkflowDataProxy {
 
 			taskData =
 				that.runExecutionData!.resultData.runData[sourceData.previousNode][
-					sourceData?.previousNodeRun
+					sourceData?.previousNodeRun || 0
 				];
 
-			return taskData.data!.main[sourceData.previousNodeOutput]![pairedItem.item];
+			return taskData.data!.main[sourceData.previousNodeOutput || 0]![pairedItem.item];
 		};
 
 		const base = {
@@ -567,9 +569,9 @@ export class WorkflowDataProxy {
 									// TODO: Switch maybe back to just source data instead of the whole executionData
 									const executionData = that.connectionInputData;
 
-									// TODO: Is that really true?
 									// As we operate on the incoming item we can be sure that pairedItem is not an
-									// array, for that reason do we not have to consider that case
+									// array. After all can it only come from exactly one previous node via a certain
+									// input. For that reason do we not have to consider the array case.
 									const pairedItem = executionData[itemIndex].pairedItem as IPairedItemData;
 
 									if (pairedItem === undefined) {
