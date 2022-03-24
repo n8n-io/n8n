@@ -14,6 +14,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -2025,7 +2026,6 @@ export class Hubspot implements INodeType {
 					//https://developers.hubspot.com/docs/api/crm/crm-custom-objects
 					if (resource === 'customObject') {
 						if (operation === 'create') {
-							// const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 							const properties: Record<string, unknown> = {};
 
@@ -2042,16 +2042,6 @@ export class Hubspot implements INodeType {
 							const endpoint = `/crm/v3/objects/${customObjectType}`;
 
 							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, { properties });
-
-							// if (resolveData) {
-							// 	const isNew = responseData.isNew;
-							// 	const qs: IDataObject = {};
-							// 	if (additionalFields.properties) {
-							// 		qs.property = additionalFields.properties as string[];
-							// 	}
-							// 	responseData = await hubspotApiRequest.call(this, 'GET', `/contacts/v1/contact/vid/${responseData.vid}/profile`, {}, qs);
-							// 	responseData.isNew = isNew;
-							// }
 						}
 						if (operation === 'update') {
 							const idProperty = this.getNodeParameter('idProperty', i) as string;
@@ -2069,8 +2059,47 @@ export class Hubspot implements INodeType {
 								}
 							}
 
+
+
 							const endpoint = `/crm/v3/objects/${customObjectType}/${objectId}`;
 							responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, { properties }, idProperty ? { idProperty } : {});
+						}
+						if (operation === 'upsert') {
+							const idProperty = this.getNodeParameter('idProperty', i) as string;
+							const objectId = this.getNodeParameter('objectId', i) as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+							const properties: Record<string, unknown> = {};
+							if (additionalFields.customPropertiesUi) {
+								const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+
+								if (customProperties) {
+									for (const customProperty of customProperties) {
+										properties[customProperty.property as string] = customProperty.value;
+									}
+								}
+							}
+							if (idProperty) {
+								properties[idProperty] = objectId;
+							}
+
+							if (!Object.keys(properties).length) {
+								throw new NodeOperationError(this.getNode(), 'You need to provide at least one property to update');
+							}
+
+							try {
+								const endpoint = `/crm/v3/objects/${customObjectType}/${objectId}`;
+								responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, { properties }, idProperty ? { idProperty } : {});
+							} catch (error) {
+								if ((error as NodeApiError).httpCode !== '404') {
+									throw error;
+								}
+								if (!idProperty) {
+									throw new NodeOperationError(this.getNode(), 'A custom id property needs to be used when creating a new object');
+								}
+								const endpoint = `/crm/v3/objects/${customObjectType}`;
+								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, { properties });
+							}
 						}
 						if (operation === 'get') {
 							const idProperty = this.getNodeParameter('idProperty', i) as string;
