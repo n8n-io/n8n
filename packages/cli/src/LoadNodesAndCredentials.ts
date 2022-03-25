@@ -37,6 +37,9 @@ import { promisify } from 'util';
 import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
 import config from '../config';
+import { Db } from '.';
+import { InstalledPackages } from './databases/entities/InstalledPackages';
+import { InstalledNodes } from './databases/entities/InstalledNodes';
 
 const execAsync = promisify(exec);
 
@@ -232,7 +235,45 @@ class LoadNodesAndCredentialsClass {
 
 		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 
-		return this.loadDataFromPackage(finalNodeUnpackedPath);
+		const loadedNodes = await this.loadDataFromPackage(finalNodeUnpackedPath);
+
+		if (loadedNodes.length > 0) {
+			const packageFile = await this.readPackageJson(finalNodeUnpackedPath);
+
+			// Save info to DB
+			try {
+				await Db.transaction(async (transactionManager) => {
+					const promises = [];
+
+					const installedPackage = Object.assign(new InstalledPackages(), {
+						packageName,
+						installedVersion: packageFile.version,
+					});
+					promises.push(transactionManager.save<InstalledPackages>(installedPackage));
+
+					promises.push(
+						...loadedNodes.map(async (loadedNode) => {
+							const installedNode = Object.assign(new InstalledNodes(), {
+								name: loadedNode.name,
+								type: loadedNode.name,
+								latestVersion: loadedNode.version,
+								package: packageName,
+							});
+							return transactionManager.save<InstalledNodes>(installedNode);
+						}),
+					);
+
+					return promises;
+				});
+			} catch (error) {
+				LoggerProxy.error('Failed to save installed packages and nodes', { error });
+				throw error;
+			}
+		} else {
+			// Remove this package since it contains no loadable nodes
+		}
+
+		return loadedNodes;
 	}
 
 	/**

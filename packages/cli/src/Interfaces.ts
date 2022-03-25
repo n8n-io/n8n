@@ -34,6 +34,8 @@ import { User } from './databases/entities/User';
 import { SharedCredentials } from './databases/entities/SharedCredentials';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { Settings } from './databases/entities/Settings';
+import { InstalledPackages } from './databases/entities/InstalledPackages';
+import { InstalledNodes } from './databases/entities/InstalledNodes';
 
 export interface IActivationError {
 	time: number;
@@ -82,6 +84,8 @@ export interface IDatabaseCollections {
 	SharedCredentials: Repository<SharedCredentials>;
 	SharedWorkflow: Repository<SharedWorkflow>;
 	Settings: Repository<Settings>;
+	InstalledPackages: Repository<InstalledPackages>;
+	InstalledNodes: Repository<InstalledNodes>;
 }
 
 export interface IWebhookDb {
