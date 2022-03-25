@@ -193,7 +193,12 @@ export async function init(
 	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
 	collections.Settings = linkRepository(entities.Settings);
 
+<<<<<<< HEAD
 	isInitialized = true;
+=======
+	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
+	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
+>>>>>>> 7e9e24399 (Saving to db whenever a package with nodes is installed)
 
 	return collections;
 }
