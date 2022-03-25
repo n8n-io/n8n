@@ -26,6 +26,7 @@ pipeline {
             steps {
                 container ('tools') {
                     sh "docker login -u ${ALIYUN_CREDS_USR} -p ${ALIYUN_CREDS_PSW} registry.cn-shanghai.aliyuncs.com"
+                    sh "cat Dockerfile"
                     sh "ls -l"
                     sh "echo ${GIT_TAG}"
                     sh "docker build -t registry.cn-shanghai.aliyuncs.com/cgp-application/n8n:${GIT_TAG} ."
