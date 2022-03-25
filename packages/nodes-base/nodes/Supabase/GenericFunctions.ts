@@ -24,6 +24,7 @@ export async function supabaseApiRequest(this: IExecuteFunctions | IExecuteSingl
 	const options: OptionsWithUri = {
 		headers: {
 			apikey: credentials.serviceRole,
+			Authorization: 'Bearer ' + credentials.serviceRole,
 			Prefer: 'return=representation',
 		},
 		method,
@@ -296,7 +297,7 @@ export const buildGetQuery = (obj: IDataObject, value: IDataObject) => {
 	return Object.assign(obj, { [`${value.keyName}`]: `eq.${value.keyValue}` });
 };
 
-export async function validateCrendentials(
+export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
 
@@ -309,6 +310,7 @@ export async function validateCrendentials(
 	const options: OptionsWithUri = {
 		headers: {
 			apikey: serviceRole,
+			Authorization: 'Bearer ' + serviceRole,
 		},
 		method: 'GET',
 		uri: `${credentials.host}/rest/v1/`,
