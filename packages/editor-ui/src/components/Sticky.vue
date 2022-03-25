@@ -12,7 +12,7 @@
 				/>
 			</div>
 
-			<div class="node-options no-select-on-click" v-show="!hideActions">
+			<div class="sticky-options no-select-on-click" v-show="!hideActions">
 				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
 					<font-awesome-icon icon="trash" />
 				</div>
@@ -119,30 +119,36 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				}, 2000);
 			}
 		},
-		// onHeightChange(height: number) {
-		// 	const sticky_background = document.querySelector('.select-sticky-background');
-		// 	if (sticky_background) {
-		// 		sticky_background.style.height = height + 16 + 'px';
-		// 	}
-		// },
-		// onWidthChange(width: number) {
-		// 	const sticky_background = document.querySelector('.select-sticky-background');
-		// 	if (sticky_background) {
-		// 		sticky_background.style.width = width + 16 + 'px';
-		// 	}
-		// },
-		// onTopChange(top: number) {
-		// 	const sticky_background = document.querySelector('.select-sticky-background');
-		// 	if (sticky_background) {
-		// 		sticky_background.style.top = top;
-		// 	}
-		// },
-		// onLeftChange(left: number) {
-		// 	const sticky_background = document.querySelector('.select-sticky-background');
-		// 	if (sticky_background) {
-		// 		sticky_background.style.left = left;
-		// 	}
-		// },
+		onHeightChange(height: number) {
+			const stickyBackground = document.querySelector('.select-sticky-background') as HTMLElement;
+			if (stickyBackground) {
+				stickyBackground.style.height = height + 16 + 'px';
+			}
+		},
+		onWidthChange(width: number) {
+			const stickyBackground = document.querySelector('.select-sticky-background') as HTMLElement;
+			// const stickyTooltip = document.querySelector('.sticky-options') as HTMLElement;
+			if (stickyBackground) {
+				stickyBackground.style.width = width + 16 + 'px';
+				// stickyTooltip.style.width = width + 'px';
+			}
+		},
+		onTopChange(top: number) {
+			const stickyBackground = document.querySelector('.select-sticky-background') as HTMLElement;
+			const stickyTooltip = document.querySelector('.sticky-options') as HTMLElement;
+			if (stickyBackground) {
+				stickyBackground.style.top = top - 8 + 'px';
+				stickyTooltip.style.top = top - 25 + 'px';
+			}
+		},
+		onLeftChange(left: number) {
+			const stickyBackground = document.querySelector('.select-sticky-background') as HTMLElement;
+			// const stickyTooltip = document.querySelector('.sticky-options') as HTMLElement;
+			if (stickyBackground) {
+				stickyBackground.style.left = left - 8 + 'px';
+				// stickyTooltip.style.left = 240 + left + 'px';
+			}
+		},
 	},
 });
 
@@ -203,7 +209,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				display: initial;
 			}
 
-			.node-options {
+			.sticky-options {
 				display: initial;
 			}
 		}
@@ -251,7 +257,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 		}
 
-		.node-options {
+		.sticky-options {
 			display: none;
 			position: absolute;
 			top: -25px;
@@ -284,7 +290,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 		}
 
-		&.is-touch-device .node-options {
+		&.is-touch-device .sticky-options {
 			left: -25px;
 			width: 150px;
 
@@ -372,7 +378,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 10;
 }
 
-.node-options {
+.sticky-options {
 	z-index: 10;
 }
 

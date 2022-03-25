@@ -45,7 +45,8 @@ export default {
         if (rect.width > this.minWidth && rect.height > this.minHeight) {
           this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
           this.resizer.style.height = rect.height - (this.prevY - e.clientY) + 'px';
-          this.resizer.style.left = this.resizer.offsetLeft - (this.prevX - e.clientX) + 'px';
+          var left = this.resizer.offsetLeft - (this.prevX - e.clientX);
+          this.resizer.style.left = left + 'px';
         } else {
           this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
           this.resizer.style.height = rect.height - (this.prevY - e.clientY) + 'px';
@@ -54,7 +55,8 @@ export default {
         if (rect.height > this.minHeight) {
           this.resizer.style.width = rect.width - (this.prevX - e.clientX) + 'px';
           this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
-          this.resizer.style.top = this.resizer.offsetTop - (this.prevY - e.clientY) + 'px';
+          var top = this.resizer.offsetTop - (this.prevY - e.clientY);
+          this.resizer.style.top = top + 'px';
         } else {
           this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
           this.resizer.style.width = rect.width - (this.prevX - e.clientX) + 'px';
@@ -63,8 +65,10 @@ export default {
         if (rect.height > this.minHeight) { 
           this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
           this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
-          this.resizer.style.top = this.resizer.offsetTop - (this.prevY - e.clientY) + 'px';
-          this.resizer.style.left = this.resizer.offsetTop - (this.prevX - e.clientX) + 'px';
+          var top = this.resizer.offsetTop - (this.prevY - e.clientY);
+          this.resizer.style.top = top + 'px';
+          var left = this.resizer.offsetTop - (this.prevX - e.clientX);
+          this.resizer.style.left = left + 'px';
          } else {
           this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
           this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
@@ -77,14 +81,16 @@ export default {
         }
       } else if (this.currentResizer.classList.contains('e')) {
         if (rect.width > this.minWidth) {
-          this.resizer.style.left = this.resizer.offsetLeft - (this.prevX - e.clientX) + 'px';
+          var left = this.resizer.offsetLeft - (this.prevX - e.clientX);
+          this.resizer.style.left = left + 'px';
           this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
         } else {
           this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
         }
       } else if (this.currentResizer.classList.contains('n')) {
         if (rect.height > this.minHeight) {
-          this.resizer.style.top = this.resizer.offsetTop - (this.prevY - e.clientY) + 'px';
+          var top = this.resizer.offsetTop - (this.prevY - e.clientY)
+          this.resizer.style.top = top + 'px';
           this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
         } else {
           this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
@@ -100,8 +106,8 @@ export default {
       this.prevX = e.clientX;
       this.prevY = e.clientY;
      
-      this.$emit('onLeftChange', this.resizer.style.left);
-      this.$emit('onTopChange', this.resizer.style.top);
+      this.$emit('onLeftChange', left);
+      this.$emit('onTopChange', top);
       this.$emit('onHeightChange', rect.height);
       this.$emit('onWidthChange', rect.width);
     },
