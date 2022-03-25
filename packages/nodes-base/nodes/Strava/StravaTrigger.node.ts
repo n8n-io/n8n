@@ -29,7 +29,6 @@ export class StravaTrigger implements INodeType {
 		description: 'Starts the workflow when Strava events occur',
 		defaults: {
 			name: 'Strava Trigger',
-			color: '#ea5929',
 		},
 		inputs: [],
 		outputs: ['main'],

@@ -4,7 +4,16 @@ import {
 } from 'n8n-workflow';
 
 const scopes = [
-	'contacts',
+	'crm.schemas.deals.read',
+	'crm.objects.owners.read',
+	'crm.objects.contacts.write',
+	'crm.objects.companies.write',
+	'crm.objects.companies.read',
+	'crm.objects.deals.read',
+	'crm.schemas.contacts.read',
+	'crm.objects.deals.write',
+	'crm.objects.contacts.read',
+	'crm.schemas.companies.read',
 	'forms',
 	'tickets',
 ];

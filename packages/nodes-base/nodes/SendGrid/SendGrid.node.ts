@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -47,7 +44,6 @@ export class SendGrid implements INodeType {
 		description: 'Consume SendGrid API',
 		defaults: {
 			name: 'SendGrid',
-			color: '#1A82E2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

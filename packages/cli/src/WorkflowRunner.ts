@@ -11,7 +11,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { IProcessMessage, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, IProcessMessage, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
@@ -57,6 +57,7 @@ import {
 } from '.';
 import * as Queue from './Queue';
 import { InternalHooksManager } from './InternalHooksManager';
+import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -174,8 +175,10 @@ export class WorkflowRunner {
 		postExecutePromise
 			.then(async (executionData) => {
 				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+					executionId!,
 					data.workflowData,
 					executionData,
+					data.userId,
 				);
 			})
 			.catch((error) => {
@@ -185,7 +188,11 @@ export class WorkflowRunner {
 		if (externalHooks.exists('workflow.postExecute')) {
 			postExecutePromise
 				.then(async (executionData) => {
-					await externalHooks.run('workflow.postExecute', [executionData, data.workflowData]);
+					await externalHooks.run('workflow.postExecute', [
+						executionData,
+						data.workflowData,
+						executionId,
+					]);
 				})
 				.catch((error) => {
 					console.error('There was a problem running hook "workflow.postExecute"', error);
@@ -241,6 +248,7 @@ export class WorkflowRunner {
 			staticData: data.workflowData.staticData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			data.userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
@@ -260,6 +268,9 @@ export class WorkflowRunner {
 				`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
 				{ executionId },
 			);
+
+			await checkPermissionsForExecution(workflow, data.userId);
+
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
 				data,
 				executionId,
@@ -539,6 +550,7 @@ export class WorkflowRunner {
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
 						await Db.collections.Execution!.delete(executionId);
+						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(executionId);
 					}
 					// eslint-disable-next-line id-denylist
 				} catch (err) {
@@ -586,7 +598,7 @@ export class WorkflowRunner {
 		// be needed and so have to load all of them in the workflowRunnerProcess
 		let loadAllNodeTypes = false;
 		for (const node of data.workflowData.nodes) {
-			if (node.type === 'n8n-nodes-base.executeWorkflow') {
+			if (node.type === 'n8n-nodes-base.executeWorkflow' && node.disabled !== true) {
 				loadAllNodeTypes = true;
 				break;
 			}
@@ -598,8 +610,7 @@ export class WorkflowRunner {
 		if (loadAllNodeTypes) {
 			// Supply all nodeTypes and credentialTypes
 			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
-			const credentialTypes = CredentialTypes();
-			credentialTypeData = credentialTypes.credentialTypes;
+			credentialTypeData = WorkflowHelpers.getAllCredentalsTypeData();
 		} else {
 			// Supply only nodeTypes, credentialTypes and overwrites that the workflow needs
 			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);

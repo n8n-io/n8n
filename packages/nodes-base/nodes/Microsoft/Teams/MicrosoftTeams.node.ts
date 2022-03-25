@@ -42,7 +42,6 @@ export class MicrosoftTeams implements INodeType {
 		description: 'Consume Microsoft Teams API',
 		defaults: {
 			name: 'Microsoft Teams',
-			color: '#555cc7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

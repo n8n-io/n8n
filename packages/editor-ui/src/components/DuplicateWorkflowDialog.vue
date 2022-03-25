@@ -3,35 +3,35 @@
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="save"
-		title="Duplicate Workflow"
+		:title="$locale.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
 		:center="true"
-		minWidth="420px"
-		maxWidth="420px"
+		width="420px"
 	>
 		<template v-slot:content>
 			<div :class="$style.content">
 				<n8n-input
 					v-model="name"
 					ref="nameInput"
-					placeholder="Enter workflow name"
+					:placeholder="$locale.baseText('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<TagsDropdown
+					v-if="areTagsEnabled"
 					:createEnabled="true"
 					:currentTagIds="currentTagIds"
 					:eventBus="dropdownBus"
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
 					@update="onTagsUpdate"
-					placeholder="Choose or create a tag"
+					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
 					ref="dropdown"
 				/>
 			</div>
 		</template>
 		<template v-slot:footer="{ close }">
 			<div :class="$style.footer">
-				<n8n-button @click="save" :loading="isSaving" label="Save" float="right" />
-				<n8n-button type="outline" @click="close" :disabled="isSaving" label="Cancel" float="right" />
+				<n8n-button @click="save" :loading="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.save')" float="right" />
+				<n8n-button type="outline" @click="close" :disabled="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.cancel')" float="right" />
 			</div>
 		</template>
 	</Modal>
@@ -46,6 +46,7 @@ import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
+import { mapGetters } from "vuex";
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
@@ -69,6 +70,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 	async mounted() {
 		this.$data.name = await this.$store.dispatch('workflows/getDuplicateCurrentWorkflowName');
 		this.$nextTick(() => this.focusOnNameInput());
+	},
+	computed: {
+		...mapGetters('settings', ['areTagsEnabled']),
 	},
 	watch: {
 		isActive(active) {
@@ -101,8 +105,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			const name = this.name.trim();
 			if (!name) {
 				this.$showMessage({
-					title: "Name missing",
-					message: `Please enter a name.`,
+					title: this.$locale.baseText('duplicateWorkflowDialog.showMessage.title'),
+					message: this.$locale.baseText('duplicateWorkflowDialog.showMessage.message'),
 					type: "error",
 				});
 

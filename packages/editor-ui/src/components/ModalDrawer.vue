@@ -4,12 +4,16 @@
 		:visible="visible"
 		:size="width"
 		:before-close="close"
+		:modal="modal"
+		:wrapperClosable="wrapperClosable"
 		>
 		<template v-slot:title>
 			<slot name="header" />
 		</template>
 		<template>
-			<slot name="content"/>
+			<span @keydown.stop>
+				<slot name="content"/>
+			</span>
 		</template>
 	</el-drawer>
 </template>
@@ -23,14 +27,25 @@ export default Vue.extend({
 		name: {
 			type: String,
 		},
+		beforeClose: {
+			type: Function,
+		},
 		eventBus: {
 			type: Vue,
 		},
 		direction: {
 			type: String,
 		},
+		modal: {
+			type: Boolean,
+			default: true,
+		},
 		width: {
 			type: String,
+		},
+		wrapperClosable: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	mounted() {
@@ -65,8 +80,15 @@ export default Vue.extend({
 				this.$emit('enter');
 			}
 		},
-		close() {
-			this.$store.commit('ui/closeTopModal');
+		async close() {
+			if (this.beforeClose) {
+				const shouldClose = await this.beforeClose();
+				if (shouldClose === false) { // must be strictly false to stop modal from closing
+					return;
+				}
+			}
+
+			this.$store.commit('ui/closeModal', this.$props.name);
 		},
 	},
 	computed: {
