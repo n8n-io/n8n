@@ -32,7 +32,6 @@ kind: Deployment
 metadata:
   labels:
     app: staging-n8n
-    hasuraService: custom
   name: stging-n8n
   namespace: staging
 spec:
