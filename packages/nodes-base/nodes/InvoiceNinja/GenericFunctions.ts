@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject, JsonObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -22,23 +22,38 @@ export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunc
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
+	const version = credentials.version;
+	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
+	const baseUrl = credentials!.url || defaultUrl;
 
-	const baseUrl = credentials!.url || 'https://app.invoiceninja.com';
-	const options: OptionsWithUri = {
-		headers: {
+	let headers;
+	if (version === 'v4') {
+		headers = {
 			Accept: 'application/json',
 			'X-Ninja-Token': credentials.apiToken,
-		},
+		};
+	} else {
+		headers = {
+			'Content-Type': 'application/json',
+			'X-API-TOKEN': credentials.apiToken,
+			'X-Requested-With': 'XMLHttpRequest',
+			'X-API-SECRET': credentials.secret || '',
+		};
+	}
+
+	const options: OptionsWithUri = {
+		headers,
 		method,
 		qs: query,
 		uri: uri || `${baseUrl}/api/v1${endpoint}`,
 		body,
 		json: true,
 	};
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), (error as JsonObject));
 	}
 }
 

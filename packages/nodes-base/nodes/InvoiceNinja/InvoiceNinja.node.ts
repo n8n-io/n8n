@@ -3,12 +3,16 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
 import {
@@ -75,6 +79,7 @@ import {
 import {
 	IQuote,
 } from './QuoteInterface';
+import { OptionsWithUri } from 'request';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {
@@ -94,6 +99,7 @@ export class InvoiceNinja implements INodeType {
 			{
 				name: 'invoiceNinjaApi',
 				required: true,
+				testedBy: 'testInvoiceNinjaAuth',
 			},
 		],
 		properties: [
@@ -146,6 +152,50 @@ export class InvoiceNinja implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async testInvoiceNinjaAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data;
+				const version = credentials?.version as string;
+				const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
+				const baseUrl = credentials!.url || defaultUrl;
+
+				let headers;
+				if (version === 'v4') {
+					headers = {
+						Accept: 'application/json',
+						'X-Ninja-Token': credentials?.apiToken as string,
+					};
+				} else {
+					headers = {
+						'Content-Type': 'application/json',
+						'X-API-TOKEN': credentials?.apiToken as string,
+						'X-Requested-With': 'XMLHttpRequest',
+						'X-API-SECRET': credentials?.secret as string || '',
+					};
+				}
+
+				const options: OptionsWithUri = {
+					headers,
+					method: 'GET',
+					uri:`${baseUrl}/api/v1/clients`,
+				};
+
+				try {
+					const response = await this.helpers.request(options);
+				} catch (err) {
+					return {
+						status: 'Error',
+						message: `${(err as JsonObject).message}`,
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+
 		loadOptions: {
 			// Get all the available clients to display them to user so that he can
 			// select them easily
@@ -803,7 +853,7 @@ export class InvoiceNinja implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;
