@@ -26,6 +26,7 @@ import {
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 } from '.';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
 
 export class WaitingWebhooks {
 	async executeWebhook(
@@ -111,7 +112,14 @@ export class WaitingWebhooks {
 			settings: workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		let workflowOwner;
+		try {
+			workflowOwner = await getWorkflowOwner(workflowData.id!.toString());
+		} catch (error) {
+			throw new ResponseHelper.ResponseError('Could not find workflow', undefined, 404);
+		}
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.id);
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,

@@ -431,7 +431,7 @@ export const operationFields: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						name: 'Fields',
+						name: 'fields',
 						displayName: 'Field',
 						values: [
 							{

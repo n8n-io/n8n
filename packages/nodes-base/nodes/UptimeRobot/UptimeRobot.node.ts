@@ -46,7 +46,6 @@ export class UptimeRobot implements INodeType {
 		description: 'Consume UptimeRobot API',
 		defaults: {
 			name: 'UptimeRobot',
-			color: '#3bd671',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

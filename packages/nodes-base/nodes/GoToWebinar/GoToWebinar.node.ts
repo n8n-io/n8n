@@ -56,7 +56,6 @@ export class GoToWebinar implements INodeType {
 		description: 'Consume the GoToWebinar API',
 		defaults: {
 			name: 'GoToWebinar',
-			color: '#0097e1',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -6,12 +7,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as localtunnel from 'localtunnel';
-import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
+import { BinaryDataManager, IBinaryDataConfig, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import { createHash } from 'crypto';
 import * as config from '../config';
 import {
 	ActiveExecutions,
@@ -31,6 +33,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { RESPONSE_ERROR_MESSAGES } from '../src/constants';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -153,17 +156,6 @@ export class Start extends Command {
 				LoggerProxy.init(logger);
 				logger.info('Initializing n8n process');
 
-				logger.info(
-					'\n' +
-						'****************************************************\n' +
-						'*                                                  *\n' +
-						'*   n8n now sends selected, anonymous telemetry.   *\n' +
-						'*      For more details (and how to opt out):      *\n' +
-						'*   https://docs.n8n.io/reference/telemetry.html   *\n' +
-						'*                                                  *\n' +
-						'****************************************************\n',
-				);
-
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error: Error) => {
 					logger.error(`There was an error initializing DB: "${error.message}"`);
@@ -176,6 +168,26 @@ export class Start extends Command {
 
 				// Make sure the settings exist
 				const userSettings = await UserSettings.prepareUserSettings();
+
+				if (!config.get('userManagement.jwtSecret')) {
+					// If we don't have a JWT secret set, generate
+					// one based and save to config.
+					const encryptionKey = await UserSettings.getEncryptionKey();
+					if (!encryptionKey) {
+						throw new Error('Fatal error setting up user management: no encryption key set.');
+					}
+
+					// For a key off every other letter from encryption key
+					// CAREFUL: do not change this or it breaks all existing tokens.
+					let baseKey = '';
+					for (let i = 0; i < encryptionKey.length; i += 2) {
+						baseKey += encryptionKey[i];
+					}
+					config.set(
+						'userManagement.jwtSecret',
+						createHash('sha256').update(baseKey).digest('hex'),
+					);
+				}
 
 				// Load all node and credential types
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
@@ -197,6 +209,18 @@ export class Start extends Command {
 
 				// Wait till the database is ready
 				await startDbInitPromise;
+
+				const encryptionKey = await UserSettings.getEncryptionKey();
+
+				if (!encryptionKey) {
+					throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
+				}
+
+				// Load settings from database and set them to config.
+				const databaseSettings = await Db.collections.Settings!.find({ loadOnStartup: true });
+				databaseSettings.forEach((setting) => {
+					config.set(setting.key, JSON.parse(setting.value));
+				});
 
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');
@@ -313,7 +337,11 @@ export class Start extends Command {
 				}
 
 				const instanceId = await UserSettings.getInstanceId();
-				InternalHooksManager.init(instanceId);
+				const { cli } = await GenericHelpers.getVersions();
+				InternalHooksManager.init(instanceId, cli, nodeTypes);
+
+				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				await BinaryDataManager.init(binaryDataConfig, true);
 
 				await Server.start();
 
@@ -325,6 +353,12 @@ export class Start extends Command {
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
+
+				const saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+
+				if (saveManualExecutions) {
+					this.log('\nManual executions will be visible only for the owner');
+				}
 
 				// Allow to open n8n editor by pressing "o"
 				if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
