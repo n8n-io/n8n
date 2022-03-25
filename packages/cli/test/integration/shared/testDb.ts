@@ -150,8 +150,10 @@ function toTableName(collectionName: CollectionName) {
 		SharedCredentials: 'shared_credentials',
 		SharedWorkflow: 'shared_workflow',
 		Settings: 'settings',
+		InstalledPackages: 'installed_packages',
+		InstalledNodes: 'installed_nodes',
 	}[collectionName];
-}
+};
 
 function truncateMySql(connection: Connection, collections: Array<keyof IDatabaseCollections>) {
 	return Promise.all(
