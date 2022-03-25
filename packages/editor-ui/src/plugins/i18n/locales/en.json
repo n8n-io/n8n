@@ -456,6 +456,7 @@
 			"description": "If active, the workflow continues even if this node's execution fails. When this occurs, the node passes along input data from previous nodes - so your workflow should account for unexpected output data.",
 			"displayName": "Continue On Fail"
 		},
+		"docs": "Docs",
 		"executeOnce": {
 			"description": "If active, the node executes only once, with data from the first item it receives",
 			"displayName": "Execute Once"
@@ -479,7 +480,6 @@
 			"description": "If active, the node tries to execute again when it fails",
 			"displayName": "Retry On Fail"
 		},
-		"settings": "Settings",
 		"theNodeIsNotValidAsItsTypeIsUnknown": "The node is not valid as its type ({nodeType}) is unknown",
 		"thisNodeDoesNotHaveAnyParameters": "This node does not have any parameters",
 		"waitBetweenTries": {

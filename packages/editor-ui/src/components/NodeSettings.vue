@@ -1,17 +1,37 @@
 <template>
 	<div class="node-settings" @keydown.stop>
-		<div class="header-side-menu">
-			<span v-if="node">
-				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
-				<span class="node-info">
-					<n8n-link v-if="nodeType" :to="'http://n8n.io/nodes/' + nodeType.name">
-						<n8n-tooltip class="clickable" placement="top" >
-							<div slot="content" v-html="`<strong>${$locale.baseText('nodeSettings.nodeDescription')}:</strong><br />` + nodeTypeDescription + `<br /><br /><strong>${$locale.baseText('nodeSettings.clickOnTheQuestionMarkIcon')}</strong>`"></div>
-							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
-					</n8n-link>
-				</span>
-			</span>
+		<div :class="$style.header">
+			<div class="header-side-menu">
+				<display-with-change class="node-name" :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
+				<div
+					v-if="!isReadOnly"
+					class="execute-node-button"
+				>
+					<n8n-button
+						:title="$locale.baseText('runData.executesThisNodeAfterExecuting', { interpolate: { nodeName: node.name } })"
+						:loading="workflowRunning"
+						icon="play-circle"
+						:label="$locale.baseText('runData.executeNode')"
+						@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
+					/>
+				</div>
+			</div>
+			<el-tabs :class="$style.tabs" @tab-click="handleTabClick">
+				<el-tab-pane index="params" :label="$locale.baseText('nodeSettings.parameters')"></el-tab-pane>
+				<el-tab-pane :disabled="true">
+					<a slot="label" target="_blank" :class="$style.docs" :href="documentationUrl">
+						{{$locale.baseText('nodeSettings.docs')}}
+						<font-awesome-icon
+							:class="$style.external"
+							icon="external-link-alt"
+							size="sm"
+						/>
+					</a>
+				</el-tab-pane>
+				<el-tab-pane index="settings">
+					<font-awesome-icon slot="label" icon="cog" />
+				</el-tab-pane>
+			</el-tabs>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
 			<n8n-text>
@@ -24,7 +44,7 @@
 			</n8n-text>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
-			<el-tabs stretch @tab-click="handleTabClick">
+			<el-tabs @tab-click="handleTabClick">
 				<el-tab-pane :label="$locale.baseText('nodeSettings.parameters')">
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
 					<node-webhooks :node="node" :nodeType="nodeType" />
@@ -35,7 +55,8 @@
 						</n8n-text>
 					</div>
 				</el-tab-pane>
-				<el-tab-pane :label="$locale.baseText('nodeSettings.settings')">
+				<el-tab-pane>
+					<font-awesome-icon slot="label" icon="cog" />
 					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 				</el-tab-pane>
@@ -153,11 +174,23 @@ export default mixins(
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
+			documentationUrl (): string {
+				if (!this.nodeType) {
+					return '';
+				}
+
+				if (this.nodeType.documentationUrl && this.nodeType.documentationUrl.startsWith('http')) {
+					return this.nodeType.documentationUrl;
+				}
+
+				return 'https://docs.n8n.io/nodes/' + (this.nodeType.documentationUrl || this.nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + this.nodeType.name;
+			},
 		},
 		data () {
 			return {
 				nodeValid: true,
 				nodeColor: null,
+				openPanel: '0',
 				nodeValues: {
 					color: '#ff0000',
 					alwaysOutputData: false,
@@ -515,6 +548,7 @@ export default mixins(
 				}
 			},
 			handleTabClick(tab: ElTabPane) {
+				this.openPanel = tab.index;
 				if(tab.label === 'Settings') {
 					this.$telemetry.track('User viewed node settings', { node_type: this.node ? this.node.type : '', workflow_id: this.$store.getters.workflowId });
 				}
@@ -526,8 +560,39 @@ export default mixins(
 	});
 </script>
 
-<style lang="scss">
+<style lang="scss" module>
+.header {
+	background-color: var(--color-background-base);
+}
 
+.tabs {
+	* {
+		color: var(--color-text-base);
+		font-weight: var(--font-weight-bold) !important;
+	}
+}
+
+.docs {
+	&:hover {
+		color: var(--color-primary) !important;
+		cursor: pointer;
+
+		.external {
+			* {
+				color: var(--color-primary) !important;
+			}
+			display: inline-block;
+		}
+	}
+}
+
+.external {
+	display: none;
+}
+
+</style>
+
+<style lang="scss">
 .node-settings {
 	overflow: hidden;
 	min-width: 350px;
@@ -538,20 +603,12 @@ export default mixins(
 	}
 
 	.header-side-menu {
-		padding: 1em 0 1em 1.8em;
+		padding: var(--spacing-s);
 		font-size: var(--font-size-l);
-		background-color: $--custom-window-sidebar-top;
+		display: flex;
 
-		.node-info {
-			display: none;
-			padding-left: 0.5em;
-			font-size: 0.8em;
-		}
-
-		&:hover {
-			.node-info {
-				display: inline;
-			}
+		.node-name {
+			flex-grow: 1;
 		}
 	}
 
@@ -563,7 +620,7 @@ export default mixins(
 		height: 100%;
 
 		.el-tabs__header {
-			background-color: #fff5f2;
+			background-color: var(--color-background-base);
 			margin-bottom: 0;
 		}
 
@@ -572,7 +629,6 @@ export default mixins(
 			.el-tabs__content {
 				overflow-y: auto;
 				height: 100%;
-				padding-bottom: 180px;
 
 				.el-tab-pane {
 					margin: 0 var(--spacing-s);
@@ -580,9 +636,9 @@ export default mixins(
 			}
 		}
 
-		.el-tabs__nav {
-			padding-bottom: var(--spacing-xs);
-		}
+		// .el-tabs__nav {
+		// 	padding-bottom: var(--spacing-xs);
+		// }
 
 		.add-option {
 			i.el-select__caret {

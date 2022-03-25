@@ -2,19 +2,6 @@
 	<div class="run-data-view" v-loading="workflowRunning">
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
-		<div
-			v-if="node && !isReadOnly"
-			class="execute-node-button"
-		>
-			<n8n-button
-				:title="$locale.baseText('runData.executesThisNodeAfterExecuting', { interpolate: { nodeName: node.name } })"
-				:loading="workflowRunning"
-				icon="play-circle"
-				:label="$locale.baseText('runData.executeNode')"
-				@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
-			/>
-		</div>
-
 		<div class="header">
 			<div class="title-text">
 				<n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
@@ -780,12 +767,6 @@ export default mixins(
 				background: $--custom-table-background-stripe-color;
 			}
 		}
-	}
-
-	.execute-node-button {
-		position: absolute;
-		top: 10px;
-		right: 10px;
 	}
 
 	.header {

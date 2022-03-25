@@ -1,14 +1,5 @@
 <template>
-	<span class="static-text-wrapper">
-		<span v-show="!editActive" :title="$locale.baseText('displayWithChange.clickToChange')">
-			<span class="static-text" @mousedown="startEdit">{{currentValue}}</span>
-		</span>
-		<span v-show="editActive">
-			<input class="edit-field" ref="inputField" type="text" v-model="newValue" @keydown.enter.stop.prevent="setValue" @keydown.escape.stop.prevent="cancelEdit" @keydown.stop="noOp" @blur="cancelEdit" />
-			<font-awesome-icon icon="times" @mousedown="cancelEdit" class="icons clickable" :title="$locale.baseText('displayWithChange.cancelEdit')" />
-			<font-awesome-icon icon="check" @mousedown="setValue" class="icons clickable" :title="$locale.baseText('displayWithChange.setValue')" />
-		</span>
-	</span>
+	<span class="static-text">{{currentValue}}</span>
 </template>
 
 <script lang="ts">
