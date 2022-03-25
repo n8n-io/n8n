@@ -18,12 +18,14 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	jiraSoftwareCloudApiRequest,
 	jiraSoftwareCloudApiRequestAllItems,
+	simplifyIssueOutput,
 	validateJSON,
 } from './GenericFunctions';
 
@@ -178,7 +180,7 @@ export class Jira implements INodeType {
 				} catch (err) {
 					return {
 						status: 'Error',
-						message: `Connection details not valid: ${err.message}`,
+						message: `Connection details not valid: ${(err as JsonObject).message}`,
 					};
 				}
 				return {
@@ -402,10 +404,10 @@ export class Jira implements INodeType {
 				for (const key of Object.keys(fields)) {
 					const field = fields[key];
 					if (field.schema && Object.keys(field.schema).includes('customId')) {
-							returnData.push({
-								name: field.name,
-								value: field.key || field.fieldId,
-							});
+						returnData.push({
+							name: field.name,
+							value: field.key || field.fieldId,
+						});
 					}
 				}
 				return returnData;
@@ -649,37 +651,10 @@ export class Jira implements INodeType {
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
 
 					if (simplifyOutput) {
-						const mappedFields: IDataObject = {};
-						// Sort custom fields last so we map them last
-						const customField = /^customfield_\d+$/;
-						const sortedFields: string[] = Object.keys(responseData.fields).sort((a, b) => {
-							if (customField.test(a) && customField.test(b)) {
-								return a > b ? 1 : -1;
-							}
-							if (customField.test(a)) {
-								return 1;
-							}
-							if (customField.test(b)) {
-								return -1;
-							}
-							return a > b ? 1 : -1;
-						});
-						for (const field of sortedFields) {
-							if (responseData.names[field] in mappedFields) {
-								let newField: string = responseData.names[field];
-								let counter = 0;
-								while (newField in mappedFields) {
-									counter++;
-									newField = `${responseData.names[field]}_${counter}`;
-								}
-								mappedFields[newField] = responseData.fields[field];
-							} else {
-								mappedFields[responseData.names[field] || field] = responseData.fields[field];
-							}
-						}
-						responseData.fields = mappedFields;
+						returnData.push(simplifyIssueOutput(responseData));
+					} else {
+						returnData.push(responseData);
 					}
-					simplifyOutput ? returnData.push(responseData.fields) : returnData.push(responseData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-search-post
@@ -709,7 +684,7 @@ export class Jira implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/search`, 'POST', body);
 						responseData = responseData.issues;
 					}
-					returnData.push.apply(returnData, responseData);
+					returnData.push(...responseData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-changelog-get
