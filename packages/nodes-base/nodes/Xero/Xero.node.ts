@@ -33,9 +33,9 @@ import {
 } from './InvoiceInterface';
 
 import {
+	IAddress,
 	IContact,
 	IPhone,
-	IAddress,
 } from './IContactInterface';
 
 export class Xero implements INodeType {
