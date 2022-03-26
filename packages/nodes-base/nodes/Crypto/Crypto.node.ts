@@ -1,5 +1,11 @@
-import { set } from 'lodash';
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	set,
+} from 'lodash';
+
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -16,8 +22,9 @@ import {
 	createSign,
 	getHashes,
 	randomBytes,
-	randomUUID,
 } from 'crypto';
+
+import { v4 as uuid } from 'uuid';
 
 export class Crypto implements INodeType {
 	description: INodeTypeDescription = {
@@ -372,11 +379,11 @@ export class Crypto implements INodeType {
 						value: 'ascii',
 					},
 					{
-						name: 'Base64',
+						name: 'BASE64',
 						value: 'base64',
 					},
 					{
-						name: 'Hex',
+						name: 'HEX',
 						value: 'hex',
 					},
 					{
@@ -449,8 +456,8 @@ export class Crypto implements INodeType {
 
 				if (action === 'generate') {
 					const encodingType = this.getNodeParameter('encodingType', i) as string;
-					if ( encodingType === 'uuid') {
-						newValue = randomUUID();
+					if (encodingType === 'uuid') {
+						newValue = uuid();
 					} else {
 						const stringLength = this.getNodeParameter('stringLength', i) as number;
 						if (encodingType === 'base64') {
@@ -504,7 +511,7 @@ export class Crypto implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: (error as JsonObject).message }});
+					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
 				throw error;
