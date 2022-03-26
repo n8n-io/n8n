@@ -28,7 +28,8 @@ export class InvoiceNinjaApi implements ICredentialType {
 			displayName: 'URL',
 			name: 'url',
 			type: 'string',
-			default: 'https://app.invoiceninja.com',
+			default: '',
+			hint: 'Default URL for v4 is https://app.invoiceninja.com, for v5 it is https://invoicing.co',
 		},
 		{
 			displayName: 'API Token',
@@ -41,7 +42,7 @@ export class InvoiceNinjaApi implements ICredentialType {
 			name: 'secret',
 			type: 'string',
 			default: '',
-			description: 'This is an optional, enter only if you did setup secret in your app',
+			hint: 'This is optional, enter only if you did set a secret in your app',
 			displayOptions: {
 				show: {
 					version: [

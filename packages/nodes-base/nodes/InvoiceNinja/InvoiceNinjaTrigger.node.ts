@@ -10,7 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import {
-	invoiceNinjaApiRequest,
+	invoiceNinjaApiRequest, testInvoiceNinjaAuth,
 } from './GenericFunctions';
 
 export class InvoiceNinjaTrigger implements INodeType {
@@ -30,6 +30,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 			{
 				name: 'invoiceNinjaApi',
 				required: true,
+				testedBy: 'testInvoiceNinjaAuth',
 			},
 		],
 		webhooks: [
@@ -74,8 +75,17 @@ export class InvoiceNinjaTrigger implements INodeType {
 
 	};
 
+	methods = {
+		credentialTest: {
+			testInvoiceNinjaAuth,
+		},
+	};
+
 	// @ts-ignore (because of request)
 	webhookMethods = {
+
+
+
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				return false;
@@ -83,15 +93,38 @@ export class InvoiceNinjaTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const event = this.getNodeParameter('event') as string;
+				const version = (await this.getCredentials('invoiceNinjaApi'))?.version as string;
+				let responseData;
 
-				const endpoint = '/hooks';
+				if (version === 'v4') {
+					const endpoint = '/hooks';
 
-				const body = {
-					target_url: webhookUrl,
-					event,
-				};
+					const body = {
+						target_url: webhookUrl,
+						event,
+					};
 
-				const responseData = await invoiceNinjaApiRequest.call(this, 'POST', endpoint, body);
+					 responseData = await invoiceNinjaApiRequest.call(this, 'POST', endpoint, body);
+				}
+
+				if (version === 'v5') {
+					const endpoint = '/webhooks';
+
+					const eventID: {[key: string]: string} = {
+						create_client: '1',
+						create_invoice: '2',
+						create_quote: '3',
+						create_payment: '4',
+						create_vendor: '5',
+					};
+
+					const body = {
+						target_url: webhookUrl,
+						event_id: eventID[event],
+					};
+
+					 responseData = await invoiceNinjaApiRequest.call(this, 'POST', endpoint, body);
+				}
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
@@ -105,9 +138,12 @@ export class InvoiceNinjaTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
+				const version = (await this.getCredentials('invoiceNinjaApi'))?.version as string;
+				const hooksEndpoint = version === 'v4' ? '/hooks' : '/webhooks';
+
 				if (webhookData.webhookId !== undefined) {
 
-					const endpoint = `/hooks/${webhookData.webhookId}`;
+					const endpoint = `${hooksEndpoint}/${webhookData.webhookId}`;
 
 					try {
 						await invoiceNinjaApiRequest.call(this, 'DELETE', endpoint);
