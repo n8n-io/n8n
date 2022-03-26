@@ -83,27 +83,6 @@ export const profileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Username',
-		name: 'username',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'Reddit ID of the user to retrieve.',
-		displayOptions: {
-			show: {
-				resource: [
-					'profile',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'saved',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',

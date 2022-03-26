@@ -1,4 +1,3 @@
-import e = require('express');
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -356,7 +355,7 @@ export class Reddit implements INodeType {
 						let username;
 
 						if (details === 'saved') {
-							username = this.getNodeParameter('username', i) as string;
+							({ name: username } = await redditApiRequest.call(this, 'GET', `api/v1/me`, {}));
 						}
 
 						responseData = details === 'saved'
