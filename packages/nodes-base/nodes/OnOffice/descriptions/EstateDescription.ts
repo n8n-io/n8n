@@ -62,7 +62,7 @@ export const estateFields: INodeProperties[] = [
 		],
 	}),
 	...generateReadAdditionalFieldsDescription({
-		resource: 'address',
+		resource: 'estate',
 		additionalFields: [
 			{
 				displayName: 'Filter ID',
