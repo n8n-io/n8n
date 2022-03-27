@@ -10,6 +10,10 @@ export function randomString(min: number, max: number) {
 	return randomBytes(randomInteger / 2).toString('hex');
 }
 
+export function randomApiKey() {
+	return randomBytes(20).toString('hex');
+}
+
 const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
 
 const randomDigit = () => Math.floor(Math.random() * 10);

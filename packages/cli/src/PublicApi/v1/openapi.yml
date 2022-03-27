@@ -59,6 +59,14 @@ paths:
         schema:
           type: string
           example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+      - name: includeRole
+        in: query
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: true
       responses:
         "200":
           description: Successful operation

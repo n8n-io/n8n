@@ -172,7 +172,7 @@ import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
 import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
-import * as publicApiv1Routes from './PublicApi/v1';
+import { publicApiController } from './PublicApi/v1';
 
 require('body-parser-xml')(bodyParser);
 
@@ -564,25 +564,23 @@ class App {
 		// Public API
 		// ----------------------------------------
 
-
-		//test routes to create/regenerate/delete token
-		//NOTE: Only works with admin role
-		//This should be within the user's management user scope
+		// test routes to create/regenerate/delete token
+		// NOTE: Only works with admin role
+		// This should be within the user's management user scope
 		this.app.post('/token', async (req: express.Request, res: express.Response) => {
 			const ramdonToken = randomBytes(20).toString('hex');
-			//@ts-ignore
+			// @ts-ignore
 			await Db.collections.User!.update({ globalRole: 1 }, { apiKey: ramdonToken });
 			return ResponseHelper.sendSuccessResponse(res, { token: ramdonToken }, true, 200);
 		});
 
 		this.app.delete('/token', async (req: express.Request, res: express.Response) => {
-			//@ts-ignore
+			// @ts-ignore
 			await Db.collections.User!.update({ globalRole: 1 }, { apiKey: null });
 			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		});
 
-
-		this.app.use(`/${this.publicApiEndpoint}`, publicApiv1Routes.getRoutes());
+		this.app.use(`/${this.publicApiEndpoint}/`, publicApiController);
 
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
@@ -3111,7 +3109,7 @@ async function getExecutionsCount(
 	try {
 		// Get an estimate of rows count.
 		const estimateRowsNumberSql =
-			'SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = \'execution_entity\';';
+			"SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
 		const rows: Array<{ n_live_tup: string }> = await Db.collections.Execution!.query(
 			estimateRowsNumberSql,
 		);

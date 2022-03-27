@@ -13,7 +13,9 @@ export type SmtpTestAccount = {
 	};
 };
 
-type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials';
+export type ApiPath = 'internal' | 'public';
+
+type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials' | 'publicApi';
 
 export type CredentialPayload = {
 	name: string;
