@@ -196,9 +196,19 @@ export declare namespace UserRequest {
 		{ inviterId?: string; inviteeId?: string }
 	>;
 
-	export type Delete = AuthenticatedRequest<{ id: string, email: string }, {}, {}, { transferId?: string }>;
+	export type Delete = AuthenticatedRequest<
+		{ id: string; email: string },
+		{},
+		{},
+		{ transferId?: string }
+	>;
 
-	export type Get = AuthenticatedRequest<{ id: string, email: string }, {}, {}, { limit: string, cursor: string, includeRole: string }>;
+	export type Get = AuthenticatedRequest<
+		{ id: string; email: string },
+		{},
+		{},
+		{ limit: string; cursor: string; includeRole: string }
+	>;
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
