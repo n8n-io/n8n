@@ -159,6 +159,39 @@ export class OnOffice implements INodeType {
 					returnData.push(result);
 				}
 			}
+			if (operation === 'update') {
+				const resourceId = this.getNodeParameter('resourceId', i) as string;
+
+				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+				const properties: Record<string, unknown> = {};
+				if (additionalFields.customPropertiesUi) {
+					const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+
+					if (customProperties) {
+						for (const customProperty of customProperties) {
+							properties[customProperty.property as string] = customProperty.value;
+						}
+					}
+				}
+
+				const parameters = properties;
+
+				if (resource === 'address' || resource === 'estate') {
+					const result = await onOfficeApiAction(
+						this.getNode(),
+						request,
+						apiSecret,
+						apiToken,
+						'modify',
+						resource,
+						parameters,
+						resourceId,
+					);
+
+					returnData.push(result);
+				}
+			}
 		}
 
 		const result = returnData.flat() as unknown as IDataObject[];
