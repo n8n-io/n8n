@@ -114,7 +114,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InputValidationError'
-  /users/{userId}:
+  /users/{identifier}:
     get:
       x-eov-operation-id: getUser
       x-eov-operation-handler: routes/Users
@@ -124,7 +124,7 @@ paths:
       description: Retrieve a user from your instance. Only available for the instance owner.
       operationId: getUser
       parameters:
-      - name: userId
+      - name: identifier
         in: path
         description: The ID or email of the user
         required: true
@@ -132,6 +132,14 @@ paths:
         explode: false
         schema:
           type: string
+      - name: includeRole
+        in: query
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: true
       responses:
         "200":
           description: Successful operation
@@ -154,7 +162,7 @@ paths:
       description: Deletes a user from your instance. Only available for the instance owner.
       operationId: deleteUser
       parameters:
-      - name: userId
+      - name: identifier
         in: path
         description: The name that needs to be deleted
         required: true
