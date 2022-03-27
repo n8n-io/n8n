@@ -48,6 +48,11 @@ export class Crypto implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Generate',
+						description: 'Generate random string',
+						value: 'generate',
+					},
+					{
 						name: 'Hash',
 						description: 'Hash a text in a specified format',
 						value: 'hash',
@@ -61,11 +66,6 @@ export class Crypto implements INodeType {
 						name: 'Sign',
 						description: 'Sign a string using a private key',
 						value: 'sign',
-					},
-					{
-						name: 'Generate',
-						description: 'Generate random string',
-						value: 'generate',
 					},
 				],
 				default: 'hash',
