@@ -173,6 +173,155 @@ test('GET /users should return all users', async () => {
 	}
 });
 
+
+
+test('GET /users/:identifier should fail due to missing API Key', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: false, user: owner });
+
+	await testDb.createUser();
+
+	const response = await authOwnerAgent.get(`/v1/users/${owner.id}`);
+
+	expect(response.statusCode).toBe(401);
+
+});
+
+test('GET /users/:identifier should fail due to invalid API Key', async () => {
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	owner.apiKey = null;
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: false, user: owner });
+
+	const response = await authOwnerAgent.get(`/v1/users/${owner.id}`);
+
+	expect(response.statusCode).toBe(401);
+});
+
+test('GET /users/:identifier should fail due to member trying to access owner only endpoint', async () => {
+	const member = await testDb.createUser();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: member });
+
+	const response = await authOwnerAgent.get(`/v1/users/${member.id}`);
+
+	expect(response.statusCode).toBe(403);
+});
+
+test('GET /users/:identifier should fail due no instance owner not setup', async () => {
+
+	config.set('userManagement.isInstanceOwnerSetUp', false);
+
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+
+	const response = await authOwnerAgent.get(`/v1/users/${owner.id}`);
+
+	expect(response.statusCode).toBe(400);
+
+});
+
+test('GET /users/:email with unexisting email should return 404', async () => {
+
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+
+	const response = await authOwnerAgent.get(`/v1/users/jhondoe@gmail.com`);
+
+	expect(response.statusCode).toBe(404);
+});
+
+test('GET /users/:id with unexisting id should return 404', async () => {
+
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+
+	const response = await authOwnerAgent.get(`/v1/users/123`);
+
+	expect(response.statusCode).toBe(404);
+});
+
+test('GET /users/:email should return a user', async () => {
+
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+
+	const response = await authOwnerAgent.get(`/v1/users/${owner.email}`);
+
+	expect(response.statusCode).toBe(200);
+
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			personalizationAnswers,
+			globalRole,
+			password,
+			resetPasswordToken,
+			isPending,
+			createdAt,
+			updatedAt,
+		} = response.body;
+
+		expect(validator.isUUID(id)).toBe(true);
+		expect(email).toBeDefined();
+		expect(firstName).toBeDefined();
+		expect(lastName).toBeDefined();
+		expect(personalizationAnswers).toBeUndefined();
+		expect(password).toBeUndefined();
+		expect(resetPasswordToken).toBeUndefined();
+		//virtual method not working
+		//expect(isPending).toBe(false);
+		expect(globalRole).toBeUndefined();
+		expect(createdAt).toBeDefined();
+		expect(updatedAt).toBeDefined();
+});
+
+test('GET /users/:id should return a user', async () => {
+
+	const owner = await Db.collections.User!.findOneOrFail();
+
+	const authOwnerAgent = utils.createAgent(app, { apiPath: 'public', auth: true, user: owner });
+
+	const response = await authOwnerAgent.get(`/v1/users/${owner.id}`);
+
+	expect(response.statusCode).toBe(200);
+
+	const {
+		id,
+		email,
+		firstName,
+		lastName,
+		personalizationAnswers,
+		globalRole,
+		password,
+		resetPasswordToken,
+		isPending,
+		createdAt,
+		updatedAt,
+	} = response.body;
+
+	expect(validator.isUUID(id)).toBe(true);
+	expect(email).toBeDefined();
+	expect(firstName).toBeDefined();
+	expect(lastName).toBeDefined();
+	expect(personalizationAnswers).toBeUndefined();
+	expect(password).toBeUndefined();
+	expect(resetPasswordToken).toBeUndefined();
+	//virtual method not working
+	//expect(isPending).toBe(false);
+	expect(globalRole).toBeUndefined();
+	expect(createdAt).toBeDefined();
+	expect(updatedAt).toBeDefined();
+});
+
 const INITIAL_TEST_USER = {
 	id: uuid(),
 	email: randomEmail(),

@@ -204,7 +204,7 @@ export declare namespace UserRequest {
 	>;
 
 	export type Get = AuthenticatedRequest<
-		{ id: string; email: string },
+		{ id: string; email: string; identifier: string },
 		{},
 		{},
 		{ limit: string; cursor: string; includeRole: string }
