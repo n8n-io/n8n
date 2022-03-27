@@ -2,6 +2,8 @@ import config = require('../../../config');
 
 export const REST_PATH_SEGMENT = config.get('endpoints.rest') as Readonly<string>;
 
+export const PUBLIC_API_REST_PATH_SEGMENT = config.get('publicApiEndpoints.path') as Readonly<string>;
+
 export const AUTHLESS_ENDPOINTS: Readonly<string[]> = [
 	'healthz',
 	'metrics',

@@ -4,7 +4,7 @@ import { Credentials, UserSettings } from 'n8n-core';
 import config = require('../../../config');
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME } from './constants';
 import { DatabaseType, Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
-import { randomEmail, randomName, randomString, randomValidPassword } from './random';
+import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 
 import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
@@ -185,13 +185,14 @@ export async function saveCredential(
  * Store a user in the DB, defaulting to a `member`.
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
-	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
+	const { email, password, firstName, lastName, globalRole, apiKey, ...rest } = attributes;
 	const user = {
 		email: email ?? randomEmail(),
 		password: password ?? randomValidPassword(),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole: globalRole ?? (await getGlobalMemberRole()),
+		apiKey: apiKey?? randomApiKey(),
 		...rest,
 	};
 

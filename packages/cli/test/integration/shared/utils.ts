@@ -11,7 +11,7 @@ import { INodeTypes, LoggerProxy } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
 
 import config = require('../../../config');
-import { AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT } from './constants';
+import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import { Db, ExternalHooks, InternalHooksManager } from '../../../src';
@@ -23,10 +23,10 @@ import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/U
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
-
+import { publicApiController } from '../../../src/PublicApi/v1/';
 import type { User } from '../../../src/databases/entities/User';
 import { Telemetry } from '../../../src/telemetry';
-import type { EndpointGroup, SmtpTestAccount } from './types';
+import type { ApiPath, EndpointGroup, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 
 /**
@@ -45,6 +45,7 @@ export function initTestServer({
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
+		publicApiEndpoint: PUBLIC_API_REST_PATH_SEGMENT,
 		...(endpointGroups?.includes('credentials') ? { externalHooks: ExternalHooks() } : {}),
 	};
 
@@ -65,10 +66,15 @@ export function initTestServer({
 	if (routerEndpoints.length) {
 		const map: Record<string, express.Router> = {
 			credentials: credentialsController,
+			publicApi: publicApiController,
 		};
 
 		for (const group of routerEndpoints) {
-			testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
+			if (group === 'publicApi') {
+				testServer.app.use(`/${testServer.publicApiEndpoint}`, map[group]);
+			} else {
+				testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
+			}
 		}
 	}
 
@@ -106,7 +112,7 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const functionEndpoints: string[] = [];
 
 	endpointGroups.forEach((group) =>
-		(group === 'credentials' ? routerEndpoints : functionEndpoints).push(group),
+		(group === 'credentials' || group === 'publicApi' ? routerEndpoints : functionEndpoints).push(group),
 	);
 
 	return [routerEndpoints, functionEndpoints];
@@ -143,13 +149,24 @@ export function initConfigFile() {
 /**
  * Create a request agent, optionally with an auth cookie.
  */
-export function createAgent(app: express.Application, options?: { auth: true; user: User }) {
+export function createAgent(app: express.Application, options?: { apiPath?: ApiPath, auth: boolean; user: User }) {
 	const agent = request.agent(app);
-	agent.use(prefix(REST_PATH_SEGMENT));
 
-	if (options?.auth && options?.user) {
-		const { token } = issueJWT(options.user);
-		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
+	if (options?.apiPath === undefined || options?.apiPath === 'internal') {
+		agent.use(prefix(REST_PATH_SEGMENT));
+
+		if (options?.auth && options?.user) {
+			const { token } = issueJWT(options.user);
+			agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
+		}
+	}
+
+	if (options?.apiPath === 'public') {
+		agent.use(prefix(PUBLIC_API_REST_PATH_SEGMENT));
+		
+		if (options?.auth && options?.user.apiKey) {
+			agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
+		}
 	}
 
 	return agent;
@@ -171,7 +188,6 @@ export function prefix(pathSegment: string) {
 
 		url.pathname = pathSegment + url.pathname;
 		request.url = url.toString();
-
 		return request;
 	};
 }

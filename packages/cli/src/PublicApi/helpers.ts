@@ -47,3 +47,7 @@ export const getSelectableProperties = (table: string) => {
 		],
 	}[table];
 };
+
+export const connectionName = () => {
+	return 'default';
+};

@@ -172,7 +172,7 @@ import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
 import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
-import * as publicApiv1Routes from './PublicApi/v1';
+import { publicApiController } from './PublicApi/v1';
 
 require('body-parser-xml')(bodyParser);
 
@@ -582,7 +582,7 @@ class App {
 		});
 
 
-		this.app.use(`/${this.publicApiEndpoint}`, publicApiv1Routes.getRoutes());
+		this.app.use(`/${this.publicApiEndpoint}/`, publicApiController);
 
 		// Parse cookies for easier access
 		this.app.use(cookieParser());

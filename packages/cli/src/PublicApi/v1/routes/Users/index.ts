@@ -4,7 +4,7 @@ import { getConnection } from 'typeorm';
 import { UserRequest } from '../../../../requests';
 
 import { User } from '../../../../databases/entities/User';
-import { decodeCursor, getNextCursor, getSelectableProperties } from '../../../helpers';
+import { connectionName, decodeCursor, getNextCursor, getSelectableProperties } from '../../../helpers';
 
 import * as config from '../../../../../config';
 
@@ -28,7 +28,7 @@ export = {
 			({ offset, limit } = decodeCursor(cursor));
 		}
 
-		const query = getConnection()
+		const query = getConnection(connectionName())
 			.getRepository(User)
 			.createQueryBuilder()
 			.leftJoinAndSelect('User.globalRole', 'Role')
