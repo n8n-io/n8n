@@ -1,13 +1,16 @@
 <template>
 	<span :class="$style.container" @click="onEdit">
 		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
-		<el-popover
-			placement="right"
-			width="200"
-			:value="editName"
+		<el-popover placement="right" width="200" :value="editName">
+			<div
+				:class="$style.editContainer"
+				@keydown.enter="onRename"
+				@keydown.stop
+				@keydown.esc="editName = false"
 			>
-			<div :class="$style.editContainer" @keydown.enter="onRename" @keydown.stop @keydown.esc="editName = false">
-				<n8n-text :class="$style.renameText" :bold="true" color="text-base" tag="div">Rename node</n8n-text>
+				<n8n-text :class="$style.renameText" :bold="true" color="text-base" tag="div"
+					>Rename node</n8n-text
+				>
 				<n8n-input ref="input" size="small" v-model="newName" />
 				<div :class="$style.editButtons">
 					<n8n-button type="outline" size="small" @click="editName = false" label="Cancel" />
@@ -33,8 +36,7 @@ export default Vue.extend({
 		value: {
 			type: String,
 		},
-		nodeType: {
-		},
+		nodeType: {},
 	},
 	data() {
 		return {
@@ -73,7 +75,7 @@ export default Vue.extend({
 }
 
 .title {
-  text-overflow: ellipsis;
+	text-overflow: ellipsis;
 
 	&:hover {
 		.editIcon {
