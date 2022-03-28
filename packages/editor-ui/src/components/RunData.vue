@@ -1,5 +1,5 @@
 <template>
-	<div :class="['run-data-view', $style.container]"  v-loading="workflowRunning">
+	<div :class="['run-data-view', $style.container]">
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
 		<div :class="$style.header">
@@ -16,11 +16,8 @@
 					<font-awesome-icon icon="info-circle" :class="$style.infoIcon" />
 				</n8n-tooltip>
 			</div>
-			<div class="title-text">
-				<!-- <n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
-					{{ $locale.baseText('runData.items') }}: {{ dataCount }}
-				</n8n-text>
-				<div v-else class="title-text">
+			<div>
+				<!-- <div v-else class="title-text">
 					<n8n-text :bold="true">{{ $locale.baseText('runData.items') }}:</n8n-text>
 					<span class="opts">
 						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
@@ -33,30 +30,31 @@
 				<!-- <n8n-text :bold="true" v-if="maxOutputIndex > 0">
 					| {{ $locale.baseText('runData.output') }}:
 				</n8n-text> -->
-				<span class="opts" v-if="maxOutputIndex > 0" >
+				<!-- <span class="opts" v-if="maxOutputIndex > 0" >
 					<n8n-select size="mini" v-model="outputIndex" @click.stop>
 						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
 						</n8n-option>
 					</n8n-select>
-				</span>
+				</span> -->
 
-				<n8n-text :bold="true" v-if="maxRunIndex > 0">
+				<!-- <n8n-text :bold="true" v-if="maxRunIndex > 0">
 					| {{ $locale.baseText('runData.dataOfExecution') }}:
-				</n8n-text>
+				</n8n-text> -->
 				<span class="opts">
 					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
 						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
 						</n8n-option>
 					</n8n-select>
 				</span>
-
 			</div>
+
 			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
 				<n8n-radio-buttons
 					v-model="displayMode"
 					:options="buttons"
 				/>
 			</div>
+
 			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json' && state.path !== deselectedPlaceholder" class="select-button">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
@@ -76,122 +74,118 @@
 				</el-dropdown>
 			</div>
 		</div>
-		<div class="data-display-content">
-			<span v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name)">
-				<div v-if="workflowRunData[node.name][runIndex].error" class="error-display">
-					<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
+
+		<div v-if="!hasNodeRun" :class="$style.center">
+			<div v-if="workflowRunning">
+				<div :class="$style.spinner"><n8n-spinner /></div>
+				<n8n-text>{{ $locale.baseText('node.output.executing') }}</n8n-text>
+			</div>
+			<n8n-text v-else>{{ $locale.baseText('node.output.runNodeHint') }}</n8n-text>
+		</div>
+
+		<div v-else-if="hasNodeRun && hasRunError">
+			<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
+		</div>
+
+		<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
+			<n8n-text :bold="true">{{ $locale.baseText('node.output.noOutputData.title') }}</n8n-text>
+			<n8n-text>
+				{{ $locale.baseText('node.output.noOutputData.message') }}
+				<a @click="openSettings">{{ $locale.baseText('node.output.noOutputData.message.settings') }}</a>
+				{{ $locale.baseText('node.output.noOutputData.message.settingsOption') }}
+			</n8n-text>
+		</div>
+
+		<div v-else-if="hasNodeRun && !showData" :class="$style.center">
+			<n8n-text :bold="true">{{ $locale.baseText('node.output.tooMuchData.title') }}</n8n-text>
+			<n8n-text align="center" tag="div"><span v-html="$locale.baseText('node.output.tooMuchData.message', { interpolate: {size: dataSizeInMB }})"></span></n8n-text>
+
+			<n8n-button
+				type="outline"
+				:label="$locale.baseText('node.output.tooMuchData.showDataAnyway')"
+				@click="showData = true"
+			/>
+		</div>
+
+		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.center">
+			<n8n-text align="center" tag="div">{{ $locale.baseText('runData.entriesExistButThey') }}</n8n-text>
+		</div>
+
+		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
+			<n8n-text tag="div">
+				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'node.output.item' : 'node.output.items') }}
+			</n8n-text>
+
+			<table :class="$style.table">
+				<tr>
+					<th v-for="column in (tableData.columns || [])" :key="column">{{column}}</th>
+				</tr>
+				<tr v-for="(row, index1) in tableData.data" :key="index1">
+					<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
+				</tr>
+			</table>
+		</div>
+
+		<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.dataDisplay">
+			<vue-json-pretty
+				:data="jsonData"
+				:deep="10"
+				v-model="state.path"
+				:showLine="true"
+				:showLength="true"
+				selectableType="single"
+				path=""
+				:highlightSelectedNode="true"
+				:selectOnClickNode="true"
+				@click="dataItemClicked"
+				class="json-data"
+			/>
+		</div>
+
+		<div v-else-if="displayMode === 'binary' && binaryData.length === 0">
+			<n8n-text align="center" tag="div">{{ $locale.baseText('runData.noBinaryDataFound') }}</n8n-text>
+		</div>
+
+		<div v-else-if="displayMode === 'binary'">
+			<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
+				<div class="binary-data-row-index">
+					<div class="binary-data-cell-index">
+						{{index + 1}}
+					</div>
 				</div>
-				<span v-else>
-					<div v-if="showData === false" class="too-much-data">
-						<h3>
-							{{ $locale.baseText('runData.nodeReturnedALargeAmountOfData') }}
-						</h3>
 
-						<div class="text">
-							<span v-html="$locale.baseText(
-								'runData.theNodeContains',
-								{
-									interpolate: {
-										numberOfKb: parseInt(dataSize/1024).toLocaleString()
-									}
-								}
-							)"></span>
-						</div>
-
-						<n8n-button
-							icon="eye"
-							:label="$locale.baseText('runData.displayDataAnyway')"
-							@click="displayMode = 'table';showData = true;"
-						/>
-					</div>
-					<div v-else-if="['json', 'table'].includes(displayMode)">
-						<div v-if="jsonData.length === 0" class="no-data">
-							{{ $locale.baseText('runData.noTextDataFound') }}
-						</div>
-						<div v-else-if="displayMode === 'table'">
-							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
-								{{ $locale.baseText('runData.entriesExistButThey') }}
+				<div class="binary-data-row">
+					<div class="binary-data-cell" v-for="(binaryData, key) in binaryDataEntry" :key="index + '_' + key">
+						<div class="binary-data-information">
+							<div class="binary-data-cell-name">
+								{{key}}
 							</div>
-							<table v-else-if="tableData !== null">
-								<tr>
-									<th v-for="column in tableData.columns" :key="column">{{column}}</th>
-								</tr>
-								<tr v-for="(row, index1) in tableData.data" :key="index1">
-									<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
-								</tr>
-							</table>
-						</div>
-						<vue-json-pretty
-							v-else-if="displayMode === 'json'"
-							:data="jsonData"
-							:deep="10"
-							v-model="state.path"
-							:showLine="true"
-							:showLength="true"
-							selectableType="single"
-							path=""
-							:highlightSelectedNode="true"
-							:selectOnClickNode="true"
-							@click="dataItemClicked"
-							class="json-data"
-						/>
-					</div>
-					<div v-else-if="displayMode === 'binary'">
-						<div v-if="binaryData.length === 0" class="no-data">
-							{{ $locale.baseText('runData.noBinaryDataFound') }}
-						</div>
+							<div v-if="binaryData.fileName">
+								<div class="label">{{ $locale.baseText('runData.fileName') }}: </div>
+								<div class="value">{{binaryData.fileName}}</div>
+							</div>
+							<div v-if="binaryData.directory">
+								<div class="label">{{ $locale.baseText('runData.directory') }}: </div>
+								<div class="value">{{binaryData.directory}}</div>
+							</div>
+							<div v-if="binaryData.fileExtension">
+								<div class="label">{{ $locale.baseText('runData.fileExtension') }}:</div>
+								<div class="value">{{binaryData.fileExtension}}</div>
+							</div>
+							<div v-if="binaryData.mimeType">
+								<div class="label">{{ $locale.baseText('runData.mimeType') }}: </div>
+								<div class="value">{{binaryData.mimeType}}</div>
+							</div>
 
-						<div v-else>
-							<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-								<div class="binary-data-row-index">
-									<div class="binary-data-cell-index">
-										{{index + 1}}
-									</div>
-								</div>
-
-								<div class="binary-data-row">
-									<div class="binary-data-cell" v-for="(binaryData, key) in binaryDataEntry" :key="index + '_' + key">
-										<div class="binary-data-information">
-											<div class="binary-data-cell-name">
-												{{key}}
-											</div>
-											<div v-if="binaryData.fileName">
-												<div class="label">{{ $locale.baseText('runData.fileName') }}: </div>
-												<div class="value">{{binaryData.fileName}}</div>
-											</div>
-											<div v-if="binaryData.directory">
-												<div class="label">{{ $locale.baseText('runData.directory') }}: </div>
-												<div class="value">{{binaryData.directory}}</div>
-											</div>
-											<div v-if="binaryData.fileExtension">
-												<div class="label">{{ $locale.baseText('runData.fileExtension') }}:</div>
-												<div class="value">{{binaryData.fileExtension}}</div>
-											</div>
-											<div v-if="binaryData.mimeType">
-												<div class="label">{{ $locale.baseText('runData.mimeType') }}: </div>
-												<div class="value">{{binaryData.mimeType}}</div>
-											</div>
-
-											<div class="binary-data-show-data-button-wrapper">
-												<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
-											</div>
-
-										</div>
-									</div>
-								</div>
+							<div class="binary-data-show-data-button-wrapper">
+								<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
 							</div>
 						</div>
 					</div>
-				</span>
-			</span>
-			<div v-else class="message">
-				<div>
-					<n8n-text :bold="true">{{ $locale.baseText('runData.noData') }}</n8n-text ><br />
-					<br />
-					{{ $locale.baseText('runData.dataReturnedByThisNodeWillDisplayHere') }}<br />
 				</div>
 			</div>
 		</div>
+
 	</div>
 </template>
 
@@ -364,6 +358,9 @@ export default mixins(
 
 				return inputData.length;
 			},
+			dataSizeInMB(): string {
+				return (this.dataSize / 1024 / 1000).toLocaleString();
+			},
 			maxOutputIndex (): number {
 				if (this.node === null) {
 					return 0;
@@ -437,6 +434,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			openSettings() {
+				this.$emit('openSettings');
+			},
 			init() {
 				// Reset the selected output index every time another node gets selected
 				this.outputIndex = 0;
@@ -659,6 +659,31 @@ export default mixins(
 	color: var(--color-foreground-dark);
 }
 
+.center {
+	display: flex;
+	height: 80%;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+
+	> * {
+		max-width: 316px;
+		margin-bottom: var(--spacing-2xs);
+	}
+}
+
+.spinner {
+	* {
+		color: var(--color-primary);
+		min-height: 40px;
+		min-width: 40px;
+	}
+
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--spacing-s);
+}
+
 .title {
 	text-transform: uppercase;
 	color: var(--color-text-light);
@@ -683,174 +708,106 @@ export default mixins(
 		flex-grow: 1;
 	}
 }
+
+.dataDisplay {
+	position: absolute;
+	bottom: 0;
+	top: 60px;
+	left: 16px;
+	right: 0;
+	overflow-y: auto;
+	line-height: 1.5;
+	word-break: normal;
+
+	> * {
+		margin-bottom: var(--spacing-s);
+	}
+}
+
+.table {
+	border-collapse: collapse;
+	text-align: left;
+	width: calc(100% - 1px);
+	border: var(--border-base);
+	font-size: var(--font-size-2xs);
+
+	th {
+		padding: var(--spacing-2xs);
+		background-color: var(--color-background-base);
+		border: var(--border-base);
+	}
+
+	td {
+		padding: var(--spacing-2xs);
+		border: var(--border-base);
+	}
+}
 </style>
 
 <style lang="scss">
 
-.run-data-view {
+.binary-data-row {
+	display: inline-flex;
+	padding: 0.5em 1em;
+	font-size: var(--font-size-2xs);
 
-	.data-display-content {
-		position: absolute;
-		bottom: 0;
-		top: 50px;
-		left: 0;
-		right: 0;
-		overflow-y: auto;
-		line-height: 1.5;
-		word-break: normal;
-		font-size: var(--font-size-s);
+	.binary-data-cell {
+		display: inline-block;
+		width: 300px;
+		overflow: hidden;
+		background-color: #fff;
+		margin-right: 1em;
+		border-radius: 3px;
+		-webkit-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
+		-moz-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
+		box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
 
-		.binary-data-row {
-			display: inline-flex;
-			padding: 0.5em 1em;
+		.binary-data-information {
+			margin: 1em;
 
-			.binary-data-cell {
-				display: inline-block;
-				width: 300px;
-				overflow: hidden;
-				background-color: #fff;
-				margin-right: 1em;
-				border-radius: 3px;
-				-webkit-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
-				-moz-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
-				box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
-
-				.binary-data-information {
-					margin: 1em;
-
-					.binary-data-cell-name {
-						color: $--color-primary;
-						font-weight: 600;
-						font-size: 1.2em;
-						padding-bottom: 0.5em;
-						margin-bottom: 0.5em;
-						border-bottom: 1px solid #ccc;
-					}
-
-					.binary-data-show-data-button-wrapper {
-						margin-top: 1.5em;
-						text-align: center;
-					}
-
-					.label {
-						padding-top: 0.5em;
-						font-weight: bold;
-					}
-					.value {
-						white-space: initial;
-						word-wrap: break-word;
-					}
-				}
-			}
-		}
-
-		.binary-data-row-index {
-			display: block;
-			padding: 1em 1em 0.25em 1em;
-
-			.binary-data-cell-index {
-				display: inline-block;
-				width: 30px;
-				height: 30px;
-				line-height: 30px;
-				border-radius: 5px;
-				text-align: center;
-				padding: 0 0.1em;
-				background-color: $--custom-header-background;
+			.binary-data-cell-name {
+				color: $--color-primary;
 				font-weight: 600;
-				color: #fff;
+				font-size: 1.2em;
+				padding-bottom: 0.5em;
+				margin-bottom: 0.5em;
+				border-bottom: 1px solid #ccc;
 			}
-		}
 
-		.json-data {
-			line-height: 1.5;
-
-			&.vjs-tree {
-				color: $--custom-input-font;
+			.binary-data-show-data-button-wrapper {
+				margin-top: 1.5em;
+				text-align: center;
 			}
-		}
 
-		.error-display,
-		.json-data,
-		.message,
-		.no-data {
-			margin: 1em;
-		}
-
-		.too-much-data  {
-			margin: 1em;
-			text-align: center;
-
-			.text {
-				margin-bottom: 1em;
+			.label {
+				padding-top: 0.5em;
+				font-weight: bold;
 			}
-		}
-
-		table {
-			border-collapse: collapse;
-			text-align: left;
-			width: calc(100% - 1px);
-			border-left: 25px solid #00000000;
-			border-right: 25px solid #00000000;
-
-			th {
-				background-color: $--custom-table-background-main;
-				color: #fff;
-				padding: 12px;
-			}
-			td {
-				padding: 12px;
-			}
-			tr:nth-child(even) {
-				background: #fff;;
-			}
-			tr:nth-child(odd) {
-				background: $--custom-table-background-stripe-color;
+			.value {
+				white-space: initial;
+				word-wrap: break-word;
 			}
 		}
 	}
+}
 
-	// .header {
-	// 	display: flex;
-	// 	align-items: center;
-	// 	height: 40px;
+.binary-data-row-index {
+	display: block;
+	padding: 1em 1em 0.25em 1em;
+	font-size: var(--font-size-2xs);
 
-	// 	.select-button {
-	// 		height: 30px;
-	// 		top: 50px;
-	// 		right: 30px;
-	// 		position: absolute;
-	// 		text-align: right;
-	// 		width: 200px;
-	// 		z-index: 10;
-	// 	}
-
-	// 	.title-text {
-	// 		display: inline-flex;
-	// 		align-items: center;
-
-	// 		> * {
-	// 			margin-right: 2px;
-	// 		}
-	// 	}
-
-	// 	.title-data-display-selector {
-	// 		position: absolute;
-	// 		left: calc(50% - 105px);
-	// 		width: 210px;
-	// 		display: inline-block;
-	// 		text-align: center;
-
-	// 		.entry.active {
-	// 			font-weight: bold;
-	// 		}
-	// 	}
-
-	// 	.opts {
-	// 		width: 80px;
-	// 		z-index: 1;
-	// 	}
-	// }
+	.binary-data-cell-index {
+		display: inline-block;
+		width: 30px;
+		height: 30px;
+		line-height: 30px;
+		border-radius: 5px;
+		text-align: center;
+		padding: 0 0.1em;
+		background-color: $--custom-header-background;
+		font-weight: 600;
+		color: #fff;
+	}
 }
 
 </style>

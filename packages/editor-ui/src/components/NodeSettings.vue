@@ -519,6 +519,9 @@ export default mixins(
 		},
 		mounted () {
 			this.setNodeValues();
+			this.$on('openSettings', () => {
+				this.openPanel = 'settings';
+			});
 		},
 	});
 </script>

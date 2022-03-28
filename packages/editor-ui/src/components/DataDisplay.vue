@@ -8,8 +8,8 @@
 		@opened="showDocumentHelp = true"
 	>
 		<div class="data-display" v-if="node" >
-			<NodeSettings @valueChanged="valueChanged" />
-			<RunData />
+			<NodeSettings ref="settings" @valueChanged="valueChanged" />
+			<RunData @openSettings="openSettings" />
 
 		</div>
 	</el-dialog>
@@ -68,6 +68,12 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		openSettings() {
+			const settings = this.$refs.settings as Vue | null;
+			if (settings) {
+				settings.$emit('openSettings');
+			}
+		},
 		valueChanged (parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
 		},
