@@ -241,11 +241,13 @@ components:
           maxLength: 32
           type: string
           description: User's first name
+          readOnly: true
           example: jhon
         lastName:
           maxLength: 32
           type: string
           description: User's last name
+          readOnly: true
           example: doe
         finishedSetup:
           type: boolean

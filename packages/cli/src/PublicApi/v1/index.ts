@@ -7,6 +7,7 @@ import path = require('path');
 import express = require('express');
 
 import { HttpError, OpenAPIV3 } from 'express-openapi-validator/dist/framework/types';
+import * as bodyParser from 'body-parser';
 // eslint-disable-next-line import/no-cycle
 import { Db } from '../..';
 import config = require('../../../config');
@@ -16,6 +17,8 @@ export interface N8nApp {
 }
 
 export const publicApiController = express.Router();
+
+publicApiController.use(bodyParser.json());
 
 publicApiController.use(
 	`/v1`,
@@ -44,7 +47,13 @@ publicApiController.use(
 					if (!config.get('userManagement.isInstanceOwnerSetUp')) {
 						// eslint-disable-next-line @typescript-eslint/no-throw-literal
 						throw {
-							message: 'asasasas',
+							status: 400,
+						};
+					}
+
+					if (config.get('userManagement.disabled')) {
+						// eslint-disable-next-line @typescript-eslint/no-throw-literal
+						throw {
 							status: 400,
 						};
 					}
