@@ -111,7 +111,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
-
 		stickyStyle (): object {
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
 
@@ -139,7 +138,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return returnStyles;
 		},
 		showTooltip(): boolean {
-			return !this.hideActions && !this.isResizing && !this.dragging;
+			return !this.hideActions;
 		},
  	},
 	data () {

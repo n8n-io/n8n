@@ -111,18 +111,33 @@ export default {
       isEditable: false,
       tempContent: this.content,
       resizer: null,
+      stickyProps: {
+				height: 0,
+				width: 0,
+				top: 0,
+				left: 0,
+			},
     }
   },
   methods: {
     changeMode() {
-      if (!this.readOnly)
+      if (!this.readOnly) {
+        setTimeout(() => {
+          const textArea = document.querySelector('.el-textarea__inner');
+          if (textArea) {
+            textArea.focus();
+          }
+        }, 100);
 
-      if (this.isEditable) {
-        this.$emit('unfocus', this.isEditable);
-      }
-      this.isEditable =! this.isEditable;
+        if (this.isEditable) {
+          this.$emit('unfocus', this.isEditable);
+        }
+
+        this.isEditable =! this.isEditable;
+      }  
     },
     onBlur(value) {
+      this.isEditable = false;
       this.$emit('blur', value);
     },
     onChange(value: string) {
@@ -138,6 +153,9 @@ export default {
       this.$emit('onResizeEnd', resizeEnd);
     },
     onResizeStart(parameters) {
+      this.stickyProps.height = parameters.height;
+      this.stickyProps.width = parameters.width;
+
       this.$emit('onResizeStart', parameters);
     },
   },
