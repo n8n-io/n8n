@@ -1,6 +1,6 @@
 <template>
 	<div class="sticky-wrapper" :style="stickyPosition">
-		<div class="select-sticky-background" v-show="isSelected" :style="stickySize"></div>
+		<div class="select-sticky-background" v-show="isSelected" :style="stickySize" />
 		<div class="sticky-default">
 			<div 
 				:class="stickyClass"
@@ -204,9 +204,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 </script>
 
 <style lang="scss" scoped>
-
 .sticky-wrapper {
 	position: absolute;
+	z-index: 8;
 
 	.sticky-default {
 		position: absolute;
@@ -267,5 +267,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 60%);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
+	z-index: 2;
 }
 </style>
