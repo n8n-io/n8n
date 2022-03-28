@@ -79,7 +79,7 @@ export default mixins(
 			}
 		},
 		logHiringBanner() {
-			if (!this.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
+			if (this.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
