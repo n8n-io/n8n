@@ -17,12 +17,12 @@ const randomDigit = () => Math.floor(Math.random() * 10);
 const randomUppercaseLetter = () => chooseRandomly('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
 
 export const randomValidPassword = () =>
-	randomString(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH) + randomUppercaseLetter() + randomDigit();
+	randomString(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH - 2) + randomUppercaseLetter() + randomDigit();
 
 export const randomInvalidPassword = () =>
 	chooseRandomly([
 		randomString(1, MIN_PASSWORD_LENGTH - 1),
-		randomString(MAX_PASSWORD_LENGTH + 2, MAX_PASSWORD_LENGTH + 100),
+		randomString(MAX_PASSWORD_LENGTH + 1, MAX_PASSWORD_LENGTH + 100),
 		'abcdefgh', // valid length, no number, no uppercase
 		'abcdefg1', // valid length, has number, no uppercase
 		'abcdefgA', // valid length, no number, has uppercase
