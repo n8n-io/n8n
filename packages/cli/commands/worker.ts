@@ -119,9 +119,14 @@ export class Worker extends Command {
 
 	async runJob(job: Bull.Job, nodeTypes: INodeTypes): Promise<IBullJobResponse> {
 		const jobData = job.data as IBullJobData;
-		const executionDb = (await Db.collections.Execution!.findOne(
-			jobData.executionId,
-		)) as IExecutionFlattedDb;
+		const executionDb = await Db.collections.Execution!.findOne(jobData.executionId);
+
+		if (!executionDb) {
+			LoggerProxy.error('Worker failed to find execution data in database. Cannot continue.', {
+				executionId: jobData.executionId,
+			});
+			throw new Error('Unable to find execution data in database. Aborting execution.');
+		}
 		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb);
 		LoggerProxy.info(
 			`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`,
@@ -139,6 +144,13 @@ export class Worker extends Command {
 				findOptions,
 			);
 			if (workflowData === undefined) {
+				LoggerProxy.error(
+					'Worker execution failed because workflow could not be found in database.',
+					{
+						workflowId: currentExecutionDb.workflowData.id,
+						executionId: jobData.executionId,
+					},
+				);
 				throw new Error(
 					`The workflow with the ID "${currentExecutionDb.workflowData.id}" could not be found`,
 				);
