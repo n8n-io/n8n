@@ -16,10 +16,13 @@
 					/>
 				</div>
 			</div>
-			<el-tabs :class="$style.tabs" @tab-click="handleTabClick">
-				<el-tab-pane index="params" :label="$locale.baseText('nodeSettings.parameters')"></el-tab-pane>
-				<el-tab-pane :disabled="true">
-					<a slot="label" target="_blank" :class="$style.docs" :href="documentationUrl">
+			<div :class="$style.tabs">
+				<div :class="{[$style.paramsTab]: true, [$style.activeTab]: openPanel === 'params'}" @click="() => handleTabClick('params')">
+					{{ $locale.baseText('nodeSettings.parameters') }}
+				</div>
+
+				<div :class="$style.docsTab">
+					<a target="_blank" :class="$style.docs" :href="documentationUrl" @click="onDocumentationUrlClick">
 						{{$locale.baseText('nodeSettings.docs')}}
 						<font-awesome-icon
 							:class="$style.external"
@@ -27,11 +30,12 @@
 							size="sm"
 						/>
 					</a>
-				</el-tab-pane>
-				<el-tab-pane index="settings">
-					<font-awesome-icon slot="label" icon="cog" />
-				</el-tab-pane>
-			</el-tabs>
+				</div>
+
+				<div :class="{[$style.settingsTab]: true, [$style.activeTab]: openPanel === 'settings'}" @click="() => handleTabClick('settings')">
+					<font-awesome-icon icon="cog" />
+				</div>
+			</div>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
 			<n8n-text>
@@ -44,23 +48,20 @@
 			</n8n-text>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
-			<el-tabs @tab-click="handleTabClick">
-				<el-tab-pane :label="$locale.baseText('nodeSettings.parameters')">
-					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
-					<node-webhooks :node="node" :nodeType="nodeType" />
-					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-					<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
-						<n8n-text>
-						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
-						</n8n-text>
-					</div>
-				</el-tab-pane>
-				<el-tab-pane>
-					<font-awesome-icon slot="label" icon="cog" />
-					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
-					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-				</el-tab-pane>
-			</el-tabs>
+			<div v-show="openPanel === 'params'">
+				<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
+				<node-webhooks :node="node" :nodeType="nodeType" />
+				<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+					<n8n-text>
+					{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+					</n8n-text>
+				</div>
+			</div>
+			<div v-show="openPanel === 'settings'">
+				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
+				<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+			</div>
 		</div>
 	</div>
 </template>
@@ -190,7 +191,7 @@ export default mixins(
 			return {
 				nodeValid: true,
 				nodeColor: null,
-				openPanel: '0',
+				openPanel: 'params',
 				nodeValues: {
 					color: '#ff0000',
 					alwaysOutputData: false,
@@ -358,6 +359,9 @@ export default mixins(
 						}
 					}
 				}
+			},
+			onDocumentationUrlClick () {
+				this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType, documentationUrl: this.documentationUrl });
 			},
 			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
 				// Update the values on the node
@@ -547,9 +551,9 @@ export default mixins(
 					this.nodeValid = false;
 				}
 			},
-			handleTabClick(tab: ElTabPane) {
-				this.openPanel = tab.index;
-				if(tab.label === 'Settings') {
+			handleTabClick(tab: string) {
+				this.openPanel = tab;
+				if(tab === 'settings') {
 					this.$telemetry.track('User viewed node settings', { node_type: this.node ? this.node.type : '', workflow_id: this.$store.getters.workflowId });
 				}
 			},
@@ -566,21 +570,38 @@ export default mixins(
 }
 
 .tabs {
-	* {
-		color: var(--color-text-base);
-		font-weight: var(--font-weight-bold) !important;
+	color: var(--color-text-base);
+	font-weight: var(--font-weight-bold);
+	display: flex;
+	width: 100%;
+
+	> * {
+		padding: 0 var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
+		padding-bottom: var(--spacing-2xs);
+		cursor: pointer;
+		&:hover {
+			color: var(--color-primary);
+		}
 	}
 }
 
+.activeTab {
+	color: var(--color-primary);
+	border-bottom: var(--color-primary) 2px solid;
+}
+
+.settingsTab {
+	margin-left: auto;
+}
+
 .docs {
+	// todo
+	color: var(--color-text-base) !important;
 	&:hover {
 		color: var(--color-primary) !important;
 		cursor: pointer;
 
 		.external {
-			* {
-				color: var(--color-primary) !important;
-			}
 			display: inline-block;
 		}
 	}
@@ -603,7 +624,7 @@ export default mixins(
 	}
 
 	.header-side-menu {
-		padding: var(--spacing-s);
+		padding: var(--spacing-s) var(--spacing-s) var(--spacing-l) var(--spacing-s);
 		font-size: var(--font-size-l);
 		display: flex;
 
@@ -618,49 +639,12 @@ export default mixins(
 
 	.node-parameters-wrapper {
 		height: 100%;
+		overflow-y: auto;
+		padding: 0 20px 200px 20px;
 
 		.el-tabs__header {
 			background-color: var(--color-background-base);
 			margin-bottom: 0;
-		}
-
-		.el-tabs {
-			height: 100%;
-			.el-tabs__content {
-				overflow-y: auto;
-				height: 100%;
-
-				.el-tab-pane {
-					margin: 0 var(--spacing-s);
-				}
-			}
-		}
-
-		// .el-tabs__nav {
-		// 	padding-bottom: var(--spacing-xs);
-		// }
-
-		.add-option {
-			i.el-select__caret {
-				color: var(--color-foreground-xlight);
-			}
-			.el-input .el-input__inner {
-				&,
-				&:hover,
-				&:focus {
-					border-radius: 20px;
-					color: var(--color-foreground-xlight);
-					font-weight: 600;
-					background-color: var(--color-primary);
-					border-color: var(--color-primary);
-					text-align: center;
-				}
-
-				&::placeholder {
-					color: var(--color-foreground-xlight);
-					opacity: 1; /** Firefox */
-				}
-			}
 		}
 	}
 }

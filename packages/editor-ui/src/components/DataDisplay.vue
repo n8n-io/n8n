@@ -79,9 +79,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.showDocumentHelp = false;
 			this.$store.commit('setActiveNode', null);
 		},
-		onDocumentationUrlClick () {
-			this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType, documentationUrl: this.documentationUrl });
-		},
 	},
 });
 
