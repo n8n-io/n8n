@@ -35,7 +35,7 @@ beforeEach(async () => {
 		email: TEST_USER.email,
 		firstName: TEST_USER.firstName,
 		lastName: TEST_USER.lastName,
-		password: hashSync(TEST_USER.password, genSaltSync(10)),
+		password: TEST_USER.password,
 		globalRole: globalOwnerRole,
 	});
 

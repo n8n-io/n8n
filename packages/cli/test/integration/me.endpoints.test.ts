@@ -275,7 +275,7 @@ describe('Member', () => {
 	test('PATCH /me/password should succeed with valid inputs', async () => {
 		const memberPassword = randomValidPassword();
 		const member = await testDb.createUser({
-			password: hashSync(memberPassword, genSaltSync(10)),
+			password: memberPassword,
 		});
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 

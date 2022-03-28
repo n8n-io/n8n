@@ -1,7 +1,7 @@
 import express = require('express');
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
-import { compare } from 'bcryptjs';
+import { compare, genSaltSync, hashSync } from 'bcryptjs';
 
 import { Db } from '../../src';
 import config = require('../../config');
@@ -404,7 +404,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 	}
 });
 
-test.skip('POST /users/:id should fail with already accepted invite', async () => {
+test('POST /users/:id should fail with already accepted invite', async () => {
 	const authlessAgent = utils.createAgent(app);
 
 	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
@@ -414,7 +414,7 @@ test.skip('POST /users/:id should fail with already accepted invite', async () =
 
 	const shell = await Db.collections.User!.save({
 		email: randomEmail(),
-		password: randomValidPassword(), // simulate accepted invite
+		password: hashSync(randomValidPassword(), genSaltSync(10)), // simulate accepted invite
 		globalRole: globalMemberRole,
 	});
 
@@ -458,7 +458,7 @@ test('POST /users should fail if user management is disabled', async () => {
 	expect(response.statusCode).toBe(500);
 });
 
-test.skip('POST /users should email invites and create user shells', async () => {
+test('POST /users should email invites and create user shells', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
@@ -502,7 +502,7 @@ test.skip('POST /users should email invites and create user shells', async () =>
 	}
 });
 
-test.skip('POST /users should fail with invalid inputs', async () => {
+test('POST /users should fail with invalid inputs', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
@@ -525,7 +525,7 @@ test.skip('POST /users should fail with invalid inputs', async () => {
 	}
 });
 
-test.skip('POST /users should ignore an empty payload', async () => {
+test('POST /users should ignore an empty payload', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 

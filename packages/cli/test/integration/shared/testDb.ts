@@ -16,6 +16,7 @@ import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CredentialPayload } from './types';
+import { genSaltSync, hashSync } from 'bcryptjs';
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
@@ -188,7 +189,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	const user = {
 		email: email ?? randomEmail(),
-		password: password ?? randomValidPassword(),
+		password: hashSync(password ?? randomValidPassword(), genSaltSync(10)),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole: globalRole ?? (await getGlobalMemberRole()),
