@@ -5,14 +5,8 @@
 				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged"></NodeTitle>
 				<div
 					v-if="!isReadOnly"
-					class="execute-node-button"
 				>
-					<n8n-button
-						:title="$locale.baseText('runData.executesThisNodeAfterExecuting', { interpolate: { nodeName: node.name } })"
-						:loading="workflowRunning"
-						:label="$locale.baseText('runData.executeNode')"
-						@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
-					/>
+					<NodeExecuteButton :nodeName="node.name" />
 				</div>
 			</div>
 			<NodeTabs v-model="openPanel" :nodeType="nodeType" />
@@ -72,15 +66,14 @@ import { get, set, unset } from 'lodash';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 
 export default mixins(
 	externalHooks,
 	genericHelpers,
 	nodeHelpers,
-	workflowRun,
 )
 	.extend({
 		name: 'NodeSettings',
@@ -91,6 +84,7 @@ export default mixins(
 			ParameterInputList,
 			NodeTabs,
 			NodeWebhooks,
+			NodeExecuteButton,
 		},
 		computed: {
 			nodeType (): INodeTypeDescription | null {
@@ -153,10 +147,6 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			workflowRunning (): boolean {
-				return this.$store.getters.isActionActive('workflowRunning');
-			},
-
 		},
 		data () {
 			return {
