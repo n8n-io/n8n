@@ -2,7 +2,7 @@
 	<div class="node-settings" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
-				<display-with-change class="node-name" :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
+				<display-with-change class="node-name" :name="node.name" :nodeType="nodeType" @valueChanged="valueChanged"></display-with-change>
 				<div
 					v-if="!isReadOnly"
 					class="execute-node-button"
