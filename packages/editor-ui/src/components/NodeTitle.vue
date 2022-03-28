@@ -7,7 +7,7 @@
 			:value="editName"
 			>
 			<div :class="$style.editContainer" @keydown.enter="onRename" @keydown.stop @keydown.esc="editName = false">
-				<n8n-text :bold="true" color="text-base">Rename node</n8n-text>
+				<n8n-text :class="$style.renameText" :bold="true" color="text-base" tag="div">Rename node</n8n-text>
 				<n8n-input ref="input" size="small" v-model="newName" />
 				<div :class="$style.editButtons">
 					<n8n-button type="outline" size="small" @click="editName = false" label="Cancel" />
@@ -101,5 +101,9 @@ export default Vue.extend({
 
 .editContainer {
 	text-align: left;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-4xs);
+	}
 }
 </style>
