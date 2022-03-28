@@ -83,7 +83,7 @@
 			<n8n-text v-else>{{ $locale.baseText('node.output.runNodeHint') }}</n8n-text>
 		</div>
 
-		<div v-else-if="hasNodeRun && hasRunError">
+		<div v-else-if="hasNodeRun && hasRunError" :class="$style.dataDisplay">
 			<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
 		</div>
 
