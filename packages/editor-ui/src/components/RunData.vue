@@ -225,7 +225,6 @@ import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from "@/components/mixins/externalHooks";
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
 
@@ -237,7 +236,6 @@ export default mixins(
 	externalHooks,
 	genericHelpers,
 	nodeHelpers,
-	workflowRun,
 )
 	.extend({
 		name: 'RunData',
