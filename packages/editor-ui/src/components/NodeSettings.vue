@@ -2,7 +2,7 @@
 	<div class="node-settings" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
-				<display-with-change class="node-name" :name="node.name" :nodeType="nodeType" @valueChanged="valueChanged"></display-with-change>
+				<NodeTitle class="node-name" :name="node.name" :nodeType="nodeType" @valueChanged="valueChanged"></NodeTitle>
 				<div
 					v-if="!isReadOnly"
 					class="execute-node-button"
@@ -81,9 +81,7 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
-import { ElTabPane } from "element-ui/types/tab-pane";
-
-import DisplayWithChange from '@/components/DisplayWithChange.vue';
+import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
@@ -93,6 +91,7 @@ import { get, set, unset } from 'lodash';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
 
@@ -100,12 +99,12 @@ export default mixins(
 	externalHooks,
 	genericHelpers,
 	nodeHelpers,
+	workflowRun,
 )
-
 	.extend({
 		name: 'NodeSettings',
 		components: {
-			DisplayWithChange,
+			NodeTitle,
 			NodeCredentials,
 			ParameterInputFull,
 			ParameterInputList,
