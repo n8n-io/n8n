@@ -41,6 +41,7 @@ import {
 	Message,
 	Notification,
 	CollapseTransition,
+	Popover,
 
 	N8nActionBox,
 	N8nAvatar,
@@ -130,6 +131,8 @@ Vue.use(Badge);
 Vue.use(Card);
 Vue.use(ColorPicker);
 Vue.use(Container);
+Vue.use(Popover);
+
 Vue.use(VueAgile);
 
 Vue.component(CollapseTransition.name, CollapseTransition);

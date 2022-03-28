@@ -29,6 +29,7 @@ import Loading from 'element-ui/lib/loading';
 import MessageBox from 'element-ui/lib/message-box';
 import Message from 'element-ui/lib/message';
 import Notification from 'element-ui/lib/notification';
+import Popover from 'element-ui/lib/popover';
 import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
 
 import N8nActionBox from './N8nActionBox';
@@ -128,6 +129,7 @@ export {
 	Message,
 	Notification,
 	CollapseTransition,
+	Popover,
 
 	locale,
 };

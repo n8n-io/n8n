@@ -10,7 +10,6 @@
 					<n8n-button
 						:title="$locale.baseText('runData.executesThisNodeAfterExecuting', { interpolate: { nodeName: node.name } })"
 						:loading="workflowRunning"
-						icon="play-circle"
 						:label="$locale.baseText('runData.executeNode')"
 						@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 					/>
@@ -577,6 +576,7 @@ export default mixins(
 	> * {
 		padding: 0 var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
 		padding-bottom: var(--spacing-2xs);
+		font-size: var(--font-size-s);
 		cursor: pointer;
 		&:hover {
 			color: var(--color-primary);
@@ -623,7 +623,7 @@ export default mixins(
 	}
 
 	.header-side-menu {
-		padding: var(--spacing-s) var(--spacing-s) var(--spacing-l) var(--spacing-s);
+		padding: var(--spacing-s) var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
 		font-size: var(--font-size-l);
 		display: flex;
 
