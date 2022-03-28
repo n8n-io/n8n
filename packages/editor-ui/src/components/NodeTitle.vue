@@ -9,12 +9,11 @@
 				@keydown.esc="editName = false"
 			>
 				<n8n-text :class="$style.renameText" :bold="true" color="text-base" tag="div"
-					>Rename node</n8n-text
-				>
+					>{{ $locale.baseText('node.title.renameNode') }}</n8n-text>
 				<n8n-input ref="input" size="small" v-model="newName" />
 				<div :class="$style.editButtons">
-					<n8n-button type="outline" size="small" @click="editName = false" label="Cancel" />
-					<n8n-button type="primary" size="small" @click="onRename" label="Rename" />
+					<n8n-button type="outline" size="small" @click="editName = false" :label="$locale.baseText('node.title.cancel')" />
+					<n8n-button type="primary" size="small" @click="onRename" :label="$locale.baseText('node.title.rename')" />
 				</div>
 			</div>
 			<span :class="$style.title" slot="reference">
