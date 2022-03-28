@@ -45,7 +45,7 @@ export class Note implements INodeType {
 				name: 'width',
 				type: 'number',
 				required: true,
-				default: 220,
+				default: 240,
 				description: 'Width',
 			},
 		],
