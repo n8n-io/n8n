@@ -194,7 +194,7 @@ export class InvoiceNinja implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const invoices = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/invoices');
 				for (const invoice of invoices) {
-					const invoiceName = invoice.invoice_number;
+					const invoiceName = invoice.invoice_number || invoice.number;
 					const invoiceId = invoice.id;
 					returnData.push({
 						name: invoiceName,
@@ -258,6 +258,8 @@ export class InvoiceNinja implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const versionOfAPI = (await this.getCredentials('invoiceNinjaApi'))?.version as string;
+
 		for (let i = 0; i < length; i++) {
 			//Routes: https://github.com/invoiceninja/invoiceninja/blob/ff455c8ed9fd0c0326956175ecd509efa8bad263/routes/api.php
 			try {
@@ -446,7 +448,13 @@ export class InvoiceNinja implements INodeType {
 					}
 					if (operation === 'email') {
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-						responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/email_invoice', { id: invoiceId });
+						if (versionOfAPI === 'v4') {
+							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/email_invoice', { id: invoiceId });
+						}
+						if (versionOfAPI === 'v5') {
+							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/emails', { entity_id: invoiceId });
+						}
+
 					}
 					if (operation === 'get') {
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
@@ -553,10 +561,12 @@ export class InvoiceNinja implements INodeType {
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const invoice = this.getNodeParameter('invoice', i) as number;
+						const client = (await invoiceNinjaApiRequest.call(this, 'GET', `/invoices/${invoice}`, {}, qs)).data?.client_id as string;
 						const amount = this.getNodeParameter('amount', i) as number;
 						const body: IPayment = {
 							invoice_id: invoice,
 							amount,
+							client_id: client,
 						};
 						if (additionalFields.paymentType) {
 							body.payment_type_id = additionalFields.paymentType as number;
@@ -773,7 +783,13 @@ export class InvoiceNinja implements INodeType {
 					}
 					if (operation === 'email') {
 						const quoteId = this.getNodeParameter('quoteId', i) as string;
-						responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/email_invoice', { id: quoteId });
+
+						if (versionOfAPI === 'v4') {
+							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/email_invoice', { id: quoteId });
+						}
+						if (versionOfAPI === 'v5') {
+							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/emails', { entity_id: quoteId });
+						}
 					}
 					if (operation === 'get') {
 						const quoteId = this.getNodeParameter('quoteId', i) as string;
