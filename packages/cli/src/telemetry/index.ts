@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import TelemetryClient = require('@rudderstack/rudder-sdk-node');
@@ -184,12 +185,17 @@ export class Telemetry {
 		});
 	}
 
-	async track(eventName: string, properties?: IDataObject): Promise<void> {
+	async track(
+		eventName: string,
+		properties: { [key: string]: unknown; user_id?: string } = {},
+	): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.client) {
+				const { user_id } = properties;
+				Object.assign(properties, { instance_id: this.instanceId });
 				this.client.track(
 					{
-						userId: this.instanceId,
+						userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
 						anonymousId: '000000000000',
 						event: eventName,
 						properties,
