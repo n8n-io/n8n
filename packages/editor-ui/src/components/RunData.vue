@@ -1,10 +1,23 @@
 <template>
-	<div class="run-data-view" v-loading="workflowRunning">
+	<div :class="['run-data-view', $style.container]"  v-loading="workflowRunning">
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
-		<div class="header">
+		<div :class="$style.header">
+			<div>
+				<span :class="$style.title">{{ $locale.baseText('runData.output') }}</span>
+				<n8n-tooltip
+					v-if="runMetadata"
+					placement="right"
+				>
+					<div slot="content">
+						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
+						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $locale.baseText('runData.ms') }}
+					</div>
+					<font-awesome-icon icon="info-circle" :class="$style.infoIcon" />
+				</n8n-tooltip>
+			</div>
 			<div class="title-text">
-				<n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
+				<!-- <n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
 					{{ $locale.baseText('runData.items') }}: {{ dataCount }}
 				</n8n-text>
 				<div v-else class="title-text">
@@ -15,20 +28,11 @@
 						</n8n-select>
 					</span>/
 					<n8n-text :bold="true">{{ dataCount }}</n8n-text>
-				</div>
-				<n8n-tooltip
-					v-if="runMetadata"
-					placement="right"
-				>
-					<div slot="content">
-						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
-						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $locale.baseText('runData.ms') }}
-					</div>
-					<font-awesome-icon icon="info-circle" class="primary-color" />
-				</n8n-tooltip>
-				<n8n-text :bold="true" v-if="maxOutputIndex > 0">
+				</div> -->
+
+				<!-- <n8n-text :bold="true" v-if="maxOutputIndex > 0">
 					| {{ $locale.baseText('runData.output') }}:
-				</n8n-text>
+				</n8n-text> -->
 				<span class="opts" v-if="maxOutputIndex > 0" >
 					<n8n-select size="mini" v-model="outputIndex" @click.stop>
 						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
@@ -48,13 +52,12 @@
 
 			</div>
 			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
-				<el-radio-group v-model="displayMode" size="mini">
-					<el-radio-button :label="$locale.baseText('runData.json')" :disabled="showData === false"></el-radio-button>
-					<el-radio-button :label="$locale.baseText('runData.table')"></el-radio-button>
-					<el-radio-button :label="$locale.baseText('runData.binary')" v-if="binaryData.length !== 0"></el-radio-button>
-				</el-radio-group>
+				<n8n-radio-buttons
+					v-model="displayMode"
+					:options="buttons"
+				/>
 			</div>
-			<div v-if="hasNodeRun && !hasRunError && displayMode === $locale.baseText('runData.json') && state.path !== deselectedPlaceholder" class="select-button">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json' && state.path !== deselectedPlaceholder" class="select-button">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
 						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" />
@@ -98,14 +101,14 @@
 						<n8n-button
 							icon="eye"
 							:label="$locale.baseText('runData.displayDataAnyway')"
-							@click="displayMode = $locale.baseText('runData.table');showData = true;"
+							@click="displayMode = 'table';showData = true;"
 						/>
 					</div>
-					<div v-else-if="[$locale.baseText('runData.json'), $locale.baseText('runData.table')].includes(displayMode)">
+					<div v-else-if="['json', 'table'].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
 							{{ $locale.baseText('runData.noTextDataFound') }}
 						</div>
-						<div v-else-if="displayMode === $locale.baseText('runData.table')">
+						<div v-else-if="displayMode === 'table'">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
 								{{ $locale.baseText('runData.entriesExistButThey') }}
 							</div>
@@ -119,7 +122,7 @@
 							</table>
 						</div>
 						<vue-json-pretty
-							v-else-if="displayMode === $locale.baseText('runData.json')"
+							v-else-if="displayMode === 'json'"
 							:data="jsonData"
 							:deep="10"
 							v-model="state.path"
@@ -133,7 +136,7 @@
 							class="json-data"
 						/>
 					</div>
-					<div v-else-if="displayMode === $locale.baseText('runData.binary')">
+					<div v-else-if="displayMode === 'binary'">
 						<div v-if="binaryData.length === 0" class="no-data">
 							{{ $locale.baseText('runData.noBinaryDataFound') }}
 						</div>
@@ -249,7 +252,7 @@ export default mixins(
 				binaryDataPreviewActive: false,
 				dataSize: 0,
 				deselectedPlaceholder,
-				displayMode: this.$locale.baseText('runData.table'),
+				displayMode: 'table',
 				state: {
 					value: '' as object | number | string,
 					path: deselectedPlaceholder,
@@ -269,6 +272,19 @@ export default mixins(
 			this.init();
 		},
 		computed: {
+			buttons(): {label: string, value: string}[] {
+				const defaults = [
+					{ label: this.$locale.baseText('runData.json'), value: 'json'},
+					{ label: this.$locale.baseText('runData.table'), value: 'table'},
+				];
+				if (this.binaryData.length) {
+					return [ ...defaults,
+						{ label: this.$locale.baseText('runData.binary'), value: 'binary'},
+					];
+				}
+
+				return defaults;
+			},
 			hasNodeRun(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
 			},
@@ -426,10 +442,10 @@ export default mixins(
 				this.outputIndex = 0;
 				this.maxDisplayItems = 25;
 				this.refreshDataSize();
-				if (this.displayMode === this.$locale.baseText('runData.binary')) {
+				if (this.displayMode === 'binary') {
 					this.closeBinaryDataDisplay();
 					if (this.binaryData.length === 0) {
-						this.displayMode = this.$locale.baseText('runData.table');
+						this.displayMode = 'table';
 					}
 				}
 			},
@@ -638,13 +654,40 @@ export default mixins(
 	});
 </script>
 
-<style lang="scss">
+<style lang="scss" module>
+.infoIcon {
+	color: var(--color-foreground-dark);
+}
 
-.run-data-view {
+.title {
+	text-transform: uppercase;
+	color: var(--color-text-light);
+	letter-spacing: 3px;
+	font-weight: var(--font-weight-bold);
+	margin-right: var(--spacing-2xs);
+}
+
+.container {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: #f9f9f9;
+	background-color: var(--color-background-light);
+	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
+}
+
+.header {
+	display: flex;
+	align-items: center;
+
+	> *:first-child {
+		flex-grow: 1;
+	}
+}
+</style>
+
+<style lang="scss">
+
+.run-data-view {
 
 	.data-display-content {
 		position: absolute;
@@ -767,50 +810,47 @@ export default mixins(
 		}
 	}
 
-	.header {
-		padding-top: 10px;
-		padding-left: 10px;
+	// .header {
+	// 	display: flex;
+	// 	align-items: center;
+	// 	height: 40px;
 
-		display: flex;
-		align-items: center;
-		height: 40px;
+	// 	.select-button {
+	// 		height: 30px;
+	// 		top: 50px;
+	// 		right: 30px;
+	// 		position: absolute;
+	// 		text-align: right;
+	// 		width: 200px;
+	// 		z-index: 10;
+	// 	}
 
-		.select-button {
-			height: 30px;
-			top: 50px;
-			right: 30px;
-			position: absolute;
-			text-align: right;
-			width: 200px;
-			z-index: 10;
-		}
+	// 	.title-text {
+	// 		display: inline-flex;
+	// 		align-items: center;
 
-		.title-text {
-			display: inline-flex;
-			align-items: center;
+	// 		> * {
+	// 			margin-right: 2px;
+	// 		}
+	// 	}
 
-			> * {
-				margin-right: 2px;
-			}
-		}
+	// 	.title-data-display-selector {
+	// 		position: absolute;
+	// 		left: calc(50% - 105px);
+	// 		width: 210px;
+	// 		display: inline-block;
+	// 		text-align: center;
 
-		.title-data-display-selector {
-			position: absolute;
-			left: calc(50% - 105px);
-			width: 210px;
-			display: inline-block;
-			text-align: center;
+	// 		.entry.active {
+	// 			font-weight: bold;
+	// 		}
+	// 	}
 
-			.entry.active {
-				font-weight: bold;
-			}
-		}
-
-		.opts {
-			width: 80px;
-			z-index: 1;
-		}
-	}
+	// 	.opts {
+	// 		width: 80px;
+	// 		z-index: 1;
+	// 	}
+	// }
 }
 
 </style>
