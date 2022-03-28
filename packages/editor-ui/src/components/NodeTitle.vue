@@ -69,7 +69,7 @@ export default Vue.extend({
 	line-height: var(--font-line-height-compact);
 	overflow-wrap: anywhere;
 	height: 60px;
-  overflow: hidden;
+	overflow: hidden;
 }
 
 .title {
