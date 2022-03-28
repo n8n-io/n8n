@@ -32,13 +32,12 @@ import { SharedWorkflow } from '../../../../databases/entities/SharedWorkflow';
 import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
 
 export = {
-	createUsers: async (req: UserRequest.Invite, res: express.Response): Promise<void> => {
+	// eslint-disable-next-line consistent-return
+	createUsers: async (req: UserRequest.Invite, res: express.Response): Promise<any> => {
 		if (config.get('userManagement.emails.mode') === '') {
-			throw new ResponseHelper.ResponseError(
-				'Email sending must be set up in order to request a password reset email',
-				undefined,
-				500,
-			);
+			return res.status(500).json({
+				message: 'Email sending must be set up in order to request a password reset email',
+			});
 		}
 
 		let mailer: UserManagementMailer.UserManagementMailer | undefined;
@@ -46,31 +45,27 @@ export = {
 			mailer = await UserManagementMailer.getInstance();
 		} catch (error) {
 			if (error instanceof Error) {
-				throw new ResponseHelper.ResponseError(
-					`There is a problem with your SMTP setup! ${error.message}`,
-					undefined,
-					500,
-				);
+				return res.status(500).json({
+					message: `There is a problem with your SMTP setup! ${error.message}`,
+				});
 			}
 		}
 
 		const createUsers: { [key: string]: string | null } = {};
 		// Validate payload
+		// eslint-disable-next-line consistent-return
 		req.body.forEach((invite) => {
 			if (typeof invite !== 'object' || !invite.email) {
-				throw new ResponseHelper.ResponseError(
-					'Request to send email invite(s) to user(s) failed because the payload is not an array shaped Array<{ email: string }>',
-					undefined,
-					400,
-				);
+				return res.status(400).json({
+					message:
+						'Request to send email invite(s) to user(s) failed because the payload is not an array shaped Array<{ email: string }>',
+				});
 			}
 
 			if (!validator.isEmail(invite.email)) {
-				throw new ResponseHelper.ResponseError(
-					`Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
-					undefined,
-					400,
-				);
+				return res.status(400).json({
+					message: `Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
+				});
 			}
 			createUsers[invite.email] = null;
 		});
@@ -78,11 +73,9 @@ export = {
 		const role = (await Db.collections.Role?.findOne({ scope: 'global', name: 'member' })) as Role;
 
 		if (!role) {
-			throw new ResponseHelper.ResponseError(
-				'Members role not found in database - inconsistent state',
-				undefined,
-				500,
-			);
+			return res.status(500).json({
+				message: `Members role not found in database - inconsistent state`,
+			});
 		}
 
 		// remove/exclude existing users from creation
@@ -163,23 +156,24 @@ export = {
 
 		res.json([...clean(existingUsers ?? []), ...clean(savedUsers)]);
 	},
-	deleteUser: async (req: UserRequest.Delete, res: express.Response): Promise<void> => {
+	// eslint-disable-next-line consistent-return
+	deleteUser: async (req: UserRequest.Delete, res: express.Response): Promise<any> => {
 		const { identifier: idToDelete } = req.params;
 
 		const includeRole = req.query?.includeRole?.toLowerCase() === 'true' || false;
 
 		if (req.user.id === idToDelete) {
-			throw new ResponseHelper.ResponseError('Cannot delete your own user', undefined, 400);
+			return res.status(400).json({
+				message: `Cannot delete your own user`,
+			});
 		}
 
 		const { transferId } = req.query;
 
 		if (transferId === idToDelete) {
-			throw new ResponseHelper.ResponseError(
-				'Request to delete a user failed because the user to delete and the transferee are the same user',
-				undefined,
-				400,
-			);
+			return res.status(400).json({
+				message: `Request to delete a user failed because the user to delete and the transferee are the same user`,
+			});
 		}
 
 		const users = await Db.collections.User?.find({
@@ -188,17 +182,15 @@ export = {
 		});
 
 		if (!users?.length || (transferId && users.length !== 2)) {
-			throw new ResponseHelper.ResponseError(
-				'Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB',
-				undefined,
-				404,
-			);
+			return res.status(400).json({
+				message: `Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB`,
+			});
 		}
 
-		const userToDelete = users.find((user) => user.id === req.params.identifier) as User;
+		const userToDelete = users?.find((user) => user.id === req.params.identifier) as User;
 
 		if (transferId) {
-			const transferee = users.find((user) => user.id === transferId);
+			const transferee = users?.find((user) => user.id === transferId);
 			await Db.transaction(async (transactionManager) => {
 				await transactionManager.update(
 					SharedWorkflow,
@@ -259,7 +251,8 @@ export = {
 
 		res.json(clean([userToDelete], true)[0]);
 	},
-	getUser: async (req: UserRequest.Get, res: express.Response): Promise<void> => {
+	// eslint-disable-next-line consistent-return
+	getUser: async (req: UserRequest.Get, res: express.Response): Promise<any> => {
 		const includeRole = req.query?.includeRole?.toLowerCase() === 'true' || false;
 		const { identifier } = req.params;
 
@@ -282,19 +275,25 @@ export = {
 		const user = await query.getOne();
 
 		if (user === undefined) {
-			res.status(404);
+			return res.status(404);
 		}
 
 		res.json(user);
 	},
-	getUsers: async (req: UserRequest.Get, res: express.Response): Promise<void> => {
+	getUsers: async (req: UserRequest.Get, res: express.Response): Promise<any> => {
 		let offset = 0;
 		let limit = parseInt(req.query.limit, 10) || 10;
 		const includeRole = req.query?.includeRole?.toLowerCase() === 'true' || false;
 
 		if (req.query.cursor) {
 			const { cursor } = req.query;
-			({ offset, limit } = decodeCursor(cursor));
+			try {
+				({ offset, limit } = decodeCursor(cursor));
+			} catch (error) {
+				return res.status(400).json({
+					message: 'Invalid cursor',
+				});
+			}
 		}
 
 		const query = getConnection(connectionName())
