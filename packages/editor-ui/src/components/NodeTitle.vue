@@ -6,14 +6,16 @@
 			width="200"
 			:value="editName"
 			>
-			<p>Rename node</p>
-			<n8n-input size="small" v-model="newName" />
-			<div :class="$style.editButtons">
-				<n8n-button type="outline" size="small" @click="editName = false" label="Cancel" />
-				<n8n-button type="primary" size="small" @click="onRename" label="Rename" />
+			<div :class="$style.editContainer" @keydown.enter="onRename" @keydown.stop @keydown.esc="editName = false">
+				<n8n-text :bold="true" color="text-base">Rename node</n8n-text>
+				<n8n-input ref="input" size="small" v-model="newName" />
+				<div :class="$style.editButtons">
+					<n8n-button type="outline" size="small" @click="editName = false" label="Cancel" />
+					<n8n-button type="primary" size="small" @click="onRename" label="Rename" />
+				</div>
 			</div>
 			<span :class="$style.title" slot="reference">
-				{{name}}
+				{{value}}
 				<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" />
 			</span>
 		</el-popover>
@@ -26,7 +28,7 @@ import Vue from 'vue';
 export default Vue.extend({
 	name: 'NodeTitle',
 	props: {
-		name: {
+		value: {
 			type: String,
 		},
 		nodeType: {
@@ -40,11 +42,17 @@ export default Vue.extend({
 	},
 	methods: {
 		onEdit() {
-			this.newName = this.name;
+			this.newName = this.value;
 			this.editName = true;
+			this.$nextTick(() => {
+				const input = this.$refs.input;
+				if (input) {
+					(input as HTMLInputElement).focus();
+				}
+			});
 		},
 		onRename() {
-			this.$emit('update', this.newName);
+			this.$emit('input', this.newName);
 			this.editName = false;
 		},
 	},
@@ -89,5 +97,9 @@ export default Vue.extend({
 	> * {
 		margin-left: var(--spacing-4xs);
 	}
+}
+
+.editContainer {
+	text-align: left;
 }
 </style>

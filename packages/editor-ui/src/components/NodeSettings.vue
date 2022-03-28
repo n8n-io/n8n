@@ -2,7 +2,7 @@
 	<div class="node-settings" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
-				<NodeTitle class="node-name" :name="node.name" :nodeType="nodeType" @valueChanged="valueChanged"></NodeTitle>
+				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged"></NodeTitle>
 				<div
 					v-if="!isReadOnly"
 					class="execute-node-button"
@@ -371,6 +371,13 @@ export default mixins(
 				this.updateNodeCredentialIssues(node);
 
 				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			},
+			nameChanged(name: string) {
+				// @ts-ignore
+				this.valueChanged({
+					value: name,
+					name: 'name',
+				});
 			},
 			valueChanged (parameterData: IUpdateInformation) {
 				let newValue: NodeParameterValue;
