@@ -15,26 +15,7 @@
 					/>
 				</div>
 			</div>
-			<div :class="$style.tabs">
-				<div :class="{[$style.activeTab]: openPanel === 'params'}" @click="() => handleTabClick('params')">
-					{{ $locale.baseText('nodeSettings.parameters') }}
-				</div>
-
-				<a v-if="documentationUrl" target="_blank" :href="documentationUrl" :class="$style.docsTab" @click="onDocumentationUrlClick">
-					<div>
-							{{$locale.baseText('nodeSettings.docs')}}
-							<font-awesome-icon
-								:class="$style.external"
-								icon="external-link-alt"
-								size="sm"
-							/>
-					</div>
-				</a>
-
-				<div :class="{[$style.settingsTab]: true, [$style.activeTab]: openPanel === 'settings'}" @click="() => handleTabClick('settings')">
-					<font-awesome-icon icon="cog" />
-				</div>
-			</div>
+			<NodeTabs v-model="openPanel" :nodeType="nodeType" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
 			<n8n-text>
@@ -84,6 +65,7 @@ import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
+import NodeTabs from '@/components/NodeTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
@@ -107,6 +89,7 @@ export default mixins(
 			NodeCredentials,
 			ParameterInputFull,
 			ParameterInputList,
+			NodeTabs,
 			NodeWebhooks,
 		},
 		computed: {
@@ -173,21 +156,7 @@ export default mixins(
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
-			documentationUrl (): string {
-				if (!this.nodeType) {
-					return '';
-				}
 
-				if (this.nodeType.documentationUrl && this.nodeType.documentationUrl.startsWith('http')) {
-					return this.nodeType.documentationUrl;
-				}
-
-				if (this.nodeType.documentationUrl || (this.nodeType.name && this.nodeType.name === 'n8n-nodes-base')) {
-					return 'https://docs.n8n.io/nodes/' + (this.nodeType.documentationUrl || this.nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + this.nodeType.name;
-				}
-
-				return '';
-			},
 		},
 		data () {
 			return {
@@ -361,9 +330,6 @@ export default mixins(
 						}
 					}
 				}
-			},
-			onDocumentationUrlClick () {
-				this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType, documentationUrl: this.documentationUrl });
 			},
 			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
 				// Update the values on the node
@@ -560,12 +526,6 @@ export default mixins(
 					this.nodeValid = false;
 				}
 			},
-			handleTabClick(tab: string) {
-				this.openPanel = tab;
-				if(tab === 'settings') {
-					this.$telemetry.track('User viewed node settings', { node_type: this.node ? this.node.type : '', workflow_id: this.$store.getters.workflowId });
-				}
-			},
 		},
 		mounted () {
 			this.setNodeValues();
@@ -577,50 +537,6 @@ export default mixins(
 .header {
 	background-color: var(--color-background-base);
 }
-
-.tabs {
-	color: var(--color-text-base);
-	font-weight: var(--font-weight-bold);
-	display: flex;
-	width: 100%;
-
-	> * {
-		padding: 0 var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
-		padding-bottom: var(--spacing-2xs);
-		font-size: var(--font-size-s);
-		cursor: pointer;
-		&:hover {
-			color: var(--color-primary);
-		}
-	}
-}
-
-.activeTab {
-	color: var(--color-primary);
-	border-bottom: var(--color-primary) 2px solid;
-}
-
-.settingsTab {
-	margin-left: auto;
-}
-
-.docsTab {
-	cursor: pointer;
-	color: var(--color-text-base);
-
-	&:hover {
-		color: var(--color-primary);
-
-		.external {
-			display: inline-block;
-		}
-	}
-}
-
-.external {
-	display: none;
-}
-
 </style>
 
 <style lang="scss">
