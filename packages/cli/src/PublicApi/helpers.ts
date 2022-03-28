@@ -1,4 +1,7 @@
 import * as querystring from 'querystring';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import { pick } from 'lodash';
+import { User } from '../databases/entities/User';
 
 interface IPaginationOffsetDecoded {
 	offset: number;
@@ -44,4 +47,8 @@ export const getSelectableProperties = (table: 'user' | 'role'): string[] => {
 
 export const connectionName = (): string => {
 	return 'default';
+};
+
+export const clean = (users: User[]): Array<Partial<User>> => {
+	return users.map((user) => pick(user, getSelectableProperties('user')));
 };
