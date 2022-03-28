@@ -184,7 +184,7 @@
 
 											<div class="binary-data-show-data-button-wrapper">
 												<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
-												<n8n-button v-if="isDownloadable(index, key)" size="small" icon="file-download" :title="$locale.baseText('runData.downloadBinaryData')" class="binary-data-show-data-button" @click="downloadBinaryData(index, key)" />
+												<n8n-button v-if="isDownloadable(index, key)" size="small" type="outline" :label="$locale.baseText('runData.downloadBinaryData')" class="binary-data-show-data-button" @click="downloadBinaryData(index, key)" />
 											</div>
 
 										</div>
@@ -723,10 +723,9 @@ export default mixins(
 
 					.binary-data-show-data-button-wrapper {
 						margin-top: 1.5em;
-						text-align: center;
 
 						button {
-							margin: 0 0.5em;
+							margin: 0 0.5em 0 0;
 						}
 					}
 

@@ -754,7 +754,7 @@
 		"nodeReturnedALargeAmountOfData": "Node returned a large amount of data",
 		"output": "Output",
 		"downloadBinaryData": "Download",
-		"showBinaryData": "Show Binary Data",
+		"showBinaryData": "View",
 		"startTime": "Start Time",
 		"table": "Table",
 		"theNodeContains": "The node contains {numberOfKb} KB of data.<br />Displaying it could cause problems.<br /><br />If you do decide to display it, consider avoiding the JSON view."
