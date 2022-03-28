@@ -182,7 +182,7 @@ export default mixins(
 					return this.nodeType.documentationUrl;
 				}
 
-				if (this.documentationUrl || (this.nodeType.name && this.nodeType.name === 'n8n-nodes-base')) {
+				if (this.nodeType.documentationUrl || (this.nodeType.name && this.nodeType.name === 'n8n-nodes-base')) {
 					return 'https://docs.n8n.io/nodes/' + (this.nodeType.documentationUrl || this.nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + this.nodeType.name;
 				}
 
