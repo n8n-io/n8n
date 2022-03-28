@@ -1,33 +1,33 @@
 <template>
-	<div class="sticky-wrapper" :style="stickyPosition">
-		<div class="select-sticky-background" v-show="isSelected" :style="backgroundSize" />
-		<div class="sticky-default">
-			<div 
-				:class="stickyClass"
-				:data-name="data.name"
-				:ref="data.name"
-				:style="stickyStyle"
-				@click="setNodeActive"
-				@click.left="mouseLeftClick"
-				v-touch:start="touchStart"
-				v-touch:end="touchEnd"
-			>
-				<n8n-sticky 
-					:content.sync="parameters.content"
-					:id="nodeIndex"
-					@onResizeEnd="onResizeEnd"
-					@onResizeStart="onResizeStart"
-					:class="{'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
-				/>
-			</div>
+  <div class="sticky-wrapper" :style="stickyPosition">
+    <div class="select-sticky-background" v-show="isSelected" :style="selectedStyle" />
+    <div class="sticky-default">
+      <div 
+        :class="stickyClass"
+	      :data-name="data.name"
+        :ref="data.name"
+        :style="stickyStyle"
+        @click="setNodeActive"
+        @click.left="mouseLeftClick"
+        v-touch:start="touchStart"
+        v-touch:end="touchEnd"
+      >
+        <n8n-sticky 
+          :content.sync="parameters.content"
+          :id="nodeIndex"
+          @onResizeEnd="onResizeEnd"
+          @onResizeStart="onResizeStart"
+          :class="{'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
+        />
+      </div>
 
-			<div v-show="showTooltip" :style="tootlipSize" class="sticky-options no-select-on-click">
-				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
-					<font-awesome-icon icon="trash" />
-				</div>
-			</div>
-		</div>
-	</div>
+      <div v-show="showTooltip" :style="tootlipSize" class="sticky-options no-select-on-click">
+        <div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
+          <font-awesome-icon icon="trash" />
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script lang="ts">
@@ -83,6 +83,18 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return [0, 0];
 			}
 		},
+		selectedStyle (): object {
+			const returnStyles: {
+				[key: string]: string;
+			} = {
+				height: this.stickyProp.height + 16 + 'px',
+				width: this.stickyProp.width + 16 + 'px',
+				left: this.stickyProp.left - 8 + 'px',
+				top: this.stickyProp.top - 8 + 'px',
+			};
+
+			return returnStyles;
+		},
 		stickyClass (): object {
 			return {
 				'sticky-box': true,
@@ -99,18 +111,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
-		backgroundSize (): object {
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				height: this.stickyProp.height + 16 + 'px',
-				width: this.stickyProp.width + 16 + 'px',
-				left: this.stickyProp.left - 8 + 'px',
-				top: this.stickyProp.top - 8 + 'px',
-			};
 
-			return returnStyles;
-		},
 		stickyStyle (): object {
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
 

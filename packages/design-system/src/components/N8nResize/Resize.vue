@@ -141,7 +141,6 @@ export default {
       this.$emit('onResizeEnd', true);
       window.removeEventListener('mousemove', this.mouseMove);
       window.removeEventListener('mouseup', this.mouseUp);
-      
     },
   },
   mounted() {
