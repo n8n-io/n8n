@@ -20,7 +20,7 @@
 					{{ $locale.baseText('nodeSettings.parameters') }}
 				</div>
 
-				<a target="_blank" :href="documentationUrl" :class="$style.docsTab" @click="onDocumentationUrlClick">
+				<a v-if="documentationUrl" target="_blank" :href="documentationUrl" :class="$style.docsTab" @click="onDocumentationUrlClick">
 					<div>
 							{{$locale.baseText('nodeSettings.docs')}}
 							<font-awesome-icon
@@ -182,7 +182,11 @@ export default mixins(
 					return this.nodeType.documentationUrl;
 				}
 
-				return 'https://docs.n8n.io/nodes/' + (this.nodeType.documentationUrl || this.nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + this.nodeType.name;
+				if (this.documentationUrl || (this.nodeType.name && this.nodeType.name === 'n8n-nodes-base')) {
+					return 'https://docs.n8n.io/nodes/' + (this.nodeType.documentationUrl || this.nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + this.nodeType.name;
+				}
+
+				return '';
 			},
 		},
 		data () {
