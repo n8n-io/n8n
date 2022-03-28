@@ -19,9 +19,17 @@ import config = require('../../../../../config');
 
 import * as UserManagementMailer from '../../../../UserManagement/email/UserManagementMailer';
 
-import { Db, ResponseHelper, InternalHooksManager } from '../../../..';
+import {
+	Db,
+	ResponseHelper,
+	InternalHooksManager,
+	ActiveWorkflowRunner,
+	ITelemetryUserDeletionData,
+} from '../../../..';
 import { Role } from '../../../../databases/entities/Role';
 import { getInstanceBaseUrl } from '../../../../UserManagement/UserManagementHelper';
+import { SharedWorkflow } from '../../../../databases/entities/SharedWorkflow';
+import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
 
 export = {
 	createUsers: async (req: UserRequest.Invite, res: express.Response): Promise<void> => {
@@ -156,7 +164,100 @@ export = {
 		res.json([...clean(existingUsers ?? []), ...clean(savedUsers)]);
 	},
 	deleteUser: async (req: UserRequest.Delete, res: express.Response): Promise<void> => {
-		res.json({ success: true });
+		const { identifier: idToDelete } = req.params;
+
+		const includeRole = req.query?.includeRole?.toLowerCase() === 'true' || false;
+
+		if (req.user.id === idToDelete) {
+			throw new ResponseHelper.ResponseError('Cannot delete your own user', undefined, 400);
+		}
+
+		const { transferId } = req.query;
+
+		if (transferId === idToDelete) {
+			throw new ResponseHelper.ResponseError(
+				'Request to delete a user failed because the user to delete and the transferee are the same user',
+				undefined,
+				400,
+			);
+		}
+
+		const users = await Db.collections.User?.find({
+			where: { id: In([transferId, idToDelete]) },
+			relations: includeRole ? ['globalRole'] : undefined,
+		});
+
+		if (!users?.length || (transferId && users.length !== 2)) {
+			throw new ResponseHelper.ResponseError(
+				'Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB',
+				undefined,
+				404,
+			);
+		}
+
+		const userToDelete = users.find((user) => user.id === req.params.identifier) as User;
+
+		if (transferId) {
+			const transferee = users.find((user) => user.id === transferId);
+			await Db.transaction(async (transactionManager) => {
+				await transactionManager.update(
+					SharedWorkflow,
+					{ user: userToDelete },
+					{ user: transferee },
+				);
+				await transactionManager.update(
+					SharedCredentials,
+					{ user: userToDelete },
+					{ user: transferee },
+				);
+				await transactionManager.delete(User, { id: userToDelete.id });
+			});
+
+			res.json(clean([userToDelete], true)[0]);
+		}
+
+		const [ownedSharedWorkflows = [], ownedSharedCredentials = []] = await Promise.all([
+			Db.collections.SharedWorkflow?.find({
+				relations: ['workflow'],
+				where: { user: userToDelete },
+			}),
+			Db.collections.SharedCredentials?.find({
+				relations: ['credentials'],
+				where: { user: userToDelete },
+			}),
+		]);
+
+		await Db.transaction(async (transactionManager) => {
+			const ownedWorkflows = await Promise.all(
+				ownedSharedWorkflows.map(async ({ workflow }) => {
+					if (workflow.active) {
+						const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
+						// deactivate before deleting
+						void activeWorkflowRunner.remove(workflow.id.toString());
+					}
+					return workflow;
+				}),
+			);
+			await transactionManager.remove(ownedWorkflows);
+			await transactionManager.remove(ownedSharedCredentials.map(({ credentials }) => credentials));
+			await transactionManager.delete(User, { id: userToDelete.id });
+		});
+
+		const telemetryData: ITelemetryUserDeletionData = {
+			user_id: req.user.id,
+			target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
+			target_user_id: idToDelete,
+		};
+
+		telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
+
+		if (transferId) {
+			telemetryData.migration_user_id = transferId;
+		}
+
+		void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData);
+
+		res.json(clean([userToDelete], true)[0]);
 	},
 	getUser: async (req: UserRequest.Get, res: express.Response): Promise<void> => {
 		const includeRole = req.query?.includeRole?.toLowerCase() === 'true' || false;

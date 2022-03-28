@@ -49,6 +49,8 @@ export const connectionName = (): string => {
 	return 'default';
 };
 
-export const clean = (users: User[]): Array<Partial<User>> => {
-	return users.map((user) => pick(user, getSelectableProperties('user')));
+export const clean = (users: User[], keepRole = false): Array<Partial<User>> => {
+	return users.map((user) =>
+		pick(user, getSelectableProperties('user').concat(keepRole ? ['globalRole'] : [])),
+	);
 };

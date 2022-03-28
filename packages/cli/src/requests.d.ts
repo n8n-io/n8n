@@ -197,10 +197,10 @@ export declare namespace UserRequest {
 	>;
 
 	export type Delete = AuthenticatedRequest<
-		{ id: string; email: string },
+		{ id: string; email: string; identifier: string },
 		{},
 		{},
-		{ transferId?: string }
+		{ transferId?: string; includeRole: string }
 	>;
 
 	export type Get = AuthenticatedRequest<

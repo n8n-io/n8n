@@ -173,11 +173,19 @@ paths:
       - name: transferId
         in: query
         description: ID of the user to transfer workflows and credentials to.
-        required: true
+        required: false
         style: form
         explode: true
         schema:
           type: string
+      - name: includeRole
+        in: query
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: true
       responses:
         "200":
           description: User deleted successfully
