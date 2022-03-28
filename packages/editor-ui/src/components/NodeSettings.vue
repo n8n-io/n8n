@@ -17,7 +17,7 @@
 				</div>
 			</div>
 			<div :class="$style.tabs">
-				<div :class="{[$style.paramsTab]: true, [$style.activeTab]: openPanel === 'params'}" @click="() => handleTabClick('params')">
+				<div :class="{[$style.activeTab]: openPanel === 'params'}" @click="() => handleTabClick('params')">
 					{{ $locale.baseText('nodeSettings.parameters') }}
 				</div>
 
@@ -640,11 +640,6 @@ export default mixins(
 		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
-
-		.el-tabs__header {
-			background-color: var(--color-background-base);
-			margin-bottom: 0;
-		}
 	}
 }
 
