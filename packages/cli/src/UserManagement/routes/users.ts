@@ -31,7 +31,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: UserRequest.Invite) => {
-			if (config.get('userManagement.emails.mode') === '') {
+			if (config.getEnv('userManagement.emails.mode') === '') {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because emailing was not set up',
 				);
@@ -56,14 +56,14 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			// TODO: this should be checked in the middleware rather than here
-			if (config.get('userManagement.disabled')) {
+			if (config.getEnv('userManagement.disabled')) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because user management is disabled',
 				);
 				throw new ResponseHelper.ResponseError('User management is disabled');
 			}
 
-			if (!config.get('userManagement.isInstanceOwnerSetUp')) {
+			if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 				);

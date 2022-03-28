@@ -169,7 +169,7 @@ export class Start extends Command {
 				// Make sure the settings exist
 				const userSettings = await UserSettings.prepareUserSettings();
 
-				if (!config.get('userManagement.jwtSecret')) {
+				if (!config.getEnv('userManagement.jwtSecret')) {
 					// If we don't have a JWT secret set, generate
 					// one based and save to config.
 					const encryptionKey = await UserSettings.getEncryptionKey();
@@ -222,12 +222,12 @@ export class Start extends Command {
 					config.set(setting.key, JSON.parse(setting.value));
 				});
 
-				if (config.get('executions.mode') === 'queue') {
-					const redisHost = config.get('queue.bull.redis.host');
-					const redisPassword = config.get('queue.bull.redis.password');
-					const redisPort = config.get('queue.bull.redis.port');
-					const redisDB = config.get('queue.bull.redis.db');
-					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+				if (config.getEnv('executions.mode') === 'queue') {
+					const redisHost = config.getEnv('queue.bull.redis.host');
+					const redisPassword = config.getEnv('queue.bull.redis.password');
+					const redisPort = config.getEnv('queue.bull.redis.port');
+					const redisDB = config.getEnv('queue.bull.redis.db');
+					const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 					let lastTimer = 0;
 					let cumulativeTimeout = 0;
 
@@ -354,7 +354,7 @@ export class Start extends Command {
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
-				const saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+				const saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
 
 				if (saveManualExecutions) {
 					this.log('\nManual executions will be visible only for the owner');

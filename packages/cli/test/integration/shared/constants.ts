@@ -1,13 +1,13 @@
 import config = require('../../../config');
 
-export const REST_PATH_SEGMENT = config.get('endpoints.rest') as Readonly<string>;
+export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest') as Readonly<string>;
 
 export const AUTHLESS_ENDPOINTS: Readonly<string[]> = [
 	'healthz',
 	'metrics',
-	config.get('endpoints.webhook') as string,
-	config.get('endpoints.webhookWaiting') as string,
-	config.get('endpoints.webhookTest') as string,
+	config.getEnv('endpoints.webhook') as string,
+	config.getEnv('endpoints.webhookWaiting') as string,
+	config.getEnv('endpoints.webhookTest') as string,
 ];
 
 export const SUCCESS_RESPONSE_BODY = {

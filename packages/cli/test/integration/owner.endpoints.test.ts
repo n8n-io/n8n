@@ -73,7 +73,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 	expect(storedOwner.firstName).toBe(TEST_USER.firstName);
 	expect(storedOwner.lastName).toBe(TEST_USER.lastName);
 
-	const isInstanceOwnerSetUpConfig = config.get('userManagement.isInstanceOwnerSetUp');
+	const isInstanceOwnerSetUpConfig = config.getEnv('userManagement.isInstanceOwnerSetUp');
 	expect(isInstanceOwnerSetUpConfig).toBe(true);
 
 	const isInstanceOwnerSetUpSetting = await utils.isInstanceOwnerSetUp();
@@ -98,7 +98,7 @@ test('POST /owner/skip-setup should persist skipping setup to the DB', async () 
 
 	expect(response.statusCode).toBe(200);
 
-	const skipConfig = config.get('userManagement.skipInstanceOwnerSetup');
+	const skipConfig = config.getEnv('userManagement.skipInstanceOwnerSetup');
 	expect(skipConfig).toBe(true);
 
 	const { value } = await Db.collections.Settings!.findOneOrFail({

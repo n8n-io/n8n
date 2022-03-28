@@ -30,7 +30,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			return (req.cookies?.[AUTH_COOKIE_NAME] as string | undefined) ?? null;
 		},
-		secretOrKey: config.get('userManagement.jwtSecret') as string,
+		secretOrKey: config.getEnv('userManagement.jwtSecret'),
 	};
 
 	passport.use(

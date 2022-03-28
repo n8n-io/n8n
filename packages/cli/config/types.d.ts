@@ -68,7 +68,11 @@ type ToReturnType<T extends ConfigOptionPath | ExceptionPath> = T extends Numeri
 	? string
 	: unknown;
 
-type HandleExceptionPath<T> = T extends 'binaryDataManager'
+type HandleExceptionPath<T> = T extends
+	| 'userManagement.isInstanceOwnerSetUp'
+	| 'userManagement.skipInstanceOwnerSetup'
+	? boolean
+	: T extends 'binaryDataManager'
 	? IBinaryDataConfig
 	: T extends 'queue.bull.redis'
 	? object
@@ -120,7 +124,12 @@ type RemoveExcess<T> = T extends [...infer Path, 'format' | 'default']
 //        module augmentation
 // -----------------------------------
 
-type ExceptionPath = 'queue.bull.redis' | 'binaryDataManager' | 'nodes.include';
+type ExceptionPath =
+	| 'queue.bull.redis'
+	| 'binaryDataManager'
+	| 'nodes.include'
+	| 'userManagement.isInstanceOwnerSetUp'
+	| 'userManagement.skipInstanceOwnerSetup';
 
 declare module 'convict' {
 	interface Config<T> {

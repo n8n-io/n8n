@@ -21,7 +21,7 @@ import type { CredentialPayload } from './types';
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  */
 export async function init() {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type') as DatabaseType;
 
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
@@ -72,7 +72,7 @@ export async function init() {
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate(testDbName: string) {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	if (dbType === 'sqlite') {
 		await getConnection(testDbName).close();
@@ -102,7 +102,7 @@ export async function terminate(testDbName: string) {
  * @param testDbName Name of the test DB to truncate tables in.
  */
 export async function truncate(entities: Array<keyof IDatabaseCollections>, testDbName: string) {
-	const dbType = config.get('database.type');
+	const dbType = config.getEnv('database.type');
 
 	if (dbType === 'sqlite') {
 		const testDb = getConnection(testDbName);
@@ -275,11 +275,11 @@ export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions 
  * to create and drop test Postgres databases.
  */
 export const getBootstrapPostgresOptions = () => {
-	const username = config.get('database.postgresdb.user');
-	const password = config.get('database.postgresdb.password');
-	const host = config.get('database.postgresdb.host');
-	const port = config.get('database.postgresdb.port');
-	const schema = config.get('database.postgresdb.schema');
+	const username = config.getEnv('database.postgresdb.user');
+	const password = config.getEnv('database.postgresdb.password');
+	const host = config.getEnv('database.postgresdb.host');
+	const port = config.getEnv('database.postgresdb.port');
+	const schema = config.getEnv('database.postgresdb.schema');
 
 	return {
 		name: BOOTSTRAP_POSTGRES_CONNECTION_NAME,
@@ -294,11 +294,11 @@ export const getBootstrapPostgresOptions = () => {
 };
 
 export const getPostgresOptions = ({ name }: { name: string }): ConnectionOptions => {
-	const username = config.get('database.postgresdb.user');
-	const password = config.get('database.postgresdb.password');
-	const host = config.get('database.postgresdb.host');
-	const port = config.get('database.postgresdb.port');
-	const schema = config.get('database.postgresdb.schema');
+	const username = config.getEnv('database.postgresdb.user');
+	const password = config.getEnv('database.postgresdb.password');
+	const host = config.getEnv('database.postgresdb.host');
+	const port = config.getEnv('database.postgresdb.port');
+	const schema = config.getEnv('database.postgresdb.schema');
 
 	return {
 		name,
@@ -325,10 +325,10 @@ export const getPostgresOptions = ({ name }: { name: string }): ConnectionOption
  * to create and drop test MySQL databases.
  */
 export const getBootstrapMySqlOptions = (): ConnectionOptions => {
-	const username = config.get('database.mysqldb.user');
-	const password = config.get('database.mysqldb.password');
-	const host = config.get('database.mysqldb.host');
-	const port = config.get('database.mysqldb.port');
+	const username = config.getEnv('database.mysqldb.user');
+	const password = config.getEnv('database.mysqldb.password');
+	const host = config.getEnv('database.mysqldb.host');
+	const port = config.getEnv('database.mysqldb.port');
 
 	return {
 		name: BOOTSTRAP_MYSQL_CONNECTION_NAME,
@@ -346,10 +346,10 @@ export const getBootstrapMySqlOptions = (): ConnectionOptions => {
  * one per test suite run.
  */
 export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions => {
-	const username = config.get('database.mysqldb.user');
-	const password = config.get('database.mysqldb.password');
-	const host = config.get('database.mysqldb.host');
-	const port = config.get('database.mysqldb.port');
+	const username = config.getEnv('database.mysqldb.user');
+	const password = config.getEnv('database.mysqldb.password');
+	const host = config.getEnv('database.mysqldb.host');
+	const port = config.getEnv('database.mysqldb.port');
 
 	return {
 		name,

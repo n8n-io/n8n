@@ -95,7 +95,7 @@ export async function init(
 					password: (await GenericHelpers.getConfigValue('database.postgresdb.password')) as string,
 					port: (await GenericHelpers.getConfigValue('database.postgresdb.port')) as number,
 					username: (await GenericHelpers.getConfigValue('database.postgresdb.user')) as string,
-					schema: config.get('database.postgresdb.schema'),
+					schema: config.getEnv('database.postgresdb.schema'),
 					migrations: postgresMigrations,
 					migrationsRun: true,
 					migrationsTableName: `${entityPrefix}migrations`,

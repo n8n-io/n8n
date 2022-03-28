@@ -6,7 +6,7 @@ import { getBootstrapMySqlOptions, getBootstrapPostgresOptions } from './integra
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME } from './integration/shared/constants';
 
 export default async () => {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type') as DatabaseType;
 
 	if (dbType === 'postgresdb') {
 		const bootstrapPostgres = await createConnection(getBootstrapPostgresOptions());
@@ -25,9 +25,9 @@ export default async () => {
 	}
 
 	if (dbType === 'mysqldb') {
-		const user = config.get('database.mysqldb.user');
-		const password = config.get('database.mysqldb.password');
-		const host = config.get('database.mysqldb.host');
+		const user = config.getEnv('database.mysqldb.user');
+		const password = config.getEnv('database.mysqldb.password');
+		const host = config.getEnv('database.mysqldb.host');
 
 		const bootstrapMySql = await createConnection(getBootstrapMySqlOptions());
 

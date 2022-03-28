@@ -800,7 +800,7 @@ export async function getWorkflowData(
 		const user = await getUserById(userId);
 		let relations = ['workflow', 'workflow.tags'];
 
-		if (config.get('workflowTagsDisabled')) {
+		if (config.getEnv('workflowTagsDisabled')) {
 			relations = relations.filter((relation) => relation !== 'workflow.tags');
 		}
 
