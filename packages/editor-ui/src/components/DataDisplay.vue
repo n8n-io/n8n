@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:visible="!!node"
+		:visible="!!node && !stickyNode"
 		:before-close="close"
 		:custom-class="`classic data-display-wrapper`"
 		width="85%"
@@ -88,6 +88,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
+		},
+		stickyNode(): boolean {
+			return this.$store.getters.isStickyNode;
 		},
 	},
 	watch: {

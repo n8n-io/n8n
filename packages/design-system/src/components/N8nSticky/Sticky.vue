@@ -10,10 +10,8 @@
       :minHeight="minHeight"
       :minWidth="minWidth"
       :resizer="resizer"
-      @onHeightChange="onHeightChange"
-      @onWidthChange="onWidthChange"
-      @onTopChange="onTopChange"
-      @onLeftChange="onLeftChange"
+      @onResizeEnd="onResizeEnd"
+      @onResizeStart="onResizeStart"
     >
       <template>
         <div :class="$style.wrapper">
@@ -126,23 +124,17 @@ export default {
     onChange(value: string) {
       this.$emit('change', value);
     },
-    onHeightChange(height) {
-      this.$emit('onHeightChange', height);
-    },
-    onWidthChange(width) {
-      this.$emit('onWidthChange', width);
-    },
-    onTopChange(top) {
-      this.$emit('onTopChange', top);
-    },
-    onLeftChange(left) {
-      this.$emit('onLeftChange', left);
-    },
     onFocus(value) {
       this.$emit('focus', value);
     },
     onInput(value: string) {
       this.$emit('input', value);
+    },
+    onResizeEnd(resizeEnd) {
+      this.$emit('onResizeEnd', resizeEnd);
+    },
+    onResizeStart(resizeStart) {
+      this.$emit('onResizeStart', resizeStart);
     },
   },
   mounted() {

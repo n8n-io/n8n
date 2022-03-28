@@ -106,12 +106,10 @@ export default {
       this.prevX = e.clientX;
       this.prevY = e.clientY;
      
-      this.$emit('onLeftChange', left);
-      this.$emit('onTopChange', top);
-      this.$emit('onHeightChange', rect.height);
-      this.$emit('onWidthChange', rect.width);
+      this.$emit('onResizeStart', { width: rect.width, height: rect.height, top: top, left: left});
     },
     mouseUp() {
+      this.$emit('onResizeEnd', true);
       window.removeEventListener('mousemove', this.mouseMove);
       window.removeEventListener('mouseup', this.mouseUp);
       this.isResizing = false;

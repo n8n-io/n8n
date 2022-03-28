@@ -5,10 +5,8 @@
 			<div :class="nodeClass" :style="nodeStyle"  @click="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 				<n8n-sticky 
 					:content.sync="parameters.content"
-					@onHeightChange="onHeightChange"
-          @onWidthChange="onWidthChange"
-					@onTopChange="onTopChange"
-					@onLeftChange="onLeftChange"
+					@onResizeEnd="onResizeEnd"
+					@onResizeStart="onResizeStart"
 				/>
 			</div>
 
@@ -33,6 +31,13 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+export interface Sticky {
+	height: number;
+	width: number;
+	top: number;
+	left: number;
+}
+
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
@@ -44,6 +49,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	name: 'Sticky',
 	components: {
 		NodeIcon,
+	},
+	watch: {
+		isResizing: {
+			handler(isResizing) {
+				this.$emit('onResizeChange', isResizing);
+			},
+			immediate: true,
+		},
 	},
 	computed: {
 		nodeType (): INodeTypeDescription | null {
@@ -96,6 +109,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
  	},
 	data () {
 		return {
+			isResizing: false,
 			isTouchActive: false,
 		};
 	},
@@ -119,35 +133,27 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				}, 2000);
 			}
 		},
-		onHeightChange(height: number) {
+		onResizeStart(parameters: Sticky) {
 			const stickyBackground = document.querySelector('.select-sticky-background') as HTMLElement;
 			if (stickyBackground) {
-				stickyBackground.style.height = height + 16 + 'px';
+				stickyBackground.style.height = parameters.height + 16 + 'px';	
+				stickyBackground.style.width = parameters.width + 16 + 'px';
+
+				if (parameters.top) {
+					stickyBackground.style.top = parameters.top - 8 + 'px';
+				}
+
+				if (parameters.left) {
+					stickyBackground.style.left = parameters.left - 8 + 'px';
+				}
 			}
+
+			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
+			const nodeIdName = `node-${nodeIndex}`;
+			this.instance.destroyDraggable(nodeIdName);
 		},
-		onWidthChange(width: number) {
-			const stickyBackground = document.querySelector('.select-sticky-background') as HTMLElement;
-			// const stickyTooltip = document.querySelector('.sticky-options') as HTMLElement;
-			if (stickyBackground) {
-				stickyBackground.style.width = width + 16 + 'px';
-				// stickyTooltip.style.width = width + 'px';
-			}
-		},
-		onTopChange(top: number) {
-			const stickyBackground = document.querySelector('.select-sticky-background') as HTMLElement;
-			const stickyTooltip = document.querySelector('.sticky-options') as HTMLElement;
-			if (stickyBackground) {
-				stickyBackground.style.top = top - 8 + 'px';
-				stickyTooltip.style.top = top - 25 + 'px';
-			}
-		},
-		onLeftChange(left: number) {
-			const stickyBackground = document.querySelector('.select-sticky-background') as HTMLElement;
-			// const stickyTooltip = document.querySelector('.sticky-options') as HTMLElement;
-			if (stickyBackground) {
-				stickyBackground.style.left = left - 8 + 'px';
-				// stickyTooltip.style.left = 240 + left + 'px';
-			}
+		onResizeEnd() {
+			this.__makeInstanceDraggable(this.data);
 		},
 	},
 });

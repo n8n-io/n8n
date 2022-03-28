@@ -820,6 +820,12 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
+		isStickyNode: (state, getters) : boolean | null => {
+			if (getters.activeNode) {
+				return getters.activeNode.type === 'n8n-nodes-base.note';
+			}
+			return null;
+		},
 
 		/**
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.

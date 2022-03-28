@@ -40,10 +40,11 @@
 					@removeNode="removeNode"
 					@moved="onNodeMoved"
 					@run="onNodeRun"
+					@onResizeChange="onResizeChange"
 					:id="'node-' + getNodeIndex(nodeData.name)"
 					:key="getNodeIndex(nodeData.name)"
 					:name="nodeData.name"
-					:isReadOnly="true"
+					:isReadOnly="isResizing"
 					:instance="instance"
 					:isActive="!!activeNode && activeNode.name === nodeData.name"
 					:hideActions="pullConnActive"
@@ -375,6 +376,7 @@ export default mixins(
 				pullConnActiveNodeName: null as string | null,
 				pullConnActive: false,
 				dropPrevented: false,
+				isResizing: false,
 			};
 		},
 		beforeDestroy () {
@@ -385,6 +387,9 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
+			onResizeChange(isResizing: boolean) {
+				this.isResizing = isResizing;
+			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
