@@ -15,7 +15,7 @@
 				</div>
 			</div>
 			<span :class="$style.title" slot="reference">
-				{{value}}
+				<WorkflowNameShort :name="value" :limit="40" />
 				<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" />
 			</span>
 		</el-popover>
@@ -24,8 +24,10 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import WorkflowNameShort from './WorkflowNameShort.vue';
 
 export default Vue.extend({
+	components: { WorkflowNameShort },
 	name: 'NodeTitle',
 	props: {
 		value: {
