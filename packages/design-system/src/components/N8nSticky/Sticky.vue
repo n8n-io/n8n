@@ -137,8 +137,8 @@ export default {
     onResizeEnd(resizeEnd) {
       this.$emit('onResizeEnd', resizeEnd);
     },
-    onResizeStart(resizeStart) {
-      this.$emit('onResizeStart', resizeStart);
+    onResizeStart(parameters) {
+      this.$emit('onResizeStart', parameters);
     },
   },
   mounted() {

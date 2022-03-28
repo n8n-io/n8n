@@ -1,6 +1,6 @@
 <template>
 	<div class="sticky-wrapper" :style="stickyPosition">
-		<div class="select-sticky-background" v-show="isSelected" :style="stickySize" />
+		<div class="select-sticky-background" v-show="isSelected" :style="backgroundSize" />
 		<div class="sticky-default">
 			<div 
 				:class="stickyClass"
@@ -99,7 +99,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
-		stickySize (): object {
+		backgroundSize (): object {
 			const returnStyles: {
 				[key: string]: string;
 			} = {

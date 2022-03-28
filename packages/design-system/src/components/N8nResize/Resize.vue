@@ -19,7 +19,6 @@ export default {
   data() {
     return {
       currentResizer: null,
-      isResizing: false,
       prevX: 0,
       prevY: 0,
     }
@@ -27,7 +26,6 @@ export default {
   methods: {
     resizerMove(e) {
       this.currentResizer = e.target;
-      this.isResizing = true;
 
       this.prevX = e.clientX;
       this.prevY = e.clientY;
@@ -39,80 +37,111 @@ export default {
       const rect = this.resizer.getBoundingClientRect();
 
       if (this.currentResizer.classList.contains('se')) {
-        this.resizer.style.width = rect.width - (this.prevX - e.clientX) + 'px';
-        this.resizer.style.height = rect.height - (this.prevY - e.clientY) + 'px';
+        var width = rect.width - (this.prevX - e.clientX);
+        var height = rect.height - (this.prevY - e.clientY);
+        
+        this.resizer.style.width =  width + 'px';
+        this.resizer.style.height = height + 'px';
       } else if (this.currentResizer.classList.contains('sw')) {
         if (rect.width > this.minWidth && rect.height > this.minHeight) {
-          this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
-          this.resizer.style.height = rect.height - (this.prevY - e.clientY) + 'px';
+          var width = rect.width + (this.prevX - e.clientX);
+          var height = rect.height - (this.prevY - e.clientY);
           var left = this.resizer.offsetLeft - (this.prevX - e.clientX);
+
+          this.resizer.style.width = width + 'px';
+          this.resizer.style.height = height + 'px';
           this.resizer.style.left = left + 'px';
         } else {
-          this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
-          this.resizer.style.height = rect.height - (this.prevY - e.clientY) + 'px';
+          var width = rect.width + (this.prevX - e.clientX);
+          var height = rect.height - (this.prevY - e.clientY);
+
+          this.resizer.style.width = width + 'px';
+          this.resizer.style.height = height + 'px';
         }
       } else if (this.currentResizer.classList.contains('ne')) {
         if (rect.height > this.minHeight) {
-          this.resizer.style.width = rect.width - (this.prevX - e.clientX) + 'px';
-          this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
+          var width = rect.width - (this.prevX - e.clientX);
+          var height = rect.height + (this.prevY - e.clientY);
           var top = this.resizer.offsetTop - (this.prevY - e.clientY);
+
+          this.resizer.style.width = width + 'px';
+          this.resizer.style.height = height + 'px';
           this.resizer.style.top = top + 'px';
         } else {
-          this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
-          this.resizer.style.width = rect.width - (this.prevX - e.clientX) + 'px';
+          var width = rect.width - (this.prevX - e.clientX);
+          var height = rect.height + (this.prevY - e.clientY);
+          
+          this.resizer.style.height = height + 'px';
+          this.resizer.style.width = width + 'px';
         }
       } else if (this.currentResizer.classList.contains('nw')) {
         if (rect.height > this.minHeight) { 
-          this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
-          this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
+          var width = rect.width + (this.prevX - e.clientX);
+          var height = rect.height + (this.prevY - e.clientY);
           var top = this.resizer.offsetTop - (this.prevY - e.clientY);
-          this.resizer.style.top = top + 'px';
           var left = this.resizer.offsetTop - (this.prevX - e.clientX);
+          
+          this.resizer.style.width = width + 'px';
+          this.resizer.style.height = height + 'px';
+          this.resizer.style.top = top + 'px';
           this.resizer.style.left = left + 'px';
          } else {
-          this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
-          this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
+           var width = rect.width + (this.prevX - e.clientX);
+           var height = rect.height + (this.prevY - e.clientY);
+
+           this.resizer.style.width = width + 'px';
+           this.resizer.style.height = height + 'px';
          }
       } else if (this.currentResizer.classList.contains('w')) {
         if (rect.width < this.minWidth) {
-          this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
+          var width = rect.width + (this.prevX - e.clientX);
+          this.resizer.style.width = width + 'px';
         } else {
-          this.resizer.style.width = rect.width - (this.prevX - e.clientX) + 'px';
+          var width = rect.width - (this.prevX - e.clientX);
+          this.resizer.style.width = width + 'px';
         }
       } else if (this.currentResizer.classList.contains('e')) {
         if (rect.width > this.minWidth) {
           var left = this.resizer.offsetLeft - (this.prevX - e.clientX);
+          var width = rect.width + (this.prevX - e.clientX);
+
           this.resizer.style.left = left + 'px';
-          this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
+          this.resizer.style.width = width + 'px';
         } else {
-          this.resizer.style.width = rect.width + (this.prevX - e.clientX) + 'px';
+          var width = rect.width + (this.prevX - e.clientX);
+          this.resizer.style.width = width + 'px';
         }
       } else if (this.currentResizer.classList.contains('n')) {
         if (rect.height > this.minHeight) {
-          var top = this.resizer.offsetTop - (this.prevY - e.clientY)
+          var top = this.resizer.offsetTop - (this.prevY - e.clientY);
+          var height = rect.height + (this.prevY - e.clientY);
+
           this.resizer.style.top = top + 'px';
-          this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
+          this.resizer.style.height = height + 'px';
         } else {
-          this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
+          var height = rect.height + (this.prevY - e.clientY);
+          this.resizer.style.height = height + 'px';
         }       
       } else if (this.currentResizer.classList.contains('s')) {
         if (rect.height < this.minHeight) {
-          this.resizer.style.height = rect.height + (this.prevY - e.clientY) + 'px';
+          var height = rect.height + (this.prevY - e.clientY);
+          this.resizer.style.height = height + 'px';
         } else {
-          this.resizer.style.height = rect.height - (this.prevY - e.clientY) + 'px';
+          var height = rect.height - (this.prevY - e.clientY);
+          this.resizer.style.height = height + 'px';
         }
       }
 
       this.prevX = e.clientX;
       this.prevY = e.clientY;
      
-      this.$emit('onResizeStart', { width: rect.width, height: rect.height, top: top, left: left});
+      this.$emit('onResizeStart', { width: width, height: height, top: top, left: left});
     },
     mouseUp() {
       this.$emit('onResizeEnd', true);
       window.removeEventListener('mousemove', this.mouseMove);
       window.removeEventListener('mouseup', this.mouseUp);
-      this.isResizing = false;
+      
     },
   },
   mounted() {
