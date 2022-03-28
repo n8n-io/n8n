@@ -5,6 +5,7 @@
 			<div :class="nodeClass" :style="nodeStyle"  @click="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 				<n8n-sticky 
 					:content.sync="parameters.content"
+					:id="nodeIndex"
 					@onResizeEnd="onResizeEnd"
 					@onResizeStart="onResizeStart"
 				/>

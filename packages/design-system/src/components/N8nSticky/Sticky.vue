@@ -1,6 +1,6 @@
 <template>
   <div
-    id="sticky"
+    :id="`sticky-${id}`"
     :class="[$style.sticky, isEditable ? $style.editMode : '']"
     :style="styles"
     @dblclick="changeMode"
@@ -63,6 +63,10 @@ export default {
     height: {
       type: Number,
       default: 160,
+    },
+    id: {
+      type: String,
+      default: '0',
     },
     minHeight: {
       type: Number,
@@ -138,7 +142,7 @@ export default {
     },
   },
   mounted() {
-   this.resizer = document.querySelector('#sticky');
+   this.resizer = document.querySelector(`#sticky-${this.id}`);
   },
 };
 </script>
