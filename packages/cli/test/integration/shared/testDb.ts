@@ -21,7 +21,7 @@ import type { CredentialPayload } from './types';
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  */
 export async function init() {
-	const dbType = config.getEnv('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required

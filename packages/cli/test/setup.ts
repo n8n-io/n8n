@@ -7,7 +7,7 @@ import { DatabaseType } from '../src';
 
 const exec = promisify(callbackExec);
 
-const dbType = config.getEnv('database.type') as DatabaseType;
+const dbType = config.getEnv('database.type');
 
 if (dbType === 'mysqldb') {
 	const username = config.getEnv('database.mysqldb.user');
