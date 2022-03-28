@@ -30,6 +30,7 @@ export class OnOffice implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		subtitle: '{{$parameter["operation"] + " " + $parameter["resource"]}}',
 		credentials: [
 			{
 				name: 'onOfficeApi',
