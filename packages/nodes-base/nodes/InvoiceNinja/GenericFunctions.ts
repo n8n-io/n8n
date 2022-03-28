@@ -23,6 +23,14 @@ import {
 	get,
 } from 'lodash';
 
+export const eventID: {[key: string]: string} = {
+	create_client: '1',
+	create_invoice: '2',
+	create_quote: '3',
+	create_payment: '4',
+	create_vendor: '5',
+};
+
 export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('invoiceNinjaApi');
 	if (credentials === undefined) {
@@ -63,7 +71,7 @@ export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunc
 	}
 }
 
-export async function invoiceNinjaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function invoiceNinjaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
