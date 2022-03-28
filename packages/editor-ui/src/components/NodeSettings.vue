@@ -21,16 +21,16 @@
 					{{ $locale.baseText('nodeSettings.parameters') }}
 				</div>
 
-				<div :class="$style.docsTab">
-					<a target="_blank" :class="$style.docs" :href="documentationUrl" @click="onDocumentationUrlClick">
-						{{$locale.baseText('nodeSettings.docs')}}
-						<font-awesome-icon
-							:class="$style.external"
-							icon="external-link-alt"
-							size="sm"
-						/>
-					</a>
-				</div>
+				<a target="_blank" :href="documentationUrl" :class="$style.docsTab" @click="onDocumentationUrlClick">
+					<div>
+							{{$locale.baseText('nodeSettings.docs')}}
+							<font-awesome-icon
+								:class="$style.external"
+								icon="external-link-alt"
+								size="sm"
+							/>
+					</div>
+				</a>
 
 				<div :class="{[$style.settingsTab]: true, [$style.activeTab]: openPanel === 'settings'}" @click="() => handleTabClick('settings')">
 					<font-awesome-icon icon="cog" />
@@ -594,12 +594,12 @@ export default mixins(
 	margin-left: auto;
 }
 
-.docs {
-	// todo
-	color: var(--color-text-base) !important;
+.docsTab {
+	cursor: pointer;
+	color: var(--color-text-base);
+
 	&:hover {
-		color: var(--color-primary) !important;
-		cursor: pointer;
+		color: var(--color-primary);
 
 		.external {
 			display: inline-block;
