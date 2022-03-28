@@ -1,4 +1,5 @@
 import {
+	IDataObject,
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
@@ -26,6 +27,38 @@ export const databasesOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '/api/database/',
+					},
+					output: {
+						postReceive: [
+						// @ts-ignore
+						function(
+							this: IExecuteSingleFunctions,
+							_items: INodeExecutionData[],
+							response: MetabaseDatabaseResult,
+						): INodeExecutionData[] {
+							// @ts-ignore
+							return response.body.data.map((metabaseDatabase) => {
+								return {
+									json: {
+										name: metabaseDatabase.name,
+										id: metabaseDatabase.id,
+										description: metabaseDatabase.description,
+										engine: metabaseDatabase.engine,
+										creator_id: metabaseDatabase.creator_id,
+										timezone: metabaseDatabase.timezone,
+										created_at: metabaseDatabase.created_at,
+										updated_at: metabaseDatabase.updated_at,
+										db: metabaseDatabase.details.db,
+										user: metabaseDatabase.details.user,
+										host: metabaseDatabase.details.host,
+										port: metabaseDatabase.details.port,
+										ssl: metabaseDatabase.details.ssl,
+										is_full_sync: metabaseDatabase.details.is_full_sync,
+									},
+								};
+							});
+						},
+						],
 					},
 				},
 			},
@@ -335,6 +368,16 @@ export const databasesFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'databases',
+				],
+				operation: [
+						'addNewDatasource',
+				],
+			},
+		},
 		routing: {
 			send: {
 				property: 'is_full_sync',
@@ -343,3 +386,15 @@ export const databasesFields: INodeProperties[] = [
 		},
 	},
 ];
+
+type MetabaseDatabaseResult = IN8nHttpFullResponse & {
+	body: Array<{data: Array<{id: number, name: string, description: string, details: MetabaseDatabaseDetail,timezone: string, creator_id: number,created_at: string, updated_at: string, engine: string, is_full_sync: string,  }>}>
+};
+
+type MetabaseDatabaseDetail = {
+	host?: string;
+	port?: number;
+	user?: string;
+	ssl?: boolean;
+	db?: string;
+};
