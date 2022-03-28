@@ -79,7 +79,7 @@ export default {
           var width = rect.width + (this.prevX - e.clientX);
           var height = rect.height + (this.prevY - e.clientY);
           var top = this.resizer.offsetTop - (this.prevY - e.clientY);
-          var left = this.resizer.offsetTop - (this.prevX - e.clientX);
+          var left = this.resizer.offsetLeft - (this.prevX - e.clientX);
           
           this.resizer.style.width = width + 'px';
           this.resizer.style.height = height + 'px';
