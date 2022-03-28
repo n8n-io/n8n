@@ -54,31 +54,32 @@ type StringLiteralArrayPath = CollectPathsByType<Readonly<string[]>>;
 
 type StringPath = CollectPathsByType<string>;
 
-type ConfigOptionPath = NumericPath | BooleanPath | StringPath | StringLiteralArrayPath;
+type ConfigOptionPath =
+	| NumericPath
+	| BooleanPath
+	| StringPath
+	| StringLiteralArrayPath
+	| keyof ExceptionPaths;
 
-type ToReturnType<T extends ConfigOptionPath | ExceptionPath> = T extends NumericPath
+type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 	? number
 	: T extends BooleanPath
 	? boolean
 	: T extends StringLiteralArrayPath
 	? StringLiteralMap[T]
-	: T extends ExceptionPath
-	? HandleExceptionPath<T>
+	: T extends keyof ExceptionPaths
+	? ExceptionPaths[T]
 	: T extends StringPath
 	? string
 	: unknown;
 
-type HandleExceptionPath<T> = T extends
-	| 'userManagement.isInstanceOwnerSetUp'
-	| 'userManagement.skipInstanceOwnerSetup'
-	? boolean
-	: T extends 'binaryDataManager'
-	? IBinaryDataConfig
-	: T extends 'queue.bull.redis'
-	? object
-	: T extends 'nodes.include'
-	? undefined
-	: T;
+type ExceptionPaths = {
+	'queue.bull.redis': object;
+	binaryDataManager: IBinaryDataConfig;
+	'nodes.include': undefined;
+	'userManagement.isInstanceOwnerSetUp': boolean;
+	'userManagement.skipInstanceOwnerSetup': boolean;
+};
 
 // -----------------------------------
 //        string literals map
@@ -124,15 +125,8 @@ type RemoveExcess<T> = T extends [...infer Path, 'format' | 'default']
 //        module augmentation
 // -----------------------------------
 
-type ExceptionPath =
-	| 'queue.bull.redis'
-	| 'binaryDataManager'
-	| 'nodes.include'
-	| 'userManagement.isInstanceOwnerSetUp'
-	| 'userManagement.skipInstanceOwnerSetup';
-
 declare module 'convict' {
 	interface Config<T> {
-		getEnv<Path extends ConfigOptionPath | ExceptionPath>(path: Path): ToReturnType<Path>;
+		getEnv<Path extends ConfigOptionPath>(path: Path): ToReturnType<Path>;
 	}
 }
