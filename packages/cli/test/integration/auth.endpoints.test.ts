@@ -1,4 +1,3 @@
-import { hashSync, genSaltSync } from 'bcryptjs';
 import express = require('express');
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
