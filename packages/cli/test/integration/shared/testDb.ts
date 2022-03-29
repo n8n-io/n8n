@@ -179,13 +179,13 @@ export async function saveCredential(
 }
 
 // ----------------------------------
-//          user creation
+//           users CRUD
 // ----------------------------------
 
 /**
- * Store a user in the DB, defaulting to a `member`.
+ * Store a full user in the DB, defaulting to `member`.
  */
-export async function createUser(attributes: Partial<User> = {}): Promise<User> {
+async function createFullUser(attributes: Partial<User> = {}): Promise<User> {
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	const user = {
 		email: email ?? randomEmail(),
@@ -199,14 +199,36 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 	return Db.collections.User!.save(user);
 }
 
-export async function createOwnerShell() {
-	const globalRole = await getGlobalOwnerRole();
+// TODO: De-duplicate
+export async function createFullMember(attributes: Partial<User> = {}) {
+	if (!attributes.globalRole) {
+		throw new Error('`globalRole` argument missing to create full member');
+	}
+
+	return createFullUser(attributes);
+}
+
+export async function createFullOwner(attributes: Partial<User> = {}) {
+	if (!attributes.globalRole) {
+		throw new Error('`globalRole` argument missing to create full owner');
+	}
+
+	return createFullUser(attributes);
+}
+
+export async function createMemberShell(): Promise<User> {
+	const globalRole = await getGlobalMemberRole();
+
 	return Db.collections.User!.save({ globalRole });
 }
 
-export async function createMemberShell() {
-	const globalRole = await getGlobalMemberRole();
-	return Db.collections.User!.save({ globalRole });
+export async function createOwnerShell(globalOwnerRole: Role): Promise<User> {
+	// @ts-ignore TODO
+	return Db.collections.User!.save({ globalRole: globalOwnerRole, email: null });
+}
+
+export async function getOwnerShell() {
+	return Db.collections.User!.findOneOrFail({ where: { email: null } });
 }
 
 // ----------------------------------

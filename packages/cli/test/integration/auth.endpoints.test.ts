@@ -1,44 +1,32 @@
 import express = require('express');
 import validator from 'validator';
-import { v4 as uuid } from 'uuid';
 
 import config = require('../../config');
 import * as utils from './shared/utils';
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
-import { Role } from '../../src/databases/entities/Role';
-import { randomEmail, randomValidPassword, randomName } from './shared/random';
-import { getGlobalOwnerRole } from './shared/testDb';
+import type { Role } from '../../src/databases/entities/Role';
+import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/testDb';
 
 jest.mock('../../src/telemetry');
 
-let globalOwnerRole: Role;
-
 let app: express.Application;
 let testDbName = '';
+let globalOwnerRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
-	await testDb.truncate(['User'], testDbName);
-
-	globalOwnerRole = await getGlobalOwnerRole();
+	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	utils.initTestLogger();
 	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {
-	await testDb.createUser({
-		id: uuid(),
-		email: TEST_USER.email,
-		firstName: TEST_USER.firstName,
-		lastName: TEST_USER.lastName,
-		password: TEST_USER.password,
-		globalRole: globalOwnerRole,
-	});
+	await testDb.truncate(['User'], testDbName);
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -48,20 +36,22 @@ beforeEach(async () => {
 	);
 });
 
-afterEach(async () => {
-	await testDb.truncate(['User'], testDbName);
-});
-
 afterAll(async () => {
 	await testDb.terminate(testDbName);
 });
 
 test('POST /login should log user in', async () => {
+	const ownerPassword = randomValidPassword();
+	const owner = await testDb.createFullOwner({
+		password: ownerPassword,
+		globalRole: globalOwnerRole,
+	});
+
 	const authlessAgent = utils.createAgent(app);
 
 	const response = await authlessAgent.post('/login').send({
-		email: TEST_USER.email,
-		password: TEST_USER.password,
+		email: owner.email,
+		password: ownerPassword,
 	});
 
 	expect(response.statusCode).toBe(200);
@@ -78,9 +68,9 @@ test('POST /login should log user in', async () => {
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
-	expect(email).toBe(TEST_USER.email);
-	expect(firstName).toBe(TEST_USER.firstName);
-	expect(lastName).toBe(TEST_USER.lastName);
+	expect(email).toBe(owner.email);
+	expect(firstName).toBe(owner.firstName);
+	expect(lastName).toBe(owner.lastName);
 	expect(password).toBeUndefined();
 	expect(personalizationAnswers).toBeNull();
 	expect(password).toBeUndefined();
@@ -93,8 +83,8 @@ test('POST /login should log user in', async () => {
 	expect(authToken).toBeDefined();
 });
 
-test('GET /login should receive logged in user', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+test('GET /login should receive logged-in user', async () => {
+	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.get('/login');
@@ -113,9 +103,9 @@ test('GET /login should receive logged in user', async () => {
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
-	expect(email).toBe(TEST_USER.email);
-	expect(firstName).toBe(TEST_USER.firstName);
-	expect(lastName).toBe(TEST_USER.lastName);
+	expect(email).toBe(owner.email);
+	expect(firstName).toBe(owner.firstName);
+	expect(lastName).toBe(owner.lastName);
 	expect(password).toBeUndefined();
 	expect(personalizationAnswers).toBeNull();
 	expect(password).toBeUndefined();
@@ -124,11 +114,12 @@ test('GET /login should receive logged in user', async () => {
 	expect(globalRole.name).toBe('owner');
 	expect(globalRole.scope).toBe('global');
 
-	expect(response.headers['set-cookie']).toBeUndefined();
+	const authToken = utils.getAuthToken(response);
+	expect(authToken).toBeUndefined();
 });
 
 test('POST /logout should log user out', async () => {
-	const owner = await Db.collections.User!.findOneOrFail();
+	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.post('/logout');
@@ -139,10 +130,3 @@ test('POST /logout should log user out', async () => {
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeUndefined();
 });
-
-const TEST_USER = {
-	email: randomEmail(),
-	password: randomValidPassword(),
-	firstName: randomName(),
-	lastName: randomName(),
-};
