@@ -63,11 +63,6 @@ export function getInstanceBaseUrl(): string {
 	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
 }
 
-export async function isInstanceOwnerSetup(): Promise<boolean> {
-	const users = await Db.collections.User!.find({ email: Not(IsNull()) });
-	return users.length !== 0;
-}
-
 // TODO: Enforce at model level
 export function validatePassword(password?: string): string {
 	if (!password) {

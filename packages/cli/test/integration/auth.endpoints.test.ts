@@ -8,12 +8,14 @@ import { Db } from '../../src';
 import type { Role } from '../../src/databases/entities/Role';
 import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/testDb';
+import { AUTH_COOKIE_NAME } from '../../src/constants';
 
 jest.mock('../../src/telemetry');
 
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
+let globalMemberRole: Role;
 
 beforeAll(async () => {
 	app = utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
@@ -21,6 +23,7 @@ beforeAll(async () => {
 	testDbName = initResult.testDbName;
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
+	globalMemberRole = await testDb.getGlobalMemberRole();
 	utils.initTestLogger();
 	utils.initTestTelemetry();
 });
@@ -83,7 +86,118 @@ test('POST /login should log user in', async () => {
 	expect(authToken).toBeDefined();
 });
 
-test('GET /login should receive logged-in user', async () => {
+test('GET /login should return 401 Unauthorized if no cookie', async () => {
+	const authlessAgent = utils.createAgent(app);
+
+	const response = await authlessAgent.get('/login');
+
+	expect(response.statusCode).toBe(401);
+	expect(response.headers['set-cookie']).toBeUndefined();
+});
+
+test('GET /login should return cookie if UM is disabled', async () => {
+	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+
+	config.set('userManagement.isInstanceOwnerSetUp', false);
+
+	await Db.collections.Settings!.update(
+		{ key: 'userManagement.isInstanceOwnerSetUp' },
+		{ value: JSON.stringify(false) },
+	);
+
+	const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+
+	const response = await authOwnerShellAgent.get('/login');
+
+	expect(response.statusCode).toBe(200);
+
+	const authToken = utils.getAuthToken(response);
+	expect(authToken).toBeDefined();
+});
+
+test('GET /login should return 401 Unauthorized if invalid cookie', async () => {
+	const invalidAuthAgent = utils.createAgent(app);
+	invalidAuthAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
+
+	const response = await invalidAuthAgent.get('/login');
+
+	expect(response.statusCode).toBe(401);
+
+	const authToken = utils.getAuthToken(response);
+	expect(authToken).toBeUndefined();
+});
+
+test('GET /login should return logged-in owner shell', async () => {
+	const ownerShell = await testDb.createOwnerShell(globalOwnerRole);
+	const authMemberAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+
+	const response = await authMemberAgent.get('/login');
+
+	expect(response.statusCode).toBe(200);
+
+	const {
+		id,
+		email,
+		firstName,
+		lastName,
+		password,
+		personalizationAnswers,
+		globalRole,
+		resetPasswordToken,
+	} = response.body.data;
+
+	expect(validator.isUUID(id)).toBe(true);
+	expect(email).toBeNull();
+	expect(firstName).toBeNull();
+	expect(lastName).toBeNull();
+	expect(password).toBeUndefined();
+	expect(personalizationAnswers).toBeNull();
+	expect(password).toBeUndefined();
+	expect(resetPasswordToken).toBeUndefined();
+	expect(globalRole).toBeDefined();
+	expect(globalRole.name).toBe('owner');
+	expect(globalRole.scope).toBe('global');
+
+	const authToken = utils.getAuthToken(response);
+	expect(authToken).toBeUndefined();
+});
+
+test('GET /login should return logged-in member shell', async () => {
+	const member = await testDb.createMemberShell();
+	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
+
+	const response = await authMemberAgent.get('/login');
+
+	expect(response.statusCode).toBe(200);
+
+	const {
+		id,
+		email,
+		firstName,
+		lastName,
+		password,
+		personalizationAnswers,
+		globalRole,
+		resetPasswordToken,
+	} = response.body.data;
+
+	expect(validator.isUUID(id)).toBe(true);
+	expect(email).toBeNull();
+	expect(firstName).toBeNull();
+	expect(lastName).toBeNull();
+	expect(password).toBeUndefined();
+	expect(personalizationAnswers).toBeNull();
+	expect(password).toBeUndefined();
+	expect(resetPasswordToken).toBeUndefined();
+	expect(globalRole).toBeDefined();
+	expect(globalRole.name).toBe('member');
+	expect(globalRole.scope).toBe('global');
+
+	const authToken = utils.getAuthToken(response);
+	expect(authToken).toBeUndefined();
+});
+
+test('GET /login should return logged-in owner', async () => {
 	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
@@ -112,6 +226,41 @@ test('GET /login should receive logged-in user', async () => {
 	expect(resetPasswordToken).toBeUndefined();
 	expect(globalRole).toBeDefined();
 	expect(globalRole.name).toBe('owner');
+	expect(globalRole.scope).toBe('global');
+
+	const authToken = utils.getAuthToken(response);
+	expect(authToken).toBeUndefined();
+});
+
+test('GET /login should return logged-in member', async () => {
+	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
+	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
+
+	const response = await authMemberAgent.get('/login');
+
+	expect(response.statusCode).toBe(200);
+
+	const {
+		id,
+		email,
+		firstName,
+		lastName,
+		password,
+		personalizationAnswers,
+		globalRole,
+		resetPasswordToken,
+	} = response.body.data;
+
+	expect(validator.isUUID(id)).toBe(true);
+	expect(email).toBe(member.email);
+	expect(firstName).toBe(member.firstName);
+	expect(lastName).toBe(member.lastName);
+	expect(password).toBeUndefined();
+	expect(personalizationAnswers).toBeNull();
+	expect(password).toBeUndefined();
+	expect(resetPasswordToken).toBeUndefined();
+	expect(globalRole).toBeDefined();
+	expect(globalRole.name).toBe('member');
 	expect(globalRole.scope).toBe('global');
 
 	const authToken = utils.getAuthToken(response);
