@@ -92,7 +92,7 @@ export async function catalogApiRequest(
 
 async function getAccessToken(
 	this: IHookFunctions | IExecuteFunctions,
-): Promise<any> { // tslint:disable-line:no-any
+): Promise<string> {
 
 	const credentials = await this.getCredentials('tributechOAuth2Api');
 
