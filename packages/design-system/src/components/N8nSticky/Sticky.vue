@@ -147,6 +147,7 @@ export default {
       this.$emit('focus', value);
     },
     onInput(value: string) {
+      this.tempContent = value;
       this.$emit('input', value);
     },
     onResizeEnd(resizeEnd) {

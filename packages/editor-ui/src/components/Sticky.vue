@@ -13,11 +13,14 @@
         v-touch:end="touchEnd"
       >
         <n8n-sticky 
-          :content.sync="parameters.content"
+				  :class="{'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
+          :content.sync="node.parameters.content"
+					:height.sync="node.parameters.height"
           :id="nodeIndex"
+					:width.sync="node.parameters.width"
           @onResizeEnd="onResizeEnd"
           @onResizeStart="onResizeStart"
-          :class="{'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
+					@input="onInputChange"
         />
       </div>
 
@@ -163,15 +166,21 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.$emit('removeNode', this.data.name);
 			});
 		},
-		setNodeActive () {
-			this.$store.commit('setActiveNode', this.data.name);
-		},
-		touchStart () {
-			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
-				this.isTouchActive = true;
-				setTimeout(() => {
-					this.isTouchActive = false;
-				}, 2000);
+		onInputChange(content: string) {
+			if (this.node) {
+
+				const nodeParameters = {
+					content,
+					width: this.node.parameters.width,
+					height: this.node.parameters.height,
+				};
+
+				const updateInformation = {
+					name: this.node.name,
+					value: nodeParameters,
+				};
+
+				this.$store.commit('setNodeParameters', updateInformation);
 			}
 		},
 		onResizeStart(parameters: Sticky) {
@@ -186,6 +195,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (parameters.left) {
 				this.stickyProp.left = parameters.left;
 			}
+
+			// this.setSizeParameters(this.stickyProp.height, this.stickyProp.width);
+
 			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
 			const nodeIdName = `node-${nodeIndex}`;
 			this.instance.destroyDraggable(nodeIdName);
@@ -194,10 +206,38 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			this.isResizing = false;
 			this.__makeInstanceDraggable(this.data);
 		},
+		setNodeActive () {
+			this.$store.commit('setActiveNode', this.data.name);
+		},
+		setSizeParameters(height: number, width: number) {
+			if (this.node) {
+
+				const nodeParameters = {
+					content: this.node.parameters.content,
+					height,
+					width,
+				};
+
+				const updateInformation = {
+					name: this.node.name,
+					value: nodeParameters,
+				};
+
+				this.$store.commit('setNodeParameters', updateInformation);
+			}
+		},
+		touchStart () {
+			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
+				this.isTouchActive = true;
+				setTimeout(() => {
+					this.isTouchActive = false;
+				}, 2000);
+			}
+		},
 	},
 	mounted() {
-		this.stickyProp.height = this.parameters.height;
-		this.stickyProp.width = this.parameters.width;
+		this.stickyProp.height = this.data.parameters.height as number;
+		this.stickyProp.width = this.data.parameters.width as number;
 	},
 });
 

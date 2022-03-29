@@ -48,7 +48,6 @@
 					:instance="instance"
 					:isActive="!!activeNode && activeNode.name === nodeData.name"
 					:hideActions="pullConnActive"
-					:parameters="nodeData.parameters"
 				/>
 			</div>
 		</div>
