@@ -65,10 +65,10 @@ afterAll(async () => {
 });
 
 test('GET /users should return all users', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	await testDb.createFullMember({ globalRole: globalMemberRole });
+	await testDb.createFullUser({ globalRole: globalMemberRole });
 
 	const response = await authOwnerAgent.get('/users');
 
@@ -101,10 +101,10 @@ test('GET /users should return all users', async () => {
 });
 
 test('DELETE /users/:id should delete the user', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const userToDelete = await testDb.createFullMember({ globalRole: globalMemberRole });
+	const userToDelete = await testDb.createFullUser({ globalRole: globalMemberRole });
 
 	const newWorkflow = new WorkflowEntity();
 
@@ -170,7 +170,7 @@ test('DELETE /users/:id should delete the user', async () => {
 });
 
 test('DELETE /users/:id should fail to delete self', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.delete(`/users/${owner.id}`);
@@ -182,10 +182,10 @@ test('DELETE /users/:id should fail to delete self', async () => {
 });
 
 test('DELETE /users/:id should fail if user to delete is transferee', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const { id: idToDelete } = await testDb.createFullMember({ globalRole: globalMemberRole });
+	const { id: idToDelete } = await testDb.createFullUser({ globalRole: globalMemberRole });
 
 	const response = await authOwnerAgent.delete(`/users/${idToDelete}`).query({
 		transferId: idToDelete,
@@ -198,7 +198,7 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 });
 
 test('DELETE /users/:id with transferId should perform transfer', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const userToDelete = await Db.collections.User!.save({
@@ -270,7 +270,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 });
 
 test('GET /resolve-signup-token should validate invite token', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const member = await testDb.createMemberShell();
@@ -292,10 +292,10 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 });
 
 test('GET /resolve-signup-token should fail with invalid inputs', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const { id: inviteeId } = await testDb.createFullMember({ globalRole: globalMemberRole });
+	const { id: inviteeId } = await testDb.createFullUser({ globalRole: globalMemberRole });
 
 	const first = await authOwnerAgent.get('/resolve-signup-token').query({ inviterId: owner.id });
 
@@ -325,7 +325,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 });
 
 test('POST /users/:id should fill out a user shell', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 
 	const userShell = await Db.collections.User!.save({
 		email: randomEmail(),
@@ -375,7 +375,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 });
 
 test('POST /users/:id should fail with invalid inputs', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -427,7 +427,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 });
 
 test('POST /users/:id should fail with already accepted invite', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 
 	const userShell = await Db.collections.User!.save({
 		email: randomEmail(),
@@ -460,7 +460,7 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 });
 
 test('POST /users should fail if emailing is not set up', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
@@ -469,7 +469,7 @@ test('POST /users should fail if emailing is not set up', async () => {
 });
 
 test('POST /users should fail if user management is disabled', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	config.set('userManagement.disabled', true);
@@ -480,7 +480,7 @@ test('POST /users should fail if user management is disabled', async () => {
 });
 
 test('POST /users should email invites and create user shells', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	await utils.configureSmtp();
@@ -515,7 +515,7 @@ test('POST /users should email invites and create user shells', async () => {
 });
 
 test('POST /users should fail with invalid inputs', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	await utils.configureSmtp();
@@ -538,7 +538,7 @@ test('POST /users should fail with invalid inputs', async () => {
 });
 
 test('POST /users should ignore an empty payload', async () => {
-	const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	await utils.configureSmtp();

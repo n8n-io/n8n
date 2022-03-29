@@ -182,38 +182,21 @@ export async function saveCredential(
 //           users CRUD
 // ----------------------------------
 
-/**
- * Store a full user in the DB, defaulting to `member`.
- */
-async function createFullUser(attributes: Partial<User> = {}): Promise<User> {
+export async function createFullUser(
+	attributes: Partial<User> & { globalRole: Role },
+): Promise<User> {
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
+
 	const user = {
 		email: email ?? randomEmail(),
 		password: hashSync(password ?? randomValidPassword(), genSaltSync(10)),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
-		globalRole: globalRole ?? (await getGlobalMemberRole()),
+		globalRole,
 		...rest,
 	};
 
 	return Db.collections.User!.save(user);
-}
-
-// TODO: De-duplicate
-export async function createFullMember(attributes: Partial<User> = {}) {
-	if (!attributes.globalRole) {
-		throw new Error('`globalRole` argument missing to create full member');
-	}
-
-	return createFullUser(attributes);
-}
-
-export async function createFullOwner(attributes: Partial<User> = {}) {
-	if (!attributes.globalRole) {
-		throw new Error('`globalRole` argument missing to create full owner');
-	}
-
-	return createFullUser(attributes);
 }
 
 export async function createMemberShell(): Promise<User> {

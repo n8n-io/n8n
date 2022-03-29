@@ -186,7 +186,7 @@ describe('Member', () => {
 	});
 
 	test('GET /me should return sanitized member', async () => {
-		const member = await testDb.createFullMember({ globalRole: globalMemberRole });
+		const member = await testDb.createFullUser({ globalRole: globalMemberRole });
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const response = await authMemberAgent.get('/me');
@@ -218,7 +218,7 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const member = await testDb.createFullMember({ globalRole: globalMemberRole });
+		const member = await testDb.createFullUser({ globalRole: globalMemberRole });
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
@@ -258,7 +258,7 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me should fail with invalid inputs', async () => {
-		const member = await testDb.createFullMember({ globalRole: globalMemberRole });
+		const member = await testDb.createFullUser({ globalRole: globalMemberRole });
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
@@ -274,7 +274,7 @@ describe('Member', () => {
 
 	test('PATCH /me/password should succeed with valid inputs', async () => {
 		const memberPassword = randomValidPassword();
-		const member = await testDb.createFullMember({
+		const member = await testDb.createFullUser({
 			password: memberPassword,
 			globalRole: globalMemberRole,
 		});
@@ -295,7 +295,7 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me/password should fail with invalid inputs', async () => {
-		const member = await testDb.createFullMember({ globalRole: globalMemberRole });
+		const member = await testDb.createFullUser({ globalRole: globalMemberRole });
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		for (const payload of INVALID_PASSWORD_PAYLOADS) {
@@ -314,7 +314,7 @@ describe('Member', () => {
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
-		const member = await testDb.createFullMember({ globalRole: globalMemberRole });
+		const member = await testDb.createFullUser({ globalRole: globalMemberRole });
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const validPayloads = [SURVEY, {}];
@@ -341,7 +341,7 @@ describe('Owner', () => {
 	});
 
 	test('GET /me should return sanitized owner', async () => {
-		const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+		const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 		const response = await authOwnerAgent.get('/me');
@@ -373,7 +373,7 @@ describe('Owner', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const owner = await testDb.createFullOwner({ globalRole: globalOwnerRole });
+		const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
