@@ -753,7 +753,8 @@
 		"noTextDataFound": "No text data found",
 		"nodeReturnedALargeAmountOfData": "Node returned a large amount of data",
 		"output": "Output",
-		"showBinaryData": "Show Binary Data",
+		"downloadBinaryData": "Download",
+		"showBinaryData": "View",
 		"startTime": "Start Time",
 		"table": "Table",
 		"theNodeContains": "The node contains {numberOfKb} KB of data.<br />Displaying it could cause problems.<br /><br />If you do decide to display it, consider avoiding the JSON view."
