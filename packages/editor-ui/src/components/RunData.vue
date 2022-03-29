@@ -72,9 +72,7 @@
 		</div>
 
 		<div>
-			<el-tabs v-model="outputIndex" v-if="maxOutputIndex > 0">
-				<el-tab-pane v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option"></el-tab-pane>
-			</el-tabs>
+			<n8n-tabs v-model="outputIndex" v-if="maxOutputIndex > 0" :options="branches" />
 			<n8n-text v-else-if="hasNodeRun && dataCount > 0">
 				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'node.output.item' : 'node.output.items') }}
 			</n8n-text>
@@ -340,33 +338,7 @@ export default mixins(
 				};
 			},
 			dataCount (): number {
-				if (this.node === null) {
-					return 0;
-				}
-
-				const runData: IRunData | null = this.workflowRunData;
-
-				if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-					return 0;
-				}
-
-				if (runData[this.node.name].length <= this.runIndex) {
-					return 0;
-				}
-
-				if (runData[this.node.name][this.runIndex].hasOwnProperty('error')) {
-					return 1;
-				}
-
-				if (!runData[this.node.name][this.runIndex].hasOwnProperty('data') ||
-					runData[this.node.name][this.runIndex].data === undefined
-				) {
-					return 0;
-				}
-
-				const inputData = this.getMainInputData(runData[this.node.name][this.runIndex].data!, this.outputIndex);
-
-				return inputData.length;
+				return this.getDataCount(this.outputIndex);
 			},
 			dataSizeInMB(): string {
 				return (this.dataSize / 1024 / 1000).toLocaleString();
@@ -442,8 +414,50 @@ export default mixins(
 
 				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.outputIndex);
 			},
+			branches (): {value: number, label: string }[] {
+				const branches: {value: number, label: string }[] = [];
+				for (let i = 1; i <= (this.maxOutputIndex + 1); i++) {
+					const itemsCount = this.getDataCount(i - 1);
+					const items = this.$locale.baseText(itemsCount === 1 ? 'node.output.item': 'node.output.items');
+					const outputName = this.getOutputName(i - 1);
+					branches.push({
+						label: itemsCount ? `${outputName} (${itemsCount} ${items})` : outputName,
+						value: i - 1,
+					});
+				}
+				return branches;
+			},
 		},
 		methods: {
+			getDataCount(outputIndex: number) {
+				if (this.node === null) {
+					return 0;
+				}
+
+				const runData: IRunData | null = this.workflowRunData;
+
+				if (runData === null || !runData.hasOwnProperty(this.node.name)) {
+					return 0;
+				}
+
+				if (runData[this.node.name].length <= this.runIndex) {
+					return 0;
+				}
+
+				if (runData[this.node.name][this.runIndex].hasOwnProperty('error')) {
+					return 1;
+				}
+
+				if (!runData[this.node.name][this.runIndex].hasOwnProperty('data') ||
+					runData[this.node.name][this.runIndex].data === undefined
+				) {
+					return 0;
+				}
+
+				const inputData = this.getMainInputData(runData[this.node.name][this.runIndex].data!, outputIndex);
+
+				return inputData.length;
+			},
 			openSettings() {
 				this.$emit('openSettings');
 			},
