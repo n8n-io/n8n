@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 
-import { compare, genSaltSync, hashSync } from 'bcryptjs';
+import { compare } from 'bcryptjs';
 import express = require('express');
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
@@ -9,7 +9,7 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { validatePassword, sanitizeUser } from '../UserManagementHelper';
+import { validatePassword, sanitizeUser, hashPassword } from '../UserManagementHelper';
 import type { AuthenticatedRequest, MeRequest } from '../../requests';
 import { validateEntity } from '../../GenericHelpers';
 import { User } from '../../databases/entities/User';
@@ -98,7 +98,7 @@ export function meNamespace(this: N8nApp): void {
 
 			const validPassword = validatePassword(newPassword);
 
-			req.user.password = hashSync(validPassword, genSaltSync(10));
+			req.user.password = hashPassword(validPassword);
 
 			const user = await Db.collections.User!.save(req.user);
 			Logger.info('Password updated successfully', { userId: user.id });

@@ -1,7 +1,6 @@
 import express = require('express');
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
-import { compare, genSaltSync, hashSync } from 'bcryptjs';
 
 import { Db } from '../../src';
 import config = require('../../config');
@@ -17,6 +16,7 @@ import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntit
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
+import { compareHash, hashPassword } from '../../src/UserManagement/UserManagementHelper';
 
 jest.mock('../../src/telemetry');
 
@@ -431,7 +431,7 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 
 	const userShell = await Db.collections.User!.save({
 		email: randomEmail(),
-		password: hashSync(randomValidPassword(), genSaltSync(10)), // simulate accepted invite
+		password: hashPassword(randomValidPassword()), // simulate accepted invite
 		globalRole: globalMemberRole,
 	});
 
@@ -454,7 +454,7 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 	expect(storedShellUser.firstName).toBeNull();
 	expect(storedShellUser.lastName).toBeNull();
 
-	const comparisonResult = await compare(userShell.password!, memberData.password);
+	const comparisonResult = await compareHash(userShell.password!, memberData.password);
 	expect(comparisonResult).toBe(false);
 	expect(memberData).not.toBe(storedShellUser.password);
 });

@@ -4,7 +4,7 @@
 import { Workflow } from 'n8n-workflow';
 import { In, IsNull, Not } from 'typeorm';
 import express = require('express');
-import { compare } from 'bcryptjs';
+import { compare, genSaltSync, hashSync } from 'bcryptjs';
 
 import { PublicUser } from './Interfaces';
 import { Db, ResponseHelper } from '..';
@@ -222,6 +222,9 @@ export function isAuthenticatedRequest(request: express.Request): request is Aut
 // ----------------------------------
 //            hashing
 // ----------------------------------
+
+export const hashPassword = (validPassword: string): string =>
+	hashSync(validPassword, genSaltSync(10));
 
 export async function compareHash(str: string, hash: string): Promise<boolean | undefined> {
 	try {

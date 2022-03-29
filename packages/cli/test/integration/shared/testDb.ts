@@ -6,7 +6,7 @@ import { BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME } f
 import { DatabaseType, Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
 import { randomEmail, randomName, randomString, randomValidPassword } from './random';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
-
+import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 import { entities } from '../../../src/databases/entities';
 import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
@@ -16,7 +16,6 @@ import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
 import type { CredentialPayload } from './types';
-import { genSaltSync, hashSync } from 'bcryptjs';
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
@@ -189,7 +188,7 @@ export async function createFullUser(
 
 	const user = {
 		email: email ?? randomEmail(),
-		password: hashSync(password ?? randomValidPassword(), genSaltSync(10)),
+		password: hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole,
