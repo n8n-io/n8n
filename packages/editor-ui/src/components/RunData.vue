@@ -100,7 +100,7 @@
 				/>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.tableDisplay">
+			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.dataDisplay">
 				<table :class="$style.table">
 					<tr>
 						<th :class="$style.emptyCell"></th>
@@ -113,7 +113,7 @@
 				</table>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.tableDisplay">
+			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
 				<table :class="$style.table">
 					<tr>
 						<th v-for="column in (tableData.columns || [])" :key="column">{{column}}</th>
@@ -692,6 +692,7 @@ export default mixins(
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
+	padding: var(--spacing-s);
 
 	> * {
 		max-width: 316px;
@@ -749,6 +750,7 @@ export default mixins(
 	top: 0;
 	left: 0;
 	padding-left: var(--spacing-s);
+	padding-top: var(--spacing-s);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;
@@ -756,15 +758,9 @@ export default mixins(
 	height: 100%;
 }
 
-.tableDisplay {
-	composes: dataDisplay;
-	padding-top: var(--spacing-s);
-}
-
 .jsonDisplay {
 	composes: dataDisplay;
 	background-color: var(--color-background-base);
-	padding-top: var(--spacing-s);
 }
 
 .table {
