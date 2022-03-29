@@ -159,9 +159,9 @@ export class GoogleSheets implements INodeType {
 						description: 'Update rows in a sheet',
 					},
 					{
-						name: 'Upsert',
+						name: 'Create or Update',
 						value: 'upsert',
-						description: 'Update rows in a sheet, or append rows if not exists',
+						description: 'Create a new record, or update the current one if it already exists',
 					},
 				],
 				default: 'read',
