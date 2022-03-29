@@ -2802,6 +2802,14 @@ export class Hubspot implements INodeType {
 								message: (error as JsonObject).message,
 							};
 
+							try {
+								errorDetails.objectId = this.getNodeParameter('objectId', i) as string;
+							} catch (e) { }
+
+							try {
+								errorDetails.idProperty = this.getNodeParameter('idProperty', i) as string;
+							} catch (e) { }
+
 							const cause = (error as NodeApiError).cause as Error;
 							errorDetails.response = cause.message;
 
