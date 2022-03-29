@@ -17,11 +17,11 @@
 				</div>
 			</div>
 			<span :class="$style.title" slot="reference">
-				<WorkflowNameShort :name="value" :limit="40">
+				<ShortenName :name="value" :limit="40">
 					<template v-slot="{ shortenedName }">
 						{{ shortenedName }}
 					</template>
-				</WorkflowNameShort>
+				</ShortenName>
 				<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" />
 			</span>
 		</el-popover>
@@ -30,10 +30,10 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import WorkflowNameShort from './WorkflowNameShort.vue';
+import ShortenName from './ShortenName.vue';
 
 export default Vue.extend({
-	components: { WorkflowNameShort },
+	components: { ShortenName },
 	name: 'NodeTitle',
 	props: {
 		value: {
