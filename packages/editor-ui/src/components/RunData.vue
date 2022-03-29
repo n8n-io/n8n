@@ -110,7 +110,7 @@
 			/>
 		</div>
 
-		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.dataDisplay">
+		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.tableDisplay">
 			<table :class="$style.table">
 				<tr>
 					<th :class="$style.emptyCell"></th>
@@ -123,7 +123,7 @@
 			</table>
 		</div>
 
-		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
+		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.tableDisplay">
 			<table :class="$style.table">
 				<tr>
 					<th v-for="column in (tableData.columns || [])" :key="column">{{column}}</th>
@@ -421,7 +421,7 @@ export default mixins(
 					const items = this.$locale.baseText(itemsCount === 1 ? 'node.output.item': 'node.output.items');
 					const outputName = this.getOutputName(i - 1);
 					branches.push({
-						label: itemsCount ? `${outputName} (${itemsCount} ${items})` : outputName,
+						label: itemsCount ? `${outputName} (${itemsCount} ${items})` : `${outputName}`,
 						value: i - 1,
 					});
 				}
@@ -737,13 +737,18 @@ export default mixins(
 .dataDisplay {
 	position: absolute;
 	bottom: 0;
-	top: 98px;
+	top: 88px;
 	left: 0;
 	padding-left: var(--spacing-s);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;
 	word-break: normal;
+}
+
+.tableDisplay {
+	composes: dataDisplay;
+	padding-top: var(--spacing-s);
 }
 
 .jsonDisplay {
