@@ -4,6 +4,7 @@ import { DateTime, Duration, Interval } from 'luxon';
 
 // eslint-disable-next-line import/no-cycle
 import {
+	ExpressionError,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -134,7 +135,7 @@ export class Expression {
 			const returnValue = tmpl.tmpl(parameterValue, data);
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (returnValue?.constructor.name === 'ExpressionError') {
+			if (returnValue instanceof ExpressionError) {
 				if (typeof window !== 'undefined') {
 					throw new Error(returnValue.message);
 				}
