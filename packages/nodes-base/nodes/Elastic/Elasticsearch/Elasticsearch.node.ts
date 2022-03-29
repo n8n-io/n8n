@@ -6,11 +6,11 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	INodeCredentialTestResult,
-	JsonObject
+	JsonObject,
 } from 'n8n-workflow';
 
 import {
@@ -260,14 +260,14 @@ export class Elasticsearch implements INodeType {
 					}
 
 					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
-					if (Object.keys(additionalFields).length) {
-						Object.assign(qs, omit(additionalFields, ['documentId']));
+					if (Object.keys(options).length) {
+						Object.assign(qs, omit(options, ['documentId']));
 					}
 
 					const indexId = this.getNodeParameter('indexId', i);
-					const { documentId } = additionalFields;
+					const { documentId } = options;
 
 					if (documentId) {
 						const endpoint = `/${indexId}/_doc/${documentId}`;
@@ -309,7 +309,7 @@ export class Elasticsearch implements INodeType {
 
 					const indexId = this.getNodeParameter('indexId', i);
 					const documentId = this.getNodeParameter('documentId', i);
-					const qs = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const qs = this.getNodeParameter('options', i) as IDataObject;
 
 					const endpoint = `/${indexId}/_update/${documentId}`;
 					responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body, qs);
