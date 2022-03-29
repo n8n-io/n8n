@@ -153,13 +153,13 @@
 			/>
 		</div>
 
-		<div v-else-if="displayMode === 'binary' && binaryData.length === 0">
+		<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
 			<n8n-text align="center" tag="div">{{ $locale.baseText('runData.noBinaryDataFound') }}</n8n-text>
 		</div>
 
-		<div v-else-if="displayMode === 'binary'">
+		<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
 			<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-				<div class="binary-data-row-index">
+				<div class="binary-data-row-index" v-if="binaryData.length > 1">
 					<div class="binary-data-cell-index">
 						{{index + 1}}
 					</div>
@@ -767,7 +767,6 @@ export default mixins(
 
 .binary-data-row {
 	display: inline-flex;
-	padding: 0.5em 1em;
 	font-size: var(--font-size-2xs);
 
 	.binary-data-cell {
@@ -775,7 +774,8 @@ export default mixins(
 		width: 300px;
 		overflow: hidden;
 		background-color: #fff;
-		margin-right: 1em;
+		margin-right: var(--spacing-s);
+		margin-bottom: var(--spacing-s);
 		border-radius: 3px;
 		-webkit-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
 		-moz-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
@@ -814,6 +814,7 @@ export default mixins(
 	display: block;
 	padding: 1em 1em 0.25em 1em;
 	font-size: var(--font-size-2xs);
+	margin-bottom: var(--spacing-2xs);
 
 	.binary-data-cell-index {
 		display: inline-block;
