@@ -12,6 +12,8 @@ import { randomEmail, randomValidPassword, randomName } from './shared/random';
 import { getGlobalOwnerRole } from './shared/testDb';
 import * as testDb from './shared/testDb';
 
+jest.mock('../../src/telemetry');
+
 let globalOwnerRole: Role;
 
 let app: express.Application;

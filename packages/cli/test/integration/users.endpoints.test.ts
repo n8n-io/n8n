@@ -18,6 +18,8 @@ import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 
+jest.mock('../../src/telemetry');
+
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
