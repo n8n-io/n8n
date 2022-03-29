@@ -5,9 +5,6 @@ import {
 
 export class TributechOAuth2Api implements ICredentialType {
 	name = 'tributechOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
 	displayName = 'Tributech';
 	documentationUrl = 'tributech';
 	properties: INodeProperties[] = [
