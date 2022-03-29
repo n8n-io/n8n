@@ -32,25 +32,6 @@
 					:options="buttons"
 				/>
 			</div>
-
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json' && state.path !== deselectedPlaceholder" class="select-button">
-				<el-dropdown trigger="click" @command="handleCopyClick">
-					<span class="el-dropdown-link">
-						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" />
-					</span>
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'itemPath'}">
-							{{ $locale.baseText('runData.copyItemPath') }}
-						</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">
-							{{ $locale.baseText('runData.copyParameterPath') }}
-						</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'value'}">
-							{{ $locale.baseText('runData.copyValue') }}
-						</el-dropdown-item>
-					</el-dropdown-menu>
-				</el-dropdown>
-			</div>
 		</div>
 
 		<div :class="$style.runSelector" v-if="maxRunIndex > 0" >
@@ -68,6 +49,25 @@
 		</div>
 
 		<div :class="$style.dataContainer">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json' && state.path !== deselectedPlaceholder" :class="$style.copyButton">
+				<el-dropdown trigger="click" @command="handleCopyClick">
+					<span class="el-dropdown-link">
+						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" />
+					</span>
+					<el-dropdown-menu slot="dropdown">
+						<el-dropdown-item :command="{command: 'itemPath'}">
+							{{ $locale.baseText('runData.copyItemPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">
+							{{ $locale.baseText('runData.copyParameterPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">
+							{{ $locale.baseText('runData.copyValue') }}
+						</el-dropdown-item>
+					</el-dropdown-menu>
+				</el-dropdown>
+			</div>
+
 			<div v-if="!hasNodeRun" :class="$style.center">
 				<div v-if="workflowRunning">
 					<div :class="$style.spinner"><n8n-spinner /></div>
@@ -794,6 +794,14 @@ export default mixins(
 	max-width: 200px;
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
+}
+
+.copyButton {
+	height: 30px;
+	top: 12px;
+	right: 24px;
+	position: absolute;
+	z-index: 10;
 }
 
 </style>
