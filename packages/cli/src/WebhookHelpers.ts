@@ -545,14 +545,20 @@ export async function executeWebhook(
 				if (!didSendResponse) {
 					let data: IDataObject | IDataObject[] | undefined;
 
-					if (responseData === 'firstEntryJson') {
-						// Return the JSON data of the first entry
-
-						if (returnData.data!.main[0]![0] === undefined) {
-							responseCallback(new Error('No item to return got found.'), {});
-							didSendResponse = true;
+					if (returnData.data!.main[0]![0] === undefined) {
+						data = [];
+						for (const entry of returnData.data!.main[0]!) {
+							data.push(entry.json);
 						}
 
+						responseCallback(new Error('No item to return got found.'), {});
+						didSendResponse = true;
+
+						return data;
+					}
+
+					if (responseData === 'firstEntryJson') {
+						// Return the JSON data of the first entry
 						data = returnData.data!.main[0]![0].json;
 
 						const responsePropertyName = workflow.expression.getSimpleParameterValue(
@@ -597,14 +603,9 @@ export async function executeWebhook(
 						}
 					} else if (responseData === 'firstEntryBinary') {
 						// Return the binary data of the first entry
-						data = returnData.data!.main[0]![0];
+						data = returnData.data!.main[0]![0].binary;
 
 						if (data === undefined) {
-							responseCallback(new Error('No item to return got found.'), {});
-							didSendResponse = true;
-						}
-
-						if (data.binary === undefined) {
 							responseCallback(new Error('No binary data to return got found.'), {});
 							didSendResponse = true;
 						}
@@ -622,9 +623,7 @@ export async function executeWebhook(
 							didSendResponse = true;
 						}
 
-						const binaryData = (data.binary as IBinaryKeyData)[
-							responseBinaryPropertyName as string
-						];
+						const binaryData = (data as IBinaryKeyData)[responseBinaryPropertyName as string];
 						if (binaryData === undefined && !didSendResponse) {
 							responseCallback(
 								new Error(
