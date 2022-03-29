@@ -69,115 +69,117 @@
 			</n8n-text>
 		</div>
 
-		<div v-if="!hasNodeRun" :class="$style.center">
-			<div v-if="workflowRunning">
-				<div :class="$style.spinner"><n8n-spinner /></div>
-				<n8n-text>{{ $locale.baseText('node.output.executing') }}</n8n-text>
-			</div>
-			<n8n-text v-else>{{ $locale.baseText('node.output.runNodeHint') }}</n8n-text>
-		</div>
-
-		<div v-else-if="hasNodeRun && hasRunError" :class="$style.dataDisplay">
-			<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
-		</div>
-
-		<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
-			<n8n-text :bold="true">{{ $locale.baseText('node.output.noOutputData.title') }}</n8n-text>
-			<n8n-text>
-				{{ $locale.baseText('node.output.noOutputData.message') }}
-				<a @click="openSettings">{{ $locale.baseText('node.output.noOutputData.message.settings') }}</a>
-				{{ $locale.baseText('node.output.noOutputData.message.settingsOption') }}
-			</n8n-text>
-		</div>
-
-		<div v-else-if="hasNodeRun && !showData" :class="$style.center">
-			<n8n-text :bold="true">{{ $locale.baseText('node.output.tooMuchData.title') }}</n8n-text>
-			<n8n-text align="center" tag="div"><span v-html="$locale.baseText('node.output.tooMuchData.message', { interpolate: {size: dataSizeInMB }})"></span></n8n-text>
-
-			<n8n-button
-				type="outline"
-				:label="$locale.baseText('node.output.tooMuchData.showDataAnyway')"
-				@click="showData = true"
-			/>
-		</div>
-
-		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.tableDisplay">
-			<table :class="$style.table">
-				<tr>
-					<th :class="$style.emptyCell"></th>
-				</tr>
-				<tr v-for="(row, index1) in tableData.data" :key="index1">
-					<td>
-						<n8n-text>{{ $locale.baseText('node.output.emptyOutput') }}</n8n-text>
-					</td>
-				</tr>
-			</table>
-		</div>
-
-		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.tableDisplay">
-			<table :class="$style.table">
-				<tr>
-					<th v-for="column in (tableData.columns || [])" :key="column">{{column}}</th>
-				</tr>
-				<tr v-for="(row, index1) in tableData.data" :key="index1">
-					<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
-				</tr>
-			</table>
-		</div>
-
-		<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
-			<vue-json-pretty
-				:data="jsonData"
-				:deep="10"
-				v-model="state.path"
-				:showLine="true"
-				:showLength="true"
-				selectableType="single"
-				path=""
-				:highlightSelectedNode="true"
-				:selectOnClickNode="true"
-				@click="dataItemClicked"
-				class="json-data"
-			/>
-		</div>
-
-		<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
-			<n8n-text align="center" tag="div">{{ $locale.baseText('runData.noBinaryDataFound') }}</n8n-text>
-		</div>
-
-		<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
-			<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-				<div class="binary-data-row-index" v-if="binaryData.length > 1">
-					<div class="binary-data-cell-index">
-						{{index + 1}}
-					</div>
+		<div :class="$style.dataContainer">
+			<div v-if="!hasNodeRun" :class="$style.center">
+				<div v-if="workflowRunning">
+					<div :class="$style.spinner"><n8n-spinner /></div>
+					<n8n-text>{{ $locale.baseText('node.output.executing') }}</n8n-text>
 				</div>
+				<n8n-text v-else>{{ $locale.baseText('node.output.runNodeHint') }}</n8n-text>
+			</div>
 
-				<div class="binary-data-row">
-					<div class="binary-data-cell" v-for="(binaryData, key) in binaryDataEntry" :key="index + '_' + key">
-						<div class="binary-data-information">
-							<div class="binary-data-cell-name">
-								{{key}}
-							</div>
-							<div v-if="binaryData.fileName">
-								<div class="label">{{ $locale.baseText('runData.fileName') }}: </div>
-								<div class="value">{{binaryData.fileName}}</div>
-							</div>
-							<div v-if="binaryData.directory">
-								<div class="label">{{ $locale.baseText('runData.directory') }}: </div>
-								<div class="value">{{binaryData.directory}}</div>
-							</div>
-							<div v-if="binaryData.fileExtension">
-								<div class="label">{{ $locale.baseText('runData.fileExtension') }}:</div>
-								<div class="value">{{binaryData.fileExtension}}</div>
-							</div>
-							<div v-if="binaryData.mimeType">
-								<div class="label">{{ $locale.baseText('runData.mimeType') }}: </div>
-								<div class="value">{{binaryData.mimeType}}</div>
-							</div>
+			<div v-else-if="hasNodeRun && hasRunError" :class="$style.dataDisplay">
+				<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
+			</div>
 
-							<div class="binary-data-show-data-button-wrapper">
-								<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
+				<n8n-text :bold="true">{{ $locale.baseText('node.output.noOutputData.title') }}</n8n-text>
+				<n8n-text>
+					{{ $locale.baseText('node.output.noOutputData.message') }}
+					<a @click="openSettings">{{ $locale.baseText('node.output.noOutputData.message.settings') }}</a>
+					{{ $locale.baseText('node.output.noOutputData.message.settingsOption') }}
+				</n8n-text>
+			</div>
+
+			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
+				<n8n-text :bold="true">{{ $locale.baseText('node.output.tooMuchData.title') }}</n8n-text>
+				<n8n-text align="center" tag="div"><span v-html="$locale.baseText('node.output.tooMuchData.message', { interpolate: {size: dataSizeInMB }})"></span></n8n-text>
+
+				<n8n-button
+					type="outline"
+					:label="$locale.baseText('node.output.tooMuchData.showDataAnyway')"
+					@click="showData = true"
+				/>
+			</div>
+
+			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.tableDisplay">
+				<table :class="$style.table">
+					<tr>
+						<th :class="$style.emptyCell"></th>
+					</tr>
+					<tr v-for="(row, index1) in tableData.data" :key="index1">
+						<td>
+							<n8n-text>{{ $locale.baseText('node.output.emptyOutput') }}</n8n-text>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.tableDisplay">
+				<table :class="$style.table">
+					<tr>
+						<th v-for="column in (tableData.columns || [])" :key="column">{{column}}</th>
+					</tr>
+					<tr v-for="(row, index1) in tableData.data" :key="index1">
+						<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
+					</tr>
+				</table>
+			</div>
+
+			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
+				<vue-json-pretty
+					:data="jsonData"
+					:deep="10"
+					v-model="state.path"
+					:showLine="true"
+					:showLength="true"
+					selectableType="single"
+					path=""
+					:highlightSelectedNode="true"
+					:selectOnClickNode="true"
+					@click="dataItemClicked"
+					class="json-data"
+				/>
+			</div>
+
+			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
+				<n8n-text align="center" tag="div">{{ $locale.baseText('runData.noBinaryDataFound') }}</n8n-text>
+			</div>
+
+			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
+				<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
+					<div class="binary-data-row-index" v-if="binaryData.length > 1">
+						<div class="binary-data-cell-index">
+							{{index + 1}}
+						</div>
+					</div>
+
+					<div class="binary-data-row">
+						<div class="binary-data-cell" v-for="(binaryData, key) in binaryDataEntry" :key="index + '_' + key">
+							<div class="binary-data-information">
+								<div class="binary-data-cell-name">
+									{{key}}
+								</div>
+								<div v-if="binaryData.fileName">
+									<div class="label">{{ $locale.baseText('runData.fileName') }}: </div>
+									<div class="value">{{binaryData.fileName}}</div>
+								</div>
+								<div v-if="binaryData.directory">
+									<div class="label">{{ $locale.baseText('runData.directory') }}: </div>
+									<div class="value">{{binaryData.directory}}</div>
+								</div>
+								<div v-if="binaryData.fileExtension">
+									<div class="label">{{ $locale.baseText('runData.fileExtension') }}:</div>
+									<div class="value">{{binaryData.fileExtension}}</div>
+								</div>
+								<div v-if="binaryData.mimeType">
+									<div class="label">{{ $locale.baseText('runData.mimeType') }}: </div>
+									<div class="value">{{binaryData.mimeType}}</div>
+								</div>
+
+								<div class="binary-data-show-data-button-wrapper">
+									<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+								</div>
 							</div>
 						</div>
 					</div>
@@ -724,6 +726,8 @@ export default mixins(
 	width: 100%;
 	height: 100%;
 	background-color: var(--color-background-light);
+	display: flex;
+	flex-direction: column;
 }
 
 .header {
@@ -737,16 +741,21 @@ export default mixins(
 	}
 }
 
+.dataContainer {
+	position: relative;
+	height: 100%;
+}
+
 .dataDisplay {
 	position: absolute;
-	bottom: 0;
-	top: 130px;
+	top: 0;
 	left: 0;
 	padding-left: var(--spacing-s);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;
 	word-break: normal;
+	height: 100%;
 }
 
 .tableDisplay {
