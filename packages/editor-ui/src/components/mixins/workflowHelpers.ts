@@ -88,7 +88,16 @@ export const workflowHelpers = mixins(
 						executeData.data = workflowRunData[parentNodeName][runIndex].data!;
 						if (workflowRunData[currentNode] && workflowRunData[currentNode][runIndex]) {
 							executeData.source = {
-								main: workflowRunData[currentNode][runIndex].source!,
+								[inputName]: workflowRunData[currentNode][runIndex].source!,
+							};
+						} else {
+							// The curent node did not get executed in UI yet so build data manually
+							executeData.source = {
+								[inputName]: [
+									{
+										previousNode: parentNodeName,
+									},
+								],
 							};
 						}
 					}

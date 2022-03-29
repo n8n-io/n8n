@@ -588,12 +588,12 @@ export class WorkflowDataProxy {
 										return new ExpressionError('Could not resolve, as pairedItem data is missing');
 									}
 
-									if (that.executeData?.source === undefined) {
+									if (!that.executeData?.source) {
 										// If no data could be found, try to resolve automatically
 										return new ExpressionError('Could not resolve, as source data is missing');
 									}
 
-									const sourceData: ISourceData = that.executeData?.source!.main![
+									const sourceData: ISourceData = that.executeData?.source.main![
 										pairedItem.input || 0
 									] as ISourceData;
 
