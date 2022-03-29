@@ -80,10 +80,18 @@ export default {
       type: Boolean,
       default: false,
     },
+    totalSize: {
+      type: Number,
+      default: 400,
+    },
     width: {
       type: Number,
       default: 240,
-    }
+    },
+    zIndex: {
+      type: Number,
+      default: -40,
+    },
   },
   watch: {
     content(content) {
@@ -103,6 +111,7 @@ export default {
         ...(this.width ? { width: this.width + 'px' } : { width: '100%' }),
         ...(this.minHeight ? { minHeight: this.minHeight + 'px' } : { minHeight: '100%' }),
         ...(this.minWidth ? { minWidth: this.minWidth + 'px' } : { minWidth: '100%' }),
+        // ...({ zIndex: this.zIndex}),
       };
     },
     shouldShowFooter() {
@@ -167,7 +176,6 @@ export default {
   border: 1px solid var(--color-sticky-default-border);
   border-radius: var(--border-radius-large);
   cursor: pointer;
-  z-index: 2;
 }
 
 .wrapper {
