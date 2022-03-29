@@ -48,7 +48,7 @@
 				</span>
 			</div>
 
-			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
+			<div v-if="!hasRunError" @click.stop>
 				<n8n-radio-buttons
 					v-model="displayMode"
 					:options="buttons"
