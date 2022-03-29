@@ -21,7 +21,9 @@ async function executeApiRequest(
 	uri: string,
 ) {
 	const options: OptionsWithUri = {
-		headers: {},
+		headers: {
+			Authorization: `Bearer ${await getAccessToken.call(this)}`,
+		},
 		method,
 		body,
 		qs,
@@ -38,7 +40,7 @@ async function executeApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2.call(this, 'tributechOAuth2Api', options);
+		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -86,4 +88,33 @@ export async function catalogApiRequest(
 ) {
 	const credentials = await this.getCredentials('tributechOAuth2Api');
 	return executeApiRequest.call(this, method, endpoint, body, qs, credentials?.catalogApiEndpoint as string);
+}
+
+async function getAccessToken(
+	this: IHookFunctions | IExecuteFunctions,
+): Promise<string> {
+
+	const credentials = await this.getCredentials('tributechOAuth2Api');
+
+	const options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		method: 'POST',
+		form: {
+			client_id: credentials?.clientId as string,
+			client_secret: credentials?.clientSecret as string,
+			grant_type: 'client_credentials',
+			scope: credentials?.scope as string,
+		},
+		uri: credentials?.accessTokenUrl as string,
+		json: true,
+	};
+
+	try {
+		const { access_token } = await this.helpers.request!(options);
+		return access_token;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
 }
