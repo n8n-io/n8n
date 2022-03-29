@@ -1,7 +1,6 @@
 <template>
 	<span :title="name">
-		<slot v-if="hasDefaultSlot" :shortenedName="shortenedName"></slot>
-		{{ shortenedName }}
+		<slot :shortenedName="shortenedName"></slot>
 	</span>
 </template>
 
@@ -12,12 +11,9 @@ const DEFAULT_WORKFLOW_NAME_LIMIT = 25;
 const WORKFLOW_NAME_END_COUNT_TO_KEEP = 4;
 
 export default Vue.extend({
-	name: "WorkflowNameShort",
+	name: "ShortenName",
 	props: ["name", "limit"],
 	computed: {
-		hasDefaultSlot(): boolean {
-			return !!this.$slots.default;
-		},
 		shortenedName(): string {
 			const name = this.$props.name;
 
