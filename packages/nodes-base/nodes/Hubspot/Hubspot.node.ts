@@ -1018,6 +1018,9 @@ export class Hubspot implements INodeType {
 		// const customObjectSchema = customObjectType && await hubspotApiRequest.call(this, 'GET', `/crm/v3/schemas/${customObjectType}`, {});
 
 		if (resource === 'customObject' && operation.includes('batch')) {
+			if (!this.continueOnFail()) {
+				throw new Error('Batch operations only work with continue on fail set to true.');
+			}
 			const batches = Math.ceil(length / 100);
 			const resultsPromises = [...new Array(batches)].map(async (_, batchNumber) => {
 				const batchStart = batchNumber * 100;
@@ -1034,8 +1037,27 @@ export class Hubspot implements INodeType {
 						inputs: ([...new Array(batchSize)]).map((_, index) => ({ id: this.getNodeParameter('objectId', index + batchStart) as string })),
 					};
 					const endpoint = `/crm/v3/objects/${customObjectType}/batch/read`;
-					responseData = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
-					return responseData.results;
+					const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
+
+					const results = response.results;
+
+					const missingObjectsError = response.errors?.filter((error: { category: string }) => error.category === 'OBJECT_NOT_FOUND')[0];
+					if (missingObjectsError) {
+						missingObjectsError.context.ids.forEach((objectId: string) => {
+							results.push({
+								error: missingObjectsError.message,
+								errorDetails: {
+									idProperty: idProperty || undefined,
+									objectId,
+									message: missingObjectsError.message,
+									errorCode: '404',
+									timestamp: new Date(response.completedAt).getTime(),
+								},
+							});
+						});
+					}
+
+					return results;
 				}
 				return [];
 			});
@@ -1043,6 +1065,47 @@ export class Hubspot implements INodeType {
 			const results = await Promise.all(resultsPromises);
 			return [this.helpers.returnJsonArray(results.flat())];
 		}
+		// else if (resource === 'customObject' && operation === 'upsert') {
+		// 	const batchInputs = [];
+		// 	const idProperty = this.getNodeParameter('idProperty', 0) as string;
+		// 	let idMap: Record<string, string> = {};
+		// 	if (idProperty) {
+		// 		const requestBody = {
+		// 			idProperty,
+		// 			inputs: ([...new Array(length)]).map((_, index) => ({ id: this.getNodeParameter('objectId', index) as string })),
+		// 		};
+		// 		const endpoint = `/crm/v3/objects/${customObjectType}/batch/read`;
+		// 		console.log("request", requestBody);
+		// 		responseData = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
+		// 		console.log("Response", responseData);
+		// 		return [this.helpers.returnJsonArray(responseData.results)]
+		// 	}
+		// 	// for (let i = 0; i < length; i++) {
+		// 	// 	const idProperty = this.getNodeParameter('idProperty', i) as string;
+		// 	// 	const objectId = this.getNodeParameter('objectId', i) as string;
+		// 	// 	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+		// 	// 	const properties: Record<string, unknown> = {};
+		// 	// 	if (additionalFields.customPropertiesUi) {
+		// 	// 		const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+
+		// 	// 		if (customProperties) {
+		// 	// 			for (const customProperty of customProperties) {
+		// 	// 				properties[customProperty.property as string] = customProperty.value;
+		// 	// 			}
+		// 	// 		}
+		// 	// 	}
+
+		// 	// 	batchInputs.push({
+		// 	// 		id: objectId,
+		// 	// 	})
+		// 	// }
+
+
+
+		// 	// const endpoint = `/crm/v3/objects/${customObjectType}/${objectId}`;
+		// 	// responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, { properties }, idProperty ? { idProperty } : {});
+		// }
 		//https://legacydocs.hubspot.com/docs/methods/lists/contact-lists-overview
 		else if (resource === 'contactList') {
 			try {
