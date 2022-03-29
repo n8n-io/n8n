@@ -16,17 +16,15 @@
 					<font-awesome-icon icon="info-circle" :class="$style.infoIcon" />
 				</n8n-tooltip>
 			</div>
-			<div>
-				<!-- <div v-else class="title-text">
-					<n8n-text :bold="true">{{ $locale.baseText('runData.items') }}:</n8n-text>
-					<span class="opts">
-						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
-							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
-						</n8n-select>
-					</span>/
-					<n8n-text :bold="true">{{ dataCount }}</n8n-text>
-				</div> -->
-			</div>
+			<!-- <div v-else class="title-text">
+				<n8n-text :bold="true">{{ $locale.baseText('runData.items') }}:</n8n-text>
+				<span class="opts">
+					<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
+						<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
+					</n8n-select>
+				</span>/
+				<n8n-text :bold="true">{{ dataCount }}</n8n-text>
+			</div> -->
 
 			<div v-if="!hasRunError" @click.stop>
 				<n8n-radio-buttons
@@ -797,7 +795,7 @@ export default mixins(
 }
 
 .runSelector {
-	display: inline-block;
+	max-width: 100px;
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
 }
