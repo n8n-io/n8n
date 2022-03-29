@@ -763,6 +763,7 @@ export default mixins(
 }
 </style>
 
+
 <style lang="scss">
 
 .binary-data-row {
@@ -830,4 +831,175 @@ export default mixins(
 	}
 }
 
+</style>
+
+
+<style lang="scss">
+.vjs-checkbox {
+	position: absolute;
+	left: -30px;
+	color: #1f2d3d;
+	user-select: none;
+}
+
+.vjs-checkbox.is-checked .vjs-checkbox__inner {
+	background-color: #1890ff;
+	border-color: #0076e4
+}
+
+.vjs-checkbox.is-checked .vjs-checkbox__inner:after {
+	transform: rotate(45deg) scaleY(1)
+}
+
+.vjs-checkbox .vjs-checkbox__inner {
+	display: inline-block;
+	position: relative;
+	border: 1px solid #bfcbd9;
+	border-radius: 2px;
+	vertical-align: middle;
+	box-sizing: border-box;
+	width: 16px;
+	height: 16px;
+	background-color: #fff;
+	z-index: 1;
+	cursor: pointer;
+	transition: border-color .25s cubic-bezier(.71, -.46, .29, 1.46), background-color .25s cubic-bezier(.71, -.46, .29, 1.46)
+}
+
+.vjs-checkbox .vjs-checkbox__inner:after {
+	box-sizing: content-box;
+	content: "";
+	border: 2px solid #fff;
+	border-left: 0;
+	border-top: 0;
+	height: 8px;
+	left: 4px;
+	position: absolute;
+	top: 1px;
+	transform: rotate(45deg) scaleY(0);
+	width: 4px;
+	transition: transform .15s cubic-bezier(.71, -.46, .88, .6) .05s;
+	transform-origin: center
+}
+
+.vjs-checkbox .vjs-checkbox__original {
+	opacity: 0;
+	outline: none;
+	position: absolute;
+	z-index: -1;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	margin: 0
+}
+
+.vjs-radio {
+	position: absolute;
+	left: -30px;
+	color: #1f2d3d;
+	user-select: none
+}
+
+.vjs-radio.is-checked .vjs-radio__inner {
+	background-color: #1890ff;
+	border-color: #0076e4
+}
+
+.vjs-radio.is-checked .vjs-radio__inner:after {
+	transform: translate(-50%, -50%) scale(1)
+}
+
+.vjs-radio .vjs-radio__inner {
+	border: 1px solid #bfcbd9;
+	border-radius: 100%;
+	width: 16px;
+	height: 16px;
+	vertical-align: middle;
+	background-color: #fff;
+	position: relative;
+	cursor: pointer;
+	display: inline-block;
+	box-sizing: border-box
+}
+
+.vjs-radio .vjs-radio__inner:after {
+	width: 4px;
+	height: 4px;
+	border-radius: 100%;
+	background-color: #fff;
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%) scale(0);
+	transition: transform .15s ease-in
+}
+
+.vjs-radio .vjs-radio__original {
+	opacity: 0;
+	outline: none;
+	position: absolute;
+	z-index: -1;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	margin: 0
+}
+
+.vjs-tree {
+	font-family: Monaco, Menlo, Consolas, Bitstream Vera Sans Mono, monospace;
+	font-size: 14px;
+	color: #5045A1;
+}
+
+.vjs-tree.is-root {
+	position: relative;
+}
+
+.vjs-tree.is-root.has-selectable-control {
+	margin-left: 30px;
+}
+
+.vjs-tree.is-mouseover {
+	background-color: #e6f7ff;
+}
+
+.vjs-tree.is-highlight-selected {
+	background-color: #EBEDF3;
+}
+
+.vjs-tree .vjs-tree__content {
+	padding-left: 1em;
+}
+
+.vjs-tree .vjs-tree__content.has-line {
+	border-left: 1px dotted #bfcbd9;
+}
+
+.vjs-tree .vjs-tree__brackets {
+	cursor: pointer;
+}
+
+.vjs-tree .vjs-tree__brackets:hover {
+	color: #1890ff;
+}
+
+.vjs-tree .vjs-comment {
+	color: #bfcbd9;
+}
+
+.vjs-tree .vjs-value__null {
+	color: #F45959;
+}
+
+.vjs-tree .vjs-value__boolean,
+.vjs-tree .vjs-value__number {
+	color: #1d8ce0;
+}
+
+.vjs-tree .vjs-value__string {
+	color: #5045A1;
+}
 </style>
