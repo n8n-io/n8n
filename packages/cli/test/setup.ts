@@ -3,7 +3,6 @@ import { promisify } from 'util';
 
 import config = require('../config');
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME } from './integration/shared/constants';
-import { DatabaseType } from '../src';
 
 const exec = promisify(callbackExec);
 
