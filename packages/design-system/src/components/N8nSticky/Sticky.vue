@@ -111,7 +111,6 @@ export default {
         ...(this.width ? { width: this.width + 'px' } : { width: '100%' }),
         ...(this.minHeight ? { minHeight: this.minHeight + 'px' } : { minHeight: '100%' }),
         ...(this.minWidth ? { minWidth: this.minWidth + 'px' } : { minWidth: '100%' }),
-        // ...({ zIndex: this.zIndex}),
       };
     },
     shouldShowFooter() {

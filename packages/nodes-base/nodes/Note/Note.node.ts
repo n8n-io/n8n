@@ -41,12 +41,28 @@ export class Note implements INodeType {
 				description: 'Height',
 			},
 			{
+				displayName: 'Total Size',
+				name: 'totalSize',
+				type: 'number',
+				required: true,
+				default: 400,
+				description: 'Total Size',
+			},
+			{
 				displayName: 'Width',
 				name: 'width',
 				type: 'number',
 				required: true,
 				default: 240,
 				description: 'Width',
+			},
+			{
+				displayName: 'Z-Index',
+				name: 'zIndex',
+				type: 'number',
+				required: true,
+				default: -40,
+				description: 'Z-Index',
 			},
 		],
 	};

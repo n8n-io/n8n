@@ -18,6 +18,7 @@
 					:height.sync="node.parameters.height"
           :id="nodeIndex"
 					:width.sync="node.parameters.width"
+					:zIndex.sync="node.parameters.zIndex"
           @onResizeEnd="onResizeEnd"
           @onResizeStart="onResizeStart"
 					@input="onInputChange"
@@ -54,6 +55,7 @@ export interface Sticky {
 	width: number;
 	top: number;
 	left: number;
+	zIndex: number;
 }
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
@@ -88,12 +90,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		selectedStyle (): object {
 			const returnStyles: {
-				[key: string]: string;
+				[key: string]: string | number;
 			} = {
 				height: this.stickyProp.height + 16 + 'px',
 				width: this.stickyProp.width + 16 + 'px',
 				left: this.stickyProp.left - 8 + 'px',
 				top: this.stickyProp.top - 8 + 'px',
+				zIndex: this.stickyProp.zIndex,
 			};
 
 			return returnStyles;
@@ -106,10 +109,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		stickyPosition (): object {
 			const returnStyles: {
-				[key: string]: string;
+				[key: string]: string | number;
 			} = {
 				left: this.position[0] + 'px',
 				top: this.position[1] + 'px',
+				zIndex: this.stickyProp.zIndex,
 			};
 
 			return returnStyles;
@@ -154,6 +158,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				width: 0,
 				top: 0,
 				left: 0,
+				zIndex: 0,
 			},
 		};
 	},
@@ -173,6 +178,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					content,
 					width: this.node.parameters.width,
 					height: this.node.parameters.height,
+					totalSize: this.stickyProp.height + this.stickyProp.width,
+					zIndex: (this.stickyProp.height + this.stickyProp.width) * -1,
 				};
 
 				const updateInformation = {
@@ -187,6 +194,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			this.isResizing = true;
 			this.stickyProp.height = parameters.height;
 			this.stickyProp.width = parameters.width;
+			this.stickyProp.zIndex = (parameters.height + parameters.width) * -1;
 			
 			if(parameters.top) {
 				this.stickyProp.top = parameters.top;
@@ -195,7 +203,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (parameters.left) {
 				this.stickyProp.left = parameters.left;
 			}
-
+	
 			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
 			const nodeIdName = `node-${nodeIndex}`;
 			this.instance.destroyDraggable(nodeIdName);
@@ -215,6 +223,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					content: this.node.parameters.content,
 					height,
 					width,
+					totalSize: height + width,
+					zIndex: (height + width) * -1,
 				};
 
 				const updateInformation = {
@@ -237,6 +247,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	mounted() {
 		this.stickyProp.height = this.data.parameters.height as number;
 		this.stickyProp.width = this.data.parameters.width as number;
+		this.stickyProp.zIndex = this.data.parameters.zIndex as number;
 	},
 });
 
@@ -245,7 +256,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 <style lang="scss" scoped>
 .sticky-wrapper {
 	position: absolute;
-	z-index: 8;
 
 	.sticky-default {
 		position: absolute;
@@ -306,6 +316,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 60%);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
-	z-index: 2;
+	z-index: -1000;
 }
 </style>
