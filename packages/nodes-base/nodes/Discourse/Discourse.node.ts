@@ -3,8 +3,11 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -45,6 +48,7 @@ import {
 	userGroupFields,
 	userGroupOperations,
 } from './UserGroupDescription';
+import { OptionsWithUri } from 'request';
 
 //import * as moment from 'moment';
 
@@ -66,6 +70,7 @@ export class Discourse implements INodeType {
 			{
 				name: 'discourseApi',
 				required: true,
+				testedBy: 'discourseApiTest',
 			},
 		],
 		properties: [
@@ -118,6 +123,35 @@ export class Discourse implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async discourseApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data;
+
+				const options: OptionsWithUri = {
+					headers: {
+						'Api-Key': credentials!.apiKey,
+						'Api-Username': credentials!.username,
+					},
+					method: 'GET',
+					uri: `${credentials!.url}/admin/groups.json`,
+					json: true,
+				};
+
+				try {
+					await this.helpers.request!(options);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid: ${(error as JsonObject).message}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
+
 		loadOptions: {
 			// Get all the calendars to display them to user so that he can
 			// select them easily
