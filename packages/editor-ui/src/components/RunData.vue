@@ -75,6 +75,12 @@
 			</div>
 		</div>
 
+		<div>
+			<n8n-text v-if="hasNodeRun && dataCount > 0">
+				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'node.output.item' : 'node.output.items') }}
+			</n8n-text>
+		</div>
+
 		<div v-if="!hasNodeRun" :class="$style.center">
 			<div v-if="workflowRunning">
 				<div :class="$style.spinner"><n8n-spinner /></div>
@@ -112,10 +118,6 @@
 		</div>
 
 		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
-			<n8n-text tag="div">
-				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'node.output.item' : 'node.output.items') }}
-			</n8n-text>
-
 			<table :class="$style.table">
 				<tr>
 					<th v-for="column in (tableData.columns || [])" :key="column">{{column}}</th>
@@ -126,7 +128,7 @@
 			</table>
 		</div>
 
-		<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.dataDisplay">
+		<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
 			<vue-json-pretty
 				:data="jsonData"
 				:deep="10"
@@ -703,6 +705,7 @@ export default mixins(
 .header {
 	display: flex;
 	align-items: center;
+	margin-bottom: var(--spacing-s);
 
 	> *:first-child {
 		flex-grow: 1;
@@ -712,16 +715,19 @@ export default mixins(
 .dataDisplay {
 	position: absolute;
 	bottom: 0;
-	top: 60px;
-	left: 16px;
+	top: 98px;
+	left: 0;
+	padding-left: var(--spacing-s);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;
 	word-break: normal;
+}
 
-	> * {
-		margin-bottom: var(--spacing-s);
-	}
+.jsonDisplay {
+	composes: dataDisplay;
+	background-color: var(--color-background-base);
+	padding-top: var(--spacing-s);
 }
 
 .table {
