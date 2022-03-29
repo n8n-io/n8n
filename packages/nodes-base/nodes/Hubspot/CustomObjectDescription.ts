@@ -41,6 +41,11 @@ export const customObjectOperations: INodeProperties[] = [
 				value: 'update',
 				description: '(Partially) Update a custom Object',
 			},
+			{
+				name: 'Batched get',
+				value: 'batchGet',
+				description: 'Like get, but this has fewer options and is only one request per 100 objects',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -366,6 +371,75 @@ export const customObjectFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: `Whether to return only results that have been archived.`,
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                          customObject:batchGet                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'ID property',
+		name: 'idProperty',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCustomObjectIdProperties',
+		},
+		required: false,
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['batchGet'],
+			},
+		},
+		default: '',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true.',
+	},
+	{
+		displayName: 'Object ID',
+		name: 'objectId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['batchGet'],
+			},
+		},
+		default: '',
+		description: 'The value of the idProperty of the object. If idProperty is not set, this defaults to the hubspot object id.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['customObject'],
+				operation: ['batchGet'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Properties',
+				name: 'properties',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getCustomObjectProperties',
+				},
+				default: '',
+				description: `A list of the properties to be returned in the response. `,
+			},
+			{
+				displayName: 'Properties with history',
+				name: 'propertiesWithHistory',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getCustomObjectProperties',
+				},
+				default: '',
+				description: `A list of the properties to be returned along with their history of previous values.`,
 			},
 		],
 	},
