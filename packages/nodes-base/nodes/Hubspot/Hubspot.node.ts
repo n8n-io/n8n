@@ -23,6 +23,7 @@ import {
 	getAssociations,
 	getCallMetadata,
 	getEmailMetadata,
+	getErrorsFromBatchResponse,
 	getMeetingMetadata,
 	getTaskMetadata,
 	hubspotApiRequest,
@@ -1017,7 +1018,7 @@ export class Hubspot implements INodeType {
 		const customObjectType = resource === 'customObject' ? this.getNodeParameter('customObjectType', 0) as string : undefined;
 		// const customObjectSchema = customObjectType && await hubspotApiRequest.call(this, 'GET', `/crm/v3/schemas/${customObjectType}`, {});
 
-		if (resource === 'customObject' && operation.includes('batch')) {
+		if (resource === 'customObject' && (operation.includes('batch') || operation === 'delete')) {
 			if (!this.continueOnFail()) {
 				throw new Error('Batch operations only work with continue on fail set to true.');
 			}
@@ -1026,6 +1027,10 @@ export class Hubspot implements INodeType {
 				const batchStart = batchNumber * 100;
 				const batchSize = Math.min(length - batchStart, 100);
 				const batchEnd = batchStart + batchSize;
+
+
+
+
 				if (operation === 'batchGet') {
 					const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 					const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
@@ -1041,23 +1046,49 @@ export class Hubspot implements INodeType {
 
 					const results = response.results;
 
-					const missingObjectsError = response.errors?.filter((error: { category: string }) => error.category === 'OBJECT_NOT_FOUND')[0];
-					if (missingObjectsError) {
-						missingObjectsError.context.ids.forEach((objectId: string) => {
-							results.push({
-								error: missingObjectsError.message,
-								errorDetails: {
-									idProperty: idProperty || undefined,
-									objectId,
-									message: missingObjectsError.message,
-									errorCode: '404',
-									timestamp: new Date(response.completedAt).getTime(),
-								},
-							});
+					results.push(...getErrorsFromBatchResponse(response));
+
+					return results;
+				}
+				if (operation === 'batchDelete') {
+					const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
+					const errors: Array<{ error: string, errorDetails: unknown }> = [];
+
+					// Resolve object ids, if a custom idPorperty is used
+					const idMap: Record<string, string | undefined> = {};
+					if (idProperty) {
+						const requestBody = {
+							idProperty,
+							inputs: ([...new Array(batchSize)]).map((_, index) => ({ id: this.getNodeParameter('objectId', index + batchStart) as string })),
+						};
+						const endpoint = `/crm/v3/objects/${customObjectType}/batch/read`;
+						const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
+						response.results.forEach((result: { id: string, properties: Record<string, string> }) => {
+							idMap[result.properties[idProperty]] = result.id;
+						});
+					} else {
+						([...new Array(batchSize)]).forEach((_, index) => {
+							const id = this.getNodeParameter('objectId', index + batchStart) as string;
+							idMap[id] = id;
 						});
 					}
 
-					return results;
+					const idsToDelete = [...new Array(batchSize)].map((_, index) =>
+						idMap[this.getNodeParameter('objectId', index + batchStart) as string],
+					).filter(id => id !== undefined) as string[];
+
+					const requestBody = {
+						inputs: idsToDelete.map(id => ({
+							id,
+						})),
+					};
+					const endpoint = `/crm/v3/objects/${customObjectType}/batch/archive`;
+					const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
+					errors.push(...(response ? getErrorsFromBatchResponse(response) : []));
+
+					const results = response?.results || [];
+
+					return [...results, ...errors];
 				}
 				return [];
 			});
