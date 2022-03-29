@@ -118,7 +118,7 @@
 				<tr>
 					<th :class="$style.emptyCell"></th>
 				</tr>
-				<tr>
+				<tr v-for="(row, index1) in tableData.data" :key="index1">
 					<td>
 						<n8n-text>{{ $locale.baseText('node.output.emptyOutput') }}</n8n-text>
 					</td>
