@@ -62,7 +62,7 @@ export class User {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column({ length: 254 })
+	@Column({ length: 254, nullable: true })
 	@Index({ unique: true })
 	@IsEmail()
 	email: string;

@@ -205,8 +205,7 @@ export async function createMemberShell(): Promise<User> {
 }
 
 export async function createOwnerShell(globalOwnerRole: Role): Promise<User> {
-	// @ts-ignore TODO
-	return Db.collections.User!.save({ globalRole: globalOwnerRole, email: null });
+	return Db.collections.User!.save({ globalRole: globalOwnerRole });
 }
 
 export async function getOwnerShell() {
