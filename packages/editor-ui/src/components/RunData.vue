@@ -30,22 +30,18 @@
 				<!-- <n8n-text :bold="true" v-if="maxOutputIndex > 0">
 					| {{ $locale.baseText('runData.output') }}:
 				</n8n-text> -->
-				<!-- <span class="opts" v-if="maxOutputIndex > 0" >
-					<n8n-select size="mini" v-model="outputIndex" @click.stop>
-						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
-						</n8n-option>
-					</n8n-select>
-				</span> -->
 
 				<!-- <n8n-text :bold="true" v-if="maxRunIndex > 0">
 					| {{ $locale.baseText('runData.dataOfExecution') }}:
 				</n8n-text> -->
-				<span class="opts">
+
+
+				<!-- <span class="opts">
 					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
 						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
 						</n8n-option>
 					</n8n-select>
-				</span>
+				</span> -->
 			</div>
 
 			<div v-if="!hasRunError" @click.stop>
@@ -76,7 +72,10 @@
 		</div>
 
 		<div>
-			<n8n-text v-if="hasNodeRun && dataCount > 0">
+			<el-tabs v-model="outputIndex" v-if="maxOutputIndex > 0">
+				<el-tab-pane v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option"></el-tab-pane>
+			</el-tabs>
+			<n8n-text v-else-if="hasNodeRun && dataCount > 0">
 				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'node.output.item' : 'node.output.items') }}
 			</n8n-text>
 		</div>

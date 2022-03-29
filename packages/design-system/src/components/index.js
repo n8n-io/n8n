@@ -58,6 +58,7 @@ import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
 import N8nSquareButton from './N8nSquareButton';
 import N8nTags from './N8nTags';
+import N8nTabs from './N8nTabs';
 import N8nTag from './N8nTag';
 import N8nText from './N8nText';
 import N8nTooltip from './N8nTooltip';
@@ -92,6 +93,7 @@ export {
 	N8nSelect,
 	N8nSpinner,
 	N8nSquareButton,
+	N8nTabs,
 	N8nTags,
 	N8nTag,
 	N8nText,

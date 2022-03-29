@@ -64,6 +64,7 @@ import {
 	N8nRadioButtons,
 	N8nSelect,
 	N8nSpinner,
+	N8nTabs,
 	N8nFormInputs,
 	N8nFormBox,
 	N8nSquareButton,
@@ -101,6 +102,7 @@ Vue.use(N8nSpinner);
 Vue.use(N8nRadioButtons);
 Vue.component('n8n-square-button', N8nSquareButton);
 Vue.use(N8nTags);
+Vue.component('n8n-tabs', N8nTabs);
 Vue.use(N8nTag);
 Vue.component('n8n-text', N8nText);
 Vue.use(N8nTooltip);
