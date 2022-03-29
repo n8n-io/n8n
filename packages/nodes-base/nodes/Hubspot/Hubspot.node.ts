@@ -1017,8 +1017,34 @@ export class Hubspot implements INodeType {
 		const customObjectType = resource === 'customObject' ? this.getNodeParameter('customObjectType', 0) as string : undefined;
 		// const customObjectSchema = customObjectType && await hubspotApiRequest.call(this, 'GET', `/crm/v3/schemas/${customObjectType}`, {});
 
+		if (resource === 'customObject' && operation.includes('batch')) {
+			const batches = Math.ceil(length / 100);
+			const resultsPromises = [...new Array(batches)].map(async (_, batchNumber) => {
+				const batchStart = batchNumber * 100;
+				const batchSize = Math.min(length - batchStart, 100);
+				const batchEnd = batchStart + batchSize;
+				if (operation === 'batchGet') {
+					const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+					const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
+
+					const requestBody = {
+						properties: additionalFields.properties as string[] || [],
+						propertiesWithHistory: additionalFields.propertiesWithHistory as string[] || [],
+						idProperty: idProperty || undefined,
+						inputs: ([...new Array(batchSize)]).map((_, index) => ({ id: this.getNodeParameter('objectId', index + batchStart) as string })),
+					};
+					const endpoint = `/crm/v3/objects/${customObjectType}/batch/read`;
+					responseData = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
+					return responseData.results;
+				}
+				return [];
+			});
+
+			const results = await Promise.all(resultsPromises);
+			return [this.helpers.returnJsonArray(results.flat())];
+		}
 		//https://legacydocs.hubspot.com/docs/methods/lists/contact-lists-overview
-		if (resource === 'contactList') {
+		else if (resource === 'contactList') {
 			try {
 				//https://legacydocs.hubspot.com/docs/methods/lists/add_contact_to_list
 				if (operation === 'add') {
