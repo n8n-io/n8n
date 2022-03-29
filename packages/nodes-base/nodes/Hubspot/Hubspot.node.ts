@@ -982,12 +982,12 @@ export class Hubspot implements INodeType {
 				const endpoint = `/crm/v3/schemas/${customObjectType}`;
 				const result = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				const properties = result.properties;
-				const idProperties = properties.filter((property: { hasUniqueValue?: boolean }) => property.hasUniqueValue === true)
+				const idProperties = properties.filter((property: { hasUniqueValue?: boolean }) => property.hasUniqueValue === true);
 
 				returnData.push({
 					name: 'Hubspot object ID',
 					value: '',
-				})
+				});
 				for (const property of idProperties) {
 					const propertyLabel = property.label;
 					const propertyValue = property.name;
@@ -1011,7 +1011,7 @@ export class Hubspot implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const customObjectType = resource === 'customObject' ? this.getNodeParameter('customObjectType', 0) as string : undefined
+		const customObjectType = resource === 'customObject' ? this.getNodeParameter('customObjectType', 0) as string : undefined;
 		// const customObjectSchema = customObjectType && await hubspotApiRequest.call(this, 'GET', `/crm/v3/schemas/${customObjectType}`, {});
 
 		//https://legacydocs.hubspot.com/docs/methods/lists/contact-lists-overview
