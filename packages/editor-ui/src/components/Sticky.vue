@@ -196,14 +196,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.stickyProp.left = parameters.left;
 			}
 
-			// this.setSizeParameters(this.stickyProp.height, this.stickyProp.width);
-
 			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
 			const nodeIdName = `node-${nodeIndex}`;
 			this.instance.destroyDraggable(nodeIdName);
 		},
 		onResizeEnd() {
 			this.isResizing = false;
+			this.setSizeParameters(this.stickyProp.height, this.stickyProp.width);
 			this.__makeInstanceDraggable(this.data);
 		},
 		setNodeActive () {
