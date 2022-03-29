@@ -1,10 +1,10 @@
 {
 	"about": {
 		"aboutN8n": "About n8n",
-		"apacheWithCommons20Clause": "Apache 2.0 with Commons Clause",
 		"close": "Close",
 		"license": "License",
 		"n8nVersion": "n8n Version",
+		"n8nLicense": "Sustainable Use License",
 		"sourceCode": "Source Code"
 	},
 	"binaryDataDisplay": {
@@ -753,7 +753,8 @@
 		"noTextDataFound": "No text data found",
 		"nodeReturnedALargeAmountOfData": "Node returned a large amount of data",
 		"output": "Output",
-		"showBinaryData": "Show Binary Data",
+		"downloadBinaryData": "Download",
+		"showBinaryData": "View",
 		"startTime": "Start Time",
 		"table": "Table",
 		"theNodeContains": "The node contains {numberOfKb} KB of data.<br />Displaying it could cause problems.<br /><br />If you do decide to display it, consider avoiding the JSON view."
