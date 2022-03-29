@@ -9,6 +9,9 @@
 		v-on="listeners"
 		:ref="data.ref"
 	>
+		<template v-slot:prepend>
+			<slot name="prepend" />
+		</template>
 		<template v-slot:prefix>
 			<slot name="prefix" />
 		</template>

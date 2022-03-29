@@ -26,22 +26,6 @@
 					</span>/
 					<n8n-text :bold="true">{{ dataCount }}</n8n-text>
 				</div> -->
-
-				<!-- <n8n-text :bold="true" v-if="maxOutputIndex > 0">
-					| {{ $locale.baseText('runData.output') }}:
-				</n8n-text> -->
-
-				<!-- <n8n-text :bold="true" v-if="maxRunIndex > 0">
-					| {{ $locale.baseText('runData.dataOfExecution') }}:
-				</n8n-text> -->
-
-
-				<!-- <span class="opts">
-					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
-						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
-						</n8n-option>
-					</n8n-select>
-				</span> -->
 			</div>
 
 			<div v-if="!hasRunError" @click.stop>
@@ -69,6 +53,13 @@
 					</el-dropdown-menu>
 				</el-dropdown>
 			</div>
+		</div>
+
+		<div :class="$style.runSelector" v-if="maxRunIndex > 0" >
+			<n8n-select size="mini" v-model="runIndex" @click.stop>
+				<template slot="prepend">{{ $locale.baseText('node.output.run') }}</template>
+				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option-1" :key="option"></n8n-option>
+			</n8n-select>
 		</div>
 
 		<n8n-tabs v-model="outputIndex" v-if="maxOutputIndex > 0" :options="branches" />
@@ -338,7 +329,7 @@ export default mixins(
 				};
 			},
 			dataCount (): number {
-				return this.getDataCount(this.outputIndex);
+				return this.getDataCount(this.runIndex, this.outputIndex);
 			},
 			dataSizeInMB(): string {
 				return (this.dataSize / 1024 / 1000).toLocaleString();
@@ -415,21 +406,33 @@ export default mixins(
 				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.outputIndex);
 			},
 			branches (): {value: number, label: string }[] {
+				function capitalize(name: string) {
+					return name.charAt(0).toLocaleUpperCase() + name.slice(1);;
+				}
 				const branches: {value: number, label: string }[] = [];
-				for (let i = 1; i <= (this.maxOutputIndex + 1); i++) {
-					const itemsCount = this.getDataCount(i - 1);
+				for (let i = 0; i <= this.maxOutputIndex; i++) {
+					const itemsCount = this.getDataCount(this.runIndex, i);
 					const items = this.$locale.baseText(itemsCount === 1 ? 'node.output.item': 'node.output.items');
-					const outputName = this.getOutputName(i - 1);
+					const outputName = capitalize(`${this.getOutputName(i)} ${this.$locale.baseText('node.output.branch')}`);
 					branches.push({
-						label: itemsCount ? `${outputName} (${itemsCount} ${items})` : `${outputName}`,
-						value: i - 1,
+						label: itemsCount ? `${outputName} (${itemsCount} ${items})` : outputName,
+						value: i,
 					});
 				}
 				return branches;
 			},
 		},
 		methods: {
-			getDataCount(outputIndex: number) {
+			getRunLabel(option: number) {
+				let itemsCount = 0;
+				for (let i = 0; i <= this.maxOutputIndex; i++) {
+					itemsCount += this.getDataCount(option - 1, i);
+				}
+				const items = this.$locale.baseText(itemsCount === 1 ? 'node.output.item': 'node.output.items');
+				const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
+				return option + this.$locale.baseText('node.output.of') + (this.maxRunIndex+1) + itemsLabel;
+			},
+			getDataCount(runIndex: number, outputIndex: number) {
 				if (this.node === null) {
 					return 0;
 				}
@@ -440,21 +443,21 @@ export default mixins(
 					return 0;
 				}
 
-				if (runData[this.node.name].length <= this.runIndex) {
+				if (runData[this.node.name].length <= runIndex) {
 					return 0;
 				}
 
-				if (runData[this.node.name][this.runIndex].hasOwnProperty('error')) {
+				if (runData[this.node.name][runIndex].hasOwnProperty('error')) {
 					return 1;
 				}
 
-				if (!runData[this.node.name][this.runIndex].hasOwnProperty('data') ||
-					runData[this.node.name][this.runIndex].data === undefined
+				if (!runData[this.node.name][runIndex].hasOwnProperty('data') ||
+					runData[this.node.name][runIndex].data === undefined
 				) {
 					return 0;
 				}
 
-				const inputData = this.getMainInputData(runData[this.node.name][this.runIndex].data!, outputIndex);
+				const inputData = this.getMainInputData(runData[this.node.name][runIndex].data!, outputIndex);
 
 				return inputData.length;
 			},
@@ -737,7 +740,7 @@ export default mixins(
 .dataDisplay {
 	position: absolute;
 	bottom: 0;
-	top: 88px;
+	top: 130px;
 	left: 0;
 	padding-left: var(--spacing-s);
 	right: 0;
@@ -783,6 +786,13 @@ export default mixins(
 .itemsCount {
 	margin-left: var(--spacing-s);
 }
+
+.runSelector {
+	display: inline-block;
+	margin-left: var(--spacing-s);
+	margin-bottom: var(--spacing-s);
+}
+
 </style>
 
 
