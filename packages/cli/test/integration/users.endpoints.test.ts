@@ -49,9 +49,10 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	// do not combine calls - shared tables must be cleared first and separately
-	await testDb.truncate(['SharedCredentials', 'SharedWorkflow'], testDbName);
-	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
+	await testDb.truncate(
+		['User', 'SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials'],
+		testDbName,
+	);
 
 	jest.mock('../../config');
 

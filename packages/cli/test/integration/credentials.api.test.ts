@@ -36,9 +36,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	// do not combine calls - shared table must be cleared first and separately
-	await testDb.truncate(['SharedCredentials'], testDbName);
-	await testDb.truncate(['User', 'Credentials'], testDbName);
+	await testDb.truncate(['User', 'SharedCredentials', 'Credentials'], testDbName);
 });
 
 afterAll(async () => {

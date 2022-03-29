@@ -95,6 +95,19 @@ export async function terminate(testDbName: string) {
 	}
 }
 
+const isSharedTable = (str: keyof IDatabaseCollections) => str.toLowerCase().startsWith('shared');
+
+const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
+	return arr.reduce<{ pass: T[]; fail: T[] }>(
+		(acc, cur) => {
+			test(cur) ? acc.pass.push(cur) : acc.fail.push(cur);
+
+			return acc;
+		},
+		{ pass: [], fail: [] },
+	);
+};
+
 /**
  * Truncate DB tables for specified entities.
  *
@@ -104,10 +117,14 @@ export async function terminate(testDbName: string) {
 export async function truncate(entities: Array<keyof IDatabaseCollections>, testDbName: string) {
 	const dbType = config.get('database.type');
 
+	const { pass: isShared, fail: isNotShared } = categorize(entities, isSharedTable);
+
+	const sortedEntities = [...isShared, ...isNotShared]; // shared tables must be cleared first
+
 	if (dbType === 'sqlite') {
 		const testDb = getConnection(testDbName);
 		await testDb.query('PRAGMA foreign_keys=OFF');
-		await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
+		await Promise.all(sortedEntities.map((entity) => Db.collections[entity]!.clear()));
 		return testDb.query('PRAGMA foreign_keys=ON');
 	}
 
@@ -126,7 +143,7 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 
 	if (dbType === 'postgresdb') {
 		return Promise.all(
-			entities.map((entity) =>
+			sortedEntities.map((entity) =>
 				getConnection(testDbName).query(
 					`TRUNCATE TABLE "${map[entity]}" RESTART IDENTITY CASCADE;`,
 				),
@@ -137,7 +154,7 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 	// MySQL truncation requires globals, which cannot be safely manipulated by parallel tests
 	if (dbType === 'mysqldb') {
 		await Promise.all(
-			entities.map(async (entity) => {
+			sortedEntities.map(async (entity) => {
 				await Db.collections[entity]!.delete({});
 				await getConnection(testDbName).query(`ALTER TABLE ${map[entity]} AUTO_INCREMENT = 1;`);
 			}),
