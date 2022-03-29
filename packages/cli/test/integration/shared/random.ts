@@ -22,7 +22,7 @@ export const randomValidPassword = () =>
 export const randomInvalidPassword = () =>
 	chooseRandomly([
 		randomString(1, MIN_PASSWORD_LENGTH - 1),
-		randomString(MAX_PASSWORD_LENGTH + 1, MAX_PASSWORD_LENGTH + 100),
+		randomString(MAX_PASSWORD_LENGTH + 2, MAX_PASSWORD_LENGTH + 100),
 		'abcdefgh', // valid length, no number, no uppercase
 		'abcdefg1', // valid length, has number, no uppercase
 		'abcdefgA', // valid length, no number, has uppercase
