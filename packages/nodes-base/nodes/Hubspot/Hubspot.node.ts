@@ -2795,6 +2795,34 @@ export class Hubspot implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
+						if (resource === 'customObject') {
+							const errorDetails: Record<string, unknown> = {
+								httpCode: (error as JsonObject).httpCode,
+								timestamp: (error as JsonObject).timestamp,
+								message: (error as JsonObject).message,
+							};
+
+							const cause = (error as NodeApiError).cause as Error;
+							errorDetails.response = cause.message;
+
+							try {
+								const causeJsonString = cause.message?.split(' - ')[1];
+								errorDetails.response = causeJsonString;
+								const responseJson = JSON.parse(causeJsonString);
+								errorDetails.response = responseJson;
+
+								const responseMessageParts = (errorDetails.response as { message: string })?.message?.split(': ');
+								const responseMessageObject = {
+									text: responseMessageParts[0],
+									data: JSON.parse(responseMessageParts[1]),
+								};
+								(errorDetails.response as { message: unknown }).message = responseMessageObject;
+							} catch (e) { }
+
+							returnData.push({ error: (error as JsonObject).message, errorDetails });
+							continue;
+
+						}
 						returnData.push({ error: (error as JsonObject).message });
 						continue;
 					}
