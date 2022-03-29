@@ -53,6 +53,7 @@ export = {
 
 		const createUsers: { [key: string]: string | null } = {};
 		// Validate payload
+		// @ts-ignore
 		// eslint-disable-next-line consistent-return
 		req.body.forEach((invite) => {
 			if (typeof invite !== 'object' || !invite.email) {
@@ -280,6 +281,7 @@ export = {
 
 		res.json(user);
 	},
+	// eslint-disable-next-line consistent-return
 	getUsers: async (req: UserRequest.Get, res: express.Response): Promise<any> => {
 		let offset = 0;
 		let limit = parseInt(req.query.limit, 10) || 10;
