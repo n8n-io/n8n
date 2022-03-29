@@ -170,7 +170,7 @@ test('DELETE /credentials/:id should delete owned cred for member', async () => 
 
 	const deletedCredential = await Db.collections.Credentials!.findOne(savedCredential.id);
 
-	expect(deletedCredential).toBeUndefined(); // deleted TODO?
+	expect(deletedCredential).toBeUndefined(); // deleted
 
 	const deletedSharedCredential = await Db.collections.SharedCredentials!.findOne();
 
