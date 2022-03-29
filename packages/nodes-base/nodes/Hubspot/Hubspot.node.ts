@@ -942,7 +942,10 @@ export class Hubspot implements INodeType {
 
 			// Get all the custom object types to display them to user so that he can select them
 			async getCustomObjectTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
+				const returnData: INodePropertyOptions[] = [{
+					name: 'Contact',
+					value: '0-1',
+				}];
 				const endpoint = '/crm/v3/schemas';
 				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				console.log('param', this.getNodeParameter('resource', 0));
@@ -2819,12 +2822,26 @@ export class Hubspot implements INodeType {
 								const responseJson = JSON.parse(causeJsonString);
 								errorDetails.response = responseJson;
 
-								const responseMessageParts = (errorDetails.response as { message: string })?.message?.split(': ');
-								const responseMessageObject = {
-									text: responseMessageParts[0],
-									data: JSON.parse(responseMessageParts[1]),
+								// This does not always work, because sometimes the response contains a javascript object as a string and not JSON
+								const parseMessage = (errorMessage: string) => {
+									try {
+										const responseMessageText = errorMessage?.slice(0, errorMessage?.indexOf(': '));
+										const responseMessageDataString = errorMessage?.slice(errorMessage?.indexOf(': ') + 2);
+										const responseMessageData = JSON.parse(responseMessageDataString);
+										const responseMessageObject = {
+											text: responseMessageText,
+											data: responseMessageData,
+										};
+
+										responseMessageObject.data.map((data: { message?: string } & unknown) => typeof data.message === 'string' ? { ...data, message: parseMessage(data.message) } : data);
+										return responseMessageObject;
+									} catch (e) {
+										return errorMessage;
+									}
 								};
-								(errorDetails.response as { message: unknown }).message = responseMessageObject;
+
+								const errorMessage = (errorDetails.response as { message: string })?.message;
+								(errorDetails.response as { message: unknown }).message = parseMessage(errorMessage);
 							} catch (e) { }
 
 							returnData.push({ error: (error as JsonObject).message, errorDetails });
