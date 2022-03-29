@@ -182,9 +182,7 @@ export function prefix(pathSegment: string) {
 export function getAuthToken(response: request.Response, authCookieName = AUTH_COOKIE_NAME) {
 	const cookies: string[] = response.headers['set-cookie'];
 
-	if (!cookies) {
-		throw new Error("No 'set-cookie' header found in response");
-	}
+	if (!cookies) return undefined;
 
 	const authCookie = cookies.find((c) => c.startsWith(`${authCookieName}=`));
 
@@ -216,5 +214,19 @@ export async function isInstanceOwnerSetUp() {
 /**
  * Get an SMTP test account from https://ethereal.email to test sending emails.
  */
-export const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
+const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
 
+export async function configureSmtp() {
+	const {
+		user,
+		pass,
+		smtp: { host, port, secure },
+	} = await getSmtpTestAccount();
+
+	config.set('userManagement.emails.mode', 'smtp');
+	config.set('userManagement.emails.smtp.host', host);
+	config.set('userManagement.emails.smtp.port', port);
+	config.set('userManagement.emails.smtp.secure', secure);
+	config.set('userManagement.emails.smtp.auth.user', user);
+	config.set('userManagement.emails.smtp.auth.pass', pass);
+}
