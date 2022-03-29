@@ -30,6 +30,12 @@ export default {
 	display: inline-block;
 	outline: 0;
 	position: relative;
+
+	&:hover {
+		.button:not(.active) {
+			color: var(--color-primary);
+		}
+	}
 }
 
 .input {
