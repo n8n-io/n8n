@@ -932,10 +932,7 @@ export class WorkflowExecute {
 								if (outputData === null) {
 									continue;
 								}
-								let item: INodeExecutionData;
-								for (let itemIndex = 0; itemIndex < outputData.length; itemIndex++) {
-									item = outputData[itemIndex];
-
+								for (const item of outputData) {
 									if (!item.pairedItem) {
 										// The pairedItem is missing so check if it can get automatically fixed
 										if (
@@ -948,7 +945,7 @@ export class WorkflowExecute {
 										}
 
 										item.pairedItem = {
-											item: itemIndex,
+											item: 0,
 										};
 									}
 								}
