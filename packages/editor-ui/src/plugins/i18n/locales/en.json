@@ -1158,6 +1158,8 @@
 	"node.output.tooMuchData.showDataAnyway": "Show data anyway",
 	"node.output.items": "items",
 	"node.output.item": "items",
+	"node.output.emptyOutput": "This output item is empty.",
+	"node.output.emptyInput": "This input item is empty. {name} will still execute when it recieves an empty item.",
 	"openWorkflow.workflowImportError": "Could not import workflow",
 	"openWorkflow.workflowNotFoundError": "Could not find workflow",
 	"settings": "Settings",

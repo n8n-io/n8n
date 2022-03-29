@@ -113,8 +113,17 @@
 			/>
 		</div>
 
-		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.center">
-			<n8n-text align="center" tag="div">{{ $locale.baseText('runData.entriesExistButThey') }}</n8n-text>
+		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.dataDisplay">
+			<table :class="$style.table">
+				<tr>
+					<th :class="$style.emptyCell"></th>
+				</tr>
+				<tr>
+					<td>
+						<n8n-text>{{ $locale.baseText('node.output.emptyOutput') }}</n8n-text>
+					</td>
+				</tr>
+			</table>
 		</div>
 
 		<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
@@ -747,6 +756,10 @@ export default mixins(
 		padding: var(--spacing-2xs);
 		border: var(--border-base);
 	}
+}
+
+.emptyCell {
+	height: 32px;
 }
 </style>
 
