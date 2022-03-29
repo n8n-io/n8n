@@ -1,5 +1,5 @@
 <template>
-	<div :class="['run-data-view', $style.container]">
+	<div :class="$style.container">
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
 		<div :class="$style.header">
@@ -71,9 +71,9 @@
 			</div>
 		</div>
 
-		<div>
-			<n8n-tabs v-model="outputIndex" v-if="maxOutputIndex > 0" :options="branches" />
-			<n8n-text v-else-if="hasNodeRun && dataCount > 0">
+		<n8n-tabs v-model="outputIndex" v-if="maxOutputIndex > 0" :options="branches" />
+		<div v-else-if="hasNodeRun && dataCount > 0" :class="$style.itemsCount">
+			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'node.output.item' : 'node.output.items') }}
 			</n8n-text>
 		</div>
@@ -721,13 +721,13 @@ export default mixins(
 	width: 100%;
 	height: 100%;
 	background-color: var(--color-background-light);
-	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
 }
 
 .header {
 	display: flex;
 	align-items: center;
 	margin-bottom: var(--spacing-s);
+	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
 
 	> *:first-child {
 		flex-grow: 1;
@@ -778,6 +778,10 @@ export default mixins(
 
 .emptyCell {
 	height: 32px;
+}
+
+.itemsCount {
+	margin-left: var(--spacing-s);
 }
 </style>
 
