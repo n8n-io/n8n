@@ -36,7 +36,7 @@ export default {
 <style lang="scss" module>
 
 .radioGroup {
-	display: inline-block;
+	display: inline-flex;
 	line-height: 1;
 	vertical-align: middle;
 	font-size: 0;
