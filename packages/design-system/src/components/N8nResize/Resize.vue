@@ -130,7 +130,7 @@ export default {
 
       const rect = this.resizer.getBoundingClientRect();
      
-      this.$emit('onResizeStart', { width: rect.width, height: rect.height, top: top, left: left});
+      this.$emit('onResizeStart', { width: width, height: height, top: top, left: left});
     },
     mouseUp() {
       this.$emit('onResizeEnd', true);

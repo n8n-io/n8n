@@ -33,7 +33,7 @@
         @focus="onFocus"
         @input="onInput"
       />
-      <div :class="$style.footer">
+      <div v-if="shouldShowFooter" :class="$style.footer">
         <n8n-text
           size="xsmall"
           aligh="right"
@@ -105,18 +105,15 @@ export default {
         ...(this.minWidth ? { minWidth: this.minWidth + 'px' } : { minWidth: '100%' }),
       };
     },
+    shouldShowFooter() {
+      return this.height > 100 && this.width > 155;
+    },
   },
   data() {
     return {
       isEditable: false,
       tempContent: this.content,
       resizer: null,
-      stickyProps: {
-				height: 0,
-				width: 0,
-				top: 0,
-				left: 0,
-			},
     }
   },
   methods: {
@@ -154,9 +151,6 @@ export default {
       this.$emit('onResizeEnd', resizeEnd);
     },
     onResizeStart(parameters) {
-      this.stickyProps.height = parameters.height;
-      this.stickyProps.width = parameters.width;
-
       this.$emit('onResizeStart', parameters);
     },
   },
