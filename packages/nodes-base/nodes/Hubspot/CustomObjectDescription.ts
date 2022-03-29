@@ -44,7 +44,12 @@ export const customObjectOperations: INodeProperties[] = [
 			{
 				name: 'Batched get',
 				value: 'batchGet',
-				description: 'Like get, but this has fewer options and is only one request per 100 objects',
+				description: 'Like get, but this has fewer options and costs only one request per 100 objects. Requires continueOnFail',
+			},
+			{
+				name: 'Batched delete',
+				value: 'batchDelete',
+				description: 'Like delete, but this costs only up to two requests per 100 objects. Requires continueOnFail',
 			},
 		],
 		default: 'create',
@@ -715,7 +720,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
-				operation: ['delete'],
+				operation: ['delete', 'batchDelete'],
 			},
 		},
 		default: '',
@@ -729,7 +734,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
-				operation: ['delete'],
+				operation: ['delete', 'batchDelete'],
 			},
 		},
 		default: '',
