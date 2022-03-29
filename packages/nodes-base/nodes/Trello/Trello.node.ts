@@ -4,9 +4,7 @@ import {
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
@@ -16,6 +14,7 @@ import {
 import {
 	apiRequest,
 	apiRequestAllItems,
+	trelloApiTest,
 } from './GenericFunctions';
 
 import {
@@ -52,6 +51,7 @@ import {
 	listFields,
 	listOperations,
 } from './ListDescription';
+import { OptionsWithUri } from 'request-promise-native';
 
 export class Trello implements INodeType {
 	description: INodeTypeDescription = {
@@ -71,6 +71,7 @@ export class Trello implements INodeType {
 			{
 				name: 'trelloApi',
 				required: true,
+				testedBy: 'trelloApiTest',
 			},
 		],
 		properties: [
@@ -138,22 +139,8 @@ export class Trello implements INodeType {
 	};
 
 	methods = {
-		loadOptions:{
-			async getAllBoards(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = 'members/me/boards?fields=name,id';
-				const responseData: Array<{ id: string; name: string; }> = await apiRequest.call(this, 'GET', endpoint, {}, {});
-
-				for (const board of responseData) {
-					returnData.push({
-						name: board.name,
-						value: board.id,
-					});
-				}
-				return returnData;
-			},
+		credentialTest: {
+			trelloApiTest,
 		},
 	};
 
@@ -221,6 +208,19 @@ export class Trello implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         get all
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						endpoint = 'members/me/boards';
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
 
 					} else if (operation === 'update') {
 						// ----------------------------------
@@ -760,6 +760,7 @@ export class Trello implements INodeType {
 				// paginate them 'manually'
 				const skipPagination = [
 					'list:getAll',
+					'board:getAll',
 				];
 
 				if (returnAll === true && !skipPagination.includes(`${resource}:${operation}`)) {

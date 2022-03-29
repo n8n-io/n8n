@@ -33,11 +33,11 @@ export const boardOperations: INodeProperties[] = [
 				value: 'get',
 				description: 'Get the data of a board',
 			},
-			// {
-			// 	name: 'Get All Boards',
-			// 	value: 'get',
-			// 	description: 'Get all of a user\'s boards'
-			// },
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all user\'s boards',
+			},
 			{
 				name: 'Update',
 				value: 'update',
@@ -312,13 +312,9 @@ export const boardFields: INodeProperties[] = [
 	//         board:delete
 	// ----------------------------------
 	{
-		displayName: 'Board',
+		displayName: 'Board ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getAllBoards',
-			loadOptionsDependsOn: ['resource', 'operation'],
-		},
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -331,20 +327,16 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Select a board to delete',
+		description: 'The ID of the board to get',
 	},
 
 	// ----------------------------------
 	//         board:get
 	// ----------------------------------
 	{
-		displayName: 'Board',
+		displayName: 'Board ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getAllBoards',
-			loadOptionsDependsOn: ['resource', 'operation'],
-		},
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -357,7 +349,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Select a board',
+		description: 'The ID of the board to get',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -392,18 +384,53 @@ export const boardFields: INodeProperties[] = [
 			},
 		],
 	},
+// ----------------------------------
+	//         list:getAll
+	// ----------------------------------
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'board',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 20,
+		displayOptions: {
+			show: {
+				resource: [
+					'board',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
 
 	// ----------------------------------
 	//         board:update
 	// ----------------------------------
 	{
-		displayName: 'Board',
+		displayName: 'Board ID',
 		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getAllBoards',
-			loadOptionsDependsOn: ['resource', 'operation'],
-		},
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -416,7 +443,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Select a board to update',
+		description: 'The ID of the board to update',
 	},
 	{
 		displayName: 'Update Fields',

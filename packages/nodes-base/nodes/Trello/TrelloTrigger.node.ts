@@ -12,6 +12,7 @@ import {
 
 import {
 	apiRequest,
+	trelloApiTest,
 } from './GenericFunctions';
 
 // import { createHmac } from 'crypto';
@@ -34,6 +35,7 @@ export class TrelloTrigger implements INodeType {
 			{
 				name: 'trelloApi',
 				required: true,
+				testedBy: 'trelloApiTest',
 			},
 		],
 		webhooks: [
@@ -62,6 +64,12 @@ export class TrelloTrigger implements INodeType {
 			},
 		],
 
+	};
+
+	methods = {
+		credentialTest: {
+			trelloApiTest,
+		},
 	};
 
 	// @ts-ignore (because of request)

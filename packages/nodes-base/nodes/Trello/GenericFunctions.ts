@@ -9,7 +9,13 @@ import {
 } from 'request';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	INodeCredentialTestResult,
+	JsonObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -46,7 +52,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -71,4 +77,35 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 	);
 
 	return returnData;
+}
+
+export async function trelloApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+	const credentials = credential.data;
+
+	const qs = {
+		key: credentials!.apiKey,
+		token: credentials!.apiToken,
+	};
+
+	const options: OptionsWithUri = {
+		headers: {
+		},
+		method: 'GET',
+		qs,
+		uri: `https://api.trello.com/1/members/me/boards`,
+		json: true,
+	};
+
+	try {
+		await this.helpers.request!(options);
+	} catch (error) {
+		return {
+			status: 'Error',
+			message: `Connection details not valid: ${(error as JsonObject).message}`,
+		};
+	}
+	return {
+		status: 'OK',
+		message: 'Authentication successful!',
+	};
 }
