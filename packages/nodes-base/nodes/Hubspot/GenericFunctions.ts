@@ -42,6 +42,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			const credentials = await this.getCredentials('hubspotApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
+			console.log(options)
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'appToken') {
 			const credentials = await this.getCredentials('hubspotAppToken');
@@ -114,6 +115,29 @@ export function clean(obj: any) {
 		}
 	}
 	return obj;
+}
+
+// tslint:disable-next-line: no-any
+export function getErrorsFromBatchResponse(batchResponse: any, idProperty?: string) {
+	const results: Array<{ error: string, errorDetails: unknown }> = [];
+
+	const missingObjectsError = batchResponse?.errors?.filter((error: { category: string }) => error.category === 'OBJECT_NOT_FOUND')[0];
+	if (missingObjectsError) {
+		missingObjectsError.context.ids.forEach((objectId: string) => {
+			results.push({
+				error: missingObjectsError.message,
+				errorDetails: {
+					idProperty: idProperty || undefined,
+					objectId,
+					message: missingObjectsError.message,
+					errorCode: '404',
+					timestamp: new Date(batchResponse.completedAt).getTime(),
+				},
+			});
+		});
+	}
+
+	return results;
 }
 
 export const propertyEvents = [
