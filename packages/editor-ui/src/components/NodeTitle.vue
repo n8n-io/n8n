@@ -17,7 +17,11 @@
 				</div>
 			</div>
 			<span :class="$style.title" slot="reference">
-				<WorkflowNameShort :name="value" :limit="40" />
+				<WorkflowNameShort :name="value" :limit="40">
+					<template v-slot="{ shortenedName }">
+						{{ shortenedName }}
+					</template>
+				</WorkflowNameShort>
 				<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" />
 			</span>
 		</el-popover>
