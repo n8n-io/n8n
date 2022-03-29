@@ -795,7 +795,7 @@ export default mixins(
 }
 
 .runSelector {
-	max-width: 100px;
+	max-width: 200px;
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
 }
