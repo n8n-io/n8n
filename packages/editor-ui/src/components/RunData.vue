@@ -4,7 +4,7 @@
 
 		<div :class="$style.header">
 			<div>
-				<span :class="$style.title">{{ $locale.baseText('runData.output') }}</span>
+				<span :class="$style.title">{{ $locale.baseText('node.output') }}</span>
 				<n8n-tooltip
 					v-if="runMetadata"
 					placement="right"
@@ -265,7 +265,7 @@ export default mixins(
 			this.init();
 		},
 		computed: {
-			buttons(): {label: string, value: string}[] {
+			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
 					{ label: this.$locale.baseText('runData.json'), value: 'json'},
 					{ label: this.$locale.baseText('runData.table'), value: 'table'},
@@ -405,15 +405,21 @@ export default mixins(
 
 				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.outputIndex);
 			},
-			branches (): {value: number, label: string }[] {
+			branches (): Array<{value: number, label: string }> {
 				function capitalize(name: string) {
-					return name.charAt(0).toLocaleUpperCase() + name.slice(1);;
+					return name.charAt(0).toLocaleUpperCase() + name.slice(1);
 				}
-				const branches: {value: number, label: string }[] = [];
+				const branches: Array<{value: number, label: string }> = [];
 				for (let i = 0; i <= this.maxOutputIndex; i++) {
 					const itemsCount = this.getDataCount(this.runIndex, i);
 					const items = this.$locale.baseText(itemsCount === 1 ? 'node.output.item': 'node.output.items');
-					const outputName = capitalize(`${this.getOutputName(i)} ${this.$locale.baseText('node.output.branch')}`);
+					let outputName = this.getOutputName(i);
+					if (`${outputName}` === `${i}`) {
+						outputName = `${this.$locale.baseText('node.output')} ${outputName}`;
+					}
+					else {
+						outputName = capitalize(`${this.getOutputName(i)} ${this.$locale.baseText('node.output.branch')}`);
+					}
 					branches.push({
 						label: itemsCount ? `${outputName} (${itemsCount} ${items})` : outputName,
 						value: i,
