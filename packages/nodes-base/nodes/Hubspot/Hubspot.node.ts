@@ -983,6 +983,9 @@ export class Hubspot implements INodeType {
 			async getCustomObjectIdProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const customObjectType = this.getNodeParameter('customObjectType', 0) as string;
+				if (!customObjectType) {
+					return [];
+				}
 				const endpoint = `/crm/v3/schemas/${customObjectType}`;
 				const result = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				const properties = result.properties;
@@ -992,6 +995,14 @@ export class Hubspot implements INodeType {
 					name: 'Hubspot object ID',
 					value: '',
 				});
+
+				if (customObjectType === '0-1' || customObjectType === 'contact') {
+					returnData.push({
+						name: 'Email',
+						value: 'email',
+					});
+				}
+
 				for (const property of idProperties) {
 					const propertyLabel = property.label;
 					const propertyValue = property.name;
@@ -1023,11 +1034,15 @@ export class Hubspot implements INodeType {
 				throw new Error('Batch operations only work with continue on fail set to true.');
 			}
 
-			const batches = Math.ceil(length / 100);
+			// The maximum batch size is 10 for contacts and 100 for everything else.
+			// https://developers.hubspot.com/docs/api/crm/understanding-the-crm
+			const maxBatchSize = customObjectType === '0-1' || customObjectType === 'contact' ? 10 : 100;
+
+			const batches = Math.ceil(length / maxBatchSize);
 			const resultsPromises = [...new Array(batches)].map(async (_, batchNumber) => {
 				try {
-					const batchStart = batchNumber * 100;
-					const batchSize = Math.min(length - batchStart, 100);
+					const batchStart = batchNumber * maxBatchSize;
+					const batchSize = Math.min(length - batchStart, maxBatchSize);
 					const batchEnd = batchStart + batchSize;
 
 					if (operation === 'batchGet') {

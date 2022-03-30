@@ -222,6 +222,7 @@ export const customObjectFields: INodeProperties[] = [
 		name: 'idProperty',
 		type: 'options',
 		typeOptions: {
+			loadOptionsDependsOn: ['customObjectType'],
 			loadOptionsMethod: 'getCustomObjectIdProperties',
 		},
 		required: false,
