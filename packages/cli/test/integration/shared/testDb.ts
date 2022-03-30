@@ -188,7 +188,7 @@ export async function saveCredential(
 }
 
 // ----------------------------------
-//           users CRUD
+//           user creation
 // ----------------------------------
 
 export async function createFullUser(
