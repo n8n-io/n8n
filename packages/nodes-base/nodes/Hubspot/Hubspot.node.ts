@@ -1018,79 +1018,195 @@ export class Hubspot implements INodeType {
 		const customObjectType = resource === 'customObject' ? this.getNodeParameter('customObjectType', 0) as string : undefined;
 		// const customObjectSchema = customObjectType && await hubspotApiRequest.call(this, 'GET', `/crm/v3/schemas/${customObjectType}`, {});
 
-		if (resource === 'customObject' && (operation.includes('batch') || operation === 'delete')) {
+		if (resource === 'customObject' && operation.includes('batch')) {
 			if (!this.continueOnFail()) {
 				throw new Error('Batch operations only work with continue on fail set to true.');
 			}
+
 			const batches = Math.ceil(length / 100);
 			const resultsPromises = [...new Array(batches)].map(async (_, batchNumber) => {
-				const batchStart = batchNumber * 100;
-				const batchSize = Math.min(length - batchStart, 100);
-				const batchEnd = batchStart + batchSize;
+				try {
+					const batchStart = batchNumber * 100;
+					const batchSize = Math.min(length - batchStart, 100);
+					const batchEnd = batchStart + batchSize;
 
+					if (operation === 'batchGet') {
+						const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+						const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
 
-
-
-				if (operation === 'batchGet') {
-					const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-					const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
-
-					const requestBody = {
-						properties: additionalFields.properties as string[] || [],
-						propertiesWithHistory: additionalFields.propertiesWithHistory as string[] || [],
-						idProperty: idProperty || undefined,
-						inputs: ([...new Array(batchSize)]).map((_, index) => ({ id: this.getNodeParameter('objectId', index + batchStart) as string })),
-					};
-					const endpoint = `/crm/v3/objects/${customObjectType}/batch/read`;
-					const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
-
-					const results = response.results;
-
-					results.push(...getErrorsFromBatchResponse(response));
-
-					return results;
-				}
-				if (operation === 'batchDelete') {
-					const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
-					const errors: Array<{ error: string, errorDetails: unknown }> = [];
-
-					// Resolve object ids, if a custom idPorperty is used
-					const idMap: Record<string, string | undefined> = {};
-					if (idProperty) {
 						const requestBody = {
-							idProperty,
+							properties: additionalFields.properties as string[] || [],
+							propertiesWithHistory: additionalFields.propertiesWithHistory as string[] || [],
+							idProperty: idProperty || undefined,
 							inputs: ([...new Array(batchSize)]).map((_, index) => ({ id: this.getNodeParameter('objectId', index + batchStart) as string })),
 						};
 						const endpoint = `/crm/v3/objects/${customObjectType}/batch/read`;
 						const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
-						response.results.forEach((result: { id: string, properties: Record<string, string> }) => {
-							idMap[result.properties[idProperty]] = result.id;
-						});
-					} else {
-						([...new Array(batchSize)]).forEach((_, index) => {
-							const id = this.getNodeParameter('objectId', index + batchStart) as string;
-							idMap[id] = id;
-						});
+
+						const results = response.results;
+
+						results.push(...getErrorsFromBatchResponse(response));
+
+						return results;
 					}
+					if (operation === 'batchDelete') {
+						const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
+						const errors: Array<{ error: string, errorDetails: unknown }> = [];
 
-					const idsToDelete = [...new Array(batchSize)].map((_, index) =>
-						idMap[this.getNodeParameter('objectId', index + batchStart) as string],
-					).filter(id => id !== undefined) as string[];
+						// Resolve object ids, if a custom idPorperty is used
+						const idMap: Record<string, string | undefined> = {};
+						if (idProperty) {
+							const requestBody = {
+								idProperty,
+								inputs: ([...new Array(batchSize)]).map((_, index) => ({ id: this.getNodeParameter('objectId', index + batchStart) as string })),
+							};
+							const endpoint = `/crm/v3/objects/${customObjectType}/batch/read`;
+							const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
+							response.results.forEach((result: { id: string, properties: Record<string, string> }) => {
+								idMap[result.properties[idProperty]] = result.id;
+							});
+						} else {
+							([...new Array(batchSize)]).forEach((_, index) => {
+								const id = this.getNodeParameter('objectId', index + batchStart) as string;
+								idMap[id] = id;
+							});
+						}
 
-					const requestBody = {
-						inputs: idsToDelete.map(id => ({
-							id,
-						})),
-					};
-					const endpoint = `/crm/v3/objects/${customObjectType}/batch/archive`;
-					const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
-					errors.push(...(response ? getErrorsFromBatchResponse(response) : []));
+						const idsToDelete = [...new Array(batchSize)].map((_, index) =>
+							idMap[this.getNodeParameter('objectId', index + batchStart) as string],
+						).filter(id => id !== undefined) as string[];
 
-					const results = response?.results || [];
+						const requestBody = {
+							inputs: idsToDelete.map(id => ({
+								id,
+							})),
+						};
+						const endpoint = `/crm/v3/objects/${customObjectType}/batch/archive`;
+						const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
+						errors.push(...(response ? getErrorsFromBatchResponse(response) : []));
 
-					return [...results, ...errors];
+						const results = response?.results || [];
+
+						return [...results, ...errors];
+					}
+					if (operation === 'batchUpsert') {
+						const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
+						const errors: Array<{ error: string, errorDetails: unknown }> = [];
+
+						// Resolve object ids and check for existence
+						const idMap: Record<string, string | undefined> = {};
+						const readRequestBody = {
+							idProperty: idProperty || undefined,
+							inputs: ([...new Array(batchSize)]).map((_, index) => ({ id: this.getNodeParameter('objectId', index + batchStart) as string })),
+						};
+						const readEndpoint = `/crm/v3/objects/${customObjectType}/batch/read`;
+						const readResponse = await hubspotApiRequest.call(this, 'POST', readEndpoint, readRequestBody);
+						readResponse.results.forEach((result: { id: string, properties: Record<string, string> }) => {
+							idMap[idProperty ? result.properties[idProperty] : result.id] = result.id;
+						});
+
+
+						const getProperties = (index: number) => {
+							const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+							const objectId = this.getNodeParameter('objectId', index) as IDataObject;
+							const properties: Record<string, unknown> = idProperty ? {
+								[idProperty]: objectId,
+							} : {};
+							if (additionalFields.customPropertiesUi) {
+								const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+
+								if (customProperties) {
+									for (const customProperty of customProperties) {
+										properties[customProperty.property as string] = customProperty.value;
+									}
+								}
+							}
+							return properties;
+						};
+
+						const updateBody = {
+							inputs: [...new Array(batchSize)].map((_, index) =>
+							({
+								id: idMap[this.getNodeParameter('objectId', index + batchStart) as string],
+								properties: getProperties(index),
+							}),
+							).filter(element => element.id !== undefined),
+						};
+
+						const createBody = {
+							inputs: [...new Array(batchSize)].map((_, index) =>
+							({
+								id: idMap[this.getNodeParameter('objectId', index + batchStart) as string],
+								properties: getProperties(index),
+							}),
+							)
+								.filter(element => element.id === undefined)
+								.map(element => ({ properties: element.properties })),
+						};
+
+						const createEndpoint = `/crm/v3/objects/${customObjectType}/batch/create`;
+						const updateEndpoint = `/crm/v3/objects/${customObjectType}/batch/update`;
+
+						const createResponse = createBody.inputs.length > 0
+							? await hubspotApiRequest.call(this, 'POST', createEndpoint, createBody)
+							: undefined;
+
+						const updateResponse = updateBody.inputs.length > 0
+							? await hubspotApiRequest.call(this, 'POST', updateEndpoint, updateBody)
+							: undefined;
+
+						errors.push(...(createResponse ? getErrorsFromBatchResponse(createResponse) : []));
+						errors.push(...(updateResponse ? getErrorsFromBatchResponse(updateResponse) : []));
+
+						return [...(createResponse?.results || []), ...(updateResponse?.results || []), ...errors];
+					}
+					return [];
+
+				} catch (error) {
+					if (this.continueOnFail()) {
+						if (resource === 'customObject') {
+							const errorDetails: Record<string, unknown> = {
+								httpCode: (error as JsonObject).httpCode,
+								timestamp: (error as JsonObject).timestamp,
+								message: (error as JsonObject).message,
+							};
+
+							try {
+								const cause = (error as NodeApiError).cause as Error;
+								errorDetails.response = cause?.message;
+								const causeJsonString = cause.message?.split(' - ')[1];
+								errorDetails.response = causeJsonString;
+								const responseJson = JSON.parse(causeJsonString);
+								errorDetails.response = responseJson;
+
+								// This does not always work, because sometimes the response contains a javascript object as a string and not JSON
+								const parseMessage = (errorMessage: string) => {
+									try {
+										const responseMessageText = errorMessage?.slice(0, errorMessage?.indexOf(': '));
+										const responseMessageDataString = errorMessage?.slice(errorMessage?.indexOf(': ') + 2);
+										const responseMessageData = JSON.parse(responseMessageDataString);
+										const responseMessageObject = {
+											text: responseMessageText,
+											data: responseMessageData,
+										};
+
+										responseMessageObject.data.map((data: { message?: string } & unknown) => typeof data.message === 'string' ? { ...data, message: parseMessage(data.message) } : data);
+										return responseMessageObject;
+									} catch (e) {
+										return errorMessage;
+									}
+								};
+
+								const errorMessage = (errorDetails.response as { message: string })?.message;
+								(errorDetails.response as { message: unknown }).message = parseMessage(errorMessage);
+							} catch (e) { }
+
+							return [{ error: (error as JsonObject).message, errorDetails }];
+						}
+						return [{ error: (error as JsonObject).message }];
+					}
+					throw error;
 				}
-				return [];
 			});
 
 			const results = await Promise.all(resultsPromises);
