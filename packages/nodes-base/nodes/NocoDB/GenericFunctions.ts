@@ -49,6 +49,8 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
+	const baseUrl = credentials.host as string;
+
 	query = query || {};
 
 	const options: OptionsWithUri = {
@@ -56,7 +58,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		method,
 		body,
 		qs: query,
-		uri: uri || `${credentials.host}${endpoint}`,
+		uri: uri || baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`,
 		json: true,
 	};
 
