@@ -758,7 +758,7 @@
 	"auth.signup.setupYourAccount": "Set up your account",
 	"auth.signup.setupYourAccountError": "Problem setting up your account",
 	"auth.signup.tokenValidationError": "Issue validating invite token",
-	"error.error": "Error",
+	"error": "Error",
 	"error.goBack": "Go back",
 	"error.pageNotFound": "Oops, couldn’t find that",
 	"forgotPassword": "Forgot my password",
