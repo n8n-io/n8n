@@ -1391,8 +1391,12 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', true);
 
-				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-				this.$telemetry.trackNodesPanel('nodeView.addNodeButton', { node_type: nodeTypeName, workflow_id: this.$store.getters.workflowId });
+				if(nodeTypeName === 'n8n-nodes-base.note') {
+					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.$store.getters.workflowId });
+				} else {
+					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', { node_type: nodeTypeName, workflow_id: this.$store.getters.workflowId });
+				}
 
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
@@ -2170,9 +2174,13 @@ export default mixins(
 					}
 				}
 
-				this.$externalHooks().run('node.deleteNode', { node });
-				this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
-
+				if(node.type === 'n8n-nodes-base.note') {
+					this.$telemetry.track('User deleted workflow note', { workflow_id: this.$store.getters.workflowId });
+				} else {
+					this.$externalHooks().run('node.deleteNode', { node });
+					this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
+				}
+				
 				let waitForNewConnection = false;
 				// connect nodes before/after deleted node
 				const nodeType: INodeTypeDescription | null = this.$store.getters.nodeType(node.type, node.typeVersion);

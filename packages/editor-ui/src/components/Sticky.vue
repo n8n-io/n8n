@@ -8,17 +8,16 @@
         :ref="data.name"
         :style="stickyStyle"
         @click="setNodeActive"
-        @click.left="mouseLeftClick"
         v-touch:start="touchStart"
         v-touch:end="touchEnd"
       >
         <n8n-sticky 
 				  :class="{'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
           :content.sync="node.parameters.content"
-					:height.sync="node.parameters.height"
+					:height="node.parameters.height"
           :id="nodeIndex"
-					:width.sync="node.parameters.width"
-					:zIndex.sync="node.parameters.zIndex"
+					:width="node.parameters.width"
+					:zIndex="node.parameters.zIndex"
           @onResizeEnd="onResizeEnd"
           @onResizeStart="onResizeStart"
 					@input="onInputChange"
@@ -164,8 +163,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	},
 	methods: {
 		deleteNode () {
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'delete', workflow_id: this.$store.getters.workflowId });
-
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('removeNode', this.data.name);
