@@ -92,7 +92,9 @@ test('GET /login should return 401 Unauthorized if no cookie', async () => {
 	const response = await authlessAgent.get('/login');
 
 	expect(response.statusCode).toBe(401);
-	expect(response.headers['set-cookie']).toBeUndefined();
+
+	const authToken = utils.getAuthToken(response);
+	expect(authToken).toBeUndefined();
 });
 
 test('GET /login should return cookie if UM is disabled', async () => {
