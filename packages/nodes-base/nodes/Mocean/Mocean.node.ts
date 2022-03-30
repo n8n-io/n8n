@@ -1,11 +1,16 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { OptionsWithUri } from 'request';
 
 import {moceanApiRequest} from './GenericFunctions';
 
@@ -14,7 +19,8 @@ export class Mocean implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mocean',
 		name: 'mocean',
-		icon: 'file:mocean.png',
+		subtitle: `={{$parameter["operation"] + ": " + $parameter["resource"]}}`,
+		icon: 'file:mocean.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Send SMS and voice messages via Mocean',
@@ -27,6 +33,7 @@ export class Mocean implements INodeType {
 			{
 				name: 'moceanApi',
 				required: true,
+				testedBy: 'moceanApiTest',
 			},
 		],
 		properties: [
@@ -36,6 +43,7 @@ export class Mocean implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options:[
 					{
 						name: 'SMS',
@@ -52,6 +60,7 @@ export class Mocean implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -68,7 +77,7 @@ export class Mocean implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
+				description: 'Operation to perform',
 			},
 			{
 				displayName: 'From',
@@ -88,7 +97,7 @@ export class Mocean implements INodeType {
 						],
 					},
 				},
-				description: 'The number to which to send the message',
+				description: 'Number to which to send the message',
 			},
 
 			{
@@ -109,7 +118,7 @@ export class Mocean implements INodeType {
 						],
 					},
 				},
-				description: 'The number from which to send the message',
+				description: 'Number from which to send the message',
 			},
 
 			{
@@ -169,7 +178,7 @@ export class Mocean implements INodeType {
 						],
 					},
 				},
-				description: 'The message to send',
+				description: 'Message to send',
 			},
 
 			{
@@ -192,7 +201,41 @@ export class Mocean implements INodeType {
 				description: 'Delivery report URL',
 			},
 		],
+	};
 
+	methods = {
+		credentialTest: {
+			async moceanApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data;
+
+				const body: IDataObject = {};
+				body['mocean-api-key'] = credentials!['mocean-api-key'];
+				body['mocean-api-secret'] = credentials!['mocean-api-secret'];
+				body['mocean-to'] = '6012356789';
+				body['mocean-resp-format'] = 'JSON';
+
+				const options = {
+					method: 'POST',
+					form: body,
+					qs: {},
+					uri: `https://rest.moceanapi.com/rest/2/nl`,
+					json: true,
+				};
+
+				try {
+					await this.helpers.request!(options);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid: ${(error as JsonObject).message}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 	};
 
 
@@ -262,7 +305,7 @@ export class Mocean implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;
