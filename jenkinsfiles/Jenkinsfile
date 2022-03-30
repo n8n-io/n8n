@@ -14,7 +14,7 @@ pipeline {
         stage('Clone') {
            steps {
                echo "Clone Git Code"
-               checkout([$class: 'GitSCM', branches: [[name: '*/chase']], extensions: [], userRemoteConfigs: [[credentialsId: 'chase', url: 'https://github.com/Top20Talent/n8n.git']]])
+               checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'chase', url: 'https://github.com/Top20Talent/n8n.git']]])
            }
         }
         stage('Build Image') {
