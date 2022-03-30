@@ -23,7 +23,12 @@
       </template>
     </n8n-resize>
     
-    <div class="textarea" v-else>
+    <div 
+      class="textarea"
+      v-else
+      @mouseover="onMouseHover"
+      @mouseout="onMouseHoverEnd"   
+    >
       <n8n-input
         v-model="tempContent"
         type="textarea"
@@ -154,6 +159,12 @@ export default {
     onInput(value: string) {
       this.tempContent = value;
       this.$emit('input', value);
+    },
+    onMouseHover() {
+      this.$emit('onMouseHover', true);
+    },
+    onMouseHoverEnd() {
+      this.$emit('onMouseHover', false);
     },
     onResizeEnd(resizeEnd) {
       this.$emit('onResizeEnd', resizeEnd);

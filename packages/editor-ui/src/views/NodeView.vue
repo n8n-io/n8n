@@ -40,6 +40,7 @@
           @removeNode="removeNode"
           @moved="onNodeMoved"
           @run="onNodeRun"
+					@onMouseHover="onMouseHover"
           @onResizeChange="onResizeChange"
           :id="'node-' + getNodeIndex(nodeData.name)"
           :key="getNodeIndex(nodeData.name)"
@@ -376,6 +377,7 @@ export default mixins(
 				pullConnActive: false,
 				dropPrevented: false,
 				isResizing: false,
+				shouldPreventScrolling: false,
 			};
 		},
 		beforeDestroy () {
@@ -386,6 +388,9 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
+			onMouseHover(shouldPreventScrolling: boolean) {
+				this.shouldPreventScrolling = shouldPreventScrolling;
+			},
 			onResizeChange(isResizing: boolean) {
 				this.isResizing = isResizing;
 			},
@@ -647,6 +652,10 @@ export default mixins(
 				}
 			},
 			mouseDown (e: MouseEvent | TouchEvent) {
+				if (this.shouldPreventScrolling) {
+					return;
+				}
+
 				// Save the location of the mouse click
 				this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 
@@ -657,11 +666,19 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 			mouseUp (e: MouseEvent) {
+				if (this.shouldPreventScrolling) {
+					return;
+				}
+
 				this.mouseUpMouseSelect(e);
 				this.mouseUpMoveWorkflow(e);
 			},
 			wheelScroll (e: WheelEvent) {
 				//* Control + scroll zoom
+				if (this.shouldPreventScrolling) {
+					return;
+				}
+
 				if (e.ctrlKey) {
 					if (e.deltaY > 0) {
 						this.zoomOut();
