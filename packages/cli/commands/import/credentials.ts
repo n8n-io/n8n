@@ -146,7 +146,7 @@ export class ImportCredentialsCommand extends Command {
 	}
 
 	private reportSuccess(total: number) {
-		console.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
+		console.info(`Successfully imported ${total} ${total === 1 ? 'credential.' : 'credentials.'}`);
 	}
 
 	private async initOwnerCredentialRole() {
