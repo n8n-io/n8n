@@ -181,7 +181,7 @@ export default {
   width: 100%;
   height: 100%;
   position: absolute;
-  padding: var(--spacing-s) var(--spacing-s) 0;
+  padding: var(--spacing-2xs) var(--spacing-xs) 0;
 
   &::after {
     content: '';
