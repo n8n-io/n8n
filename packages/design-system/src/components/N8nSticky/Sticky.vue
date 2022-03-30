@@ -3,7 +3,6 @@
     :id="`sticky-${id}`"
     :class="[$style.sticky, isEditable ? $style.editMode : '']"
     :style="styles"
-    @dblclick="changeMode"
   >
     <n8n-resize 
       v-if="!isEditable"
@@ -14,7 +13,10 @@
       @onResizeStart="onResizeStart"
     >
       <template>
-        <div :class="$style.wrapper">
+        <div 
+          :class="$style.wrapper"
+          @dblclick="changeMode"
+        >
           <n8n-markdown
             :content="tempContent"
             theme="sticky"
@@ -24,10 +26,10 @@
     </n8n-resize>
     
     <div 
-      class="textarea"
       v-else
       @mouseover="onMouseHover"
-      @mouseout="onMouseHoverEnd"   
+      @mouseout="onMouseHoverEnd"
+      class="textarea"  
     >
       <n8n-input
         v-model="tempContent"
