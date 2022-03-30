@@ -28,6 +28,7 @@ import {
 
 import { getLogger } from '../src/Logger';
 import config = require('../config');
+import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
@@ -169,11 +170,13 @@ export class Execute extends Command {
 		}
 
 		try {
+			const user = await getInstanceOwner();
 			const runData: IWorkflowExecutionDataProcess = {
 				executionMode: 'cli',
 				startNodes: [startNode.name],
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				workflowData: workflowData!,
+				userId: user.id,
 			};
 
 			const workflowRunner = new WorkflowRunner();
