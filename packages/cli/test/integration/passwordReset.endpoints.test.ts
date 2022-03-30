@@ -208,7 +208,7 @@ test('POST /change-password should succeed with valid inputs', async () => {
 
 	const { password: storedPassword } = await Db.collections.User!.findOneOrFail(owner.id);
 
-	const comparisonResult = await compare(passwordToStore, storedPassword!);
+	const comparisonResult = await compare(passwordToStore, storedPassword);
 	expect(comparisonResult).toBe(true);
 	expect(storedPassword).not.toBe(passwordToStore);
 });

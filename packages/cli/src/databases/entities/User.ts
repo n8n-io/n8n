@@ -81,7 +81,7 @@ export class User {
 
 	@Column({ nullable: true })
 	@IsString({ message: 'Password must be of type string.' })
-	password?: string;
+	password: string;
 
 	@Column({ type: String, nullable: true })
 	resetPasswordToken?: string | null;
