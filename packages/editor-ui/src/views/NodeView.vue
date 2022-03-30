@@ -170,7 +170,6 @@ import {
 import { mapGetters } from 'vuex';
 
 import {
-	loadLanguage,
 	addNodeTranslation,
 	addHeaders,
 } from '@/plugins/i18n';
@@ -232,9 +231,6 @@ export default mixins(
 				deep: true,
 			},
 
-			async defaultLocale (newLocale, oldLocale) {
-				loadLanguage(newLocale);
-			},
 		},
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;

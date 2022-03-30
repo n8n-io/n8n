@@ -28,6 +28,7 @@ import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
 import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
+import { loadLanguage } from './plugins/i18n';
 
 export default mixins(
 	showMessage,
@@ -40,7 +41,7 @@ export default mixins(
 		Modals,
 	},
 	computed: {
-		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
+		...mapGetters('settings', ['defaultLocale', 'isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['currentUser']),
 	},
 	data() {
@@ -159,6 +160,9 @@ export default mixins(
 			this.redirectIfNecessary();
 
 			this.trackPage();
+		},
+		'$store.getters.defaultLocale'(newLocale) {
+			loadLanguage(newLocale);
 		},
 	},
 });
