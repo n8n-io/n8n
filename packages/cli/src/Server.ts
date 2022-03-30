@@ -29,7 +29,7 @@
 /* eslint-disable no-await-in-loop */
 
 import * as express from 'express';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -1503,10 +1503,13 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<object | void> => {
 					const packagesPath = pathJoin(__dirname, '..', '..', '..');
 					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
+
+					if (!existsSync(`${headersPath}.js`)) return;
+
 					try {
 						return require(headersPath);
 					} catch (error) {
-						res.status(500).send('Failed to find headers file');
+						res.status(500).send('Failed to load headers file');
 					}
 				},
 			),

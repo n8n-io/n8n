@@ -2742,12 +2742,8 @@ export default mixins(
 				await Promise.all(loadPromises);
 
 				if (this.defaultLocale !== 'en') {
-					try {
-						const headers = await this.restApi().getNodeTranslationHeaders();
-						addHeaders(headers, this.defaultLocale);
-					} catch (_) {
-						// no headers available
-					}
+					const headers = await this.restApi().getNodeTranslationHeaders();
+					if (headers) addHeaders(headers, this.defaultLocale);
 				}
 			} catch (error) {
 				this.$showError(
