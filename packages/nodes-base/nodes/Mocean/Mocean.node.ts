@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -10,10 +13,10 @@ import {
 	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
 
-import {moceanApiRequest} from './GenericFunctions';
-
+import {
+	moceanApiRequest,
+} from './GenericFunctions';
 
 export class Mocean implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,7 +47,7 @@ export class Mocean implements INodeType {
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				options:[
+				options: [
 					{
 						name: 'SMS',
 						value: 'sms',
@@ -125,7 +128,7 @@ export class Mocean implements INodeType {
 				displayName: 'Language',
 				name: 'language',
 				type: 'options',
-				options:[
+				options: [
 					{
 						name: 'Chinese Mandarin (China)',
 						value: 'cmn-CN',
@@ -180,14 +183,11 @@ export class Mocean implements INodeType {
 				},
 				description: 'Message to send',
 			},
-
 			{
-				displayName: 'Delivery Report URL',
-				name: 'dlr-url',
-				type: 'string',
-				default: '',
-				placeholder: '',
-				required: false,
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
 						operation: [
@@ -198,7 +198,17 @@ export class Mocean implements INodeType {
 						],
 					},
 				},
-				description: 'Delivery report URL',
+				default: {},
+				options: [
+					{
+						displayName: 'Delivery Report URL',
+						name: 'dlrUrl',
+						type: 'string',
+						default: '',
+						placeholder: '',
+						description: 'Delivery report URL',
+					},
+				],
 			},
 		],
 	};
@@ -207,21 +217,16 @@ export class Mocean implements INodeType {
 		credentialTest: {
 			async moceanApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
-
-				const body: IDataObject = {};
-				body['mocean-api-key'] = credentials!['mocean-api-key'];
-				body['mocean-api-secret'] = credentials!['mocean-api-secret'];
-				body['mocean-to'] = '6012356789';
-				body['mocean-resp-format'] = 'JSON';
+				const query: IDataObject = {};
+				query['mocean-api-key'] = credentials!['mocean-api-key'];
+				query['mocean-api-secret'] = credentials!['mocean-api-secret'];
 
 				const options = {
-					method: 'POST',
-					form: body,
-					qs: {},
-					uri: `https://rest.moceanapi.com/rest/2/nl`,
+					method: 'GET',
+					qs: query,
+					uri: `https://rest.moceanapi.com/rest/2/account/balance`,
 					json: true,
 				};
-
 				try {
 					await this.helpers.request!(options);
 				} catch (error) {
@@ -260,9 +265,8 @@ export class Mocean implements INodeType {
 			qs = {};
 			try {
 				resource = this.getNodeParameter('resource', itemIndex, '') as string;
-				operation = this.getNodeParameter('operation',itemIndex,'') as string;
+				operation = this.getNodeParameter('operation', itemIndex, '') as string;
 				text = this.getNodeParameter('message', itemIndex, '') as string;
-				dlrUrl = this.getNodeParameter('dlr-url',itemIndex, '') as string;
 				requesetMethod = 'POST';
 				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
 				body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
@@ -280,7 +284,8 @@ export class Mocean implements INodeType {
 					dataKey = 'voice';
 					body['mocean-command'] = JSON.stringify(command);
 					endpoint = '/rest/2/voice/dial';
-				} else if(resource === 'sms') {
+				} else if (resource === 'sms') {
+					dlrUrl = this.getNodeParameter('options.dlrUrl', itemIndex, '') as string;
 					dataKey = 'messages';
 					body['mocean-text'] = text;
 					if (dlrUrl !== '') {
@@ -293,7 +298,7 @@ export class Mocean implements INodeType {
 				}
 
 				if (operation === 'send') {
-					const responseData = await moceanApiRequest.call(this,requesetMethod,endpoint,body,qs);
+					const responseData = await moceanApiRequest.call(this, requesetMethod, endpoint, body, qs);
 
 					for (const item of responseData[dataKey] as IDataObject[]) {
 						item.type = resource;
