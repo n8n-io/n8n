@@ -29,7 +29,6 @@ import {
 import {
 	validateCredentials
 } from './GenericFunctions';
-import { JsonObject } from 'n8n-workflow';
 
 export class NocoDB implements INodeType {
 	description: INodeTypeDescription = {
@@ -160,7 +159,6 @@ export class NocoDB implements INodeType {
 						};
 					}
 				} catch (error) {
-					const err = error as JsonObject;
 					return {
 						status: 'Error',
 						message: 'Invalid credentials',
