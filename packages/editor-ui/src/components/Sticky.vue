@@ -1,18 +1,21 @@
 <template>
   <div class="sticky-wrapper" :style="stickyPosition">
     <div class="select-sticky-background" v-show="isSelected" :style="selectedStyle" />
-    <div class="sticky-default">
-      <div 
-        :class="stickyClass"
+    <div 
+      :class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
+      :style="wrapperStyle"
+    >
+      <div
+        class="sticky-box"
         :data-name="data.name"
         :ref="data.name"
         :style="stickyStyle"
         @click="setNodeActive"
+        @click.left="mouseLeftClick"
         v-touch:start="touchStart"
         v-touch:end="touchEnd"
       >
         <n8n-sticky 
-          :class="{'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
           :content.sync="node.parameters.content"
           :height="node.parameters.height"
           :id="nodeIndex"
@@ -100,12 +103,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
-		stickyClass (): object {
-			return {
-				'sticky-box': true,
-				disabled: this.data.disabled,
-			};
-		},
 		stickyPosition (): object {
 			const returnStyles: {
 				[key: string]: string | number;
@@ -145,6 +142,16 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		showTooltip(): boolean {
 			return !this.hideActions;
+		},
+		wrapperStyle(): object {
+			const returnStyles: {
+				[key: string]: string | number;
+			} = {
+				height: this.stickyProp.height + 'px',
+				width: this.stickyProp.width + 'px',
+			};
+
+			return returnStyles;
 		},
  	},
 	data () {
