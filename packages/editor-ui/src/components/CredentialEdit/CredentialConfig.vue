@@ -40,9 +40,9 @@
 
 		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
 			{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-			<a :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">
+			<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
 				{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
-			</a>
+			</n8n-link>
 		</n8n-info-tip>
 
 		<CopyInput

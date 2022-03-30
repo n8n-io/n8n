@@ -52,6 +52,7 @@ import { getLogger } from './Logger';
 
 import * as config from '../config';
 import { InternalHooksManager } from './InternalHooksManager';
+import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -88,6 +89,7 @@ export class WorkflowRunnerProcess {
 		LoggerProxy.init(logger);
 
 		this.data = inputData;
+		const { userId } = inputData;
 
 		logger.verbose('Initializing n8n sub-process', {
 			pid: process.pid,
@@ -235,7 +237,9 @@ export class WorkflowRunnerProcess {
 			staticData: this.data.workflowData.staticData,
 			settings: this.data.workflowData.settings,
 		});
+		await checkPermissionsForExecution(this.workflow, userId);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
@@ -273,8 +277,15 @@ export class WorkflowRunnerProcess {
 			additionalData: IWorkflowExecuteAdditionalData,
 			inputData?: INodeExecutionData[] | undefined,
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
-			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
-			const runData = await WorkflowExecuteAdditionalData.getRunData(workflowData, inputData);
+			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
+				workflowInfo,
+				userId,
+			);
+			const runData = await WorkflowExecuteAdditionalData.getRunData(
+				workflowData,
+				additionalData.userId,
+				inputData,
+			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {
 				this.executionIdCallback = (executionId: string) => {
@@ -300,6 +311,7 @@ export class WorkflowRunnerProcess {
 					executionId,
 					workflowData,
 					result,
+					additionalData.userId,
 				);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];
