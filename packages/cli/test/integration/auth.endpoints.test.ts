@@ -165,7 +165,7 @@ test('GET /login should return logged-in owner shell', async () => {
 });
 
 test('GET /login should return logged-in member shell', async () => {
-	const memberShell = await testDb.createMemberShell();
+	const memberShell = await testDb.createMemberShell(globalMemberRole);
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: memberShell });
 
 	const response = await authMemberAgent.get('/login');

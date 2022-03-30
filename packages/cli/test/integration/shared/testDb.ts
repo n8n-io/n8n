@@ -215,13 +215,19 @@ export async function createFullUser(
 	return Db.collections.User!.save(user);
 }
 
-export async function createMemberShell(): Promise<User> {
-	const globalRole = await getGlobalMemberRole();
+export async function createMemberShell(globalMemberRole: Role): Promise<User> {
+	if (globalMemberRole.scope !== 'global' || globalMemberRole.name !== 'member') {
+		throw new Error(`Invalid role received: ${JSON.stringify(globalMemberRole)}`);
+	}
 
-	return Db.collections.User!.save({ globalRole });
+	return Db.collections.User!.save({ globalRole: globalMemberRole });
 }
 
 export async function createOwnerShell(globalOwnerRole: Role): Promise<User> {
+	if (globalOwnerRole.scope !== 'global' || globalOwnerRole.name !== 'owner') {
+		throw new Error(`Invalid role received: ${JSON.stringify(globalOwnerRole)}`);
+	}
+
 	return Db.collections.User!.save({ globalRole: globalOwnerRole });
 }
 

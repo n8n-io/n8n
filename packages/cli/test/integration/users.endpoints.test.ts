@@ -274,7 +274,7 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const memberShell = await testDb.createMemberShell();
+	const memberShell = await testDb.createMemberShell(globalMemberRole);
 
 	const response = await authOwnerAgent
 		.get('/resolve-signup-token')
