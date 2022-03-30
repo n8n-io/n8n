@@ -328,12 +328,9 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 test('POST /users/:id should fill out a user shell', async () => {
 	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
 
-	const userShell = await Db.collections.User!.save({
-		email: randomEmail(),
-		globalRole: globalMemberRole,
-	});
+	const memberShell = await testDb.createMemberShell(globalMemberRole);
 
-	const userData = {
+	const memberData = {
 		inviterId: owner.id,
 		firstName: randomName(),
 		lastName: randomName(),
@@ -342,7 +339,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 
 	const authlessAgent = utils.createAgent(app);
 
-	const response = await authlessAgent.post(`/users/${userShell.id}`).send(userData);
+	const response = await authlessAgent.post(`/users/${memberShell.id}`).send(memberData);
 
 	const {
 		id,
@@ -358,8 +355,8 @@ test('POST /users/:id should fill out a user shell', async () => {
 
 	expect(validator.isUUID(id)).toBe(true);
 	expect(email).toBeDefined();
-	expect(firstName).toBe(userData.firstName);
-	expect(lastName).toBe(userData.lastName);
+	expect(firstName).toBe(memberData.firstName);
+	expect(lastName).toBe(memberData.lastName);
 	expect(personalizationAnswers).toBeNull();
 	expect(password).toBeUndefined();
 	expect(resetPasswordToken).toBeUndefined();
@@ -369,10 +366,10 @@ test('POST /users/:id should fill out a user shell', async () => {
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();
 
-	const fullUser = await Db.collections.User!.findOneOrFail(userShell.id);
-	expect(fullUser.firstName).toBe(userData.firstName);
-	expect(fullUser.lastName).toBe(userData.lastName);
-	expect(fullUser.password).not.toBe(userData.password);
+	const member = await Db.collections.User!.findOneOrFail(memberShell.id);
+	expect(member.firstName).toBe(memberData.firstName);
+	expect(member.lastName).toBe(memberData.lastName);
+	expect(member.password).not.toBe(memberData.password);
 });
 
 test('POST /users/:id should fail with invalid inputs', async () => {
@@ -380,10 +377,10 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 
 	const authlessAgent = utils.createAgent(app);
 
-	const emailToStore = randomEmail();
+	const memberShellEmail = randomEmail();
 
-	const userShell = await Db.collections.User!.save({
-		email: emailToStore,
+	const memberShell = await Db.collections.User!.save({
+		email: memberShellEmail,
 		globalRole: globalMemberRole,
 	});
 
@@ -417,10 +414,12 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 	];
 
 	for (const invalidPayload of invalidPayloads) {
-		const response = await authlessAgent.post(`/users/${userShell.id}`).send(invalidPayload);
+		const response = await authlessAgent.post(`/users/${memberShell.id}`).send(invalidPayload);
 		expect(response.statusCode).toBe(400);
 
-		const storedUser = await Db.collections.User!.findOneOrFail({ where: { email: emailToStore } });
+		const storedUser = await Db.collections.User!.findOneOrFail({
+			where: { email: memberShellEmail },
+		});
 		expect(storedUser.firstName).toBeNull();
 		expect(storedUser.lastName).toBeNull();
 		expect(storedUser.password).toBeNull();
@@ -429,35 +428,30 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 
 test('POST /users/:id should fail with already accepted invite', async () => {
 	const owner = await testDb.createFullUser({ globalRole: globalOwnerRole });
+	const member = await testDb.createFullUser({ globalRole: globalMemberRole });
 
-	const userShell = await Db.collections.User!.save({
-		email: randomEmail(),
-		password: hashPassword(randomValidPassword()), // simulate accepted invite
-		globalRole: globalMemberRole,
-	});
-
-	const authlessAgent = utils.createAgent(app);
-
-	const memberData = {
+	const newMemberData = {
 		inviterId: owner.id,
 		firstName: randomName(),
 		lastName: randomName(),
 		password: randomValidPassword(),
 	};
 
-	const response = await authlessAgent.post(`/users/${userShell.id}`).send();
+	const authlessAgent = utils.createAgent(app);
+
+	const response = await authlessAgent.post(`/users/${member.id}`).send(newMemberData);
 
 	expect(response.statusCode).toBe(400);
 
-	const storedShellUser = await Db.collections.User!.findOneOrFail({
-		where: { email: userShell.email },
+	const storedMember = await Db.collections.User!.findOneOrFail({
+		where: { email: member.email },
 	});
-	expect(storedShellUser.firstName).toBeNull();
-	expect(storedShellUser.lastName).toBeNull();
+	expect(storedMember.firstName).not.toBe(newMemberData.firstName);
+	expect(storedMember.lastName).not.toBe(newMemberData.lastName);
 
-	const comparisonResult = await compareHash(userShell.password!, memberData.password);
+	const comparisonResult = await compareHash(member.password!, newMemberData.password);
 	expect(comparisonResult).toBe(false);
-	expect(memberData).not.toBe(storedShellUser.password);
+	expect(storedMember.password).not.toBe(newMemberData.password);
 });
 
 test('POST /users should fail if emailing is not set up', async () => {
