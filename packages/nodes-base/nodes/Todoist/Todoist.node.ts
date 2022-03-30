@@ -175,6 +175,7 @@ export class Todoist implements INodeType {
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getSections',
+					loadOptionsDependsOn: ['project'],
 				},
 				displayOptions: {
 					show: {
