@@ -14,7 +14,7 @@ export const customObjectOperations: INodeProperties[] = [
 			{
 				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Get all custom Objects',
+				description: 'Update an object or create it if it does not exist',
 			},
 			{
 				name: 'Create',
@@ -50,6 +50,11 @@ export const customObjectOperations: INodeProperties[] = [
 				name: 'Batched delete',
 				value: 'batchDelete',
 				description: 'Like delete, but this costs only up to two requests per 100 objects. Requires continueOnFail',
+			},
+			{
+				name: 'Batched Create/Update',
+				value: 'batchUpsert',
+				description: 'Like upsert, but this costs only up to three requests per 100 objects. Requires continueOnFail',
 			},
 		],
 		default: 'create',
@@ -223,7 +228,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
-				operation: ['upsert'],
+				operation: ['upsert', 'batchUpsert'],
 			},
 		},
 		default: '',
@@ -237,7 +242,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
-				operation: ['upsert'],
+				operation: ['upsert', 'batchUpsert'],
 			},
 		},
 		default: '',
@@ -252,7 +257,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
-				operation: ['upsert'],
+				operation: ['upsert', 'batchUpsert'],
 			},
 		},
 		options: [
