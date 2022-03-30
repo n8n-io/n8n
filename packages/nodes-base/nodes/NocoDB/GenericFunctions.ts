@@ -10,13 +10,14 @@ import {
 
 import {
 	IBinaryKeyData,
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-
 
 interface IAttachment {
 	url: string;
@@ -35,7 +36,14 @@ interface IAttachment {
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('nocoDb');
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+	let credentials;
+
+	if (authenticationMethod === 'nocoDbApiToken') {
+		credentials = await this.getCredentials('nocoDbApiToken');
+	} else if (authenticationMethod === 'nocoDb') {
+		credentials = await this.getCredentials('nocoDb');
+	}
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -44,16 +52,19 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	query = query || {};
 
 	const options: OptionsWithUri = {
-		headers: {
-			'xc-token': credentials.apiToken,
-		},
+		headers: {},
 		method,
 		body,
 		qs: query,
 		uri: uri || `${credentials.host}${endpoint}`,
 		json: true,
-
 	};
+
+	if (credentials.apiToken) {
+		options.headers = { 'xc-auth': credentials.apiToken };
+	} else {
+		options.headers = { 'xc-token': credentials.nocoDbApiToken };
+	}
 
 	if (Object.keys(option).length !== 0) {
 		Object.assign(options, option);
@@ -128,4 +139,33 @@ export async function downloadRecordAttachments(this: IExecuteFunctions | IPollF
 		elements.push(element);
 	}
 	return elements;
+}
+
+export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+	const credentials = decryptedCredentials;
+
+	const {
+		apiToken,
+		nocoDbApiToken,
+		host,
+	} = credentials as {
+		apiToken: string,
+		nocoDbApiToken: string,
+		host: string,
+	};
+
+	const options: OptionsWithUri = {
+		method: 'GET',
+		headers: {},
+		uri: host.endsWith('/') ? `${host}user/me` : `${host}/user/me`,
+		json: true,
+	};
+
+	if (apiToken) {
+		options.headers = { 'xc-auth': apiToken };
+	} else {
+		options.headers = { 'xc-token': nocoDbApiToken };
+	}
+
+	return await this.helpers.request(options);
 }

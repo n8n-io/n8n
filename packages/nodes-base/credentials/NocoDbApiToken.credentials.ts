@@ -4,14 +4,14 @@ import {
 } from 'n8n-workflow';
 
 
-export class NocoDb implements ICredentialType {
-	name = 'nocoDb';
-	displayName = 'NocoDB';
+export class NocoDbApiToken implements ICredentialType {
+	name = 'nocoDbApiToken';
+	displayName = 'NocoDB API Token';
 	documentationUrl = 'nocoDb';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'User Token',
-			name: 'apiToken',
+			displayName: 'API Token',
+			name: 'nocoDbApiToken',
 			type: 'string',
 			default: '',
 		},
