@@ -1,20 +1,6 @@
 <template>
 	<n8n-tabs
-		:options="[
-		{
-			label: $locale.baseText('nodeSettings.parameters'),
-			value: 'params'
-		},
-		{
-			label: $locale.baseText('nodeSettings.docs'),
-			value: 'docs',
-			href: documentationUrl,
-		},
-		{
-			icon: 'cog',
-			value: 'settings',
-			align: 'right',
-		}]"
+		:options="options"
 		:value="value"
 		@input="onTabSelect"
 	/>
@@ -22,6 +8,7 @@
 
 <script lang="ts">
 import { externalHooks } from '@/components/mixins/externalHooks';
+import { ITab } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
@@ -53,6 +40,30 @@ export default mixins(
 			}
 
 			return '';
+		},
+		options (): ITab[] {
+			const options: ITab[] = [
+				{
+					label: this.$locale.baseText('nodeSettings.parameters'),
+					value: 'params',
+				},
+			];
+			if (this.documentationUrl) {
+				options.push({
+					label: this.$locale.baseText('nodeSettings.docs'),
+					value: 'docs',
+					href: this.documentationUrl,
+				});
+			}
+			options.push(
+				{
+					icon: 'cog',
+					value: 'settings',
+					align: 'right',
+				},
+			);
+
+			return options;
 		},
 	},
 	methods: {

@@ -958,3 +958,11 @@ export type IFormBoxConfig = {
 	redirectLink?: string;
 	redirectText?: string;
 };
+
+export interface ITab {
+	value: string | number;
+	label?: string;
+	href?: string,
+	icon?: string;
+	align?: 'right';
+};
