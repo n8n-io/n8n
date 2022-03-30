@@ -12,6 +12,7 @@ import Switch from 'element-ui/lib/switch';
 import Select from 'element-ui/lib/select';
 import Option from 'element-ui/lib/option';
 import OptionGroup from 'element-ui/lib/option-group';
+import Pagination from 'element-ui/lib/pagination';
 import ButtonGroup from 'element-ui/lib/button-group';
 import Table from 'element-ui/lib/table';
 import TableColumn from 'element-ui/lib/table-column';
@@ -115,6 +116,7 @@ export {
 	Select,
 	Option,
 	OptionGroup,
+	Pagination,
 	ButtonGroup,
 	Table,
 	TableColumn,

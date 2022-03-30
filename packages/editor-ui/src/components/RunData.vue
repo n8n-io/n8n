@@ -175,6 +175,19 @@
 				</div>
 			</div>
 		</div>
+		<div :class="$style.pagination">
+			<el-pagination
+				background
+				:hide-on-single-page="true"
+				:current-page.sync="currentPage"
+				:small="true"
+				:pager-count="5"
+				:page-size="pageSize"
+				layout="prev, pager, next"
+				:class="$style.pagination"
+				:total="dataCount">
+			</el-pagination>
+		</div>
 
 	</div>
 </template>
@@ -245,12 +258,13 @@ export default mixins(
 				runIndex: 0,
 				showData: false,
 				outputIndex: 0,
-				maxDisplayItems: 25 as number | null,
 				binaryDataDisplayVisible: false,
 				binaryDataDisplayData: null as IBinaryDisplayData | null,
 
 				MAX_DISPLAY_DATA_SIZE,
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
+				currentPage: 1,
+				pageSize: 10,
 			};
 		},
 		mounted() {
@@ -288,13 +302,6 @@ export default mixins(
 				}
 				const executionData: IRunExecutionData = this.workflowExecution.data;
 				return executionData.resultData.runData;
-			},
-			maxDisplayItemsOptions (): number[] {
-				const options = [25, 50, 100, 250, 500, 1000].filter(option => option <= this.dataCount);
-				if (!options.includes(this.dataCount)) {
-					options.push(this.dataCount);
-				}
-				return options;
 			},
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
@@ -372,9 +379,8 @@ export default mixins(
 					return [];
 				}
 
-				if (this.maxDisplayItems !== null) {
-					inputData = inputData.slice(0, this.maxDisplayItems);
-				}
+				const offset = this.pageSize * (this.currentPage - 1);
+				inputData = inputData.slice(offset, offset + this.pageSize);
 
 				return inputData;
 			},
@@ -459,7 +465,6 @@ export default mixins(
 			init() {
 				// Reset the selected output index every time another node gets selected
 				this.outputIndex = 0;
-				this.maxDisplayItems = 25;
 				this.refreshDataSize();
 				if (this.displayMode === 'binary') {
 					this.closeBinaryDataDisplay();
@@ -641,7 +646,8 @@ export default mixins(
 				// Check how much data there is to display
 				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
 
-				const jsonItems = inputData.slice(0, this.maxDisplayItems || inputData.length).map(item => item.json);
+				const offset = this.pageSize * (this.currentPage - 1);
+				const jsonItems = inputData.slice(offset, offset + this.pageSize).map(item => item.json);
 
 				this.dataSize = JSON.stringify(jsonItems).length;
 
@@ -794,6 +800,15 @@ export default mixins(
 	right: 24px;
 	position: absolute;
 	z-index: 10;
+}
+
+.pagination {
+	position: absolute;
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	bottom: 0;
+	padding: 5px;
 }
 
 </style>

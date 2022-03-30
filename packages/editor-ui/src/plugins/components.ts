@@ -41,6 +41,7 @@ import {
 	Message,
 	Notification,
 	CollapseTransition,
+	Pagination,
 	Popover,
 
 	N8nActionBox,
@@ -135,6 +136,7 @@ Vue.use(Badge);
 Vue.use(Card);
 Vue.use(ColorPicker);
 Vue.use(Container);
+Vue.use(Pagination);
 Vue.use(Popover);
 
 Vue.use(VueAgile);
