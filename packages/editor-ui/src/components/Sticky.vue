@@ -4,7 +4,7 @@
     <div class="sticky-default">
       <div 
         :class="stickyClass"
-				:data-name="data.name"
+        :data-name="data.name"
         :ref="data.name"
         :style="stickyStyle"
         @click="setNodeActive"
@@ -12,15 +12,15 @@
         v-touch:end="touchEnd"
       >
         <n8n-sticky 
-				  :class="{'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
+          :class="{'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
           :content.sync="node.parameters.content"
-					:height="node.parameters.height"
+          :height="node.parameters.height"
           :id="nodeIndex"
-					:width="node.parameters.width"
-					:zIndex="node.parameters.zIndex"
+          :width="node.parameters.width"
+          :zIndex="node.parameters.zIndex"
+          @input="onInputChange"
           @onResizeEnd="onResizeEnd"
           @onResizeStart="onResizeStart"
-					@input="onInputChange"
         />
       </div>
 

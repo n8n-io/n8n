@@ -32,23 +32,23 @@
 				:hideActions="pullConnActive"
 				></node>
 				<Sticky
-					v-for="nodeData in stickies"
-					@duplicateNode="duplicateNode"
-					@deselectAllNodes="deselectAllNodes"
-					@deselectNode="nodeDeselectedByName"
-					@nodeSelected="nodeSelectedByName"
-					@removeNode="removeNode"
-					@moved="onNodeMoved"
-					@run="onNodeRun"
-					@onResizeChange="onResizeChange"
-					:id="'node-' + getNodeIndex(nodeData.name)"
-					:key="getNodeIndex(nodeData.name)"
-					:name="nodeData.name"
-					:isReadOnly="isResizing"
-					:instance="instance"
-					:isActive="!!activeNode && activeNode.name === nodeData.name"
-					:hideActions="pullConnActive"
-				/>
+          v-for="nodeData in stickies"
+          @duplicateNode="duplicateNode"
+          @deselectAllNodes="deselectAllNodes"
+          @deselectNode="nodeDeselectedByName"
+          @nodeSelected="nodeSelectedByName"
+          @removeNode="removeNode"
+          @moved="onNodeMoved"
+          @run="onNodeRun"
+          @onResizeChange="onResizeChange"
+          :id="'node-' + getNodeIndex(nodeData.name)"
+          :key="getNodeIndex(nodeData.name)"
+          :name="nodeData.name"
+          :isReadOnly="isResizing"
+          :instance="instance"
+          :isActive="!!activeNode && activeNode.name === nodeData.name"
+          :hideActions="pullConnActive"
+        />
 			</div>
 		</div>
 		<DataDisplay @valueChanged="valueChanged"/>
@@ -2901,11 +2901,6 @@ export default mixins(
 	position: relative;
 	width: 100%;
 	height: 100%;
-	transform-origin: 0 0;
-}
-
-.sticky-view {
-	position: relative;
 	transform-origin: 0 0;
 }
 
