@@ -4,7 +4,7 @@
     <div class="sticky-default">
       <div 
         :class="stickyClass"
-	      :data-name="data.name"
+				:data-name="data.name"
         :ref="data.name"
         :style="stickyStyle"
         @click="setNodeActive"
