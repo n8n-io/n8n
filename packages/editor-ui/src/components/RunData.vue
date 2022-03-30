@@ -16,15 +16,6 @@
 					<font-awesome-icon icon="info-circle" :class="$style.infoIcon" />
 				</n8n-tooltip>
 			</div>
-			<!-- <div v-else class="title-text">
-				<n8n-text :bold="true">{{ $locale.baseText('runData.items') }}:</n8n-text>
-				<span class="opts">
-					<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
-						<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
-					</n8n-select>
-				</span>/
-				<n8n-text :bold="true">{{ dataCount }}</n8n-text>
-			</div> -->
 
 			<div v-if="!hasRunError" @click.stop>
 				<n8n-radio-buttons
@@ -375,7 +366,7 @@ export default mixins(
 
 				return 0;
 			},
-			jsonData (): IDataObject[] {
+			inputData (): INodeExecutionData[] {
 				let inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
 				if (inputData.length === 0 || !Array.isArray(inputData)) {
 					return [];
@@ -385,19 +376,13 @@ export default mixins(
 					inputData = inputData.slice(0, this.maxDisplayItems);
 				}
 
-				return this.convertToJson(inputData);
+				return inputData;
+			},
+			jsonData (): IDataObject[] {
+				return this.convertToJson(this.inputData);
 			},
 			tableData (): ITableData | undefined {
-				let inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
-				if (inputData.length === 0) {
-					return undefined;
-				}
-
-				if (this.maxDisplayItems !== null) {
-					inputData = inputData.slice(0,this.maxDisplayItems);
-				}
-
-				return this.convertToTable(inputData);
+				return this.convertToTable(this.inputData);
 			},
 			binaryData (): IBinaryKeyData[] {
 				if (this.node === null) {
