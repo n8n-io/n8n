@@ -1256,15 +1256,10 @@ export default mixins(
 				const maxNodes = nodeTypeData.maxNodes;
 				this.$showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
-					message: this.$locale.baseText(
-						maxNodes === 1
-							? 'nodeView.showMessage.showMaxNodeTypeError.message.singular'
-							: 'nodeView.showMessage.showMaxNodeTypeError.message.plural',
+					message: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.message',
 						{
-							interpolate: {
-								maxNodes: maxNodes!.toString(),
-								nodeTypeDataDisplayName: nodeTypeData.displayName,
-							},
+							adjustToNumber: maxNodes,
+							interpolate: { nodeTypeDataDisplayName: nodeTypeData.displayName },
 						},
 					),
 					type: 'error',
