@@ -267,7 +267,7 @@ export default mixins(
 			defaultLocale (): string {
 				return this.$store.getters.defaultLocale;
 			},
-			englishLocale(): boolean {
+			isEnglishLocale(): boolean {
 				return this.defaultLocale === 'en';
 			},
 			...mapGetters(['nativelyNumberSuffixedDefaults']),
@@ -374,7 +374,7 @@ export default mixins(
 				type?: string,
 			}) {
 				const allNodeNamesOnCanvas = this.$store.getters.allNodes.map((n: INodeUi) => n.name);
-				originalName = this.englishLocale ? originalName : this.translateName(type, originalName);
+				originalName = this.isEnglishLocale ? originalName : this.translateName(type, originalName);
 
 				if (
 					!allNodeNamesOnCanvas.includes(originalName) &&
@@ -384,7 +384,7 @@ export default mixins(
 				}
 
 				let natives: string[] = this.nativelyNumberSuffixedDefaults;
-				natives = this.englishLocale ? natives : natives.map(name => {
+				natives = this.isEnglishLocale ? natives : natives.map(name => {
 					const type = name.toLowerCase().replace('_', '');
 					return this.translateName(type, name);
 				});
