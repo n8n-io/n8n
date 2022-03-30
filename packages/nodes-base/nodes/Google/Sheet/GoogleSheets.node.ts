@@ -588,7 +588,6 @@ export class GoogleSheets implements INodeType {
 				},
 				description: 'The name of the key to identify which data should be updated in the sheet.',
 			},
-
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -731,8 +730,51 @@ export class GoogleSheets implements INodeType {
 						default: 'UNFORMATTED_VALUE',
 						description: 'Determines how values should be rendered in the output.',
 					},
-
-				],
+					{
+						displayName: 'Create header if required',
+						name: 'createHeader',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								resource: [
+									'sheet',
+								],
+								operation: [
+									'update',
+								],
+					},
+						},
+						default: false,
+				},
+				{
+					displayName: 'Table layout',
+					name: 'tableLayout',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: [
+								'sheet',
+							],
+							operation: [
+								'update',
+							],
+						},
+					},
+					options: [
+						{
+							name: 'Headers on top',
+							value: 'topHeaders',
+							description: 'Write data under the header row.',
+						},
+						{
+							name: 'Headers to the left',
+							value: 'leftHeaders',
+							description: 'Write data next to the header column.',
+						},
+					],
+					default: 'topHeaders',
+			},
+		],
 			},
 
 			{
