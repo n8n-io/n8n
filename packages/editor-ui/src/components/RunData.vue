@@ -35,9 +35,9 @@
 		</div>
 
 		<div :class="$style.runSelector" v-if="maxRunIndex > 0" >
-			<n8n-select size="mini" v-model="runIndex" @click.stop>
+			<n8n-select size="small" v-model="runIndex" @click.stop>
 				<template slot="prepend">{{ $locale.baseText('node.output.run') }}</template>
-				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option-1" :key="option"></n8n-option>
+				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
 			</n8n-select>
 		</div>
 
