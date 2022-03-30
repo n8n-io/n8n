@@ -206,6 +206,7 @@ import {
 	IBinaryDisplayData,
 	IExecutionResponse,
 	INodeUi,
+	ITab,
 	ITableData,
 } from '@/Interface';
 
@@ -405,11 +406,11 @@ export default mixins(
 
 				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.outputIndex);
 			},
-			branches (): Array<{value: number, label: string }> {
+			branches (): ITab[] {
 				function capitalize(name: string) {
 					return name.charAt(0).toLocaleUpperCase() + name.slice(1);
 				}
-				const branches: Array<{value: number, label: string }> = [];
+				const branches: ITab[] = [];
 				for (let i = 0; i <= this.maxOutputIndex; i++) {
 					const itemsCount = this.getDataCount(this.runIndex, i);
 					const items = this.$locale.baseText(itemsCount === 1 ? 'node.output.item': 'node.output.items');
