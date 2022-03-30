@@ -230,3 +230,21 @@ export async function configureSmtp() {
 	config.set('userManagement.emails.smtp.auth.user', user);
 	config.set('userManagement.emails.smtp.auth.pass', pass);
 }
+
+// ----------------------------------
+//              misc
+// ----------------------------------
+
+/**
+ * Categorize array items into two groups based on whether they pass a test.
+ */
+export const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
+	return arr.reduce<{ pass: T[]; fail: T[] }>(
+		(acc, cur) => {
+			test(cur) ? acc.pass.push(cur) : acc.fail.push(cur);
+
+			return acc;
+		},
+		{ pass: [], fail: [] },
+	);
+};

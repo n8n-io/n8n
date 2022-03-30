@@ -12,6 +12,7 @@ import { entities } from '../../../src/databases/entities';
 import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
 import { postgresMigrations } from '../../../src/databases/postgresdb/migrations';
 import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
+import { categorize } from './utils';
 
 import type { Role } from '../../../src/databases/entities/Role';
 import type { User } from '../../../src/databases/entities/User';
@@ -95,18 +96,7 @@ export async function terminate(testDbName: string) {
 	}
 }
 
-const isSharedTable = (str: keyof IDatabaseCollections) => str.toLowerCase().startsWith('shared');
 
-const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
-	return arr.reduce<{ pass: T[]; fail: T[] }>(
-		(acc, cur) => {
-			test(cur) ? acc.pass.push(cur) : acc.fail.push(cur);
-
-			return acc;
-		},
-		{ pass: [], fail: [] },
-	);
-};
 
 /**
  * Truncate DB tables for specified entities.
@@ -117,7 +107,10 @@ const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
 export async function truncate(entities: Array<keyof IDatabaseCollections>, testDbName: string) {
 	const dbType = config.get('database.type');
 
-	const { pass: isShared, fail: isNotShared } = categorize(entities, isSharedTable);
+	const { pass: isShared, fail: isNotShared } = categorize(
+		entities,
+		(str: keyof IDatabaseCollections) => str.toLowerCase().startsWith('shared'),
+	);
 
 	const sortedEntities = [...isShared, ...isNotShared]; // shared tables must be cleared first
 
