@@ -256,6 +256,29 @@ export class Ftp implements INodeType {
 				description: 'The new path',
 				required: true,
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'rename',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Move',
+						name: 'move',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to also move the file when the "New Path" uses a different directory than the "Old Path"',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         upload
@@ -455,9 +478,12 @@ export class Ftp implements INodeType {
 
 					if (operation === 'rename') {
 						const oldPath = this.getNodeParameter('oldPath', i) as string;
-
+						const { move = false } = this.getNodeParameter('options', i) as { move: boolean };
 						const newPath = this.getNodeParameter('newPath', i) as string;
-						await recursivelyCreateSftpDirs(sftp!, newPath);
+
+						if (move) {
+							await recursivelyCreateSftpDirs(sftp!, newPath);
+						}
 
 						responseData = await sftp!.rename(oldPath, newPath);
 
