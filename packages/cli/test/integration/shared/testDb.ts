@@ -231,10 +231,6 @@ export async function createOwnerShell(globalOwnerRole: Role): Promise<User> {
 	return Db.collections.User!.save({ globalRole: globalOwnerRole });
 }
 
-export async function getOwnerShell() {
-	return Db.collections.User!.findOneOrFail({ where: { email: null } });
-}
-
 // ----------------------------------
 //          role fetchers
 // ----------------------------------

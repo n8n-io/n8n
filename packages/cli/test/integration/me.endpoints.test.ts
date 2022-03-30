@@ -161,10 +161,13 @@ describe('Owner shell', () => {
 
 		for (const validPayload of validPayloads) {
 			const response = await authOwnerShellAgent.post('/me/survey').send(validPayload);
+
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-			const { personalizationAnswers: storedAnswers } = await testDb.getOwnerShell();
+			const { personalizationAnswers: storedAnswers } = await Db.collections.User!.findOneOrFail({
+				where: { email: null },
+			});
 
 			expect(storedAnswers).toEqual(validPayload);
 		}

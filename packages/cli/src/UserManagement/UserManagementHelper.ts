@@ -221,13 +221,16 @@ export function isAuthenticatedRequest(request: express.Request): request is Aut
 export const hashPassword = (validPassword: string): string =>
 	hashSync(validPassword, genSaltSync(10));
 
-export async function compareHash(str: string, hash: string): Promise<boolean | undefined> {
+export async function compareHash(plaintext: string, hash: string): Promise<boolean | undefined> {
 	try {
-		return await compare(str, hash);
+		return await compare(plaintext, hash);
 	} catch (error) {
 		if (error instanceof Error && error.message.includes('Invalid salt version')) {
-			error.message +=
-				'. Comparison against unhashed string. Please check that the value compared against has been hashed.';
+			error.message = [
+				error.message,
+				'Comparison against unhashed string',
+				'Please hash the value to compare against',
+			].join('. ');
 		}
 
 		throw new Error(error);
