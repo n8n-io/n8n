@@ -156,7 +156,7 @@ export default {
 }
 </style>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .resizer {
   position: absolute;
   z-index: 2;
