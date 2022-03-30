@@ -32,14 +32,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+	await testDb.truncate(['User'], testDbName);
+
 	jest.mock('../../config');
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
-});
-
-beforeEach(async () => {
-	await testDb.truncate(['User'], testDbName);
 });
 
 afterAll(async () => {
