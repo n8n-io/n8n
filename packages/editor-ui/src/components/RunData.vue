@@ -42,7 +42,7 @@
 		</div>
 
 		<n8n-tabs v-model="outputIndex" v-if="maxOutputIndex > 0" :options="branches" />
-		<div v-else-if="hasNodeRun && dataCount > 0" :class="$style.itemsCount">
+		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" :class="$style.itemsCount">
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText(dataCount === 1 ? 'node.output.item' : 'node.output.items') }}
 			</n8n-text>
