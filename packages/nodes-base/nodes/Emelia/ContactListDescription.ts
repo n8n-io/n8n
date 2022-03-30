@@ -39,7 +39,6 @@ export const contactListFields: INodeProperties[] = [
 		name: 'contactListId',
 		type: 'options',
 		typeOptions: {
-			// nodelinter-ignore-next-line
 			loadOptionsMethod: 'getContactLists',
 		},
 		default: [],
@@ -200,7 +199,7 @@ export const contactListFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 50,
+		default: 100,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

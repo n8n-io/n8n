@@ -314,7 +314,7 @@ export class Emelia implements INodeType {
 							copyProvider: true,
 							...options,
 						};
-						await emeliaGraphqlRequest.call(this, {
+						const { data: { duplicateCampaign } } = await emeliaGraphqlRequest.call(this, {
 							query: `
 									mutation duplicateCampaign(
 										$fromId: ID!
@@ -337,8 +337,7 @@ export class Emelia implements INodeType {
 							variables,
 						});
 
-						returnData.push({ success: true });
-
+						returnData.push({ duplicateCampaign });
 					}
 
 				} else if (resource === 'contactList') {

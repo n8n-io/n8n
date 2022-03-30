@@ -59,7 +59,6 @@ export const campaignFields: INodeProperties[] = [
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
-			// nodelinter-ignore-next-line
 			loadOptionsMethod: 'getCampaigns',
 		},
 		default: [],
@@ -154,7 +153,7 @@ export const campaignFields: INodeProperties[] = [
 			{
 				displayName: 'Last Contacted',
 				name: 'lastContacted',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Last contacted date of the contact to add',
 			},
@@ -168,14 +167,14 @@ export const campaignFields: INodeProperties[] = [
 			{
 				displayName: 'Last Open',
 				name: 'lastOpen',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Last opened date of the contact to add',
 			},
 			{
 				displayName: 'Last Replied',
 				name: 'lastReplied',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Last replied date of the contact to add',
 			},
@@ -264,7 +263,7 @@ export const campaignFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 50,
+		default: 100,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
@@ -335,10 +334,13 @@ export const campaignFields: INodeProperties[] = [
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
-		type: 'string',
+		type: 'options',
 		default: '',
 		required: true,
 		description: 'The ID of the campaign to duplicate',
+		typeOptions: {
+			loadOptionsMethod: 'getCampaigns',
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -386,11 +388,11 @@ export const campaignFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Copy Global Settings',
-				name: 'copySettings',
+				displayName: 'Copy Contacts',
+				name: 'copyContacts',
 				type: 'boolean',
-				default: true,
-				description: 'Whether to copy all the general settings from the original campaign',
+				default: false,
+				description: 'Whether to copy all the contacts from the original campaign',
 			},
 			{
 				displayName: 'Copy Email Provider',
@@ -407,11 +409,11 @@ export const campaignFields: INodeProperties[] = [
 				description: 'Whether to copy all the steps of the email sequence from the original campaign',
 			},
 			{
-				displayName: 'Copy Contacts',
-				name: 'copyContacts',
+				displayName: 'Copy Global Settings',
+				name: 'copySettings',
 				type: 'boolean',
-				default: false,
-				description: 'Whether to copy all the contacts from the original campaign',
+				default: true,
+				description: 'Whether to copy all the general settings from the original campaign',
 			},
 		],
 	},
