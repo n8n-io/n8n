@@ -1,27 +1,29 @@
 <template functional>
-	<component
-		:is="$options.components.ElSelect"
-		v-bind="props"
-		:value="props.value"
-		:size="$options.methods.getSize(props.size)"
-		:class="$style[$options.methods.getClass(props)]"
-		:popper-class="$options.methods.getPopperClass(props, $style)"
-		v-on="listeners"
-		:ref="data.ref"
-	>
-		<template v-slot:prepend>
+	<div :class="$style.container">
+		<div v-if="$slots.prepend" :class="$style.prepend">
 			<slot name="prepend" />
-		</template>
-		<template v-slot:prefix>
-			<slot name="prefix" />
-		</template>
-		<template v-slot:suffix>
-			<slot name="suffix" />
-		</template>
-		<template v-slot:default>
-			<slot></slot>
-		</template>
-	</component>
+		</div>
+		<component
+			:is="$options.components.ElSelect"
+			v-bind="props"
+			:value="props.value"
+			:size="$options.methods.getSize(props.size)"
+			:class="$style[$options.methods.getClass(props)]"
+			:popper-class="$options.methods.getPopperClass(props, $style)"
+			v-on="listeners"
+			:ref="data.ref"
+		>
+			<template v-slot:prefix>
+				<slot name="prefix" />
+			</template>
+			<template v-slot:suffix>
+				<slot name="suffix" />
+			</template>
+			<template v-slot:default>
+				<slot></slot>
+			</template>
+		</component>
+	</div>
 </template>
 
 <script lang="ts">
@@ -123,5 +125,26 @@ export default {
 		text-overflow: ellipsis;
 		overflow-x: hidden;
 	}
+}
+
+.container {
+	display: inline-flex;
+	width: 100%;
+	--input-border-color: none;
+	border: var(--border-base);
+	border-radius: var(--input-border-radius, var(--border-radius-base))
+}
+
+.prepend {
+	display: inline-block;
+	font-size: var(--font-size-2xs);
+	border-right: var(--border-base);
+	display: flex;
+	align-items: center;
+	padding: 0 var(--spacing-3xs);
+	background-color: var(--color-background-light);
+	border-bottom-left-radius: var(--input-border-radius, var(--border-radius-base));
+	border-top-left-radius: var(--input-border-radius, var(--border-radius-base));
+	color: var(--color-text-base);
 }
 </style>
