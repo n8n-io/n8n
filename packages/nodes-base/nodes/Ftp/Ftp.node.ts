@@ -271,11 +271,11 @@ export class Ftp implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Move',
-						name: 'move',
+						displayName: 'Create Directories',
+						name: 'createDirectories',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to also move the file when the "New Path" uses a different directory than the "Old Path"',
+						description: `Create directories if they don't exist on the "New Path"`,
 					},
 				],
 			},
@@ -478,10 +478,10 @@ export class Ftp implements INodeType {
 
 					if (operation === 'rename') {
 						const oldPath = this.getNodeParameter('oldPath', i) as string;
-						const { move = false } = this.getNodeParameter('options', i) as { move: boolean };
+						const { createDirectories = false } = this.getNodeParameter('options', i) as { createDirectories: boolean };
 						const newPath = this.getNodeParameter('newPath', i) as string;
 
-						if (move) {
+						if (createDirectories) {
 							await recursivelyCreateSftpDirs(sftp!, newPath);
 						}
 
