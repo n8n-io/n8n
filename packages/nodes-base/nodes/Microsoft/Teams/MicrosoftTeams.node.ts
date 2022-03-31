@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
 import {
@@ -37,7 +38,7 @@ export class MicrosoftTeams implements INodeType {
 		name: 'microsoftTeams',
 		icon: 'file:teams.svg',
 		group: ['input'],
-		version: 2,
+		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Microsoft Teams API',
 		defaults: {
@@ -438,7 +439,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;
