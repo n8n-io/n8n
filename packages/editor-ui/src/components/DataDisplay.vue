@@ -9,7 +9,7 @@
 		@opened="showDocumentHelp = true"
 	>
 		<div class="data-display" v-if="node" >
-			<NodeSettings ref="settings" @valueChanged="valueChanged" />
+			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" />
 			<RunData @openSettings="openSettings" />
 		</div>
 	</el-dialog>
@@ -32,6 +32,7 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
+import Vue from 'vue';
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
@@ -43,6 +44,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		return {
 			basePath: this.$store.getters.getBaseUrl,
 			showDocumentHelp: false,
+			settingsEventBus: new Vue(),
 		};
 	},
 	computed: {
@@ -69,10 +71,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	},
 	methods: {
 		openSettings() {
-			const settings = this.$refs.settings as Vue | null;
-			if (settings) {
-				settings.$emit('openSettings');
-			}
+			this.settingsEventBus.$emit('openSettings');
 		},
 		valueChanged (parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);

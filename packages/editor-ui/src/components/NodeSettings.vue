@@ -148,6 +148,10 @@ export default mixins(
 				return this.nodeType.properties;
 			},
 		},
+		props: {
+			eventBus: {
+			},
+		},
 		data () {
 			return {
 				nodeValid: true,
@@ -519,9 +523,11 @@ export default mixins(
 		},
 		mounted () {
 			this.setNodeValues();
-			this.$on('openSettings', () => {
-				this.openPanel = 'settings';
-			});
+			if (this.eventBus) {
+				(this.eventBus as Vue).$on('openSettings', () => {
+					this.openPanel = 'settings';
+				});
+			}
 		},
 	});
 </script>
