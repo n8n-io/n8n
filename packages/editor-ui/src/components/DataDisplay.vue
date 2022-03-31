@@ -2,6 +2,7 @@
 	<el-dialog
 		:visible="!!node"
 		:before-close="close"
+		:show-close="false"
 		custom-class="data-display-wrapper"
 		width="85%"
 		append-to-body
