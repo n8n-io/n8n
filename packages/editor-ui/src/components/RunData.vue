@@ -739,6 +739,8 @@ export default mixins(
 }
 
 .titleSection {
+	display: flex;
+
 	> * {
 		margin-right: var(--spacing-2xs);
 	}

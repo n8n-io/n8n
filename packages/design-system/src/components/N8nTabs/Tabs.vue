@@ -64,6 +64,7 @@ export default Vue.extend({
 	padding-bottom: var(--spacing-2xs);
 	font-size: var(--font-size-s);
 	cursor: pointer;
+	white-space: nowrap;
 	&:hover {
 		color: var(--color-primary);
 	}
