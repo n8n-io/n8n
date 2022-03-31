@@ -139,36 +139,36 @@
 
 			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
 				<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-					<div class="binary-data-row-index" v-if="binaryData.length > 1">
-						<div class="binary-data-cell-index">
+					<div :class="$style.binaryIndex" v-if="binaryData.length > 1">
+						<div>
 							{{index + 1}}
 						</div>
 					</div>
 
-					<div class="binary-data-row">
-						<div class="binary-data-cell" v-for="(binaryData, key) in binaryDataEntry" :key="index + '_' + key">
-							<div class="binary-data-information">
-								<div class="binary-data-cell-name">
+					<div :class="$style.binaryRow">
+						<div :class="$style.binaryCell" v-for="(binaryData, key) in binaryDataEntry" :key="index + '_' + key">
+							<div>
+								<div :class="$style.binaryHeader">
 									{{key}}
 								</div>
 								<div v-if="binaryData.fileName">
-									<div class="label">{{ $locale.baseText('runData.fileName') }}: </div>
-									<div class="value">{{binaryData.fileName}}</div>
+									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.fileName') }}: </n8n-text></div>
+									<div :class="$style.binaryValue">{{binaryData.fileName}}</div>
 								</div>
 								<div v-if="binaryData.directory">
-									<div class="label">{{ $locale.baseText('runData.directory') }}: </div>
-									<div class="value">{{binaryData.directory}}</div>
+									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.directory') }}: </n8n-text></div>
+									<div :class="$style.binaryValue">{{binaryData.directory}}</div>
 								</div>
 								<div v-if="binaryData.fileExtension">
-									<div class="label">{{ $locale.baseText('runData.fileExtension') }}:</div>
-									<div class="value">{{binaryData.fileExtension}}</div>
+									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.fileExtension') }}:</n8n-text></div>
+									<div :class="$style.binaryValue">{{binaryData.fileExtension}}</div>
 								</div>
 								<div v-if="binaryData.mimeType">
-									<div class="label">{{ $locale.baseText('runData.mimeType') }}: </div>
-									<div class="value">{{binaryData.mimeType}}</div>
+									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.mimeType') }}: </n8n-text></div>
+									<div :class="$style.binaryValue">{{binaryData.mimeType}}</div>
 								</div>
 
-								<div class="binary-data-show-data-button-wrapper">
+								<div :class="$style.binaryButtonContainer">
 									<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
 								</div>
 							</div>
@@ -839,78 +839,62 @@ export default mixins(
 	padding: 5px;
 }
 
-</style>
-
-
-<style lang="scss">
-
-.binary-data-row {
-	display: inline-flex;
-	font-size: var(--font-size-2xs);
-
-	.binary-data-cell {
-		display: inline-block;
-		width: 300px;
-		overflow: hidden;
-		background-color: #fff;
-		margin-right: var(--spacing-s);
-		margin-bottom: var(--spacing-s);
-		border-radius: 3px;
-		-webkit-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
-		-moz-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
-		box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
-
-		.binary-data-information {
-			margin: 1em;
-
-			.binary-data-cell-name {
-				color: $--color-primary;
-				font-weight: 600;
-				font-size: 1.2em;
-				padding-bottom: 0.5em;
-				margin-bottom: 0.5em;
-				border-bottom: 1px solid #ccc;
-			}
-
-			.binary-data-show-data-button-wrapper {
-				margin-top: 1.5em;
-				text-align: center;
-			}
-
-			.label {
-				padding-top: 0.5em;
-				font-weight: bold;
-			}
-			.value {
-				white-space: initial;
-				word-wrap: break-word;
-			}
-		}
-	}
-}
-
-.binary-data-row-index {
+.binaryIndex {
 	display: block;
-	padding: 1em 1em 0.25em 1em;
+	padding: var(--spacing-2xs);
 	font-size: var(--font-size-2xs);
-	margin-bottom: var(--spacing-2xs);
 
-	.binary-data-cell-index {
+	> * {
 		display: inline-block;
 		width: 30px;
 		height: 30px;
 		line-height: 30px;
-		border-radius: 5px;
+		border-radius: var(--border-radius-base);
 		text-align: center;
-		padding: 0 0.1em;
-		background-color: $--custom-header-background;
-		font-weight: 600;
-		color: #fff;
+		background-color: var(--color-foreground-xdark);
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text-xlight);
 	}
 }
 
-</style>
+.binaryRow {
+	display: inline-flex;
+	font-size: var(--font-size-2xs);
+}
 
+
+.binaryCell {
+	display: inline-block;
+	width: 300px;
+	overflow: hidden;
+	background-color: #fff;
+	margin-right: var(--spacing-s);
+	margin-bottom: var(--spacing-s);
+	border-radius: var(--border-radius-base);
+	border: var(--border-base);
+	padding: var(--spacing-s);
+}
+
+.binaryHeader {
+	color: $--color-primary;
+	font-weight: 600;
+	font-size: 1.2em;
+	padding-bottom: 0.5em;
+	margin-bottom: 0.5em;
+	border-bottom: 1px solid #ccc;
+}
+
+.binaryButtonContainer {
+	margin-top: 1.5em;
+	text-align: center;
+}
+
+.binaryValue {
+	white-space: initial;
+	word-wrap: break-word;
+}
+
+</style>
 
 <style lang="scss">
 .vjs-checkbox {
