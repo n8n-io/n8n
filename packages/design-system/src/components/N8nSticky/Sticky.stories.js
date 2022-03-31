@@ -69,5 +69,5 @@ Sticky.args = {
   minWidth: 150,
   readOnly: false,
   width: 240,
-  zIndex: -40,
+  zIndex: -400,
 };

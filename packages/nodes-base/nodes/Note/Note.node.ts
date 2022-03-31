@@ -61,7 +61,7 @@ export class Note implements INodeType {
 				name: 'zIndex',
 				type: 'number',
 				required: true,
-				default: -40,
+				default: -400,
 				description: 'Z-Index',
 			},
 		],

@@ -97,7 +97,7 @@ export default {
     },
     zIndex: {
       type: Number,
-      default: -40,
+      default: -400,
     },
   },
   watch: {
