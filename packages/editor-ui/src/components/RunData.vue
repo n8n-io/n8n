@@ -74,7 +74,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
-				<n8n-text :bold="true">{{ $locale.baseText('node.output.noOutputData.title') }}</n8n-text>
+				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('node.output.noOutputData.title') }}</n8n-text>
 				<n8n-text>
 					{{ $locale.baseText('node.output.noOutputData.message') }}
 					<a @click="openSettings">{{ $locale.baseText('node.output.noOutputData.message.settings') }}</a>
@@ -83,7 +83,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
-				<n8n-text :bold="true">{{ $locale.baseText('node.output.tooMuchData.title') }}</n8n-text>
+				<n8n-text :bold="true" color="text-dark">{{ $locale.baseText('node.output.tooMuchData.title') }}</n8n-text>
 				<n8n-text align="center" tag="div"><span v-html="$locale.baseText('node.output.tooMuchData.message', { interpolate: {size: dataSizeInMB }})"></span></n8n-text>
 
 				<n8n-button
