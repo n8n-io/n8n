@@ -420,8 +420,8 @@ export class GraphQL implements INodeType {
 					}
 
 					if (response.errors) {
-						const description = response.errors?.map((error: IDataObject) => error.message).join(', ') || 'Unexpected error';
-						throw new NodeOperationError(this.getNode(), response.errors, { description });
+						const message = response.errors?.map((error: IDataObject) => error.message).join(', ') || 'Unexpected error';
+						throw new NodeApiError(this.getNode(), response.errors, { message });
 					}
 
 					returnItems.push({ json: response });
