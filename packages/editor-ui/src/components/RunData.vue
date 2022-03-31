@@ -898,7 +898,7 @@ export default mixins(
 
 <style lang="scss">
 .vjs-tree {
-	color: #5045A1;
+	color: #5045A1; // todo
 }
 
 .vjs-tree.is-highlight-selected {
@@ -911,10 +911,14 @@ export default mixins(
 
 .vjs-tree .vjs-value__boolean,
 .vjs-tree .vjs-value__number {
-	color: #1d8ce0;
+	color: #1d8ce0; // todo
 }
 
 .vjs-tree .vjs-value__string {
-	color: #5045A1;
+	color: #5045A1; // todo
+}
+
+.vjs-tree .vjs-key, .vjs-tree__brackets {
+	color: var(--color-text-dark);
 }
 </style>
