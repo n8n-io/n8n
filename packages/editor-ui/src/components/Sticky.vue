@@ -22,6 +22,7 @@
           :width="node.parameters.width"
           :zIndex="node.parameters.zIndex"
           @input="onInputChange"
+					@onChangeMode="onChangeMode"
 					@onMouseHover="onMouseHover"
           @onResizeEnd="onResizeEnd"
           @onResizeStart="onResizeStart"
@@ -175,6 +176,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('removeNode', this.data.name);
 			});
+		},
+		onChangeMode(isStickyInEditMode: boolean) {
+			this.$emit('onChangeMode', isStickyInEditMode);
 		},
 		onMouseHover(isMouseHoverActive: boolean) {
 			this.$emit('onMouseHover', isMouseHoverActive);

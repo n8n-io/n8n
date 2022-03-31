@@ -40,6 +40,7 @@
           @removeNode="removeNode"
           @moved="onNodeMoved"
           @run="onNodeRun"
+					@onChangeMode="onStickyChangeMode"
 					@onMouseHover="onMouseHover"
           @onResizeChange="onResizeChange"
           :id="'node-' + getNodeIndex(nodeData.name)"
@@ -377,6 +378,7 @@ export default mixins(
 				pullConnActive: false,
 				dropPrevented: false,
 				isResizing: false,
+				isStickyInEditMode: false,
 				shouldPreventScrolling: false,
 			};
 		},
@@ -393,6 +395,9 @@ export default mixins(
 			},
 			onResizeChange(isResizing: boolean) {
 				this.isResizing = isResizing;
+			},
+			onStickyChangeMode(isStickyInEditMode: boolean) {
+				this.isStickyInEditMode = isStickyInEditMode;
 			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
@@ -736,6 +741,12 @@ export default mixins(
 				} else if (e.key === 'Delete' || e.key === 'Backspace') {
 					e.stopPropagation();
 					e.preventDefault();
+
+					if (this.isStickyInEditMode && this.lastSelectedNode) {
+						if (this.lastSelectedNode.type === 'n8n-nodes-base.note') {
+							return;
+						}
+					}
 
 					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 

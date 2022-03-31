@@ -104,6 +104,9 @@ export default {
     content(content) {
       this.tempContent = content;
     },
+    isEditable(isEditable) {
+      this.$emit('onChangeMode', this.isEditable);
+    }
   },
   components: {
     N8nInput,
@@ -145,7 +148,7 @@ export default {
           this.$emit('unfocus', this.isEditable);
         }
 
-        this.isEditable =! this.isEditable;
+        this.isEditable =! this.isEditable;  
       }  
     },
     onBlur(value) {
