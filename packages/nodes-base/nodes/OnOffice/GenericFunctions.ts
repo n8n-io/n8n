@@ -17,10 +17,10 @@ const md5 = (str: string) => {
 	return createHash('md5').update(str).digest('hex');
 };
 
-const assertSuccessfulResponse: (
-	responseData: OnOfficeResponse,
+const assertSuccessfulResponse: <ElementType>(
+	responseData: OnOfficeResponse<ElementType>,
 	node: INode,
-) => asserts responseData is OnOfficeResponseSuccess = (responseData, node) => {
+) => asserts responseData is OnOfficeResponseSuccess<ElementType> = (responseData, node) => {
 	if (responseData.status.code !== 200) {
 		throw new NodeApiError(node, responseData as unknown as JsonObject, {
 			httpCode: responseData.status.code === 400 ? '401' : responseData.status.code + '',
@@ -35,10 +35,10 @@ const assertSuccessfulResponse: (
 	}
 };
 
-const assertSuccessfulActionResponses: (
-	actions: OnOfficeActionResponse[],
+const assertSuccessfulActionResponses: <ElementType>(
+	actions: Array<OnOfficeActionResponse<ElementType>>,
 	node: INode,
-) => asserts actions is OnOfficeActionResponseSuccess[] = (actions, node) => {
+) => asserts actions is Array<OnOfficeActionResponseSuccess<ElementType>> = (actions, node) => {
 	actions.forEach((action) => {
 		if (action.status.errorcode !== 0) {
 			throw new NodeApiError(node, action as unknown as JsonObject, {
@@ -56,7 +56,7 @@ const assertSuccessfulActionResponses: (
 // tslint:disable-next-line: no-any
 type requestType = (uriOrObject: any) => Promise<any>;
 
-export const onOfficeApiAction = async (
+export const onOfficeApiAction = async <ElementType = Record<string, unknown> | Array<Record<string, unknown>>>(
 	node: INode,
 	request: requestType,
 	apiSecret: string,
@@ -115,7 +115,7 @@ export const onOfficeApiAction = async (
 
 	const responseData = (await request(options).catch((error: JsonObject) => {
 		throw new NodeApiError(node, error);
-	})) as OnOfficeResponse;
+	})) as OnOfficeResponse<ElementType>;
 
 	assertSuccessfulResponse(responseData, node);
 

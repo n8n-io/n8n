@@ -3,10 +3,10 @@ export type OnOfficeAction = 'get' | 'read' | 'modify';
 export type OnOfficeActionId = `urn:onoffice-de-ns:smart:2.5:smartml:action:${OnOfficeAction}`;
 export type OnOfficeResource = 'estate' | 'address' | 'fields';
 
-export type OnOfficeResponseRecord = {
+export type OnOfficeResponseRecord<ElementType> = {
 	id: string;
 	type: OnOfficeResource;
-	elements: Record<string, unknown> | Array<Record<string, unknown>>;
+	elements: ElementType;
 };
 
 export type OnOfficeErrorStatus = {
@@ -30,31 +30,31 @@ export type OnOfficeActionResponseError = {
 	data: never[];
 	status: OnOfficeErrorStatus;
 } & OnOfficeActionResponseBase;
-export type OnOfficeActionResponseSuccess = {
+export type OnOfficeActionResponseSuccess<ElementType> = {
 	data: {
 		meta: Record<string, unknown>;
-		records: OnOfficeResponseRecord[];
+		records: Array<OnOfficeResponseRecord<ElementType>>;
 	};
 	status: OnOfficeSuccessStatus;
 } & OnOfficeActionResponseBase;
-export type OnOfficeActionResponse = OnOfficeActionResponseError | OnOfficeActionResponseSuccess;
+export type OnOfficeActionResponse<ElementType> = OnOfficeActionResponseError | OnOfficeActionResponseSuccess<ElementType>;
 
-export type OnOfficeResponseSuccess = {
+export type OnOfficeResponseSuccess<ElementType> = {
 	status: { code: 200 } & OnOfficeSuccessStatus;
-	response: { results: OnOfficeActionResponse[] };
+	response: { results: Array<OnOfficeActionResponse<ElementType>> };
 };
 export type OnOfficeResponseNoAuth = {
 	status: { code: 400 | 401 } & OnOfficeErrorStatus;
 	response: { results: OnOfficeActionResponseError[] };
 };
-export type OnOfficeResponseError = {
+export type OnOfficeResponseError<ElementType> = {
 	status: { code: 500 } & OnOfficeErrorStatus;
-	response: { results: OnOfficeActionResponse[] };
+	response: { results: Array<OnOfficeActionResponse<ElementType>> };
 };
-export type OnOfficeResponse =
-	| OnOfficeResponseSuccess
+export type OnOfficeResponse<ElementType> =
+	| OnOfficeResponseSuccess<ElementType>
 	| OnOfficeResponseNoAuth
-	| OnOfficeResponseError;
+	| OnOfficeResponseError<ElementType>;
 
 // Types describing the n8n descriptions
 export type OnOfficeReadFilterOperator =
@@ -96,3 +96,20 @@ export type OnOfficeReadAdditionalFields = {
 	geoRangeSearch?: { country: string; radius: number; zip?: number };
 };
 export type OnOfficeReadAdditionalFieldName = keyof OnOfficeReadAdditionalFields;
+
+export type OnOfficeFieldConfiguration<IncludeLabels extends boolean = false> = Record<string, OnOfficeFieldType<IncludeLabels>> & (IncludeLabels extends true ? { label: string } : {});
+export type OnOfficeFieldValueType = 'multiselect' | 'singleselect' | 'varchar' | 'integer' | 'date' | 'text' | 'float' | 'boolean'
+
+export type OnOfficeFieldType<IncludeLabels extends boolean = false> = {
+	type: OnOfficeFieldValueType;
+	/** Only set for type = `varchar` */
+	length: null | number;
+	/** If the field is no select, this is empty */
+	/** This can only be Record<string, string> if includeLabels was set */
+	permittedvalues: null | (IncludeLabels extends true ? Record<string, string> : string[]);
+	default: null | string;
+	/** If the field is no compound field, this is empty */
+	compoundFields: string[];
+	/** Label is only present, if includeLabels was set */
+	label: (IncludeLabels extends true ? string : undefined);
+}

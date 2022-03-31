@@ -1,13 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { addressFields, addressOperations } from './descriptions/AddressDescription';
-import { OnOfficeReadAdditionalFields } from './interfaces';
+import { OnOfficeFieldConfiguration, OnOfficeReadAdditionalFields } from './interfaces';
 import { estateFields, estateOperations } from './descriptions/EstateDescription';
 import {
 	fieldConfigurationFields,
@@ -30,7 +31,7 @@ export class OnOffice implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		subtitle: '{{$parameter["operation"] + " " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["operation"] + " " + $parameter["resource"]}}',
 		credentials: [
 			{
 				name: 'onOfficeApi',
@@ -71,6 +72,48 @@ export class OnOffice implements INodeType {
 			...fieldConfigurationFields,
 		],
 	};
+
+	/* -------------------------------------------------------------------------- */
+	/*                               Custom objects                               */
+	/* -------------------------------------------------------------------------- */
+
+	// Get all the custom object types to display them to user so that he can select them
+	async getCustomObjectTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+		const request = this.helpers.request;
+		if (!request) {
+			return [];
+		}
+		const credentials = (await this.getCredentials(
+			'onOfficeApi',
+		)) as ICredentialDataDecryptedObject;
+		const apiSecret = credentials.apiSecret as string;
+		const apiToken = credentials.apiToken as string;
+
+		const resource = 'fields';
+		const operation = 'get';
+
+		const parameters = {
+			modules: ['address'],
+			labels: true,
+		};
+		const result = await onOfficeApiAction<OnOfficeFieldConfiguration<true>>(
+			this.getNode(),
+			request,
+			apiSecret,
+			apiToken,
+			operation,
+			resource,
+			parameters,
+		);
+
+		const availableFields = Object.entries(result[0].elements)
+			.flatMap(([key, value]) => typeof value !== 'string' ? [{ ...value, name: key }] : []);
+		const fieldNameOptions = availableFields.map(field => ({
+			name: field.label,
+			value: field.name,
+		}));
+		return fieldNameOptions;
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
