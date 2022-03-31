@@ -183,7 +183,7 @@ export class EventbriteTrigger implements INodeType {
 				description: 'By default does the webhook-data only contain the URL to receive the object data manually. If this option gets activated, it will resolve the data automatically.',
 			},
 		],
-		"subtitle": "Subscribe to get notifications of Eventbrite actions."
+		'subtitle': 'Subscribe to get notifications of Eventbrite actions.',
 	};
 
 	methods = {
@@ -206,7 +206,7 @@ export class EventbriteTrigger implements INodeType {
 			// Get all the available events to display them to user so that he can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [{name: "All", value: ""}];
+				const returnData: INodePropertyOptions[] = [{name: 'All', value: ''}];
 				const organization = this.getCurrentNodeParameter('organization');
 				const events = await eventbriteApiRequestAllItems.call(this, 'events', 'GET', `/organizations/${organization}/events`);
 				for (const event of events) {
