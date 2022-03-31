@@ -470,6 +470,12 @@ export const store = new Vuex.Store({
 
 			state.stateIsDirty = true;
 			Vue.set(node, 'parameters', updateInformation.value);
+			if (state.workflowExecutionData && state.workflowExecutionData.data.resultData.runData[node.name]) {
+				const nodeRuns = state.workflowExecutionData.data.resultData.runData[node.name];
+				nodeRuns.forEach((node) => {
+					Vue.set(node, 'updatedAt', new Date().getTime());
+				});
+			}
 		},
 
 		// Node-Index

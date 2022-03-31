@@ -98,6 +98,12 @@ declare module 'jsplumb' {
 	}
 }
 
+declare module 'n8n-workflow' {
+	export interface ITaskData {
+		updatedAt?: number;
+	}
+}
+
 // EndpointOptions from jsplumb seems incomplete and wrong so we define an own one
 export interface IEndpointOptions {
 	anchor?: any; // tslint:disable-line:no-any
@@ -962,7 +968,7 @@ export type IFormBoxConfig = {
 export interface ITab {
 	value: string | number;
 	label?: string;
-	href?: string,
+	href?: string;
 	icon?: string;
 	align?: 'right';
-};
+}
