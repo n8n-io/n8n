@@ -49,15 +49,26 @@ export default Vue.extend({
 				this.canScrollRight = scrollWidth - width > this.scrollPosition;
 			});
 
+			this.resizeObserver = new ResizeObserver(() => {
+				const width = container.clientWidth;
+				const scrollWidth = container.scrollWidth;
+				this.canScrollRight = scrollWidth - width > this.scrollPosition;
+			});
+			this.resizeObserver.observe(container);
+
 			const width = container.clientWidth;
 			const scrollWidth = container.scrollWidth;
 			this.canScrollRight = scrollWidth - width > this.scrollPosition;
 		}
 	},
+	destroyed() {
+		this.resizeObserver.disconnect();
+	},
 	data() {
 		return {
 			scrollPosition: 0,
 			canScrollRight: false,
+			resizeObserver: null,
 		};
 	},
 	props: {
