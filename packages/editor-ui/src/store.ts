@@ -422,6 +422,8 @@ export const store = new Vuex.Store({
 			state.workflow.nodes.push(nodeData);
 		},
 		removeNode (state, node: INodeUi) {
+			Vue.delete(state.nodeMetadata, node.name);
+
 			for (let i = 0; i < state.workflow.nodes.length; i++) {
 				if (state.workflow.nodes[i].name === node.name) {
 					state.workflow.nodes.splice(i, 1);
