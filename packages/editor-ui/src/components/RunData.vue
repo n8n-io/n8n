@@ -270,7 +270,6 @@ export default mixins(
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
 				currentPage: 1,
 				pageSize: 10,
-				staleData: false,
 			};
 		},
 		mounted() {
@@ -312,7 +311,7 @@ export default mixins(
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
 			},
-			runMetadata () {
+			runTaskData (): ITaskData | null {
 				if (!this.node || this.workflowExecution === null) {
 					return null;
 				}
@@ -327,11 +326,27 @@ export default mixins(
 					return null;
 				}
 
-				const taskData: ITaskData = runData[this.node.name][this.runIndex];
+				return runData[this.node.name][this.runIndex];
+			},
+			runMetadata (): {executionTime: number, startTime: string} | null {
+				if (!this.runTaskData) {
+					return null;
+				}
 				return {
-					executionTime: taskData.executionTime,
-					startTime: new Date(taskData.startTime).toLocaleString(),
+					executionTime: this.runTaskData.executionTime,
+					startTime: new Date(this.runTaskData.startTime).toLocaleString(),
 				};
+			},
+			staleData(): boolean {
+				if (!this.node) {
+					return false;
+				}
+				const updatedAt = this.$store.getters.getParametersLastUpdated(this.node.name);
+				if (!updatedAt || !this.runTaskData) {
+					return false;
+				}
+				const runAt = this.runTaskData.startTime;
+				return updatedAt > runAt;
 			},
 			dataCount (): number {
 				return this.getDataCount(this.runIndex, this.outputIndex);

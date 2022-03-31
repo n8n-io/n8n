@@ -90,6 +90,7 @@ const state: IRootState = {
 	},
 	sidebarMenuItems: [],
 	instanceId: '',
+	nodeMetadata: {},
 };
 
 const modules = {
@@ -470,6 +471,11 @@ export const store = new Vuex.Store({
 
 			state.stateIsDirty = true;
 			Vue.set(node, 'parameters', updateInformation.value);
+
+			if (!state.nodeMetadata[node.name]) {
+				Vue.set(state.nodeMetadata, node.name, {});
+			}
+			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', new Date().getTime());
 		},
 
 		// Node-Index
@@ -664,6 +670,10 @@ export const store = new Vuex.Store({
 
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
 			return state.activeExecutions;
+		},
+
+		getParametersLastUpdated: (state): ((name: string) => number | undefined) => {
+			return (nodeName: string) => state.nodeMetadata[nodeName] && state.nodeMetadata[nodeName].parametersLastUpdatedAt;
 		},
 
 		getBaseUrl: (state): string => {
