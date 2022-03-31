@@ -10,7 +10,7 @@
 	>
 		<div class="data-display" v-if="node" >
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" />
-			<RunData @openSettings="openSettings" />
+			<OuputPanel :runIndex="runIndex" @runChange="onRunIndexChange" @openSettings="openSettings" />
 		</div>
 	</el-dialog>
 </template>
@@ -29,22 +29,23 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
-import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
+import OuputPanel from './OuputPanel.vue';
 
 export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
 	components: {
 		NodeSettings,
-		RunData,
+		OuputPanel,
 	},
 	data () {
 		return {
 			basePath: this.$store.getters.getBaseUrl,
 			showDocumentHelp: false,
 			settingsEventBus: new Vue(),
+			runIndex: 0,
 		};
 	},
 	computed: {
@@ -83,6 +84,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.showDocumentHelp = false;
 			this.$store.commit('setActiveNode', null);
+		},
+		onRunIndexChange(run: number) {
+			this.runIndex = run;
 		},
 	},
 });

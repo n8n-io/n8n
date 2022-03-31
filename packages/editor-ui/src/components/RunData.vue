@@ -3,22 +3,7 @@
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
 		<div :class="$style.header">
-			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ $locale.baseText('node.output') }}</span>
-				<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="runMetadata">
-					<div>
-						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
-						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $locale.baseText('runData.ms') }}
-					</div>
-				</n8n-info-tip>
-
-				<n8n-info-tip theme="warning" type="tooltip" tooltipPlacement="right" v-if="hasNodeRun && staleData">
-					<template>
-						<span v-html="$locale.baseText('node.output.staleDataWarning')"></span>
-					</template>
-				</n8n-info-tip>
-			</div>
-
+			<slot></slot>
 			<div v-if="!hasRunError" @click.stop>
 				<n8n-radio-buttons
 					v-model="displayMode"
@@ -28,7 +13,7 @@
 		</div>
 
 		<div :class="$style.runSelector" v-if="maxRunIndex > 0" >
-			<n8n-select size="small" v-model="runIndex" @click.stop>
+			<n8n-select size="small" :value="runIndex" @input="onRunIndexChange" @click.stop>
 				<template slot="prepend">{{ $locale.baseText('node.output.run') }}</template>
 				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
 			</n8n-select>
@@ -250,6 +235,13 @@ export default mixins(
 			VueJsonPretty,
 			WarningTooltip,
 		},
+		props: {
+			nodeUi: {
+			}, // INodeUi | null
+			runIndex: {
+				type: Number,
+			},
+		},
 		data () {
 			return {
 				binaryDataPreviewActive: false,
@@ -260,7 +252,6 @@ export default mixins(
 					value: '' as object | number | string,
 					path: deselectedPlaceholder,
 				},
-				runIndex: 0,
 				showData: false,
 				outputIndex: 0,
 				binaryDataDisplayVisible: false,
@@ -276,6 +267,9 @@ export default mixins(
 			this.init();
 		},
 		computed: {
+			node(): INodeUi | null {
+				return (this.nodeUi as INodeUi | null) || null;
+			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
 					{ label: this.$locale.baseText('runData.json'), value: 'json'},
@@ -307,46 +301,6 @@ export default mixins(
 				}
 				const executionData: IRunExecutionData = this.workflowExecution.data;
 				return executionData.resultData.runData;
-			},
-			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
-			},
-			runTaskData (): ITaskData | null {
-				if (!this.node || this.workflowExecution === null) {
-					return null;
-				}
-
-				const runData = this.workflowRunData;
-
-				if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-					return null;
-				}
-
-				if (runData[this.node.name].length <= this.runIndex) {
-					return null;
-				}
-
-				return runData[this.node.name][this.runIndex];
-			},
-			runMetadata (): {executionTime: number, startTime: string} | null {
-				if (!this.runTaskData) {
-					return null;
-				}
-				return {
-					executionTime: this.runTaskData.executionTime,
-					startTime: new Date(this.runTaskData.startTime).toLocaleString(),
-				};
-			},
-			staleData(): boolean {
-				if (!this.node) {
-					return false;
-				}
-				const updatedAt = this.$store.getters.getParametersLastUpdated(this.node.name);
-				if (!updatedAt || !this.runTaskData) {
-					return false;
-				}
-				const runAt = this.runTaskData.startTime;
-				return updatedAt > runAt;
 			},
 			dataCount (): number {
 				return this.getDataCount(this.runIndex, this.outputIndex);
@@ -412,7 +366,7 @@ export default mixins(
 				return this.convertToTable(this.inputData);
 			},
 			binaryData (): IBinaryKeyData[] {
-				if (this.node === null) {
+				if (!this.node) {
 					return [];
 				}
 
@@ -677,6 +631,9 @@ export default mixins(
 					this.showData = true;
 				}
 			},
+			onRunIndexChange(run: number) {
+				this.$emit('runChange', run);
+			},
 		},
 		watch: {
 			node() {
@@ -692,9 +649,6 @@ export default mixins(
 					const nodeType = this.node ? this.node.type : '';
 					this.$telemetry.track('User changed node output view mode', { old_mode: oldValue, new_mode: newValue, node_type: nodeType, workflow_id: this.$store.getters.workflowId });
 				}
-			},
-			maxRunIndex () {
-				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
 			},
 		},
 	});
@@ -729,21 +683,6 @@ export default mixins(
 	display: flex;
 	justify-content: center;
 	margin-bottom: var(--spacing-s);
-}
-
-.title {
-	text-transform: uppercase;
-	color: var(--color-text-light);
-	letter-spacing: 3px;
-	font-weight: var(--font-weight-bold);
-}
-
-.titleSection {
-	display: flex;
-
-	> * {
-		margin-right: var(--spacing-2xs);
-	}
 }
 
 .container {
