@@ -10,6 +10,7 @@ import {
 import {
 	IDataObject,
 	INodePropertyOptions,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -18,7 +19,7 @@ export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOption
 
 	const headers = {} as IDataObject;
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
-	
+
 	let credentials;
 
 	if (authenticationMethod === 'basicAuth') {
@@ -59,7 +60,7 @@ export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOption
 		}
 
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), (error as JsonObject));
 	}
 }
 
