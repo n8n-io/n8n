@@ -21,6 +21,11 @@ export const chatMessageOperations: INodeProperties[] = [
 				description: 'Create a message',
 			},
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a message',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all messages',
@@ -34,7 +39,7 @@ export const chatMessageOperations: INodeProperties[] = [
 export const chatMessageFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 chatMessage:create                      */
+	/*                                 chatMessage:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Chat ID',
@@ -48,6 +53,7 @@ export const chatMessageFields: INodeProperties[] = [
 			show: {
 				operation: [
 					'create',
+					'get',
 				],
 				resource: [
 					'chatMessage',
@@ -106,8 +112,29 @@ export const chatMessageFields: INodeProperties[] = [
 		default: '',
 		description: 'The content of the item.',
 	},
+
 	/* -------------------------------------------------------------------------- */
-	/*                                 chatMessage:getAll                      */
+	/*                                 chatMessage:get                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Message ID',
+		name: 'messageId',
+		required: true,
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'chatMessage',
+				],
+			},
+		},
+		default: '',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 chatMessage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Chat ID',

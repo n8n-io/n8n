@@ -208,9 +208,6 @@ export class MicrosoftTeams implements INodeType {
 					$expand: 'members',
 				};
 				const { value } = await microsoftApiRequest.call(this, 'GET', '/v1.0/chats', {}, qs);
-				const chats = value
-								.filter((a: IDataObject) => a.createdDateTime)
-								.sort((a: IDataObject, b: IDataObject) => new Date(a.lastUpdatedDateTime as string) > new Date(b.lastUpdatedDateTime as string) ? 1 : -1);
 				for (const chat of value) {
 					if (!chat.topic) {
 						chat.topic = chat.members
@@ -349,7 +346,12 @@ export class MicrosoftTeams implements INodeType {
 						};
 						responseData = await microsoftApiRequest.call(this, 'POST', `/v1.0/chats/${chatId}/messages`, body);
 					}
-
+					// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
+					if (operation === 'get') {
+						const chatId = this.getNodeParameter('chatId', i) as string;
+						const messageId = this.getNodeParameter('messageId', i) as string;
+						responseData = await microsoftApiRequest.call(this, 'GET', `/v1.0/chats/${chatId}/messages/${messageId}`);
+					}
 					// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
 					if (operation === 'getAll') {
 						const chatId = this.getNodeParameter('chatId', i) as string;
