@@ -1,4 +1,5 @@
 import { createConnection, getConnection, ConnectionOptions } from 'typeorm';
+import { genSaltSync, hashSync } from 'bcryptjs';
 import { Credentials, UserSettings } from 'n8n-core';
 
 import config = require('../../../config');
@@ -188,7 +189,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	const user = {
 		email: email ?? randomEmail(),
-		password: password ?? randomValidPassword(),
+		password: hashSync(password ?? randomValidPassword(), genSaltSync(10)),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole: globalRole ?? (await getGlobalMemberRole()),
@@ -203,9 +204,9 @@ export async function createOwnerShell() {
 	return Db.collections.User!.save({ globalRole });
 }
 
-export async function createMemberShell() {
+export async function createMemberShell(email?: string) {
 	const globalRole = await getGlobalMemberRole();
-	return Db.collections.User!.save({ globalRole });
+	return Db.collections.User!.save({ email: email ?? randomEmail(), globalRole });
 }
 
 // ----------------------------------

@@ -338,10 +338,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 test('POST /users/:id should fill out a user shell', async () => {
 	const authlessAgent = utils.createAgent(app);
 
-	const userToFillOut = await Db.collections.User!.save({
-		email: randomEmail(),
-		globalRole: globalMemberRole,
-	});
+	const userToFillOut = await testDb.createMemberShell();
 
 	const newPassword = randomValidPassword();
 
@@ -388,10 +385,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 
 	const emailToStore = randomEmail();
 
-	const userToFillOut = await Db.collections.User!.save({
-		email: emailToStore,
-		globalRole: globalMemberRole,
-	});
+	const userToFillOut = await testDb.createMemberShell(emailToStore);
 
 	for (const invalidPayload of INVALID_FILL_OUT_USER_PAYLOADS) {
 		const response = await authlessAgent.post(`/users/${userToFillOut.id}`).send(invalidPayload);
@@ -404,23 +398,14 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 	}
 });
 
-test.skip('POST /users/:id should fail with already accepted invite', async () => {
+test('POST /users/:id should fail with already accepted invite', async () => {
 	const authlessAgent = utils.createAgent(app);
 
-	const globalMemberRole = await Db.collections.Role!.findOneOrFail({
-		name: 'member',
-		scope: 'global',
-	});
-
-	const shell = await Db.collections.User!.save({
-		email: randomEmail(),
-		password: randomValidPassword(), // simulate accepted invite
-		globalRole: globalMemberRole,
-	});
+	const user = await testDb.createUser();
 
 	const newPassword = randomValidPassword();
 
-	const response = await authlessAgent.post(`/users/${shell.id}`).send({
+	const response = await authlessAgent.post(`/users/${user.id}`).send({
 		inviterId: INITIAL_TEST_USER.id,
 		firstName: randomName(),
 		lastName: randomName(),
@@ -429,13 +414,13 @@ test.skip('POST /users/:id should fail with already accepted invite', async () =
 
 	expect(response.statusCode).toBe(400);
 
-	const fetchedShell = await Db.collections.User!.findOneOrFail({ where: { email: shell.email } });
-	expect(fetchedShell.firstName).toBeNull();
-	expect(fetchedShell.lastName).toBeNull();
+	const fetchedUser = await Db.collections.User!.findOneOrFail({ email: user.email });
+	expect(fetchedUser.firstName).toBe(user.firstName);
+	expect(fetchedUser.lastName).toBe(user.lastName);
 
-	const comparisonResult = await compare(shell.password, newPassword);
+	const comparisonResult = await compare(user.password!, newPassword);
 	expect(comparisonResult).toBe(false);
-	expect(newPassword).not.toBe(fetchedShell.password);
+	expect(newPassword).not.toBe(fetchedUser.password);
 });
 
 test('POST /users should fail if emailing is not set up', async () => {
@@ -458,8 +443,10 @@ test('POST /users should fail if user management is disabled', async () => {
 	expect(response.statusCode).toBe(500);
 });
 
-test.skip('POST /users should email invites and create user shells', async () => {
+test('POST /users should email invites and create user shells but ignore existing', async () => {
 	const owner = await Db.collections.User!.findOneOrFail();
+	const member = await testDb.createUser();
+	const memberShell = await testDb.createMemberShell();
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const {
@@ -475,7 +462,10 @@ test.skip('POST /users should email invites and create user shells', async () =>
 	config.set('userManagement.emails.smtp.auth.user', user);
 	config.set('userManagement.emails.smtp.auth.pass', pass);
 
-	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e }));
+	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e })).concat([
+		{ email: memberShell.email },
+		{ email: member.email },
+	]);
 
 	const response = await authOwnerAgent.post('/users').send(payload);
 
@@ -486,7 +476,12 @@ test.skip('POST /users should email invites and create user shells', async () =>
 		error,
 	} of response.body.data) {
 		expect(validator.isUUID(id)).toBe(true);
-		expect(TEST_EMAILS_TO_CREATE_USER_SHELLS.some((e) => e === receivedEmail)).toBe(true);
+		expect(id).not.toBe(member.id);
+
+		const lowerCasedEmail = receivedEmail.toLowerCase();
+		expect(receivedEmail).toBe(lowerCasedEmail);
+		expect(payload.some(({ email }) => email.toLowerCase() === lowerCasedEmail)).toBe(true);
+
 		if (error) {
 			expect(error).toBe('Email could not be sent');
 		}
@@ -597,4 +592,4 @@ const INVALID_FILL_OUT_USER_PAYLOADS = [
 	},
 ];
 
-const TEST_EMAILS_TO_CREATE_USER_SHELLS = [randomEmail(), randomEmail(), randomEmail()];
+const TEST_EMAILS_TO_CREATE_USER_SHELLS = [randomEmail(), randomEmail().toUpperCase()];

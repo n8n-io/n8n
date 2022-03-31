@@ -62,6 +62,7 @@ afterAll(async () => {
 
 test('POST /forgot-password should send password reset email', async () => {
 	const authlessAgent = utils.createAgent(app);
+	const member = await testDb.createUser({ email: 'test@test.com' });
 
 	const {
 		user,
@@ -76,16 +77,20 @@ test('POST /forgot-password should send password reset email', async () => {
 	config.set('userManagement.emails.smtp.auth.user', user);
 	config.set('userManagement.emails.smtp.auth.pass', pass);
 
-	const response = await authlessAgent
-		.post('/forgot-password')
-		.send({ email: INITIAL_TEST_USER.email });
+	await Promise.all(
+		[{ email: INITIAL_TEST_USER.email }, { email: member.email.toUpperCase() }].map(
+			async (payload) => {
+				const response = await authlessAgent.post('/forgot-password').send(payload);
 
-	expect(response.statusCode).toBe(200);
-	expect(response.body).toEqual({});
+				expect(response.statusCode).toBe(200);
+				expect(response.body).toEqual({});
 
-	const owner = await Db.collections.User!.findOneOrFail({ email: INITIAL_TEST_USER.email });
-	expect(owner.resetPasswordToken).toBeDefined();
-	expect(owner.resetPasswordTokenExpiration).toBeGreaterThan(Math.ceil(Date.now() / 1000));
+				const owner = await Db.collections.User!.findOneOrFail({ email: payload.email });
+				expect(owner.resetPasswordToken).toBeDefined();
+				expect(owner.resetPasswordTokenExpiration).toBeGreaterThan(Math.ceil(Date.now() / 1000));
+			},
+		),
+	);
 });
 
 test('POST /forgot-password should fail if emailing is not set up', async () => {

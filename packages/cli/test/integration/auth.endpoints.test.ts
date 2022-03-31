@@ -1,4 +1,3 @@
-import { hashSync, genSaltSync } from 'bcryptjs';
 import express = require('express');
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
@@ -35,7 +34,7 @@ beforeEach(async () => {
 		email: TEST_USER.email,
 		firstName: TEST_USER.firstName,
 		lastName: TEST_USER.lastName,
-		password: hashSync(TEST_USER.password, genSaltSync(10)),
+		password: TEST_USER.password,
 		globalRole: globalOwnerRole,
 	});
 
@@ -58,38 +57,47 @@ afterAll(async () => {
 test('POST /login should log user in', async () => {
 	const authlessAgent = utils.createAgent(app);
 
-	const response = await authlessAgent.post('/login').send({
-		email: TEST_USER.email,
-		password: TEST_USER.password,
-	});
+	await Promise.all(
+		[
+			{
+				email: TEST_USER.email,
+				password: TEST_USER.password,
+			},
+			{
+				email: TEST_USER.email.toUpperCase(),
+				password: TEST_USER.password,
+			},
+		].map(async (payload) => {
+			const response = await authlessAgent.post('/login').send(payload);
 
-	expect(response.statusCode).toBe(200);
+			expect(response.statusCode).toBe(200);
 
-	const {
-		id,
-		email,
-		firstName,
-		lastName,
-		password,
-		personalizationAnswers,
-		globalRole,
-		resetPasswordToken,
-	} = response.body.data;
+			const {
+				id,
+				email,
+				firstName,
+				lastName,
+				password,
+				personalizationAnswers,
+				globalRole,
+				resetPasswordToken,
+			} = response.body.data;
 
-	expect(validator.isUUID(id)).toBe(true);
-	expect(email).toBe(TEST_USER.email);
-	expect(firstName).toBe(TEST_USER.firstName);
-	expect(lastName).toBe(TEST_USER.lastName);
-	expect(password).toBeUndefined();
-	expect(personalizationAnswers).toBeNull();
-	expect(password).toBeUndefined();
-	expect(resetPasswordToken).toBeUndefined();
-	expect(globalRole).toBeDefined();
-	expect(globalRole.name).toBe('owner');
-	expect(globalRole.scope).toBe('global');
+			expect(validator.isUUID(id)).toBe(true);
+			expect(email).toBe(TEST_USER.email);
+			expect(firstName).toBe(TEST_USER.firstName);
+			expect(lastName).toBe(TEST_USER.lastName);
+			expect(password).toBeUndefined();
+			expect(personalizationAnswers).toBeNull();
+			expect(resetPasswordToken).toBeUndefined();
+			expect(globalRole).toBeDefined();
+			expect(globalRole.name).toBe('owner');
+			expect(globalRole.scope).toBe('global');
 
-	const authToken = utils.getAuthToken(response);
-	expect(authToken).toBeDefined();
+			const authToken = utils.getAuthToken(response);
+			expect(authToken).toBeDefined();
+		}),
+	);
 });
 
 test('GET /login should receive logged in user', async () => {

@@ -1,4 +1,3 @@
-import { hashSync, genSaltSync } from 'bcryptjs';
 import express = require('express');
 import validator from 'validator';
 
@@ -91,7 +90,7 @@ describe('Owner shell', () => {
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(validPayload.email);
+			expect(email).toBe(validPayload.email.toLowerCase());
 			expect(firstName).toBe(validPayload.firstName);
 			expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
@@ -103,7 +102,7 @@ describe('Owner shell', () => {
 
 			const storedOwnerShell = await Db.collections.User!.findOneOrFail(id);
 
-			expect(storedOwnerShell.email).toBe(validPayload.email);
+			expect(storedOwnerShell.email).toBe(validPayload.email.toLowerCase());
 			expect(storedOwnerShell.firstName).toBe(validPayload.firstName);
 			expect(storedOwnerShell.lastName).toBe(validPayload.lastName);
 		}
@@ -239,7 +238,7 @@ describe('Member', () => {
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(validPayload.email);
+			expect(email).toBe(validPayload.email.toLowerCase());
 			expect(firstName).toBe(validPayload.firstName);
 			expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
@@ -251,7 +250,7 @@ describe('Member', () => {
 
 			const storedMember = await Db.collections.User!.findOneOrFail(id);
 
-			expect(storedMember.email).toBe(validPayload.email);
+			expect(storedMember.email).toBe(validPayload.email.toLowerCase());
 			expect(storedMember.firstName).toBe(validPayload.firstName);
 			expect(storedMember.lastName).toBe(validPayload.lastName);
 		}
@@ -274,9 +273,7 @@ describe('Member', () => {
 
 	test('PATCH /me/password should succeed with valid inputs', async () => {
 		const memberPassword = randomValidPassword();
-		const member = await testDb.createUser({
-			password: hashSync(memberPassword, genSaltSync(10)),
-		});
+		const member = await testDb.createUser({ password: memberPassword });
 		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 		const validPayload = {
@@ -393,7 +390,7 @@ describe('Owner', () => {
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBe(validPayload.email);
+			expect(email).toBe(validPayload.email.toLowerCase());
 			expect(firstName).toBe(validPayload.firstName);
 			expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
@@ -405,18 +402,12 @@ describe('Owner', () => {
 
 			const storedOwner = await Db.collections.User!.findOneOrFail(id);
 
-			expect(storedOwner.email).toBe(validPayload.email);
+			expect(storedOwner.email).toBe(validPayload.email.toLowerCase());
 			expect(storedOwner.firstName).toBe(validPayload.firstName);
 			expect(storedOwner.lastName).toBe(validPayload.lastName);
 		}
 	});
 });
-
-const TEST_USER = {
-	email: randomEmail(),
-	firstName: randomName(),
-	lastName: randomName(),
-};
 
 const SURVEY = [
 	'codingSkill',
@@ -437,7 +428,7 @@ const VALID_PATCH_ME_PAYLOADS = [
 		password: randomValidPassword(),
 	},
 	{
-		email: randomEmail(),
+		email: randomEmail().toUpperCase(),
 		firstName: randomName(),
 		lastName: randomName(),
 		password: randomValidPassword(),
