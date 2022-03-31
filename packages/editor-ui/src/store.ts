@@ -329,6 +329,9 @@ export const store = new Vuex.Store({
 			if (state.lastSelectedNode === nameData.old) {
 				state.lastSelectedNode = nameData.new;
 			}
+
+			Vue.set(state.nodeMetadata, nameData.new, state.nodeMetadata[nameData.old]);
+			Vue.delete(state.nodeMetadata, nameData.old);
 		},
 
 		resetAllNodesIssues (state) {
