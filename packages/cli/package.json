@@ -92,6 +92,7 @@
     "typescript": "~4.3.5"
   },
   "dependencies": {
+    "@apidevtools/swagger-parser": "^10.0.3",
     "@oclif/command": "^1.5.18",
     "@oclif/errors": "^1.2.2",
     "@rudderstack/rudder-sdk-node": "1.0.6",
@@ -133,6 +134,7 @@
     "nodemailer": "^6.7.1",
     "oauth-1.0a": "^2.2.6",
     "open": "^7.0.0",
+    "openapi-types": "^10.0.0",
     "p-cancelable": "^2.0.0",
     "passport": "^0.5.0",
     "passport-cookie": "^1.0.9",

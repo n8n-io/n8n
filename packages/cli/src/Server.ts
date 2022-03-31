@@ -172,7 +172,7 @@ import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
 import { getInstanceBaseUrl, isEmailSetUp } from './UserManagement/UserManagementHelper';
-import { publicApiController } from './PublicApi/v1';
+import { publicApiController as publicApiControllerV1 } from './PublicApi/v1';
 
 require('body-parser-xml')(bodyParser);
 
@@ -580,7 +580,7 @@ class App {
 			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		});
 
-		this.app.use(`/${this.publicApiEndpoint}/`, publicApiController);
+		this.app.use(`/${this.publicApiEndpoint}/v1`, publicApiControllerV1);
 
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
