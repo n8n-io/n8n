@@ -1,11 +1,3 @@
-# 0.171.0
-
-### Breaking Changes
-
-- **GraphQL Node** GraphQL errors will be interpreted as errors ([#1200](https://github.com/n8n-io/n8n/issues/1200))
-
-
-
 # [0.170.0](https://github.com/n8n-io/n8n/compare/n8n@0.169.0...n8n@0.170.0) (2022-03-27)
 
 ### Bug Fixes
