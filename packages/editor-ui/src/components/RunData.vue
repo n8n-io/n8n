@@ -3,18 +3,20 @@
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
 		<div :class="$style.header">
-			<div>
+			<div :class="$style.titleSection">
 				<span :class="$style.title">{{ $locale.baseText('node.output') }}</span>
-				<n8n-tooltip
-					v-if="runMetadata"
-					placement="right"
-				>
-					<div slot="content">
+				<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="runMetadata">
+					<div>
 						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
 						<n8n-text :bold="true" size="small">{{ $locale.baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $locale.baseText('runData.ms') }}
 					</div>
-					<font-awesome-icon icon="info-circle" :class="$style.infoIcon" />
-				</n8n-tooltip>
+				</n8n-info-tip>
+
+				<n8n-info-tip theme="warning" type="tooltip" tooltipPlacement="right" v-if="hasNodeRun && staleData">
+					<template>
+						<span v-html="$locale.baseText('node.output.staleDataWarning')"></span>
+					</template>
+				</n8n-info-tip>
 			</div>
 
 			<div v-if="!hasRunError" @click.stop>
@@ -220,6 +222,7 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
+import WarningTooltip from '@/components/WarningTooltip.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
@@ -228,6 +231,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
+import Vue from 'vue/types/umd';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -244,6 +248,7 @@ export default mixins(
 			BinaryDataDisplay,
 			NodeErrorView,
 			VueJsonPretty,
+			WarningTooltip,
 		},
 		data () {
 			return {
@@ -265,6 +270,7 @@ export default mixins(
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
 				currentPage: 1,
 				pageSize: 10,
+				staleData: false,
 			};
 		},
 		mounted() {
@@ -715,7 +721,12 @@ export default mixins(
 	color: var(--color-text-light);
 	letter-spacing: 3px;
 	font-weight: var(--font-weight-bold);
-	margin-right: var(--spacing-2xs);
+}
+
+.titleSection {
+	> * {
+		margin-right: var(--spacing-2xs);
+	}
 }
 
 .container {

@@ -10,7 +10,6 @@
 		<div class="data-display" v-if="node" >
 			<NodeSettings ref="settings" @valueChanged="valueChanged" />
 			<RunData @openSettings="openSettings" />
-
 		</div>
 	</el-dialog>
 </template>
