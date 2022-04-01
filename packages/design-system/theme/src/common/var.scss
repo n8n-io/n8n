@@ -777,7 +777,7 @@ $table-fixed-box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);
 /* Pagination
 -------------------------- */
 /// fontSize||Font|1
-$pagination-font-size: 13px;
+$pagination-font-size: var(--font-size-2xs);
 /// color||Color|0
 $pagination-background-color: $color-white;
 /// color||Color|0

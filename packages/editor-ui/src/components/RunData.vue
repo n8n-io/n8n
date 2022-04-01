@@ -182,11 +182,9 @@
 				background
 				:hide-on-single-page="true"
 				:current-page.sync="currentPage"
-				:small="true"
 				:pager-count="5"
 				:page-size="pageSize"
 				layout="prev, pager, next"
-				:class="$style.pagination"
 				:total="dataCount">
 			</el-pagination>
 		</div>
@@ -831,7 +829,6 @@ export default mixins(
 }
 
 .pagination {
-	position: absolute;
 	width: 100%;
 	display: flex;
 	justify-content: center;

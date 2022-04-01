@@ -193,11 +193,12 @@
 		.btn-prev,
 		.btn-next,
 		.el-pager li {
-			margin: 0 5px;
-			background-color: var.$color-info-lighter;
-			color: var(--color-text-dark);
+			margin: 0 var(--spacing-5xs);
+			background-color: var(--color-background-xlight);
+			color: var(--color-text-base);
 			min-width: 30px;
-			border-radius: 2px;
+			border-radius: var(--border-radius-base);
+			border: var(--border-base);
 
 			&.disabled {
 				color: var(--color-text-lighter);
@@ -216,6 +217,7 @@
 		.el-pager li:not(.disabled) {
 			&:hover {
 				color: var.$pagination-hover-color;
+				background-color: var(--color-foreground-light);
 			}
 
 			&.active {
