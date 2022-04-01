@@ -2,7 +2,7 @@
 	<RunData :nodeUi="node" :runIndex="runIndex" @openSettings="openSettings" @runChange="onRunIndexChange">
 		<template name="header">
 			<div :class="$style.titleSection">
-				<n8n-select size="medium" v-model="selectedNode" @click.stop>
+				<n8n-select size="small" v-model="selectedNode" @click.stop>
 					<template slot="prepend">
 						<span :class="$style.title">{{ $locale.baseText('node.input') }}</span>
 					</template>
@@ -39,7 +39,9 @@ export default Vue.extend({
 			return this.$store.getters.getNodeByName(this.selectedNode);
 		},
 		workflowNodes (): INodeUi[] {
-			return this.$store.getters.allNodes;
+			const activeNode = this.$store.getters.activeNode;
+			const nodes: INodeUi[] = this.$store.getters.allNodes;
+			return nodes.filter((node) => node.name !== activeNode.name);
 		},
 	},
 	methods: {
