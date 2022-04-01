@@ -31,19 +31,21 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 		if (authenticationMethod === 'credentials') {
 			const credentials = await this.getCredentials('mauticApi') as IDataObject;
+			const baseUrl = credentials!.url as string;
 
 			const base64Key = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
 
 			options.headers!.Authorization = `Basic ${base64Key}`;
 
-			options.uri = `${credentials.url}${options.uri}`;
+			options.uri = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${options.uri}`;
 
 			//@ts-ignore
 			returnData = await this.helpers.request(options);
 		} else {
 			const credentials = await this.getCredentials('mauticOAuth2Api') as IDataObject;
+			const baseUrl = credentials!.url as string;
 
-			options.uri = `${credentials.url}${options.uri}`;
+			options.uri = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${options.uri}`;
 			//@ts-ignore
 			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options, { includeCredentialsOnRefreshOnBody: true });
 		}
