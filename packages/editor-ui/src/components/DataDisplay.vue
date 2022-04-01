@@ -9,9 +9,9 @@
 		@opened="showDocumentHelp = true"
 	>
 		<div class="data-display" v-if="node" >
-			<InputPanel :runIndex="runIndex" @runChange="onRunIndexChange" @openSettings="openSettings" />
+			<InputPanel :runIndex="runInputIndex" @runChange="onRunInputIndexChange" @openSettings="openSettings" />
 			<NodeSettings :eventBus="settingsEventBus" @valueChanged="valueChanged" />
-			<OuputPanel :runIndex="runIndex" @runChange="onRunIndexChange" @openSettings="openSettings" />
+			<OuputPanel :runIndex="runOutputIndex" @runChange="onRunOutputIndexChange" @openSettings="openSettings" />
 		</div>
 	</el-dialog>
 </template>
@@ -48,7 +48,8 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			basePath: this.$store.getters.getBaseUrl,
 			showDocumentHelp: false,
 			settingsEventBus: new Vue(),
-			runIndex: 0,
+			runInputIndex: 0,
+			runOutputIndex: 0,
 		};
 	},
 	computed: {
@@ -88,8 +89,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.showDocumentHelp = false;
 			this.$store.commit('setActiveNode', null);
 		},
-		onRunIndexChange(run: number) {
-			this.runIndex = run;
+		onRunOutputIndexChange(run: number) {
+			this.runOutputIndex = run;
+		},
+		onRunInputIndexChange(run: number) {
+			this.runInputIndex = run;
 		},
 	},
 });
