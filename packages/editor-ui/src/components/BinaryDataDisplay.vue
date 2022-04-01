@@ -13,11 +13,7 @@
 			<div v-if="!binaryData">
 				{{ $locale.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
 			</div>
-			<video v-else-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
-				<source :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" :type="binaryData.mimeType">
-				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
-			</video>
-			<embed v-else :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" class="binary-data" :class="embedClass"/>
+			<BinaryDataDisplayEmbed v-else :binaryData="binaryData"/>
 		</div>
 
 	</div>
@@ -30,15 +26,22 @@ import {
 	IRunExecutionData,
 } from 'n8n-workflow';
 
+import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
+
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { restApi } from '@/components/mixins/restApi';
 
 export default mixins(
 	nodeHelpers,
+	restApi,
 )
 	.extend({
 		name: 'BinaryDataDisplay',
+		components: {
+			BinaryDataDisplayEmbed,
+		},
 		props: [
 			'displayData', // IBinaryDisplayData
 			'windowVisible', // boolean
@@ -54,14 +57,15 @@ export default mixins(
 				if (this.displayData.index >= binaryData.length || binaryData[this.displayData.index][this.displayData.key] === undefined) {
 					return null;
 				}
-				return binaryData[this.displayData.index][this.displayData.key];
+
+				const binaryDataItem: IBinaryData = binaryData[this.displayData.index][this.displayData.key];
+
+				return binaryDataItem;
 			},
 
 			embedClass (): string[] {
-				if (this.binaryData !== null &&
-					this.binaryData.mimeType !== undefined &&
-					(this.binaryData.mimeType as string).startsWith('image')
-				) {
+				// @ts-ignore
+				if (this.binaryData! !== null && this.binaryData!.mimeType! !== undefined && (this.binaryData!.mimeType! as string).startsWith('image')) {
 					return ['image'];
 				}
 				return ['other'];

@@ -13,6 +13,11 @@
 		],
 		"generic": [
 			{
+				"label": "How to synchronize data between two systems (one-way vs. two-way sync",
+				"icon": "🏬",
+				"url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/"
+			},
+			{
 				"label": "Supercharging your conference registration process with n8n",
 				"icon": "🎫",
 				"url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/"
@@ -31,12 +36,17 @@
 				"label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n ",
 				"icon": "🙌",
 				"url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	},
 	"alias": [
 		"Join",
-		"Concatenate"
+		"Concatenate",
+		"Wait"
 	],
 	"subcategories": {
 		"Core Nodes": [

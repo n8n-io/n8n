@@ -20,7 +20,6 @@ export class ChargebeeTrigger implements INodeType {
 		description: 'Starts the workflow when Chargebee events occur',
 		defaults: {
 			name: 'Chargebee Trigger',
-			color: '#559922',
 		},
 		inputs: [],
 		outputs: ['main'],

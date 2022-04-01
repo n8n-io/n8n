@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -198,7 +195,7 @@ export class EmailSend implements INodeType {
 						}
 						attachments.push({
 							filename: item.binary[propertyName].fileName || 'unknown',
-							content: Buffer.from(item.binary[propertyName].data, BINARY_ENCODING),
+							content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
 						});
 					}
 

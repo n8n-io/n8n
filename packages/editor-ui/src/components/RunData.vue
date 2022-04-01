@@ -67,7 +67,7 @@
 					<el-radio-button :label="$locale.baseText('runData.binary')" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder" class="select-button">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === $locale.baseText('runData.json') && state.path !== deselectedPlaceholder" class="select-button">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
 						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" />
@@ -98,27 +98,27 @@
 						</h3>
 
 						<div class="text">
-							{{ $locale.baseText(
+							<span v-html="$locale.baseText(
 								'runData.theNodeContains',
 								{
 									interpolate: {
 										numberOfKb: parseInt(dataSize/1024).toLocaleString()
 									}
 								}
-							)}}
+							)"></span>
 						</div>
 
 						<n8n-button
 							icon="eye"
 							:label="$locale.baseText('runData.displayDataAnyway')"
-							@click="displayMode = 'Table';showData = true;"
+							@click="displayMode = $locale.baseText('runData.table');showData = true;"
 						/>
 					</div>
-					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
+					<div v-else-if="[$locale.baseText('runData.json'), $locale.baseText('runData.table')].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
 							{{ $locale.baseText('runData.noTextDataFound') }}
 						</div>
-						<div v-else-if="displayMode === 'Table'">
+						<div v-else-if="displayMode === $locale.baseText('runData.table')">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
 								{{ $locale.baseText('runData.entriesExistButThey') }}
 							</div>
@@ -132,7 +132,7 @@
 							</table>
 						</div>
 						<vue-json-pretty
-							v-else-if="displayMode === 'JSON'"
+							v-else-if="displayMode === $locale.baseText('runData.json')"
 							:data="jsonData"
 							:deep="10"
 							v-model="state.path"
@@ -146,7 +146,7 @@
 							class="json-data"
 						/>
 					</div>
-					<div v-else-if="displayMode === 'Binary'">
+					<div v-else-if="displayMode === $locale.baseText('runData.binary')">
 						<div v-if="binaryData.length === 0" class="no-data">
 							{{ $locale.baseText('runData.noBinaryDataFound') }}
 						</div>
@@ -184,6 +184,7 @@
 
 											<div class="binary-data-show-data-button-wrapper">
 												<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+												<n8n-button v-if="isDownloadable(index, key)" size="small" type="outline" :label="$locale.baseText('runData.downloadBinaryData')" class="binary-data-show-data-button" @click="downloadBinaryData(index, key)" />
 											</div>
 
 										</div>
@@ -210,6 +211,7 @@
 import VueJsonPretty from 'vue-json-pretty';
 import {
 	GenericValue,
+	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -242,6 +244,8 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
 
+import { saveAs } from 'file-saver';
+
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
 
@@ -264,7 +268,7 @@ export default mixins(
 				binaryDataPreviewActive: false,
 				dataSize: 0,
 				deselectedPlaceholder,
-				displayMode: 'Table',
+				displayMode: this.$locale.baseText('runData.table'),
 				state: {
 					value: '' as object | number | string,
 					path: deselectedPlaceholder,
@@ -441,10 +445,10 @@ export default mixins(
 				this.outputIndex = 0;
 				this.maxDisplayItems = 25;
 				this.refreshDataSize();
-				if (this.displayMode === 'Binary') {
+				if (this.displayMode === this.$locale.baseText('runData.binary')) {
 					this.closeBinaryDataDisplay();
 					if (this.binaryData.length === 0) {
-						this.displayMode = 'Table';
+						this.displayMode = this.$locale.baseText('runData.table');
 					}
 				}
 			},
@@ -524,6 +528,24 @@ export default mixins(
 			dataItemClicked (path: string, data: object | number | string) {
 				this.state.value = data;
 			},
+			isDownloadable (index: number, key: string): boolean {
+				const binaryDataItem: IBinaryData = this.binaryData[index][key];
+				return !!(binaryDataItem.mimeType && binaryDataItem.fileName);
+			},
+			async downloadBinaryData (index: number, key: string) {
+				const binaryDataItem: IBinaryData = this.binaryData[index][key];
+
+				let bufferString = 'data:' + binaryDataItem.mimeType + ';base64,';
+				if(binaryDataItem.id) {
+					bufferString += await this.restApi().getBinaryBufferString(binaryDataItem.id);
+				} else {
+					bufferString += binaryDataItem.data;
+				}
+
+				const data = await fetch(bufferString);
+				const blob = await data.blob();
+				saveAs(blob, binaryDataItem.fileName);
+			},
 			displayBinaryData (index: number, key: string) {
 				this.binaryDataDisplayVisible = true;
 
@@ -540,7 +562,7 @@ export default mixins(
 					return outputIndex + 1;
 				}
 
-				const nodeType = this.$store.getters.nodeType(this.node.type) as INodeTypeDescription | null;
+				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | null;
 				if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
 					return outputIndex + 1;
 				}
@@ -701,7 +723,10 @@ export default mixins(
 
 					.binary-data-show-data-button-wrapper {
 						margin-top: 1.5em;
-						text-align: center;
+
+						button {
+							margin: 0 0.5em 0 0;
+						}
 					}
 
 					.label {

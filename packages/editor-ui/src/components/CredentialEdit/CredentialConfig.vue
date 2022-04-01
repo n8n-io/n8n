@@ -40,9 +40,9 @@
 
 		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
 			{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-			<a :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">
+			<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
 				{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
-			</a>
+			</n8n-link>
 		</n8n-info-tip>
 
 		<CopyInput
@@ -81,7 +81,7 @@ import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
 import { restApi } from '@/components/mixins/restApi';
-import { addNodeTranslation } from '@/plugins/i18n';
+import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(restApi).extend({
@@ -128,16 +128,28 @@ export default mixins(restApi).extend({
 		},
 	},
 	async beforeMount() {
-		if (this.$store.getters.defaultLocale !== 'en') {
-			await this.findCredentialTextRenderKeys();
-			await this.addNodeTranslationForCredential();
-		}
+		if (this.$store.getters.defaultLocale === 'en') return;
+
+		this.$store.commit('setActiveCredentialType', this.credentialType.name);
+
+		const key = `n8n-nodes-base.credentials.${this.credentialType.name}`;
+
+		if (this.$locale.exists(key)) return;
+
+		const credTranslation = await this.restApi().getCredentialTranslation(this.credentialType.name);
+
+		addCredentialTranslation(
+			{ [this.credentialType.name]: credTranslation },
+			this.$store.getters.defaultLocale,
+		);
 	},
 	computed: {
 		appName(): string {
 			if (!this.credentialType) {
 				return '';
 			}
+
+
 
 			const appName = getAppNameFromCredType(
 				(this.credentialType as ICredentialType).displayName,
@@ -177,47 +189,6 @@ export default mixins(restApi).extend({
 		},
 	},
 	methods: {
-		/**
-		 * Find the keys needed by the mixin to render credential text, and place them in the Vuex store.
-		 */
-		async findCredentialTextRenderKeys() {
-			const nodeTypes = await this.restApi().getNodeTypes();
-
-			// credential type name → node type name
-			const map = nodeTypes.reduce<Record<string, string>>((acc, cur) => {
-				if (!cur.credentials) return acc;
-
-				cur.credentials.forEach(cred => {
-					if (acc[cred.name]) return;
-					acc[cred.name] = cur.name;
-				});
-
-				return acc;
-			}, {});
-
-			const renderKeys = {
-				nodeType: map[this.credentialType.name],
-				credentialType: this.credentialType.name,
-			};
-
-			this.$store.commit('setCredentialTextRenderKeys', renderKeys);
-		},
-
-		/**
-		 * Add to the translation object the node translation for the credential in the modal.
-		 */
-		async addNodeTranslationForCredential() {
-			const { nodeType }: { nodeType: string } = this.$store.getters.credentialTextRenderKeys;
-			const version = await this.getCurrentNodeVersion(nodeType);
-			const nodeToBeFetched = [{ name: nodeType, version }];
-			const nodesInfo = await this.restApi().getNodesInformation(nodeToBeFetched);
-			const nodeInfo = nodesInfo.pop();
-
-			if (nodeInfo && nodeInfo.translation) {
-				addNodeTranslation(nodeInfo.translation, this.$store.getters.defaultLocale);
-			}
-		},
-
 		/**
 		 * Get the current version for a node type.
 		 */

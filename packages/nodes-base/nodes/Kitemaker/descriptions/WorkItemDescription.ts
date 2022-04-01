@@ -60,10 +60,32 @@ export const workItemFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Space ID',
+		name: 'spaceId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getSpaces',
+		},
+		default: [],
+		required: true,
+		description: 'ID of the space to retrieve the work items from.',
+		displayOptions: {
+			show: {
+				resource: [
+					'workItem',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Status ID',
 		name: 'statusId',
 		type: 'options',
 		typeOptions: {
+			loadOptionsDependsOn: ['spaceId'],
 			loadOptionsMethod: 'getStatuses',
 		},
 		default: [],

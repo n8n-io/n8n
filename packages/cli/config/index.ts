@@ -22,6 +22,26 @@ const config = convict({
 			default: '',
 			env: 'DB_TABLE_PREFIX',
 		},
+		logging: {
+			enabled: {
+				doc: 'Typeorm logging enabled flag.',
+				format: 'Boolean',
+				default: false,
+				env: 'DB_LOGGING_ENABLED',
+			},
+			options: {
+				doc: 'Logging level options, default is "error". Possible values: query,error,schema,warn,info,log. To enable all logging, specify "all"',
+				format: String,
+				default: 'error',
+				env: 'DB_LOGGING_OPTIONS',
+			},
+			maxQueryExecutionTime: {
+				doc: 'Maximum number of milliseconds query should be executed before logger logs a warning. Set 0 to disable long running query warning',
+				format: Number,
+				default: 1000,
+				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
+			},
+		},
 		postgresdb: {
 			database: {
 				doc: 'PostgresDB Database',
@@ -270,6 +290,20 @@ const config = convict({
 	},
 
 	queue: {
+		health: {
+			active: {
+				doc: 'If health checks should be enabled',
+				format: 'Boolean',
+				default: false,
+				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
+			},
+			port: {
+				doc: 'Port to serve health check on if activated',
+				format: Number,
+				default: 5678,
+				env: 'QUEUE_HEALTH_CHECK_PORT',
+			},
+		},
 		bull: {
 			prefix: {
 				doc: 'Prefix for all queue keys',
@@ -317,6 +351,7 @@ const config = convict({
 			},
 		},
 	},
+
 	generic: {
 		// The timezone to use. Is important for nodes like "Cron" which start the
 		// workflow automatically at a specified time. This setting can also be
@@ -375,6 +410,12 @@ const config = convict({
 		default: '',
 		env: 'N8N_SSL_CERT',
 		doc: 'SSL Cert for HTTPS Protocol',
+	},
+	editorBaseUrl: {
+		format: String,
+		default: '',
+		env: 'N8N_EDITOR_BASE_URL',
+		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
 	},
 
 	security: {
@@ -507,6 +548,12 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
 			doc: 'Path for test-webhook endpoint',
 		},
+		disableUi: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_DISABLE_UI',
+			doc: 'Disable N8N UI (Frontend).',
+		},
 		disableProductionWebhooksOnMainProcess: {
 			format: Boolean,
 			default: false,
@@ -530,6 +577,90 @@ const config = convict({
 			format: Boolean,
 			default: false,
 			env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
+		},
+	},
+
+	workflowTagsDisabled: {
+		format: Boolean,
+		default: false,
+		env: 'N8N_WORKFLOW_TAGS_DISABLED',
+		doc: 'Disable worfklow tags.',
+	},
+
+	userManagement: {
+		disabled: {
+			doc: 'Disable user management and hide it completely.',
+			format: Boolean,
+			default: false,
+			env: 'N8N_USER_MANAGEMENT_DISABLED',
+		},
+		jwtSecret: {
+			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
+			format: String,
+			default: '',
+			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
+		},
+		emails: {
+			mode: {
+				doc: 'How to send emails',
+				format: ['', 'smtp'],
+				default: 'smtp',
+				env: 'N8N_EMAIL_MODE',
+			},
+			smtp: {
+				host: {
+					doc: 'SMTP server host',
+					format: String, // e.g. 'smtp.gmail.com'
+					default: '',
+					env: 'N8N_SMTP_HOST',
+				},
+				port: {
+					doc: 'SMTP server port',
+					format: Number,
+					default: 465,
+					env: 'N8N_SMTP_PORT',
+				},
+				secure: {
+					doc: 'Whether or not to use SSL for SMTP',
+					format: Boolean,
+					default: true,
+					env: 'N8N_SMTP_SSL',
+				},
+				auth: {
+					user: {
+						doc: 'SMTP login username',
+						format: String, // e.g.'you@gmail.com'
+						default: '',
+						env: 'N8N_SMTP_USER',
+					},
+					pass: {
+						doc: 'SMTP login password',
+						format: String,
+						default: '',
+						env: 'N8N_SMTP_PASS',
+					},
+				},
+				sender: {
+					doc: 'How to display sender name',
+					format: String,
+					default: '',
+					env: 'N8N_SMTP_SENDER',
+				},
+			},
+			templates: {
+				invite: {
+					doc: 'Overrides default HTML template for inviting new people (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_INVITE',
+				},
+				passwordReset: {
+					doc: 'Overrides default HTML template for resetting password (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
+				},
+			},
 		},
 	},
 
@@ -596,8 +727,8 @@ const config = convict({
 
 	logs: {
 		level: {
-			doc: 'Log output level. Options are error, warn, info, verbose and debug.',
-			format: String,
+			doc: 'Log output level',
+			format: ['error', 'warn', 'info', 'verbose', 'debug'],
 			default: 'info',
 			env: 'N8N_LOG_LEVEL',
 		},
@@ -650,11 +781,68 @@ const config = convict({
 		},
 	},
 
+	templates: {
+		enabled: {
+			doc: 'Whether templates feature is enabled to load workflow templates.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_TEMPLATES_ENABLED',
+		},
+		host: {
+			doc: 'Endpoint host to retrieve workflow templates from endpoints.',
+			format: String,
+			default: 'https://api.n8n.io/',
+			env: 'N8N_TEMPLATES_HOST',
+		},
+	},
+
+	binaryDataManager: {
+		availableModes: {
+			format: String,
+			default: 'filesystem',
+			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
+			doc: 'Available modes of binary data storage, as comma separated strings',
+		},
+		mode: {
+			format: ['default', 'filesystem'],
+			default: 'default',
+			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
+			doc: 'Storage mode for binary data',
+		},
+		localStoragePath: {
+			format: String,
+			default: path.join(core.UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			env: 'N8N_BINARY_DATA_STORAGE_PATH',
+			doc: 'Path for binary data storage in "filesystem" mode',
+		},
+		binaryDataTTL: {
+			format: Number,
+			default: 60,
+			env: 'N8N_BINARY_DATA_TTL',
+			doc: 'TTL for binary data of unsaved executions in minutes',
+		},
+		persistedBinaryDataTTL: {
+			format: Number,
+			default: 1440,
+			env: 'N8N_PERSISTED_BINARY_DATA_TTL',
+			doc: 'TTL for persisted binary data in minutes (binary data gets deleted if not persisted before TTL expires)',
+		},
+	},
+
 	deployment: {
 		type: {
 			format: String,
 			default: 'default',
 			env: 'N8N_DEPLOYMENT_TYPE',
+		},
+	},
+
+	hiringBanner: {
+		enabled: {
+			doc: 'Whether hiring banner in browser console is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_HIRING_BANNER_ENABLED',
 		},
 	},
 

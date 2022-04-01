@@ -11,12 +11,12 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -62,7 +62,6 @@ export class Zendesk implements INodeType {
 		description: 'Consume Zendesk API',
 		defaults: {
 			name: 'Zendesk',
-			color: '#13353c',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -155,7 +154,7 @@ export class Zendesk implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async zendeskSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async zendeskSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 				const subdomain = credentials!.subdomain;
 				const email = credentials!.email;
