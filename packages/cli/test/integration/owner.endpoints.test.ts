@@ -25,9 +25,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	jest.isolateModules(() => {
-		jest.mock('../../config');
-	});
+	jest.mock('../../config');
 
 	await testDb.createOwnerShell();
 

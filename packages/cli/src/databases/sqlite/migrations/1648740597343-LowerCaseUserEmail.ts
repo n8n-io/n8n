@@ -2,8 +2,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 import config = require('../../../../config');
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 
-export class LowerCaseEmail1648740597343 implements MigrationInterface {
-	name = 'LowerCaseEmail1648740597343';
+export class LowerCaseUserEmail1648740597343 implements MigrationInterface {
+	name = 'LowerCaseUserEmail1648740597343';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
