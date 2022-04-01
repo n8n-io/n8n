@@ -10,7 +10,11 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, JsonObject, NodeApiError,
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
+	IDataObject,
+	JsonObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
@@ -97,4 +101,31 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = undefined;
 	}
 	return result;
+}
+
+export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+	const credentials = decryptedCredentials;
+
+	const {
+		url,
+		username,
+		password,
+	} = credentials as {
+		url: string,
+		username: string,
+		password: string,
+	};
+
+	const base64Key = Buffer.from(`${username}:${password}`).toString('base64');
+
+	const options: OptionsWithUri = {
+		method: 'GET',
+		headers: {
+			Authorization: `Basic ${base64Key}`,
+		},
+		uri: url.endsWith('/') ? `${url}api/users/self` : `${url}/api/users/self`,
+		json: true,
+	};
+
+	return await this.helpers.request(options);
 }
