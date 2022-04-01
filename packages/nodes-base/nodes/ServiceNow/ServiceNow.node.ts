@@ -124,12 +124,13 @@ export class ServiceNow implements INodeType {
 					},
 				],
 				default: 'oAuth2',
-				description: 'The authentication method to use',
+				description: 'Authentication method to use',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Business Service',
