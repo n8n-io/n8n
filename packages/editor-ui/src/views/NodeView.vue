@@ -739,13 +739,13 @@ export default mixins(
 					this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
 
 				} else if (e.key === 'Delete' || e.key === 'Backspace') {
-					e.stopPropagation();
-					e.preventDefault();
-
 					if (this.isStickyInEditMode && this.lastSelectedNode) {
 						if (this.lastSelectedNode.type === 'n8n-nodes-base.note') {
 							return;
 						}
+					} else {
+						e.stopPropagation();
+						e.preventDefault();
 					}
 
 					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
