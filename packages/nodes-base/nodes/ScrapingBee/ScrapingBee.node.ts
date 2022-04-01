@@ -9,7 +9,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
+	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -101,7 +101,7 @@ export class ScrapingBee implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async scrapingBeeApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async scrapingBeeApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const { apiKey } = credential.data as { apiKey: string };
 
 				const options: OptionsWithUri = {
