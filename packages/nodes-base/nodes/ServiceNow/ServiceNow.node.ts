@@ -67,7 +67,6 @@ import {
 	userRoleFields,
 	userRoleOperations,
 } from './UserRoleDescription';
-import { OptionsWithUri } from 'request';
 
 export class ServiceNow implements INodeType {
 	description: INodeTypeDescription = {
@@ -98,7 +97,6 @@ export class ServiceNow implements INodeType {
 			{
 				name: 'serviceNowBasicApi',
 				required: true,
-				testedBy: 'serviceNowBasicApiTest',
 				displayOptions: {
 					show: {
 						authentication: [
@@ -204,34 +202,6 @@ export class ServiceNow implements INodeType {
 	};
 
 	methods = {
-		credentialTest: {
-			async serviceNowBasicApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data;
-
-				const headers = {} as IDataObject;
-				headers.Authorization = `Basic ${Buffer.from(`${credentials!.user}:${credentials!.password}`).toString('base64')}`;
-
-				const options: OptionsWithUri = {
-					headers,
-					method: '',
-					uri: `https://${credentials?.subdomain}.service-now.com/api/now/table/sys_user_role`,
-					json: true,
-				};
-
-				try {
-					await this.helpers.request!(options);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: `Connection details not valid: ${(error as JsonObject).message}`,
-					};
-				}
-				return {
-					status: 'OK',
-					message: 'Authentication successful!',
-				};
-			},
-		},
 		loadOptions: {
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

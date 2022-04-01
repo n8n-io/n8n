@@ -53,11 +53,8 @@ export async function serviceNowApiRequest(this: IExecuteFunctions | ILoadOption
 	}
 
 	try {
-		if (authenticationMethod === 'basicAuth') {
-			return await this.helpers.request!(options);
-		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'serviceNowOAuth2Api', options);
-		}
+		const credentialType = authenticationMethod === 'oAuth2' ? 'serviceNowOAuth2Api' : 'basicAuth';
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), (error as JsonObject));
