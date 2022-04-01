@@ -426,7 +426,7 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 		inviterId: INITIAL_TEST_USER.id,
 		firstName: randomName(),
 		lastName: randomName(),
-		password: hashSync(randomValidPassword(), genSaltSync(10)),
+		password: randomValidPassword(),
 	});
 
 	expect(response.statusCode).toBe(400);
