@@ -378,8 +378,53 @@ export const activityFields: INodeProperties[] = [
 	{
 		displayName: 'Keys',
 		name: 'keys',
-		type: 'string',
-		required: true,
+		type: 'multiOptions',
+		options: [
+			{
+				name: 'Altitude',
+				value: 'altitude',
+			},
+			{
+				name: 'Cadence',
+				value: 'cadence',
+			},
+			{
+				name: 'Distance',
+				value: 'distance',
+			},
+			{
+				name: 'Gradient',
+				value: 'grade_smooth',
+			},
+			{
+				name: 'Heartrate',
+				value: 'heartrate',
+			},
+			{
+				name: 'Latitude / Longitude',
+				value: 'latlng',
+			},
+			{
+				name: 'Moving',
+				value: 'moving',
+			},
+			{
+				name: 'Temperature',
+				value: 'temp',
+			},
+			{
+				name: 'Time',
+				value: 'time',
+			},
+			{
+				name: 'Velocity',
+				value: 'velocity_smooth',
+			},
+			{
+				name: 'Watts',
+				value: 'watts',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -390,10 +435,10 @@ export const activityFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: 'time,distance',
-		description: 'Desired stream types (comma separated). Possible stream sets: time, distance, latlng, altitude, velocity_smooth, heartrate, cadence, watts, temp, moving, grade_smooth.',
+		required: true,
+		default: [],
+		description: 'Desired stream types to return',
 	},
-
 	/* -------------------------------------------------------------------------- */
 	/*                                  activity:getAll                           */
 	/* -------------------------------------------------------------------------- */

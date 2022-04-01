@@ -133,8 +133,8 @@ export class Strava implements INodeType {
 					//https://developers.strava.com/docs/reference/#api-Streams-getActivityStreams
 					if (operation === 'getStreams') {
 						const activityId = this.getNodeParameter('activityId', i) as string;
-
-						qs.keys = this.getNodeParameter('keys', i) as string;
+						const keys = this.getNodeParameter('keys', i) as string[];
+						qs.keys = keys.toString();
 						qs.key_by_type = true;
 
 						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}/streams`, {}, qs);
