@@ -3,13 +3,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Request, Response } from 'express';
-import { compare } from 'bcryptjs';
 import { IDataObject } from 'n8n-workflow';
 import { Db, ResponseHelper } from '../..';
 import { AUTH_COOKIE_NAME } from '../../constants';
 import { issueCookie, resolveJwt } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
+import { compareHash, isInstanceOwnerSetup, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import type { LoginRequest } from '../../requests';
 
@@ -43,7 +42,8 @@ export function authenticationMethods(this: N8nApp): void {
 			} catch (error) {
 				throw new Error('Unable to access database.');
 			}
-			if (!user || !user.password || !(await compare(req.body.password, user.password))) {
+
+			if (!user || !user.password || !(await compareHash(req.body.password, user.password))) {
 				// password is empty until user signs up
 				const error = new Error('Wrong username or password. Do you have caps lock on?');
 				// @ts-ignore

@@ -30,7 +30,7 @@
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
     "test": "npm run test:sqlite",
-    "test:sqlite": "export DB_TYPE=sqlite && jest --forceExit",
+    "test:sqlite": "export N8N_LOG_LEVEL='silent'; export DB_TYPE=sqlite; jest",
     "test:postgres": "export DB_TYPE=postgresdb && jest",
     "test:mysql": "export DB_TYPE=mysqldb && jest",
     "watch": "tsc --watch",

@@ -12,6 +12,8 @@ import { randomEmail, randomValidPassword, randomName } from './shared/random';
 import { getGlobalOwnerRole } from './shared/testDb';
 import * as testDb from './shared/testDb';
 
+jest.mock('../../src/telemetry');
+
 let globalOwnerRole: Role;
 
 let app: express.Application;
@@ -35,7 +37,7 @@ beforeEach(async () => {
 		email: TEST_USER.email,
 		firstName: TEST_USER.firstName,
 		lastName: TEST_USER.lastName,
-		password: hashSync(TEST_USER.password, genSaltSync(10)),
+		password: TEST_USER.password,
 		globalRole: globalOwnerRole,
 	});
 
